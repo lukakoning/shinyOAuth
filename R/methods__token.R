@@ -11,35 +11,28 @@
 #' Revoke an OAuth 2.0 token
 #'
 #' @description
-#' Attempts to revoke an access or refresh token when the provider exposes a
-#' revocation endpoint (RFC 7009).
+#' Ask the provider to invalidate an access or refresh token, for example when
+#' a user disconnects their account or your application disposes of stored
+#' credentials. The provider must support token revocation. The Shiny module
+#' calls this during logout; use `auth$logout()` to also clear its local session.
+#' Revocation does not end the user's login session at the provider.
 #'
-#' Authentication mirrors the provider's `token_auth_style` (same as token
-#' exchange and introspection).
-#'
-#' Best-effort semantics:
-#' - If the provider does not expose a revocation endpoint, returns
-#'   `supported = FALSE`, `revoked = NA`, and `status = "revocation_unsupported"`.
-#' - If the selected token value is missing, returns `supported = TRUE`,
-#'   `revoked = NA`, and `status = "missing_token"`.
-#' - If the endpoint returns a 2xx, returns `supported = TRUE`, `revoked = TRUE`,
-#'   and `status = "ok"`.
-#' - If the endpoint returns an HTTP error, returns `supported = TRUE`,
-#'   `revoked = NA`, and `status = "http_<code>"`.
+#' @details
+#' Uses the client's configured credentials and `token_auth_style`. Check the
+#' returned `status`: an absent endpoint or token, or an unsuccessful HTTP
+#' response, leaves the revocation result unknown. A successful response means
+#' the provider accepted the request; local logout does not depend on it.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param oauth_token [OAuthToken] object containing tokens to revoke
 #' @param which Which token to revoke: "refresh" (default) or "access"
-#' @param async Logical, default FALSE. If TRUE and an async backend is
-#'   configured, the operation is dispatched through shinyOAuth's async
-#'   promise path and this function returns a promise-compatible async result
-#'   that resolves to the result list. [mirai] is preferred when daemons are
-#'   configured via [mirai::daemons()]; otherwise the current [future] plan is
-#'   used. Non-sequential future plans run off the main R session;
-#'   `future::sequential()` stays in-process.
-#' @param shiny_session Optional pre-captured Shiny session context (from
-#'   `capture_shiny_session_context()`) to include in audit events. Used when
-#'   calling from async workers that lack access to the reactive domain.
+#' @param async If `TRUE`, return a promise resolving to the result.
+#'   Configure mirai daemons or a future plan first; mirai takes priority.
+#'   Use a non-sequential future plan to move work outside the main R process.
+#'   Default `FALSE` waits and returns the result directly.
+#'
+#' @param shiny_session Optional captured Shiny session details for audit events.
+#'   Normally supplied by the module; leave `NULL` when calling directly.
 #'
 #' @return A list with fields:
 #' - `supported`: logical, `TRUE` when a revocation endpoint is configured.
@@ -48,6 +41,8 @@
 #'   result is unknown.
 #' - `status`: machine-readable status such as `"ok"`, `"missing_token"`,
 #'   `"revocation_unsupported"`, or `"http_<code>"`.
+#'
+#' @example inst/examples/token_methods.R
 #'
 #' @export
 revoke_token <- function(
@@ -284,52 +279,35 @@ revoke_token <- function(
 #' Introspect an OAuth 2.0 token
 #'
 #' @description
-#' Introspects an access or refresh token when the provider exposes an
-#' introspection endpoint (RFC 7662). Returns a small result object describing
-#' whether introspection is supported and, when known, whether the token is
-#' active.
-#'
-#' Authentication to the introspection endpoint mirrors the provider's
-#' `token_auth_style`:
-#'  - "header" (default): HTTP Basic with `client_id`/`client_secret`.
-#'  - "body": form fields `client_id` and (when available) `client_secret`.
-#'  - "public": form field `client_id` only; `client_secret` is never sent.
-#'  - "client_secret_jwt" / "private_key_jwt": a signed JWT client assertion
-#'    is generated (RFC 7523) and sent via `client_assertion_type` and
-#'    `client_assertion`, with `aud` resolved via
-#'    `resolve_client_assertion_audience()` (so `client_assertion_audience`
-#'    overrides are honored).
+#' Ask the provider to check an access or refresh token. This is called token
+#' introspection and requires a configured `introspection_url`. Use it when you
+#' need the provider's current token status rather than only a locally recorded
+#' expiry time: a token may have been revoked before its expiry. To require it
+#' automatically during login and refresh, set `introspect = TRUE` on
+#' [oauth_client()].
 #'
 #' @details
-#' Best-effort semantics:
-#' - If the provider does not expose an introspection endpoint, the function
-#'   returns `supported = FALSE`, `active = NA`, and `status = "introspection_unsupported"`.
-#' - If the endpoint responds with an HTTP error (e.g., 404/500) or the body
-#'   cannot be parsed or does not include a usable `active` field, the function
-#'   does not throw. It returns `supported = TRUE`, `active = NA`, and a
-#'   descriptive `status` (for example, `"http_404"`, `"invalid_json"`,
-#'   `"missing_active"`). In this context, `NA`
-#'   means "unknown" and will not break flows unless your code explicitly
-#'   requires a definitive result (i.e., `isTRUE(result$active)`).
-#' - RFC 7662 requires `active` to be a JSON Boolean. Other JSON types fail
-#'   closed with `active = NA` and `status = "invalid_active"`. For temporary
-#'   compatibility with a nonconforming endpoint, legacy numeric and string
-#'   coercion can be enabled explicitly with
-#'   `options(shinyOAuth.allow_legacy_introspection_active = TRUE)`.
+#' Read `result$active`: `TRUE` means active, `FALSE` means inactive, and `NA`
+#' means the result is unknown. Use `isTRUE(result$active)` if your code must
+#' require a definite confirmation.
+#'
+#' Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
+#' unusable response bodies return a descriptive `status`. The provider must
+#' return `active` as a JSON boolean. Other types return `"invalid_active"`;
+#' the compatibility option `shinyOAuth.allow_legacy_introspection_active`
+#' allows numeric/string coercion when explicitly enabled. Requests use the
+#' client's configured credentials and `token_auth_style`.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param oauth_token [OAuthToken] object to introspect
 #' @param which Which token to introspect: "access" (default) or "refresh".
-#' @param async Logical, default FALSE. If TRUE and an async backend is
-#'   configured, the operation is dispatched through shinyOAuth's async
-#'   promise path and this function returns a promise-compatible async result
-#'   that resolves to the result list. [mirai] is preferred when daemons are
-#'   configured via [mirai::daemons()]; otherwise the current [future] plan is
-#'   used. Non-sequential future plans run off the main R session;
-#'   `future::sequential()` stays in-process.
-#' @param shiny_session Optional pre-captured Shiny session context (from
-#'   `capture_shiny_session_context()`) to include in audit events. Used when
-#'   calling from async workers that lack access to the reactive domain.
+#' @param async If `TRUE`, return a promise resolving to the result.
+#'   Configure mirai daemons or a future plan first; mirai takes priority.
+#'   Use a non-sequential future plan to move work outside the main R process.
+#'   Default `FALSE` waits and returns the result directly.
+#'
+#' @param shiny_session Optional captured Shiny session details for audit events.
+#'   Normally supplied by the module; leave `NULL` when calling directly.
 #'
 #' @return A list with fields:
 #' - `supported`: logical, `TRUE` when an introspection endpoint is configured.
@@ -645,39 +623,36 @@ introspect_token <- function(
 #' Refresh an OAuth 2.0 token
 #'
 #' @description
-#' Refreshes an OAuth session by obtaining a new access token with the refresh
-#' token. When configured, shinyOAuth also re-fetches userinfo and validates any
-#' new ID token returned by the provider.
+#' Use a refresh token to obtain a new access token without sending the user
+#' through login again. Call this when your application manages token lifetime
+#' itself, for example before continuing API requests with an expiring token.
+#' Assign the returned [OAuthToken] to keep the updated credentials.
+#' [oauth_module_server()] can manage refresh during a Shiny session with
+#' `refresh_proactively = TRUE` when a refresh token is available.
 #'
-#' Per OIDC Core Section 12.2, providers may omit the ID token from refresh
-#' responses. When omitted, the original ID token from the initial login is
-#' preserved.
+#' @details
+#' The provider may replace the refresh token too; otherwise the old refresh
+#' token is kept. Required userinfo is fetched again, and configured client
+#' introspection must succeed before the refreshed token is returned.
 #'
-#' If the provider does return a new ID token during refresh, `refresh_token()`
-#' requires that an original ID token from the initial login is available so it
-#' can enforce subject continuity (OIDC 12.2: `sub` MUST match). If no original
-#' ID token is available, refresh fails with an error.
+#' OIDC refresh responses may omit the ID token, in which case the original is
+#' kept. If a new ID token is returned, an original must be available and the
+#' subject, issuer, and audience must remain consistent, as must `auth_time`
+#' and nonce when applicable. Full signature and
+#' claim validation runs when `id_token_validation = TRUE`. Userinfo is checked
+#' against a validated ID token when both are available;
+#' `userinfo_id_token_match = TRUE` requires that baseline.
 #'
-#' When `id_token_validation = TRUE`, any refresh-returned ID token is also
-#' fully validated (signature and claims) in addition to the OIDC 12.2 `sub`
-#' continuity check.
-#'
-#' When `userinfo_required = TRUE`, userinfo is re-fetched using the fresh
-#' access token. Whenever shinyOAuth has both refreshed userinfo and a
-#' validated ID token baseline, it checks that their `sub` claims still match.
-#' If `userinfo_id_token_match = TRUE`, the absence of a trustworthy ID token
-#' baseline is treated as an error instead of silently accepting unbound
-#' userinfo data.
+#' Refresh does not establish a new interactive login. Use the module's
+#' `reauth_after_seconds` argument when a fresh login is required.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
-#' @param async Logical, default FALSE. If TRUE and an async backend is
-#'   configured, the refresh is dispatched through shinyOAuth's async promise
-#'   path and this function returns a promise-compatible async result that
-#'   resolves to an updated `OAuthToken`. [mirai] is preferred when daemons are
-#'   configured via [mirai::daemons()]; otherwise the current [future] plan is
-#'   used. Non-sequential future plans run off the main R session;
-#'   `future::sequential()` stays in-process.
+#' @param async If `TRUE`, return a promise resolving to the result.
+#'   Configure mirai daemons or a future plan first; mirai takes priority.
+#'   Use a non-sequential future plan to move work outside the main R process.
+#'   Default `FALSE` waits and returns the result directly.
+#'
 #' @param introspect `NULL` (default) or a logical. After a successful refresh,
 #'   introspect the new access token when either this argument is `TRUE` or the
 #'   client was configured with `introspect = TRUE`. A per-call `FALSE` cannot
@@ -686,16 +661,15 @@ introspect_token <- function(
 #'   `introspect_elements`. The raw introspection result is not stored
 #'   separately, but a successful introspection response may backfill
 #'   `token@cnf`.
-#' @param shiny_session Optional pre-captured Shiny session context (from
-#'   `capture_shiny_session_context()`) to include in audit events. Used when
-#'   calling from async workers that lack access to the reactive domain.
+#' @param shiny_session Optional captured Shiny session details for audit events.
+#'   Normally supplied by the module; leave `NULL` when calling directly.
 #'
 #' @return An updated [OAuthToken] object with refreshed credentials.
 #'
 #'   **What changes:**
 #'   - `access_token`: Always updated to the fresh token
 #'   - `expires_at`: Computed from `expires_in` when provided; otherwise a
-#'     finite fallback expiry from `resolve_missing_expires_in()`
+#'     fallback lifetime set by `shinyOAuth.default_expires_in` (3600 seconds by default)
 #'   - `refresh_token`: Updated if the provider rotates it; otherwise preserved
 #'   - `id_token`: Updated only if the provider returns one (and it validates);
 #'     otherwise the original from login is preserved
@@ -711,7 +685,8 @@ introspect_token <- function(
 #'   token that fails validation (wrong issuer, audience, expired, or subject
 #'   mismatch with original), or if userinfo subject doesn't match the new ID
 #'   token, the refresh fails with an error. In `oauth_module_server()`, this
-#'   clears the session and sets `authenticated = FALSE`.
+#'   clears the session and sets `authenticated = FALSE`, unless
+#'   `indefinite_session = TRUE` keeps it with `token_stale = TRUE`.
 #'
 #' @example inst/examples/token_methods.R
 #'

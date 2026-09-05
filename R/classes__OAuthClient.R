@@ -9,65 +9,60 @@
 #' OAuthClient S7 class
 #'
 #' @description
-#' S7 class describing an OAuth 2.0 client configuration. It combines the
-#' provider, client credentials, redirect URI, requested scopes, and the state
-#' handling rules used during login and callback validation.
+#' An `OAuthClient` holds your app's registration with a provider: its client ID,
+#' credentials, return address, and requested permissions. It also holds the
+#' pending login state and client-specific token validation settings used by
+#' the Shiny module and token helpers. Create it with [oauth_client()], which
+#' resolves defaults from the provider and the supplied client settings.
 #'
-#' This is a low-level constructor intended for advanced use. Most users should
-#' prefer the helper constructor [oauth_client()].
+#' @details
+#' Configure the app registration with `provider`, `client_id`, `client_secret`
+#' (if issued), `redirect_uri`, and `scopes`. Create the client outside your Shiny
+#' `server()` function, then pass it to [oauth_module_server()].
 #'
-#' @param provider [OAuthProvider] object
+#' Use the state-store settings for deployments where callbacks can reach
+#' different R processes, and the validation settings to enforce required
+#' scopes, claims, or authentication context. Certificate (mTLS), key-binding
+#' (DPoP), and signed-request/response (JAR/JARM) settings enable those protocol
+#' features when supported by your provider and required by your deployment. See
+#' the [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html) for examples. The defaults described below
+#' refer to [oauth_client()] unless stated otherwise.
 #'
-#' @param client_id OAuth client ID
-#' @param client_secret OAuth client secret.
+#' @param provider The service configuration, created with a provider helper such as
+#'   [oauth_provider_google()] or [oauth_provider_oidc_discover()].
 #'
-#'   Validation rules:
-#'   - Required (non-empty) when the provider authenticates the client with
-#'     HTTP Basic auth at the token endpoint (`token_auth_style = "header"`,
-#'     also known as `client_secret_basic`).
-#'   - Optional when the provider uses form-body client authentication at the
-#'     token endpoint (`token_auth_style = "body"`, also known as
-#'     `client_secret_post`) and `use_pkce = TRUE`. In that configuration,
-#'     the secret is omitted only when it is empty.
-#'   - Ignored for token-endpoint authentication when the provider uses
-#'     `token_auth_style = "public"` (or the alias `"none"`). Public auth
-#'     sends `client_id` only and never sends `client_secret`, even if one is
-#'     configured explicitly.
+#' @param client_id The identifier assigned when you register your app with the provider.
 #'
-#'   Note: If your provider issues HS256 ID tokens and `id_token_validation` is
-#'   enabled, a non-empty `client_secret` is required for signature validation.
+#' @param client_secret The secret issued for your app, preferably read with
+#'   `Sys.getenv()`. Omit it for registrations that do not use a secret.
 #'
-#' @param redirect_uri Redirect URI registered with provider
-#' @param scopes Vector of scopes to request. When a provider has an `issuer`
-#'   and `issuer_thus_oidc = TRUE`, shinyOAuth automatically prepends `openid`;
-#'   that effective scope set is what gets sent in the authorization request
-#'   and used for later state and token-scope validation.
+#'   It is required for `token_auth_style = "header"`. With `"body"` and PKCE,
+#'   an empty secret is omitted. With `"public"` (alias `"none"`), it is never
+#'   sent for client authentication. HMAC-signed ID token validation still
+#'   requires a non-empty secret, regardless of the client authentication method.
 #'
-#' @param response_mode Authorization response mode for authorization-code
-#'   callbacks. Supported values are `"query"`, `"form_post"`, `"jwt"`,
-#'   `"query.jwt"`, and `"form_post.jwt"`. The effective default is always
-#'   `"query"`: omitting this argument keeps the normal query-parameter
-#'   callback flow and shinyOAuth does not send a `response_mode` parameter.
-#'   Pass `"query"` only if you need to explicitly request the query
-#'   response mode from the provider. Set `"form_post"` only when the
-#'   provider requires or explicitly recommends POSTing the authorization
-#'   response to the redirect URI. Shiny apps using `"form_post"` must wrap
-#'   their UI with [oauth_form_post_ui()]. Prefer this argument over setting
-#'   `extra_auth_params$response_mode` on the provider. When the provider
-#'   advertises `response_modes_supported`, the resolved mode must be included
-#'   in that set. `"jwt"` requests the JARM-defined default callback
-#'   transport for the response type; for the authorization-code flow that
-#'   still means a query callback, but shinyOAuth preserves and sends `"jwt"`
-#'   when you configure it explicitly. `"fragment.jwt"` is not currently
-#'   supported because shinyOAuth does not implement fragment callback
-#'   transport.
+#' @param redirect_uri The URL where users return after login. It must match the
+#'   callback URL registered with your provider, including scheme, host, port,
+#'   and path. Use HTTPS in production.
 #'
-#'   JARM callbacks are currently module-only. For `"jwt"`, `"query.jwt"`,
-#'   and `"form_post.jwt"`, use [oauth_module_server()] and, for
-#'   `"form_post.jwt"`, wrap the app UI with [oauth_form_post_ui()]. The
-#'   exported [handle_callback()] helper still accepts only the classic
-#'   direct `code` + sealed `state` callback shape and does not expose a
-#'   public JARM validation/resume API.
+#' @param scopes Character vector of permissions to request. The provider defines
+#'   the available names. For OIDC (`issuer` set and `issuer_thus_oidc = TRUE`),
+#'   shinyOAuth adds `"openid"` automatically if absent. The resulting set is
+#'   used in the request and subsequent scope checks.
+#'
+#' @param response_mode How the provider returns the login result. Leave `NULL`
+#'   (default) for a normal callback with parameters in the URL; no
+#'   `response_mode` parameter is then sent. Use `"query"` to request that
+#'   format explicitly, or `"form_post"` when your provider needs an HTTP POST.
+#'   POST callbacks require [oauth_form_post_ui()].
+#'
+#'   Signed responses (JWT Secured Authorization Response Mode, JARM)
+#'   use `"jwt"`, `"query.jwt"`, or `"form_post.jwt"`
+#'   and require [oauth_module_server()]. `"jwt"` uses the query transport for
+#'   this authorization-code flow. `"form_post.jwt"` also needs
+#'   [oauth_form_post_ui()]. [handle_callback()] does not handle JARM.
+#'   Requested modes must be in `response_modes_supported` when advertised;
+#'   fragment modes are not supported.
 #'
 #' @param resource Optional RFC 8707 resource indicator(s). Supply a character
 #'   vector of absolute URIs to request audience-restricted tokens for one or
@@ -75,30 +70,17 @@
 #'   parameter on the authorization request, initial token exchange, and token
 #'   refresh requests. Default is `character(0)`.
 #'
-#' @param claims OIDC claims request parameter (OIDC Core section 5.5). Allows
-#'   requesting specific claims from the UserInfo Endpoint and/or in the ID
-#'   Token. Can be:
-#'   - `NULL` (default): no claims parameter is sent
-#'   - A list: automatically JSON-encoded (via [jsonlite::toJSON()] with
-#'     `auto_unbox = TRUE`) and URL-encoded into the authorization request.
-#'     The list should have top-level members `userinfo` and/or `id_token`,
-#'     each containing named lists of claims.
-#'     Use `NULL` to request a claim without parameters (per spec).
-#'     Example: `list(userinfo = list(email = NULL, given_name = list(essential = TRUE)), id_token = list(auth_time = list(essential = TRUE)))`
+#' @param claims Optional request for specific OIDC user information, beyond scopes.
+#'   Default `NULL` sends no request. Supply a list with `userinfo` and/or
+#'   `id_token` members, for example
+#'   `list(userinfo = list(email = list(essential = TRUE)))`.
+#'   Use `claims_validation = "strict"` if an unmet request must stop login.
 #'
-#'     Note on single-element arrays: because `auto_unbox = TRUE` is used,
-#'     single-element R vectors are serialized as JSON scalars, not arrays.
-#'     The OIDC spec defines `values` as an array. To force array encoding
-#'     for a single-element vector, wrap it in [I()], e.g.,
-#'     `acr = list(values = I("urn:mace:incommon:iap:silver"))` produces
-#'     `{"values":["urn:mace:incommon:iap:silver"]}`. Multi-element vectors
-#'     are always encoded as arrays. shinyOAuth warns when it sees a
-#'     single-element `values` entry that is not wrapped in [I()], because
-#'     that common input pattern serializes incorrectly for OIDC.
-#'   - A character string: pre-encoded JSON string (advanced use). Must
-#'     be valid JSON. Use this when you need full control over JSON encoding.
-#'   Note: The `claims` parameter is OPTIONAL per OIDC Core section 5.5. Not all
-#'   providers support it; consult your provider's documentation.
+#'   Lists are JSON-encoded with `auto_unbox = TRUE`. Use `NULL` for an
+#'   unconstrained claim, `value` for one required value, or `values` for a set.
+#'   Wrap a single-element `values` vector in [I()] to keep it a JSON array,
+#'   for example `list(values = I("example-acr"))`. A pre-encoded JSON string
+#'   is also accepted. Your provider must support the OIDC claims parameter.
 #'
 #' @param enforce_callback_issuer Logical or `NULL`. When `TRUE`, enforce that
 #'   authorization responses handled through this client include an RFC 9207
@@ -151,48 +133,20 @@
 #'     error.
 #'   - `"none"`: Skips scope validation entirely.
 #'
-#' @param claims_validation Controls validation of requested claims supplied via
-#'   the `claims` parameter (OIDC Core section 5.5). When `claims` includes entries
-#'   with `essential = TRUE` for `id_token` or `userinfo`, or explicit `value`
-#'   / `values` constraints for individual claims, this setting determines what
-#'   happens if the returned ID token or userinfo response does not satisfy
-#'   those requests.
+#' @param claims_validation What to do if requested claims are missing or have
+#'   unexpected values: `"warn"` continues with a warning, `"strict"` stops
+#'   login, and `"none"` skips the check. When omitted, [oauth_client()] uses
+#'   `"warn"` if `claims` includes `essential = TRUE`, `value`, or `values`
+#'   requirements, and `"none"` otherwise. Checks on `claims$id_token` require
+#'   ID token validation (`id_token_validation = TRUE` or `use_nonce = TRUE`).
 #'
-#'   - `"none"`: Skips claims validation entirely. This remains the effective
-#'     default when the supplied `claims` request has no enforceable
-#'     `essential`, `value`, or `values` constraints, and when you explicitly
-#'     set `claims_validation = "none"`.
-#'   - `"warn"`: Emits a warning but continues authentication if requested
-#'     essential claims are missing or requested claim values are not
-#'     satisfied.
-#'   - `"strict"`: Throws an error if any requested essential claims are
-#'     missing or requested claim `value` / `values` constraints are not
-#'     satisfied by the response.
-#'
-#'   If `claims_validation` is omitted and the supplied `claims` request does
-#'   include enforceable `essential`, `value`, or `values` constraints,
-#'   [oauth_client()] promotes the effective default to `"warn"` so those
-#'   mismatches are surfaced by default.
-#'
-#'   Enforceable requests under `claims$id_token` require a validated ID token.
-#'   Configure the provider with `id_token_validation = TRUE` or `use_nonce = TRUE`
-#'   so shinyOAuth validates the ID token before checking those claims.
-#'
-#' @param required_acr_values Optional character vector of acceptable
-#'   Authentication Context Class Reference values (OIDC Core sections 2 and
-#'   3.1.2.1).
-#'   When non-empty, the ID token returned by the provider must contain an
-#'   `acr` claim whose value is one of the specified entries; otherwise the
-#'   login fails with a `shinyOAuth_id_token_error`.
-#'
-#'   Additionally, when non-empty, the authorization request automatically
-#'   includes an `acr_values` query parameter (space-separated) as a voluntary
-#'   hint to the provider (OIDC Core section 3.1.2.1).  Note that the provider is
-#'   not required to honour this hint; the client-side validation is the
-#'   authoritative enforcement.
-#'
-#'   Requires an OIDC-capable provider with `id_token_validation = TRUE` and
-#'   an `issuer` configured.  Default is `character(0)` (no enforcement).
+#' @param required_acr_values Optional character vector of acceptable login
+#'   requirements, such as a provider's multi-factor authentication (MFA) policy.
+#'   Use the provider's Authentication Context Class Reference (ACR) identifiers.
+#'   The validated ID token must contain a matching `acr` or login fails.
+#'   The request also sends `acr_values` as a hint to the provider.
+#'   Requires `id_token_validation = TRUE` and an `issuer`.
+#'   Default `character(0)` imposes no requirement.
 #'
 #' @param userinfo_jwt_required_time_claims Optional character vector of
 #'   temporal JWT claims that must be present when the UserInfo response is a
@@ -205,14 +159,10 @@
 #'   require additional temporal claims. For security-sensitive deployments that
 #'   accept signed UserInfo JWTs, prefer requiring at least `"exp"`.
 #'
-#' @param introspect If TRUE, the login flow will call the provider's token
-#'   introspection endpoint (RFC 7662) to validate the access token. The login
-#'   is not considered complete unless introspection succeeds and returns
-#'   `active = TRUE`; otherwise the login fails and `authenticated` remains
-#'   FALSE. When [oauth_module_server()] later performs proactive refresh, it
-#'   also forwards this setting so refreshed access tokens are introspected
-#'   through the same client policy. Default is FALSE. Requires the provider to
-#'   have an `introspection_url` configured.
+#' @param introspect If `TRUE`, ask the provider to confirm the access token is active
+#'   before completing login and module refreshes. Requires `introspection_url`;
+#'   an unsuccessful check or a response other than `active = TRUE` stops the
+#'   operation. Default `FALSE`.
 #'
 #' @param introspect_elements Optional character vector of additional
 #'   requirements to enforce on the introspection response when
@@ -231,61 +181,29 @@
 #'   (Note that not all providers may return each of these fields in
 #'   introspection responses.)
 #'
-#' @param state_store State storage backend. Defaults to `cachem::cache_mem(max_age = 300)`.
-#'    Alternative backends should use [custom_cache()] with an atomic `$take()`
-#'    method for replay-safe single-use state consumption. The backend
-#'    must implement cachem-like methods `$get(key, missing)`, `$set(key, value)`,
-#'    and `$remove(key)`; `$info()` is optional.
+#' @param state_store Storage for pending logins. The default
+#'   `cachem::cache_mem(max_age = 300)` is suitable for one R process.
+#'   For multiple app processes, supply a shared [custom_cache()] with atomic
+#'   `$take()` and use the same `state_key` on every process.
+#'   Plain `cachem::cache_disk()` is unsafe for shared login state because its
+#'   separate read and delete operations do not prevent simultaneous reuse.
+#'   See [custom_cache()] for method and stored-value requirements.
 #'
-#'    Stored values must round-trip `browser_token` as a non-empty string.
-#'    `pkce_code_verifier` and `nonce` are required only when the provider
-#'    enables PKCE or nonce validation; otherwise backends may keep those
-#'    fields as `NULL` or omit them.
+#' @param state_payload_max_age Maximum age of a pending login's encrypted state, in
+#'   seconds. Default 300. This is checked separately from the state store's
+#'   entry lifetime; both must allow the returning login.
 #'
-#'    `cachem::cache_mem()` is a good default for a single Shiny process. For
-#'    multi-process deployments, use [custom_cache()] with an atomic `$take()`
-#'    backed by a shared store (for example Redis `GETDEL` or SQL
-#'    `DELETE ... RETURNING`). Plain `cachem::cache_disk()` is **not safe** as
-#'    a shared state store because its `$get()` + `$remove()` operations are not
-#'    atomic.
+#' @param state_entropy Length in characters of the random state identifier, from
+#'   22 to 128. Default 64. Most apps should keep the default.
 #'
-#'    The client automatically generates, persists (in `state_store`), and
-#'    validates the OAuth `state` parameter (and OIDC `nonce` when applicable)
-#'    during the authorization code flow.
+#' @param state_key Secret used to encrypt and protect pending login details.
+#'   A random key is generated when omitted. This is separate from
+#'   `client_secret` and is also used for public clients.
 #'
-#' @param state_payload_max_age Positive number of seconds. Maximum allowed age
-#'   for the decrypted state payload's `issued_at` timestamp during callback
-#'   validation.
-#'
-#'   This is the freshness window for the sealed `state` payload itself. It is
-#'   separate from the `state_store` TTL, which controls how long the one-time
-#'   server-side state entry can exist.
-#'
-#'   Default is 300 seconds.
-#'
-#' @param state_entropy Integer. The length (in characters) of the randomly
-#'   generated state parameter. Higher values provide more entropy and better
-#'   security against CSRF attacks. Must be between 22 and 128 (to align with
-#'   `validate_state()`'s default minimum which targets ~128 bits for base64url-like
-#'   strings). Default is 64.
-#'
-#' @param state_key Optional per-client secret used as the state sealing key
-#'   for AES-GCM AEAD (authenticated encryption) of the state payload that
-#'   travels via the `state` query parameter. This provides confidentiality
-#'   and integrity (via authentication tag) for the embedded data used during
-#'   callback verification. If you omit this argument, a random value is
-#'   generated via `random_urlsafe(128)`. This key is distinct from the
-#'   OAuth `client_secret` and may be used with public clients.
-#'
-#'   Type: character string (>= 32 bytes when encoded) or raw vector
-#'   (>= 32 bytes). Raw keys enable direct use of high-entropy secrets from
-#'   external stores. Both forms are normalized internally by cryptographic
-#'   helpers.
-#'
-#'   Multi-process deployments: if your app runs with multiple R workers or
-#'   behind a non-sticky load balancer, configure a shared `state_store` and
-#'   the same `state_key` across all workers. Otherwise callbacks that land on
-#'   a different worker will fail state validation.
+#'   For multiple R processes, supply the same key and shared `state_store`
+#'   on every process. Accepts a character string or raw vector of at least
+#'   32 bytes. Generate it from cryptographically random bytes; do not use
+#'   a memorable password. State uses AES-GCM authenticated encryption.
 #'
 #' @param client_assertion_private_key Optional private key for `private_key_jwt` client authentication
 #'   at the token endpoint. Can be an `openssl::key` or a PEM string containing a
@@ -317,7 +235,7 @@
 #'   uses the exact token endpoint request URL. Some identity providers require a different
 #'   audience value; set this to the exact value your IdP expects.
 #' @param mtls_client_cert_file Optional path to the PEM-encoded client
-#'   certificate (or certificate chain) used for RFC 8705 mutual TLS client
+#'   certificate (or certificate chain) used for RFC 8705 mutual TLS (mTLS) client
 #'   authentication and certificate-bound protected-resource requests. Required
 #'   when `provider@token_auth_style` is `"tls_client_auth"` or
 #'   `"self_signed_tls_client_auth"`.
@@ -344,19 +262,14 @@
 #'   provider must be configured with
 #'   `mtls_client_certificate_bound_access_tokens = TRUE`.
 #'
-#' @param dpop_private_key Optional private key used to generate DPoP proofs
-#'   (RFC 9449). Can be an `openssl::key` or a PEM string containing an
-#'   asymmetric private key. When provided, shinyOAuth can attach `DPoP`
-#'   proofs to token endpoint requests and use DPoP-bound access tokens in
-#'   downstream request helpers. In [oauth_client()], configuring this key also
-#'   makes `dpop_require_access_token` default to `TRUE`, so access-token
-#'   responses reject `token_type = "Bearer"` unless you explicitly set
-#'   `dpop_require_access_token = FALSE`. Current outbound DPoP signing
-#'   supports RSA and EC private keys. For RSA keys, outbound signing is
-#'   currently limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`,
-#'   `PS384`, `PS512`) are not supported. Ed25519/Ed448 keys are also not
-#'   currently supported. This is an advanced setting; most clients do not need
-#'   DPoP unless their provider or resource server asks for it.
+#' @param dpop_private_key Private key for tying tokens to this app's requests
+#'   using Demonstrating Proof of Possession (DPoP). Only needed when your
+#'   provider/API supports DPoP. Accepts an
+#'   `openssl::key` or PEM private-key string, using RSA or EC.
+#'   [oauth_client()] then defaults `dpop_require_access_token` to `TRUE`.
+#'   Supported signing algorithms are `RS256`, `ES256`, `ES384`, and `ES512`;
+#'   RSA-PSS, other RSA signing algorithms, and EdDSA are not supported for
+#'   outgoing proofs. See `dpop_signing_alg` and the [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html).
 #'
 #' @param dpop_private_key_kid Optional key identifier (`kid`) to include in
 #'   the JOSE header of DPoP proofs. Useful when the authorization or resource
@@ -402,8 +315,17 @@
 #'   - `"request_uri"`: publish a signed Request Object by reference and send
 #'     its URL via the `request_uri` parameter.
 #'
-#'   Most users can keep the default. Request mode is an advanced option that
-#'   requires signing material on the client. shinyOAuth prefers
+#'   If the provider has a `par_url`, `"parameters"` and `"request"` are
+#'   sent to that endpoint first using Pushed Authorization Requests (PAR).
+#'   The browser then receives the provider-issued `request_uri` handle.
+#'   Caller-published `"request_uri"` mode is separate from PAR and cannot
+#'   be used when the provider requires PAR.
+#'
+#'   Use a signed Request Object when the provider requires JAR or when it must
+#'   verify the integrity of the authorization parameters. `"request_uri"`
+#'   lets the provider fetch the object from a published URL instead of carrying
+#'   the JWT in the browser redirect. Both modes require signing material on
+#'   the client. shinyOAuth prefers
 #'   `client_assertion_private_key` when present; otherwise it falls back to HMAC signing
 #'   with `client_secret`. When Request Object encryption is configured,
 #'   shinyOAuth signs first and then wraps the signed Request Object in a JWE.
@@ -493,7 +415,7 @@
 #'   remaining `exp` window at validation time. Applies only when
 #'   `response_mode` uses JARM.
 #'
-#' @example inst/examples/oauth_module_server.R
+#' @example inst/examples/oauth_client.R
 #'
 #' @export
 OAuthClient <- S7::new_class(
@@ -709,10 +631,21 @@ OAuthClient <- S7::new_class(
 
 # 2 Helper constructor ---------------------------------------------------------
 
-#' Create generic [OAuthClient]
+#' Configure OAuth/OIDC client credentials and login settings
 #'
-#' Main helper for creating a validated [OAuthClient] configuration before
-#' [oauth_module_server()] starts login or callback handling.
+#' @description
+#' Create a client with the credentials assigned by your provider, the URL where
+#' users return after login, and the permissions your app needs. Pass the result
+#' to [oauth_module_server()].
+#'
+#' @details
+#' Create the client outside `server()` so its settings and pending login state
+#' remain available when the callback returns. Configure `provider`, `client_id`,
+#' `client_secret` (if issued), `redirect_uri`, and `scopes` from the app
+#' registration. Use `state_store` and `state_key` for shared login state across
+#' workers, and validation arguments to require particular scopes, claims, or
+#' authentication context. See the [usage vignette](https://lukakoning.github.io/shinyOAuth/articles/usage.html) for a complete app, or
+#' the [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html) for certificate and signed-request settings.
 #'
 #' @inheritParams OAuthClient
 #' @param ... Deprecated renamed arguments accepted temporarily for backward
@@ -720,7 +653,7 @@ OAuthClient <- S7::new_class(
 #'
 #' @return [OAuthClient] object
 #'
-#' @example inst/examples/oauth_module_server.R
+#' @example inst/examples/oauth_client.R
 #'
 #' @export
 oauth_client <- function(

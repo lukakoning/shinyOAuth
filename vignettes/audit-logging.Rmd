@@ -9,167 +9,102 @@ vignette: >
 
 ## Overview
 
-'shinyOAuth' emits structured audit events as the OAuth 2.0/OIDC flow runs.
-These events can help you understand what happened during login and spot
-problems such as repeated failures, replay attempts, or configuration issues.
-
-This vignette covers:
-
-- How to register audit hooks to export/store events
-- Some options for controlling the content of events
-- Which audit events are emitted & what fields are included in each event
+shinyOAuth emits structured audit events for authorization requests, callbacks,
+token operations, and changes to the authenticated session. Configure
+`shinyOAuth.audit_hook` with an R function to receive these events as named
+lists and send them to your application's logging system.
 
 ## Receiving audit events
 
-You can use `options(shinyOAuth.audit_hook = function(event) { ... })` to register a
-hook function that will be called whenever 'shinyOAuth' emits a structured audit
-or error event. Keep this function fast, non-blocking, and safe: it should not
-throw errors.
+Put this near the top of `app.R`, before creating the provider and client:
 
-Example of printing audit events to console:
-```r
+```{r, eval = FALSE}
 options(shinyOAuth.audit_hook = function(event) {
-	cat(sprintf("[AUDIT] %s %s\n", event$type, event$trace_id))
-	str(event)
+  cat(sprintf("[shinyOAuth] %s | %s\n", event$type, event$trace_id))
+  str(event)
 })
 ```
 
-Another way that 'shinyOAuth' can emit audit events is via OpenTelemetry logging.
-Please see `vignette("opentelemetry", package = "shinyOAuth")` for more details.
+Run your app and try signing in. You will see event names such as
+`audit_redirect_issued` and `audit_login_success`. The `trace_id` connects
+related events from the same operation or login attempt. Several events can
+describe one failure; they are not necessarily separate failed logins.
+For an interactive login, the same `trace_id` follows redirect preparation,
+callback validation, token exchange, and the login result.
+
+To stop receiving events, set `options(shinyOAuth.audit_hook = NULL)`.
+Keep hooks fast and avoid throwing errors. A hook that waits for a slow log
+service can delay the login operation that called it.
+
+## Authentication outcomes
+
+Use `audit_authenticated_changed` to track the module's final authentication
+state and `audit_session_cleared` to record why a session ended. Events such as
+`audit_token_exchange` and `audit_userinfo` report individual operations;
+subsequent validation can still fail. Callback failures include `phase` and
+`error_class` fields to help identify the failed check. The event catalog below
+documents the available names and fields.
 
 ## Event structure
 
-All audit events share the following base shape:
+Audit events have `type`, `trace_id`, and a `timestamp` from `Sys.time()`,
+plus fields specific to the operation. The hook also receives error events
+such as `error`, `http_error`, and `transport_error`; their fields are listed
+at the end of the catalog. Do not assume every field exists on every event.
 
-- `type`: a string starting with `audit_...`
-- `trace_id`: a short correlation id for linking related records from the same
-  operation or auth flow
-- `timestamp`: POSIXct time when the event was created (from `Sys.time()`)
-- Additional key/value fields depending on the event (see event catalog)
+When a Shiny session is available, `shiny_session` contains:
 
-For the interactive login flow, 'shinyOAuth' propagates the same `trace_id`
-from redirect preparation through callback validation, token exchange, and
-login success or failure handling. The trace id is stored inside the sealed
-state so it survives the browser round-trip without exposing raw OAuth values.
+- `session_token_digest`: a protected identifier for correlating the session.
+- `is_async` and `process_id`: whether work ran in a background worker and
+  which R process emitted the event. Async context also includes `main_process_id`.
+- `http`: a summary with request method, path, host, and scheme by default.
 
-This `trace_id` is the application-level correlation id used by 'shinyOAuth'. When OTel
-logging is enabled it is exported as the `shinyoauth.trace_id` log attribute.
-It is separate from any trace/span ids created by your OpenTelemetry backend.
+The session context is a JSON-friendly list suitable for `jsonlite::toJSON()`;
+the raw Shiny `session$request` object is not included. If
+`shinyOAuth.audit_include_raw_session_token = TRUE`, the raw session token is
+available as `shiny_session$token` in native hook events.
 
-When events are emitted from within a Shiny session, a JSON-friendly `shiny_session` list
-is attached to every event so you can tie the audit record back to the app
-session and HTTP request. The structure is designed to serialize cleanly with
-`jsonlite::toJSON()`:
+Fields ending in `_digest` allow matching without recording the original
+token or identifier. The package's `trace_id` is separate from OpenTelemetry
+trace/span IDs; OTel exports it as `shinyoauth.trace_id`.
 
-- `shiny_session$session_token_digest`: an HMAC-SHA256 digest of the Shiny
-  per-session token (`session$token`) when available. Native audit hooks receive
-  this digest by default.
-- `shiny_session$token`: the raw Shiny per-session token only when you opt in via
-  `options(shinyOAuth.audit_include_raw_session_token = TRUE)`.
-- `shiny_session$is_async`: `FALSE` for events emitted from the main R process
-	and `TRUE` for events emitted from an async worker. This helps distinguish
-	background work such as async token exchange or refresh from the main
-	reactive flow.
-- If you pre-capture worker context with `capture_shiny_session_context(is_async = TRUE)`
-	but emit the event before any worker work actually starts, 'shinyOAuth' resets
-	that borrowed context back to `FALSE` because the event still came from the
-	main process.
-- `shiny_session$process_id`: the process ID (PID) of the R process that emitted the event.
-- `shiny_session$main_process_id`: (async events only) the PID of the main R process that spawned the async worker. This allows you to correlate events from workers back to the originating main process.
-- `mirai_error_type`: a top-level event field present only on async failure variants of `login_failed`, `session_cleared`, and `refresh_failed_but_kept_session`. It classifies mirai transport-level failures separately from application-level errors. When present:
-  - `"mirai_error"` — code threw an R error inside the worker
-  - `"mirai_timeout"` — the task exceeded its timeout and was cancelled by dispatcher
-  - `"mirai_connection_reset"` — the daemon process crashed or was terminated
-  - `"mirai_interrupt"` — the task was interrupted/cancelled via `stop_mirai()`
-  - `NA` — not a mirai-specific error (e.g., sync path or future backend)
-- `shiny_session$http`: a compact HTTP summary containing `method`, `path`,
-  `host`, and `scheme` by default.
+## HTTP context and redaction
 
-Note: the raw `session$request` from Shiny is not included to keep the event JSON-serializable and concise.
+By default, the HTTP summary omits query strings, headers, and client addresses.
+The raw Shiny session token is also omitted. To omit HTTP context entirely:
 
-### HTTP context sanitization
-
-For safety, query strings, request headers, and client addresses are omitted
-from `shiny_session$http` by default. This closed-by-default policy also keeps
-unknown query parameters and forwarding or identity headers from exposing
-secrets or personal data to log sinks. Continue to apply your normal sink-side
-data controls when forwarding events.
-
-If a legacy hook truly needs the raw Shiny session token, opt in explicitly with
-`options(shinyOAuth.audit_include_raw_session_token = TRUE)`. Leave this off unless
-you control the downstream sink and have a specific reason to expose the raw token.
-
-If you need the raw, unsanitized HTTP context in audit events for local debugging, you can disable redaction temporarily:
-
-```r
-options(shinyOAuth.audit_redact_http = FALSE)
-```
-
-Do not use this in production log sinks. Raw mode includes the complete query
-string, all `HTTP_*` request headers, and the client address, and can therefore
-expose unknown application secrets and personal data as well as OAuth values.
-
-### Excluding HTTP context entirely
-
-To completely exclude HTTP request details from audit events:
-
-```r
+```{r, eval = FALSE}
 options(shinyOAuth.audit_include_http = FALSE)
 ```
 
-This means that the `shiny_session$http` field will be `NULL` in all audit events.
+With this setting, `shiny_session$http` is `NULL`.
 
-### Audit events from async workers (mirai daemons)
+For local debugging, `shinyOAuth.audit_redact_http = FALSE` includes raw
+request details, and `shinyOAuth.audit_include_raw_session_token = TRUE`
+includes the raw session token. These can expose credentials and personal
+data; keep the defaults for production logs. Redaction does not replace your
+logging system's access and retention controls.
 
-When `async = TRUE` is configured in `oauth_module_server()`, token exchange,
-refresh, and revocation run through the async dispatch layer in 'shinyOAuth'. With
-mirai daemons and future multisession plans this means background worker
-processes; with `future::sequential` the code stays in-process but still uses
-the async promise path. The package automatically propagates your
-`shinyOAuth.audit_hook` option to these async executions, so audit events fire
-there as well. For async work managed by 'shinyOAuth', the package also replays the
-parent session's relevant `OTEL_*` / `OTEL_R_*` environment variables inside
-the async execution context so exporter configuration stays aligned with the
-main R process. It also propagates the effective
-`shinyOAuth.otel_tracing_enabled` and `shinyOAuth.otel_logging_enabled` option
-gates so reused workers do not keep stale telemetry-disabled state from an
-earlier task.
+### Audit events from asynchronous workers
 
-Note that your audit hook function (and any objects referenced in
-its closure) must be serializable. If your hook writes to a database connection,
-file handle, or other non-serializable resource, it will fail in the
-worker process and 'shinyOAuth' will surface that failure as a warning
-(captured and replayed to the main process when using async workers). Use hooks that create connections on demand (e.g., open a
-database connection inside the hook body) rather than capturing an existing
-connection in the closure.
+With `oauth_module_server(async = TRUE)`, the hook is passed to background
+work too. Use a hook that can run in a separate R process. Existing database
+connections or open file handles cannot be safely carried into a worker;
+create connections there or use a logging service designed for multiple writers.
+Appending to a global R list inside a worker only changes that worker's copy.
 
-Also note that in true async mode a worker cannot mutate the main R process's
-in-memory objects. Patterns like appending to a global list or incrementing a
-counter inside `audit_hook` only affect the worker's private copy. For
-cross-process delivery, write to an external sink (database, file, queue, OTLP
-exporter, etc.) or explicitly return captured data from the worker in tests.
+Worker failures may include `mirai_error_type`: `mirai_error`, `mirai_timeout`,
+`mirai_connection_reset`, or `mirai_interrupt`. This helps distinguish an R
+error from a timeout, crashed worker, or cancellation. It can be `NA` for a
+failure that is not specific to mirai.
 
-### Digest fields and keying
+### Digest keys across R processes
 
-Many audit events include digest fields such as `client_id_digest`, `state_digest`,
-`code_digest`, `browser_token_digest`, and `sub_digest`. These let you connect
-related events without logging the raw sensitive values themselves.
+Digests use HMAC-SHA256 with a random process key by default. The module shares
+that key with its async workers. To match digests across separate app processes
+or restarts, configure the same secret key everywhere:
 
-By default, these digests use HMAC-SHA256 with an auto-generated per-process key.
-If you do not configure `options(shinyOAuth.audit_digest_key = ...)`, each R
-process gets its own random key at runtime. That makes accidental cross-process
-matching harder if logs leak, but it also means digests are not stable across
-unrelated processes by default.
-
-For async work managed by 'shinyOAuth', the package propagates the effective digest
-key into its workers so main-process and worker events from the same app
-instance remain comparable. If you need digests to stay comparable across
-multiple app processes or separate R sessions, configure a shared key.
-
-If you run multiple workers/processes and want digests to be comparable across them,
-configure a shared key:
-
-```r
+```{r, eval = FALSE}
 audit_digest_key <- Sys.getenv("AUDIT_DIGEST_KEY", unset = NA_character_)
 if (is.na(audit_digest_key) || !nzchar(audit_digest_key)) {
   stop("AUDIT_DIGEST_KEY must be configured before the app starts")
@@ -177,21 +112,19 @@ if (is.na(audit_digest_key) || !nzchar(audit_digest_key)) {
 options(shinyOAuth.audit_digest_key = audit_digest_key)
 ```
 
-Configured keys must be a single character value or raw vector containing at
-least 32 bytes. Generate the setting from at least 32 cryptographically random
-bytes and store it in your deployment's secret manager. Invalid, missing, or
-short configured values fail rather than falling back to an unkeyed digest.
+Use a string or raw vector containing at least 32 bytes, generated from at
+least 32 cryptographically random bytes and stored as a deployment secret.
+Invalid or short configured keys cause an error. `FALSE` selects unkeyed
+SHA-256 for compatibility, but makes low-entropy identifiers easier to guess.
 
-To disable keying (legacy deterministic SHA-256 digests):
-
-```r
-options(shinyOAuth.audit_digest_key = FALSE)
-```
-
-Note: unkeyed digests are easier to compare across systems, but they are also
-easier to guess for low-entropy values such as email addresses.
+For exporting events and timings through OpenTelemetry, see
+[OpenTelemetry](opentelemetry.html).
 
 ## Event catalog
+
+This is a lookup reference. Start with the event name in your logs; fields
+are included when relevant and available.
+
 
 ### Authorization redirect issuance
 
@@ -240,7 +173,7 @@ easier to guess for low-entropy values such as email addresses.
 
 #### Event: `audit_callback_received`
 
-- When: after the sealed `state` payload has been decrypted and validated (or prevalidated on the main process for async callback handling), just before state-store consumption and the later browser-token/PKCE/nonce checks
+- When: a callback has passed encrypted-state validation; later callback checks may still fail
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`, `state_digest`, `browser_token_digest`
 - Notes: callbacks that fail before payload validation do not emit this event
 
@@ -252,7 +185,7 @@ and nonce. Each stage emits either a success event or a failure event.
 
 #### Event: `audit_callback_validation_success`
 
-- When: the encrypted `state` payload has been decrypted and verified for freshness and client/provider binding (emitted from `state_payload_decrypt_validate()`)
+- When: the callback has passed state, browser-binding, and single-use checks
 - Context: `provider`, `issuer`, `client_id_digest`, `state_digest`
 
 #### Event: `audit_callback_validation_failed`
@@ -265,7 +198,7 @@ and nonce. Each stage emits either a success event or a failure event.
 
 ### State store access
 
-State retrieval and removal of the single-use state entry are emitted as separate events by `state_store_get_remove()`.
+These events identify failures when reading or removing a pending login from the state store.
 
 #### Event: `audit_state_store_lookup_failed`
 
@@ -287,7 +220,7 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 
 - When: authorization code successfully exchanged for tokens
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`, `used_pkce`, `received_id_token`, `received_refresh_token`, `expires_in_synthesized`
-- `expires_in_synthesized` (logical): `TRUE` when the token response did not include a usable `expires_in` value and the package fell back to `resolve_missing_expires_in()`
+- `expires_in_synthesized` (logical): `TRUE` when the token response did not include a usable `expires_in` value and the package used the configured fallback token lifetime
 
 #### Event: `audit_token_exchange_error`
 
@@ -296,7 +229,7 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 
 Detailed sender-constraint diagnostics such as DPoP token-type inference,
 DPoP nonce retries, and mTLS endpoint-alias selection are emitted on the
-OpenTelemetry spans documented in `vignette("opentelemetry")` rather than on
+OpenTelemetry spans documented in the [OpenTelemetry vignette](opentelemetry.html) rather than on
 the high-level audit events.
 
 ### Token introspection
@@ -315,7 +248,8 @@ the high-level audit events.
 
 #### Event: `audit_login_success`
 
-- When: token set is verified and an `OAuthToken` is created
+- When: callback handling has completed the configured token, UserInfo, and
+  introspection checks and is ready to return the `OAuthToken`
 - Context: `provider`, `issuer`, `client_id_digest`, `sub_digest`, `sub_source`, `refresh_token_present`, `expires_at`
 
 `sub_source` indicates where `sub_digest` was derived from:
@@ -326,7 +260,7 @@ the high-level audit events.
 
 #### Event: `audit_login_failed`
 
-- When: surface-level login failure during callback handling in the Shiny module
+- When: login failure during callback handling in the Shiny module
 - Context: `provider`, `issuer`, `client_id_digest`, `phase`, `error_class`, `mirai_error_type`
 - `phase` currently includes:
   - `sync_token_exchange`
@@ -339,7 +273,7 @@ the high-level audit events.
 
 #### Event: `audit_logout`
 
-- When: `values$logout()` is called on the module
+- When: `auth$logout()` is called on the module
 - Context: `provider`, `issuer`, `client_id_digest`, `reason` (default `manual_logout`)
 
 #### Event: `audit_session_cleared`
@@ -389,7 +323,7 @@ the high-level audit events.
 
 - When: `refresh_token()` successfully refreshes the access token
 - Context: `provider`, `issuer`, `client_id_digest`, `refresh_token_rotated`, `new_expires_at`, `expires_in_synthesized`
-- `expires_in_synthesized` (logical): `TRUE` when the refresh response did not include a usable `expires_in` value and the package fell back to `resolve_missing_expires_in()`
+- `expires_in_synthesized` (logical): `TRUE` when the refresh response did not include a usable `expires_in` value and the package used the configured fallback token lifetime
 
 ### Userinfo fetch
 
@@ -430,7 +364,10 @@ State parsing failures occur while decoding and validating the encrypted wrapper
 
 ### Error response state consumption
 
-When the provider returns an error response (e.g., `access_denied`) but includes the `state` parameter, the module still waits for the browser token before surfacing provider-controlled error text. On the normal query callback path, it first decrypts and looks up the stored state without consuming it, verifies the browser-token binding, and only then consumes the state to prevent replay. On callback paths that already pre-consumed state during earlier normalization work (for example, some `form_post`/JARM flows), `audit_error_state_consumed` can appear before the later browser-token validation step. Browser-token mismatches are reported via `audit_callback_validation_failed` with `phase = "browser_token_validation"`; the events below cover only the state-consumption portion of that flow.
+Provider error callbacks still need valid login state and browser binding.
+The events below report the one-time state consumption, not the outcome of
+all callback checks. Browser mismatches use `audit_callback_validation_failed`
+with `phase = "browser_token_validation"`.
 
 #### Event: `audit_error_state_consumed`
 
@@ -481,7 +418,7 @@ failures to the same sink as audit events.
 
 #### Event: `error`
 
-- When: a package error is raised via one of the specialized `err_*()` helpers
+- When: a package error is raised during package processing
   (state validation, PKCE, token, ID token, userinfo, configuration, input, parse errors)
 - Fields:
 	- `type` (`"error"`), `trace_id`, `message`,

@@ -71,6 +71,6 @@ Same value as \code{\link[=resource_req]{resource_req()}}.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-Deprecated alias for \code{resource_req()} to avoid a breaking change in the public API.
+Deprecated alias for \code{resource_req()}.
 Use \code{resource_req()} for Bearer, DPoP, and mTLS-protected resource requests instead.
 }

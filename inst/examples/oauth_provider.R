@@ -30,7 +30,8 @@ github_provider <- oauth_provider_github()
 google_provider <- oauth_provider_google()
 
 # Microsoft preconfigured provider
-# See `?oauth_provider_microsoft` for example using a custom tenant ID
+# For a complete app using a custom tenant ID, see:
+# https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.html
 
 # Spotify preconfigured provider
 spotify_provider <- oauth_provider_spotify()

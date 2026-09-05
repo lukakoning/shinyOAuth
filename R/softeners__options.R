@@ -54,13 +54,13 @@
 #   testing or interactive sessions; a few explicit opt-ins (for example,
 #   allow_redirect) are honored in all sessions.
 
-#' Throw an error if specific dev/debug softeners are enabled
+#' Check selected debugging options (deprecated)
 #'
 #' @description
 #' `r lifecycle::badge("deprecated")`
 #'
 #' Deprecated helper that errors when a small subset of shinyOAuth's
-#' development and debugging softeners are enabled. Use explicit startup checks
+#' options that relax security checks or expose debugging details are enabled. Use explicit startup checks
 #' for the exact options your deployment permits or forbids instead.
 #'
 #' @details It only checks the following options:

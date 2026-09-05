@@ -5,16 +5,19 @@
 
 # 1 Authenticated request helper -----------------------------------------------
 
-#' Build an authenticated httr2 request for a protected resource
+#' Prepare an API request with an access token
 #'
 #' @description
-#' This is a helper for calling downstream APIs with an access token. It creates an
-#' [httr2::request()] for the given URL, attaches the right authorization header
-#' for the token type, and applies shinyOAuth's standard HTTP defaults.
+#' Build an [httr2] request that uses the user's access token. Use this when
+#' you want to inspect or customize a request before sending it. To build and
+#' send in one step, use [perform_resource_req()].
 #'
-#' Use [perform_resource_req()] when you want shinyOAuth to also perform the request
-#' and handle DPoP nonce challenges for you (which [httr2::req_perform()]
-#' would not do on its own).
+#' @details
+#' Only send a token to an API you intend to authorize. The package applies its
+#' URL policy, timeouts, and redirect defaults. It supports Bearer authentication
+#' and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
+#' also supply `oauth_client` so the request uses the matching key or
+#' certificate.
 #'
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param url The absolute URL to call.
@@ -100,7 +103,7 @@ resource_req <- function(
 #' @description
 #' `r lifecycle::badge("deprecated")`
 #'
-#' Deprecated alias for `resource_req()` to avoid a breaking change in the public API.
+#' Deprecated alias for `resource_req()`.
 #' Use `resource_req()` for Bearer, DPoP, and mTLS-protected resource requests instead.
 #'
 #' @inheritParams resource_req
@@ -141,23 +144,19 @@ client_bearer_req <- function(
   )
 }
 
-#' Build and perform an authenticated httr2 request for a protected resource
+#' Call an API with an access token
 #'
 #' @description
-#' This is a helper for calling downstream APIs with an access token. It creates
-#' an [httr2::request()] for the given URL, attaches the right authorization
-#' header for the token type, applies shinyOAuth's standard HTTP defaults, and
-#' performs the request. You can also provide a prebuilt [httr2::request()] object
-#' as the `url` argument, in which case this helper will layer token authentication
-#' and any explicit overrides on top of the provided request before performing it.
+#' Send an authenticated API request on the user's behalf and return an
+#' [httr2] response. Pass the token from login and the API URL, then read the
+#' response with [httr2::resp_body_json()] or another httr2 response helper.
 #'
-#' Use [resource_req()] if you want to only build the request (and perform it later).
-#'
-#' Compared to [httr2::req_perform()], this helper adds shinyOAuth-specific
-#' handling for DPoP-bound tokens, including retrying once with a fresh proof when
-#' a `DPoP-Nonce` challenge is encountered. For non-DPoP tokens, this helper behaves
-#' similarly to [httr2::req_perform()] but with the package's standard defaults
-#' for retries and redirects.
+#' @details
+#' Only send a token to an API you intend to authorize. The package applies its
+#' URL policy, timeouts, and redirect defaults. It supports Bearer authentication
+#' and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
+#' also supply `oauth_client` so the request uses the matching key or
+#' certificate.
 #'
 #' @inheritParams resource_req
 #' @param url Either the absolute URL to call or an [httr2::request()] object
@@ -165,11 +164,11 @@ client_bearer_req <- function(
 #'   it as the base request, still applies token authentication and request
 #'   defaults, and then layers any explicit `method`, `headers`, `query`, and
 #'   `follow_redirect` overrides on top.
-#' @param idempotent Optional logical controlling generic transport and
-#'   transient-HTTP retries in `req_with_retry()`. When `NULL` (the default),
-#'   shinyOAuth infers this from the final request method using standard HTTP
-#'   idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE`). DPoP
-#'   nonce challenges are replayed once regardless, as required by RFC 9449.
+#' @param idempotent Whether ordinary network/HTTP failures may be
+#'   retried safely. `NULL` (default) infers this from the final HTTP method:
+#'   GET, HEAD, OPTIONS, PUT, and DELETE permit retries. Set it explicitly if
+#'   your API has different guarantees. One DPoP nonce challenge retry is
+#'   allowed independently of this setting.
 #'
 #' @return An [httr2] response object.
 #'
@@ -247,7 +246,7 @@ perform_resource_req <- function(
 #' @description
 #' `r lifecycle::badge("deprecated")`
 #'
-#' Deprecated alias for `perform_resource_req()` to avoid a breaking change in the public API.
+#' Deprecated alias for `perform_resource_req()`.
 #' Use `perform_resource_req()` for Bearer, DPoP, and mTLS-protected resource requests instead.
 #'
 #' @inheritParams perform_resource_req

@@ -19,17 +19,13 @@ introspect_token(
 
 \item{which}{Which token to introspect: "access" (default) or "refresh".}
 
-\item{async}{Logical, default FALSE. If TRUE and an async backend is
-configured, the operation is dispatched through shinyOAuth's async
-promise path and this function returns a promise-compatible async result
-that resolves to the result list. \link[mirai:mirai]{mirai} is preferred when daemons are
-configured via \code{\link[mirai:daemons]{mirai::daemons()}}; otherwise the current \link[future:future]{future} plan is
-used. Non-sequential future plans run off the main R session;
-\code{future::sequential()} stays in-process.}
+\item{async}{If \code{TRUE}, return a promise resolving to the result.
+Configure mirai daemons or a future plan first; mirai takes priority.
+Use a non-sequential future plan to move work outside the main R process.
+Default \code{FALSE} waits and returns the result directly.}
 
-\item{shiny_session}{Optional pre-captured Shiny session context (from
-\code{capture_shiny_session_context()}) to include in audit events. Used when
-calling from async workers that lack access to the reactive domain.}
+\item{shiny_session}{Optional captured Shiny session details for audit events.
+Normally supplied by the module; leave \code{NULL} when calling directly.}
 }
 \value{
 A list with fields:
@@ -45,72 +41,48 @@ unsupported or the response could not be parsed.
 }
 }
 \description{
-Introspects an access or refresh token when the provider exposes an
-introspection endpoint (RFC 7662). Returns a small result object describing
-whether introspection is supported and, when known, whether the token is
-active.
-
-Authentication to the introspection endpoint mirrors the provider's
-\code{token_auth_style}:
-\itemize{
-\item "header" (default): HTTP Basic with \code{client_id}/\code{client_secret}.
-\item "body": form fields \code{client_id} and (when available) \code{client_secret}.
-\item "public": form field \code{client_id} only; \code{client_secret} is never sent.
-\item "client_secret_jwt" / "private_key_jwt": a signed JWT client assertion
-is generated (RFC 7523) and sent via \code{client_assertion_type} and
-\code{client_assertion}, with \code{aud} resolved via
-\code{resolve_client_assertion_audience()} (so \code{client_assertion_audience}
-overrides are honored).
-}
+Ask the provider to check an access or refresh token. This is called token
+introspection and requires a configured \code{introspection_url}. Use it when you
+need the provider's current token status rather than only a locally recorded
+expiry time: a token may have been revoked before its expiry. To require it
+automatically during login and refresh, set \code{introspect = TRUE} on
+\code{\link[=oauth_client]{oauth_client()}}.
 }
 \details{
-Best-effort semantics:
-\itemize{
-\item If the provider does not expose an introspection endpoint, the function
-returns \code{supported = FALSE}, \code{active = NA}, and \code{status = "introspection_unsupported"}.
-\item If the endpoint responds with an HTTP error (e.g., 404/500) or the body
-cannot be parsed or does not include a usable \code{active} field, the function
-does not throw. It returns \code{supported = TRUE}, \code{active = NA}, and a
-descriptive \code{status} (for example, \code{"http_404"}, \code{"invalid_json"},
-\code{"missing_active"}). In this context, \code{NA}
-means "unknown" and will not break flows unless your code explicitly
-requires a definitive result (i.e., \code{isTRUE(result$active)}).
-\item RFC 7662 requires \code{active} to be a JSON Boolean. Other JSON types fail
-closed with \code{active = NA} and \code{status = "invalid_active"}. For temporary
-compatibility with a nonconforming endpoint, legacy numeric and string
-coercion can be enabled explicitly with
-\code{options(shinyOAuth.allow_legacy_introspection_active = TRUE)}.
-}
+Read \code{result$active}: \code{TRUE} means active, \code{FALSE} means inactive, and \code{NA}
+means the result is unknown. Use \code{isTRUE(result$active)} if your code must
+require a definite confirmation.
+
+Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
+unusable response bodies return a descriptive \code{status}. The provider must
+return \code{active} as a JSON boolean. Other types return \code{"invalid_active"};
+the compatibility option \code{shinyOAuth.allow_legacy_introspection_active}
+allows numeric/string coercion when explicitly enabled. Requests use the
+client's configured credentials and \code{token_auth_style}.
 }
 \examples{
-# Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`
-# are typically not called by users of this package directly, but are called
-# internally by `oauth_module_server()`. These functions are exported
-# nonetheless for advanced use cases. Most users will not need to
-# call these functions directly
-
-# Example requires a real token from a completed OAuth flow
-# (code is therefore not run; would error with placeholder values below)
+# get_userinfo(), introspect_token(), and refresh_token() are typically
+# called by oauth_module_server() according to your provider/client and
+# module settings, rather than directly by application code. The module
+# also calls revoke_token() during logout when the provider supports it.
+# These helpers are exported for custom login flows, on-demand profile or
+# token checks, and applications that manage token lifetime themselves.
+#
+# The examples below require a real token from a completed login.
+# Inside a reactive expression in server(), after creating auth with
+# oauth_module_server() and confirming auth$authenticated:
 if (interactive()) {
-  # Define client
-  client <- oauth_client(
-    provider = oauth_provider_github(),
-    client_id = Sys.getenv("GITHUB_OAUTH_CLIENT_ID"),
-    client_secret = Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET"),
-    redirect_uri = "http://127.0.0.1:8100"
-  )
-
-  # Have a valid OAuthToken object; fake example below
-  # (typically provided by `oauth_module_server()` or `handle_callback()`)
-  token <- handle_callback(client, "<code>", "<payload>", "<browser_token>")
-
-  # Get userinfo
+  token <- auth$token
   user_info <- get_userinfo(client, token)
 
-  # Introspect token (if supported by provider)
-  introspection <- introspect_token(client, token)
+  # Requires an introspection endpoint. NA means activity is unknown.
+  result <- introspect_token(client, token)
+  isTRUE(result$active)
 
-  # Refresh token
-  new_token <- refresh_token(client, token, introspect = TRUE)
+  # Requires a refresh token. Keep the returned replacement.
+  token <- refresh_token(client, token)
+
+  # Requires a revocation endpoint to invalidate the token at the provider.
+  result <- revoke_token(client, token, which = "refresh")
 }
 }

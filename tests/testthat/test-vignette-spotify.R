@@ -1,9 +1,8 @@
-spotify_vignette_path <- function() {
+spotify_dashboard_path <- function() {
   candidates <- c(
-    file.path("vignettes", "example-spotify.Rmd"),
-    testthat::test_path("..", "..", "vignettes", "example-spotify.Rmd"),
-    file.path("doc", "example-spotify.Rmd"),
-    system.file("doc", "example-spotify.Rmd", package = "shinyOAuth")
+    file.path("inst", "examples", "spotify-dashboard.R"),
+    testthat::test_path("..", "..", "inst", "examples", "spotify-dashboard.R"),
+    system.file("examples", "spotify-dashboard.R", package = "shinyOAuth")
   )
   candidates <- candidates[file.exists(candidates) & nzchar(candidates)]
   if (!length(candidates)) {
@@ -12,9 +11,9 @@ spotify_vignette_path <- function() {
   candidates[[1]]
 }
 
-test_that("Spotify vignette never disables table escaping", {
-  path <- spotify_vignette_path()
-  skip_if(is.na(path), "Spotify vignette is not available")
+test_that("Spotify dashboard never disables table escaping", {
+  path <- spotify_dashboard_path()
+  skip_if(is.na(path), "Spotify dashboard is not available")
 
   source <- readLines(path, warn = FALSE)
   expect_false(any(grepl("escape\\s*=\\s*FALSE", source)))

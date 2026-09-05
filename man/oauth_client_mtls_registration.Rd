@@ -2,7 +2,7 @@
 % Please edit documentation in R/mtls_registration.R
 \name{oauth_client_mtls_registration}
 \alias{oauth_client_mtls_registration}
-\title{Build RFC 8705 mTLS registration metadata}
+\title{Prepare client-certificate registration settings (mTLS)}
 \usage{
 oauth_client_mtls_registration(
   oauth_client,
@@ -34,28 +34,25 @@ for the chosen type, pass the exact registration value explicitly.}
 A JSON-ready list of RFC 7591/RFC 8705 client metadata.
 }
 \description{
-Returns a JSON-ready list of client metadata for registering an
-\link{OAuthClient} that uses RFC 8705 mutual TLS or requests
-certificate-bound access tokens.
+Build a list of settings to register a certificate-based client with your
+provider using mutual TLS (mTLS). Use this when preparing metadata for dynamic
+client registration or when your provider asks for certificate identifiers,
+public keys, or certificate-bound token settings. It derives those settings
+from an \code{\link[=oauth_client]{oauth_client()}} already configured for mTLS.
 
-For \code{token_auth_style = "tls_client_auth"}, this helper returns
-\code{token_endpoint_auth_method = "tls_client_auth"} plus exactly one RFC 8705
-certificate identifier field:
-\code{tls_client_auth_subject_dn}, \code{tls_client_auth_san_dns},
-\code{tls_client_auth_san_uri}, \code{tls_client_auth_san_ip}, or
-\code{tls_client_auth_san_email}.
+The result is a metadata list, ready to include in a registration request.
+Submit it through your provider's registration process; this function does
+not register the client or upload the certificate.
+}
+\details{
+For \code{tls_client_auth}, the result identifies the client certificate using
+one selected subject or alternative-name field. For
+\code{self_signed_tls_client_auth}, it contains an inline \code{jwks} with the
+certificate chain (\code{x5c}), or the supplied \code{jwks_uri}.
 
-For \code{token_auth_style = "self_signed_tls_client_auth"}, this helper returns
-\code{token_endpoint_auth_method = "self_signed_tls_client_auth"} plus either an
-inline \code{jwks} document built from the configured client certificate and
-certificate chain (published via \code{x5c}), or a caller-supplied \code{jwks_uri}.
-
-For clients that request RFC 8705 certificate-bound access tokens without
-mTLS OAuth client authentication, this helper returns the runtime
-\code{token_auth_style} mapped back to the dynamic-registration metadata value
-(for example, \code{public} becomes \code{none}) and emits
-\code{tls_client_certificate_bound_access_tokens = TRUE}.
-
-This helper prepares metadata only. It does not make a registration HTTP
-call.
+For certificate-bound tokens without mTLS client authentication, the result
+uses the corresponding registration authentication method (for example,
+\code{public} becomes \code{none}) and sets
+\code{tls_client_certificate_bound_access_tokens = TRUE}. See
+the \href{https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html}{advanced security vignette} for when these configurations are useful.
 }

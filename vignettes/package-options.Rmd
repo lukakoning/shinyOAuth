@@ -1,0 +1,169 @@
+---
+title: "Package options reference"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Package options reference}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+This reference lists package-wide options for network requests, logging, and
+validation. Set options near the top of `app.R`, before creating the provider
+and client. The defaults apply when an option is unset.
+
+For example, allow a slow provider up to ten seconds per HTTP request:
+
+```{r, eval = FALSE}
+options(shinyOAuth.timeout = 10)
+```
+
+Times are in **seconds** unless a setting explicitly says milliseconds.
+Options affect the R process; use `oauth_client()` and
+`oauth_module_server()` arguments for settings that belong to one client or
+module. See [Usage](usage.html) for app setup.
+
+## Logging
+
+- `options(shinyOAuth.audit_hook = function(event){ ... })` – receive structured audit and error events
+- `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP request details from audit events (default: `TRUE`)
+- `options(shinyOAuth.audit_include_raw_session_token = TRUE)` – include the raw `shiny_session$token` in native audit-hook payloads. By default, hooks receive only `shiny_session$session_token_digest`
+- `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic redaction of sensitive data in audit events (default: `TRUE`). Debug only: raw mode can expose cookies, authorization headers, codes, state values, and client IP addresses
+- `options(shinyOAuth.audit_digest_key = ...)` – shared key of at least 32 bytes for HMAC-SHA256 digests used in audit/OTel attributes. Invalid configured keys cause an error; by default, 'shinyOAuth' generates a random per-process key when this is not configured
+- `options(shinyOAuth.otel_tracing_enabled = FALSE)` – disable 'shinyOAuth' OpenTelemetry span creation and async trace-context propagation. Default: `TRUE`
+- `options(shinyOAuth.otel_logging_enabled = FALSE)` – disable 'shinyOAuth' OpenTelemetry log emission. Default: `TRUE`
+
+See the [audit logging vignette](audit-logging.html) for details about
+audit hooks, and the [OpenTelemetry vignette](opentelemetry.html)
+for more details about logs and traces via OpenTelemetry.
+
+## Validation and URL policy
+
+- `options(shinyOAuth.leeway = 30)` – default clock skew leeway (seconds) for ID token `exp`/`iat`/`nbf` checks and state payload `issued_at` future check
+- `options(shinyOAuth.max_id_token_lifetime = 86400)` – maximum ID token lifetime in seconds (`exp - iat`). This is an additional package check beyond the OIDC expiry check. Default `86400` (24 hours). Set to `Inf` to disable the check
+- `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))` - allows these hosts to use `http://` in non-OIDC URL checks; it does not relax OIDC discovery
+- `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)` – development-only opt-in for OIDC issuer and endpoint URLs on HTTP loopback origins; production OIDC metadata URLs must use HTTPS
+- `options(shinyOAuth.allowed_hosts = c())` – when non‑empty, restricts accepted hosts
+to this whitelist
+- `options(shinyOAuth.allow_hs = TRUE)` – opt‑in HMAC validation for ID tokens (HS256/HS384/HS512). Requires a strictly server‑side `client_secret`
+- `options(shinyOAuth.client_assertion_ttl = 120L)` – lifetime in seconds for JWT client assertions used with
+  `client_secret_jwt` or `private_key_jwt` token endpoint authentication. Finite values below 60 seconds are coerced to
+  60 seconds, finite values above 300 seconds are clamped to 300 seconds, and `NA` or non-finite values fall back to
+  the 120-second default
+- `options(shinyOAuth.state_fail_delay_ms = c(10, 30))` – adds a small randomized delay (in milliseconds) before any state validation failure (e.g., malformed token, IV/tag/ciphertext issues, or GCM authentication failure). This helps reduce timing side‑channels between different failure modes
+
+Note on `allowed_hosts`: patterns support globs (`*`, `?`).
+Using a catch‑all like `"*"` matches any host and effectively disables endpoint host restrictions (scheme rules still apply).
+Avoid this unless you truly intend to accept any host; prefer pinning to your domain(s), e.g., `c(".example.com")`.
+
+## Advanced parameter overrides
+
+By default, 'shinyOAuth' blocks certain
+security-critical parameters from being passed via `extra_auth_params`,
+`extra_token_params`, and `extra_token_headers`. This helps prevent accidental
+misconfiguration that could break state binding, PKCE, or client
+authentication.
+
+Set the callback format with `oauth_client(response_mode = ...)`.
+
+If you have a specific, advanced use case where you need to override one of these blocked parameters,
+you can unblock them using the following options:
+
+- `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows overriding the specified
+  authorization URL parameters. Default blocked: `response_type`, `client_id`, `redirect_uri`, `state`,
+  `request_uri`, `request`, `scope`, `code_challenge`, `code_challenge_method`, `nonce`, `claims`
+- `request` and `request_uri` stay blocked by default because 'shinyOAuth' manages them internally for
+  PAR and Request Object flows; leave them reserved unless you are intentionally taking responsibility
+  for a fully custom advanced flow.
+- `options(shinyOAuth.unblock_token_params = c(...))` – allows overriding the specified token exchange
+  parameters. Default blocked: `grant_type`, `code`, `redirect_uri`, `code_verifier`, `client_id`,
+  `client_secret`, `client_assertion`, `client_assertion_type`
+- `options(shinyOAuth.unblock_token_headers = c("authorization"))` – allows overriding the specified
+  token exchange headers (case-insensitive). Default blocked: `Authorization`, `Cookie`
+
+## Async timeout (mirai)
+
+- `options(shinyOAuth.async_timeout = 10000)` – per-task timeout in milliseconds for mirai async tasks.
+  When using mirai with dispatcher (the default), timed-out tasks are automatically cancelled and resolve
+  as a mirai error. Default is `NULL` (no timeout). Ignored when falling back to the 'future' backend
+
+## Async condition replay
+
+- `options(shinyOAuth.replay_async_conditions = FALSE)` – when `FALSE`, warnings and messages captured
+  from async workers are silently discarded instead of being re-emitted on the main R process. Default is
+  `TRUE` (replay all captured conditions). Useful if worker diagnostics are too noisy or handled
+  separately via `audit_hook`
+
+## Token lifetime fallback
+
+- `options(shinyOAuth.default_expires_in = 3600)` – fallback token lifetime (in seconds)
+  when the provider omits `expires_in` from the token response
+
+## HTTP settings (timeout, retries, user agent)
+
+- `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds) applied to all outbound requests
+  (discovery, JWKS, token exchange, userinfo). Increase if your provider/network is slow
+- `options(shinyOAuth.retry_max_tries = 3L)` – maximum attempts for retryable requests after network errors or HTTP 408, 429, or 5xx responses. Authorization-code exchange and refresh are not automatically retried, apart from a single DPoP nonce challenge retry
+- `options(shinyOAuth.retry_backoff_base = 0.5)` – base backoff in seconds used for exponential backoff with jitter
+- `options(shinyOAuth.retry_backoff_cap = 5)` – per‑attempt cap on backoff seconds (before jitter)
+- `options(shinyOAuth.retry_after_cap = 60)` – maximum synchronous sleep in seconds for a server-provided `Retry-After` value; this is separate from the client-side backoff cap
+- `options(shinyOAuth.retry_status = c(408L, 429L, 500:599))` – HTTP statuses considered transient and retried
+- `options(shinyOAuth.user_agent = "shinyOAuth/<version> R/<version> httr2/<version>")` – override the default
+  User‑Agent header applied to all outbound requests. By default this string is built dynamically from the
+  installed package/runtime versions; set a custom string here if your organization requires a specific format
+- `options(shinyOAuth.allow_redirect = FALSE)` –  when `FALSE` (default), all sensitive
+  HTTP requests (token exchange, refresh, introspection, revocation, userinfo, OIDC discovery, JWKS) refuse to
+  follow redirects and reject 3xx responses. This prevents authorization codes, tokens, and PKCE verifiers from
+  leaking to redirect targets. Set to `TRUE` only when you deliberately accept that redirect-following risk for a
+  specific deployment; this opt-in is honored in all sessions
+- `options(shinyOAuth.max_body_bytes = 1048576)` – maximum response body size (bytes, default 1 MiB) accepted
+  from OAuth endpoints and resource requests. Increase this if an API legitimately returns larger payloads. The limit also applies
+  after gzip decompression; other content encodings are rejected
+
+## State store
+
+- `options(shinyOAuth.allow_non_atomic_state_store = TRUE)` – allow a shared
+  state store without atomic `$take()` to use separate `$get()` and `$remove()`
+  calls. Default `FALSE`: such a store causes an error. With `TRUE`, the package
+  warns once and proceeds, but concurrent requests may reuse a login entry.
+  Use an atomic shared store for production; see [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html).
+
+## Size caps
+
+### State envelope
+
+- `options(shinyOAuth.state_max_token_chars = 8192)` – maximum allowed length of the base64url-encoded `state` query parameter
+- `options(shinyOAuth.state_max_wrapper_bytes = 8192)` – maximum decoded byte size of the outer JSON wrapper (before parsing)
+- `options(shinyOAuth.state_max_ct_b64_chars = 8192)` – maximum allowed length of the base64url-encoded ciphertext inside the wrapper
+- `options(shinyOAuth.state_max_ct_bytes = 8192)` – maximum decoded byte size of the ciphertext before attempting AES-GCM decrypt
+
+These prevent maliciously large state parameters from causing excessive CPU or memory usage during decoding and decryption.
+
+### Callback query
+
+- `options(shinyOAuth.callback_max_code_bytes = 4096)` – maximum byte length of the `code` query parameter
+- `options(shinyOAuth.callback_max_state_bytes = 8192)` – maximum byte length of the `state` query parameter (outer token string)
+- `options(shinyOAuth.callback_max_error_bytes = 256)` – maximum byte length of the `error` query parameter
+- `options(shinyOAuth.callback_max_error_description_bytes = 4096)` – maximum byte length of the `error_description` query parameter
+- `options(shinyOAuth.callback_max_error_uri_bytes = 2048)` – maximum byte length of the `error_uri` query parameter
+- `options(shinyOAuth.callback_max_iss_bytes = 2048)` – maximum byte length of the `iss` query parameter (RFC 9207 issuer identification)
+- `options(shinyOAuth.callback_max_query_bytes = <derived>)` – maximum total byte length of the raw callback query string (pre-parse guard)
+- `options(shinyOAuth.callback_max_browser_token_bytes = 256)` – maximum byte length of the `browser_token` argument accepted by `handle_callback()`
+- `options(shinyOAuth.callback_max_form_post_body_bytes = <derived>)` – maximum byte length of the raw `form_post` callback body before parsing
+- `options(shinyOAuth.callback_max_form_post_handle_bytes = 128)` – maximum byte length of the transient `shinyOAuth_form_post` handle query parameter
+- `options(shinyOAuth.callback_max_form_post_id_bytes = 256)` – maximum byte length of the transient `shinyOAuth_form_post_id` module-id query parameter
+
+These limits reject oversized callback URLs and POST bodies before they cause
+excessive processing or logging. Keep the defaults unless a legitimate provider
+response needs more space.
+
+## Local debugging
+
+- `options(shinyOAuth.skip_browser_token = TRUE)` – skip browser cookie binding in tests or interactive sessions
+- `options(shinyOAuth.skip_id_sig = TRUE)` – skip ID token signature verification in tests or interactive sessions
+- `options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)` – accept unsigned (`alg=none`) UserInfo JWTs in tests or interactive sessions; outside those contexts 'shinyOAuth' errors instead of honoring it
+- `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token exchange
+- `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized HTTP bodies and claim values in diagnostics (may reveal sensitive details)
+
+Don't enable these options in production. They disable key security checks or alter
+error behavior, and are intended for local testing/debugging only.

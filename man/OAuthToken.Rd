@@ -57,7 +57,13 @@ cryptographically validated (signature verified and standard claims checked)
 during the OAuth flow. Defaults to \code{FALSE}.}
 }
 \description{
-S7 class representing OAuth tokens and (optionally) user information.
+An \code{OAuthToken} holds credentials and user information returned after login.
+The Shiny module supplies it as \code{auth$token}, and \code{\link[=handle_callback]{handle_callback()}} returns
+it for custom integrations. Pass it to \code{\link[=perform_resource_req]{perform_resource_req()}} to call an
+API, or to the token helpers for refresh, introspection, and revocation.
+
+Read properties with \code{@}, for example \code{auth$token@userinfo}. Profile fields
+depend on the provider. Keep access and refresh tokens out of the UI and logs.
 }
 \details{
 The \code{id_token_claims} property is a read-only computed property that returns
@@ -73,34 +79,10 @@ Check the \code{id_token_validated} property to determine whether the claims
 were cryptographically validated.
 }
 \examples{
-# Please note: `get_userinfo()`, `introspect_token()`, and `refresh_token()`
-# are typically not called by users of this package directly, but are called
-# internally by `oauth_module_server()`. These functions are exported
-# nonetheless for advanced use cases. Most users will not need to
-# call these functions directly
+# Inside reactive server code, after a successful login:
+# auth$token@userinfo
+# auth$token@expires_at
+# auth$token@id_token_validated
+# auth$token@id_token_claims$sub
 
-# Example requires a real token from a completed OAuth flow
-# (code is therefore not run; would error with placeholder values below)
-if (interactive()) {
-  # Define client
-  client <- oauth_client(
-    provider = oauth_provider_github(),
-    client_id = Sys.getenv("GITHUB_OAUTH_CLIENT_ID"),
-    client_secret = Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET"),
-    redirect_uri = "http://127.0.0.1:8100"
-  )
-
-  # Have a valid OAuthToken object; fake example below
-  # (typically provided by `oauth_module_server()` or `handle_callback()`)
-  token <- handle_callback(client, "<code>", "<payload>", "<browser_token>")
-
-  # Get userinfo
-  user_info <- get_userinfo(client, token)
-
-  # Introspect token (if supported by provider)
-  introspection <- introspect_token(client, token)
-
-  # Refresh token
-  new_token <- refresh_token(client, token, introspect = TRUE)
-}
 }

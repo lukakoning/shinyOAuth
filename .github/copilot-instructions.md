@@ -71,7 +71,13 @@
 ## Documentation & Examples
 - Roxygen comments in R/ generate man/ via `Rscript -e "devtools::document()"`; never hand-edit .Rd files.
 - Example Shiny integrations live in inst/examples/ (shipped with package) and playground/ (development only, not shipped); long-form guidance in vignettes/*.Rmd.
-- Vignettes: `usage.Rmd` (comprehensive guide), `authentication-flow.Rmd` (security deep-dive), `audit-logging.Rmd` (logging/auditing), `example-spotify.Rmd` (provider example).
+- Write user documentation for an R/Shiny app author using this package for the first time. Start each page, section, and argument with its purpose and ordinary use; introduce protocol terms before relying on them. Put necessary technical contracts after the practical explanation. Keep package internals and implementation history in contributor guidance or NEWS, and avoid repeating them in user guides.
+- Keep the tone appropriate for R package documentation. Use descriptive headings that name the operation, function, or configuration; avoid article-style hooks such as "login in five steps". Prefer focused prose and code examples over added overview tables. Preserve effective existing wording and structure when simplifying.
+- Function descriptions must explain what the function does, when to use it, and why it is needed, with concrete deployment or workflow examples where helpful. Calling a function "advanced" or saying that most apps do not need it is not a substitute for documenting its purpose. Explain the choice between a helper and its higher-level alternative.
+- Preserve useful example coverage when simplifying: complete apps, provider variants, authenticated API calls, error handling, and explanations of which tasks the module handles automatically. Put a basic example first and fuller examples after it; shorten repetition rather than removing distinct use cases or configuration details. If a long example is moved, keep a direct link to the complete source or rendered example.
+- Retain standard feature names and acronyms after the plain-language explanation, often in parentheses (for example, certificate-based authentication using mutual TLS, mTLS). Include them in function titles when they help users recognize or find a feature.
+- Vignettes: `usage.Rmd` (usage and app setup), `authentication-flow.Rmd` (login explained), `advanced-security.Rmd` (optional provider features), `package-options.Rmd` (global options reference), `audit-logging.Rmd` and `opentelemetry.Rmd` (monitoring), `example-spotify.Rmd` (small provider example; the full dashboard is in `inst/examples/spotify-dashboard.R`).
+- Make documentation cross-references clickable: use roxygen links such as `[OAuthToken]` and `[oauth_client()]`, and explicit reference-page links in vignettes. Link vignette mentions to their articles rather than leaving only a `?topic` or `vignette()` command.
 - Update examples and vignettes alongside API changes so pkgdown docs stay accurate
 - `.onLoad()` already registers S7 methods (R/zzz.R); when adding generics ensure `S7::methods_register()` is triggered and namespace imports remain consistent.
 - Linting: run `jarl check .` to check for errors; use `jarl check . --fix --allow-dirty` to check & fix
@@ -85,5 +91,5 @@
 - **mirai daemon workers load the installed package**, not the `devtools::load_all()` version. When developing or testing code that runs inside daemon workers (e.g., `emit_trace_event`, `with_async_options`, condition capture), you must run `devtools::install(quick = TRUE, upgrade = "never")` first so daemons pick up the latest source. Tests using `mirai::daemons(sync = TRUE)` run in-process and do use the loaded version, but true-async tests (`mirai::daemons(2)`) always use the installed package.
 
 ## Global Options
-- Do not add new global options unless specifically requested. All options must be documented in the 'usage' vignette.
-- If a change appears to require a new option, stop and ask the user before implementing; propose the option name, default, and which section of the 'usage' vignette would document it.
+- Do not add new global options unless specifically requested. Document options in `vignettes/package-options.Rmd`, linked from the usage vignette.
+- If a change appears to require a new option, stop and ask the user before implementing; propose the option name, default, and which section of the options reference would document it.

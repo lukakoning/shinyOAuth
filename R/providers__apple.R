@@ -9,36 +9,24 @@
 #' Create an Apple [OAuthProvider]
 #'
 #' @description
-#' Ready-to-use [OAuthProvider] settings for Sign in with Apple.
+#' Look up Apple's login settings and return an [OAuthProvider] for use with
+#' [oauth_client()]. This helper makes an OIDC discovery request during setup.
 #'
 #' @details
-#' This helper resolves Sign in with Apple's current metadata from Apple's OIDC
-#' discovery document at `https://appleid.apple.com/.well-known/openid-configuration`.
+#' Configure your client with:
 #'
-#' Apple does not publish a userinfo endpoint, so this helper relies on the
-#' validated ID token for subject and claim data and leaves
-#' `userinfo_required = FALSE`.
+#' - Your Apple Services ID or App ID as `client_id`.
+#' - A client secret created with [oauth_client_secret_apple()] using your
+#'   Apple developer key.
+#' - An HTTPS return address with a domain name; Apple does not accept
+#'   localhost or IP addresses.
+#' - `response_mode = "form_post"` and [oauth_form_post_ui()] when requesting
+#'   `email` or `name`.
 #'
-#' When configuring your [OAuthClient]:
-#' - use your Services ID or App ID as `client_id`
-#' - supply `client_secret` as an Apple-signed ES256 JWT, for example via
-#'   `oauth_client_secret_apple()`
-#' - use an HTTPS redirect URI with a domain name; Apple does not allow IP
-#'   literals or `localhost`
-#' - if you request `email` or `name`, configure
-#'   `oauth_client(..., response_mode = "form_post")` and wrap your UI with
-#'   [oauth_form_post_ui()]
-#'
-#' Apple can return a one-time `user` JSON payload on the front-channel
-#' form_post callback when `email` or `name` are requested. shinyOAuth does not
-#' currently map that transient payload into the returned [OAuthToken]
-#' `userinfo` field, so this helper leaves `userinfo_required = FALSE` and
-#' relies on ID token claims.
-#'
-#' Because this helper delegates to [oauth_provider_oidc_discover()], any
-#' discovery-backed metadata Apple publishes in the future is picked up
-#' automatically. When a particular discovery field is omitted, shinyOAuth keeps
-#' the same defaults documented for [oauth_provider_oidc_discover()].
+#' Read identity information from the validated ID token's claims. Apple has
+#' no userinfo endpoint, so `userinfo_required` is `FALSE`. The one-time
+#' `user` payload that Apple may send with a form POST callback is not mapped
+#' into `token@userinfo`; do not rely on this helper to retrieve that payload.
 #'
 #' @param name Optional provider name (default "apple")
 #'
@@ -56,23 +44,17 @@ oauth_provider_apple <- function(name = "apple") {
 
 ## 1.2 Client secret helper ---------------------------------------------------
 
-#' Create an Apple client secret JWT
+#' Create a client secret for Sign in with Apple
 #'
 #' @description
-#' Builds the ES256-signed JWT that Apple expects in the token-request
-#' `client_secret` form field for Sign in with Apple.
+#' Use your Apple developer key to create the client secret expected by Sign in
+#' with Apple. Pass the returned string as `client_secret` to [oauth_client()].
+#' Unlike a fixed password, this secret expires; replace it before its expiry.
 #'
 #' @details
-#' Apple currently requires the following JWT shape for Sign in with Apple
-#' token requests:
-#' - JOSE header `alg = ES256` and `kid = <Apple key id>`
-#' - `iss = <Apple Developer Team ID>`
-#' - `sub = <client_id>`
-#' - `aud = "https://appleid.apple.com"`
-#' - `exp` no more than `15777000` seconds (six months) after `iat`
-#'
-#' The resulting string can be supplied directly to [oauth_client()] as the
-#' `client_secret` for `oauth_provider_apple()`.
+#' The helper signs a JWT with ES256. It places your Team ID in `iss`, your
+#' client ID in `sub`, Apple's URL in `aud`, and the key ID in the header.
+#' The lifetime must not exceed 15,777,000 seconds (about six months).
 #'
 #' @param client_id Apple Services ID or App ID used as the OAuth client id
 #' @param team_id Apple Developer Team ID. Apple documents this as a

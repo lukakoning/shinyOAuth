@@ -4,7 +4,7 @@ options(shinyOAuth.allow_insecure_urls = TRUE)
 
 library(shiny)
 
-# Configure provider and client (GitHub)
+# Configure provider and client (Auth0)
 provider <- oauth_provider_auth0(
   domain = Sys.getenv("AUTH0_OAUTH_DOMAIN")
 )

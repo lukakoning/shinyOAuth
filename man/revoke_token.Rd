@@ -19,17 +19,13 @@ revoke_token(
 
 \item{which}{Which token to revoke: "refresh" (default) or "access"}
 
-\item{async}{Logical, default FALSE. If TRUE and an async backend is
-configured, the operation is dispatched through shinyOAuth's async
-promise path and this function returns a promise-compatible async result
-that resolves to the result list. \link[mirai:mirai]{mirai} is preferred when daemons are
-configured via \code{\link[mirai:daemons]{mirai::daemons()}}; otherwise the current \link[future:future]{future} plan is
-used. Non-sequential future plans run off the main R session;
-\code{future::sequential()} stays in-process.}
+\item{async}{If \code{TRUE}, return a promise resolving to the result.
+Configure mirai daemons or a future plan first; mirai takes priority.
+Use a non-sequential future plan to move work outside the main R process.
+Default \code{FALSE} waits and returns the result directly.}
 
-\item{shiny_session}{Optional pre-captured Shiny session context (from
-\code{capture_shiny_session_context()}) to include in audit events. Used when
-calling from async workers that lack access to the reactive domain.}
+\item{shiny_session}{Optional captured Shiny session details for audit events.
+Normally supplied by the module; leave \code{NULL} when calling directly.}
 }
 \value{
 A list with fields:
@@ -43,21 +39,41 @@ result is unknown.
 }
 }
 \description{
-Attempts to revoke an access or refresh token when the provider exposes a
-revocation endpoint (RFC 7009).
+Ask the provider to invalidate an access or refresh token, for example when
+a user disconnects their account or your application disposes of stored
+credentials. The provider must support token revocation. The Shiny module
+calls this during logout; use \code{auth$logout()} to also clear its local session.
+Revocation does not end the user's login session at the provider.
+}
+\details{
+Uses the client's configured credentials and \code{token_auth_style}. Check the
+returned \code{status}: an absent endpoint or token, or an unsuccessful HTTP
+response, leaves the revocation result unknown. A successful response means
+the provider accepted the request; local logout does not depend on it.
+}
+\examples{
+# get_userinfo(), introspect_token(), and refresh_token() are typically
+# called by oauth_module_server() according to your provider/client and
+# module settings, rather than directly by application code. The module
+# also calls revoke_token() during logout when the provider supports it.
+# These helpers are exported for custom login flows, on-demand profile or
+# token checks, and applications that manage token lifetime themselves.
+#
+# The examples below require a real token from a completed login.
+# Inside a reactive expression in server(), after creating auth with
+# oauth_module_server() and confirming auth$authenticated:
+if (interactive()) {
+  token <- auth$token
+  user_info <- get_userinfo(client, token)
 
-Authentication mirrors the provider's \code{token_auth_style} (same as token
-exchange and introspection).
+  # Requires an introspection endpoint. NA means activity is unknown.
+  result <- introspect_token(client, token)
+  isTRUE(result$active)
 
-Best-effort semantics:
-\itemize{
-\item If the provider does not expose a revocation endpoint, returns
-\code{supported = FALSE}, \code{revoked = NA}, and \code{status = "revocation_unsupported"}.
-\item If the selected token value is missing, returns \code{supported = TRUE},
-\code{revoked = NA}, and \code{status = "missing_token"}.
-\item If the endpoint returns a 2xx, returns \code{supported = TRUE}, \code{revoked = TRUE},
-and \code{status = "ok"}.
-\item If the endpoint returns an HTTP error, returns \code{supported = TRUE},
-\code{revoked = NA}, and \code{status = "http_<code>"}.
+  # Requires a refresh token. Keep the returned replacement.
+  token <- refresh_token(client, token)
+
+  # Requires a revocation endpoint to invalidate the token at the provider.
+  result <- revoke_token(client, token, which = "refresh")
 }
 }

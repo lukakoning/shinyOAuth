@@ -10,19 +10,19 @@
 #' Add JavaScript dependency to the UI of a Shiny app
 #'
 #' @description
-#' Adds shinyOAuth's client-side JavaScript dependency to your Shiny UI.
-#' This is required so the module can handle redirects and manage its
-#' browser-side session token.
-#'
-#' For most apps, use [oauth_ui()] around your complete UI instead. It includes
-#' this browser code and adds privacy protection for pages loaded after login.
-#' [oauth_form_post_ui()] also includes this setup for form_post flows.
+#' Add shinyOAuth's JavaScript to a page so [oauth_module_server()] can redirect
+#' the browser and manage its temporary login cookie. Use this inside an
+#' existing `fluidPage()` or `tagList()` when you integrate the browser
+#' dependency directly and configure response headers elsewhere, such as in
+#' your web server or another UI wrapper.
 #'
 #' @details
-#' Place this near the top-level of your UI (e.g., inside `fluidPage()` or
-#' `tagList()`), similar to how you would use `shinyjs::useShinyjs()`. If you
-#' wrap the app UI with [oauth_ui()] or [oauth_form_post_ui()], you do not need
-#' a separate call to this helper.
+#' [oauth_ui()] combines this browser setup with the HTTP header
+#' `Referrer-Policy: no-referrer`, which prevents callback URLs from being
+#' sent as referrers when page resources load. When using [use_shinyOAuth()]
+#' directly, set that header in your HTTP response configuration for protection
+#' from the start of page loading; the optional meta tag takes effect later.
+#' [oauth_ui()] and [oauth_form_post_ui()] already include this dependency.
 #'
 #' @param inject_referrer_meta If TRUE (default), adds a meta tag to the page:
 #'   an instruction asking the browser not to share the page's address when
@@ -30,7 +30,7 @@
 #'   before the browser reads this instruction. Use [oauth_ui()] to provide
 #'   this protection from the start of page loading.
 #'
-#' @return A `tagList` that loads the `inst/www/shinyOAuth.js` dependency once.
+#' @return A `tagList` that loads the browser code once.
 #'
 #' @export
 #'

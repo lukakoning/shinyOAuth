@@ -1,3 +1,4 @@
+# Register http://127.0.0.1:8100 as the GitHub OAuth App callback URL.
 if (
   # Example requires configured GitHub OAuth 2.0 app
   # (go to https://github.com/settings/developers to create one):
@@ -13,7 +14,8 @@ if (
     provider = oauth_provider_github(),
     client_id = Sys.getenv("GITHUB_OAUTH_CLIENT_ID"),
     client_secret = Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET"),
-    redirect_uri = "http://127.0.0.1:8100"
+    redirect_uri = "http://127.0.0.1:8100",
+    scopes = c("read:user", "user:email")
   )
 
   # Choose which app you want to run
@@ -41,10 +43,9 @@ if (
 
   # Example app with auto-redirect (1) -----------------------------------------
 
-  ui_1 <- fluidPage(
-    use_shinyOAuth(),
+  ui_1 <- oauth_ui(fluidPage(
     uiOutput("login")
-  )
+  ))
 
   server_1 <- function(input, output, session) {
     # Auto-redirect (default):
@@ -78,11 +79,11 @@ if (
 
   # Example app with manual login button (2) -----------------------------------
 
-  ui_2 <- fluidPage(
-    use_shinyOAuth(),
+  ui_2 <- oauth_ui(fluidPage(
     actionButton("login_btn", "Login"),
+    actionButton("logout_btn", "Logout"),
     uiOutput("login")
-  )
+  ))
 
   server_2 <- function(input, output, session) {
     auth <- oauth_module_server(
@@ -93,6 +94,9 @@ if (
 
     observeEvent(input$login_btn, {
       auth$request_login()
+    })
+    observeEvent(input$logout_btn, {
+      auth$logout()
     })
 
     output$login <- renderUI({
@@ -122,10 +126,9 @@ if (
   # Below app shows the authenticated username + their GitHub repositories,
   # fetched via GitHub API using the access token obtained during login
 
-  ui_3 <- fluidPage(
-    use_shinyOAuth(),
+  ui_3 <- oauth_ui(fluidPage(
     uiOutput("ui")
-  )
+  ))
 
   server_3 <- function(input, output, session) {
     auth <- oauth_module_server(
@@ -135,23 +138,26 @@ if (
     )
 
     repositories <- reactiveVal(NULL)
+    repository_error <- reactiveVal(FALSE)
 
     observe({
       req(auth$authenticated)
 
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
-      resp <- perform_resource_req(
-        auth$token,
-        "https://api.github.com/user/repos"
-      )
+      # This loads one page; use the API's pagination for further results.
+      repos_data <- tryCatch({
+        resp <- perform_resource_req(
+          auth$token,
+          "https://api.github.com/user/repos",
+          query = list(per_page = 30)
+        )
+        httr2::resp_check_status(resp)
+        httr2::resp_body_json(resp, simplifyVector = TRUE)
+      }, error = function(e) NULL)
 
-      if (httr2::resp_is_error(resp)) {
-        repositories(NULL)
-      } else {
-        repos_data <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-        repositories(repos_data)
-      }
+      repository_error(is.null(repos_data))
+      repositories(repos_data)
     })
 
     # Render username + their repositories
@@ -163,11 +169,23 @@ if (
         return(tagList(
           tags$p(paste("You are logged in as:", user_info$login)),
           tags$h4("Your repositories:"),
-          if (!is.null(repos)) {
+          if (repository_error()) {
+            tags$p("Could not load repositories.")
+          } else if (!is.null(repos) && length(repos) == 0) {
+            tags$p("No repositories returned.")
+          } else if (!is.null(repos)) {
             tags$ul(
               Map(
                 function(url, name) {
-                  tags$li(tags$a(href = url, target = "_blank", name))
+                  # Render names as text; accept only GitHub HTTPS links.
+                  if (isTRUE(grepl("^https://github\\.com/", url))) {
+                    tags$li(tags$a(
+                      href = url, target = "_blank",
+                      rel = "noopener noreferrer", name
+                    ))
+                  } else {
+                    tags$li(name)
+                  }
                 },
                 repos$html_url,
                 repos$full_name

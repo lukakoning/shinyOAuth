@@ -1,38 +1,33 @@
-# Posit Connect Cloud example
+# Deploy the example to Posit Connect Cloud
 
-This directory contains a minimal Shiny app that authenticates with GitHub via `shinyOAuth` and is structured for deployment on Posit Connect Cloud.
+This folder contains two Shiny apps with GitHub login:
 
-Available app variants in this folder:
+- `app.R` starts login when the user clicks a button.
+- `app-auto-redirect.R` starts login automatically.
 
-- `app.R`: manual login button using `auth$request_login()`
-- `app-auto-redirect.R`: standard `auto_redirect = TRUE` flow
+You need a GitHub OAuth App registration, a Connect Cloud account, and this
+repository available to the deployment. For local setup first, see
+[Getting started](../../vignettes/usage.Rmd).
 
-Both variants assume you deploy and test them via a top-level app URL, not an embedded Connect Cloud content URL.
+## Use the app's direct address
 
-The default content URL looks like `https://connect.posit.cloud/<account>/content/<id>` and is rendered inside the Connect Cloud shell. That default embedded URL is not suitable as an OAuth redirect URI.
+OAuth login needs the app to open directly in a browser tab. Use the sharing
+URL from the content's **Settings > URL** page, such as
+`https://<content-id>.share.connect.posit.cloud`, or a configured custom URL.
+See [Connect Cloud URL settings](https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url).
+The administrative content page at `connect.posit.cloud/.../content/...` is
+not your app's callback address.
 
-The top-level app URL can be either:
+## Configure and deploy
 
-- a claimed Posit Connect Cloud URL such as `https://your-app.share.connect.posit.cloud`
-- your own custom domain if you have configured one for the app
-
-After publishing the app in Connect Cloud:
-
-1. Open App Settings > URL.
-2. Configure a top-level app URL. This can be a claimed Posit URL or your own custom domain.
-3. Use that top-level app URL as `OAUTH_REDIRECT_URI`.
-4. Register that same top-level URL as the callback URL in your GitHub OAuth app.
-5. Open the app via that top-level URL when testing login.
-
-The important part is that the OAuth flow must run with the app at top level, not embedded inside another web page.
-
-## Required environment variables
-
-- `GITHUB_OAUTH_CLIENT_ID`
-- `GITHUB_OAUTH_CLIENT_SECRET`
-- `OAUTH_REDIRECT_URI`
-
-`OAUTH_REDIRECT_URI` must exactly match the callback URL configured in your GitHub OAuth app.
+1. Generate the manifest below for the app variant you want to publish.
+2. Publish the repository as a Shiny app, selecting `integration/posit/app.R`
+   or `integration/posit/app-auto-redirect.R` as the primary file.
+3. Set `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, and
+   `OAUTH_REDIRECT_URI` in the deployment's environment variables.
+4. Set `OAUTH_REDIRECT_URI` to the direct app URL and register that exact
+   URL as the authorization callback in your GitHub OAuth App.
+5. Open the direct URL and test login.
 
 ## Manifest generation
 
@@ -64,16 +59,13 @@ SHINYOAUTH_GITHUB_REF=<branch-tag-or-sha> Rscript integration/posit/write-manife
 
 Only one `manifest.json` can live in this folder at a time, so regenerate it for the app file you plan to publish. Also rerun it whenever app dependencies change or when you want to pin a different `shinyOAuth` GitHub revision.
 
-## Deployment notes
+## Deployment reference
 
-- Keep `manifest.json` in this directory with the app file you plan to publish; Posit documents that the manifest can live alongside the primary application file.
-- In Connect Cloud, publish the repository as a Shiny app and choose either `integration/posit/app.R` or `integration/posit/app-auto-redirect.R` as the primary file.
-- Use a top-level app URL as `OAUTH_REDIRECT_URI` and in the GitHub OAuth callback configuration. This can be a claimed Posit URL or your own custom domain.
-- Configure the required environment variables in the Connect Cloud UI before testing login.
+Keep `manifest.json` alongside the selected app file. Regenerate it when
+dependencies change. If callbacks can reach different R processes, configure
+shared state and a shared key as described in
+[Getting started](../../vignettes/usage.Rmd).
 
-## Relevant docs
-
-- Posit Connect Cloud Shiny deployment guide: <https://docs.posit.co/connect-cloud/how-to/r/shiny-r.html>
-- Posit Connect Cloud dependency and manifest guide: <https://docs.posit.co/connect-cloud/how-to/r/dependencies.html>
-- `rsconnect::writeManifest()` reference: <https://rstudio.github.io/rsconnect/reference/writeManifest.html>
-- `rsconnect::appDependencies()` reference: <https://rstudio.github.io/rsconnect/reference/appDependencies.html>
+- [Connect Cloud Shiny deployment](https://docs.posit.co/connect-cloud/how-to/r/shiny-r.html)
+- [Dependency and manifest guide](https://docs.posit.co/connect-cloud/how-to/r/dependencies.html)
+- [`rsconnect::writeManifest()`](https://rstudio.github.io/rsconnect/reference/writeManifest.html)

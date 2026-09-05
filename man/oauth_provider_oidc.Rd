@@ -56,9 +56,12 @@ access tokens issued by this provider. Defaults to 'Bearer'}
 \link{OAuthProvider} object
 }
 \description{
-Helper for providers that follow a standard OpenID Connect endpoint layout.
-It builds the usual OIDC endpoints from one base URL and then calls
-\code{\link[=oauth_provider]{oauth_provider()}} with OIDC-friendly defaults.
+Build OIDC provider URLs from a base address and known endpoint paths.
+Use this when configuring an OIDC service without discovery, with its
+endpoint paths available from the service configuration or documentation.
+Use \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}} if your provider offers discovery, which
+looks up its actual URLs. This helper is for manual configuration; its
+default paths must match the service you are using.
 }
 \examples{
 # Configure generic OAuth 2.0 provider (no OIDC)
@@ -93,7 +96,8 @@ github_provider <- oauth_provider_github()
 google_provider <- oauth_provider_google()
 
 # Microsoft preconfigured provider
-# See `?oauth_provider_microsoft` for example using a custom tenant ID
+# For a complete app using a custom tenant ID, see:
+# https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.html
 
 # Spotify preconfigured provider
 spotify_provider <- oauth_provider_spotify()

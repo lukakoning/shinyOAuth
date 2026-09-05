@@ -12,122 +12,56 @@
 #' Discover and create an OpenID Connect (OIDC) [OAuthProvider]
 #'
 #' @description
-#' Builds an [OAuthProvider] from the provider's OpenID Connect discovery
-#' document at `/.well-known/openid-configuration`. When present,
-#' `introspection_endpoint` is also wired into the resulting provider.
+#' Supply your provider's issuer URL to create an [OAuthProvider] without
+#' entering each service URL yourself. The helper downloads the provider's
+#' discovery document (OpenID Connect Discovery) and enables OIDC login checks.
+#' Pass the result to [oauth_client()].
 #'
 #' @details
-#' Most users can accept the defaults here. The points below are mainly
-#' reference for advanced provider setups or for understanding why discovery
-#' might fail early.
+#' This function makes a network request. Call it once during app setup, outside
+#' `server()`. Copy the issuer URL exactly from your provider's configuration,
+#' including any trailing slash. A full discovery-document URL is also accepted.
 #'
-#' - Required metadata: discovery documents must contain the required OIDC
-#'   Provider Metadata fields used by this client. In particular,
-#'   `response_types_supported` must include `code`,
-#'   `subject_types_supported` must be a non-empty string array,
-#'   `id_token_signing_alg_values_supported` must include `RS256`, and
-#'   `jwks_uri` is required even when automatic ID-token validation is disabled.
+#' Discovered token, UserInfo, introspection, and revocation endpoints are
+#' copied into the provider when present. Discovering an introspection endpoint
+#' does not itself require token introspection; set `introspect = TRUE` on
+#' [oauth_client()] when login and refresh must perform that check.
 #'
-#' - ID token algorithms: by default this helper accepts common asymmetric
-#'   algorithms RSA (RS*), ECDSA (ES*), and EdDSA. When the
-#'   provider advertises its required ID token signing algorithms via
-#'   `id_token_signing_alg_values_supported`, the helper uses the intersection
-#'   with the caller-provided `allowed_algs`. If there is no overlap, discovery
-#'   fails with a configuration error. There is no automatic fallback to the
-#'   discovery-advertised set.
+#' Discovery describes what a service supports. Your app's registration may
+#' require a particular `token_auth_style`, secret, or key; configure those to
+#' match the registration. If PKCE is enabled and public authentication (`none`)
+#' is advertised, automatic selection uses `"public"`. Otherwise it prefers
+#' `"header"`, then `"body"`. JWT and mTLS methods must be selected explicitly.
 #'
-#' - Token endpoint authentication methods: supports `client_secret_basic`
-#'   (header), `client_secret_post` (body), public clients using `none`
-#'   (mapped to `token_auth_style = "public"` when PKCE is enabled), as well as
-#'   JWT-based methods `private_key_jwt` and
-#'   `client_secret_jwt` per RFC 7523. Discovery also preserves RFC 8705 mTLS
-#'   metadata (`mtls_endpoint_aliases` and
-#'   `tls_client_certificate_bound_access_tokens`) and supports explicit
-#'   `tls_client_auth` / `self_signed_tls_client_auth` selection.
+#' @section Discovery validation:
+#' The discovered issuer must match the requested identifier by default.
+#' Endpoints must use HTTPS. Host allowlisting does not permit HTTP: local OIDC
+#' development requires `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`
+#' and a loopback host. `options(shinyOAuth.allowed_hosts)` can further restrict
+#' endpoint hosts. Signing-key hosts have their own policy: by default they must
+#' match the issuer host; use `jwks_host_allow_only` for a known different host.
 #'
-#' - PAR metadata: when the discovery document advertises
-#'   `pushed_authorization_request_endpoint` or
-#'   `require_pushed_authorization_requests`, the resulting provider stores that
-#'   PAR capability and policy metadata in `par_required` so authorization
-#'   requests can use RFC 9126 PAR and fail fast on PAR-only provider policies.
+#' The document must advertise the code flow (`response_types_supported`
+#' includes `"code"`), non-empty `subject_types_supported`, RS256 in
+#' `id_token_signing_alg_values_supported`, and a `jwks_uri` even when automatic
+#' ID token validation is disabled. The permitted ID token algorithms are the
+#' intersection of `allowed_algs` and the advertised algorithms; an empty
+#' intersection is an error. Discovery keeps PKCE `S256` and errors when the
+#' provider explicitly excludes it, unless you select `pkce_method = "plain"`.
 #'
-#' - Request Object metadata: when the discovery document advertises
-#'   `request_object_signing_alg_values_supported` or
-#'   `require_signed_request_object`, the resulting provider stores that
-#'   metadata in `signed_request_object_required` so `OAuthClient` can fail
-#'   fast when a request-object algorithm is unsupported or when the provider
-#'   requires signed Request Objects. When the discovery document also
-#'   advertises
-#'   `request_object_encryption_alg_values_supported` or
-#'   `request_object_encryption_enc_values_supported`, the resulting provider
-#'   stores that encryption metadata so Request Object JWE configuration can be
-#'   validated early as well.
+#' @section Advanced metadata:
+#' Discovery also records capabilities for PAR, signed/encrypted requests,
+#' JARM, DPoP, mTLS, and callback issuer identification. Client construction
+#' checks the selected features against this metadata. See [oauth_provider()]
+#' for individual fields and the [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html) for setup.
 #'
-#' - Authorization request transport metadata: when the discovery document
-#'   advertises `request_parameter_supported`,
-#'   `request_uri_parameter_supported`, or
-#'   `require_request_uri_registration`, the resulting provider stores that
-#'   metadata so shinyOAuth can fail fast when a provider explicitly disallows
-#'   the front-channel `request` transport used by JAR or caller-managed
-#'   `request_uri` values. The registration requirement itself remains
-#'   deployment-specific: shinyOAuth stores
-#'   `request_uri_registration_required` for caller awareness, but it cannot
-#'   independently verify whether the provider has already registered a
-#'   matching public `request_uri` or wildcard prefix for the client. When PAR
-#'   is configured, shinyOAuth sends signed Request Objects to the PAR endpoint
-#'   and the browser redirect only carries the PAR-issued `request_uri`
-#'   handle, regardless of `request_uri_parameter_supported` or
-#'   `request_uri_registration_required`. When discovery omits these booleans,
-#'   this helper applies the OpenID Connect defaults instead of storing `NA`.
-#'
-#' - Response mode metadata: when the discovery document advertises
-#'   `response_modes_supported`, the resulting provider stores it so explicit
-#'   `response_mode` requests can fail fast when unsupported. When the metadata
-#'   is omitted, this helper applies the OAuth/OIDC metadata default of
-#'   `c("query", "fragment")`.
-#'
-#' - Token endpoint JWT auth metadata: when the discovery document advertises
-#'   `token_endpoint_auth_signing_alg_values_supported`, the resulting provider
-#'   stores that metadata so `OAuthClient` can fail fast when a JWT client
-#'   assertion algorithm is unsupported.
-#'
-#' - DPoP metadata: when the discovery document advertises
-#'   `dpop_signing_alg_values_supported`, the resulting provider stores that
-#'   metadata so `OAuthClient` can fail fast when an explicit or inferred DPoP
-#'   proof signing algorithm is unsupported.
-#'
-#' - RFC 9207 callback issuer metadata: when the discovery document advertises
-#'   `authorization_response_iss_parameter_supported = true`, the resulting
-#'   provider stores that metadata so [oauth_client()] can auto-enable callback
-#'   issuer enforcement unless you explicitly opt out.
-#'
-#' - PKCE method discovery: this helper keeps `S256` as the default and does not
-#'   silently downgrade to `plain`. If discovery metadata explicitly omits
-#'   `S256`, discovery fails with a configuration error unless you explicitly
-#'   opt into `pkce_method = "plain"`.
-#'
-#'   Important: discovery metadata lists methods supported across the provider,
-#'   not per-client provisioning. This helper does not automatically select
-#'   JWT-based methods just because they are advertised. By default it prefers
-#'   `client_secret_basic` (header) when available, otherwise
-#'   `client_secret_post` (body), and maps public `none` to
-#'   `token_auth_style = "public"` only for PKCE clients.
-#'   If a provider advertises only JWT methods, you must explicitly set
-#'   `token_auth_style` and configure the corresponding credentials on your
-#'   [OAuthClient] (a private key for `private_key_jwt`, or a sufficiently
-#'   strong `client_secret` for `client_secret_jwt`).
-#'
-#' - Host policy: discovered standard endpoints must be absolute secure URLs,
-#'   but may use hosts other than the issuer host as permitted by OIDC Discovery
-#'   and RFC 8414. If a global whitelist is supplied via
-#'   `options(shinyOAuth.allowed_hosts)`, discovery restricts endpoints to that
-#'   whitelist. RFC 8705 `mtls_endpoint_aliases` follow the same default and
-#'   explicit-allowlist policy. Host allowlisting does not permit HTTP:
-#'   discovery requires HTTPS unless a loopback host is explicitly enabled for
-#'   development with
-#'   `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`. JWKS host
-#'   pinning remains a separate policy and defaults to requiring the issuer
-#'   host exactly.
+#' When omitted by the provider, OIDC defaults apply: the JAR `request`
+#' parameter is unsupported, request URIs are supported, request URI registration is not
+#' required, and response modes are `c("query", "fragment")`. A mode still
+#' has to be implemented by shinyOAuth to be usable. Caller-published request
+#' URI registration must be arranged with the provider; discovery cannot check
+#' your registration. PAR-issued handles do not need that client-hosted URI
+#' registration.
 #'
 #' @param issuer The OIDC issuer base URL (including scheme), e.g.,
 #'   "https://login.example.com". The standard discovery-document URL ending
@@ -135,9 +69,9 @@
 #'   back to the issuer base URL before validation and fetch.
 #' @param name Optional friendly provider name. Defaults to the issuer hostname
 #' @param use_pkce Logical, whether to use PKCE for this provider. Defaults to
-#'   TRUE. If the discovery document indicates `token_endpoint_auth_methods_supported`
-#'   includes "none", PKCE is required unless `use_pkce` is explicitly set to FALSE
-#'   (not recommended)
+#'   TRUE. Public clients require PKCE. Setting FALSE also prevents automatic
+#'   selection of public-client authentication; a confidential-client method
+#'   must be available or explicitly configured instead.
 #' @param use_nonce Logical, whether to use OIDC nonce. Defaults to TRUE
 #' @param id_token_validation Logical, whether to validate ID tokens automatically
 #'   for this provider. Defaults to TRUE
@@ -148,8 +82,10 @@
 #'   from discovery. When PKCE is enabled and the provider advertises support
 #'   for public clients via `none`, discovery selects `"public"`. Otherwise,
 #'   the helper prefers `"header"` (client_secret_basic) when available, then
-#'   `"body"` (client_secret_post). JWT-based methods are not auto-selected
-#'   unless explicitly requested.
+#'   `"body"` (client_secret_post). JWT methods (`"client_secret_jwt"`,
+#'   `"private_key_jwt"`) and mTLS methods (`"tls_client_auth"`,
+#'   `"self_signed_tls_client_auth"`) must be selected explicitly. See
+#'   [oauth_provider()] for the supported methods and their credentials.
 #' @param allowed_algs Character vector of allowed ID token signing algorithms.
 #'  Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
 #'  (ES*), and EdDSA. If the discovery document advertises

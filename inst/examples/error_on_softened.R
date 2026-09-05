@@ -1,8 +1,7 @@
 # Note: error_on_softened() is deprecated because it only checks a narrow subset
 # of shinyOAuth's security-relaxing options
 
-# Throw an error if any softening options that relax default safety
-# protections are enabled
+# Throw an error if one of the options listed in ?error_on_softened is enabled.
 # Below call does not error if run with default options:
 error_on_softened()
 

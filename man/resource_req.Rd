@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods__client_bearer_req.R
 \name{resource_req}
 \alias{resource_req}
-\title{Build an authenticated httr2 request for a protected resource}
+\title{Prepare an API request with an access token}
 \usage{
 resource_req(
   token,
@@ -73,13 +73,16 @@ change the request method or base URL after calling
 \code{\link[=resource_req]{resource_req()}} because the proof is already bound to those values.
 }
 \description{
-This is a helper for calling downstream APIs with an access token. It creates an
-\code{\link[httr2:request]{httr2::request()}} for the given URL, attaches the right authorization header
-for the token type, and applies shinyOAuth's standard HTTP defaults.
-
-Use \code{\link[=perform_resource_req]{perform_resource_req()}} when you want shinyOAuth to also perform the request
-and handle DPoP nonce challenges for you (which \code{\link[httr2:req_perform]{httr2::req_perform()}}
-would not do on its own).
+Build an \link[httr2:httr2]{httr2} request that uses the user's access token. Use this when
+you want to inspect or customize a request before sending it. To build and
+send in one step, use \code{\link[=perform_resource_req]{perform_resource_req()}}.
+}
+\details{
+Only send a token to an API you intend to authorize. The package applies its
+URL policy, timeouts, and redirect defaults. It supports Bearer authentication
+and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
+also supply \code{oauth_client} so the request uses the matching key or
+certificate.
 }
 \section{DPoP note}{
 
@@ -92,9 +95,8 @@ changing the method, scheme, host, or path invalidates the proof.
 # Make request using OAuthToken object
 # (code is not run because it requires a real token from user interaction)
 if (interactive()) {
-  # Get an OAuthToken
-  # (typically provided as reactive return value by `oauth_module_server()`)
-  token <- OAuthToken()
+  # Inside reactive server code, after login has succeeded:
+  token <- auth$token
 
   # Recommended for most callers: build + perform in one step.
   response <- perform_resource_req(
@@ -110,7 +112,8 @@ if (interactive()) {
     query = list(limit = 5)
   )
 
-  httr2::req_dry_run(request)
+  # Inspect request settings without printing authentication headers.
+  # httr2::req_perform(request) sends it when ready.
 
   # Or start from your own httr2 request and still let shinyOAuth perform it
   # so DPoP nonce retries remain available.

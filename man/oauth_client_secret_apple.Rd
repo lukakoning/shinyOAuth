@@ -2,7 +2,7 @@
 % Please edit documentation in R/providers__apple.R
 \name{oauth_client_secret_apple}
 \alias{oauth_client_secret_apple}
-\title{Create an Apple client secret JWT}
+\title{Create a client secret for Sign in with Apple}
 \usage{
 oauth_client_secret_apple(
   client_id,
@@ -38,22 +38,14 @@ five-minute margin below Apple's documented maximum}
 A compact signed JWT string suitable for \code{oauth_client(..., client_secret = ...)}
 }
 \description{
-Builds the ES256-signed JWT that Apple expects in the token-request
-\code{client_secret} form field for Sign in with Apple.
+Use your Apple developer key to create the client secret expected by Sign in
+with Apple. Pass the returned string as \code{client_secret} to \code{\link[=oauth_client]{oauth_client()}}.
+Unlike a fixed password, this secret expires; replace it before its expiry.
 }
 \details{
-Apple currently requires the following JWT shape for Sign in with Apple
-token requests:
-\itemize{
-\item JOSE header \code{alg = ES256} and \verb{kid = <Apple key id>}
-\item \verb{iss = <Apple Developer Team ID>}
-\item \verb{sub = <client_id>}
-\item \code{aud = "https://appleid.apple.com"}
-\item \code{exp} no more than \code{15777000} seconds (six months) after \code{iat}
-}
-
-The resulting string can be supplied directly to \code{\link[=oauth_client]{oauth_client()}} as the
-\code{client_secret} for \code{oauth_provider_apple()}.
+The helper signs a JWT with ES256. It places your Team ID in \code{iss}, your
+client ID in \code{sub}, Apple's URL in \code{aud}, and the key ID in the header.
+The lifetime must not exceed 15,777,000 seconds (about six months).
 }
 \examples{
 \dontrun{

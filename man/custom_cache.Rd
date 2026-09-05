@@ -2,7 +2,7 @@
 % Please edit documentation in R/custom_cache.R
 \name{custom_cache}
 \alias{custom_cache}
-\title{Create a custom cache backend (cachem-like)}
+\title{Create a custom state store or signing-key cache}
 \usage{
 custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
 }
@@ -66,34 +66,63 @@ An R6 object exposing cachem-like \verb{$get/$set/$remove/$info} methods
 and the optional \verb{$take} and \verb{$set_if_absent} atomic methods.
 }
 \description{
-Builds a small cachem-like backend object with methods compatible with what
-shinyOAuth needs: \verb{$get(key, missing)}, \verb{$set(key, value)}, \verb{$remove(key)},
-and optional \verb{$info()}.
+Connect shinyOAuth to a shared storage backend, such as Redis or a database,
+by wrapping your R functions in a cachem-like interface. Use the result as
+\code{state_store} in \code{\link[=oauth_client]{oauth_client()}} to share pending login state, or as
+\code{jwks_cache} in \code{\link[=oauth_provider]{oauth_provider()}} to share provider signing keys (JWKS).
 
-Use this helper when you want to plug a custom state store or JWKS cache
-into shinyOAuth, when \code{\link[cachem:cache_mem]{cachem::cache_mem()}} is not suitable (e.g.,
-multi-process deployments with non-sticky workers).
-In such cases, you may want to use a shared external cache (e.g., database,
-Redis, Memcached).
+A shared state store is needed when a login can start on one R process and
+its callback can arrive at another, for example in a multi-worker deployment
+without sticky routing. A shared signing-key cache lets workers reuse keys
+fetched from the provider rather than maintaining separate caches.
+}
+\details{
+This helper adapts your storage functions; it does not create a database,
+open connections, or make process-local storage shared. Your backend must
+preserve stored R values and expire entries after their configured lifetime.
+}
+\section{Shared login state in multi-worker deployments}{
 
-The resulting object can be used in both places where shinyOAuth accepts a cache-like object:
-\itemize{
-\item OAuthClient@state_store (requires \verb{$get}, \verb{$set}, \verb{$remove}; optional \verb{$info})
-\item OAuthProvider@jwks_cache (requires \verb{$get}, \verb{$set}; optional \verb{$remove},
-\verb{$set_if_absent}, \verb{$info})
+The default \code{\link[cachem:cache_mem]{cachem::cache_mem()}} state store belongs to one R process.
+If a load balancer sends the returning callback to another worker, that
+worker cannot find the pending login and validation fails. Configure all
+workers with access to the same external store when routing does not keep
+the authorization request and callback on the same process.
+
+For a shared \code{state_store}, implement \code{take}: it must read and delete a pending
+login as one indivisible operation, so two requests cannot use it. Redis
+\code{GETDEL} and SQL \verb{DELETE ... RETURNING} are examples of backend operations
+that can do this. Use the same \code{state_key} and matching provider/client
+settings on every worker. Separate reads and deletes, including those in
+\code{\link[cachem:cache_disk]{cachem::cache_disk()}}, cannot ensure single-use state under concurrent access.
+See the \href{https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes}{deployment guidance}.
+
+Store values are small R lists. Preserve \code{browser_token} as a non-empty
+string, and preserve \code{pkce_code_verifier} and \code{nonce} when those features are
+enabled. When disabled, these two fields can be \code{NULL} or omitted.
+
+For a state store, returning \code{max_age} in seconds from \code{info()} also lets
+\code{\link[=oauth_module_server]{oauth_module_server()}} align the browser cookie lifetime with the store.
+Reporting this value does not expire entries; your backend must enforce it.
 }
 
-For \code{OAuthClient@state_store}, stored values are small lists. \code{browser_token}
-must always round-trip as a non-empty string. \code{pkce_code_verifier} and
-\code{nonce} are required only when the provider enables PKCE or nonce
-validation; otherwise stores may preserve them as \code{NULL} or omit them when
-serializing.
+\section{Shared provider signing keys}{
 
-The \verb{$info()} method is optional, but if provided and it returns a list with
-\code{max_age} (seconds), shinyOAuth will align browser cookie max-age in
-\code{\link[=oauth_module_server]{oauth_module_server()}} to that value.
+A shared \code{jwks_cache} can reduce repeated key downloads when several R
+workers use the same provider. This is independent of sharing login state:
+sharing signing keys alone does not let another worker resume a login.
+
+Key caching uses \code{get} and \code{set}. Also implement \code{set_if_absent} to coordinate
+rate-limited forced key refreshes across workers, for example when the provider
+rotates its signing keys. Without that atomic operation, forced refresh is
+disabled for custom/shared caches. Use separate stores or key namespaces for
+login state and signing keys when they require different expiry policies.
 }
+
 \examples{
+# This in-memory example illustrates the cache interface in one R process.
+# It does not share entries across workers or implement timed expiry.
+# A production shared store must implement both itself.
 mem <- new.env(parent = emptyenv())
 
 my_cache <- custom_cache(
@@ -113,10 +142,8 @@ my_cache <- custom_cache(
     invisible(NULL)
   },
 
-  # Atomic get-and-delete: preferred for state stores in multi-worker
-  # deployments to prevent TOCTOU replay attacks. For per-process caches
-  # (like cachem::cache_mem()) this is optional; for shared backends (Redis,
-  # database) it should map to the backend's atomic primitive (e.g., GETDEL).
+  # In a shared store, replace this with the backend's atomic get-and-delete
+  # operation, such as Redis GETDEL. This R environment is process-local.
   take = function(key, missing = NULL) {
     val <- base::get0(key, envir = mem, ifnotfound = missing, inherits = FALSE)
     if (exists(key, envir = mem, inherits = FALSE)) {
@@ -125,6 +152,6 @@ my_cache <- custom_cache(
     val
   },
 
-  info = function() list(max_age = 600)
+  info = function() list(max_age = Inf)
 )
 }

@@ -1,11 +1,6 @@
-# Please note: `prepare_call()` & `handle_callback()` are typically
-# not called by users of this package directly, but are called
-# internally by `oauth_module_server()`. These functions are exported
-# nonetheless for advanced use cases. Most users will not need to
-# call these functions directly
+# Advanced example: your code supplies browser redirects and callback handling.
+# For a Shiny app, oauth_module_server() manages these steps for you.
 
-# Below code shows generic usage of `prepare_call()` and `handle_callback()`
-# (code is not run because it would require user interaction)
 if (interactive()) {
   # Define client
   client <- oauth_client(
@@ -15,7 +10,7 @@ if (interactive()) {
     redirect_uri = "http://127.0.0.1:8100"
   )
 
-  # Get authorization URL and and store state in client's state store
+  # Get the login URL and store state in client's state store
   # `<browser_token>` is a token that identifies the browser session
   #  and would typically be stored in a browser cookie
   #  (`oauth_module_server()` handles this typically)
@@ -23,12 +18,10 @@ if (interactive()) {
 
   # Redirect user to authorization URL; retrieve code & state from the query;
   # read also `<browser_token>` from browser cookie
-  # (`oauth_module_server()` handles this typically)
   code <- "..."
   state <- "..."
   browser_token <- "..."
 
   # Handle callback, exchanging code for token and validating state
-  # (`oauth_module_server()` handles this typically)
   token <- handle_callback(client, code, state, browser_token)
 }

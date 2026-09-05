@@ -36,51 +36,39 @@ callback paths, use \code{uiPattern = ".*"} so Shiny routes the callback path to
 this UI function.
 }
 \description{
-\code{oauth_form_post_ui()} enables the OpenID Foundation OAuth 2.0 Form Post
-Response Mode for apps that use \code{\link[=oauth_module_server]{oauth_module_server()}}. It wraps your
-existing Shiny UI so a provider can POST an authorization response to the
-app's redirect URI. The POST body is stored server-side under a short-lived
-one-time handle, and the browser is redirected back to the app with only
-that opaque handle in the query string.
-
-For most apps, this helper is not needed because the default transport for
-authorization responses is the query string, which works without this UI wrapper.
-You only need to use this helper if your provider requires or strongly recommends
-form_post response mode.
-
-To request form_post response mode from the provider, wrap your UI with this
-helper, configure your \link{OAuthClient} with \code{response_mode = "form_post"}, and
-ensure the \code{redirect_uri} is set to a URL that routes to this UI wrapper
-(e.g., the app's root URL or a specific callback path).
-This helper handles the plain form_post response mode, where the POST body
-contains authorization response parameters such as \code{code}, \code{state}, \code{error},
-and \code{iss}. When \code{response_mode = "form_post.jwt"}, the helper validates the
-inbound JARM \code{response}, decrypts and validates the enclosed state, and then
-stores the accepted callback payload under the same one-time handle so the
-main callback flow can resume from a prevalidated POST boundary.
+Accept the provider's login callback as an HTTP POST and continue login with
+\code{\link[=oauth_module_server]{oauth_module_server()}}. Use this when you select \code{response_mode = "form_post"}
+or \code{"form_post.jwt"}, either because the provider requires it or to keep
+callback parameters out of the browser URL. The POST arrives before a Shiny
+session exists; this wrapper receives it and makes the validated callback
+available to the server module. For query-string callbacks, use \code{\link[=oauth_ui]{oauth_ui()}}.
 }
 \details{
-When this wrapper is used, it also injects \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} automatically
-for the wrapped GET UI, so you do not need a separate top-level
-\code{use_shinyOAuth()} call.
-It also applies \code{\link[=oauth_ui]{oauth_ui()}} to set \code{Referrer-Policy: no-referrer} on HTML
-responses before any browser subresource requests.
+Set \code{response_mode} on your \code{\link[=oauth_client]{oauth_client()}}, wrap your UI here, and use
+the same \code{id} and \code{client} in \code{\link[=oauth_module_server]{oauth_module_server()}}. The wrapper includes
+the browser setup and privacy header supplied by \code{\link[=oauth_ui]{oauth_ui()}}.
+For a callback path below the app root, pass \code{uiPattern = ".*"} to
+\code{\link[shiny:shinyApp]{shiny::shinyApp()}} so Shiny routes the callback to this wrapper.
 
-The server-side callback handle is single-use and is rejected if it is older
-than the smaller of \code{client@state_payload_max_age} and the configured
-\code{state_store} TTL. The raw POST body and transient handle query parameters
-are stored in at most one pending slot per live state and module, including
-concurrent POSTs. Repeated pending POSTs reuse the handle. After a failed
-browser binding, a new POST can stage the still-live transaction again.
-Consumed logical states cannot stage callbacks. Callback query parameters
-are also bounded by the \verb{shinyOAuth.callback_max_form_post_*} options
-described in the usage vignette. Before reading the POST body, this wrapper
-compares the server-observed request scheme, authority, and path with the
-configured redirect origin and \code{callback_path}. Reverse proxies can supply a
-\code{request_uri_resolver} that reconstructs the public URI only after verifying
-the request came through a trusted proxy. Forwarded headers are never trusted
-by the default resolver.
+The wrapper checks the incoming address and login state, stores the callback
+temporarily, and redirects the browser to a normal Shiny page with a
+single-use handle. Raw callback values do not appear in that redirected URL.
+For \code{"form_post.jwt"}, it also validates the signed response using
+JWT Secured Authorization Response Mode (JARM).
+The handle expires after the smaller of \code{state_payload_max_age} and the
+state store lifetime. The module still verifies the browser binding.
 }
+\section{Deployment behind a proxy}{
+
+If a proxy receives HTTPS and forwards HTTP to Shiny, supply a
+\code{request_uri_resolver} that reconstructs the public address after verifying
+the request came from your trusted proxy. The default resolver does not
+trust forwarded headers. The resulting address must match the configured
+redirect origin and callback path. See the \href{https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html}{advanced security vignette}.
+
+Callback size limits are documented in the \href{https://lukakoning.github.io/shinyOAuth/articles/package-options.html}{package options reference}.
+}
+
 \examples{
 if (
   # Example requires a local or remote Keycloak realm whose client allows

@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils__url_helpers.R
 \name{is_ok_host}
 \alias{is_ok_host}
-\title{Check if URL(s) are HTTPS and/or in allowed hosts lists}
+\title{Check a URL against the package's host policy}
 \usage{
 is_ok_host(
   url,
@@ -24,40 +24,28 @@ only these hosts are permitted. Supports globs}
 Logical indicator (TRUE if all URLs pass all checks; FALSE otherwise)
 }
 \description{
-Returns \code{TRUE} if every input URL passes shinyOAuth's scheme and host
-policy. In practice, each URL must be either:
-\itemize{
-\item a syntactically valid HTTPS URL, and (if set) whose host matches \code{allowed_hosts}, or
-\item an HTTP URL whose host matches \code{allowed_non_https_hosts} (e.g. localhost, 127.0.0.1, ::1),
-and (if set) also matches \code{allowed_hosts}.
-}
+Test whether a URL is allowed by shinyOAuth's ordinary scheme and host rules.
+HTTPS is accepted by default. HTTP is limited to local development hosts
+unless you change \code{allowed_non_https_hosts}. Supply \code{allowed_hosts} to
+restrict which services your app may contact.
 
-If the input omits the scheme (e.g., "localhost:8080/cb"), this function
-will first attempt to validate it as HTTP (useful for loopback development),
-and if that fails, as HTTPS. This mirrors how helpers normalize inputs for
-convenience while still enforcing the same host and scheme policies.
-
-\code{allowed_hosts} is the allowlist of hosts or domains that are permitted,
-while \code{allowed_non_https_hosts} defines which hosts are allowed to use HTTP
-instead of HTTPS. If \code{allowed_hosts} is \code{NULL} or length 0, all hosts are
-allowed subject to the scheme rules above.
-
-Since \code{allowed_hosts} supports globs, a value like "*" matches any host
-and therefore effectively disables endpoint host restrictions. Only use a catch-all
-pattern when you truly intend to allow any host. In most deployments you should pin
-to your expected domain(s), e.g. \code{c(".example.com")} or a specific host name.
-
-Wildcards: \code{allowed_hosts} and \code{allowed_non_https_hosts} support globs:
-\code{*} = any chars, \verb{?} = one char. A leading \code{.example.com} matches the
-domain itself and any subdomain.
-
-Any non-URLs, NAs, or empty strings cause a FALSE result.
+Call this when checking configured endpoint URLs or diagnosing a URL-policy
+rejection. The provider and API request helpers apply these checks internally;
+a direct call lets you inspect the result without making a network request.
 }
 \details{
-This function is used internally to validate redirect URIs in OAuth clients,
-but can also be used directly to test whether URLs would be accepted.
-Internally, the defaults come from the options
-\code{shinyOAuth.allowed_non_https_hosts} and \code{shinyOAuth.allowed_hosts}.
+Both host lists support \code{*} (any characters), \verb{?} (one character), and a
+leading dot: \code{".example.com"} matches the domain and its subdomains.
+\code{"*"} permits every host. If \code{allowed_hosts} is empty, only the scheme
+rules apply. Missing values, empty strings, and malformed URLs return \code{FALSE}.
+
+If the scheme is absent, this helper tries HTTP, then HTTPS. Request helpers
+can impose additional requirements, including an absolute URL. OIDC
+discovery has a separate HTTPS policy and requires an explicit loopback
+development opt-in; a \code{TRUE} result here does not override it.
+
+Defaults come from \code{shinyOAuth.allowed_hosts} and
+\code{shinyOAuth.allowed_non_https_hosts}.
 }
 \examples{
 # HTTPS allowed by default

@@ -6,11 +6,20 @@
 
 ## 1.1 Entry point -------------------------------------------------------------
 
-#' Prepare a OAuth 2.0 authorization call and build an authorization URL
+#' Prepare an OAuth 2.0 authorization request and build its URL
 #'
-#' Prepares an OAuth 2.0 authorization request and returns the browser redirect
-#' URL. It generates the needed state, PKCE, and nonce values, stores the
-#' one-time callback data, and builds the final authorization URL.
+#' Prepare a login request and return the URL to open in the user's browser.
+#' Use this when your application controls the browser redirect and callback
+#' handling itself but needs shinyOAuth to construct the OAuth 2.0 authorization
+#' request. Pair it with [handle_callback()] to complete the code flow.
+#'
+#' In a Shiny app using [oauth_module_server()], call `auth$request_login()`
+#' to start login through the module, which manages both operations and the
+#' reactive session state.
+#'
+#' The helper records one-time state and creates any required PKCE and nonce
+#' values. Custom callers must preserve the browser binding and process the
+#' returning callback themselves.
 #'
 #' @param oauth_client An [OAuthClient] object.
 #' @param browser_token Browser-bound token used to tie the login attempt to the
@@ -18,7 +27,8 @@
 #' @param request_uri_publisher Optional function used when
 #'   `request_object_mode = "request_uri"`. It must accept
 #'   `request_object`, `request_handle_id`, `expires_at`, and `oauth_client`
-#'   arguments and return an absolute request-object URL.
+#'   arguments and return an absolute HTTPS request-object URL that the
+#'   provider can fetch.
 #' @param .requested_max_age Internal normalized OIDC `max_age` override used by
 #'   the Shiny module for forced reauthentication.
 #' @param .defer_build Internal flag returning prepared local state for async
@@ -1070,17 +1080,21 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 
 #' Handle OAuth 2.0 callback: verify state, swap code for token, verify token
 #'
-#' Completes the callback step of the login flow. It validates the callback
-#' state, exchanges the returned code for tokens, and verifies the result.
-#' This low-level helper accepts only the classic authorization-code callback
-#' shape for non-JARM clients: a `code`, the sealed `state` payload returned as
-#' `payload`, and an optional RFC 9207 `iss` callback parameter. It does not
-#' accept a raw JARM `response` JWT, and it also does not provide a public way
-#' to resume a JARM callback after separate validation. For clients configured
-#' with `response_mode = "jwt"`, `"query.jwt"`, or `"form_post.jwt"`, use
-#' [oauth_module_server()] (and [oauth_form_post_ui()] for `form_post.jwt`) so
-#' shinyOAuth validates the callback JWT and resumes through its internal
-#' prevalidated callback path.
+#' Check a returning login request and exchange the provider's temporary
+#' authorization code for an [OAuthToken] (OAuth 2.0 Authorization Code flow).
+#' Use this in a custom callback handler after starting authorization with
+#' [prepare_call()]. It applies shinyOAuth's state, token, and configured
+#' identity checks while your application manages the HTTP callback and stores
+#' the returned token. [oauth_module_server()] handles these responsibilities
+#' for Shiny sessions.
+#'
+#' @details
+#' Pass the returned `code`, the callback's `state` as `payload`, and the
+#' browser token saved for this login. This helper accepts direct code/state
+#' callbacks only. For signed responses using JWT Secured Authorization
+#' Response Mode (JARM; `"jwt"`, `"query.jwt"`, or
+#' `"form_post.jwt"`), use [oauth_module_server()] and, for POST responses,
+#' [oauth_form_post_ui()]. There is no public JARM resume API.
 #'
 #' @param oauth_client An [OAuthClient] object.
 #' @param code Authorization code received from the provider on a classic
@@ -1090,9 +1104,9 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #'   [prepare_call()].
 #' @param browser_token Browser token present in the user's session. This is
 #'   usually managed by [oauth_module_server()].
-#' @param shiny_session Optional pre-captured Shiny session context (from
-#'   `capture_shiny_session_context()`) to include in audit events. Used when
-#'   calling from async workers that lack access to the reactive domain.
+#' @param shiny_session Optional captured Shiny session details for audit events.
+#'   Normally supplied by the module; leave `NULL` when calling directly.
+#'
 #' @param iss Optional RFC 9207 callback issuer (`iss`) from the authorization
 #'   response. Pass this when one callback URL can receive responses from more
 #'   than one authorization server. If `oauth_client@enforce_callback_issuer`

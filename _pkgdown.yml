@@ -1,21 +1,37 @@
 url: https://lukakoning.github.io/shinyOAuth/
 template:
   bootstrap: 5
+articles:
+- title: Usage and authentication
+  navbar: ~
+  contents:
+  - usage
+  - example-spotify
+  - authentication-flow
+- title: Configuration and monitoring
+  contents:
+  - advanced-security
+  - audit-logging
+  - opentelemetry
+  - package-options
+
 reference:
 
-- title: Shiny module
+- title: Shiny integration
 - contents:
+  - oauth_ui
+  - oauth_client
   - oauth_module_server
   - oauth_form_post_ui
   - use_shinyOAuth
 
-- title: S7 classes
+- title: Object reference
 - contents:
   - OAuthProvider
   - OAuthClient
   - OAuthToken
   
-- title: OAuth provider configuration
+- title: Provider configuration
 - subtitle: Generic
 - contents:
   - oauth_provider
@@ -27,20 +43,18 @@ reference:
   - -oauth_provider_oidc
   - -oauth_provider_oidc_discover
   
-- title: OAuth client configuration
+- title: Provider-specific client settings
 - contents:
-  - oauth_client
   - oauth_client_mtls_registration
   - oauth_client_secret_apple
   
-- title: Authentication flow
-- subtitle: Prepare & handle OAuth 2.0 calls; typically not needed by end users
+- title: Custom login handling
+- subtitle: Advanced helpers for managing login without the Shiny module
 - contents:
   - prepare_call
   - handle_callback
   
-- title: Token methods
-- subtitle: Methods for OAuthToken objects
+- title: Tokens and API requests
 - contents:
   - get_userinfo
   - refresh_token
@@ -51,7 +65,7 @@ reference:
   - client_bearer_req
   - perform_client_bearer_req
   
-- title: Miscellaneous
+- title: Deployment helpers
 - contents:
   - is_ok_host
   - custom_cache

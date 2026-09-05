@@ -1,6 +1,7 @@
 if (
   # Example requires configured Microsoft Entra ID (Azure AD) tenant:
-  nzchar(Sys.getenv("MS_TENANT")) && interactive() && requireNamespace("later")
+  nzchar(Sys.getenv("MS_TENANT")) && interactive() &&
+    requireNamespace("later", quietly = TRUE)
 ) {
   library(shiny)
   library(shinyOAuth)
@@ -11,7 +12,8 @@ if (
       # Provide your own tenant ID here (set as environment variable MS_TENANT)
       tenant = Sys.getenv("MS_TENANT")
     ),
-    # Default Azure CLI app ID (public client; activated in many tenants):
+    # Azure CLI public-client app ID; the tenant must permit this app.
+    # For your deployed app, use your own registration and redirect URI:
     client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
@@ -19,8 +21,7 @@ if (
   )
 
   # UI
-  ui <- fluidPage(
-    use_shinyOAuth(),
+  ui <- oauth_ui(fluidPage(
     h3("OAuth demo (Microsoft Entra ID)"),
     uiOutput("oauth_error"),
     tags$hr(),
@@ -29,7 +30,7 @@ if (
     tags$hr(),
     h4("User info"),
     verbatimTextOutput("user_info")
-  )
+  ))
 
   # Server
   server <- function(input, output, session) {
@@ -65,7 +66,7 @@ if (
     })
 
     output$user_info <- renderPrint({
-      req(auth$token)
+      req(auth$authenticated)
       auth$token@userinfo
     })
 

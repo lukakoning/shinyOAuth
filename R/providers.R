@@ -10,9 +10,12 @@
 #' Create a generic OpenID Connect (OIDC) [OAuthProvider]
 #'
 #' @description
-#' Helper for providers that follow a standard OpenID Connect endpoint layout.
-#' It builds the usual OIDC endpoints from one base URL and then calls
-#' [oauth_provider()] with OIDC-friendly defaults.
+#' Build OIDC provider URLs from a base address and known endpoint paths.
+#' Use this when configuring an OIDC service without discovery, with its
+#' endpoint paths available from the service configuration or documentation.
+#' Use [oauth_provider_oidc_discover()] if your provider offers discovery, which
+#' looks up its actual URLs. This helper is for manual configuration; its
+#' default paths must match the service you are using.
 #'
 #' @param name Friendly name for the provider
 #' @param base_url Base URL for OIDC endpoints
@@ -83,7 +86,9 @@ oauth_provider_oidc <- function(
 #' Create a GitHub [OAuthProvider]
 #'
 #' @description
-#' Ready-to-use OAuth 2.0 provider settings for GitHub.
+#' Create the provider configuration for a GitHub OAuth App, then pass it with
+#' your app credentials to [oauth_client()]. This configures profile retrieval
+#' from GitHub's API; GitHub does not return an OIDC ID token.
 #'
 #' @details
 #' You can register a new GitHub OAuth 2.0 app in your
@@ -93,7 +98,8 @@ oauth_provider_oidc <- function(
 #'
 #' @return [OAuthProvider] object for use with a GitHub OAuth 2.0 app
 #'
-#' @example inst/examples/oauth_provider.R
+#' @examples
+#' oauth_provider_github()
 #'
 #' @export
 oauth_provider_github <- function(name = "github") {
@@ -126,7 +132,8 @@ oauth_provider_github <- function(name = "github") {
 #' Create a Google [OAuthProvider]
 #'
 #' @description
-#' Ready-to-use [OAuthProvider] settings for Google.
+#' Use your Google app registration with [oauth_client()] to add Google
+#' sign-in. The helper configures OIDC validation and profile retrieval.
 #'
 #' @param name Optional provider name (default "google")
 #'
@@ -137,7 +144,8 @@ oauth_provider_github <- function(name = "github") {
 #' [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
 #' Configure the client ID & secret in your [OAuthClient].
 #'
-#' @example inst/examples/oauth_provider.R
+#' @examples
+#' oauth_provider_google()
 #'
 #' @export
 oauth_provider_google <- function(name = "google") {
@@ -171,47 +179,24 @@ oauth_provider_google <- function(name = "google") {
 #' Create a Microsoft (Entra ID) [OAuthProvider]
 #'
 #' @description
-#' Ready-to-use [OAuthProvider] settings for Microsoft Entra ID (formerly Azure
-#' AD) using the v2.0 endpoints. Accepts a tenant identifier and configures the
-#' authorization, token, and userinfo endpoints directly.
+#' Create provider settings for Microsoft Entra ID. Choose which accounts may
+#' sign in with `tenant`, then pass the provider and your own registered app's
+#' credentials to [oauth_client()].
 #'
 #' @details
-#' Most users only need to choose the tenant and decide whether to keep ID
-#' token validation enabled. The remaining details below explain how the helper
-#' behaves for Microsoft's different tenant styles.
+#' Use a directory (tenant) ID to target one organization. `"organizations"`
+#' allows work or school accounts, `"consumers"` allows personal Microsoft
+#' accounts, and `"common"` allows both. Your app registration and app access
+#' rules must also permit the intended accounts.
 #'
-#' The `tenant` can be one of the special values "common", "organizations",
-#' or "consumers", or a specific directory (tenant) ID GUID
-#' (e.g., "00000000-0000-0000-0000-000000000000").
+#' ID token validation is enabled for these tenant choices. For a directory ID,
+#' the issuer must match that directory. `"common"` and `"organizations"` use
+#' Microsoft's tenant-independent issuer template and signing-key issuer rules.
+#' `"consumers"` uses the consumer tenant issuer. The helper restricts ID token
+#' algorithms to RS256 and fetches userinfo from Microsoft Graph.
 #'
-#' When `tenant` is a specific GUID, the provider enables strict ID token
-#' validation with the tenant-specific issuer.
-#'
-#' For `tenant = "common"` or `tenant = "organizations"`, the helper enables
-#' Microsoft Entra's tenant-independent validation mode by default: ID tokens
-#' are checked against Microsoft's `{tenantid}` issuer template and the signing
-#' key's own `issuer` scope, as documented by Microsoft for multi-tenant
-#' metadata. Runtime JWKS discovery for these aliases also uses host-only
-#' discovery issuer matching because Microsoft's tenant-independent metadata
-#' publishes a templated issuer rather than echoing the alias URL exactly.
-#'
-#' For `tenant = "consumers"`, the helper resolves the stable consumer tenant
-#' issuer (`9188040d-6c67-4c5b-b112-36a304b66dad`) and performs normal exact-
-#' issuer validation.
-#'
-#' Set `id_token_validation = FALSE` to opt out of ID token and nonce
-#' validation for these aliases, which falls back to OAuth 2.0 plus userinfo
-#' identity only.
-#'
-#' Microsoft issues RS256 ID tokens; `allowed_algs` is restricted accordingly.
-#' The userinfo endpoint is provided by Microsoft Graph
-#' (https://graph.microsoft.com/oidc/userinfo).
-#'
-#' When configuring your [OAuthClient], if you do not have the option to
-#' register an app or simply wish to test during development, you may be able
-#' to use the default Azure CLI public app, with `client_id`
-#' '04b07795-8ddb-461a-bbee-02f9e1bf7b46' (uses `redirect_uri`
-#' 'http://localhost:8100').
+#' Setting `id_token_validation = FALSE` disables ID token and nonce checks and
+#' leaves OAuth plus profile retrieval. Keep the default for OIDC sign-in.
 #'
 #' @param name Optional friendly name for the provider. Defaults to "microsoft"
 #' @param tenant Tenant identifier ("common", "organizations", "consumers",
@@ -303,8 +288,10 @@ oauth_provider_microsoft <- function(
 #' Create a Spotify [OAuthProvider]
 #'
 #' @description
-#' Ready-to-use OAuth 2.0 provider settings for Spotify.
-#' It uses `/v1/me` as the user profile endpoint and does not expect ID tokens.
+#' Connect your app to a user's Spotify account. Pass this provider to
+#' [oauth_client()] and request the scopes needed by the Spotify API calls you
+#' plan to make. The helper configures profile retrieval through Spotify's API
+#' and does not expect an ID token.
 #'
 #' @param name Optional provider name (default "spotify")
 #' @details
@@ -313,10 +300,11 @@ oauth_provider_microsoft <- function(
 #'
 #' @return [OAuthProvider] object for use with a Spotify OAuth 2.0 app
 #'
-#' @example inst/examples/oauth_provider.R
+#' @examples
+#' oauth_provider_spotify()
 #' @seealso
-#' For an example application which using Spotify OAuth 2.0 login to
-#' display the user's listening data, see `vignette("example-spotify")`.
+#' For a Shiny app that connects to Spotify to
+#' display the user's listening data, see the [Spotify example](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.html).
 #'
 #' @export
 oauth_provider_spotify <- function(
@@ -356,11 +344,19 @@ oauth_provider_spotify <- function(
 
 #' Create a Slack [OAuthProvider] (via OIDC discovery)
 #'
+#' @description
+#' Look up Slack's OpenID Connect settings for Sign in with Slack. This
+#' helper contacts the discovery service during setup; pass its result to
+#' [oauth_client()] with your Slack app credentials.
+#'
 #' @param name Optional provider name (default "slack")
 #'
 #' @return [OAuthProvider] object configured for Slack
 #'
-#' @example inst/examples/oauth_provider.R
+#' @examples
+#' \dontrun{
+#' oauth_provider_slack()
+#' }
 #'
 #' @export
 oauth_provider_slack <- function(name = "slack") {
@@ -368,6 +364,11 @@ oauth_provider_slack <- function(name = "slack") {
 }
 
 #' Create a Keycloak [OAuthProvider] (via OIDC discovery)
+#'
+#' @description
+#' Look up login settings for a Keycloak realm. Supply your server URL
+#' and realm name, then pass the result to [oauth_client()]. This helper
+#' contacts the Keycloak server during setup.
 #'
 #' @param base_url Base URL of the Keycloak server, e.g.,
 #'  "http://localhost:8080". Local HTTP development also requires
@@ -390,7 +391,10 @@ oauth_provider_slack <- function(name = "slack") {
 #'
 #' @return [OAuthProvider] object configured for the specified Keycloak realm
 #'
-#' @example inst/examples/oauth_provider.R
+#' @examples
+#' \dontrun{
+#' oauth_provider_keycloak("https://login.example.com", realm = "myrealm")
+#' }
 #'
 #' @export
 oauth_provider_keycloak <- function(
@@ -419,6 +423,11 @@ oauth_provider_keycloak <- function(
 
 #' Create an Okta [OAuthProvider] (via OIDC discovery)
 #'
+#' @description
+#' Look up login settings for your Okta domain and authorization server.
+#' Pass the result to [oauth_client()] with your registered app credentials.
+#' This helper makes a discovery request during setup.
+#'
 #' @param domain Your Okta domain, e.g., "dev-123456.okta.com"
 #' @param auth_server Authorization server ID for a custom authorization
 #'   server (default "default"). Use `NULL` to target the org authorization
@@ -427,7 +436,10 @@ oauth_provider_keycloak <- function(
 #'
 #' @return [OAuthProvider] object configured for the specified Okta domain
 #'
-#' @example inst/examples/oauth_provider.R
+#' @examples
+#' \dontrun{
+#' oauth_provider_okta("dev-123456.okta.com")
+#' }
 #'
 #' @export
 oauth_provider_okta <- function(
@@ -463,13 +475,21 @@ oauth_provider_okta <- function(
 
 #' Create an Auth0 [OAuthProvider] (via OIDC discovery)
 #'
+#' @description
+#' Look up login settings for your Auth0 domain. Pass the result to
+#' [oauth_client()] with your registered app credentials. This helper makes
+#' a discovery request during setup.
+#'
 #' @param domain Your Auth0 domain, e.g., "your-domain.auth0.com"
 #' @param name Optional provider name (default "auth0")
 #' @param audience Optional audience value to send in authorization requests.
 #'
 #' @return [OAuthProvider] object configured for the specified Auth0 domain
 #'
-#' @example inst/examples/oauth_provider.R
+#' @examples
+#' \dontrun{
+#' oauth_provider_auth0("your-domain.auth0.com")
+#' }
 #'
 #' @export
 oauth_provider_auth0 <- function(domain, name = "auth0", audience = NULL) {

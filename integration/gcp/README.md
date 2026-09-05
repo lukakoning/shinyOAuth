@@ -1,6 +1,9 @@
 # 'shinyOAuth' on Google Cloud Run (GitHub OAuth)
 
-This folder contains a minimal Shiny app and Dockerfile to run 'shinyOAuth' on Google Cloud Run, configured against a GitHub OAuth app.
+This example deploys a small Shiny app with GitHub login to Google Cloud Run.
+You need a GitHub OAuth App registration and a Google Cloud project set up for
+Cloud Run. Run the local app first using the
+[getting-started guide](../../vignettes/usage.Rmd) if you are new to shinyOAuth.
 
 ## 1) Create a GitHub OAuth app
 
@@ -12,10 +15,6 @@ This folder contains a minimal Shiny app and Dockerfile to run 'shinyOAuth' on G
 ## 2) Build/run
 
 The container runs a plain `shiny::runApp()` listening on `$PORT` and `0.0.0.0`.
-Its Rocker base image is pinned by digest and its Posit Package Manager
-repository defaults to the dated `2026-07-21` snapshot. When updating either
-pin, review the resulting dependency changes and update both values
-intentionally.
 
 Environment variables used by the app:
 - `GITHUB_OAUTH_CLIENT_ID`
@@ -24,9 +23,11 @@ Environment variables used by the app:
 
 ### Build and deploy to Cloud Run
 
-You may setup a Google Cloud Run service that builds from this repository.
+Configure the Cloud Run build to use this repository.
 
-Important: ensure the Docker build context is the repository root (.) while the Dockerfile path is integration/gcp/Dockerfile. If the build context is set to integration/gcp, the image will not contain the package sources (DESCRIPTION will be missing) and installation will fail.
+Use the repository root (`.`) as the Docker build context and
+`integration/gcp/Dockerfile` as the Dockerfile path. This gives the build access
+to the package source as well as the example app.
 
 Two ways to do this:
 
@@ -60,4 +61,15 @@ docker run --rm --name shinyoauth-demo \
 Notes:
 - A sample environment file is provided at `integration/gcp/.env.example`.
 - When deploying to Cloud Run, set these variables in the service configuration UI (Variables & Secrets) and ensure `OAUTH_REDIRECT_URI` matches your Cloud Run service URL exactly.
-- If you use a Dockerfile trigger instead of the provided `cloudbuild.yaml`, double‑check the build context is the repo root (`.`) and the Dockerfile path is `integration/gcp/Dockerfile`.
+
+## Maintaining the image
+
+Its Rocker base image is pinned by digest and its Posit Package Manager
+repository defaults to the dated `2026-07-21` snapshot. When updating either
+pin, review the resulting dependency changes and update both values
+intentionally.
+
+
+This demo uses in-process login state. If production callbacks can reach a
+different process or replica, configure shared state and a shared key as
+described in the [deployment guidance](../../vignettes/usage.Rmd).

@@ -4,7 +4,7 @@ options(shinyOAuth.allow_insecure_urls = TRUE)
 
 library(shiny)
 
-# Configure provider and client (GitHub)
+# Configure provider and client (Spotify)
 provider <- oauth_provider_spotify()
 
 client <- oauth_client(

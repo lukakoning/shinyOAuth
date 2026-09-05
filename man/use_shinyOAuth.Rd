@@ -14,22 +14,22 @@ before the browser reads this instruction. Use \code{\link[=oauth_ui]{oauth_ui()
 this protection from the start of page loading.}
 }
 \value{
-A \code{tagList} that loads the \code{inst/www/shinyOAuth.js} dependency once.
+A \code{tagList} that loads the browser code once.
 }
 \description{
-Adds shinyOAuth's client-side JavaScript dependency to your Shiny UI.
-This is required so the module can handle redirects and manage its
-browser-side session token.
-
-For most apps, use \code{\link[=oauth_ui]{oauth_ui()}} around your complete UI instead. It includes
-this browser code and adds privacy protection for pages loaded after login.
-\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} also includes this setup for form_post flows.
+Add shinyOAuth's JavaScript to a page so \code{\link[=oauth_module_server]{oauth_module_server()}} can redirect
+the browser and manage its temporary login cookie. Use this inside an
+existing \code{fluidPage()} or \code{tagList()} when you integrate the browser
+dependency directly and configure response headers elsewhere, such as in
+your web server or another UI wrapper.
 }
 \details{
-Place this near the top-level of your UI (e.g., inside \code{fluidPage()} or
-\code{tagList()}), similar to how you would use \code{shinyjs::useShinyjs()}. If you
-wrap the app UI with \code{\link[=oauth_ui]{oauth_ui()}} or \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, you do not need
-a separate call to this helper.
+\code{\link[=oauth_ui]{oauth_ui()}} combines this browser setup with the HTTP header
+\code{Referrer-Policy: no-referrer}, which prevents callback URLs from being
+sent as referrers when page resources load. When using \code{\link[=use_shinyOAuth]{use_shinyOAuth()}}
+directly, set that header in your HTTP response configuration for protection
+from the start of page loading; the optional meta tag takes effect later.
+\code{\link[=oauth_ui]{oauth_ui()}} and \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} already include this dependency.
 }
 \examples{
 ui <- shiny::fluidPage(

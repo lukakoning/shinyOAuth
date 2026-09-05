@@ -1,39 +1,24 @@
 #' Set up a Shiny UI for shinyOAuth
 #'
 #' @description
-#' Use `oauth_ui()` around your app's UI when setting up login with
-#' [oauth_module_server()]. It adds the browser code needed for login and
-#' helps keep login details private when users return to your app.
-#'
-#' This is the recommended UI helper for most apps. It includes everything
-#' provided by [use_shinyOAuth()], so you do not need to call both.
+#' Wrap your complete UI in `oauth_ui()` when using [oauth_module_server()].
+#' It adds the browser code needed for login and a privacy header that keeps
+#' the returning callback address out of requests to other sites.
 #'
 #' @details
-#' Build your UI as usual with `fluidPage()`, `tagList()`, or another Shiny
-#' page function, then wrap the complete UI in `oauth_ui()`. Pass the result
-#' as the `ui` argument to [shiny::shinyApp()]. If you already have a `ui`
-#' object, you can use `ui <- oauth_ui(ui)` and remove the separate
-#' `use_shinyOAuth()` call from your UI.
+#' Build the page as usual, for example with `fluidPage()`, then use
+#' `ui <- oauth_ui(ui)`. Pass the result to [shiny::shinyApp()]. UI functions
+#' are supported too, including functions accepting the Shiny request.
+#' This wrapper includes [use_shinyOAuth()] setup.
 #'
-#' For apps using `response_mode = "form_post"` or `"form_post.jwt"`, use
-#' [oauth_form_post_ui()] instead. It includes this setup and also handles
-#' the provider's POST response.
+#' For `response_mode = "form_post"` or `"form_post.jwt"`, use
+#' [oauth_form_post_ui()] instead; it includes this setup and accepts POST
+#' callbacks.
 #'
-#' By default, [use_shinyOAuth()] adds a meta tag to your page: an instruction
-#' asking the browser not to share the page's address when loading images,
-#' scripts, or other files. This matters after login because the address can
-#' contain temporary login details.
-#'
-#' The browser may start loading some files before it reads the meta tag,
-#' so the tag alone cannot protect those first requests. `oauth_ui()` sends
-#' the same instruction in an HTTP header, which the browser reads before
-#' loading the page. This provides protection from the start.
-#' [oauth_form_post_ui()] includes the same protection. If you manage your
-#' own web server, you can also set the `Referrer-Policy: no-referrer` HTTP
-#' header there.
-#'
-#' Existing UI functions are supported too, including functions that accept
-#' the Shiny request as their argument.
+#' The privacy header is `Referrer-Policy: no-referrer`. The browser reads it
+#' before loading page resources. The meta tag from [use_shinyOAuth()] takes
+#' effect only once the browser reads that tag, so it may miss early resource
+#' requests. You can also set the same HTTP header at your web server.
 #'
 #' @param base_ui Your app's complete UI, such as a `fluidPage()` or `tagList()`.
 #'   Can also be a UI function, optionally accepting the Shiny request.

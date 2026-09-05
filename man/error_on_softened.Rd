@@ -2,7 +2,7 @@
 % Please edit documentation in R/softeners__options.R
 \name{error_on_softened}
 \alias{error_on_softened}
-\title{Throw an error if specific dev/debug softeners are enabled}
+\title{Check selected debugging options (deprecated)}
 \usage{
 error_on_softened()
 }
@@ -14,7 +14,7 @@ error is thrown.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
 Deprecated helper that errors when a small subset of shinyOAuth's
-development and debugging softeners are enabled. Use explicit startup checks
+options that relax security checks or expose debugging details are enabled. Use explicit startup checks
 for the exact options your deployment permits or forbids instead.
 }
 \details{
@@ -32,8 +32,7 @@ claim values in diagnostics
 # Note: error_on_softened() is deprecated because it only checks a narrow subset
 # of shinyOAuth's security-relaxing options
 
-# Throw an error if any softening options that relax default safety
-# protections are enabled
+# Throw an error if one of the options listed in ?error_on_softened is enabled.
 # Below call does not error if run with default options:
 error_on_softened()
 

@@ -70,11 +70,11 @@ preserves \code{OAuthToken@token_type}, and may infer \code{DPoP} from explicit
 request. This is primarily useful after a resource server challenges with
 \code{DPoP-Nonce}.}
 
-\item{idempotent}{Optional logical controlling generic transport and
-transient-HTTP retries in \code{req_with_retry()}. When \code{NULL} (the default),
-shinyOAuth infers this from the final request method using standard HTTP
-idempotency semantics (\code{GET}, \code{HEAD}, \code{OPTIONS}, \code{PUT}, \code{DELETE}). DPoP
-nonce challenges are replayed once regardless, as required by RFC 9449.}
+\item{idempotent}{Whether ordinary network/HTTP failures may be
+retried safely. \code{NULL} (default) infers this from the final HTTP method:
+GET, HEAD, OPTIONS, PUT, and DELETE permit retries. Set it explicitly if
+your API has different guarantees. One DPoP nonce challenge retry is
+allowed independently of this setting.}
 }
 \value{
 Same value as \code{\link[=perform_resource_req]{perform_resource_req()}}.
@@ -82,6 +82,6 @@ Same value as \code{\link[=perform_resource_req]{perform_resource_req()}}.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-Deprecated alias for \code{perform_resource_req()} to avoid a breaking change in the public API.
+Deprecated alias for \code{perform_resource_req()}.
 Use \code{perform_resource_req()} for Bearer, DPoP, and mTLS-protected resource requests instead.
 }

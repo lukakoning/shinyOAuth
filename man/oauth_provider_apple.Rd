@@ -13,38 +13,25 @@ oauth_provider_apple(name = "apple")
 \link{OAuthProvider} object configured for Sign in with Apple
 }
 \description{
-Ready-to-use \link{OAuthProvider} settings for Sign in with Apple.
+Look up Apple's login settings and return an \link{OAuthProvider} for use with
+\code{\link[=oauth_client]{oauth_client()}}. This helper makes an OIDC discovery request during setup.
 }
 \details{
-This helper resolves Sign in with Apple's current metadata from Apple's OIDC
-discovery document at \verb{https://appleid.apple.com/.well-known/openid-configuration}.
-
-Apple does not publish a userinfo endpoint, so this helper relies on the
-validated ID token for subject and claim data and leaves
-\code{userinfo_required = FALSE}.
-
-When configuring your \link{OAuthClient}:
+Configure your client with:
 \itemize{
-\item use your Services ID or App ID as \code{client_id}
-\item supply \code{client_secret} as an Apple-signed ES256 JWT, for example via
-\code{oauth_client_secret_apple()}
-\item use an HTTPS redirect URI with a domain name; Apple does not allow IP
-literals or \code{localhost}
-\item if you request \code{email} or \code{name}, configure
-\code{oauth_client(..., response_mode = "form_post")} and wrap your UI with
-\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}
+\item Your Apple Services ID or App ID as \code{client_id}.
+\item A client secret created with \code{\link[=oauth_client_secret_apple]{oauth_client_secret_apple()}} using your
+Apple developer key.
+\item An HTTPS return address with a domain name; Apple does not accept
+localhost or IP addresses.
+\item \code{response_mode = "form_post"} and \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} when requesting
+\code{email} or \code{name}.
 }
 
-Apple can return a one-time \code{user} JSON payload on the front-channel
-form_post callback when \code{email} or \code{name} are requested. shinyOAuth does not
-currently map that transient payload into the returned \link{OAuthToken}
-\code{userinfo} field, so this helper leaves \code{userinfo_required = FALSE} and
-relies on ID token claims.
-
-Because this helper delegates to \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}, any
-discovery-backed metadata Apple publishes in the future is picked up
-automatically. When a particular discovery field is omitted, shinyOAuth keeps
-the same defaults documented for \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}.
+Read identity information from the validated ID token's claims. Apple has
+no userinfo endpoint, so \code{userinfo_required} is \code{FALSE}. The one-time
+\code{user} payload that Apple may send with a form POST callback is not mapped
+into \code{token@userinfo}; do not rely on this helper to retrieve that payload.
 }
 \examples{
 # Sign in with Apple requires an Apple Services ID, Team ID, key ID, and the

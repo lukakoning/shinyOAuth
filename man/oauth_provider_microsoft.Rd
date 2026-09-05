@@ -27,52 +27,30 @@ issuer}
 \link{OAuthProvider} object configured for Microsoft identity platform
 }
 \description{
-Ready-to-use \link{OAuthProvider} settings for Microsoft Entra ID (formerly Azure
-AD) using the v2.0 endpoints. Accepts a tenant identifier and configures the
-authorization, token, and userinfo endpoints directly.
+Create provider settings for Microsoft Entra ID. Choose which accounts may
+sign in with \code{tenant}, then pass the provider and your own registered app's
+credentials to \code{\link[=oauth_client]{oauth_client()}}.
 }
 \details{
-Most users only need to choose the tenant and decide whether to keep ID
-token validation enabled. The remaining details below explain how the helper
-behaves for Microsoft's different tenant styles.
+Use a directory (tenant) ID to target one organization. \code{"organizations"}
+allows work or school accounts, \code{"consumers"} allows personal Microsoft
+accounts, and \code{"common"} allows both. Your app registration and app access
+rules must also permit the intended accounts.
 
-The \code{tenant} can be one of the special values "common", "organizations",
-or "consumers", or a specific directory (tenant) ID GUID
-(e.g., "00000000-0000-0000-0000-000000000000").
+ID token validation is enabled for these tenant choices. For a directory ID,
+the issuer must match that directory. \code{"common"} and \code{"organizations"} use
+Microsoft's tenant-independent issuer template and signing-key issuer rules.
+\code{"consumers"} uses the consumer tenant issuer. The helper restricts ID token
+algorithms to RS256 and fetches userinfo from Microsoft Graph.
 
-When \code{tenant} is a specific GUID, the provider enables strict ID token
-validation with the tenant-specific issuer.
-
-For \code{tenant = "common"} or \code{tenant = "organizations"}, the helper enables
-Microsoft Entra's tenant-independent validation mode by default: ID tokens
-are checked against Microsoft's \code{{tenantid}} issuer template and the signing
-key's own \code{issuer} scope, as documented by Microsoft for multi-tenant
-metadata. Runtime JWKS discovery for these aliases also uses host-only
-discovery issuer matching because Microsoft's tenant-independent metadata
-publishes a templated issuer rather than echoing the alias URL exactly.
-
-For \code{tenant = "consumers"}, the helper resolves the stable consumer tenant
-issuer (\verb{9188040d-6c67-4c5b-b112-36a304b66dad}) and performs normal exact-
-issuer validation.
-
-Set \code{id_token_validation = FALSE} to opt out of ID token and nonce
-validation for these aliases, which falls back to OAuth 2.0 plus userinfo
-identity only.
-
-Microsoft issues RS256 ID tokens; \code{allowed_algs} is restricted accordingly.
-The userinfo endpoint is provided by Microsoft Graph
-(https://graph.microsoft.com/oidc/userinfo).
-
-When configuring your \link{OAuthClient}, if you do not have the option to
-register an app or simply wish to test during development, you may be able
-to use the default Azure CLI public app, with \code{client_id}
-'04b07795-8ddb-461a-bbee-02f9e1bf7b46' (uses \code{redirect_uri}
-'http://localhost:8100').
+Setting \code{id_token_validation = FALSE} disables ID token and nonce checks and
+leaves OAuth plus profile retrieval. Keep the default for OIDC sign-in.
 }
 \examples{
 if (
   # Example requires configured Microsoft Entra ID (Azure AD) tenant:
-  nzchar(Sys.getenv("MS_TENANT")) && interactive() && requireNamespace("later")
+  nzchar(Sys.getenv("MS_TENANT")) && interactive() &&
+    requireNamespace("later", quietly = TRUE)
 ) {
   library(shiny)
   library(shinyOAuth)
@@ -83,7 +61,8 @@ if (
       # Provide your own tenant ID here (set as environment variable MS_TENANT)
       tenant = Sys.getenv("MS_TENANT")
     ),
-    # Default Azure CLI app ID (public client; activated in many tenants):
+    # Azure CLI public-client app ID; the tenant must permit this app.
+    # For your deployed app, use your own registration and redirect URI:
     client_id = "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
@@ -91,8 +70,7 @@ if (
   )
 
   # UI
-  ui <- fluidPage(
-    use_shinyOAuth(),
+  ui <- oauth_ui(fluidPage(
     h3("OAuth demo (Microsoft Entra ID)"),
     uiOutput("oauth_error"),
     tags$hr(),
@@ -101,7 +79,7 @@ if (
     tags$hr(),
     h4("User info"),
     verbatimTextOutput("user_info")
-  )
+  ))
 
   # Server
   server <- function(input, output, session) {
@@ -137,7 +115,7 @@ if (
     })
 
     output$user_info <- renderPrint({
-      req(auth$token)
+      req(auth$authenticated)
       auth$token@userinfo
     })
 

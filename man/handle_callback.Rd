@@ -26,9 +26,8 @@ direct callback. This should be the same value that was originally sent in
 \item{browser_token}{Browser token present in the user's session. This is
 usually managed by \code{\link[=oauth_module_server]{oauth_module_server()}}.}
 
-\item{shiny_session}{Optional pre-captured Shiny session context (from
-\code{capture_shiny_session_context()}) to include in audit events. Used when
-calling from async workers that lack access to the reactive domain.}
+\item{shiny_session}{Optional captured Shiny session details for audit events.
+Normally supplied by the module; leave \code{NULL} when calling directly.}
 
 \item{iss}{Optional RFC 9207 callback issuer (\code{iss}) from the authorization
 response. Pass this when one callback URL can receive responses from more
@@ -45,27 +44,26 @@ An \link{OAuthToken} object. If callback validation, token exchange, or
 token verification fails, the function raises an error.
 }
 \description{
-Completes the callback step of the login flow. It validates the callback
-state, exchanges the returned code for tokens, and verifies the result.
-This low-level helper accepts only the classic authorization-code callback
-shape for non-JARM clients: a \code{code}, the sealed \code{state} payload returned as
-\code{payload}, and an optional RFC 9207 \code{iss} callback parameter. It does not
-accept a raw JARM \code{response} JWT, and it also does not provide a public way
-to resume a JARM callback after separate validation. For clients configured
-with \code{response_mode = "jwt"}, \code{"query.jwt"}, or \code{"form_post.jwt"}, use
-\code{\link[=oauth_module_server]{oauth_module_server()}} (and \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} for \code{form_post.jwt}) so
-shinyOAuth validates the callback JWT and resumes through its internal
-prevalidated callback path.
+Check a returning login request and exchange the provider's temporary
+authorization code for an \link{OAuthToken} (OAuth 2.0 Authorization Code flow).
+Use this in a custom callback handler after starting authorization with
+\code{\link[=prepare_call]{prepare_call()}}. It applies shinyOAuth's state, token, and configured
+identity checks while your application manages the HTTP callback and stores
+the returned token. \code{\link[=oauth_module_server]{oauth_module_server()}} handles these responsibilities
+for Shiny sessions.
+}
+\details{
+Pass the returned \code{code}, the callback's \code{state} as \code{payload}, and the
+browser token saved for this login. This helper accepts direct code/state
+callbacks only. For signed responses using JWT Secured Authorization
+Response Mode (JARM; \code{"jwt"}, \code{"query.jwt"}, or
+\code{"form_post.jwt"}), use \code{\link[=oauth_module_server]{oauth_module_server()}} and, for POST responses,
+\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}. There is no public JARM resume API.
 }
 \examples{
-# Please note: `prepare_call()` & `handle_callback()` are typically
-# not called by users of this package directly, but are called
-# internally by `oauth_module_server()`. These functions are exported
-# nonetheless for advanced use cases. Most users will not need to
-# call these functions directly
+# Advanced example: your code supplies browser redirects and callback handling.
+# For a Shiny app, oauth_module_server() manages these steps for you.
 
-# Below code shows generic usage of `prepare_call()` and `handle_callback()`
-# (code is not run because it would require user interaction)
 if (interactive()) {
   # Define client
   client <- oauth_client(
@@ -75,7 +73,7 @@ if (interactive()) {
     redirect_uri = "http://127.0.0.1:8100"
   )
 
-  # Get authorization URL and and store state in client's state store
+  # Get the login URL and store state in client's state store
   # `<browser_token>` is a token that identifies the browser session
   #  and would typically be stored in a browser cookie
   #  (`oauth_module_server()` handles this typically)
@@ -83,13 +81,11 @@ if (interactive()) {
 
   # Redirect user to authorization URL; retrieve code & state from the query;
   # read also `<browser_token>` from browser cookie
-  # (`oauth_module_server()` handles this typically)
   code <- "..."
   state <- "..."
   browser_token <- "..."
 
   # Handle callback, exchanging code for token and validating state
-  # (`oauth_module_server()` handles this typically)
   token <- handle_callback(client, code, state, browser_token)
 }
 }

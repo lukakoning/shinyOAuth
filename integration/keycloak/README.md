@@ -2,23 +2,12 @@
 
 This folder provides a minimal Keycloak setup to run local integration tests against shinyOAuth.
 
-- Image: `quay.io/keycloak/keycloak:26.6.1`
-- Admin credentials: `admin` / `admin`
-- Realm: `shinyoauth`
-- Test user: `alice` / `alice`
-- Clients:
-  - `shiny-public` (public; PKCE S256; standard authorization-code flow)
-  - `shiny-par-required` (public; PKCE S256; PAR required at authorization endpoint)
-  - `shiny-confidential` (confidential; client secret `secret`; standard code flow; service accounts enabled for client_credentials)
-  - `shiny-csjwt` (confidential; `client_secret_jwt`; service accounts enabled for client_credentials and JWT client-assertion replay coverage)
-  - `shiny-pjwt` (confidential; `private_key_jwt`; service accounts enabled for client_credentials and JWT client-assertion replay coverage)
-  - `shiny-resource-confidential` (confidential; client secret `secret`; authorization-code flow with a fixed access-token audience mapper for `https://api.shinyoauth.test`)
-  - `shiny-userinfo-jwt` (confidential; client secret `secret`; RS256-signed UserInfo responses)
-  - `shiny-mtls-confidential` (confidential; X.509 client auth; certificate-bound authorization-code tokens)
-  - `shiny-mtls-service` (confidential; X.509 client auth; certificate-bound client_credentials tokens)
-  - `shiny-jar-hmac` (confidential; 32-byte client secret; HS256-signed Request Objects for JAR integration coverage)
-  - `shiny-jar-pjwt` (confidential; `private_key_jwt`; RS256-signed Request Objects and `request_uri` support)
-  - `shiny-jar-pjwt-jwe` (confidential; `private_key_jwt`; signed-and-encrypted Request Objects and `request_uri` support)
+Start here if you are contributing to the package and want to test login
+against a real provider. For adding login to your own app, use the
+[getting-started guide](../../vignettes/usage.Rmd).
+
+The runner starts a disposable local Keycloak server, runs the tests, and
+stops it afterward. The preconfigured accounts are for local testing only.
 
 ## Prerequisites
 
@@ -70,6 +59,26 @@ To verify OIDC discovery quickly:
 curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configuration | jq '.issuer, .authorization_endpoint, .token_endpoint'
 ```
 
+## Test accounts and clients
+
+- Image: `quay.io/keycloak/keycloak:26.6.1`
+- Admin credentials: `admin` / `admin`
+- Realm: `shinyoauth`
+- Test user: `alice` / `alice`
+- Clients:
+  - `shiny-public` (public; PKCE S256; standard authorization-code flow)
+  - `shiny-par-required` (public; PKCE S256; PAR required at authorization endpoint)
+  - `shiny-confidential` (confidential; client secret `secret`; standard code flow; service accounts enabled for client_credentials)
+  - `shiny-csjwt` (confidential; `client_secret_jwt`; service accounts enabled for client_credentials and JWT client-assertion replay coverage)
+  - `shiny-pjwt` (confidential; `private_key_jwt`; service accounts enabled for client_credentials and JWT client-assertion replay coverage)
+  - `shiny-resource-confidential` (confidential; client secret `secret`; authorization-code flow with a fixed access-token audience mapper for `https://api.shinyoauth.test`)
+  - `shiny-userinfo-jwt` (confidential; client secret `secret`; RS256-signed UserInfo responses)
+  - `shiny-mtls-confidential` (confidential; X.509 client auth; certificate-bound authorization-code tokens)
+  - `shiny-mtls-service` (confidential; X.509 client auth; certificate-bound client_credentials tokens)
+  - `shiny-jar-hmac` (confidential; 32-byte client secret; HS256-signed Request Objects for JAR integration coverage)
+  - `shiny-jar-pjwt` (confidential; `private_key_jwt`; RS256-signed Request Objects and `request_uri` support)
+  - `shiny-jar-pjwt-jwe` (confidential; `private_key_jwt`; signed-and-encrypted Request Objects and `request_uri` support)
+
 ## Overview of tests
 
 Headless `testServer()` + `perform_login_form*()` tests are protocol
@@ -109,11 +118,11 @@ files listed below.
 - `test_integration_attack_login_csrf_browser_e2e.R` — real browser login-CSRF/account-substitution semantics: the browser flow authenticates the subject who actually logged in at Keycloak, and the app sees that verified subject for its own policy checks.
 - `test_integration_attack_dpop_resource.R` — DPoP protected-resource attack coverage: proof replay, wrong-key proof binding, bearer fallback rejection, and mirrored assertions against both package-backed and independent verification logic.
 
-## Protocol validation tests
+## Protocol test reference
 
 These tests exercise high-priority OAuth2/OIDC protocol behavior against the live Keycloak realm.
 
-| Test file | Protocol surface | Coverage |
+| Test file | Feature | Coverage |
 |-----------|------------------|----------|
 | `test_integration_callback_issuer.R` | RFC 9207 authorization response `iss` | Accepts the real Keycloak callback issuer; rejects missing/mismatched issuer before state or code use across plain, PAR, JAR, JAR+PAR, and mTLS+PAR flows; includes a true multi-issuer mix-up rejection using a disposable second Keycloak realm |
 | `test_integration_error_callback.R` | RFC 6749 authorization error callbacks | Surfaces provider errors only after issuer/state validation; consumes state; rejects replay and unsolicited errors |
@@ -140,9 +149,12 @@ These tests exercise high-priority OAuth2/OIDC protocol behavior against the liv
 | `test_integration_keycloak_jwks_rotation.R` | OIDC JWKS refresh on key rotation | Rotates the disposable Keycloak realm signing key through the admin API; validates refresh-on-new-`kid` and rejects rogue signatures for old/new `kid` values |
 | `test_integration_keycloak_userinfo_jwt.R` | OIDC signed UserInfo JWT | Live RS256 UserInfo JWT from Keycloak is verified, issuer/audience checked, and subject-bound to the validated ID token |
 
-## Attack vector tests
+## Security test reference
 
-These tests simulate real-world OAuth2/OIDC attack vectors against a live Keycloak server to verify the package's security defenses hold end-to-end. Shared helpers live in `helper-keycloak.R`.
+These tests submit altered, reused, or mismatched login requests and check
+how the package and Keycloak respond. Shared helpers live in `helper-keycloak.R`.
+Browser tests exercise actual redirects and cookies; other tests focus on
+protocol handling without a browser.
 
 Test users: `alice` / `alice` and `bob` / `bob` (for cross-user attacks).
 

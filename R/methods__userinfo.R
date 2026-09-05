@@ -8,24 +8,43 @@
 
 ## 1.1 Fetch and parse userinfo ------------------------------------------------
 
-#' Get user info from OAuth 2.0 provider
+#' Fetch a user's profile (UserInfo)
 #'
 #' @description
-#' Fetches user information from the provider's userinfo endpoint using the
-#' supplied access token. Emits an audit event with redacted details. When a
-#' validated ID token baseline is available, or when provider policy requires
-#' one, this helper also enforces OIDC UserInfo subject binding before
-#' returning.
+#' Retrieve profile information using the user's access token. Call this when
+#' fetching a profile on demand, reloading profile fields, or managing tokens
+#' outside the Shiny module. It returns the provider's profile as an R list.
+#' The Shiny module fetches and stores this information during login when
+#' `userinfo_required = TRUE`; that result is available as `auth$token@userinfo`.
+#'
+#' @details
+#' The provider must have a `userinfo_url`: the OpenID Connect (OIDC) UserInfo
+#' endpoint, or an OAuth provider's profile API. With OIDC, this function checks that
+#' userinfo belongs to the same user as a validated ID token when available.
+#' If provider policy requires that comparison, an absent validated ID token
+#' causes an error. Prefer passing the complete [OAuthToken], which carries
+#' the ID token needed for this check.
+#'
+#' Ordinary JSON profiles and signed JWT UserInfo responses are supported.
+#' Signed responses are verified using the provider's signing keys and
+#' `userinfo_allowed_algs`; encrypted UserInfo is not supported. Set
+#' `userinfo_signed_jwt_required` on the provider to require a signed response,
+#' and `userinfo_jwt_required_time_claims` on the client to require time claims
+#' such as `exp`. Present time claims are checked even when not required.
+#'
+#' For certificate-bound tokens (mTLS) and key-bound tokens (DPoP), the helper
+#' uses the client's certificate or signing key and checks the token binding.
+#' It handles one DPoP nonce challenge with a fresh-proof retry. See the
+#' [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html)
+#' for configuration.
 #'
 #' @param oauth_client [OAuthClient] object. The client must have a
 #' `userinfo_url` configured in its [OAuthProvider].
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param token_type Optional override for the access token type when `token`
 #'   is provided as a raw string. Supported values are `Bearer` and `DPoP`.
-#' @param shiny_session Optional pre-captured Shiny session context (from
-#'   `capture_shiny_session_context()`) to include in audit events and span
-#'   attributes. Used when calling from async workers that lack access to the
-#'   reactive domain.
+#' @param shiny_session Optional captured Shiny session details for audit events.
+#'   Normally supplied by the module; leave `NULL` when calling directly.
 #'
 #' @return A list containing the user information returned by the provider.
 #'
