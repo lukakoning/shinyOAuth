@@ -237,7 +237,10 @@ promise resolving to the URL (or <code>NA</code> on failure or an obsolete resul
 use <code><a href="https://rstudio.github.io/promises/reference/then.html" class="external-link">promises::then()</a></code>. PAR URLs carry <code>shinyOAuth.par_request_uri</code>,
 <code>shinyOAuth.par_expires_in</code>, and <code>shinyOAuth.par_expires_at</code> attributes
 to help you decide when to regenerate the link. <code>request_login()</code>
-handles these details for button-based login.</p></li>
+handles these details for button-based login.
+Inside <code><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent()</a></code>, register the promise handler and then return
+<code>invisible(NULL)</code> so Shiny can process the browser acknowledgment. Do not
+return the pending promise from the observer itself.</p></li>
 <li><p><code>auth$has_browser_token()</code>: reports whether the browser token is
 available. Use it before building a custom login URL; it does not report
 whether the user is authenticated.</p></li>

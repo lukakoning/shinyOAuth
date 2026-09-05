@@ -206,7 +206,11 @@ The object also supplies:
   PAR URLs carry `shinyOAuth.par_request_uri`,
   `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at`
   attributes to help you decide when to regenerate the link.
-  `request_login()` handles these details for button-based login.
+  `request_login()` handles these details for button-based login. Inside
+  [`observeEvent()`](https://rdrr.io/pkg/shiny/man/observeEvent.html),
+  register the promise handler and then return `invisible(NULL)` so
+  Shiny can process the browser acknowledgment. Do not return the
+  pending promise from the observer itself.
 
 - `auth$has_browser_token()`: reports whether the browser token is
   available. Use it before building a custom login URL; it does not
