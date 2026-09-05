@@ -1720,6 +1720,48 @@ oauth_module_server <- function(
         "query"
       )
 
+      # Validate raw query size before any parsing (including the
+      # already-authenticated branch that checks for OAuth callback keys).
+      query_size_ok <- tryCatch(
+        {
+          validate_untrusted_query_string(
+            query_string %||% "",
+            max_bytes = limits[["query"]]
+          )
+          TRUE
+        },
+        error = function(e) {
+          clear_oauth_module_callback_query(
+            session,
+            tab_title_replacement,
+            tab_title_cleaning,
+            drop_response = query_jarm_client
+          )
+          .set_error(
+            "invalid_callback_query",
+            e,
+            phase = "callback_query_validation"
+          )
+          try(
+            audit_event(
+              "callback_query_rejected",
+              context = list(
+                provider = client@provider@name %||% NA_character_,
+                issuer = client@provider@issuer %||% NA_character_,
+                client_id_digest = string_digest(client@client_id),
+                error_class = paste(class(e), collapse = ", ")
+              )
+            ),
+            silent = TRUE
+          )
+          FALSE
+        }
+      )
+
+      if (!isTRUE(query_size_ok)) {
+        return(invisible(NULL))
+      }
+
       # Route callback-looking queries before parsing any parameter values or
       # touching sealed/single-use state. Every module observes the same Shiny
       # URL, so this boundary prevents a module for one authorization server
@@ -1747,48 +1789,6 @@ oauth_module_server <- function(
           current_path = current_path,
           current_uri = current_uri
         )
-
-      # Validate raw query size before any parsing (including the
-      # already-authenticated branch that checks for OAuth callback keys).
-      query_size_ok <- tryCatch(
-        {
-          validate_untrusted_query_string(
-            query_string %||% "",
-            max_bytes = limits[["query"]]
-          )
-          TRUE
-        },
-        error = function(e) {
-          clear_oauth_module_callback_query(
-            session,
-            tab_title_replacement,
-            tab_title_cleaning,
-            drop_response = response_is_reserved_for_query_jarm
-          )
-          .set_error(
-            "invalid_callback_query",
-            e,
-            phase = "callback_query_validation"
-          )
-          try(
-            audit_event(
-              "callback_query_rejected",
-              context = list(
-                provider = client@provider@name %||% NA_character_,
-                issuer = client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(client@client_id),
-                error_class = paste(class(e), collapse = ", ")
-              )
-            ),
-            silent = TRUE
-          )
-          FALSE
-        }
-      )
-
-      if (!isTRUE(query_size_ok)) {
-        return(invisible(NULL))
-      }
 
       if (!is.null(values$token)) {
         if (
