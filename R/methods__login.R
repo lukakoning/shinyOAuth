@@ -1841,7 +1841,8 @@ handle_callback_internal <- function(
           requested_scopes = payload[["scopes"]] %||%
             effective_client_scopes(oauth_client),
           phase = "exchange_code",
-          token_response_cnf = token_set[["cnf"]]
+          token_response_cnf = token_set[["cnf"]],
+          expires_in_missing = is.null(token_set[["expires_in"]])
         )
       }
 
@@ -1970,6 +1971,7 @@ resolve_userinfo_subject <- function(oauth_client, userinfo) {
 #' @param requested_scopes Optional scope baseline to enforce when
 #'   `"scope"` is listed in `client@introspect_elements`. Defaults to the
 #'   client's effective scopes.
+#' @param expires_in_missing Whether the token response omitted its lifetime.
 #' @return The updated [OAuthToken], with `cnf` and `token_type` augmented from
 #'   the introspection response when available.
 #' @keywords internal
@@ -1980,7 +1982,8 @@ enforce_token_introspection_policy <- function(
   introspection_result,
   requested_scopes = NULL,
   phase = NULL,
-  token_response_cnf = NULL
+  token_response_cnf = NULL,
+  expires_in_missing = FALSE
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
   S7::check_is_S7(token, class = OAuthToken)
@@ -2023,6 +2026,21 @@ enforce_token_introspection_policy <- function(
   raw <- introspection_result[["raw"]] %||% list()
   if (!is.list(raw)) {
     raw <- list()
+  }
+
+  if ("exp" %in% names(raw)) {
+    exp <- raw[["exp"]]
+    if (!is.numeric(exp) || length(exp) != 1L || !is.finite(exp)) {
+      err_token("Token introspection exp must be a finite numeric timestamp")
+    }
+    if (exp <= as.numeric(Sys.time())) {
+      err_token("Token introspection exp has already elapsed")
+    }
+    token@expires_at <- if (isTRUE(expires_in_missing)) {
+      exp
+    } else {
+      min(token@expires_at, exp, na.rm = TRUE)
+    }
   }
 
   introspect_elements <- oauth_client@introspect_elements %||% character(0)

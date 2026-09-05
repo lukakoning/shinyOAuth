@@ -1076,7 +1076,8 @@ refresh_token <- function(
             introspection_result = intro_res,
             requested_scopes = effective_client_scopes(oauth_client),
             phase = "refresh_token",
-            token_response_cnf = token_set[["cnf"]]
+            token_response_cnf = token_set[["cnf"]],
+            expires_in_missing = is.null(token_set[["expires_in"]])
           )
         }
 
