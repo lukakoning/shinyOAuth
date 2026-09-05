@@ -292,6 +292,17 @@ oauth_provider_oidc_discover <- function(
     pkce_method = dots[["pkce_method"]] %||% NULL
   )
 
+  # UserInfo has independent discovery metadata and must retain the caller's
+  # policy before the ID-token intersection narrows it.
+  userinfo_allowed_algs <- toupper(dots[["userinfo_allowed_algs"]] %||% allowed_algs)
+  userinfo_allowed_algs <- intersect(userinfo_allowed_algs,
+    c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EDDSA"))
+  if (!is.null(disc[["userinfo_signing_alg_values_supported"]])) {
+    userinfo_allowed_algs <- intersect(userinfo_allowed_algs,
+      toupper(unlist(disc[["userinfo_signing_alg_values_supported"]], use.names = FALSE)))
+  }
+  dots[["userinfo_allowed_algs"]] <- userinfo_allowed_algs
+
   # 11) Negotiate allowed ID token algs
   allowed_algs <- .discover_negotiate_algs(allowed_algs, disc, iss)
   par_required <- .discover_parse_optional_boolean(

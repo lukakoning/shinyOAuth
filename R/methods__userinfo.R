@@ -548,10 +548,10 @@ decode_userinfo_jwt <- function(
     ))
   }
 
-  # Use provider's allowed_algs for algorithm enforcement (filtering to
+  # Use provider's UserInfo signing policy for algorithm enforcement (filtering to
   # asymmetric only, since HMAC is not supported for userinfo JWTs)
   asymmetric_algs <- intersect(
-    vapply(prov@allowed_algs, canonicalize_jws_alg, character(1)),
+    vapply(prov@userinfo_allowed_algs %||% prov@allowed_algs, canonicalize_jws_alg, character(1)),
     c(
       "RS256",
       "RS384",
@@ -581,7 +581,7 @@ decode_userinfo_jwt <- function(
         "Allowed algorithms: ",
         paste(asymmetric_algs, collapse = ", ")
       ),
-      "i" = "Adjust the provider's allowed_algs if this algorithm should be permitted"
+      "i" = "Adjust the provider's userinfo_allowed_algs if this algorithm should be permitted"
     ))
   }
 

@@ -37,6 +37,7 @@ oauth_provider(
   jwks_host_issuer_match = NULL,
   jwks_host_allow_only = NULL,
   allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
+  userinfo_allowed_algs = NULL,
   allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30),
   par_url = NA_character_,
@@ -172,9 +173,9 @@ hardening option. When \code{TRUE}:
 \itemize{
 \item If the userinfo response is not \code{application/jwt}, authentication fails.
 \item If the JWT uses \code{alg=none} or an algorithm not in the asymmetric
-subset of \code{allowed_algs} (\verb{RS*}, \verb{ES*}, or \code{EdDSA}), authentication
+subset of \code{userinfo_allowed_algs} (\verb{RS*}, \verb{ES*}, or \code{EdDSA}), authentication
 fails. \verb{HS*} algorithms are not accepted for UserInfo JWTs on this
-surface even if they appear in \code{allowed_algs}.
+surface.
 \item If signature verification fails (JWKS fetch error, no compatible keys,
 or invalid signature), authentication fails.
 }
@@ -292,6 +293,12 @@ which intentionally excludes HS*.
 Only include \verb{HS*} if you are certain the \code{client_secret} is stored strictly
 server-side and is never shipped to, or derivable by, the browser or other
 untrusted environments.}
+
+\item{userinfo_allowed_algs}{Optional signing algorithm allowlist for UserInfo
+JWTs. \code{NULL} inherits \code{allowed_algs} for manually configured providers.
+Discovery negotiates this independently against UserInfo metadata. Use a
+single algorithm to enforce the client's registered UserInfo signing choice.
+An empty vector rejects all signed UserInfo algorithms.}
 
 \item{allowed_token_types}{Character vector of acceptable OAuth token types
 returned by the token endpoint (case-insensitive). Successful token

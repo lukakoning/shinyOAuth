@@ -118,9 +118,9 @@
 #' \itemize{
 #'   \item If the userinfo response is not `application/jwt`, authentication fails.
 #'   \item If the JWT uses `alg=none` or an algorithm not in the asymmetric
-#'     subset of `allowed_algs` (`RS*`, `ES*`, or `EdDSA`), authentication
+#'     subset of `userinfo_allowed_algs` (`RS*`, `ES*`, or `EdDSA`), authentication
 #'     fails. `HS*` algorithms are not accepted for UserInfo JWTs on this
-#'     surface even if they appear in `allowed_algs`.
+#'     surface.
 #'   \item If signature verification fails (JWKS fetch error, no compatible keys,
 #'     or invalid signature), authentication fails.
 #' }
@@ -213,6 +213,11 @@
 #'   and only the hostname part is used for matching. Takes precedence over
 #'   `jwks_host_issuer_match`.
 #'
+#' @param userinfo_allowed_algs Optional signing algorithm allowlist for UserInfo
+#'   JWTs. `NULL` inherits `allowed_algs` for manually configured providers.
+#'   Discovery negotiates this independently against UserInfo metadata. Use a
+#'   single algorithm to enforce the client's registered UserInfo signing choice.
+#'   An empty vector rejects all signed UserInfo algorithms.
 #' @param allowed_algs Optional vector of allowed JWT algorithms for ID tokens.
 #'   Use to restrict acceptable `alg` values on a per-provider basis. Supported
 #'   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
@@ -438,6 +443,10 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = NA_character_
     ),
+    userinfo_allowed_algs = S7::new_property(
+      S7::class_any,
+      default = NULL
+    ),
     allowed_algs = S7::new_property(
       S7::class_character,
       default = c(
@@ -636,6 +645,7 @@ oauth_provider <- function(
     "ES512",
     "EdDSA"
   ),
+  userinfo_allowed_algs = NULL,
   allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30),
   par_url = NA_character_,
@@ -975,6 +985,7 @@ oauth_provider <- function(
     jwks_host_issuer_match = isTRUE(jwks_host_issuer_match),
     jwks_host_allow_only = jwks_host_allow_only,
     allowed_algs = allowed_algs,
+    userinfo_allowed_algs = userinfo_allowed_algs,
     allowed_token_types = allowed_token_types,
     leeway = leeway,
     par_url = par_url,
@@ -1390,6 +1401,22 @@ oauth_provider_validate <- function(self) {
     )
     if (!all(ok)) {
       return("OAuthProvider: jwks_pins must be base64url strings")
+    }
+  }
+
+  if (!is.null(self@userinfo_allowed_algs)) {
+    ua <- self@userinfo_allowed_algs
+    if (
+      !is.character(ua) ||
+        anyNA(ua) ||
+        !all(
+          toupper(ua) %in%
+            c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EDDSA")
+        )
+    ) {
+      return(
+        "OAuthProvider: userinfo_allowed_algs must contain supported asymmetric signing algorithms"
+      )
     }
   }
 
@@ -1982,6 +2009,10 @@ provider_fingerprint <- function(provider) {
     jwks_pin_mode = provider@jwks_pin_mode,
     jwks_host_issuer_match = isTRUE(provider@jwks_host_issuer_match),
     jwks_host_allow_only = provider@jwks_host_allow_only,
+    userinfo_allowed_algs = state_policy_string_set(
+      provider_prop("userinfo_allowed_algs", NULL) %||% provider@allowed_algs,
+      transform = toupper
+    ),
     allowed_algs = state_policy_string_set(
       provider@allowed_algs,
       transform = toupper
