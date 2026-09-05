@@ -94,10 +94,10 @@ certificate identifier field to emit. One of <code>"subject_dn"</code>, <code>"s
 <dt id="arg-tls-client-auth-value">tls_client_auth_value<a class="anchor" aria-label="anchor" href="#arg-tls-client-auth-value"></a></dt>
 <dd><p>Optional explicit value for the selected
 <code>tls_client_auth_type</code>. When omitted, shinyOAuth derives the subject DN
-or, when possible, a unique matching SAN value from the configured client
-certificate. Auto-derived IP SAN values are normalized to dotted-decimal
-IPv4 or RFC 5952 IPv6 text. If the certificate exposes no unambiguous SAN
-for the chosen type, pass the exact registration value explicitly.</p></dd>
+from the configured client certificate. SAN registration requires an
+explicit value because the current certificate extractor does not preserve
+ASN.1 SAN types. Select the type and exact value from the certificate;
+a numeric-looking DNS name is still a DNS SAN, not an IP SAN.</p></dd>
 
 
 <dt id="arg-jwks-uri">jwks_uri<a class="anchor" aria-label="anchor" href="#arg-jwks-uri"></a></dt>

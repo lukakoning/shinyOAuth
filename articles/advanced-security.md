@@ -106,8 +106,12 @@ accepting a token. The provider must support the selected use of mTLS.
 ``` r
 provider <- oauth_provider(
   name = "example-mtls",
+  # Exact OIDC issuer; enables nonce and ID-token validation
+  issuer = "https://id.example.com",
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
+  jwks_uri = "https://id.example.com/jwks",
+  userinfo_url = "https://id.example.com/userinfo",
   # Use RFC 8705 client-certificate auth at the token endpoint
   token_auth_style = "tls_client_auth",
   # Use mTLS-specific endpoints when the provider publishes them
@@ -118,7 +122,9 @@ provider <- oauth_provider(
   # Expect certificate-bound access tokens from the provider
   mtls_client_certificate_bound_access_tokens = TRUE
 )
+```
 
+``` r
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",

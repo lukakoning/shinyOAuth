@@ -199,11 +199,9 @@ The object also supplies:
 
 - `auth$build_auth_url()`: advanced helper for a custom login link.
   Creates pending login state as well as the URL, so retain the result
-  for the link instead of rebuilding it on every UI update. Requires
-  `auth$has_browser_token()` to be true. Returns a URL, or `NA` if
-  already authenticated. With async PAR or Request Objects, returns a
-  promise resolving to the URL (or `NA` on failure or an obsolete
-  result); use
+  for the link instead of rebuilding it on every UI update. Refreshes
+  and reads the browser cookie before creating state. Returns a promise
+  resolving to the URL (or `NA` on failure or an obsolete result); use
   [`promises::then()`](https://rstudio.github.io/promises/reference/then.html).
   PAR URLs carry `shinyOAuth.par_request_uri`,
   `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at`
