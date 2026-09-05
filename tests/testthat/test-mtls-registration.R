@@ -118,6 +118,7 @@ test_that("oauth_client_mtls_registration supports public certificate-bound clie
 
 test_that("SAN helpers classify unique certificate alt names", {
   cert_info <- list(
+    alt_names_typed = TRUE,
     alt_names = c(
       "DNS:client.example.com",
       "URI:spiffe://example/client",
@@ -145,7 +146,10 @@ test_that("SAN helpers classify unique certificate alt names", {
 
   expect_error(
     shinyOAuth:::resolve_certificate_alt_name_value(
-      list(alt_names = c("DNS:a.example.com", "DNS:b.example.com")),
+      list(
+        alt_names_typed = TRUE,
+        alt_names = c("DNS:a.example.com", "DNS:b.example.com")
+      ),
       "san_dns"
     ),
     regexp = "multiple candidate values"
@@ -165,7 +169,10 @@ test_that("SAN helpers normalize IP literals for registration metadata", {
   )
   expect_identical(
     shinyOAuth:::resolve_certificate_alt_name_value(
-      list(alt_names = c("IP Address:2001:0DB8:0000:0000:0001:0000:0000:0001")),
+      list(
+        alt_names_typed = TRUE,
+        alt_names = c("IP Address:2001:0DB8:0000:0000:0001:0000:0000:0001")
+      ),
       "san_ip"
     ),
     "2001:db8::1:0:0:1"
@@ -248,8 +255,35 @@ test_that("self-signed registration retains and orders the configured chain", {
   writeLines(c(readLines(issuer), readLines(leaf), readLines(issuer)), bundle)
   client@mtls_client_cert_file <- bundle
   metadata <- oauth_client_mtls_registration(client)
-  expected <- vapply(c(leaf, issuer), function(path) {
-    as.character(openssl::base64_encode(openssl::write_der(openssl::read_cert(path))))
-  }, character(1), USE.NAMES = FALSE)
+  expected <- vapply(
+    c(leaf, issuer),
+    function(path) {
+      as.character(openssl::base64_encode(openssl::write_der(openssl::read_cert(
+        path
+      ))))
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
   expect_identical(as.vector(metadata$jwks$keys[[1]]$x5c), expected)
+})
+
+test_that("real certificates cannot have their SAN type inferred from text", {
+  for (fixture in c("numeric-dns-cert.pem", "typed-san-cert.pem")) {
+    client <- make_mtls_registration_client("tls_client_auth")
+    client@mtls_client_cert_file <- mtls_pem_fixture(fixture)
+    for (type in c("san_dns", "san_ip", "san_uri", "san_email")) {
+      expect_error(
+        oauth_client_mtls_registration(client, tls_client_auth_type = type),
+        "SAN types are unavailable"
+      )
+    }
+    metadata <- oauth_client_mtls_registration(
+      client,
+      tls_client_auth_type = "san_dns",
+      tls_client_auth_value = "192.0.2.10"
+    )
+    expect_identical(metadata$tls_client_auth_san_dns, "192.0.2.10")
+    expect_null(metadata$tls_client_auth_san_ip)
+  }
 })

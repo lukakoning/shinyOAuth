@@ -37,10 +37,10 @@
 #'   `"san_uri"`, `"san_ip"`, or `"san_email"`.
 #' @param tls_client_auth_value Optional explicit value for the selected
 #'   `tls_client_auth_type`. When omitted, shinyOAuth derives the subject DN
-#'   or, when possible, a unique matching SAN value from the configured client
-#'   certificate. Auto-derived IP SAN values are normalized to dotted-decimal
-#'   IPv4 or RFC 5952 IPv6 text. If the certificate exposes no unambiguous SAN
-#'   for the chosen type, pass the exact registration value explicitly.
+#'   from the configured client certificate. SAN registration requires an
+#'   explicit value because the current certificate extractor does not preserve
+#'   ASN.1 SAN types. Select the type and exact value from the certificate;
+#'   a numeric-looking DNS name is still a DNS SAN, not an IP SAN.
 #' @param jwks_uri Optional absolute URL of a JWKS document to publish for
 #'   `self_signed_tls_client_auth`. When omitted, the helper returns an inline
 #'   `jwks` object with the configured client certificate chain in `x5c`.
@@ -284,6 +284,9 @@ read_mtls_registration_certificate_info <- function(oauth_client) {
     )
   }
 
+  # openssl::as.list(cert)$alt_names contains untyped strings. Even strings
+  # resembling "DNS:" or IP literals do not prove a GeneralName tag.
+  info[["alt_names_typed"]] <- FALSE
   info
 }
 
@@ -303,6 +306,12 @@ resolve_certificate_alt_name_value <- function(
   cert_info,
   tls_client_auth_type
 ) {
+  if (!isTRUE(cert_info[["alt_names_typed"]])) {
+    err_input(paste(
+      "Certificate SAN types are unavailable from the certificate extractor;",
+      "pass tls_client_auth_value explicitly for the selected SAN type."
+    ))
+  }
   alt_names <- cert_info[["alt_names"]] %||% character(0)
   parsed <- Filter(
     Negate(is.null),
@@ -383,20 +392,6 @@ parse_certificate_alt_name <- function(alt_name) {
         )
       ))
     }
-  }
-
-  ip_value <- try(normalize_mtls_registration_ip_literal(value), silent = TRUE)
-  if (!inherits(ip_value, "try-error")) {
-    return(list(type = "san_ip", value = ip_value))
-  }
-  if (grepl("^[A-Za-z][A-Za-z0-9+.-]*:[^[:space:]]+$", value, perl = TRUE)) {
-    return(list(type = "san_uri", value = value))
-  }
-  if (grepl("^[^@[:space:]]+@[^@[:space:]]+$", value, perl = TRUE)) {
-    return(list(type = "san_email", value = value))
-  }
-  if (grepl("^[A-Za-z0-9*.-]+$", value, perl = TRUE)) {
-    return(list(type = "san_dns", value = value))
   }
 
   NULL
@@ -777,17 +772,25 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
   )
   # Renewed certificates can share a public key; deduplicate by certificate DER.
   candidates <- c(list(leaf_cert), certs)
-  identities <- vapply(candidates, function(cert) {
-    as.character(openssl::base64_encode(openssl::write_der(cert)))
-  }, character(1))
+  identities <- vapply(
+    candidates,
+    function(cert) {
+      as.character(openssl::base64_encode(openssl::write_der(cert)))
+    },
+    character(1)
+  )
   candidates <- candidates[!duplicated(identities)]
   ordered_certs <- candidates[1L]
   remaining <- candidates[-1L]
   while (length(remaining)) {
     issuer <- as.list(ordered_certs[[length(ordered_certs)]])[["issuer"]]
-    matches <- which(vapply(remaining, function(cert) {
-      identical(as.list(cert)[["subject"]], issuer)
-    }, logical(1)))
+    matches <- which(vapply(
+      remaining,
+      function(cert) {
+        identical(as.list(cert)[["subject"]], issuer)
+      },
+      logical(1)
+    ))
     if (!length(matches)) {
       err_config("Configured mTLS certificate bundle is not an issuer chain")
     }
