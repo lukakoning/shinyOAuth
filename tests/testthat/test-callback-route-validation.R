@@ -215,3 +215,31 @@ test_that("distinct redirect routes stop a public-client provider mix-up", {
     )))
   })
 })
+test_that("synchronous multi-redirect callbacks complete only on their own route", {
+  routes <- c("https://app.example/one", "https://app.example/two")
+  client <- make_mixup_route_client("one", "https://as.example", routes[1],
+    "client", "multi_redirect_uri", routes)
+  browser <- valid_browser_token()
+  state <- parse_query_param(prepare_call(client, browser), "state", decode = TRUE)
+  calls <- 0L
+  local_mocked_bindings(swap_code_for_token_set = function(...) {
+    calls <<- calls + 1L
+    list(access_token = "synthetic", token_type = "Bearer", expires_in = 3600)
+  }, .package = "shinyOAuth")
+  server <- function(input, output, session) {
+    auth <- oauth_module_server("auth", client, async = FALSE, auto_redirect = FALSE,
+      indefinite_session = TRUE)
+  }
+  shiny::testServer(server, {
+    session$setInputs(`auth-shinyOAuth_sid` = browser)
+    query <- paste0("?code=ok&state=", utils::URLencode(state, reserved = TRUE))
+    auth$.process_query(query, current_uri = routes[2])
+    expect_identical(calls, 0L)
+    expect_false(auth$authenticated)
+    auth$.process_query(query, current_uri = routes[1])
+    session$flushReact()
+    expect_identical(calls, 1L)
+    expect_null(auth$error_description)
+    expect_true(auth$authenticated)
+  })
+})

@@ -3506,6 +3506,7 @@ oauth_module_server <- function(
               } else {
                 if (
                   isTRUE(callback_validated) ||
+                    identical(client@authorization_server_mode, "multi_redirect_uri") ||
                     !is.null(decrypted_payload) ||
                     !is.null(state_store_values)
                 ) {
