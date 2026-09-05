@@ -163,9 +163,13 @@ test_that("oauth_provider_spotify returns valid OAuthProvider with expected defa
   expect_false(p@id_token_required)
   expect_false(p@id_token_validation)
 
-  # userinfo_id_selector should extract $id
-  fake_ui <- list(id = "spotify-user-123", display_name = "DJ Test")
-  expect_identical(p@userinfo_id_selector(fake_ui), "spotify-user-123")
+  fake_ui <- list(account_id = "stable-account", id = "mutable-id")
+  expect_identical(p@userinfo_id_selector(fake_ui), "stable-account")
+  expect_true(is.na(p@userinfo_id_selector(list(id = "old-id"))))
+  legacy <- oauth_provider_spotify(allow_legacy_id = TRUE)
+  expect_identical(legacy@userinfo_id_selector(fake_ui), "stable-account")
+  expect_identical(legacy@userinfo_id_selector(list(id = "old-id")), "old-id")
+  expect_true(is.na(legacy@userinfo_id_selector(list(account_id = "", id = "old"))))
 })
 
 test_that("oauth_provider_microsoft with common tenant has correct defaults", {

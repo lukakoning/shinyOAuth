@@ -294,9 +294,17 @@ oauth_provider_microsoft <- function(
 #' and does not expect an ID token.
 #'
 #' @param name Optional provider name (default "spotify")
+#' @param allow_legacy_id Whether to fall back to Spotify's mutable `id` when
+#'   `account_id` is absent. Default `FALSE`; enable only during migration.
 #' @details
 #' Spotify requires scopes to be included in the authorization request.
 #' Set requested scopes on the client with `oauth_client(..., scopes = ...)`.
+#' Identity uses Spotify's immutable `account_id`. Existing installations must
+#' migrate stored account mappings and audit digests from `id` before upgrading.
+#' Link the old and new identifiers only from a successfully authenticated
+#' profile; do not use display names or email to merge accounts. To temporarily
+#' preserve old mappings, explicitly replace `provider@userinfo_id_selector`
+#' with `function(userinfo) userinfo[["id"]]` while completing the migration.
 #'
 #' @return [OAuthProvider] object for use with a Spotify OAuth 2.0 app
 #'
@@ -308,8 +316,13 @@ oauth_provider_microsoft <- function(
 #'
 #' @export
 oauth_provider_spotify <- function(
-  name = "spotify"
+  name = "spotify",
+  allow_legacy_id = FALSE
 ) {
+  if (!is.logical(allow_legacy_id) || length(allow_legacy_id) != 1L ||
+      is.na(allow_legacy_id)) {
+    err_input("allow_legacy_id must be a single non-NA logical")
+  }
   oauth_provider(
     name = name,
 
@@ -329,7 +342,11 @@ oauth_provider_spotify <- function(
     token_auth_style = "header",
 
     userinfo_id_selector = function(userinfo) {
-      as.character(userinfo[["id"]])
+      account_id <- userinfo[["account_id"]]
+      if (is_valid_string(account_id)) return(account_id)
+      if (isTRUE(allow_legacy_id) && is.null(account_id) &&
+          is_valid_string(userinfo[["id"]])) return(userinfo[["id"]])
+      NA_character_
     },
     userinfo_required = TRUE,
     userinfo_id_token_match = FALSE,

@@ -71,7 +71,6 @@ client <- oauth_client(
   client_secret = Sys.getenv("SPOTIFY_OAUTH_CLIENT_SECRET"),
   redirect_uri = "http://127.0.0.1:8100",
   scopes = c(
-    "user-read-email",
     "user-read-private",
     "user-top-read",
     "user-read-recently-played",
@@ -547,7 +546,7 @@ ui <- bslib::page_fluid(
             div(
               class = "mt-3 small",
               tags$strong("Scopes:"),
-              " user-top-read • user-read-recently-played • user-read-email • user-read-private"
+              " user-top-read • user-read-recently-played • user-read-private"
             )
           )
         )
@@ -653,22 +652,6 @@ server <- function(input, output, session) {
       )
     }
 
-    plan_badge <- NULL
-    if (!is.null(user_info$product)) {
-      plan_badge <- span(
-        class = "badge badge-plan",
-        paste("Plan:", user_info$product)
-      )
-    }
-
-    country_badge <- NULL
-    if (!is.null(user_info$country)) {
-      country_badge <- span(
-        class = "badge bg-dark border border-success",
-        paste("Country:", user_info$country)
-      )
-    }
-
     spotify_link <- NULL
     if (
       !is.null(user_info$external_urls) &&
@@ -696,10 +679,7 @@ server <- function(input, output, session) {
         class = "d-flex align-items-center gap-3 flex-wrap",
         avatar,
         div(
-          h4(class = "mb-1", display_name, spotify_link),
-          if (!is.null(user_info$email)) {
-            span(class = "text-muted", user_info$email)
-          }
+          h4(class = "mb-1", display_name, spotify_link)
         ),
         div(
           class = "ms-auto",
@@ -713,9 +693,7 @@ server <- function(input, output, session) {
       hr(class = "border-success-subtle"),
       div(
         class = "d-flex flex-wrap gap-2",
-        followers_badge,
-        plan_badge,
-        country_badge
+        followers_badge
       )
     )
   })
