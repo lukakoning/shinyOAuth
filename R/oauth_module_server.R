@@ -916,10 +916,13 @@ oauth_module_server <- function(
     shiny::observeEvent(
       input$shinyOAuth_cookie_error,
       {
-        reason <- tryCatch(
-          as.character(input$shinyOAuth_cookie_error)[1],
-          error = function(...) "unknown"
-        )
+        reason <- input$shinyOAuth_cookie_error
+        if (!is.character(reason) || length(reason) != 1L ||
+            is.na(reason) || !reason %in% c(
+              "webcrypto_unavailable", "samesite_none_requires_https"
+            )) {
+          reason <- "unknown"
+        }
 
         # Surface a stable machine code and a concise description (do not show
         # description directly to end users; app authors can decide how to render).
