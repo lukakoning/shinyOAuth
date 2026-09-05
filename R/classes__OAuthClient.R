@@ -793,7 +793,8 @@ oauth_client <- function(
   }
   response_mode <- response_mode_info[["mode"]] %||%
     NA_character_
-  jarm_response_mode <- response_mode %in% c("query.jwt", "form_post.jwt")
+  jarm_response_mode <- response_mode_info[["effective_mode"]] %in%
+    c("query.jwt", "form_post.jwt")
 
   auto_enforce_callback_issuer <-
     missing(enforce_callback_issuer) || is.null(enforce_callback_issuer)
@@ -1184,7 +1185,8 @@ oauth_client_validate <- function(self) {
     context = "OAuthClient"
   )
   response_mode <- response_mode_info[["mode"]] %||% "query"
-  jarm_response_mode <- response_mode %in% c("query.jwt", "form_post.jwt")
+  jarm_response_mode <- response_mode_info[["effective_mode"]] %in%
+    c("query.jwt", "form_post.jwt")
   if (identical(self@authorization_server_mode, "multi_issuer")) {
     if (!is_valid_string(self@provider@issuer %||% NA_character_)) {
       return(
