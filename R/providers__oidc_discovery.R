@@ -1117,72 +1117,12 @@ oauth_provider_oidc_discover <- function(
     return(invisible(TRUE))
   }
 
-  jwks_host <- parse_url_host(jwks_uri, "jwks_uri")
-
-  if (is_valid_string(jwks_host_allow_only)) {
-    pinned_host <- tolower(trimws(jwks_host_allow_only))
-    if (grepl("://", pinned_host, fixed = TRUE)) {
-      normalized_host <- try(
-        parse_url_host(pinned_host, label = "jwks_host_allow_only"),
-        silent = TRUE
-      )
-      if (!inherits(normalized_host, "try-error")) {
-        pinned_host <- normalized_host
-      }
-    }
-    pinned_host <- sub("\\.$", "", pinned_host)
-
-    if (!identical(jwks_host, pinned_host)) {
-      err_config(
-        c(
-          "x" = "jwks_uri host must equal configured jwks_host_allow_only",
-          "!" = sprintf("Got '%s' but expected '%s'", jwks_host, pinned_host),
-          "i" = "Set `jwks_host_allow_only` to the exact host, or clear it to use issuer-based checks"
-        ),
-        context = list(
-          issuer = iss,
-          jwks_uri = jwks_uri,
-          issuer_host = iss_host,
-          jwks_host = jwks_host,
-          jwks_host_allow_only = pinned_host
-        )
-      )
-    }
-
-    return(invisible(TRUE))
-  }
-
-  opt_allowed <- getOption("shinyOAuth.allowed_hosts", default = NULL)
-  jwks_ok <- if (!is.null(opt_allowed) && length(opt_allowed) > 0) {
-    is_ok_host(paste0("https://", jwks_host, "/"), allowed_hosts = opt_allowed)
-  } else if (isTRUE(jwks_host_issuer_match)) {
-    identical(jwks_host, iss_host)
-  } else {
-    TRUE
-  }
-
-  if (!jwks_ok) {
-    err_config(
-      c(
-        "x" = "JWKS host must match issuer host exactly (or allowed host)",
-        "i" = paste0("Issuer host: ", iss_host),
-        "i" = paste0("JWKS host: ", jwks_host),
-        "i" = paste0(
-          "Allowed hosts: ",
-          paste(allowed_hosts_vec, collapse = ", ")
-        )
-      ),
-      context = list(
-        issuer = iss,
-        jwks_uri = jwks_uri,
-        issuer_host = iss_host,
-        jwks_host = jwks_host,
-        allowed_hosts = opt_allowed
-      )
-    )
-  }
-
-  invisible(TRUE)
+  validate_jwks_host_matches_issuer(
+    issuer = iss,
+    jwks_uri = jwks_uri,
+    check_host = jwks_host_issuer_match,
+    pinned_host = jwks_host_allow_only
+  )
 }
 
 #' Internal: infer token auth style from discovery

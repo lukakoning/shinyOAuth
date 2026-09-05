@@ -783,6 +783,8 @@ jwks_cache_key <- function(
 #' @param issuer Issuer URL.
 #' @param jwks_uri JWKS URI to validate.
 #' @param provider Optional provider object carrying JWKS host policy.
+#' @param check_host Require issuer-host equality when no pin is set.
+#' @param pinned_host Optional exact JWKS host for pre-construction discovery.
 #' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
 #'   configuration error.
 #' @keywords internal
@@ -790,14 +792,14 @@ jwks_cache_key <- function(
 validate_jwks_host_matches_issuer <- function(
   issuer,
   jwks_uri,
-  provider = NULL
+  provider = NULL,
+  check_host = FALSE,
+  pinned_host = NA_character_
 ) {
   issuer_host <- parse_url_host(issuer, "issuer")
   jwks_host <- parse_url_host(jwks_uri, "jwks_uri")
 
   # Default relaxed behavior unless provider opts in
-  check_host <- FALSE
-  pinned_host <- NA_character_
   if (!is.null(provider)) {
     # Best-effort access without hard S7 dependency here
     check_host <- isTRUE(try(provider@jwks_host_issuer_match, silent = TRUE))
