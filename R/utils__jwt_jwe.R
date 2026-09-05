@@ -640,6 +640,21 @@ resolve_authorization_request_encryption_public_key <- function(
   )
 
   if (length(candidates) == 0L) {
+    refreshed <- force_refresh_provider_jwks(
+      issuer = issuer,
+      jwks_cache = client@provider@jwks_cache,
+      pins = client@provider@jwks_pins,
+      pin_mode = client@provider@jwks_pin_mode,
+      provider = client@provider
+    )
+    if (!is.null(refreshed)) {
+      candidates <- select_candidate_jwks_for_encryption(
+        refreshed, alg = alg, kid = kid, pins = client@provider@jwks_pins
+      )
+    }
+  }
+
+  if (length(candidates) == 0L) {
     err_config(
       paste(
         "No provider Request Object encryption key matched the requested",
