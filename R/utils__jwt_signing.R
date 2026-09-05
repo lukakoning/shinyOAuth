@@ -8,6 +8,34 @@
 
 ## 1.1 Client assertions -------------------------------------------------------
 
+# jose's StringOrURI validator only accepts HTTP-style URLs containing a colon.
+# Validate URI schemes without rewriting identifiers, while retaining jose's
+# NumericDate validation and claim representation for the signing functions.
+outbound_jwt_claim <- function(claims) {
+  identifiers <- intersect(c("iss", "sub", "aud"), names(claims))
+  for (field in identifiers) {
+    value <- claims[[field]]
+    if (!is.character(value) || !length(value) || anyNA(value)) {
+      err_config(paste0("Invalid StringOrURI claim: ", field))
+    }
+    uri <- value[grepl(":", value, fixed = TRUE)]
+    if (
+      !all(grepl("^[A-Za-z][A-Za-z0-9+.-]*:[^[:space:]]+$", uri)) ||
+        any(grepl('[<>"{}|\\\\^`]|%(?![0-9A-Fa-f]{2})', uri, perl = TRUE))
+    ) {
+      err_config(paste0("Invalid URI claim: ", field))
+    }
+  }
+  result <- do.call(
+    jose::jwt_claim,
+    claims[setdiff(names(claims), identifiers)]
+  )
+  for (field in identifiers) {
+    result[[field]] <- claims[[field]]
+  }
+  result
+}
+
 #' Build and sign OAuth client assertion (RFC 7523)
 #'
 #' Constructs a JWT with claims suitable for `client_secret_jwt` or
@@ -116,7 +144,7 @@ build_client_assertion <- function(client, aud) {
       )
     }
     # Build a proper jwt_claim from named list via do.call
-    clm <- do.call(jose::jwt_claim, claims)
+    clm <- outbound_jwt_claim(claims)
     # jose will set alg based on size, but we also pass header to include typ
     jwt <- jose::jwt_encode_hmac(
       clm,
@@ -129,7 +157,7 @@ build_client_assertion <- function(client, aud) {
 
   if (identical(style, "private_key_jwt")) {
     key <- normalize_private_key_input(client@client_assertion_private_key)
-    clm <- do.call(jose::jwt_claim, claims)
+    clm <- outbound_jwt_claim(claims)
     # Hard-fail impossible alg/key pairs before signing. jose::jwt_encode_sig()
     # can otherwise emit mismatched JOSE alg headers instead of rejecting them.
     if (!private_key_can_sign_jws_alg(key, alg, typ = "JWT")) {
@@ -641,7 +669,7 @@ build_authorization_request_object <- function(client, params) {
     }
   }
 
-  clm <- do.call(jose::jwt_claim, claims)
+  clm <- outbound_jwt_claim(claims)
 
   signed_request_object <- if (alg %in% c("HS256", "HS384", "HS512")) {
     size <- min_hmac_key_bytes(alg) * 8L
