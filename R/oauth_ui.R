@@ -24,9 +24,8 @@
 #' from sharing the current page's URL when it requests scripts, images, or
 #' other resources. After login, that URL can contain an authorization code
 #' and state value. Setting the policy in the response header protects these
-#' values before any page resources load. The meta tag from `use_shinyOAuth()`
-#' takes effect later because Shiny places dependency scripts before UI head
-#' tags. You can also configure the same header at your web server.
+#' values before any page resources load. You can also configure the same
+#' header at your web server.
 #'
 #' Existing UI functions are supported too, including functions that accept
 #' the Shiny request as their argument.

@@ -668,9 +668,8 @@ share that URL when requesting images, scripts, and other page resources.
 HTTP response, before any page resources load. `oauth_form_post_ui()` includes
 the same protection.
 
-The meta tag added by `use_shinyOAuth()` takes effect after Shiny's dependency
-scripts, so it cannot protect those initial requests. If you manage your own
-web server, setting the same HTTP header there also provides this protection.
+If you manage your own web server, setting the same HTTP header there also
+provides this protection.
 
 ## Security checklist
 
