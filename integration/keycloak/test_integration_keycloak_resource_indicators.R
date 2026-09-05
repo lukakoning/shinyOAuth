@@ -97,8 +97,13 @@ access_token_audience <- function(token) {
 
 start_resource_audience_server <- function(
   expected_audience,
+  issuer,
+  jwks,
   .local_envir = parent.frame()
 ) {
+  force(issuer)
+  force(jwks)
+  verify_access_token <- verify_signed_access_token
   send_problem <- function(res, status, error_code) {
     res$set_status(status)
     res$set_type("application/json")
@@ -118,22 +123,17 @@ start_resource_audience_server <- function(
     }
 
     access_token <- sub("^[Bb]earer\\s+", "", auth, perl = TRUE)
-    aud <- try(
-      normalize_resource_audience(
-        shinyOAuth:::parse_jwt_payload(access_token)$aud %||% NULL
-      ),
-      silent = TRUE
-    )
-    if (inherits(aud, "try-error")) {
-      send_problem(res, 401L, "token_parse_failed")
+    payload <- try(verify_access_token(access_token, issuer, jwks), silent = TRUE)
+    if (inherits(payload, "try-error")) {
+      send_problem(res, 401L, "invalid_access_token")
       return()
     }
+    aud <- normalize_resource_audience(payload[["aud"]] %||% NULL)
     if (!(expected_audience %in% aud)) {
       send_problem(res, 401L, "missing_or_wrong_audience")
       return()
     }
 
-    payload <- shinyOAuth:::parse_jwt_payload(access_token)
     res$set_type("application/json")
     res$send(jsonlite::toJSON(
       list(
@@ -216,7 +216,7 @@ testthat::test_that("Keycloak code flow accepts RFC 8707 resource indicators", {
   )
 })
 
-testthat::test_that("audience-mapped Keycloak resource token is usable at an audience-checking resource", {
+testthat::test_that("audience-mapped Keycloak token is usable at an authenticated resource", {
   skip_common()
   local_test_options()
   testthat::skip_if_not_installed("webfakes")
@@ -251,7 +251,8 @@ testthat::test_that("audience-mapped Keycloak resource token is usable at an aud
   testthat::expect_true(resource %in% aud)
   testthat::expect_true(resource %in% intros_aud)
 
-  protected <- start_resource_audience_server(resource)
+  jwks <- shinyOAuth:::fetch_jwks(prov@issuer, prov@jwks_cache, provider = prov)
+  protected <- start_resource_audience_server(resource, prov@issuer, jwks)
   on.exit(try(protected$server$stop(), silent = TRUE), add = TRUE)
 
   ok_resp <- perform_resource_audience_request(
@@ -271,4 +272,31 @@ testthat::test_that("audience-mapped Keycloak resource token is usable at an aud
   bad_body <- httr2::resp_body_json(bad_resp, simplifyVector = TRUE)
   testthat::expect_identical(httr2::resp_status(bad_resp), 401L)
   testthat::expect_identical(bad_body$error, "missing_or_wrong_audience")
+})
+
+testthat::test_that("audience resource rejects corrupted expired and wrong-issuer tokens", {
+  testthat::skip_if_not_installed("webfakes")
+  key <- openssl::rsa_keygen(2048)
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey))
+  jwk$kid <- "resource-negative-control"
+  issuer <- "https://synthetic-issuer.example"
+  audience <- "https://synthetic-resource.example"
+  protected <- start_resource_audience_server(audience, issuer, list(keys = list(jwk)))
+  sign <- function(iss = issuer, exp = as.numeric(Sys.time()) + 300) {
+    jose::jwt_encode_sig(jose::jwt_claim(iss = iss, aud = audience, sub = "user", exp = exp),
+      key, header = list(alg = "RS256", kid = jwk$kid))
+  }
+  valid <- sign()
+  testthat::expect_identical(httr2::resp_status(
+    perform_resource_audience_request(protected$url, valid)), 200L)
+  parts <- strsplit(valid, ".", fixed = TRUE)[[1]]
+  sig <- shinyOAuth:::base64url_decode_raw(parts[[3]])
+  sig[[1]] <- as.raw(bitwXor(as.integer(sig[[1]]), 1L))
+  parts[[3]] <- shinyOAuth:::base64url_encode(sig)
+  for (invalid in c(paste(parts, collapse = "."), sign(exp = as.numeric(Sys.time()) - 60),
+      sign(iss = "https://wrong-issuer.example"))) {
+    response <- perform_resource_audience_request(protected$url, invalid)
+    testthat::expect_identical(httr2::resp_status(response), 401L)
+    testthat::expect_identical(httr2::resp_body_json(response)$error, "invalid_access_token")
+  }
 })
