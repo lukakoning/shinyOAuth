@@ -273,6 +273,26 @@ where available.
 still runs in the same R process, so it does not move network work off
 the main R thread.
 
+With `async = TRUE`, the module also dispatches PAR, Request Object
+preparation (including encryption-key retrieval), and query JARM
+signature/JWKS work. Browser binding, state-store operations, and Shiny
+Request Object publication remain on the main process. Discovery before
+module creation, standalone
+[`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md),
+and JARM validation at the
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+HTTP boundary remain synchronous; use bounded network and storage
+timeouts for these paths.
+
+`request_login()` handles asynchronous authorization preparation
+automatically. For manual links, `build_auth_url()` returns a promise
+when async mode is enabled and PAR or Request Objects are configured;
+use
+[`promises::then()`](https://rstudio.github.io/promises/reference/then.html)
+to receive the URL. Parameter-only authorization still returns a string
+immediately. Late results after logout, session closure, or a newer
+login are discarded.
+
 If you need to keep `async = FALSE`, you may consider reducing retry
 behaviour to limit blocking during provider incidents. See the global
 options section for timeout and retry settings.
@@ -731,11 +751,20 @@ testing/debugging only.
 binds the browser and server session with a short‑lived cookie that must
 be readable from client‑side JavaScript to bridge values into Shiny.
 
-The cookie ensures that the same browser which initiated login is the
-one receiving the callback. This specifically prevents an attack where
-an attacker tricks a user into clicking a link which initiates login for
-the attacker’s account, confusing the user into logging in as the
-attacker (login confusion).
+The cookie binds the callback to the client browser that initiated its
+login transaction. It rejects callbacks from independently initiated
+transactions whose browser binding does not match.
+
+This binding does not prove which browser or person authenticated at the
+provider. Someone who captures a victim’s complete authorization request
+may complete that same transaction using another account and deliver its
+callback to the initiating browser. The browser cookie can still match
+in that case. Protect authorization URLs from disclosure. When your
+application already knows which account should authenticate, enforce an
+expected issuer and subject (or an explicit account selection policy)
+after OIDC validation and before granting application access. The
+login-CSRF browser integration test demonstrates this boundary and
+retains the application’s rejection of an unexpected subject.
 
 The cookie is set with the `HttpOnly` flag disabled so that it can be
 read by JavaScript. This is necessary to bridge the cookie value into

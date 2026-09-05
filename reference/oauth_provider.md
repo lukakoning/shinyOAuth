@@ -41,6 +41,7 @@ userinfo[["sub"]]
   jwks_host_issuer_match = NULL,
   jwks_host_allow_only = NULL,
   allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
+  userinfo_allowed_algs = NULL,
   allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30),
   par_url = NA_character_,
@@ -218,9 +219,9 @@ userinfo[["sub"]]
     fails.
 
   - If the JWT uses `alg=none` or an algorithm not in the asymmetric
-    subset of `allowed_algs` (`RS*`, `ES*`, or `EdDSA`), authentication
-    fails. `HS*` algorithms are not accepted for UserInfo JWTs on this
-    surface even if they appear in `allowed_algs`.
+    subset of `userinfo_allowed_algs` (`RS*`, `ES*`, or `EdDSA`),
+    authentication fails. `HS*` algorithms are not accepted for UserInfo
+    JWTs on this surface.
 
   - If signature verification fails (JWKS fetch error, no compatible
     keys, or invalid signature), authentication fails.
@@ -376,6 +377,14 @@ userinfo[["sub"]]
   intentionally excludes HS\*. Only include `HS*` if you are certain the
   `client_secret` is stored strictly server-side and is never shipped
   to, or derivable by, the browser or other untrusted environments.
+
+- userinfo_allowed_algs:
+
+  Optional signing algorithm allowlist for UserInfo JWTs. `NULL`
+  inherits `allowed_algs` for manually configured providers. Discovery
+  negotiates this independently against UserInfo metadata. Use a single
+  algorithm to enforce the client's registered UserInfo signing choice.
+  An empty vector rejects all signed UserInfo algorithms.
 
 - allowed_token_types:
 

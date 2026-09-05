@@ -12,7 +12,8 @@ prepare_call(
   oauth_client,
   browser_token,
   request_uri_publisher = NULL,
-  .requested_max_age = NULL
+  .requested_max_age = NULL,
+  .defer_build = FALSE
 )
 ```
 
@@ -39,6 +40,11 @@ prepare_call(
 
   Internal normalized OIDC `max_age` override used by the Shiny module
   for forced reauthentication.
+
+- .defer_build:
+
+  Internal flag returning prepared local state for async authorization
+  work instead of completing the authorization URL.
 
 ## Value
 

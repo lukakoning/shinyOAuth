@@ -58,7 +58,8 @@ one-time callback data, and builds the final authorization URL.</p>
 <span>  <span class="va">oauth_client</span>,</span>
 <span>  <span class="va">browser_token</span>,</span>
 <span>  request_uri_publisher <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  .requested_max_age <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  .requested_max_age <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  .defer_build <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -85,6 +86,11 @@ arguments and return an absolute request-object URL.</p></dd>
 <dt id="arg--requested-max-age">.requested_max_age<a class="anchor" aria-label="anchor" href="#arg--requested-max-age"></a></dt>
 <dd><p>Internal normalized OIDC <code>max_age</code> override used by
 the Shiny module for forced reauthentication.</p></dd>
+
+
+<dt id="arg--defer-build">.defer_build<a class="anchor" aria-label="anchor" href="#arg--defer-build"></a></dt>
+<dd><p>Internal flag returning prepared local state for async
+authorization work instead of completing the authorization URL.</p></dd>
 
 </dl></div>
     <div class="section level2">

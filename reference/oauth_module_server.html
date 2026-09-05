@@ -112,7 +112,8 @@ manually (use <code>$request_login()</code>).</p></dd>
 
 
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
-<dd><p>If TRUE, dispatches token exchange and refresh through
+<dd><p>If TRUE, dispatches PAR, Request Object preparation, query JARM
+signature verification, token exchange, and refresh through
 shinyOAuth's async promise path and updates values when the promise
 resolves. <a href="https://mirai.r-lib.org/reference/mirai.html" class="external-link">mirai</a> is preferred when daemons are configured with
 <code><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">mirai::daemons()</a></code>. Otherwise, if <a href="https://rstudio.github.io/promises/reference/promises-package.html" class="external-link">promises</a> and <a href="https://future.futureverse.org/reference/future.html" class="external-link">future</a>
@@ -120,7 +121,11 @@ are installed, the current <a href="https://future.futureverse.org/reference/fut
 run off the main R session; <code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> stays in-process. If FALSE
 (default), token exchange and refresh are performed synchronously
 (which may block the Shiny event loop). For production apps, <code>async = TRUE</code>
-is usually the better choice.</p></dd>
+is usually the better choice.
+State-store operations and Shiny Request Object publication remain on the
+main process. Discovery performed before module creation, standalone
+<code><a href="prepare_call.html">prepare_call()</a></code>, and JARM validation at the <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code> HTTP
+boundary are synchronous. Use bounded backend/network timeouts there.</p></dd>
 
 
 <dt id="arg-indefinite-session">indefinite_session<a class="anchor" aria-label="anchor" href="#arg-indefinite-session"></a></dt>
@@ -292,7 +297,12 @@ returned string keeps <code>shinyOAuth.par_request_uri</code>,
 <code>shinyOAuth.par_expires_in</code>, and <code>shinyOAuth.par_expires_at</code> attributes
 so manual link-style flows can decide when to regenerate it. Typically
 you would not call this directly, but use <code>request_login()</code> instead,
-which calls it internally.</p></li>
+which calls it internally.
+With <code>async = TRUE</code>, PAR and Request Object configurations return a promise
+resolving to that URL (or <code>NA</code> on failure or stale completion). Plain
+parameter-only authorization returns a string immediately. Use
+<code><a href="https://rstudio.github.io/promises/reference/then.html" class="external-link">promises::then()</a></code> for manual links that use PAR or Request Objects;
+<code>request_login()</code> handles either result automatically.</p></li>
 <li><p><code>set_browser_token()</code>: internal; injects JS to set the browser token
 cookie if missing. Normally called automatically on first load,
 but you can call it manually if needed. If a token is already present,

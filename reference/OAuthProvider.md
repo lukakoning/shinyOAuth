@@ -48,6 +48,7 @@ OAuthProvider(
   jwks_pin_mode = "any",
   jwks_host_issuer_match = FALSE,
   jwks_host_allow_only = NA_character_,
+  userinfo_allowed_algs = NULL,
   allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
   allowed_token_types = "Bearer",
   leeway = getOption("shinyOAuth.leeway", 30),
@@ -229,9 +230,9 @@ OAuthProvider(
     fails.
 
   - If the JWT uses `alg=none` or an algorithm not in the asymmetric
-    subset of `allowed_algs` (`RS*`, `ES*`, or `EdDSA`), authentication
-    fails. `HS*` algorithms are not accepted for UserInfo JWTs on this
-    surface even if they appear in `allowed_algs`.
+    subset of `userinfo_allowed_algs` (`RS*`, `ES*`, or `EdDSA`),
+    authentication fails. `HS*` algorithms are not accepted for UserInfo
+    JWTs on this surface.
 
   - If signature verification fails (JWKS fetch error, no compatible
     keys, or invalid signature), authentication fails.
@@ -372,6 +373,14 @@ OAuthProvider(
   an IPv6 literal, pass a full URL (e.g., `https://[::1]:8443`) - the
   port is ignored and only the hostname part is used for matching. Takes
   precedence over `jwks_host_issuer_match`.
+
+- userinfo_allowed_algs:
+
+  Optional signing algorithm allowlist for UserInfo JWTs. `NULL`
+  inherits `allowed_algs` for manually configured providers. Discovery
+  negotiates this independently against UserInfo metadata. Use a single
+  algorithm to enforce the client's registered UserInfo signing choice.
+  An empty vector rejects all signed UserInfo algorithms.
 
 - allowed_algs:
 

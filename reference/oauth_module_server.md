@@ -55,10 +55,11 @@ oauth_module_server(
 
 - async:
 
-  If TRUE, dispatches token exchange and refresh through shinyOAuth's
-  async promise path and updates values when the promise resolves.
-  [mirai](https://mirai.r-lib.org/reference/mirai.html) is preferred
-  when daemons are configured with
+  If TRUE, dispatches PAR, Request Object preparation, query JARM
+  signature verification, token exchange, and refresh through
+  shinyOAuth's async promise path and updates values when the promise
+  resolves. [mirai](https://mirai.r-lib.org/reference/mirai.html) is
+  preferred when daemons are configured with
   [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
   Otherwise, if
   [promises](https://rstudio.github.io/promises/reference/promises-package.html)
@@ -70,6 +71,14 @@ oauth_module_server(
   stays in-process. If FALSE (default), token exchange and refresh are
   performed synchronously (which may block the Shiny event loop). For
   production apps, `async = TRUE` is usually the better choice.
+  State-store operations and Shiny Request Object publication remain on
+  the main process. Discovery performed before module creation,
+  standalone
+  [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md),
+  and JARM validation at the
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  HTTP boundary are synchronous. Use bounded backend/network timeouts
+  there.
 
 - indefinite_session:
 
@@ -263,7 +272,13 @@ button):
   `shinyOAuth.par_expires_at` attributes so manual link-style flows can
   decide when to regenerate it. Typically you would not call this
   directly, but use `request_login()` instead, which calls it
-  internally.
+  internally. With `async = TRUE`, PAR and Request Object configurations
+  return a promise resolving to that URL (or `NA` on failure or stale
+  completion). Plain parameter-only authorization returns a string
+  immediately. Use
+  [`promises::then()`](https://rstudio.github.io/promises/reference/then.html)
+  for manual links that use PAR or Request Objects; `request_login()`
+  handles either result automatically.
 
 - `set_browser_token()`: internal; injects JS to set the browser token
   cookie if missing. Normally called automatically on first load, but

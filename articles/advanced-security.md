@@ -84,6 +84,16 @@ client <- oauth_client(
 )
 ```
 
+On Windows, separate PEM certificate/key files require curl’s OpenSSL
+backend. Set `CURL_SSL_BACKEND=openssl` in `.Renviron` and restart R, or
+run `Sys.setenv(CURL_SSL_BACKEND = "openssl")` before loading curl,
+httr2, or shinyOAuth in a fresh session. Check
+`curl::curl_version()$ssl_version`: parenthesized backends are inactive
+alternatives. If OpenSSL is unavailable, install a curl build that
+provides it. shinyOAuth rejects an active Schannel backend for this PEM
+configuration before sending the request. See the [libcurl certificate
+documentation](https://curl.se/libcurl/c/CURLOPT_SSLCERT.html).
+
 If your provider uses dynamic client registration,
 [`oauth_client_mtls_registration()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.md)
 can build the RFC 8705 registration metadata from the configured client.

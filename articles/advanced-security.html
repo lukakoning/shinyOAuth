@@ -149,6 +149,16 @@ certificate-bound access tokens.</p>
 <span>  <span class="co"># Request certificate-bound tokens instead of plain Bearer tokens</span></span>
 <span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>On Windows, separate PEM certificate/key files require curl’s OpenSSL
+backend. Set <code>CURL_SSL_BACKEND=openssl</code> in
+<code>.Renviron</code> and restart R, or run
+<code>Sys.setenv(CURL_SSL_BACKEND = "openssl")</code> before loading
+curl, httr2, or shinyOAuth in a fresh session. Check
+<code>curl::curl_version()$ssl_version</code>: parenthesized backends
+are inactive alternatives. If OpenSSL is unavailable, install a curl
+build that provides it. shinyOAuth rejects an active Schannel backend
+for this PEM configuration before sending the request. See the <a href="https://curl.se/libcurl/c/CURLOPT_SSLCERT.html" class="external-link">libcurl
+certificate documentation</a>.</p>
 <p>If your provider uses dynamic client registration,
 <code><a href="../reference/oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code> can build the RFC 8705
 registration metadata from the configured client.</p>

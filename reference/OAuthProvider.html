@@ -99,6 +99,7 @@ compatibility; generic RFC 8414 providers can opt out explicitly.</p>
 <span>  jwks_pin_mode <span class="op">=</span> <span class="st">"any"</span>,</span>
 <span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  jwks_host_allow_only <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  userinfo_allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="st">"Bearer"</span>,</span>
 <span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span>,</span>
@@ -256,9 +257,9 @@ endpoint returns a signed JWT (<code>Content-Type: application/jwt</code>) whose
 signature can be verified against the provider's JWKS. This is an advanced
 hardening option. When <code>TRUE</code>:</p><ul><li><p>If the userinfo response is not <code>application/jwt</code>, authentication fails.</p></li>
 <li><p>If the JWT uses <code>alg=none</code> or an algorithm not in the asymmetric
-subset of <code>allowed_algs</code> (<code>RS*</code>, <code>ES*</code>, or <code>EdDSA</code>), authentication
+subset of <code>userinfo_allowed_algs</code> (<code>RS*</code>, <code>ES*</code>, or <code>EdDSA</code>), authentication
 fails. <code>HS*</code> algorithms are not accepted for UserInfo JWTs on this
-surface even if they appear in <code>allowed_algs</code>.</p></li>
+surface.</p></li>
 <li><p>If signature verification fails (JWKS fetch error, no compatible keys,
 or invalid signature), authentication fails.</p></li>
 </ul><p>This prevents unsigned or weakly signed userinfo payloads from being treated
@@ -382,6 +383,14 @@ the host component will be used. If you need to include a port or an IPv6
 literal, pass a full URL (e.g., <code>https://[::1]:8443</code>) - the port is ignored
 and only the hostname part is used for matching. Takes precedence over
 <code>jwks_host_issuer_match</code>.</p></dd>
+
+
+<dt id="arg-userinfo-allowed-algs">userinfo_allowed_algs<a class="anchor" aria-label="anchor" href="#arg-userinfo-allowed-algs"></a></dt>
+<dd><p>Optional signing algorithm allowlist for UserInfo
+JWTs. <code>NULL</code> inherits <code>allowed_algs</code> for manually configured providers.
+Discovery negotiates this independently against UserInfo metadata. Use a
+single algorithm to enforce the client's registered UserInfo signing choice.
+An empty vector rejects all signed UserInfo algorithms.</p></dd>
 
 
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>
