@@ -57,11 +57,14 @@ testthat::test_that("browser tests run only in Chrome-provisioned CI", {
   )
   testthat::expect_match(
     browser_ci_text,
-    "test_chromote_cookie.R",
+    "Rscript tests/run-browser-tests.R",
     fixed = TRUE
   )
   testthat::expect_match(
-    browser_ci_text,
+    paste(
+      readLines(testthat::test_path("..", "run-browser-tests.R")),
+      collapse = "\n"
+    ),
     "stop_on_failure = TRUE",
     fixed = TRUE
   )

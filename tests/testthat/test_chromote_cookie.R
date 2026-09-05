@@ -1,4 +1,5 @@
 # Integration tests for browser cookie handling using chromote via shinytest2
+# shinyOAuth-browser-suite
 
 # These tests require explicit opt-in plus a launchable headless Chrome session
 # through chromote. They validate that:
