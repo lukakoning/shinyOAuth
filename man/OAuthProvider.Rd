@@ -56,6 +56,7 @@ OAuthProvider(
   jarm_encryption_enc_values_supported = character(0),
   jarm_tolerate_duplicate_top_level_iss = FALSE,
   token_endpoint_auth_signing_alg_values_supported = character(0),
+  endpoint_auth_metadata = list(),
   dpop_signing_alg_values_supported = character(0),
   mtls_endpoint_aliases = list(),
   mtls_client_certificate_bound_access_tokens = FALSE
@@ -194,10 +195,9 @@ a token, for example during logout (RFC 7009).}
 \item{extra_token_params}{Extra parameters for token exchange}
 
 \item{extra_token_headers}{Extra headers for back-channel token-style
-requests (named character vector). shinyOAuth applies these headers to
-token exchange, refresh, introspection, revocation, and PAR requests.
-Use this only for headers you intentionally want on that full set of
-authorization-server calls.}
+requests (named character vector), applied only to token exchange and
+refresh. Configure \code{oauth_client(endpoint_auth = ...)} for headers needed
+by PAR, introspection, or revocation.}
 
 \item{jwks_uri}{Optional URL of the provider's public signing keys (JWKS).
 Normally these are located through OIDC discovery. Set this for manual
@@ -391,6 +391,12 @@ authentication (\code{client_secret_jwt} / \code{private_key_jwt}) at the token
 endpoint. This metadata is used for early validation of
 \code{OAuthClient@client_assertion_alg} and inferred JWT client-assertion
 defaults.}
+
+\item{endpoint_auth_metadata}{Named list of independent \code{introspection} and
+\code{revocation} authentication metadata. Each entry has \code{methods} and
+\code{signing_algs} character vectors (or \code{NULL} for omitted metadata).
+Discovery retains these fields and applies the RFC 8414 Basic-auth default
+for omitted revocation methods. Omitted introspection methods have no default.}
 
 \item{dpop_signing_alg_values_supported}{Optional vector of JWS algorithms
 that the provider advertises for DPoP proof JWTs (RFC 9449). This

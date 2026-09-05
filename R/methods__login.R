@@ -504,10 +504,11 @@ build_authorization_params <- function(
 #' @keywords internal
 #' @noRd
 push_authorization_request <- function(client, params, shiny_session = NULL) {
+  auth_client <- endpoint_auth_client(client, "par")
   endpoint <- resolve_provider_endpoint_url(
     client@provider,
     "par_endpoint",
-    prefer_mtls = client_uses_mtls_endpoint(client)
+    prefer_mtls = client_uses_mtls_endpoint(auth_client)
   ) %||%
     NA_character_
   if (!is_valid_string(endpoint)) {
@@ -529,17 +530,17 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       prepared <- apply_direct_client_auth(
         req = req,
         params = params,
-        client = client,
+        client = auth_client,
         context = "pushed_authorization_request"
       )
       req <- prepared[["req"]]
       params <- prepared[["params"]]
-      req <- req_apply_authorization_server_mtls(req, client)
+      req <- req_apply_authorization_server_mtls(req, auth_client)
 
       req <- add_req_defaults(req)
       req <- req_no_redirect(req)
 
-      extra_headers <- as.list(client@provider@extra_token_headers)
+      extra_headers <- as.list(auth_client@provider@extra_token_headers)
       if (length(extra_headers) > 0) {
         req <- do.call(httr2::req_headers, c(list(req), extra_headers))
       }
@@ -548,7 +549,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       req <- req_refresh_jwt_client_assertion_on_retry(
         req = req,
         params = params,
-        client = client,
+        client = auth_client,
         context = "pushed_authorization_request",
         body_mode = "encoded"
       )
@@ -2291,29 +2292,30 @@ swap_code_for_token_set <- function(
         params <- merge_oauth_extra_params(params, client@provider@extra_token_params)
       }
 
+      auth_client <- endpoint_auth_client(client, "token")
       token_url <- resolve_provider_endpoint_url(
         client@provider,
         "token_endpoint",
-        prefer_mtls = client_uses_mtls_endpoint(client)
+        prefer_mtls = client_uses_mtls_endpoint(auth_client)
       )
 
       req <- httr2::request(token_url)
       prepared <- apply_direct_client_auth(
         req = req,
         params = params,
-        client = client,
+        client = auth_client,
         context = "token_exchange"
       )
       req <- prepared[["req"]]
       params <- prepared[["params"]]
-      req <- req_apply_authorization_server_mtls(req, client)
+      req <- req_apply_authorization_server_mtls(req, auth_client)
 
       # Apply defaults first; disable redirects to prevent leaking secrets
       req <- add_req_defaults(req)
       req <- req_no_redirect(req)
 
       # Add any extra token headers without using rlang splicing so tests can stub
-      extra_headers <- as.list(client@provider@extra_token_headers)
+      extra_headers <- as.list(auth_client@provider@extra_token_headers)
       if (length(extra_headers) > 0) {
         req <- do.call(httr2::req_headers, c(list(req), extra_headers))
       }
@@ -2326,7 +2328,7 @@ swap_code_for_token_set <- function(
       req <- req_refresh_jwt_client_assertion_on_retry(
         req = req,
         params = params,
-        client = client,
+        client = auth_client,
         context = "token_exchange",
         body_mode = "encoded"
       )

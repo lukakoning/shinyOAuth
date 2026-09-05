@@ -97,11 +97,12 @@ revoke_token <- function(
     with_otel_span(
       "shinyOAuth.token.revoke",
       {
+        auth_client <- endpoint_auth_client(oauth_client, "revocation")
         url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "revocation_endpoint",
           prefer_mtls = client_uses_mtls_endpoint(
-            oauth_client,
+            auth_client,
             token = oauth_token
           )
         ) %||%
@@ -153,20 +154,20 @@ revoke_token <- function(
         prepared <- apply_direct_client_auth(
           req = req,
           params = params,
-          client = oauth_client,
+          client = auth_client,
           context = "revoke_token"
         )
         req <- prepared[["req"]]
         params <- prepared[["params"]]
         req <- req_apply_authorization_server_mtls(
           req,
-          oauth_client,
+          auth_client,
           token = oauth_token
         )
 
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
-        extra_headers <- as.list(oauth_client@provider@extra_token_headers)
+        extra_headers <- as.list(auth_client@provider@extra_token_headers)
         if (length(extra_headers)) {
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
@@ -174,7 +175,7 @@ revoke_token <- function(
         req <- req_refresh_jwt_client_assertion_on_retry(
           req = req,
           params = params,
-          client = oauth_client,
+          client = auth_client,
           context = "revoke_token",
           body_mode = "form"
         )
@@ -375,11 +376,12 @@ introspect_token <- function(
     with_otel_span(
       "shinyOAuth.token.introspect",
       {
+        auth_client <- endpoint_auth_client(oauth_client, "introspection")
         url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "introspection_endpoint",
           prefer_mtls = client_uses_mtls_endpoint(
-            oauth_client,
+            auth_client,
             token = oauth_token
           )
         ) %||%
@@ -432,19 +434,19 @@ introspect_token <- function(
         prepared <- apply_direct_client_auth(
           req = req,
           params = params,
-          client = oauth_client,
+          client = auth_client,
           context = "introspect_token"
         )
         req <- prepared[["req"]]
         params <- prepared[["params"]]
         req <- req_apply_authorization_server_mtls(
           req,
-          oauth_client,
+          auth_client,
           token = oauth_token
         )
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
-        extra_headers <- as.list(oauth_client@provider@extra_token_headers)
+        extra_headers <- as.list(auth_client@provider@extra_token_headers)
         if (length(extra_headers)) {
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
@@ -452,7 +454,7 @@ introspect_token <- function(
         req <- req_refresh_jwt_client_assertion_on_retry(
           req = req,
           params = params,
-          client = oauth_client,
+          client = auth_client,
           context = "introspect_token",
           body_mode = "form"
         )
@@ -770,11 +772,12 @@ refresh_token <- function(
           params <- merge_oauth_extra_params(params, oauth_client@provider@extra_token_params)
         }
 
+        auth_client <- endpoint_auth_client(oauth_client, "token")
         token_url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "token_endpoint",
           prefer_mtls = client_uses_mtls_endpoint(
-            oauth_client,
+            auth_client,
             token = token
           )
         )
@@ -783,21 +786,21 @@ refresh_token <- function(
         prepared <- apply_direct_client_auth(
           req = req,
           params = params,
-          client = oauth_client,
+          client = auth_client,
           context = "refresh_token"
         )
         req <- prepared[["req"]]
         params <- prepared[["params"]]
         req <- req_apply_authorization_server_mtls(
           req,
-          oauth_client,
+          auth_client,
           token = token
         )
 
         req <- add_req_defaults(req)
         req <- req_no_redirect(req)
         # Allow provider to add custom token headers (mirrors login path)
-        extra_headers <- as.list(oauth_client@provider@extra_token_headers)
+        extra_headers <- as.list(auth_client@provider@extra_token_headers)
         if (length(extra_headers)) {
           req <- do.call(httr2::req_headers, c(list(req), extra_headers))
         }
@@ -805,7 +808,7 @@ refresh_token <- function(
         req <- req_refresh_jwt_client_assertion_on_retry(
           req = req,
           params = params,
-          client = oauth_client,
+          client = auth_client,
           context = "refresh_token",
           body_mode = "encoded"
         )

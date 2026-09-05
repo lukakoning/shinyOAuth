@@ -148,10 +148,14 @@
 #' @param extra_auth_params Extra parameters for authorization URL
 #' @param extra_token_params Extra parameters for token exchange
 #' @param extra_token_headers Extra headers for back-channel token-style
-#'   requests (named character vector). shinyOAuth applies these headers to
-#'   token exchange, refresh, introspection, revocation, and PAR requests.
-#'   Use this only for headers you intentionally want on that full set of
-#'   authorization-server calls.
+#'   requests (named character vector), applied only to token exchange and
+#'   refresh. Configure `oauth_client(endpoint_auth = ...)` for headers needed
+#'   by PAR, introspection, or revocation.
+#' @param endpoint_auth_metadata Named list of independent `introspection` and
+#'   `revocation` authentication metadata. Each entry has `methods` and
+#'   `signing_algs` character vectors (or `NULL` for omitted metadata).
+#'   Discovery retains these fields and applies the RFC 8414 Basic-auth default
+#'   for omitted revocation methods. Omitted introspection methods have no default.
 #'
 #' @param jwks_uri Optional URL of the provider's public signing keys (JWKS).
 #'   Normally these are located through OIDC discovery. Set this for manual
@@ -520,6 +524,7 @@ OAuthProvider <- S7::new_class(
       S7::class_character,
       default = character()
     ),
+    endpoint_auth_metadata = S7::new_property(S7::class_list, default = list()),
     dpop_signing_alg_values_supported = S7::new_property(
       S7::class_character,
       default = character()
@@ -656,6 +661,7 @@ oauth_provider <- function(
   dpop_signing_alg_values_supported = character(),
   mtls_endpoint_aliases = list(),
   mtls_client_certificate_bound_access_tokens = FALSE,
+  endpoint_auth_metadata = list(),
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(
@@ -999,6 +1005,7 @@ oauth_provider <- function(
       jarm_tolerate_duplicate_top_level_iss
     ),
     token_endpoint_auth_signing_alg_values_supported = token_endpoint_auth_signing_alg_values_supported,
+    endpoint_auth_metadata = endpoint_auth_metadata,
     dpop_signing_alg_values_supported = dpop_signing_alg_values_supported,
     mtls_endpoint_aliases = mtls_endpoint_aliases,
     mtls_client_certificate_bound_access_tokens = isTRUE(
@@ -1021,6 +1028,8 @@ oauth_provider <- function(
 #' @keywords internal
 #' @noRd
 oauth_provider_validate <- function(self) {
+  endpoint_problem <- endpoint_auth_metadata_problem(self@endpoint_auth_metadata)
+  if (!is.null(endpoint_problem)) return(endpoint_problem)
   # Reuse for all properties (required vs optional mirrors your S7 defs)
   fields <- list(
     auth_url = list(val = self@auth_url, required = TRUE),
@@ -1981,6 +1990,7 @@ provider_fingerprint <- function(provider) {
       provider@jarm_tolerate_duplicate_top_level_iss
     ),
     token_auth_style = provider@token_auth_style,
+    endpoint_auth_metadata = provider_prop("endpoint_auth_metadata", list()),
     extra_auth_params_digest = state_policy_value_digest(
       provider_prop("extra_auth_params", list())
     ),

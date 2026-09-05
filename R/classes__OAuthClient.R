@@ -237,6 +237,18 @@
 #'   the issuer when configured, otherwise the canonical PAR URL, including
 #'   when the request uses an mTLS alias. Set an explicit value when required
 #'   by the provider's registration agreement.
+#' @param endpoint_auth Named list of authentication overrides for `par`,
+#'   `introspection`, and `revocation`. Token exchange and refresh use the
+#'   top-level client/provider authentication settings. Each entry may supply
+#'   `token_auth_style`, `client_secret`, `client_assertion_private_key`,
+#'   `client_assertion_private_key_kid`, `client_assertion_alg`,
+#'   `client_assertion_audience`, `extra_headers` (named character vector),
+#'   and the `mtls_client_*` certificate/key/CA fields. Introspection and
+#'   revocation may also use a separate `client_id`. Unspecified credentials
+#'   inherit the client's settings. Discovered endpoint methods and signing
+#'   algorithms are checked independently. PAR inherits token authentication.
+#'   Extra token headers apply only to token exchange and refresh; set
+#'   `extra_headers` explicitly for every other endpoint that needs them.
 #' @param mtls_client_cert_file Optional path to the PEM-encoded client
 #'   certificate (or certificate chain) used for RFC 8705 mutual TLS (mTLS) client
 #'   authentication and certificate-bound protected-resource requests. Required
@@ -430,6 +442,7 @@ OAuthClient <- S7::new_class(
     provider = S7::class_any,
     client_id = S7::class_character,
     client_secret = S7::class_character,
+    endpoint_auth = S7::new_property(S7::class_list, default = list()),
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
     # Authorization response mode for authorization-code callbacks.
@@ -713,6 +726,7 @@ oauth_client <- function(
   jarm_decryption_private_key = NULL,
   jarm_decryption_private_key_kid = NULL,
   jarm_max_lifetime = 600,
+  endpoint_auth = list(),
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(
@@ -966,6 +980,7 @@ oauth_client <- function(
     provider = provider,
     client_id = client_id,
     client_secret = client_secret,
+    endpoint_auth = endpoint_auth,
     redirect_uri = redirect_uri,
     scopes = scopes,
     response_mode = response_mode,
@@ -1116,6 +1131,8 @@ validate_distinct_authorization_server_redirect_uris <- function(
 #' @keywords internal
 #' @noRd
 oauth_client_validate <- function(self) {
+  endpoint_problem <- endpoint_auth_config_problem(self@endpoint_auth)
+  if (!is.null(endpoint_problem)) return(endpoint_problem)
   if (!S7::S7_inherits(self@provider, OAuthProvider)) {
     return("OAuthClient: provider must be an OAuthProvider object")
   }

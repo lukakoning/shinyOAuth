@@ -54,6 +54,7 @@ oauth_client(
   jarm_decryption_private_key = NULL,
   jarm_decryption_private_key_kid = NULL,
   jarm_max_lifetime = 600,
+  endpoint_auth = list(),
   ...
 )
 }
@@ -468,6 +469,19 @@ JARM payload includes \code{iat}, shinyOAuth enforces
 \code{exp - iat <= jarm_max_lifetime}; otherwise it falls back to the
 remaining \code{exp} window at validation time. Applies only when
 \code{response_mode} uses JARM.}
+
+\item{endpoint_auth}{Named list of authentication overrides for \code{par},
+\code{introspection}, and \code{revocation}. Token exchange and refresh use the
+top-level client/provider authentication settings. Each entry may supply
+\code{token_auth_style}, \code{client_secret}, \code{client_assertion_private_key},
+\code{client_assertion_private_key_kid}, \code{client_assertion_alg},
+\code{client_assertion_audience}, \code{extra_headers} (named character vector),
+and the \verb{mtls_client_*} certificate/key/CA fields. Introspection and
+revocation may also use a separate \code{client_id}. Unspecified credentials
+inherit the client's settings. Discovered endpoint methods and signing
+algorithms are checked independently. PAR inherits token authentication.
+Extra token headers apply only to token exchange and refresh; set
+\code{extra_headers} explicitly for every other endpoint that needs them.}
 
 \item{...}{Deprecated renamed arguments accepted temporarily for backward
 compatibility.}

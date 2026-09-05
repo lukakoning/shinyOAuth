@@ -1,9 +1,13 @@
-testthat::test_that("extra_token_headers are sent on revoke requests", {
+testthat::test_that("explicit endpoint headers are sent on revoke requests", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@revocation_url <- "https://example.com/revoke"
   cli@provider@extra_token_headers <- c(
     "X-Custom" = "custom-value",
     Accept = "application/json"
+  )
+  cli@endpoint_auth <- list(
+    revocation = list(extra_headers = cli@provider@extra_token_headers),
+    introspection = list(extra_headers = cli@provider@extra_token_headers)
   )
 
   tok <- OAuthToken(
@@ -38,12 +42,16 @@ testthat::test_that("extra_token_headers are sent on revoke requests", {
   testthat::expect_identical(hdrs[["Accept"]], "application/json")
 })
 
-testthat::test_that("extra_token_headers are sent on introspect requests", {
+testthat::test_that("explicit endpoint headers are sent on introspect requests", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@introspection_url <- "https://example.com/introspect"
   cli@provider@extra_token_headers <- c(
     "X-Custom" = "custom-value",
     Accept = "application/json"
+  )
+  cli@endpoint_auth <- list(
+    revocation = list(extra_headers = cli@provider@extra_token_headers),
+    introspection = list(extra_headers = cli@provider@extra_token_headers)
   )
 
   tok <- OAuthToken(

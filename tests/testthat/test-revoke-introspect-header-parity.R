@@ -14,6 +14,10 @@ testthat::test_that("revoke and introspect apply extra_token_headers with identi
     "X-Request-Source" = "shinyOAuth-test",
     "X-Correlation-ID" = "corr-1234"
   )
+  cli@endpoint_auth <- list(
+    revocation = list(extra_headers = cli@provider@extra_token_headers),
+    introspection = list(extra_headers = cli@provider@extra_token_headers)
+  )
 
   tok <- OAuthToken(
     access_token = "at",
@@ -139,6 +143,10 @@ testthat::test_that("extra_token_headers with special characters are preserved",
     "X-Encoded" = "value%20with%20encoding",
     "X-Multi-Word" = "hello world foo"
   )
+  cli@endpoint_auth <- list(
+    revocation = list(extra_headers = cli@provider@extra_token_headers),
+    introspection = list(extra_headers = cli@provider@extra_token_headers)
+  )
 
   tok <- OAuthToken(
     access_token = "at",
@@ -199,6 +207,10 @@ testthat::test_that("extra_token_headers include Content-Type without breaking b
   cli@provider@introspection_url <- "https://example.com/introspect"
   cli@provider@extra_token_headers <- c(
     "Content-Type" = "application/json"
+  )
+  cli@endpoint_auth <- list(
+    revocation = list(extra_headers = cli@provider@extra_token_headers),
+    introspection = list(extra_headers = cli@provider@extra_token_headers)
   )
 
   tok <- OAuthToken(

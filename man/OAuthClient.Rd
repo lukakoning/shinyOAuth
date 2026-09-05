@@ -8,6 +8,7 @@ OAuthClient(
   provider = NULL,
   client_id = character(0),
   client_secret = character(0),
+  endpoint_auth = list(),
   redirect_uri = character(0),
   scopes = character(0),
   response_mode = NA_character_,
@@ -69,6 +70,19 @@ It is required for \code{token_auth_style = "header"}. With \code{"body"} and PK
 an empty secret is omitted. With \code{"public"} (alias \code{"none"}), it is never
 sent for client authentication. HMAC-signed ID token validation still
 requires a non-empty secret, regardless of the client authentication method.}
+
+\item{endpoint_auth}{Named list of authentication overrides for \code{par},
+\code{introspection}, and \code{revocation}. Token exchange and refresh use the
+top-level client/provider authentication settings. Each entry may supply
+\code{token_auth_style}, \code{client_secret}, \code{client_assertion_private_key},
+\code{client_assertion_private_key_kid}, \code{client_assertion_alg},
+\code{client_assertion_audience}, \code{extra_headers} (named character vector),
+and the \verb{mtls_client_*} certificate/key/CA fields. Introspection and
+revocation may also use a separate \code{client_id}. Unspecified credentials
+inherit the client's settings. Discovered endpoint methods and signing
+algorithms are checked independently. PAR inherits token authentication.
+Extra token headers apply only to token exchange and refresh; set
+\code{extra_headers} explicitly for every other endpoint that needs them.}
 
 \item{redirect_uri}{The URL where users return after login. It must match the
 callback URL registered with your provider, including scheme, host, port,

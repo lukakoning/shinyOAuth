@@ -848,6 +848,7 @@ test_that("PAR body auth omits client_secret for public clients and keeps extra 
     client_secret = "",
     extra_token_headers = c(`X-Test-Par` = "ok")
   )
+  cli@endpoint_auth <- list(par = list(extra_headers = c(`X-Test-Par` = "ok")))
   body_text <- NULL
   seen_header <- NULL
 

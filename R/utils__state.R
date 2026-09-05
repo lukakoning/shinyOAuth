@@ -599,6 +599,7 @@ state_client_policy_fingerprint <- function(client) {
     ),
     client_assertion_alg = client@client_assertion_alg,
     client_assertion_audience = client@client_assertion_audience,
+    endpoint_auth_digest = endpoint_auth_policy_digest(client@endpoint_auth),
     dpop_require_access_token = isTRUE(client@dpop_require_access_token),
     dpop_require_observed_cnf = isTRUE(client@dpop_require_observed_cnf),
     mtls_certificate_bound_access_tokens = isTRUE(
