@@ -294,10 +294,8 @@ revoke_token <- function(
 #'
 #' Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 #' unusable response bodies return a descriptive `status`. The provider must
-#' return `active` as a JSON boolean. Other types return `"invalid_active"`;
-#' the compatibility option `shinyOAuth.allow_legacy_introspection_active`
-#' allows numeric/string coercion when explicitly enabled. Requests use the
-#' client's configured credentials and `token_auth_style`.
+#' return `active` as a JSON boolean. Other types return `"invalid_active"`.
+#' Requests use the client's configured credentials and `token_auth_style`.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param oauth_token [OAuthToken] object to introspect
@@ -1333,45 +1331,17 @@ annotate_token_introspection_span_result <- function(which, result) {
 
 #' Internal: normalize an RFC 7662 active field
 #'
-#' Used by [introspect_token()] to require the RFC 7662 JSON Boolean by default.
-#' Legacy numeric and string coercion is available only through an explicit
-#' compatibility option.
+#' Used by [introspect_token()] to require the RFC 7662 JSON Boolean.
 #'
 #' @param x Provider-supplied `active` field value.
 #' @return `TRUE`, `FALSE`, or `NA` when the value cannot be normalized safely.
 #' @keywords internal
 #' @noRd
 coerce_introspection_active <- function(x) {
-  if (is.list(x) || length(x) != 1L) {
+  if (!is.logical(x) || length(x) != 1L) {
     return(NA)
   }
-
-  if (is.logical(x)) {
-    return(ifelse(!is.na(x[[1]]), x[[1]], NA))
-  }
-  if (
-    !isTRUE(getOption("shinyOAuth.allow_legacy_introspection_active", FALSE))
-  ) {
-    return(NA)
-  }
-  if (is.numeric(x)) {
-    xv <- suppressWarnings(as.numeric(x[[1]]))
-    if (length(xv) == 1L && !is.na(xv)) {
-      return(xv != 0)
-    }
-    return(NA)
-  }
-  if (is.character(x)) {
-    v <- tolower(trimws(as.character(x[[1]])))
-    if (v %in% c("true", "1", "t", "yes", "y")) {
-      return(TRUE)
-    }
-    if (v %in% c("false", "0", "f", "no", "n")) {
-      return(FALSE)
-    }
-    return(NA)
-  }
-  NA
+  x[[1]]
 }
 
 # 3 Async execution helpers ----------------------------------------------------

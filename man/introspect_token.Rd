@@ -55,10 +55,8 @@ require a definite confirmation.
 
 Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 unusable response bodies return a descriptive \code{status}. The provider must
-return \code{active} as a JSON boolean. Other types return \code{"invalid_active"};
-the compatibility option \code{shinyOAuth.allow_legacy_introspection_active}
-allows numeric/string coercion when explicitly enabled. Requests use the
-client's configured credentials and \code{token_auth_style}.
+return \code{active} as a JSON boolean. Other types return \code{"invalid_active"}.
+Requests use the client's configured credentials and \code{token_auth_style}.
 }
 \examples{
 # get_userinfo(), introspect_token(), and refresh_token() are typically
