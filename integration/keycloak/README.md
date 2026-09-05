@@ -81,6 +81,22 @@ curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configurat
 
 ## Overview of tests
 
+Capability expectations are pinned to Keycloak **26.6.1**, the compose image.
+DPoP+PAR must complete authorization, token issuance and protected UserInfo;
+an error is a regression, not an alternative passing outcome.
+
+The DPoP+JAR, mTLS+JAR and JAR+JARM rejection canaries record unsupported
+combinations in this fixture. The JAR-claims tests record **known server
+noncompliance**: wrong audience/issuer, expired Request Objects and repeated
+Request Objects are accepted. Local callback-state consumption does not prove
+server-side replay prevention. These tests must not be counted as successful
+interoperability or AS conformance.
+
+The [independent strict AS fixture](../conformance/README.md) tests successful
+JAR+DPoP and JAR+mTLS flows, both with and without PAR, and JAR+signed-JARM.
+It independently rejects unsigned requests, wrong issuer/audience, expiry and
+Request Object replay. CI runs it separately from the Keycloak capability tests.
+
 Headless `testServer()` + `perform_login_form*()` tests are protocol
 integrations. They intentionally bypass the browser cookie boundary, so they do
 not prove SameSite cookie handling, callback cleanup, or live redirect
@@ -97,7 +113,7 @@ files listed below.
  - `test_integration_keycloak_auth_styles_unhappy.R` — negative-path coverage: wrong client_secret for CSJWT, mismatched algorithm, wrong private key for PJWT (server rejection), and incompatible alg for the provided key (local config error).
 - `test_integration_keycloak_par.R` — PAR discovery and end-to-end code flow coverage, including the standard localhost HTTP host-policy path used by the local Keycloak setup.
 - `test_integration_keycloak_par_unhappy.R` — PAR unhappy-path coverage for request-body validation plus live Keycloak rejection of bad JWT client-assertion audiences, expired and consumed `request_uri` values, and `request_uri` replay under a different client_id, with module-level state-consumption assertions when Keycloak does or does not redirect back to the app.
-- `test_integration_keycloak_dpop.R` — RFC 9449 coverage for DPoP-bound authorization-code issuance, userinfo protection, refresh key binding, and a live DPoP+PAR compatibility canary.
+- `test_integration_keycloak_dpop.R` — RFC 9449 coverage for DPoP-bound authorization-code issuance, userinfo protection, refresh key binding, and successful DPoP+PAR interoperability.
 - `test_integration_keycloak_jar.R` — JAR happy-path coverage for private_key_jwt, HS256, and JAR+PAR end-to-end flows.
 - `test_integration_keycloak_jarm.R` — JARM signed/encrypted `response_mode=query.jwt` coverage, including replay rejection after state consumption, PKCE verifier tampering, PAR compatibility, the duplicate-`iss` interoperability workaround against live Keycloak responses, and the current Keycloak rejection of signed Request Object + `query.jwt` combinations before login.
 - `test_integration_keycloak_jar_unhappy.R` — JAR unhappy-path coverage against live Keycloak, exercising request-object signature rejection both at the authorization endpoint and through PAR.

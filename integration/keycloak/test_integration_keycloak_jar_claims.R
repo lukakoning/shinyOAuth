@@ -1,4 +1,6 @@
-## Integration tests: live Keycloak JAR claim handling quirks
+## Known server noncompliance on pinned Keycloak 26.6.1.
+## These expectations document missing AS checks, not successful JAR conformance.
+## Positive enforcement is tested independently in integration/conformance.
 
 if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))

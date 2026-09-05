@@ -258,7 +258,7 @@ testthat::test_that("Keycloak DPoP auth-code flow binds tokens and protects user
   )
 })
 
-testthat::test_that("Keycloak DPoP plus PAR is either supported end-to-end or rejected as a compatibility canary", {
+testthat::test_that("Keycloak 26.6.1 DPoP plus PAR succeeds end-to-end", {
   skip_common()
   local_test_options()
 
@@ -274,79 +274,43 @@ testthat::test_that("Keycloak DPoP plus PAR is either supported end-to-end or re
     expr = {
       auth_url <- values$build_auth_url()
 
-      if (is.na(auth_url)) {
-        testthat::expect_identical(values$error, "auth_url_error")
-        testthat::expect_match(
-          values$error_description %||% "",
-          "Pushed authorization request failed|request|DPoP|dpop",
-          ignore.case = TRUE
-        )
-        testthat::expect_length(client@state_store$keys(), 0L)
-      } else {
-        testthat::expect_match(auth_url, "[?&]request_uri=")
-        testthat::expect_match(auth_url, "[?&]client_id=shiny-dpop-public")
-        testthat::expect_false(grepl("[?&]state=", auth_url))
-        testthat::expect_false(grepl("[?&]redirect_uri=", auth_url))
-        testthat::expect_false(grepl("[?&]code_challenge=", auth_url))
+      testthat::expect_false(is.na(auth_url))
+      testthat::expect_null(values$error)
+      testthat::expect_match(auth_url, "[?&]request_uri=")
+      testthat::expect_match(auth_url, "[?&]client_id=shiny-dpop-public")
+      testthat::expect_false(grepl("[?&]state=", auth_url))
+      testthat::expect_false(grepl("[?&]redirect_uri=", auth_url))
+      testthat::expect_false(grepl("[?&]code_challenge=", auth_url))
 
-        login <- try(
-          perform_login_form_as(
-            auth_url,
-            username = "alice",
-            password = "alice",
-            redirect_uri = client@redirect_uri
-          ),
-          silent = TRUE
-        )
+      login <- perform_login_form_as(
+        auth_url,
+        username = "alice",
+        password = "alice",
+        redirect_uri = client@redirect_uri
+      )
+      values$.process_query(callback_query(login))
+      session$flushReact()
 
-        if (inherits(login, "try-error")) {
-          inspected <- inspect_dpop_par_auth_request_once(auth_url)
-          combo <- paste(
-            inspected$status,
-            inspected$location %||% "",
-            inspected$body %||% ""
-          )
+      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_null(values$error)
+      testthat::expect_false(is.null(values$token))
+      testthat::expect_identical(values$token@token_type, "DPoP")
 
-          testthat::expect_true(
-            inspected$status %in% c(400L, 401L, 403L),
-            info = combo
-          )
-        } else {
-          values$.process_query(callback_query(login))
-          session$flushReact()
+      access_jkt <- access_token_cnf_jkt(values$token@access_token)
+      testthat::expect_true(nzchar(access_jkt))
 
-          if (isTRUE(values$authenticated)) {
-            testthat::expect_null(values$error)
-            testthat::expect_false(is.null(values$token))
-            testthat::expect_identical(values$token@token_type, "DPoP")
+      userinfo <- shinyOAuth::get_userinfo(client, values$token)
+      testthat::expect_true(is.list(userinfo))
+      testthat::expect_identical(
+        userinfo[["sub"]],
+        values$token@userinfo[["sub"]]
+      )
 
-            access_jkt <- access_token_cnf_jkt(values$token@access_token)
-            testthat::expect_true(nzchar(access_jkt))
-
-            userinfo <- shinyOAuth::get_userinfo(client, values$token)
-            testthat::expect_true(is.list(userinfo))
-            testthat::expect_identical(
-              userinfo[["sub"]],
-              values$token@userinfo[["sub"]]
-            )
-
-            missing_proof_resp <- perform_raw_userinfo_request(
-              client@provider,
-              authorization = paste("DPoP", values$token@access_token)
-            )
-            expect_keycloak_dpop_rejection(missing_proof_resp)
-          } else {
-            testthat::expect_false(isTRUE(values$authenticated))
-            testthat::expect_true(is.null(values$token))
-            testthat::expect_false(is.null(values$error))
-            testthat::expect_match(
-              paste(values$error %||% "", values$error_description %||% ""),
-              "request|DPoP|dpop|PAR|token",
-              ignore.case = TRUE
-            )
-          }
-        }
-      }
+      missing_proof_resp <- perform_raw_userinfo_request(
+        client@provider,
+        authorization = paste("DPoP", values$token@access_token)
+      )
+      expect_keycloak_dpop_rejection(missing_proof_resp)
     }
   )
 })

@@ -57,6 +57,11 @@ jobs:
           docker --version
           docker compose version || true
 
+      - name: Run independent strict authorization-server fixture
+        run: |
+          python -m pip install -r integration/conformance/requirements.txt
+          Rscript integration/conformance/run-tests.R
+
       - name: Run integration tests (Keycloak)
         env:
           # Ensure tests that skip on CRAN will run
