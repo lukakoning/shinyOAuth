@@ -745,6 +745,9 @@ validate_mtls_registration_jwks_uri <- function(jwks_uri) {
   if (nzchar(parsed[["fragment"]] %||% "")) {
     err_input("{.arg jwks_uri} must not contain a URI fragment.")
   }
+  if (!identical(tolower(parsed[["scheme"]]), "https")) {
+    err_input("{.arg jwks_uri} must use HTTPS for OIDC registration.")
+  }
   if (!is_ok_host(jwks_uri)) {
     err_input(paste0(
       "jwks_uri not accepted as a host ",

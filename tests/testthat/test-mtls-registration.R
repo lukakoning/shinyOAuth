@@ -1,3 +1,10 @@
+test_that("OIDC registration JWKS URIs require HTTPS even on loopback", {
+  for (uri in c("http://localhost/keys", "http://127.0.0.1/keys")) {
+    expect_error(validate_mtls_registration_jwks_uri(uri), "HTTPS")
+  }
+  expect_silent(validate_mtls_registration_jwks_uri("https://example.com/keys"))
+})
+
 make_mtls_registration_client <- function(
   token_auth_style,
   mtls_client_certificate_bound_access_tokens = FALSE,
