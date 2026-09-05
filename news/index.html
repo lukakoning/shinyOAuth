@@ -18,12 +18,11 @@
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/advanced-security.html">Advanced security configuration</a></li>
-    <li><a class="dropdown-item" href="../articles/audit-logging.html">Audit logging and hooks</a></li>
-    <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
-    <li><a class="dropdown-item" href="../articles/opentelemetry.html">OpenTelemetry</a></li>
-    <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -43,7 +42,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>mTLS registration now accepts and normalizes IPv6 SANs whose compressed zero run appears at the end of the address.</p></li>
+<ul><li><p>Documentation now starts with practical app setup and introduces protocol details later. The getting-started and authentication guides are shorter, function help focuses on app authors, and package-wide options have their own <code><a href="../articles/package-options.html">vignette("package-options")</a></code> reference. The Spotify guide starts with a small app; the full dashboard is installed as <code>examples/spotify-dashboard.R</code>.</p></li>
+<li><p>mTLS registration now accepts and normalizes IPv6 SANs whose compressed zero run appears at the end of the address.</p></li>
 <li><p>JWT claim parsing now preserves JSON arrays until claim-specific validation, preventing one-element arrays from being accepted as scalar claims.</p></li>
 <li><p><code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> now supports explicit trusted-proxy request URI normalization for HTTPS termination and mounted apps.</p></li>
 <li><p>JWKS keys with standard <code>key_ops</code> arrays are now considered correctly for signature verification and Request Object encryption.</p></li>

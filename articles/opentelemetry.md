@@ -1,80 +1,101 @@
-# OpenTelemetry
+# OpenTelemetry logs and traces
 
 ## Overview
 
-‘shinyOAuth’ can emit OpenTelemetry (OTel) logs and traces for key login
-steps. If you already collect OTel data in your apps, this lets
-‘shinyOAuth’ fit into the same observability setup.
+shinyOAuth exports diagnostic logs and traces through OpenTelemetry
+(OTel), using the `otel` R package. Logs record events such as a failed
+token exchange. Traces group related operations into spans, which record
+their duration and outcome. This allows authentication diagnostics to be
+collected alongside other application telemetry.
 
-The `otel` package is installed automatically with ‘shinyOAuth’. Install
-`otelsdk` as well if you want to use the SDK helpers and exporters shown
-in the examples below.
+An exporter sends the records to a console, file, or monitoring service.
+The `otel` package is a dependency of shinyOAuth; install `otelsdk` for
+its exporters. For R callbacks that receive events directly, see [Audit
+logging and
+hooks](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md).
 
-OpenTelemetry is an open standard for telemetry data (logs, traces,
-metrics) that many backends can collect. If you do not use it, you can
-skip this vignette and rely on the package’s native R hooks for auditing
-and tracing instead (see
-[`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)).
+## Exporter configuration
 
-Please refer to the
-‘[otelsdk](https://otelsdk.r-lib.org/reference/collecting.html)’ package
-to learn more about configuring exporters in R. Once that is set up,
-‘shinyOAuth’ will emit OTel signals from that R process.
+Install `otelsdk`, then set these variables in a fresh R session before
+loading shinyOAuth or starting the app:
 
-When `oauth_module_server(async = TRUE)` runs work in background
-workers, ‘shinyOAuth’ automatically replays relevant OTel environment
-variables there, including `OTEL_*` and `OTEL_R_*` exporter settings.
-Exporter or SDK setup performed from R code is not replayed
-automatically; rerun that setup in each worker or recreate workers after
-changing it.
+``` r
+# install.packages("otelsdk")
+Sys.setenv(
+  OTEL_TRACES_EXPORTER = "console",
+  OTEL_LOGS_EXPORTER = "console",
+  OTEL_LOG_LEVEL = "debug"
+)
+library(shinyOAuth)
+```
 
-All signals are emitted under the instrumentation scope
-`io.github.lukakoning.shinyOAuth`. Use this identifier when configuring
-collector routing rules or filtering ‘shinyOAuth’ telemetry in your
-backend.
+Authenticate with the [example Shiny
+app](https://lukakoning.github.io/shinyOAuth/articles/usage.html#minimal-shiny-module-example).
+The console exporter prints the emitted records. To send them to a
+monitoring service instead, follow the [otelsdk exporter
+setup](https://otelsdk.r-lib.org/reference/collecting.html) and your
+service’s endpoint and credential instructions.
 
-This vignette describes the OTel signals emitted by ‘shinyOAuth’, their
-content, and how to enable/disable them.
+If nothing appears, check that an exporter is configured before the
+package first creates a logger or tracer, and that the logging and
+tracing options below are enabled. Restart R after changing exporter
+configuration.
 
-## Logs
+## Traces and event correlation
 
-OTel log records are generated from the same structured events that
-‘shinyOAuth’ emits to its native R hook (`shinyOAuth.audit_hook`). The
-log content and event types mirror what is described in
-[`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md),
-so refer there for full details about the various events and their
-content.
+Filter by instrumentation scope `io.github.lukakoning.shinyOAuth` in
+your monitoring system. Start with `shinyOAuth.login.request` and
+`shinyOAuth.callback`, then inspect token exchange or userinfo spans to
+see where time was spent. The package’s `shinyoauth.trace_id` attribute
+also connects related logs and spans; it is separate from OTel’s own
+trace/span IDs.
 
-The package’s own audit correlation id is exported as the scalar
-attribute `shinyoauth.trace_id`. This is different from OpenTelemetry’s
-trace/span ids. When a package operation-level correlation id is
-available, spans also carry the same `shinyoauth.trace_id` attribute so
-you can connect the pieces of one login flow more easily.
+The logs come from the same events as the audit hook. See the [audit
+event
+catalog](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html#event-catalog)
+for their meaning. The span catalog below lists names and attributes for
+detailed lookup.
 
-When `options(shinyOAuth.otel_logging_enabled = FALSE)` is set,
-‘shinyOAuth’ stops emitting all OTel logs.
+## Logging and tracing options
 
-## Traces
+Both options default to `TRUE`; an exporter is still needed to collect
+the data. Disable either signal without changing your app’s other
+telemetry:
 
-‘shinyOAuth’ also emits OpenTelemetry spans from key operations in the
-OAuth flows. All spans share these behaviors:
+``` r
+options(
+  shinyOAuth.otel_logging_enabled = FALSE,
+  shinyOAuth.otel_tracing_enabled = FALSE
+)
+```
 
-- Successful operations are marked with status `ok`; errors are marked
-  `error` and include an `exception` event with the error class.
-  Condition messages are omitted by default and are attached only when
-  the debugging option `options(shinyOAuth.expose_error_body = TRUE)` is
-  enabled; those messages may include provider details and should be
-  handled as sensitive data
-- Top-level ‘shinyOAuth’ operation spans are often started as roots so
-  they stay visible instead of being buried under Shiny’s internal
-  `reactive_update` spans
-- Sensitive values (tokens, codes, state payloads, browser tokens) are
-  never attached as span attributes
+### Asynchronous workers
 
-When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
-‘shinyOAuth’ stops emitting all OTel spans.
+For async work managed by shinyOAuth, exporter environment settings
+(`OTEL_*` and `OTEL_R_*`), logging and tracing options, and trace
+context are propagated to workers. SDK setup performed through R code is
+not replayed automatically; run that setup in each worker or recreate
+workers after changing it.
 
-### Span catalog
+### Error attributes and redaction
+
+- Successful operations have status `ok`; failures have status `error`
+  and an `exception` event containing the error class. Condition
+  messages are omitted by default and are included only with
+  `options(shinyOAuth.expose_error_body = TRUE)`; those messages may
+  contain provider details and should be handled as sensitive data.
+- Tokens, authorization codes, state payloads, and browser tokens are
+  not included as ordinary span attributes. Digest fields support
+  correlation without the raw value. Keep debugging options off for
+  production exports.
+- Top-level package spans often start as roots so that they remain easy
+  to find alongside Shiny’s reactive-update spans.
+
+## Span catalog
+
+Use this as a reference for a span you see in your tracing system.
+Attributes are included when relevant and available; their presence can
+differ between main-process and worker spans.
 
 #### Span: `shinyOAuth.module.init`
 
@@ -98,15 +119,11 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
 
 - When: when ‘shinyOAuth’ prepares the authorization redirect in
   [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
-
 - Represents: generation of state, PKCE material, nonce, state-store
   write, and construction of the authorization URL
-
 - Parenting: this span is started as a root span so it remains visible
   even when login is triggered from within a Shiny reactive update
-
 - Main attributes:
-
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
   - `oauth.phase = "login.request"`
@@ -121,35 +138,35 @@ When `options(shinyOAuth.otel_tracing_enabled = FALSE)` is set,
   - `oauth.extra_auth_params_count`
   - Shiny session/process metadata when available
 
-  #### Span: `shinyOAuth.login.par`
+#### Span: `shinyOAuth.login.par`
 
-  - When: during pushed authorization request (PAR) submission when the
-    provider exposes `par_url`
-  - Represents: PAR request construction, client authentication, PAR
-    response validation, and extraction of `request_uri`
-  - Main attributes:
-    - `oauth.provider.name`, `oauth.provider.issuer`
-    - `oauth.client_id_digest`
-    - `oauth.phase = "login.par"`
-    - `oauth.client_auth_style`
-    - `oauth.extra_auth_params_count`
-    - `oauth.extra_token_headers_count`
-    - Shiny session/process metadata when available
+- When: during pushed authorization request (PAR) submission when the
+  provider exposes `par_url`
+- Represents: PAR request construction, client authentication, PAR
+  response validation, and extraction of `request_uri`
+- Main attributes:
+  - `oauth.provider.name`, `oauth.provider.issuer`
+  - `oauth.client_id_digest`
+  - `oauth.phase = "login.par"`
+  - `oauth.client_auth_style`
+  - `oauth.extra_auth_params_count`
+  - `oauth.extra_token_headers_count`
+  - Shiny session/process metadata when available
 
-  #### Span: `shinyOAuth.login.par.http`
+#### Span: `shinyOAuth.login.par.http`
 
-  - When: for outbound PAR HTTP calls
-  - Represents: the actual POST to the configured PAR endpoint
-  - Main attributes:
-    - `http.request.method = "POST"`
-    - `server.address`
-    - `oauth.phase = "login.par"`
-    - `http.response.status_code`, `http.response.content_type` after a
-      response is available
-  - Notes:
-    - this is used as a client span (`kind = "client"`)
-    - redirects are rejected before client credentials or PAR parameters
-      can leak
+- When: for outbound PAR HTTP calls
+- Represents: the actual POST to the configured PAR endpoint
+- Main attributes:
+  - `http.request.method = "POST"`
+  - `server.address`
+  - `oauth.phase = "login.par"`
+  - `http.response.status_code`, `http.response.content_type` after a
+    response is available
+- Notes:
+  - this is used as a client span (`kind = "client"`)
+  - redirects are rejected before client credentials or PAR parameters
+    can leak
 
 #### Span: `shinyOAuth.callback`
 

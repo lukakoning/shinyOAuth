@@ -1,9 +1,11 @@
-# Prepare a OAuth 2.0 authorization call and build an authorization URL
+# Prepare an OAuth 2.0 authorization request and build its URL
 
-Prepares an OAuth 2.0 authorization request and returns the browser
-redirect URL. It generates the needed state, PKCE, and nonce values,
-stores the one-time callback data, and builds the final authorization
-URL.
+Prepare a login request and return the URL to open in the user's
+browser. Use this when your application controls the browser redirect
+and callback handling itself but needs shinyOAuth to construct the OAuth
+2.0 authorization request. Pair it with
+[`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+to complete the code flow.
 
 ## Usage
 
@@ -34,7 +36,8 @@ prepare_call(
 
   Optional function used when `request_object_mode = "request_uri"`. It
   must accept `request_object`, `request_handle_id`, `expires_at`, and
-  `oauth_client` arguments and return an absolute request-object URL.
+  `oauth_client` arguments and return an absolute HTTPS request-object
+  URL that the provider can fetch.
 
 - .requested_max_age:
 
@@ -54,17 +57,23 @@ When PAR is used, the returned string also carries
 `shinyOAuth.par_expires_at` attributes so callers can tell when the
 pushed authorization request should be regenerated.
 
+## Details
+
+In a Shiny app using
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
+call `auth$request_login()` to start login through the module, which
+manages both operations and the reactive session state.
+
+The helper records one-time state and creates any required PKCE and
+nonce values. Custom callers must preserve the browser binding and
+process the returning callback themselves.
+
 ## Examples
 
 ``` r
-# Please note: `prepare_call()` & `handle_callback()` are typically
-# not called by users of this package directly, but are called
-# internally by `oauth_module_server()`. These functions are exported
-# nonetheless for advanced use cases. Most users will not need to
-# call these functions directly
+# Advanced example: your code supplies browser redirects and callback handling.
+# For a Shiny app, oauth_module_server() manages these steps for you.
 
-# Below code shows generic usage of `prepare_call()` and `handle_callback()`
-# (code is not run because it would require user interaction)
 if (interactive()) {
   # Define client
   client <- oauth_client(
@@ -74,7 +83,7 @@ if (interactive()) {
     redirect_uri = "http://127.0.0.1:8100"
   )
 
-  # Get authorization URL and and store state in client's state store
+  # Get the login URL and store state in client's state store
   # `<browser_token>` is a token that identifies the browser session
   #  and would typically be stored in a browser cookie
   #  (`oauth_module_server()` handles this typically)
@@ -82,13 +91,11 @@ if (interactive()) {
 
   # Redirect user to authorization URL; retrieve code & state from the query;
   # read also `<browser_token>` from browser cookie
-  # (`oauth_module_server()` handles this typically)
   code <- "..."
   state <- "..."
   browser_token <- "..."
 
   # Handle callback, exchanging code for token and validating state
-  # (`oauth_module_server()` handles this typically)
   token <- handle_callback(client, code, state, browser_token)
 }
 ```

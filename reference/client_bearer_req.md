@@ -3,8 +3,8 @@
 **\[deprecated\]**
 
 Deprecated alias for
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-to avoid a breaking change in the public API. Use
+[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md).
+Use
 [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
 for Bearer, DPoP, and mTLS-protected resource requests instead.
 

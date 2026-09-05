@@ -1,15 +1,19 @@
 # Package index
 
-## Shiny module
+## Shiny integration
 
+- [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+  : Set up a Shiny UI for shinyOAuth
+- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  : Configure OAuth/OIDC client credentials and login settings
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  : OAuth 2.0 & OIDC authentication module for Shiny applications
+  : OAuth 2.0 authorization and OIDC authentication module for Shiny
 - [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
   : Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks
 - [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
   : Add JavaScript dependency to the UI of a Shiny app
 
-## S7 classes
+## Object reference
 
 - [`OAuthProvider()`](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
   : OAuthProvider S7 class
@@ -18,12 +22,12 @@
 - [`OAuthToken()`](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   : OAuthToken S7 class
 
-## OAuth provider configuration
+## Provider configuration
 
 ### Generic
 
 - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  : Create generic OAuthProvider
+  : Configure OAuth/OIDC provider endpoints and validation settings
 - [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
   : Create a generic OpenID Connect (OIDC) OAuthProvider
 - [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
@@ -50,32 +54,27 @@
 - [`oauth_provider_spotify()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.md)
   : Create a Spotify OAuthProvider
 
-## OAuth client configuration
+## Provider-specific client settings
 
-- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  : Create generic OAuthClient
 - [`oauth_client_mtls_registration()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.md)
-  : Build RFC 8705 mTLS registration metadata
+  : Prepare client-certificate registration settings (mTLS)
 - [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
-  : Create an Apple client secret JWT
+  : Create a client secret for Sign in with Apple
 
-## Authentication flow
+## Custom login handling
 
-### Prepare & handle OAuth 2.0 calls; typically not needed by end users
+### Advanced helpers for managing login without the Shiny module
 
 - [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
-  : Prepare a OAuth 2.0 authorization call and build an authorization
-  URL
+  : Prepare an OAuth 2.0 authorization request and build its URL
 - [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
   : Handle OAuth 2.0 callback: verify state, swap code for token, verify
   token
 
-## Token methods
-
-### Methods for OAuthToken objects
+## Tokens and API requests
 
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  : Get user info from OAuth 2.0 provider
+  : Fetch a user's profile (UserInfo)
 
 - [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
   : Refresh an OAuth 2.0 token
@@ -87,11 +86,10 @@
   : Introspect an OAuth 2.0 token
 
 - [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-  : Build an authenticated httr2 request for a protected resource
+  : Prepare an API request with an access token
 
 - [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-  : Build and perform an authenticated httr2 request for a protected
-  resource
+  : Call an API with an access token
 
 - [`client_bearer_req()`](https://lukakoning.github.io/shinyOAuth/reference/client_bearer_req.md)
   **\[deprecated\]** :
@@ -105,12 +103,11 @@
   Alias for
   [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
 
-## Miscellaneous
+## Deployment helpers
 
 - [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
-  : Check if URL(s) are HTTPS and/or in allowed hosts lists
+  : Check a URL against the package's host policy
 - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
-  : Create a custom cache backend (cachem-like)
+  : Create a custom state store or signing-key cache
 - [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
-  **\[deprecated\]** : Throw an error if specific dev/debug softeners
-  are enabled
+  **\[deprecated\]** : Check selected debugging options (deprecated)

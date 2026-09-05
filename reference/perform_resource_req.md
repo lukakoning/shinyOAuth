@@ -1,27 +1,10 @@
-# Build and perform an authenticated httr2 request for a protected resource
+# Call an API with an access token
 
-This is a helper for calling downstream APIs with an access token. It
-creates an
-[`httr2::request()`](https://httr2.r-lib.org/reference/request.html) for
-the given URL, attaches the right authorization header for the token
-type, applies shinyOAuth's standard HTTP defaults, and performs the
-request. You can also provide a prebuilt
-[`httr2::request()`](https://httr2.r-lib.org/reference/request.html)
-object as the `url` argument, in which case this helper will layer token
-authentication and any explicit overrides on top of the provided request
-before performing it.
-
-Use
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-if you want to only build the request (and perform it later).
-
-Compared to
-[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html),
-this helper adds shinyOAuth-specific handling for DPoP-bound tokens,
-including retrying once with a fresh proof when a `DPoP-Nonce` challenge
-is encountered. For non-DPoP tokens, this helper behaves similarly to
-[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
-but with the package's standard defaults for retries and redirects.
+Send an authenticated API request on the user's behalf and return an
+[httr2](https://httr2.r-lib.org/reference/httr2-package.html) response.
+Pass the token from login and the API URL, then read the response with
+[`httr2::resp_body_json()`](https://httr2.r-lib.org/reference/resp_body_raw.html)
+or another httr2 response helper.
 
 ## Usage
 
@@ -123,17 +106,24 @@ perform_resource_req(
 
 - idempotent:
 
-  Optional logical controlling generic transport and transient-HTTP
-  retries in `req_with_retry()`. When `NULL` (the default), shinyOAuth
-  infers this from the final request method using standard HTTP
-  idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE`).
-  DPoP nonce challenges are replayed once regardless, as required by RFC
-  9449.
+  Whether ordinary network/HTTP failures may be retried safely. `NULL`
+  (default) infers this from the final HTTP method: GET, HEAD, OPTIONS,
+  PUT, and DELETE permit retries. Set it explicitly if your API has
+  different guarantees. One DPoP nonce challenge retry is allowed
+  independently of this setting.
 
 ## Value
 
 An [httr2](https://httr2.r-lib.org/reference/httr2-package.html)
 response object.
+
+## Details
+
+Only send a token to an API you intend to authorize. The package applies
+its URL policy, timeouts, and redirect defaults. It supports Bearer
+authentication and tokens tied to a key (DPoP) or certificate (mTLS).
+For DPoP or mTLS, also supply `oauth_client` so the request uses the
+matching key or certificate.
 
 ## Examples
 
@@ -141,9 +131,8 @@ response object.
 # Make request using OAuthToken object
 # (code is not run because it requires a real token from user interaction)
 if (interactive()) {
-  # Get an OAuthToken
-  # (typically provided as reactive return value by `oauth_module_server()`)
-  token <- OAuthToken()
+  # Inside reactive server code, after login has succeeded:
+  token <- auth$token
 
   # Recommended for most callers: build + perform in one step.
   response <- perform_resource_req(
@@ -159,7 +148,8 @@ if (interactive()) {
     query = list(limit = 5)
   )
 
-  httr2::req_dry_run(request)
+  # Inspect request settings without printing authentication headers.
+  # httr2::req_perform(request) sends it when ready.
 
   # Or start from your own httr2 request and still let shinyOAuth perform it
   # so DPoP nonce retries remain available.

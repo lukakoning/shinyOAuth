@@ -2,6 +2,14 @@
 
 ## shinyOAuth (development version)
 
+- Documentation now starts with practical app setup and introduces
+  protocol details later. The getting-started and authentication guides
+  are shorter, function help focuses on app authors, and package-wide
+  options have their own
+  [`vignette("package-options")`](https://lukakoning.github.io/shinyOAuth/articles/package-options.md)
+  reference. The Spotify guide starts with a small app; the full
+  dashboard is installed as `examples/spotify-dashboard.R`.
+
 - mTLS registration now accepts and normalizes IPv6 SANs whose
   compressed zero run appears at the end of the address.
 

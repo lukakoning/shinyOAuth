@@ -1,36 +1,14 @@
-# Check if URL(s) are HTTPS and/or in allowed hosts lists
+# Check a URL against the package's host policy
 
-Returns `TRUE` if every input URL passes shinyOAuth's scheme and host
-policy. In practice, each URL must be either:
+Test whether a URL is allowed by shinyOAuth's ordinary scheme and host
+rules. HTTPS is accepted by default. HTTP is limited to local
+development hosts unless you change `allowed_non_https_hosts`. Supply
+`allowed_hosts` to restrict which services your app may contact.
 
-- a syntactically valid HTTPS URL, and (if set) whose host matches
-  `allowed_hosts`, or
-
-- an HTTP URL whose host matches `allowed_non_https_hosts` (e.g.
-  localhost, 127.0.0.1, ::1), and (if set) also matches `allowed_hosts`.
-
-If the input omits the scheme (e.g., "localhost:8080/cb"), this function
-will first attempt to validate it as HTTP (useful for loopback
-development), and if that fails, as HTTPS. This mirrors how helpers
-normalize inputs for convenience while still enforcing the same host and
-scheme policies.
-
-`allowed_hosts` is the allowlist of hosts or domains that are permitted,
-while `allowed_non_https_hosts` defines which hosts are allowed to use
-HTTP instead of HTTPS. If `allowed_hosts` is `NULL` or length 0, all
-hosts are allowed subject to the scheme rules above.
-
-Since `allowed_hosts` supports globs, a value like "\*" matches any host
-and therefore effectively disables endpoint host restrictions. Only use
-a catch-all pattern when you truly intend to allow any host. In most
-deployments you should pin to your expected domain(s), e.g.
-`c(".example.com")` or a specific host name.
-
-Wildcards: `allowed_hosts` and `allowed_non_https_hosts` support globs:
-`*` = any chars, `?` = one char. A leading `.example.com` matches the
-domain itself and any subdomain.
-
-Any non-URLs, NAs, or empty strings cause a FALSE result.
+Call this when checking configured endpoint URLs or diagnosing a
+URL-policy rejection. The provider and API request helpers apply these
+checks internally; a direct call lets you inspect the result without
+making a network request.
 
 ## Usage
 
@@ -65,10 +43,19 @@ Logical indicator (TRUE if all URLs pass all checks; FALSE otherwise)
 
 ## Details
 
-This function is used internally to validate redirect URIs in OAuth
-clients, but can also be used directly to test whether URLs would be
-accepted. Internally, the defaults come from the options
-`shinyOAuth.allowed_non_https_hosts` and `shinyOAuth.allowed_hosts`.
+Both host lists support `*` (any characters), `?` (one character), and a
+leading dot: `".example.com"` matches the domain and its subdomains.
+`"*"` permits every host. If `allowed_hosts` is empty, only the scheme
+rules apply. Missing values, empty strings, and malformed URLs return
+`FALSE`.
+
+If the scheme is absent, this helper tries HTTP, then HTTPS. Request
+helpers can impose additional requirements, including an absolute URL.
+OIDC discovery has a separate HTTPS policy and requires an explicit
+loopback development opt-in; a `TRUE` result here does not override it.
+
+Defaults come from `shinyOAuth.allowed_hosts` and
+`shinyOAuth.allowed_non_https_hosts`.
 
 ## Examples
 

@@ -1,30 +1,16 @@
-# Build RFC 8705 mTLS registration metadata
+# Prepare client-certificate registration settings (mTLS)
 
-Returns a JSON-ready list of client metadata for registering an
-[OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-that uses RFC 8705 mutual TLS or requests certificate-bound access
-tokens.
+Build a list of settings to register a certificate-based client with
+your provider using mutual TLS (mTLS). Use this when preparing metadata
+for dynamic client registration or when your provider asks for
+certificate identifiers, public keys, or certificate-bound token
+settings. It derives those settings from an
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+already configured for mTLS.
 
-For `token_auth_style = "tls_client_auth"`, this helper returns
-`token_endpoint_auth_method = "tls_client_auth"` plus exactly one RFC
-8705 certificate identifier field: `tls_client_auth_subject_dn`,
-`tls_client_auth_san_dns`, `tls_client_auth_san_uri`,
-`tls_client_auth_san_ip`, or `tls_client_auth_san_email`.
-
-For `token_auth_style = "self_signed_tls_client_auth"`, this helper
-returns `token_endpoint_auth_method = "self_signed_tls_client_auth"`
-plus either an inline `jwks` document built from the configured client
-certificate and certificate chain (published via `x5c`), or a
-caller-supplied `jwks_uri`.
-
-For clients that request RFC 8705 certificate-bound access tokens
-without mTLS OAuth client authentication, this helper returns the
-runtime `token_auth_style` mapped back to the dynamic-registration
-metadata value (for example, `public` becomes `none`) and emits
-`tls_client_certificate_bound_access_tokens = TRUE`.
-
-This helper prepares metadata only. It does not make a registration HTTP
-call.
+The result is a metadata list, ready to include in a registration
+request. Submit it through your provider's registration process; this
+function does not register the client or upload the certificate.
 
 ## Usage
 
@@ -70,3 +56,18 @@ oauth_client_mtls_registration(
 ## Value
 
 A JSON-ready list of RFC 7591/RFC 8705 client metadata.
+
+## Details
+
+For `tls_client_auth`, the result identifies the client certificate
+using one selected subject or alternative-name field. For
+`self_signed_tls_client_auth`, it contains an inline `jwks` with the
+certificate chain (`x5c`), or the supplied `jwks_uri`.
+
+For certificate-bound tokens without mTLS client authentication, the
+result uses the corresponding registration authentication method (for
+example, `public` becomes `none`) and sets
+`tls_client_certificate_bound_access_tokens = TRUE`. See the [advanced
+security
+vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html)
+for when these configurations are useful.

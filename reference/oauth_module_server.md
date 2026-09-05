@@ -1,16 +1,15 @@
-# OAuth 2.0 & OIDC authentication module for Shiny applications
+# OAuth 2.0 authorization and OIDC authentication module for Shiny
 
-This function implements a Shiny module server that manages OAuth
-2.0/OIDC authentication for Shiny applications. It handles the OAuth
-2.0/OIDC flow, including redirecting users to the authorization
-endpoint, securely processing the callback, exchanging authorization
-codes for tokens, verifying tokens, and managing token refresh. It also
-provides options for automatic or manual login flows, session expiry,
-and proactive token refresh.
+Call `oauth_module_server()` inside your Shiny `server()` function to
+manage login for each user. It sends users to the provider, checks their
+return, and gives your app reactive login status and user information.
+Create `client` with
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+outside `server()`, and wrap your complete UI with
+[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
 
-Note: when using this module, you must include
-[`shinyOAuth::use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-in your UI definition to load the necessary JavaScript dependencies.
+This uses the OAuth 2.0 Authorization Code flow, with OpenID Connect
+(OIDC) identity checks when configured for an OIDC provider.
 
 ## Usage
 
@@ -38,47 +37,26 @@ oauth_module_server(
 
 - id:
 
-  Shiny module id
+  A name for this Shiny module, such as `"auth"`.
 
 - client:
 
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  object
+  The app configuration created with
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
 
 - auto_redirect:
 
-  If TRUE (default), unauthenticated sessions will immediately initiate
-  the OAuth flow by redirecting the browser to the authorization
-  endpoint. If FALSE, the module will not auto-redirect; instead, the
-  returned object exposes helpers for triggering login manually (use
-  `$request_login()`).
+  If `TRUE` (default), start login automatically for unauthenticated
+  sessions. If `FALSE`, call `auth$request_login()` to start it.
 
 - async:
 
-  If TRUE, dispatches PAR, Request Object preparation, query JARM
-  signature verification, token exchange, and refresh through
-  shinyOAuth's async promise path and updates values when the promise
-  resolves. [mirai](https://mirai.r-lib.org/reference/mirai.html) is
-  preferred when daemons are configured with
-  [`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html).
-  Otherwise, if
-  [promises](https://rstudio.github.io/promises/reference/promises-package.html)
-  and [future](https://future.futureverse.org/reference/future.html) are
-  installed, the current
-  [future](https://future.futureverse.org/reference/future.html) plan is
-  used. Non-sequential future plans run off the main R session;
+  If `TRUE`, run the module's network work through a background backend.
+  Configure mirai daemons or a non-sequential future plan first; mirai
+  takes priority when both are configured. Default `FALSE`.
   [`future::sequential()`](https://future.futureverse.org/reference/sequential.html)
-  stays in-process. If FALSE (default), token exchange and refresh are
-  performed synchronously (which may block the Shiny event loop). For
-  production apps, `async = TRUE` is usually the better choice.
-  State-store operations and Shiny Request Object publication remain on
-  the main process. Discovery performed before module creation,
-  standalone
-  [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md),
-  and JARM validation at the
-  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-  HTTP boundary are synchronous. Use bounded backend/network timeouts
-  there.
+  runs in the main process. See Asynchronous execution for operations
+  that remain synchronous.
 
 - indefinite_session:
 
@@ -105,10 +83,9 @@ oauth_module_server(
 
 - refresh_proactively:
 
-  If TRUE, will automatically refresh tokens before they expire (if
-  refresh token is available). The refresh is scheduled adaptively so
-  that it executes approximately at `expires_at - refresh_lead_seconds`
-  rather than on a coarse polling loop.
+  If `TRUE`, obtain a replacement access token before expiry when a
+  refresh token is available. Default `FALSE`. The module schedules
+  refresh at approximately `expires_at - refresh_lead_seconds`.
 
 - refresh_lead_seconds:
 
@@ -117,10 +94,10 @@ oauth_module_server(
 
 - refresh_check_interval:
 
-  Fallback check interval in milliseconds for expiry/refresh (default:
-  10000 ms). When expiry is known, the module uses adaptive scheduling
-  to wake up exactly when needed; this interval is used as a safety net
-  or when expiry is unknown/infinite.
+  Fallback interval in milliseconds for checking expiry and refresh
+  (default 10000). Known expiry times are scheduled directly; this
+  interval is used as a safety check or when expiry is unknown or
+  infinite.
 
 - revoke_on_session_end:
 
@@ -155,244 +132,152 @@ oauth_module_server(
   host. Set this when the authorization server must fetch the published
   Request Object through a different public host or proxy address than
   the browser uses, or when you prefer to declare the public origin
-  explicitly. The value must not include a query string or fragment.
-  Non-HTTPS hosts still follow the same
-  [`?is_ok_host`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
-  policy as other package URLs, but shinyOAuth warns once per R session
-  because RFC 9101 Section 5.2 expects client-provided `request_uri`
-  values to use HTTPS.
+  explicitly. The value must use HTTPS and contain no query string or
+  fragment. Caller-published Request Object URLs require HTTPS even when
+  the ordinary
+  [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
+  policy permits HTTP for that host (RFC 9101 Section 5.2).
 
 - browser_cookie_path:
 
-  Optional cookie Path to scope the browser token cookie. By default
-  (`NULL`), the path is fixed to "/" for reliable clearing across route
-  changes. Provide an explicit path (e.g., "/app") to narrow the
-  cookie's scope to a sub-route. Explicit values must start with `/` and
-  must not contain semicolons or control characters. Note: when the path
-  is "/" and the page is served over HTTPS, the cookie name uses the
-  `__Host-` prefix (Secure, Path=/) for additional hardening; when the
-  path is not "/", a regular cookie name is used.
-
-  For apps deployed under nested routes or where the OAuth callback may
-  land on a different route than the initial page, keeping the default
-  (root path) ensures the browser token cookie is available and
-  clearable across app routes. If you deliberately scope the cookie to a
-  sub-path, make sure all relevant routes share that prefix.
+  URL path covered by the login cookie. Default `NULL` uses `"/"`,
+  covering all app routes. An explicit path, such as `"/app"`, must
+  cover both the starting page and callback, start with `/`, and contain
+  no semicolons or control characters. On HTTPS with path `"/"`, the
+  cookie uses the additional browser protections of the `__Host-` name
+  prefix.
 
 - browser_cookie_samesite:
 
-  SameSite value for the browser-token cookie. One of "Strict", "Lax",
-  or "None". Defaults to "Strict" for maximum protection against
-  cross-site request forgery. Use "Lax" only when your deployment
-  requires the cookie to accompany top-level cross-site navigations (for
-  example, because of reverse-proxy flows), and document the associated
-  risk. If set to "None", the cookie will be marked
-  `SameSite=None; Secure` in the browser, and authentication will error
-  on non-HTTPS origins because browsers reject `SameSite=None` cookies
-  without the `Secure` attribute
+  Cookie setting controlling when the browser sends the login cookie on
+  requests from other sites. One of `"Strict"` (default), `"Lax"`, or
+  `"None"`. `"Lax"` allows the cookie on top-level cross-site
+  navigations, which some proxy arrangements require. `"None"` also
+  allows cross-site cookie use in other contexts; it requires HTTPS and
+  sets the cookie's `Secure` attribute. Keep `"Strict"` unless the
+  deployment needs these broader cookie-sending rules.
 
 ## Value
 
-A reactiveValues object with `token`, `error`, `error_description`,
-`error_uri`, and `authenticated`, plus additional fields used by the
-module.
+A
+[`shiny::reactiveValues()`](https://rdrr.io/pkg/shiny/man/reactiveValues.html)
+object. If you assign it to `auth`, its main fields are:
 
-The returned reactiveValues object contains the following fields:
+- `auth$authenticated`: `TRUE` when a token is present and the
+  configured checks have passed, otherwise `FALSE`. With
+  `indefinite_session = TRUE`, the flag stays true while a token is
+  kept, including after refresh errors.
 
-- `authenticated`: logical TRUE when there is no error and a token is
-  present and valid (matching the verifications enabled in the client
-  provider); FALSE otherwise. Exception: when
-  `indefinite_session = TRUE`, errors do not affect this flag so
-  `authenticated` remains TRUE even if refresh or other operations fail.
+- `auth$token`: an
+  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md),
+  or `NULL` before login or after clearing the session. Read properties
+  with `@`, for example `auth$token@userinfo`.
 
-- `token`:
-  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  object, or NULL if not yet authenticated. This contains the access
-  token, refresh token (if any), ID token (if any), userinfo (if
-  fetched), and the decoded ID token claims via `token@id_token_claims`
-  (a read-only named list exposing all JWT payload claims such as `sub`,
-  `acr`, `amr`, `auth_time`, etc.). See
-  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  for details. Because
-  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  is a S7 object, you access its fields with `@`, e.g., `token@userinfo`
-  or `token@id_token_claims$acr`.
+- `auth$error`, `auth$error_description`: the error code and available
+  diagnostic detail. Use your own user-facing message; these fields can
+  include sensitive provider information.
 
-- `error`: error code string when the OAuth flow fails. Be careful about
-  showing this directly to users, because it may contain sensitive
-  information.
+- `auth$error_uri`: an optional provider help URL. Only absolute HTTPS
+  URLs on provider or explicitly allowed hosts are surfaced. Treat it as
+  untrusted navigation input. `NULL` means the provider omitted the URL
+  or supplied a value that did not pass validation.
 
-- `error_description`: human-readable error detail when available. Be
-  extra careful about showing this directly to users, because it may
-  contain even more sensitive information.
+- `auth$token_stale`: `TRUE` when an indefinite session keeps an expired
+  token or one whose refresh failed. Resets after successful login,
+  refresh, or logout.
 
-- `error_uri`: URI identifying a human-readable web page with
-  information about the error (per RFC 6749 section 4.1.2.1). Treat this
-  as untrusted navigation input; shinyOAuth only surfaces absolute HTTPS
-  values here when they stay on a provider host or another host already
-  allowlisted via `options(shinyOAuth.allowed_hosts = ...)`, and returns
-  NULL when the provider omits or sends an unsafe value.
+The object also supplies:
 
-- `token_stale`: logical; TRUE when the token was kept despite a refresh
-  failure because `indefinite_session = TRUE`, or when the access token
-  is past its expiry but `indefinite_session = TRUE` prevents automatic
-  clearing. This lets UIs warn users or disable actions that require a
-  fresh token. It resets to FALSE on successful login, refresh, or
-  logout.
+- `auth$request_login()`: start login. Waits for browser setup when
+  needed and does nothing if the session is already authenticated.
 
-It also contains the following functions, which are mainly useful when
-you use `auto_redirect = FALSE` and you want to start a login from your
-own UI (for example, from an observer which triggers on clicking a
-button):
+- `auth$logout()`: clear the local login and attempt to revoke tokens
+  when supported, following `async`. It does not sign out of the
+  provider account.
 
-- `request_login()`: initiates login by redirecting to the authorization
-  endpoint, with cookie-ensure semantics: if `browser_token` is missing,
-  the module sets the cookie and defers the redirect until
-  `browser_token` is present, then redirects. If the module is already
-  authenticated, the request is ignored and no new OAuth state is
-  created. This is the main entry point for login when
-  `auto_redirect = FALSE`.
+- `auth$build_auth_url()`: advanced helper for a custom login link.
+  Creates pending login state as well as the URL, so retain the result
+  for the link instead of rebuilding it on every UI update. Requires
+  `auth$has_browser_token()` to be true. Returns a URL, or `NA` if
+  already authenticated. With async PAR or Request Objects, returns a
+  promise resolving to the URL (or `NA` on failure or an obsolete
+  result); use
+  [`promises::then()`](https://rstudio.github.io/promises/reference/then.html).
+  PAR URLs carry `shinyOAuth.par_request_uri`,
+  `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at`
+  attributes to help you decide when to regenerate the link.
+  `request_login()` handles these details for button-based login.
 
-- `logout()`: if a token is present, makes best-effort revocation
-  requests for the refresh token and access token when the provider
-  exposes a revocation endpoint. This may perform network I/O, can
-  revoke refresh tokens, and follows the module's `async` setting. It
-  then clears the current token, sets `authenticated` to FALSE, and
-  rotates the browser token cookie. You might call this when the user
-  clicks a logout button.
+- `auth$has_browser_token()`: reports whether the browser token is
+  available. Use it before building a custom login URL; it does not
+  report whether the user is authenticated.
 
-- `build_auth_url()`: internal; builds and returns the authorization
-  URL, also storing the relevant state in the client's `state_store`
-  (for validation during callback). Note that this requires
-  `browser_token` to be present, so it will throw an error if called too
-  early. When the module is already authenticated it returns `NA` and
-  does not mint new state (verify with `has_browser_token()` first).
-  When PAR is used, the returned string keeps
-  `shinyOAuth.par_request_uri`, `shinyOAuth.par_expires_in`, and
-  `shinyOAuth.par_expires_at` attributes so manual link-style flows can
-  decide when to regenerate it. Typically you would not call this
-  directly, but use `request_login()` instead, which calls it
-  internally. With `async = TRUE`, PAR and Request Object configurations
-  return a promise resolving to that URL (or `NA` on failure or stale
-  completion). Plain parameter-only authorization returns a string
-  immediately. Use
-  [`promises::then()`](https://rstudio.github.io/promises/reference/then.html)
-  for manual links that use PAR or Request Objects; `request_login()`
-  handles either result automatically.
+- `auth$set_browser_token()`: asks the browser to create its token
+  cookie when missing. The token becomes available after the browser
+  reports it back to Shiny. An existing token is left unchanged.
 
-- `set_browser_token()`: internal; injects JS to set the browser token
-  cookie if missing. Normally called automatically on first load, but
-  you can call it manually if needed. If a token is already present, it
-  will return immediately without changing it (call
-  `clear_browser_token()` if you want to force a reset). Typically you
-  would not call this directly, but use `request_login()` instead, which
-  calls it internally if needed.
+- `auth$clear_browser_token()`: clears the cookie and its reactive
+  value, for example when resetting browser setup in a custom
+  integration. `request_login()` manages cookie setup automatically, and
+  `logout()` handles cookie rotation when ending a session.
 
-- `clear_browser_token()`: internal; injects JS to clear the browser
-  token cookie and clears `browser_token`. You might call this to reset
-  the cookie if you suspect it's stale or compromised. Typically you
-  would not call this directly.
-
-- `has_browser_token()`: internal; returns TRUE if `browser_token` is
-  present (non-NULL, non-empty), FALSE otherwise. Typically you would
-  not call this directly
-
-Finally, it contains the following reactive values intended for internal
-use and testing. These are not intended for general consumption, but
-they are:
-
-- `browser_token`: internal opaque browser cookie value; used for state
-  double-submit protection; NULL if not yet set
-
-- `pending_callback`: internal deferred callback payload; stores either
-  list(type = "code", code, state, iss) for authorization-code callbacks
-  or list(type = "error", error, error_description, error_uri, state,
-  iss) for provider error callbacks. Used to defer callback handling
-  until `browser_token` is available; NULL otherwise.
-
-- `pending_login`: internal logical; TRUE when a login was requested but
-  must wait for `browser_token` to be set, FALSE otherwise.
-
-- `auto_redirected`: internal logical; TRUE once the module has
-  initiated an automatic redirect in this session to avoid duplicate
-  redirects.
-
-- `reauth_triggered`: internal logical; TRUE once a reauthentication
-  attempt has been initiated (after expiry or failed refresh), to avoid
-  loops.
-
-- `auth_started_at`: internal numeric timestamp for the last interactive
-  authentication; NA if not yet authenticated. This is derived from a
-  validated OIDC `auth_time` when available and is not reset by token
-  refresh. Used to enforce `reauth_after_seconds` if set.
-
-- `last_login_async_used`: internal logical; TRUE if the last login
-  attempt used `async = TRUE`, FALSE if it was synchronous. This is only
-  used for testing and diagnostics.
-
-- `refresh_in_progress`: internal logical; TRUE while a token refresh is
-  currently in flight (async or sync). Used to prevent concurrent
-  refresh attempts when proactive refresh logic wakes up multiple times.
-
-- `refresh_last_attempt_at`, `refresh_last_success_at`, and
-  `refresh_next_attempt_at`: internal numeric timestamps used to pace
-  proactive refresh attempts.
-
-- `refresh_success_generation` and `refresh_failure_count`: internal
-  counters for successful token generations and consecutive failures.
+Other fields manage the module internally and are not needed in app
+code.
 
 ## Details
 
-Most apps only need to decide whether login starts automatically,
-whether to enable async mode, and whether token refresh should happen
-proactively. The remaining arguments are mainly for deployments that
-need tighter control over session lifetime, logout behavior, or browser
-cookie settings.
+Login starts automatically by default. Use `auto_redirect = FALSE` and
+`auth$request_login()` to start it from a button. Read
+`auth$authenticated` in reactive code, and use `req(auth$authenticated)`
+before server operations that require login. Your app must also enforce
+its own access rules.
 
-- Blocking vs. async behavior: when `async = FALSE` (the default),
-  network operations like token exchange and refresh are performed on
-  the main R thread. Transient errors are retried by the package's
-  internal `req_with_retry()` helper, which currently uses
-  [`Sys.sleep()`](https://rdrr.io/r/base/Sys.sleep.html) for backoff. In
-  Shiny, [`Sys.sleep()`](https://rdrr.io/r/base/Sys.sleep.html) blocks
-  the event loop for the entire worker process, potentially freezing UI
-  updates for all sessions on that worker during slow provider responses
-  or retry backoff. To keep the UI responsive: set `async = TRUE` and
-  configure an async backend that runs off the main process, such as
-  [mirai](https://mirai.r-lib.org/reference/mirai.html) daemons
-  (`mirai::daemons(n)`) or a non-sequential
-  [future](https://future.futureverse.org/reference/future.html) plan,
-  or reduce/block retries (see
-  [`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md)).
+See the [usage
+vignette](https://lukakoning.github.io/shinyOAuth/articles/usage.html)
+for a complete app and instructions for registration, API calls, and
+deployment.
 
-- Browser requirements: the module relies on the browser's Web Crypto
-  API to generate a secure, per-session browser token used for state
-  double-submit protection. Specifically, the login flow requires
-  `window.crypto.getRandomValues` to be available. If it is not present
-  (for example, in some very old or highly locked-down browsers), the
-  module will be unable to proceed with authentication. In that case a
-  client-side error is emitted and surfaced to the server as
-  `shinyOAuth_cookie_error` containing the message
-  `"webcrypto_unavailable"`. Use a modern browser (or enable Web Crypto)
-  to resolve this.
+## Asynchronous execution
 
-- Browser cookie lifetime: the opaque browser token cookie lifetime
-  mirrors the client's `state_store` TTL. Internally, the module reads
-  `client@state_store$info()$max_age` and uses that value for the
-  cookie's `Max-Age`/`Expires`. When the cache does not expose a finite
-  `max_age`, a conservative default of 5 minutes (300 seconds) is used
-  to align with the built-in `cachem::cache_mem(max_age = 300)` default.
-  Separately, the state payload `issued_at` freshness window is
-  controlled by the client's `state_payload_max_age` (default 300
-  seconds).
+With `async = TRUE`, configure
+[`mirai::daemons()`](https://mirai.r-lib.org/reference/daemons.html) or
+a non-sequential
+[`future::plan()`](https://future.futureverse.org/reference/plan.html)
+before starting the app. Slow provider requests can then run outside the
+main R process. Without this, network waits can delay all Shiny sessions
+sharing that process.
+
+Advanced operations sent to workers include PAR, signed Request Object
+preparation, and query JARM verification. State-store operations and
+Shiny Request Object publication stay in the main process. Discovery
+during app setup, standalone
+[`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md),
+and JARM verification in
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+remain synchronous. Use timeouts on those network and storage
+operations; see the [package options
+reference](https://lukakoning.github.io/shinyOAuth/articles/package-options.html).
+
+## Browser setup
+
+Open the app at its registered return address in a regular browser with
+cookies and Web Crypto enabled. Embedded IDE viewers may prevent login.
+The temporary browser cookie follows the state store's `max_age`, with a
+300-second fallback when that lifetime is unavailable. The separate
+`state_payload_max_age` client setting limits the age of the login
+request.
 
 ## See also
 
-[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md),
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
+[OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md),
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
 
 ## Examples
 
 ``` r
+# Register http://127.0.0.1:8100 as the GitHub OAuth App callback URL.
 if (
   # Example requires configured GitHub OAuth 2.0 app
   # (go to https://github.com/settings/developers to create one):
@@ -408,7 +293,8 @@ if (
     provider = oauth_provider_github(),
     client_id = Sys.getenv("GITHUB_OAUTH_CLIENT_ID"),
     client_secret = Sys.getenv("GITHUB_OAUTH_CLIENT_SECRET"),
-    redirect_uri = "http://127.0.0.1:8100"
+    redirect_uri = "http://127.0.0.1:8100",
+    scopes = c("read:user", "user:email")
   )
 
   # Choose which app you want to run
@@ -436,10 +322,9 @@ if (
 
   # Example app with auto-redirect (1) -----------------------------------------
 
-  ui_1 <- fluidPage(
-    use_shinyOAuth(),
+  ui_1 <- oauth_ui(fluidPage(
     uiOutput("login")
-  )
+  ))
 
   server_1 <- function(input, output, session) {
     # Auto-redirect (default):
@@ -473,11 +358,11 @@ if (
 
   # Example app with manual login button (2) -----------------------------------
 
-  ui_2 <- fluidPage(
-    use_shinyOAuth(),
+  ui_2 <- oauth_ui(fluidPage(
     actionButton("login_btn", "Login"),
+    actionButton("logout_btn", "Logout"),
     uiOutput("login")
-  )
+  ))
 
   server_2 <- function(input, output, session) {
     auth <- oauth_module_server(
@@ -488,6 +373,9 @@ if (
 
     observeEvent(input$login_btn, {
       auth$request_login()
+    })
+    observeEvent(input$logout_btn, {
+      auth$logout()
     })
 
     output$login <- renderUI({
@@ -517,10 +405,9 @@ if (
   # Below app shows the authenticated username + their GitHub repositories,
   # fetched via GitHub API using the access token obtained during login
 
-  ui_3 <- fluidPage(
-    use_shinyOAuth(),
+  ui_3 <- oauth_ui(fluidPage(
     uiOutput("ui")
-  )
+  ))
 
   server_3 <- function(input, output, session) {
     auth <- oauth_module_server(
@@ -530,23 +417,26 @@ if (
     )
 
     repositories <- reactiveVal(NULL)
+    repository_error <- reactiveVal(FALSE)
 
     observe({
       req(auth$authenticated)
 
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
-      resp <- perform_resource_req(
-        auth$token,
-        "https://api.github.com/user/repos"
-      )
+      # This loads one page; use the API's pagination for further results.
+      repos_data <- tryCatch({
+        resp <- perform_resource_req(
+          auth$token,
+          "https://api.github.com/user/repos",
+          query = list(per_page = 30)
+        )
+        httr2::resp_check_status(resp)
+        httr2::resp_body_json(resp, simplifyVector = TRUE)
+      }, error = function(e) NULL)
 
-      if (httr2::resp_is_error(resp)) {
-        repositories(NULL)
-      } else {
-        repos_data <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-        repositories(repos_data)
-      }
+      repository_error(is.null(repos_data))
+      repositories(repos_data)
     })
 
     # Render username + their repositories
@@ -558,11 +448,23 @@ if (
         return(tagList(
           tags$p(paste("You are logged in as:", user_info$login)),
           tags$h4("Your repositories:"),
-          if (!is.null(repos)) {
+          if (repository_error()) {
+            tags$p("Could not load repositories.")
+          } else if (!is.null(repos) && length(repos) == 0) {
+            tags$p("No repositories returned.")
+          } else if (!is.null(repos)) {
             tags$ul(
               Map(
                 function(url, name) {
-                  tags$li(tags$a(href = url, target = "_blank", name))
+                  # Render names as text; accept only GitHub HTTPS links.
+                  if (isTRUE(grepl("^https://github\\.com/", url))) {
+                    tags$li(tags$a(
+                      href = url, target = "_blank",
+                      rel = "noopener noreferrer", name
+                    ))
+                  } else {
+                    tags$li(name)
+                  }
                 },
                 repos$html_url,
                 repos$full_name

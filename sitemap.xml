@@ -9,6 +9,7 @@
 <url><loc>https://lukakoning.github.io/shinyOAuth/articles/example-spotify.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/articles/index.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html</loc></url>
+<url><loc>https://lukakoning.github.io/shinyOAuth/articles/package-options.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/articles/usage.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/authors.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/copilot-instructions.html</loc></url>
@@ -42,6 +43,7 @@
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_slack.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.html</loc></url>
+<url><loc>https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/perform_client_bearer_req.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html</loc></url>
 <url><loc>https://lukakoning.github.io/shinyOAuth/reference/prepare_call.html</loc></url>

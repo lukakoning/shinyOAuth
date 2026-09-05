@@ -1,8 +1,10 @@
 # Create an Apple [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
 
-Ready-to-use
+Look up Apple's login settings and return an
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
-settings for Sign in with Apple.
+for use with
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+This helper makes an OIDC discovery request during setup.
 
 ## Usage
 
@@ -23,42 +25,26 @@ object configured for Sign in with Apple
 
 ## Details
 
-This helper resolves Sign in with Apple's current metadata from Apple's
-OIDC discovery document at
-`https://appleid.apple.com/.well-known/openid-configuration`.
+Configure your client with:
 
-Apple does not publish a userinfo endpoint, so this helper relies on the
-validated ID token for subject and claim data and leaves
-`userinfo_required = FALSE`.
+- Your Apple Services ID or App ID as `client_id`.
 
-When configuring your
-[OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md):
-
-- use your Services ID or App ID as `client_id`
-
-- supply `client_secret` as an Apple-signed ES256 JWT, for example via
+- A client secret created with
   [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
+  using your Apple developer key.
 
-- use an HTTPS redirect URI with a domain name; Apple does not allow IP
-  literals or `localhost`
+- An HTTPS return address with a domain name; Apple does not accept
+  localhost or IP addresses.
 
-- if you request `email` or `name`, configure
-  `oauth_client(..., response_mode = "form_post")` and wrap your UI with
+- `response_mode = "form_post"` and
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  when requesting `email` or `name`.
 
-Apple can return a one-time `user` JSON payload on the front-channel
-form_post callback when `email` or `name` are requested. shinyOAuth does
-not currently map that transient payload into the returned
-[OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-`userinfo` field, so this helper leaves `userinfo_required = FALSE` and
-relies on ID token claims.
-
-Because this helper delegates to
-[`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md),
-any discovery-backed metadata Apple publishes in the future is picked up
-automatically. When a particular discovery field is omitted, shinyOAuth
-keeps the same defaults documented for
-[`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md).
+Read identity information from the validated ID token's claims. Apple
+has no userinfo endpoint, so `userinfo_required` is `FALSE`. The
+one-time `user` payload that Apple may send with a form POST callback is
+not mapped into `token@userinfo`; do not rely on this helper to retrieve
+that payload.
 
 ## Examples
 

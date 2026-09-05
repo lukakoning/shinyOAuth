@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>OpenTelemetry • shinyOAuth</title>
+<title>OpenTelemetry logs and traces • shinyOAuth</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="OpenTelemetry">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="OpenTelemetry logs and traces">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -33,12 +33,11 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/advanced-security.html">Advanced security configuration</a></li>
-    <li><a class="dropdown-item" href="../articles/audit-logging.html">Audit logging and hooks</a></li>
-    <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
+<li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
-    <li><a class="dropdown-item" href="../articles/opentelemetry.html">OpenTelemetry</a></li>
-    <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -61,7 +60,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>OpenTelemetry</h1>
+      <h1>OpenTelemetry logs and traces</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/lukakoning/shinyOAuth/blob/master/vignettes/opentelemetry.Rmd" class="external-link"><code>vignettes/opentelemetry.Rmd</code></a></small>
@@ -73,75 +72,100 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>‘shinyOAuth’ can emit OpenTelemetry (OTel) logs and traces for key
-login steps. If you already collect OTel data in your apps, this lets
-‘shinyOAuth’ fit into the same observability setup.</p>
-<p>The <code>otel</code> package is installed automatically with
-‘shinyOAuth’. Install <code>otelsdk</code> as well if you want to use
-the SDK helpers and exporters shown in the examples below.</p>
-<p>OpenTelemetry is an open standard for telemetry data (logs, traces,
-metrics) that many backends can collect. If you do not use it, you can
-skip this vignette and rely on the package’s native R hooks for auditing
-and tracing instead (see
-<code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>).</p>
-<p>Please refer to the ‘<a href="https://otelsdk.r-lib.org/reference/collecting.html" class="external-link">otelsdk</a>’
-package to learn more about configuring exporters in R. Once that is set
-up, ‘shinyOAuth’ will emit OTel signals from that R process.</p>
-<p>When <code>oauth_module_server(async = TRUE)</code> runs work in
-background workers, ‘shinyOAuth’ automatically replays relevant OTel
-environment variables there, including <code>OTEL_*</code> and
-<code>OTEL_R_*</code> exporter settings. Exporter or SDK setup performed
-from R code is not replayed automatically; rerun that setup in each
-worker or recreate workers after changing it.</p>
-<p>All signals are emitted under the instrumentation scope
-<code>io.github.lukakoning.shinyOAuth</code>. Use this identifier when
-configuring collector routing rules or filtering ‘shinyOAuth’ telemetry
-in your backend.</p>
-<p>This vignette describes the OTel signals emitted by ‘shinyOAuth’,
-their content, and how to enable/disable them.</p>
+<p>shinyOAuth exports diagnostic logs and traces through OpenTelemetry
+(OTel), using the <code>otel</code> R package. Logs record events such
+as a failed token exchange. Traces group related operations into spans,
+which record their duration and outcome. This allows authentication
+diagnostics to be collected alongside other application telemetry.</p>
+<p>An exporter sends the records to a console, file, or monitoring
+service. The <code>otel</code> package is a dependency of shinyOAuth;
+install <code>otelsdk</code> for its exporters. For R callbacks that
+receive events directly, see <a href="audit-logging.html">Audit logging
+and hooks</a>.</p>
 </div>
 <div class="section level2">
-<h2 id="logs">Logs<a class="anchor" aria-label="anchor" href="#logs"></a>
+<h2 id="exporter-configuration">Exporter configuration<a class="anchor" aria-label="anchor" href="#exporter-configuration"></a>
 </h2>
-<p>OTel log records are generated from the same structured events that
-‘shinyOAuth’ emits to its native R hook
-(<code>shinyOAuth.audit_hook</code>). The log content and event types
-mirror what is described in
-<code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>, so refer
-there for full details about the various events and their content.</p>
-<p>The package’s own audit correlation id is exported as the scalar
-attribute <code>shinyoauth.trace_id</code>. This is different from
-OpenTelemetry’s trace/span ids. When a package operation-level
-correlation id is available, spans also carry the same
-<code>shinyoauth.trace_id</code> attribute so you can connect the pieces
-of one login flow more easily.</p>
-<p>When <code>options(shinyOAuth.otel_logging_enabled = FALSE)</code> is
-set, ‘shinyOAuth’ stops emitting all OTel logs.</p>
+<p>Install <code>otelsdk</code>, then set these variables in a fresh R
+session before loading shinyOAuth or starting the app:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># install.packages("otelsdk")</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span></span>
+<span>  OTEL_TRACES_EXPORTER <span class="op">=</span> <span class="st">"console"</span>,</span>
+<span>  OTEL_LOGS_EXPORTER <span class="op">=</span> <span class="st">"console"</span>,</span>
+<span>  OTEL_LOG_LEVEL <span class="op">=</span> <span class="st">"debug"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span></code></pre></div>
+<p>Authenticate with the <a href="usage.html#minimal-shiny-module-example">example Shiny app</a>.
+The console exporter prints the emitted records. To send them to a
+monitoring service instead, follow the <a href="https://otelsdk.r-lib.org/reference/collecting.html" class="external-link">otelsdk
+exporter setup</a> and your service’s endpoint and credential
+instructions.</p>
+<p>If nothing appears, check that an exporter is configured before the
+package first creates a logger or tracer, and that the logging and
+tracing options below are enabled. Restart R after changing exporter
+configuration.</p>
 </div>
 <div class="section level2">
-<h2 id="traces">Traces<a class="anchor" aria-label="anchor" href="#traces"></a>
+<h2 id="traces-and-event-correlation">Traces and event correlation<a class="anchor" aria-label="anchor" href="#traces-and-event-correlation"></a>
 </h2>
-<p>‘shinyOAuth’ also emits OpenTelemetry spans from key operations in
-the OAuth flows. All spans share these behaviors:</p>
-<ul>
-<li>Successful operations are marked with status <code>ok</code>; errors
-are marked <code>error</code> and include an <code>exception</code>
-event with the error class. Condition messages are omitted by default
-and are attached only when the debugging option
-<code>options(shinyOAuth.expose_error_body = TRUE)</code> is enabled;
-those messages may include provider details and should be handled as
-sensitive data</li>
-<li>Top-level ‘shinyOAuth’ operation spans are often started as roots so
-they stay visible instead of being buried under Shiny’s internal
-<code>reactive_update</code> spans</li>
-<li>Sensitive values (tokens, codes, state payloads, browser tokens) are
-never attached as span attributes</li>
-</ul>
-<p>When <code>options(shinyOAuth.otel_tracing_enabled = FALSE)</code> is
-set, ‘shinyOAuth’ stops emitting all OTel spans.</p>
+<p>Filter by instrumentation scope
+<code>io.github.lukakoning.shinyOAuth</code> in your monitoring system.
+Start with <code>shinyOAuth.login.request</code> and
+<code>shinyOAuth.callback</code>, then inspect token exchange or
+userinfo spans to see where time was spent. The package’s
+<code>shinyoauth.trace_id</code> attribute also connects related logs
+and spans; it is separate from OTel’s own trace/span IDs.</p>
+<p>The logs come from the same events as the audit hook. See the <a href="audit-logging.html#event-catalog">audit event catalog</a> for
+their meaning. The span catalog below lists names and attributes for
+detailed lookup.</p>
+</div>
+<div class="section level2">
+<h2 id="logging-and-tracing-options">Logging and tracing options<a class="anchor" aria-label="anchor" href="#logging-and-tracing-options"></a>
+</h2>
+<p>Both options default to <code>TRUE</code>; an exporter is still
+needed to collect the data. Disable either signal without changing your
+app’s other telemetry:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span></span>
+<span>  shinyOAuth.otel_logging_enabled <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  shinyOAuth.otel_tracing_enabled <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="span-catalog">Span catalog<a class="anchor" aria-label="anchor" href="#span-catalog"></a>
+<h3 id="asynchronous-workers">Asynchronous workers<a class="anchor" aria-label="anchor" href="#asynchronous-workers"></a>
 </h3>
+<p>For async work managed by shinyOAuth, exporter environment settings
+(<code>OTEL_*</code> and <code>OTEL_R_*</code>), logging and tracing
+options, and trace context are propagated to workers. SDK setup
+performed through R code is not replayed automatically; run that setup
+in each worker or recreate workers after changing it.</p>
+</div>
+<div class="section level3">
+<h3 id="error-attributes-and-redaction">Error attributes and redaction<a class="anchor" aria-label="anchor" href="#error-attributes-and-redaction"></a>
+</h3>
+<ul>
+<li>Successful operations have status <code>ok</code>; failures have
+status <code>error</code> and an <code>exception</code> event containing
+the error class. Condition messages are omitted by default and are
+included only with
+<code>options(shinyOAuth.expose_error_body = TRUE)</code>; those
+messages may contain provider details and should be handled as sensitive
+data.</li>
+<li>Tokens, authorization codes, state payloads, and browser tokens are
+not included as ordinary span attributes. Digest fields support
+correlation without the raw value. Keep debugging options off for
+production exports.</li>
+<li>Top-level package spans often start as roots so that they remain
+easy to find alongside Shiny’s reactive-update spans.</li>
+</ul>
+</div>
+</div>
+<div class="section level2">
+<h2 id="span-catalog">Span catalog<a class="anchor" aria-label="anchor" href="#span-catalog"></a>
+</h2>
+<p>Use this as a reference for a span you see in your tracing system.
+Attributes are included when relevant and available; their presence can
+differ between main-process and worker spans.</p>
 <div class="section level4">
 <h4 id="span-shinyoauth-module-init">Span: <code>shinyOAuth.module.init</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-module-init"></a>
 </h4>
@@ -214,8 +238,11 @@ even when login is triggered from within a Shiny reactive update</li>
 <li><code>oauth.extra_auth_params_count</code></li>
 <li>Shiny session/process metadata when available</li>
 </ul>
-<h4 id="span-shinyoauth.login.par">Span:
-<code>shinyOAuth.login.par</code>
+</li>
+</ul>
+</div>
+<div class="section level4">
+<h4 id="span-shinyoauth-login-par">Span: <code>shinyOAuth.login.par</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-login-par"></a>
 </h4>
 <ul>
 <li>When: during pushed authorization request (PAR) submission when the
@@ -239,8 +266,9 @@ response validation, and extraction of <code>request_uri</code>
 </ul>
 </li>
 </ul>
-<h4 id="span-shinyoauth.login.par.http">Span:
-<code>shinyOAuth.login.par.http</code>
+</div>
+<div class="section level4">
+<h4 id="span-shinyoauth-login-par-http">Span: <code>shinyOAuth.login.par.http</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-login-par-http"></a>
 </h4>
 <ul>
 <li>When: for outbound PAR HTTP calls</li>
@@ -261,8 +289,6 @@ available</li>
 <li>this is used as a client span (<code>kind = "client"</code>)</li>
 <li>redirects are rejected before client credentials or PAR parameters
 can leak</li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>
@@ -1000,7 +1026,6 @@ span</li>
 </ul>
 </li>
 </ul>
-</div>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

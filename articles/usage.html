@@ -33,12 +33,11 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/advanced-security.html">Advanced security configuration</a></li>
-    <li><a class="dropdown-item" href="../articles/audit-logging.html">Audit logging and hooks</a></li>
-    <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
+<li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
-    <li><a class="dropdown-item" href="../articles/opentelemetry.html">OpenTelemetry</a></li>
-    <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -73,101 +72,49 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>‘shinyOAuth’ helps a Shiny app send users to an OAuth 2.0 or OpenID
-Connect (OIDC) provider, handle the return callback, and keep the flow
-secure by default. It takes care of:</p>
-<ul>
-<li>Building the login URL and redirecting users when needed</li>
-<li>Creating and checking state, nonce, and PKCE values</li>
-<li>Exchanging the authorization code for tokens and validating the
-result</li>
-<li>Optionally loading user info and validating ID token
-signatures/claims</li>
-<li>Optionally refreshing tokens before expiry or triggering
-re-login</li>
-</ul>
-<p>For a full step-by-step protocol breakdown, see the separate
-vignette:
-<code><a href="../articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code>.</p>
-<p>For advanced security profiles such as mTLS, JAR, PAR, JARM, and
-DPoP, see:
-<code><a href="../articles/advanced-security.html">vignette("advanced-security", package = "shinyOAuth")</a></code>.</p>
-<p>For a detailed explanation of audit logging key events during the
-flow, see:
-<code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>.</p>
-<p>For a dedicated description of OpenTelemetry support in ‘shinyOAuth’,
-see: <code><a href="../articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code>.</p>
+<p>shinyOAuth provides a Shiny module for OAuth 2.0 authorization and
+OpenID Connect (OIDC) authentication. <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>
+manages redirects, callback validation, token exchange, and session
+state. <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> supplies the browser setup required by
+the module.</p>
+<p>This vignette covers provider and client configuration, manual login
+buttons, authenticated API calls, token refresh, and deployment. The
+examples use a GitHub OAuth App. Install shinyOAuth with
+<code>install.packages("shinyOAuth")</code>. For the protocol flow and
+validation rules, see <a href="authentication-flow.html">Authentication
+flow</a>.</p>
+</div>
+<div class="section level2">
+<h2 id="github-app-registration">GitHub app registration<a class="anchor" aria-label="anchor" href="#github-app-registration"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li><p>Register an <strong>OAuth App</strong> in <a href="https://github.com/settings/developers" class="external-link">GitHub’s developer
+settings</a>. Set both the homepage URL and authorization callback URL
+to <code>http://127.0.0.1:8100</code> for this local example.</p></li>
+<li>
+<p>Store the app’s client ID and client secret in your R
+environment. You can open your user <code>.Renviron</code> with
+<code>file.edit(path.expand("~/.Renviron"))</code> and add:</p>
+<pre class="text"><code><span><span class="va">GITHUB_OAUTH_CLIENT_ID</span><span class="op">=</span><span class="va">your</span><span class="op">-</span><span class="va">client</span><span class="op">-</span><span class="va">id</span></span>
+<span><span class="va">GITHUB_OAUTH_CLIENT_SECRET</span><span class="op">=</span><span class="va">your</span><span class="op">-</span><span class="va">client</span><span class="op">-</span><span class="va">secret</span></span></code></pre>
+<p>Restart R after saving. Keep the secret out of app source files and
+Git.</p>
+</li>
+</ol>
 </div>
 <div class="section level2">
 <h2 id="minimal-shiny-module-example">Minimal Shiny module example<a class="anchor" aria-label="anchor" href="#minimal-shiny-module-example"></a>
 </h2>
-<p>Below is a minimal example using a GitHub OAuth app (the same setup
-shown in the README). Register an OAuth 2.0 application at <a href="https://github.com/settings/developers" class="external-link uri">https://github.com/settings/developers</a> and set
-environment variables <code>GITHUB_OAUTH_CLIENT_ID</code> and
-<code>GITHUB_OAUTH_CLIENT_SECRET</code>.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"read:user"</span>, <span class="st">"user:email"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
-<span>  <span class="co"># Include JavaScript dependency:</span></span>
-<span>  <span class="fu"><a href="../reference/use_shinyOAuth.html">use_shinyOAuth</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Render login status &amp; user info:</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, auto_redirect <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">login</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">user_info</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span></span>
-<span>      <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList</a></span><span class="op">(</span></span>
-<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are logged in!"</span><span class="op">)</span>,</span>
-<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">pre</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/capture.output.html" class="external-link">capture.output</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">user_info</span><span class="op">)</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span><span class="op">)</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>      <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are not logged in."</span><span class="op">)</span></span>
-<span>    <span class="op">}</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>,</span>
-<span>  port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Open the app in your regular browser at http://127.0.0.1:8100</span></span>
-<span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
-<p><code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> must be included once in your UI. It
-loads the JavaScript helper that the login flow depends on. Place it
-near the top of your UI, for example inside <code><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage()</a></code>,
-<code><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList()</a></code>, or <code><a href="https://rstudio.github.io/bslib/reference/page.html" class="external-link">bslib::page()</a></code>.</p>
-<p>Open the app in a regular browser, not an IDE viewer. Embedded
-viewers in tools like RStudio or Positron usually cannot complete the
-required redirects.</p>
-</div>
-<div class="section level2">
-<h2 id="manual-login-button-variant">Manual login button variant<a class="anchor" aria-label="anchor" href="#manual-login-button-variant"></a>
-</h2>
-<p>This version does the same thing, but waits for the user to click a
-button before starting login.</p>
+<p>Save the following code as <code>app.R</code> and run it. Open
+<code>http://127.0.0.1:8100</code> in a regular browser. Use the
+registered address; switching between <code>localhost</code> and
+<code>127.0.0.1</code> can interrupt login.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Configure these once, outside server().</span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
@@ -176,831 +123,356 @@ button before starting login.</p>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"read:user"</span>, <span class="st">"user:email"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/use_shinyOAuth.html">use_shinyOAuth</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"login_btn"</span>, <span class="st">"Login"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_ui.html">oauth_ui</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">h2</a></span><span class="op">(</span><span class="st">"My app"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/textOutput.html" class="external-link">textOutput</a></span><span class="op">(</span><span class="st">"greeting"</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
-<span>    <span class="st">"auth"</span>,</span>
-<span>    <span class="va">client</span>,</span>
-<span>    auto_redirect <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span></span>
+<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">login_btn</span>, <span class="op">{</span></span>
-<span>    <span class="va">auth</span><span class="op">$</span><span class="fu">request_login</span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">login</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">user_info</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span></span>
-<span>      <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList</a></span><span class="op">(</span></span>
-<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are logged in!"</span><span class="op">)</span>,</span>
-<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">pre</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/capture.output.html" class="external-link">capture.output</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">user_info</span><span class="op">)</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span><span class="op">)</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>      <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are not logged in."</span><span class="op">)</span></span>
-<span>    <span class="op">}</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>,</span>
-<span>  port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Open the app in your regular browser at http://127.0.0.1:8100</span></span>
-<span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="making-authenticated-api-calls">Making authenticated API calls<a class="anchor" aria-label="anchor" href="#making-authenticated-api-calls"></a>
-</h2>
-<p>After login succeeds, you can use the access token to call an API on
-the user’s behalf. <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> is the easiest
-option for most call sites: it builds an authorized <code>httr2</code>
-request, performs it, and when the token type is <code>DPoP</code> it
-also handles a one-time <code>DPoP-Nonce</code> challenge retry. Use
-<code><a href="../reference/resource_req.html">resource_req()</a></code> when you need to inspect or customize the
-<code>httr2</code> request before sending it yourself.</p>
-<p>The example below calls the GitHub API to fetch the user’s
-repositories.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"read:user"</span>, <span class="st">"user:email"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/use_shinyOAuth.html">use_shinyOAuth</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"ui"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
-<span>    <span class="st">"auth"</span>,</span>
-<span>    <span class="va">client</span>,</span>
-<span>    auto_redirect <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span>  <span class="op">)</span></span>
-<span></span>
-<span>  <span class="va">repositories</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactiveVal.html" class="external-link">reactiveVal</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observe.html" class="external-link">observe</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">output</span><span class="op">$</span><span class="va">greeting</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span></span>
-<span></span>
-<span>    <span class="co"># Example additional API request using the access token</span></span>
-<span>    <span class="co"># (e.g., fetch user repositories from GitHub)</span></span>
-<span>    <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
-<span>      <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
-<span>      <span class="st">"https://api.github.com/user/repos"</span></span>
-<span>    <span class="op">)</span></span>
-<span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_is_error</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="fu">repositories</span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
-<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>      <span class="va">repos_data</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="va">resp</span>, simplifyVector <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span>      <span class="fu">repositories</span><span class="op">(</span><span class="va">repos_data</span><span class="op">)</span></span>
-<span>    <span class="op">}</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="co"># Render username + their repositories</span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="va">user_info</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span></span>
-<span>      <span class="va">repos</span> <span class="op">&lt;-</span> <span class="fu">repositories</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span>      <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList</a></span><span class="op">(</span></span>
-<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"You are logged in as:"</span>, <span class="va">user_info</span><span class="op">$</span><span class="va">login</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">h4</span><span class="op">(</span><span class="st">"Your repositories:"</span><span class="op">)</span>,</span>
-<span>        <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">repos</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>          <span class="va">tags</span><span class="op">$</span><span class="fu">ul</span><span class="op">(</span></span>
-<span>            <span class="fu"><a href="https://rdrr.io/r/base/funprog.html" class="external-link">Map</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">url</span>, <span class="va">name</span><span class="op">)</span> <span class="op">{</span></span>
-<span>              <span class="va">tags</span><span class="op">$</span><span class="fu">li</span><span class="op">(</span><span class="va">tags</span><span class="op">$</span><span class="fu">a</span><span class="op">(</span>href <span class="op">=</span> <span class="va">url</span>, target <span class="op">=</span> <span class="st">"_blank"</span>, <span class="va">name</span><span class="op">)</span><span class="op">)</span></span>
-<span>            <span class="op">}</span>, <span class="va">repos</span><span class="op">$</span><span class="va">html_url</span>, <span class="va">repos</span><span class="op">$</span><span class="va">full_name</span><span class="op">)</span></span>
-<span>          <span class="op">)</span></span>
-<span>        <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>          <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"Loading repositories..."</span><span class="op">)</span></span>
-<span>        <span class="op">}</span></span>
-<span>      <span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="op">}</span></span>
-<span></span>
-<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are not logged in."</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Hello,"</span>, <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span><span class="op">$</span><span class="va">login</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>,</span>
-<span>  port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Open the app in your regular browser at http://127.0.0.1:8100</span></span>
-<span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
-<p>For an example application which fetches data from the Spotify web
-API, see:
-<code><a href="../articles/example-spotify.html">vignette("example-spotify", package = "shinyOAuth")</a></code>.</p>
+<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span><span class="op">)</span>, port <span class="op">=</span> <span class="fl">8100</span>, launch.browser <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<p>The browser opens GitHub’s login or permission page, then returns to
+your app and displays your GitHub username. Use a regular browser: IDE
+viewers may prevent the redirects needed for login.</p>
 </div>
 <div class="section level2">
-<h2 id="async-mode-to-keep-ui-responsive">Async mode to keep UI responsive<a class="anchor" aria-label="anchor" href="#async-mode-to-keep-ui-responsive"></a>
+<h2 id="provider-client-and-token-objects">Provider, client, and token objects<a class="anchor" aria-label="anchor" href="#provider-client-and-token-objects"></a>
 </h2>
-<p>By default, <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> performs network
-operations (authorization-code exchange, refresh, userinfo) on the main
-R thread. That keeps setup simple, but a slow provider or retry delay
-can temporarily block the Shiny worker handling the session.</p>
-<p>To avoid blocking, enable async mode and configure an async backend.
-‘shinyOAuth’ supports both <code>mirai</code> and <code>future</code>
-and auto-detects whichever one you have configured. If both are set up,
-<code>mirai</code> takes precedence.</p>
-<p>For the <code>future</code> backend, use a non-sequential plan such
-as <code><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">future::multisession()</a></code> or
-<code><a href="https://future.futureverse.org/reference/multicore.html" class="external-link">future::multicore()</a></code> where available.
-<code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> still runs in the same R process, so
-it does not move network work off the main R thread.</p>
-<p>With <code>async = TRUE</code>, the module also dispatches PAR,
-Request Object preparation (including encryption-key retrieval), and
-query JARM signature/JWKS work. Browser binding, state-store operations,
-and Shiny Request Object publication remain on the main process.
-Discovery before module creation, standalone
-<code><a href="../reference/prepare_call.html">prepare_call()</a></code>, and JARM validation at the
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> HTTP boundary remain synchronous; use
-bounded network and storage timeouts for these paths.</p>
-<p><code>request_login()</code> handles asynchronous authorization
-preparation automatically. For manual links,
-<code>build_auth_url()</code> returns a promise when async mode is
-enabled and PAR or Request Objects are configured; use
-<code><a href="https://rstudio.github.io/promises/reference/then.html" class="external-link">promises::then()</a></code> to receive the URL. Parameter-only
-authorization still returns a string immediately. Late results after
-logout, session closure, or a newer login are discarded.</p>
-<p>If you need to keep <code>async = FALSE</code>, you may consider
-reducing retry behaviour to limit blocking during provider incidents.
-See the global options section for timeout and retry settings.</p>
-<div class="section level3">
-<h3 id="mirai-async-backend-recommended">‘mirai’ async backend (recommended)<a class="anchor" aria-label="anchor" href="#mirai-async-backend-recommended"></a>
-</h3>
+<p>shinyOAuth represents the flow with three S7 classes. An
+<code>OAuthProvider</code> holds the service’s endpoint URLs and
+protocol settings; a provider helper such as
+<code><a href="../reference/oauth_provider_github.html">oauth_provider_github()</a></code> creates it. An
+<code>OAuthClient</code>, created with <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
+holds your app’s credentials, redirect URI, and requested scopes. After
+authentication, the module returns an <code>OAuthToken</code> as
+<code>auth$token</code>, containing tokens and available user
+information.</p>
+<p>The <strong>redirect URI</strong>, also called the callback URL, is
+the address where the provider sends the browser back. Register it with
+the provider and use the same value in <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
+including scheme, host, port, and path. <strong>Scopes</strong> are
+named permissions, such as <code>read:user</code>; the provider defines
+which names are available.</p>
+<p>Create your provider and client outside <code>server()</code> so they
+remain available when the browser returns from login. Create the module
+inside <code>server()</code> so each user has their own login state.</p>
+</div>
+<div class="section level2">
+<h2 id="authentication-state-and-user-information">Authentication state and user information<a class="anchor" aria-label="anchor" href="#authentication-state-and-user-information"></a>
+</h2>
+<p><code>auth</code> is a Shiny <code>reactiveValues</code> object. Read
+it inside <code>render*()</code>, <code><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive()</a></code>, or
+<code>observe*()</code>, just as you would read other reactive
+values.</p>
+<ul>
+<li>
+<code>auth$authenticated</code> tells you whether login passed the
+configured checks.</li>
+<li>
+<code>auth$token@userinfo</code> contains the user’s profile, when
+fetched. Fields depend on the provider: GitHub uses <code>login</code>
+for the username.</li>
+<li>
+<code>auth$error</code> and <code>auth$error_description</code>
+describe a failed login. Show a simple message to users and use <a href="audit-logging.html">audit logging</a> to investigate.</li>
+</ul>
+<p>The token is an S7 object: access its properties with <code>@</code>,
+as in <code>auth$token@userinfo</code>. See <a href="https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html"><code>OAuthToken</code></a>
+for the available properties.</p>
+<p>Use <code>req(auth$authenticated)</code> before server code reads
+private data or performs an action that requires login. Hiding a UI
+element alone does not protect the server code behind it. Your app must
+also check any access rules, such as which accounts or groups may view a
+report. A successful login by itself does not grant access to everything
+in your app.</p>
+</div>
+<div class="section level2">
+<h2 id="manual-login-and-logout-buttons">Manual login and logout buttons<a class="anchor" aria-label="anchor" href="#manual-login-and-logout-buttons"></a>
+</h2>
+<p>The default is to start login automatically. To let users choose when
+to sign in, replace the example’s UI and server with:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_ui.html">oauth_ui</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"login"</span>, <span class="st">"Sign in"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"logout"</span>, <span class="st">"Sign out"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/textOutput.html" class="external-link">textOutput</a></span><span class="op">(</span><span class="st">"status"</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">login</span>, <span class="va">auth</span><span class="op">$</span><span class="fu">request_login</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout</span>, <span class="va">auth</span><span class="op">$</span><span class="fu">logout</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="va">output</span><span class="op">$</span><span class="va">status</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Signed in as"</span>, <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span><span class="op">$</span><span class="va">login</span><span class="op">)</span></span>
+<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>      <span class="st">"You are signed out. Use Sign in to continue."</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code>auth$logout()</code> clears the app’s local login and attempts
+to revoke its tokens if the provider supports revocation. It does not
+sign the user out of their GitHub, Google, or other provider account.
+The provider may therefore remember them on their next visit.</p>
+</div>
+<div class="section level2">
+<h2 id="authenticated-api-requests">Authenticated API requests<a class="anchor" aria-label="anchor" href="#authenticated-api-requests"></a>
+</h2>
+<p>Use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to send an API request with
+the authenticated user’s access token. For example, add
+<code>tableOutput("repositories")</code> to the UI and this output to
+<code>server()</code>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Set up daemons at the top of your app (or in global.R)</span></span>
-<span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">output</span><span class="op">$</span><span class="va">repositories</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderTable.html" class="external-link">renderTable</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Clean up daemons when the app stops</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">repos</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
+<span>      <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
+<span>      <span class="st">"https://api.github.com/user/repos"</span>,</span>
+<span>      query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>per_page <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
+<span>    <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_check_status</a></span><span class="op">(</span><span class="va">response</span><span class="op">)</span></span>
+<span>    <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="va">response</span>, simplifyVector <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>, error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
-<span>    <span class="st">"auth"</span>,</span>
-<span>    <span class="va">client</span>,</span>
-<span>    auto_redirect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    async <span class="op">=</span> <span class="cn">TRUE</span> <span class="co"># Run token exchange &amp; refresh off the main thread</span></span>
-<span>  <span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="co"># ...</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="future-async-backend">‘future’ async backend<a class="anchor" aria-label="anchor" href="#future-async-backend"></a>
-</h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Set up workers at the top of your app</span></span>
-<span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
-<span>    <span class="st">"auth"</span>,</span>
-<span>    <span class="va">client</span>,</span>
-<span>    auto_redirect <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    async <span class="op">=</span> <span class="cn">TRUE</span> <span class="co"># Run token exchange &amp; refresh off the main thread</span></span>
-<span>  <span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="co"># ...</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="logout">Logout<a class="anchor" aria-label="anchor" href="#logout"></a>
-</h2>
-<p>To log out the user, call <code>auth$logout()</code>. This clears the
-local session, sets <code>auth$error</code> to
-<code>"logged_out"</code>, reissues a fresh browser token for the next
-login attempt, and attempts to revoke tokens at the provider (if a
-revocation endpoint is available):</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout_btn</span>, <span class="op">{</span></span>
-<span>  <span class="va">auth</span><span class="op">$</span><span class="fu">logout</span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">validate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">need</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">repos</span><span class="op">)</span>, <span class="st">"Could not load repositories. Try again later."</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">validate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">need</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">repos</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="st">"No repositories to show."</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">repos</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"name"</span>, <span class="st">"private"</span><span class="op">)</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>Only send tokens to an API you intend to authorize. The example
+requests one page of results; fetching more pages depends on the API.
+Use <code><a href="../reference/resource_req.html">resource_req()</a></code> to build an <code>httr2</code> request
+without sending it, or pass a prepared <code>httr2</code> request to
+<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code>. See the <a href="example-spotify.html">Spotify example</a> for another complete
+app.</p>
 </div>
 <div class="section level2">
-<h2 id="using-response_mode-form_post">Using <code>response_mode = "form_post"</code><a class="anchor" aria-label="anchor" href="#using-response_mode-form_post"></a>
+<h2 id="provider-configuration-and-oidc-discovery">Provider configuration and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-configuration-and-oidc-discovery"></a>
 </h2>
-<p>The response mode determines how the provider returns the
-authorization response to the app after the user authenticates. The
-effective default is the normal query callback flow, which means the
-provider redirects back to the app with query parameters (e.g.,
-<code>?code=...&amp;state=...</code>) and shinyOAuth does not send a
-<code>response_mode</code> parameter unless you configure one.</p>
-<p>For most Shiny apps, query is the preferred response mode because it
-works seamlessly with Shiny’s routing and does not require any special
-UI handling. It is the default and does not require setting
-<code>response_mode</code> explicitly.</p>
-<p>For some apps, when your provider explicitly requires or recommends
-<code>response_mode = "form_post"</code>, you can configure that on the
-client. Because Shiny apps do not handle POST callbacks by default, you
-need to enable this by wrapping your UI with
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. This allows the provider to POST the
-authorization response back to the app. That wrapper also injects the
-shinyOAuth browser dependency automatically, so you do not need a
-separate <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> call in the wrapped UI. The
-<code>/callback</code> path below is only an example sub-route; using
-the app root is also fine as long as the provider redirect URI matches
-the path handled by <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Here’s how you
-can set it up:</p>
-<p>This is the plain OAuth/OIDC Form Post Response Mode: the POST body
-contains parameters such as <code>code</code>, <code>state</code>,
-<code>error</code>, and <code>iss</code>. JWT Secured Authorization
-Response Mode (JARM) values such as <code>form_post.jwt</code> use the
-same POST bridge, but the body carries a compact JWT
-<code>response</code> value instead. In that mode,
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> validates the JARM payload and the
-inner sealed state before issuing the one-time callback handle.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.allow_insecure_oidc_loopback <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span></span>
-<span>  base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>,</span>
-<span>  realm <span class="op">=</span> <span class="st">"shinyoauth"</span></span>
+<p>Use a built-in helper when available, such as
+<code><a href="../reference/oauth_provider_google.html">oauth_provider_google()</a></code>,
+<code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code>, or
+<code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code>. Each helper’s help page
+describes its setup. For an OpenID Connect service with a discovery URL,
+you can let shinyOAuth look up the service’s settings:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
+<span>  issuer <span class="op">=</span> <span class="st">"https://login.example.com"</span></span>
 <span><span class="op">)</span></span>
-<span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="st">"shiny-public"</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="st">""</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100/callback"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"email"</span><span class="op">)</span>,</span>
-<span>  response_mode <span class="op">=</span> <span class="st">"form_post"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui</a></span><span class="op">(</span><span class="va">base_ui</span>, id <span class="op">=</span> <span class="st">"auth"</span>, client <span class="op">=</span> <span class="va">client</span><span class="op">)</span></span>
+<span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"https://my-app.example.com"</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"email"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Replace the example URLs and credentials with your own registration.
+An <strong>issuer</strong> is the provider’s identifier URL; copy it
+from the provider’s configuration. Discovery makes a network request, so
+run it during app setup. If your registration specifies a client
+authentication method, supply the matching <code>token_auth_style</code>
+to the provider helper; discovery describes the service’s capabilities,
+not the settings of your individual registration.</p>
+<p>OpenID Connect (OIDC) is a login protocol: it supplies a signed
+<strong>ID token</strong> that shinyOAuth checks to identify the user.
+OAuth 2.0 grants permission to call APIs using an <strong>access
+token</strong>. GitHub and Spotify use OAuth without OIDC; their helpers
+fetch profile information through their own APIs. With OIDC, read
+validated identity details from <code>auth$token@id_token_claims</code>
+and check <code>auth$token@id_token_validated</code>. An access token
+alone is not proof of identity. The <a href="authentication-flow.html">authentication guide</a> explains
+more.</p>
+<p>For a local Keycloak server using HTTP, opt in before creating the
+provider:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.allow_insecure_oidc_loopback <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span></span>
+<span>  base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>, realm <span class="op">=</span> <span class="st">"shinyoauth"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This option is for local development only. Production provider URLs
+need HTTPS. The ordinary HTTP host option allows local app addresses; it
+does not relax OIDC discovery.</p>
+</div>
+<div class="section level2">
+<h2 id="asynchronous-execution">Asynchronous execution<a class="anchor" aria-label="anchor" href="#asynchronous-execution"></a>
+</h2>
+<p>By default, network work runs in the app’s R process. A slow provider
+can make other sessions on that process wait too. To run the module’s
+network work in background R processes, install <code>mirai</code> and
+<code>promises</code>, then configure workers before
+<code>server()</code>:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, auto_redirect <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">login</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderUI.html" class="external-link">renderUI</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/tagList.html" class="external-link">tagList</a></span><span class="op">(</span></span>
-<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are logged in!"</span><span class="op">)</span>,</span>
-<span>        <span class="va">tags</span><span class="op">$</span><span class="fu">pre</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/capture.output.html" class="external-link">capture.output</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span><span class="op">)</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span><span class="op">)</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>      <span class="va">tags</span><span class="op">$</span><span class="fu">p</span><span class="op">(</span><span class="st">"You are not logged in."</span><span class="op">)</span></span>
-<span>    <span class="op">}</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span>,</span>
-<span>  port <span class="op">=</span> <span class="fl">8100</span>,</span>
-<span>  launch.browser <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Open the app in your regular browser at http://127.0.0.1:8100</span></span>
-<span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
-<p>If your <code>redirect_uri</code> is the app root (like
-<code>http://127.0.0.1:8100</code>), <code>uiPattern = ".*"</code> is
-usually harmless. If your <code>redirect_uri</code> is a sub-route (like
-<code>http://127.0.0.1:8100/callback</code>), use
-<code>uiPattern = ".*"</code> so Shiny routes that POST request through
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> before the app returns to its normal
-GET flow.</p>
-<p>When a trusted reverse proxy terminates HTTPS but forwards plain HTTP
-to Shiny, provide a <code>request_uri_resolver</code>. The resolver must
-first verify that the request came from your proxy; do not trust
-forwarded headers from arbitrary clients. This example also reconstructs
-a mounted application path:</p>
+<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, async <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="co"># Add your outputs and observers here.</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>Alternatively, configure
+<code>future::plan(future::multisession, workers = 2)</code> and use
+<code>async = TRUE</code>. If both backends are configured, mirai takes
+priority. <code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> runs in the same R process
+and does not avoid blocking.</p>
+<p>For an app using future instead of mirai, configure its worker plan
+before starting the server and release the workers when the app
+stops:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">trusted_proxy_uri</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">req</span><span class="op">[[</span><span class="st">"REMOTE_ADDR"</span><span class="op">]</span><span class="op">]</span>, <span class="st">"10.0.0.10"</span><span class="op">)</span> <span class="op">||</span></span>
-<span>      <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">req</span><span class="op">[[</span><span class="st">"HTTP_X_FORWARDED_PROTO"</span><span class="op">]</span><span class="op">]</span>, <span class="st">"https"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
+<code class="sourceCode R"><span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">sequential</a></span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span>
-<span>    <span class="st">"https://app.example"</span>,</span>
-<span>    <span class="va">req</span><span class="op">[[</span><span class="st">"SCRIPT_NAME"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>    <span class="va">req</span><span class="op">[[</span><span class="st">"PATH_INFO"</span><span class="op">]</span><span class="op">]</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui</a></span><span class="op">(</span></span>
-<span>  <span class="va">base_ui</span>,</span>
-<span>  id <span class="op">=</span> <span class="st">"auth"</span>,</span>
-<span>  client <span class="op">=</span> <span class="va">client</span>,</span>
-<span>  request_uri_resolver <span class="op">=</span> <span class="va">trusted_proxy_uri</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Use the proxy address and fixed public origin from your deployment.
-The resolved URI must still match <code>client@redirect_uri</code> and
-<code>callback_path</code>.</p>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, async <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="co"># Add your outputs and observers here.</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>This setting covers the module’s operations; API calls you write in
+your own outputs still run where you call them. Discovery during app
+setup also stays synchronous. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.html"><code>oauth_module_server()</code></a>
+for advanced exceptions and the <a href="package-options.html">options
+reference</a> for timeouts and retries.</p>
 </div>
 <div class="section level2">
-<h2 id="deploying-on-posit-connect-cloud-avoiding-embedded-deployment">Deploying on Posit Connect Cloud (avoiding embedded deployment)<a class="anchor" aria-label="anchor" href="#deploying-on-posit-connect-cloud-avoiding-embedded-deployment"></a>
+<h2 id="token-expiry-and-session-length">Token expiry and session length<a class="anchor" aria-label="anchor" href="#token-expiry-and-session-length"></a>
 </h2>
-<p>To be able to handle OAuth callbacks properly, your Shiny app needs
-to run in a top-level browser context where the provider can redirect
-back to it with query parameters or a POST body. When your app is
-embedded inside another page, this does not work.</p>
-<p>If you deploy a <code>shinyOAuth</code> app on Posit Connect Cloud,
-publish and test it via a top-level (custom) app URL, not the default
-embedded content URL (which has the app embedded inside another web
-page).</p>
-<p>At Posit Connect Cloud (the successor of shinyapps.io), you can
-configure a top-level URL like so:</p>
-<ol style="list-style-type: decimal">
-<li>In Posit Connect Cloud, go to the app, then Settings -&gt; URL</li>
-<li>Configure a custom app URL. This can be a claimed Posit URL (free)
-or your own custom domain</li>
-<li>Use that top-level URL as your redirect URI in your
-<code>OAuthClient</code>
-</li>
-<li>Register that same top-level URL as the callback URL at your OAuth
-provider</li>
-<li>Open the app via that top-level URL</li>
-</ol>
+<p>Access tokens usually expire. If the provider supplies a refresh
+token, the module can obtain a replacement before expiry with
+<code>refresh_proactively = TRUE</code>. Otherwise, users need to sign
+in again when their token expires.</p>
+<p>Use <code>reauth_after_seconds</code> to set a maximum time since
+interactive login; refreshing a token does not restart that timer. For
+OIDC, the module also requests a fresh provider login and checks its
+time. OAuth-only providers can only be given an ordinary authorization
+request.</p>
+<p>Keep <code>indefinite_session = FALSE</code> unless you deliberately
+want the local session to continue with an expired token or after
+refresh fails. Setting it to <code>TRUE</code> also disables the
+<code>reauth_after_seconds</code> limit; it does not extend the token’s
+validity at the provider.</p>
 </div>
 <div class="section level2">
-<h2 id="global-options">Global options<a class="anchor" aria-label="anchor" href="#global-options"></a>
+<h2 id="deployment">Deployment<a class="anchor" aria-label="anchor" href="#deployment"></a>
 </h2>
-<p>The package provides several global options to customize behavior.
-Most apps can stay with the defaults; this section is mainly for cases
-where you want to tune logging, networking, or a specific advanced
-behavior.</p>
+<p>Replace the local callback URL with the app’s public HTTPS URL, and
+register that same URL with the provider. Open the app directly in a
+browser tab. An app embedded in another page may not be able to complete
+login. On Posit Connect Cloud, use the app’s direct URL as described in
+its <a href="https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url" class="external-link">URL
+settings guide</a>.</p>
 <div class="section level3">
-<h3 id="observabilitylogging">Observability/logging<a class="anchor" aria-label="anchor" href="#observabilitylogging"></a>
+<h3 id="multiple-r-processes">Multiple R processes<a class="anchor" aria-label="anchor" href="#multiple-r-processes"></a>
 </h3>
+<p>The default configuration stores pending logins in one R process. If
+a login can start on one process and return to another, those processes
+need:</p>
 <ul>
-<li>
-<code>options(shinyOAuth.audit_hook = function(event){ ... })</code>
-– receive structured audit and error events</li>
-<li>
-<code>options(shinyOAuth.audit_include_http = FALSE)</code> –
-exclude HTTP request details from audit events (default:
-<code>TRUE</code>)</li>
-<li>
-<code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code>
-– include the raw <code>shiny_session$token</code> in native audit-hook
-payloads. By default, hooks receive only
-<code>shiny_session$session_token_digest</code>
-</li>
-<li>
-<code>options(shinyOAuth.audit_redact_http = FALSE)</code> – disable
-automatic redaction of sensitive data in audit events (default:
-<code>TRUE</code>). Debug only: raw mode can expose cookies,
-authorization headers, codes, state values, and client IP addresses</li>
-<li>
-<code>options(shinyOAuth.audit_digest_key = ...)</code> – shared key
-of at least 32 bytes for HMAC-SHA256 digests used in audit/OTel
-attributes. Invalid configured keys fail closed; by default,
-‘shinyOAuth’ generates a random per-process key when this is not
-configured</li>
-<li>
-<code>options(shinyOAuth.otel_tracing_enabled = FALSE)</code> –
-disable ‘shinyOAuth’ OpenTelemetry span creation and async trace-context
-propagation. Default: <code>TRUE</code>
-</li>
-<li>
-<code>options(shinyOAuth.otel_logging_enabled = FALSE)</code> –
-disable ‘shinyOAuth’ OpenTelemetry log emission. Default:
-<code>TRUE</code>
-</li>
+<li>A shared <code>state_store</code> with an atomic
+<code>$take()</code> operation: reading and deleting a pending login
+must happen as one indivisible operation.</li>
+<li>The same secret <code>state_key</code>, so each process can read the
+encrypted login details. Supply at least 32 random bytes, stored in your
+deployment’s secret manager.</li>
+<li>Matching provider and client settings.</li>
 </ul>
-<p>See <code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>
-for details about audit hooks, and
-<code><a href="../articles/opentelemetry.html">vignette("opentelemetry", package = "shinyOAuth")</a></code> for more
-details about logs and traces via OpenTelemetry.</p>
+<p>Use <code><a href="../reference/custom_cache.html">custom_cache()</a></code> to connect a shared database or Redis
+store. Plain <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> is unsuitable for shared
+login state because separate reads and deletes can let two requests use
+the same entry. See <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html"><code>custom_cache()</code></a>
+for the backend contract.</p>
 </div>
 <div class="section level3">
-<h3 id="networkingsecurity">Networking/security<a class="anchor" aria-label="anchor" href="#networkingsecurity"></a>
+<h3 id="security-checklist">Security checklist<a class="anchor" aria-label="anchor" href="#security-checklist"></a>
 </h3>
 <ul>
-<li>
-<code>options(shinyOAuth.leeway = 30)</code> – default clock skew
-leeway (seconds) for ID token
-<code>exp</code>/<code>iat</code>/<code>nbf</code> checks and state
-payload <code>issued_at</code> future check</li>
-<li>
-<code>options(shinyOAuth.max_id_token_lifetime = 86400)</code> –
-package hardening that caps the allowed ID token lifetime in seconds
-(<code>exp - iat</code>). OIDC Core §3.1.3.7 rule 9 requires an
-unexpired token but does not define this lifetime cap. Default
-<code>86400</code> (24 hours). Set to <code>Inf</code> to disable the
-check</li>
-<li>
-<code>options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))</code>
-- allows these hosts to use <code>http://</code> in non-OIDC URL checks;
-it does not relax OIDC discovery</li>
-<li>
-<code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>
-– development-only opt-in for OIDC issuer and endpoint URLs on HTTP
-loopback origins; production OIDC metadata URLs must use HTTPS</li>
-<li>
-<code>options(shinyOAuth.allowed_hosts = c())</code> – when
-non‑empty, restricts accepted hosts to this whitelist</li>
-<li>
-<code>options(shinyOAuth.allow_hs = TRUE)</code> – opt‑in HMAC
-validation for ID tokens (HS256/HS384/HS512). Requires a strictly
-server‑side <code>client_secret</code>
-</li>
-<li>
-<code>options(shinyOAuth.client_assertion_ttl = 120L)</code> –
-lifetime in seconds for JWT client assertions used with
-<code>client_secret_jwt</code> or <code>private_key_jwt</code> token
-endpoint authentication. Finite values below 60 seconds are coerced to
-60 seconds, finite values above 300 seconds are clamped to 300 seconds,
-and <code>NA</code> or non-finite values fall back to the 120-second
-default</li>
-<li>
-<code>options(shinyOAuth.state_fail_delay_ms = c(10, 30))</code> –
-adds a small randomized delay (in milliseconds) before any state
-validation failure (e.g., malformed token, IV/tag/ciphertext issues, or
-GCM authentication failure). This helps reduce timing side‑channels
-between different failure modes</li>
+<li>Use HTTPS in production and keep credentials on the server.</li>
+<li>Request only the scopes your app needs.</li>
+<li>Check login and app-specific access rules in server code before
+using private data.</li>
+<li>Keep tokens, complete login URLs, and detailed provider errors out
+of the UI and logs.</li>
+<li>Render untrusted text through Shiny’s ordinary text/tag functions.
+Do not pass it to <code><a href="https://rstudio.github.io/htmltools/reference/HTML.html" class="external-link">HTML()</a></code> as markup; keep table escaping
+enabled.</li>
+<li>Wrap the UI with <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> (or
+<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> when required). These send a browser
+privacy header that keeps callback URLs out of referrers.</li>
+<li>Keep the provider’s validation defaults and choose any extra
+protections to match your provider and deployment requirements.</li>
 </ul>
-<p>Note on <code>allowed_hosts</code>: patterns support globs
-(<code>*</code>, <code>?</code>). Using a catch‑all like
-<code>"*"</code> matches any host and effectively disables endpoint host
-restrictions (scheme rules still apply). Avoid this unless you truly
-intend to accept any host; prefer pinning to your domain(s), e.g.,
-<code>c(".example.com")</code>.</p>
-</div>
-<div class="section level3">
-<h3 id="extra-parameter-overrides">Extra parameter overrides<a class="anchor" aria-label="anchor" href="#extra-parameter-overrides"></a>
-</h3>
-<p>Most users can ignore this section. By default, ‘shinyOAuth’ blocks
-certain security-critical parameters from being passed via
-<code>extra_auth_params</code>, <code>extra_token_params</code>, and
-<code>extra_token_headers</code>. This helps prevent accidental
-misconfiguration that could break state binding, PKCE, or client
-authentication.</p>
-<p><code>response_mode</code> now has a dedicated client argument via
-<code>oauth_client(..., response_mode = ...)</code>. Prefer that
-first-class API over setting
-<code>extra_auth_params$response_mode</code> manually.</p>
-<p>If you have a specific, advanced use case where you need to override
-one of these blocked parameters, you can unblock them using the
-following options:</p>
-<ul>
-<li>
-<code>options(shinyOAuth.unblock_auth_params = c("redirect_uri"))</code>
-– allows overriding the specified authorization URL parameters. Default
-blocked: <code>response_type</code>, <code>client_id</code>,
-<code>redirect_uri</code>, <code>state</code>, <code>request_uri</code>,
-<code>request</code>, <code>scope</code>, <code>code_challenge</code>,
-<code>code_challenge_method</code>, <code>nonce</code>,
-<code>claims</code>
-</li>
-<li>
-<code>request</code> and <code>request_uri</code> stay blocked by
-default because ‘shinyOAuth’ manages them internally for PAR and Request
-Object flows; leave them reserved unless you are intentionally taking
-responsibility for a fully custom advanced flow.</li>
-<li>
-<code>options(shinyOAuth.unblock_token_params = c(...))</code> –
-allows overriding the specified token exchange parameters. Default
-blocked: <code>grant_type</code>, <code>code</code>,
-<code>redirect_uri</code>, <code>code_verifier</code>,
-<code>client_id</code>, <code>client_secret</code>,
-<code>client_assertion</code>, <code>client_assertion_type</code>
-</li>
-<li>
-<code>options(shinyOAuth.unblock_token_headers = c("authorization"))</code>
-– allows overriding the specified token exchange headers
-(case-insensitive). Default blocked: <code>Authorization</code>,
-<code>Cookie</code>
-</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="async-timeout-mirai">Async timeout (mirai)<a class="anchor" aria-label="anchor" href="#async-timeout-mirai"></a>
-</h3>
-<ul>
-<li>
-<code>options(shinyOAuth.async_timeout = 10000)</code> – per-task
-timeout in milliseconds for mirai async tasks. When using mirai with
-dispatcher (the default), timed-out tasks are automatically cancelled
-and resolve as a mirai error. Default is <code>NULL</code> (no timeout).
-Ignored when falling back to the ‘future’ backend</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="async-condition-replay">Async condition replay<a class="anchor" aria-label="anchor" href="#async-condition-replay"></a>
-</h3>
-<ul>
-<li>
-<code>options(shinyOAuth.replay_async_conditions = FALSE)</code> –
-when <code>FALSE</code>, warnings and messages captured from async
-workers are silently discarded instead of being re-emitted on the main R
-process. Default is <code>TRUE</code> (replay all captured conditions).
-Useful if worker diagnostics are too noisy or handled separately via
-<code>audit_hook</code>
-</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="token-lifetime-fallback">Token lifetime fallback<a class="anchor" aria-label="anchor" href="#token-lifetime-fallback"></a>
-</h3>
-<ul>
-<li>
-<code>options(shinyOAuth.default_expires_in = 3600)</code> –
-fallback token lifetime (in seconds) when the provider omits
-<code>expires_in</code> from the token response</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="http-settings-timeout-retries-user-agent">HTTP settings (timeout, retries, user agent)<a class="anchor" aria-label="anchor" href="#http-settings-timeout-retries-user-agent"></a>
-</h3>
-<ul>
-<li>
-<code>options(shinyOAuth.timeout = 5)</code> – default HTTP timeout
-(seconds) applied to all outbound requests (discovery, JWKS, token
-exchange, userinfo). Increase if your provider/network is slow</li>
-<li>
-<code>options(shinyOAuth.retry_max_tries = 3L)</code> – maximum
-attempts for transient failures (network errors, 408, 429, 5xx)</li>
-<li>
-<code>options(shinyOAuth.retry_backoff_base = 0.5)</code> – base
-backoff in seconds used for exponential backoff with jitter</li>
-<li>
-<code>options(shinyOAuth.retry_backoff_cap = 5)</code> – per‑attempt
-cap on backoff seconds (before jitter)</li>
-<li>
-<code>options(shinyOAuth.retry_after_cap = 60)</code> – maximum
-synchronous sleep in seconds for a server-provided
-<code>Retry-After</code> value; this is separate from the client-side
-backoff cap</li>
-<li>
-<code>options(shinyOAuth.retry_status = c(408L, 429L, 500:599))</code>
-– HTTP statuses considered transient and retried</li>
-<li>
-<code>options(shinyOAuth.user_agent = "shinyOAuth/&lt;version&gt; R/&lt;version&gt; httr2/&lt;version&gt;")</code>
-– override the default User‑Agent header applied to all outbound
-requests. By default this string is built dynamically from the installed
-package/runtime versions; set a custom string here if your organization
-requires a specific format</li>
-<li>
-<code>options(shinyOAuth.allow_redirect = FALSE)</code> – when
-<code>FALSE</code> (default), all sensitive HTTP requests (token
-exchange, refresh, introspection, revocation, userinfo, OIDC discovery,
-JWKS) refuse to follow redirects and reject 3xx responses. This prevents
-authorization codes, tokens, and PKCE verifiers from leaking to redirect
-targets. Set to <code>TRUE</code> only when you deliberately accept that
-redirect-following risk for a specific deployment; this opt-in is
-honored in all sessions</li>
-<li>
-<code>options(shinyOAuth.max_body_bytes = 1048576)</code> – maximum
-response body size (bytes, default 1 MiB) accepted from OAuth endpoints
-(token, introspection, userinfo, discovery, JWKS). Curl aborts the
-transfer early when <code>Content-Length</code> exceeds this limit; a
-post-download guard catches chunked responses. Increase if a provider
-legitimately returns larger payloads</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="state-store">State store<a class="anchor" aria-label="anchor" href="#state-store"></a>
-</h3>
-<ul>
-<li>
-<code>options(shinyOAuth.allow_non_atomic_state_store = TRUE)</code>
-– allow non-atomic <code>$get()</code> + <code>$remove()</code> fallback
-for shared state stores (e.g., <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code>) that
-do not implement <code>$take()</code>. By default, ‘shinyOAuth’ errors
-when a non-<code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> store lacks
-<code>$take()</code>, because the non-atomic fallback cannot guarantee
-single-use state consumption under concurrent access (TOCTOU replay
-window). Setting this option to <code>TRUE</code> downgrades the error
-to a one-time warning and allows the fallback to proceed. Not
-recommended for production without additional replay protection.</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="size-caps">Size caps<a class="anchor" aria-label="anchor" href="#size-caps"></a>
-</h3>
-<div class="section level4">
-<h4 id="state-envelope">State envelope<a class="anchor" aria-label="anchor" href="#state-envelope"></a>
-</h4>
-<ul>
-<li>
-<code>options(shinyOAuth.state_max_token_chars = 8192)</code> –
-maximum allowed length of the base64url-encoded <code>state</code> query
-parameter</li>
-<li>
-<code>options(shinyOAuth.state_max_wrapper_bytes = 8192)</code> –
-maximum decoded byte size of the outer JSON wrapper (before
-parsing)</li>
-<li>
-<code>options(shinyOAuth.state_max_ct_b64_chars = 8192)</code> –
-maximum allowed length of the base64url-encoded ciphertext inside the
-wrapper</li>
-<li>
-<code>options(shinyOAuth.state_max_ct_bytes = 8192)</code> – maximum
-decoded byte size of the ciphertext before attempting AES-GCM
-decrypt</li>
-</ul>
-<p>These prevent maliciously large state parameters from causing
-excessive CPU or memory usage during decoding and decryption.</p>
-</div>
-<div class="section level4">
-<h4 id="callback-query">Callback query<a class="anchor" aria-label="anchor" href="#callback-query"></a>
-</h4>
-<ul>
-<li>
-<code>options(shinyOAuth.callback_max_code_bytes = 4096)</code> –
-maximum byte length of the <code>code</code> query parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_state_bytes = 8192)</code> –
-maximum byte length of the <code>state</code> query parameter (outer
-token string)</li>
-<li>
-<code>options(shinyOAuth.callback_max_error_bytes = 256)</code> –
-maximum byte length of the <code>error</code> query parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_error_description_bytes = 4096)</code>
-– maximum byte length of the <code>error_description</code> query
-parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_error_uri_bytes = 2048)</code>
-– maximum byte length of the <code>error_uri</code> query parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_iss_bytes = 2048)</code> –
-maximum byte length of the <code>iss</code> query parameter (RFC 9207
-issuer identification)</li>
-<li>
-<code>options(shinyOAuth.callback_max_query_bytes = &lt;derived&gt;)</code>
-– maximum total byte length of the raw callback query string (pre-parse
-guard)</li>
-<li>
-<code>options(shinyOAuth.callback_max_browser_token_bytes = 256)</code>
-– maximum byte length of the <code>browser_token</code> argument
-accepted by <code><a href="../reference/handle_callback.html">handle_callback()</a></code>
-</li>
-<li>
-<code>options(shinyOAuth.callback_max_form_post_body_bytes = &lt;derived&gt;)</code>
-– maximum byte length of the raw <code>form_post</code> callback body
-before parsing</li>
-<li>
-<code>options(shinyOAuth.callback_max_form_post_handle_bytes = 128)</code>
-– maximum byte length of the transient <code>shinyOAuth_form_post</code>
-handle query parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_form_post_id_bytes = 256)</code>
-– maximum byte length of the transient
-<code>shinyOAuth_form_post_id</code> module-id query parameter</li>
-</ul>
-<p>These apply before any hashing/auditing/state parsing, and exist to
-prevent memory/log amplification from extremely large callback URLs or
-<code>form_post</code> bodies.</p>
-</div>
-</div>
-<div class="section level3">
-<h3 id="developmentdebugging">Development/debugging<a class="anchor" aria-label="anchor" href="#developmentdebugging"></a>
-</h3>
-<ul>
-<li>
-<code>options(shinyOAuth.skip_browser_token = TRUE)</code> – skip
-browser cookie binding in tests or interactive sessions</li>
-<li>
-<code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID token
-signature verification in tests or interactive sessions</li>
-<li>
-<code>options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)</code>
-– accept unsigned (<code>alg=none</code>) UserInfo JWTs in tests or
-interactive sessions; outside those contexts ‘shinyOAuth’ errors instead
-of honoring it</li>
-<li>
-<code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
-during token exchange</li>
-<li>
-<code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
-sanitized HTTP bodies and claim values in diagnostics (may reveal
-sensitive details)</li>
-</ul>
-<p>Don’t enable these options in production. They disable key security
-checks or alter error behavior, and are intended for local
-testing/debugging only.</p>
+<p>The module uses a short-lived browser cookie to link a returning
+login to the browser that started it. JavaScript must be able to read
+this cookie, so preventing injected scripts (cross-site scripting, or
+XSS) in your app matters. This link cannot establish which account you
+expected to sign in: check that account yourself when your app has such
+a requirement.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="browser-cookie-preventing-xss">Browser cookie &amp; preventing XSS<a class="anchor" aria-label="anchor" href="#browser-cookie-preventing-xss"></a>
+<h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>
 </h2>
-<p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> binds the browser and server
-session with a short‑lived cookie that must be readable from client‑side
-JavaScript to bridge values into Shiny.</p>
-<p>The cookie binds the callback to the client browser that initiated
-its login transaction. It rejects callbacks from independently initiated
-transactions whose browser binding does not match.</p>
-<p>This binding does not prove which browser or person authenticated at
-the provider. Someone who captures a victim’s complete authorization
-request may complete that same transaction using another account and
-deliver its callback to the initiating browser. The browser cookie can
-still match in that case. Protect authorization URLs from disclosure.
-When your application already knows which account should authenticate,
-enforce an expected issuer and subject (or an explicit account selection
-policy) after OIDC validation and before granting application access.
-The login-CSRF browser integration test demonstrates this boundary and
-retains the application’s rejection of an unexpected subject.</p>
-<p>The cookie is set with the <code>HttpOnly</code> flag disabled so
-that it can be read by JavaScript. This is necessary to bridge the
-cookie value into Shiny. However, this means that if your app has XSS
-vulnerabilities, an attacker could read the cookie too.</p>
-<p>While this is a relatively limited attack vector, you should still
-take care to prevent XSS vulnerabilities in your app. An important
-mitigation is to sanitize user inputs before rendering them in the UI
-(e.g., using <code><a href="https://rstudio.github.io/htmltools/reference/htmlEscape.html" class="external-link">htmltools::htmlEscape()</a></code>).</p>
+<p>Use <a href="audit-logging.html">audit logging</a> to identify the
+failing operation. Common configuration issues include:</p>
+<ul>
+<li>
+<strong>Rejected redirect URI:</strong> check that the registered
+callback URL and <code>redirect_uri</code> match, including scheme,
+host, port, and path.</li>
+<li>
+<strong>Callback validation failure:</strong> use the registered app
+address in a regular browser and create the client outside
+<code>server()</code>. For multiple R processes, check the shared state
+store and key.</li>
+<li>
+<strong>Rejected client credentials:</strong> check the environment
+variables after restarting R and match <code>token_auth_style</code> to
+the app registration.</li>
+<li>
+<strong>Missing profile fields:</strong> check requested scopes and
+the provider’s profile format. Some providers return identity
+information only in ID token claims.</li>
+<li>
+<strong>Rejected API request:</strong> check permissions, token
+expiry, and whether the API accepts tokens from the configured
+provider.</li>
+</ul>
+<p>Keep token and callback validation enabled while diagnosing
+configuration errors.</p>
 </div>
 <div class="section level2">
-<h2 id="multiprocess-deployments-share-state-store-key-and-policy">Multi‑process deployments: share state store, key, and policy<a class="anchor" aria-label="anchor" href="#multiprocess-deployments-share-state-store-key-and-policy"></a>
+<h2 id="further-configuration">Further configuration<a class="anchor" aria-label="anchor" href="#further-configuration"></a>
 </h2>
-<p>When you run multiple Shiny R processes (e.g., multiple workers,
-Shiny Server Pro, RStudio Connect, Docker/Kubernetes replicas, or any
-non‑sticky load balancer), you must ensure that:</p>
+<p>The <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.html#ref-examples"><code>oauth_module_server()</code>
+examples</a> include complete apps for automatic login, a manual login
+button, and fetching GitHub repositories with the user’s access token.
+The <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html#ref-examples"><code>oauth_provider()</code>
+examples</a> cover manual OAuth/OIDC setup, discovery, and named
+providers; the <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.html#ref-examples">Microsoft
+example</a> also shows authentication-state summaries and error
+handling.</p>
 <ul>
-<li>All workers share the same state store with atomic single-use
-semantics. Use <code><a href="../reference/custom_cache.html">custom_cache()</a></code> with an atomic
-<code>$take()</code> method backed by a shared store (e.g., Redis
-<code>GETDEL</code>, SQL <code>DELETE ... RETURNING</code>). Plain
-<code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> is not safe as a shared state store
-because its <code>$get()</code> + <code>$remove()</code> are not atomic
-and may allow replay attacks under concurrent access; the default
-<code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> is per‑process only and is not shared.
-See <code><a href="../reference/custom_cache.html">?custom_cache</a></code> for details on implementing
-<code>$take()</code>;</li>
-<li>All workers share the same state key (e.g., read from environment
-variable; by default, a random key is generated per client instance
-which is then not shared);</li>
-<li>All workers use the same effective <code>OAuthClient</code> /
-<code>OAuthProvider</code> settings which are included in the
-fingerprint used for state binding.</li>
+<li>
+<a href="advanced-security.html">Advanced security</a>: form POST
+callbacks, certificates (mTLS), signed requests (JAR) and responses
+(JARM), pushed requests (PAR), and tokens tied to a key (DPoP).</li>
+<li>
+<a href="authentication-flow.html">Authentication flow</a>: what the
+module checks and why.</li>
+<li>
+<a href="package-options.html">Package options</a>: logging, network
+limits, and debugging settings.</li>
+<li>
+<a href="opentelemetry.html">OpenTelemetry</a>: exporting logs and
+timing information.</li>
 </ul>
-<p>This is because during the authorization code + PKCE flow,
-‘shinyOAuth’ creates an encrypted “state envelope” which is stored in a
-cache (the state_store) and echoed back via the <code>state</code> query
-parameter. The envelope is sealed with AES‑GCM using your state_key. If
-the callback lands on a different worker than the one that initiated
-login, that worker must be able to both read the cached entry and
-decrypt the envelope using the same key. If workers have different keys,
-decryption will fail and the login flow will abort with a state
-error.</p>
-<p>When providing a custom state key, please ensure it has high entropy
-(minimum 32 characters or 32 raw bytes; recommended 64–128 characters)
-to prevent offline guessing attacks against the encrypted state. Do not
-use short or human‑memorable passphrases.</p>
-</div>
-<div class="section level2">
-<h2 id="security-checklist">Security checklist<a class="anchor" aria-label="anchor" href="#security-checklist"></a>
-</h2>
-<p>Below is a checklist of things you may want to think about when
-bringing your app to production:</p>
-<ul>
-<li>Use HTTPS everywhere in production</li>
-<li>Verify issuer used in your provider is correct</li>
-<li>In your <code>OAuthClient</code> and <code>OAuthProvider</code>, set
-as many of the security options as your provider supports</li>
-<li>Have your <code>OAuthClient</code> request the minimum scopes
-necessary; give your app registration only the permissions it needs</li>
-<li>Do not show <code>$error_description</code> to your users; never
-expose tokens in UI or logs</li>
-<li>Keep secrets safe in environment variables (e.g.,
-<code>OAUTH_CLIENT_ID</code>, <code>OAUTH_CLIENT_SECRET</code>)</li>
-<li>Sanitize user inputs before rendering them in the UI (e.g., using
-<code><a href="https://rstudio.github.io/htmltools/reference/htmlEscape.html" class="external-link">htmltools::htmlEscape()</a></code>)</li>
-<li>Make use of audit logging (see
-<code><a href="../articles/audit-logging.html">vignette("audit-logging", package = "shinyOAuth")</a></code>) and
-monitor these logs</li>
-<li>Use a provider which enforces strong authentication (e.g.,
-multi-factor authentication)</li>
-<li>Set Content Security Policy (CSP) headers to restrict resource
-loading and mitigate XSS attacks; (requires middleware; can’t be done in
-Shiny)</li>
-<li>Log IP addresses of those accessing your app (requires middleware;
-can’t be done in Shiny)</li>
-</ul>
-<p>While this R package has been developed with care and the OAuth
-2.0/OIDC protocols contain many security features, no guarantees can be
-made in the realm of cybersecurity. For highly sensitive applications,
-consider a layered (‘defense-in-depth’) approach to security (for
-example, adding an IP whitelist as an additional safeguard).</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

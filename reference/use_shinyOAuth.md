@@ -1,14 +1,14 @@
 # Add JavaScript dependency to the UI of a Shiny app
 
-Adds shinyOAuth's client-side JavaScript dependency to your Shiny UI.
-This is required so the module can handle redirects and manage its
-browser-side session token.
-
-Without this call in the UI,
+Add shinyOAuth's JavaScript to a page so
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-will not work unless your app UI is wrapped with
-[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md),
-which injects this dependency automatically for form_post flows.
+can redirect the browser and manage its temporary login cookie. Use this
+inside an existing
+[`fluidPage()`](https://rdrr.io/pkg/shiny/man/fluidPage.html) or
+[`tagList()`](https://rstudio.github.io/htmltools/reference/tagList.html)
+when you integrate the browser dependency directly and configure
+response headers elsewhere, such as in your web server or another UI
+wrapper.
 
 ## Usage
 
@@ -20,26 +20,30 @@ use_shinyOAuth(inject_referrer_meta = TRUE)
 
 - inject_referrer_meta:
 
-  If TRUE (default), injects a
-  `<meta name="referrer" content="no-referrer">` tag into the document
-  head. This reduces the risk of leaking OAuth callback query parameters
-  (like `code` and `state`) via the `Referer` header to third-party
-  subresources during the initial callback page load.
+  If TRUE (default), adds a meta tag to the page: an instruction asking
+  the browser not to share the page's address when loading images,
+  scripts, or other files. Some files may start loading before the
+  browser reads this instruction. Use
+  [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+  to provide this protection from the start of page loading.
 
 ## Value
 
-A `tagList` that loads the `inst/www/shinyOAuth.js` dependency once.
+A `tagList` that loads the browser code once.
 
 ## Details
 
-Place this near the top-level of your UI (e.g., inside
-[`fluidPage()`](https://rdrr.io/pkg/shiny/man/fluidPage.html) or
-[`tagList()`](https://rstudio.github.io/htmltools/reference/tagList.html)),
-similar to how you would use `shinyjs::useShinyjs()`. If you wrap the
-app UI with
-[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md),
-you usually do not need a separate call here because that wrapper
-injects this dependency for you.
+[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+combines this browser setup with the HTTP header
+`Referrer-Policy: no-referrer`, which prevents callback URLs from being
+sent as referrers when page resources load. When using
+`use_shinyOAuth()` directly, set that header in your HTTP response
+configuration for protection from the start of page loading; the
+optional meta tag takes effect later.
+[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+and
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+already include this dependency.
 
 ## See also
 

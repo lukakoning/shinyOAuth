@@ -122,12 +122,10 @@ client <- oauth_client(
 )
 
 # Simple UI
-ui <- fluidPage(
-  # Include JavaScript dependency:
-  use_shinyOAuth(),
+ui <- oauth_ui(fluidPage(
   # Show login information:
   uiOutput("login_information")
-)
+))
 
 # Server which obtains authentication
 server <- function(input, output, session) {

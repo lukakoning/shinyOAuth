@@ -1,7 +1,10 @@
-# Create an Apple client secret JWT
+# Create a client secret for Sign in with Apple
 
-Builds the ES256-signed JWT that Apple expects in the token-request
-`client_secret` form field for Sign in with Apple.
+Use your Apple developer key to create the client secret expected by
+Sign in with Apple. Pass the returned string as `client_secret` to
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+Unlike a fixed password, this secret expires; replace it before its
+expiry.
 
 ## Usage
 
@@ -60,23 +63,9 @@ A compact signed JWT string suitable for
 
 ## Details
 
-Apple currently requires the following JWT shape for Sign in with Apple
-token requests:
-
-- JOSE header `alg = ES256` and `kid = <Apple key id>`
-
-- `iss = <Apple Developer Team ID>`
-
-- `sub = <client_id>`
-
-- `aud = "https://appleid.apple.com"`
-
-- `exp` no more than `15777000` seconds (six months) after `iat`
-
-The resulting string can be supplied directly to
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-as the `client_secret` for
-[`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md).
+The helper signs a JWT with ES256. It places your Team ID in `iss`, your
+client ID in `sub`, Apple's URL in `aud`, and the key ID in the header.
+The lifetime must not exceed 15,777,000 seconds (about six months).
 
 ## Examples
 

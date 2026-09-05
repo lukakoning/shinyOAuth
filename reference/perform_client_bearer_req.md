@@ -3,8 +3,8 @@
 **\[deprecated\]**
 
 Deprecated alias for
-[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-to avoid a breaking change in the public API. Use
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
+Use
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
 for Bearer, DPoP, and mTLS-protected resource requests instead.
 
@@ -108,12 +108,11 @@ perform_client_bearer_req(
 
 - idempotent:
 
-  Optional logical controlling generic transport and transient-HTTP
-  retries in `req_with_retry()`. When `NULL` (the default), shinyOAuth
-  infers this from the final request method using standard HTTP
-  idempotency semantics (`GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE`).
-  DPoP nonce challenges are replayed once regardless, as required by RFC
-  9449.
+  Whether ordinary network/HTTP failures may be retried safely. `NULL`
+  (default) infers this from the final HTTP method: GET, HEAD, OPTIONS,
+  PUT, and DELETE permit retries. Set it explicitly if your API has
+  different guarantees. One DPoP nonce challenge retry is allowed
+  independently of this setting.
 
 ## Value
 

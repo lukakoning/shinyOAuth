@@ -35,12 +35,11 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/advanced-security.html">Advanced security configuration</a></li>
-    <li><a class="dropdown-item" href="articles/audit-logging.html">Audit logging and hooks</a></li>
-    <li><a class="dropdown-item" href="articles/authentication-flow.html">Authentication flow</a></li>
+<li><a class="dropdown-item" href="articles/usage.html">Usage</a></li>
     <li><a class="dropdown-item" href="articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
-    <li><a class="dropdown-item" href="articles/opentelemetry.html">OpenTelemetry</a></li>
-    <li><a class="dropdown-item" href="articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="articles/authentication-flow.html">Authentication flow</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="articles/index.html">More articles...</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -119,12 +118,10 @@
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Simple UI</span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
-<span>  <span class="co"># Include JavaScript dependency:</span></span>
-<span>  <span class="fu"><a href="reference/use_shinyOAuth.html">use_shinyOAuth</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/oauth_ui.html">oauth_ui</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
 <span>  <span class="co"># Show login information:</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login_information"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Server which obtains authentication</span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
