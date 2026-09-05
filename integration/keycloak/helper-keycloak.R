@@ -1266,8 +1266,8 @@ make_mtls_provider <- function(
     issuer = get_https_issuer(),
     token_auth_style = token_auth_style,
     allowed_token_types = allowed_token_types,
-    id_token_required = FALSE,
-    id_token_validation = FALSE,
+    id_token_required = TRUE,
+    id_token_validation = TRUE,
     ...
   )
 

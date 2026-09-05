@@ -25,6 +25,13 @@ perform_mtls_module_login <- function(
       values$.process_query(callback_query(login))
       session$flushReact()
 
+      if (isTRUE(values$authenticated)) {
+        expect_keycloak_module_login_invariants(
+          values$authenticated, values$error, values$error_description,
+          values$error_uri, values$token, client
+        )
+      }
+
       result <<- list(
         authenticated = isTRUE(values$authenticated),
         error = values$error,
@@ -36,6 +43,32 @@ perform_mtls_module_login <- function(
 
   result
 }
+
+testthat::test_that("strict OIDC validation and mTLS work across the token lifecycle", {
+  skip_mtls_common()
+  local_test_options()
+  client <- make_mtls_confidential_client(make_mtls_provider())
+  login <- perform_mtls_module_login(client)
+  testthat::expect_true(login$authenticated)
+  token <- login$token
+  testthat::expect_true(token@id_token_validated)
+  testthat::expect_identical(token@cnf[["x5t#S256"]], tls_client_thumbprint("valid"))
+  refreshed <- shinyOAuth::refresh_token(client, token, async = FALSE, introspect = TRUE)
+  testthat::expect_true(refreshed@id_token_validated)
+  testthat::expect_identical(refreshed@id_token_claims$iss, client@provider@issuer)
+  testthat::expect_identical(refreshed@id_token_claims$sub, token@id_token_claims$sub)
+  testthat::expect_identical(refreshed@cnf[["x5t#S256"]], tls_client_thumbprint("valid"))
+  intro <- shinyOAuth::introspect_token(client, refreshed, async = FALSE)
+  testthat::expect_true(intro$active)
+  testthat::expect_identical(intro$raw$cnf[["x5t#S256"]], tls_client_thumbprint("valid"))
+  ui <- shinyOAuth::get_userinfo(client, refreshed)
+  testthat::expect_identical(ui$sub, token@id_token_claims$sub)
+  response <- shinyOAuth::perform_resource_req(refreshed,
+    get_mtls_endpoint_url(client@provider, "userinfo_endpoint"), oauth_client = client)
+  testthat::expect_identical(httr2::resp_body_json(response)$sub, ui$sub)
+  revoked <- shinyOAuth::revoke_token(client, refreshed, which = "access", async = FALSE)
+  testthat::expect_true(revoked$revoked)
+})
 
 expect_mtls_par_build_auth_url_failure <- function(
   cert_variant,
