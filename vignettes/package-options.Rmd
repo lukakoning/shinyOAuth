@@ -56,7 +56,7 @@ to this whitelist
   randomized delay. Positive delays sleep synchronously and block the Shiny
   worker, including initial state validation with `async = TRUE`. The delay
   adds timing noise but does not provide constant-time validation. Use
-  [rate limiting at your web server](advanced-security.html#limiting-repeated-login-requests)
+  [rate limiting at your web server](usage.html#limiting-repeated-login-requests)
   to control repeated callback attempts.
 
 Note on `allowed_hosts`: patterns support globs (`*`, `?`).

@@ -316,7 +316,7 @@ for the backend contract.
   pass it to `HTML()` as markup; keep table escaping enabled.
 - Wrap the UI with `oauth_ui()` (or `oauth_form_post_ui()` when required).
   These send a browser privacy header that keeps callback URLs out of referrers.
-- For public apps, consider [rate limiting at your web server](advanced-security.html#limiting-repeated-login-requests)
+- For public apps, consider [rate limiting at your web server](#limiting-repeated-login-requests)
   to help keep the app responsive during repeated login attempts.
 - Keep the provider's validation defaults and choose any extra protections
   to match your provider and deployment requirements.
@@ -326,6 +326,36 @@ the browser that started it. JavaScript must be able to read this cookie, so
 preventing injected scripts (cross-site scripting, or XSS) in your app matters.
 This link cannot establish which account you expected to sign in: check that
 account yourself when your app has such a requirement.
+
+#### Limiting repeated login requests
+
+For a public app, consider rate limiting at your web server or hosting service.
+This limits how many requests can reach the app, helping it stay responsive
+when someone repeatedly attempts to log in or sends invalid callbacks.
+NGINX, for example, can reject excess requests before they reach Shiny.
+
+shinyOAuth rejects invalid state without an artificial delay by default.
+Adding a delay with `shinyOAuth.state_fail_delay_ms` makes the Shiny worker
+wait and can slow down other users, even with `async = TRUE`. Keep the default
+of `0` and use rate limiting when you need protection against repeated requests.
+All state validation checks still apply.
+
+Ask whoever manages your hosting to:
+
+- Limit repeated requests and the number of open connections, both per visitor
+  IP address and across the app.
+- Cover login callbacks and new Shiny connections, including WebSocket
+  connections used by the browser.
+- Allow normal bursts of activity and tune the limits using real traffic.
+  People on the same office network may share one IP address.
+
+These controls complement login validation. They do not limit individual
+messages inside an already open WebSocket connection. There is no single
+request limit that suits every app.
+
+For configuration details, see NGINX's guides to
+[request rate limits](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html)
+and [connection limits](https://nginx.org/en/docs/http/ngx_http_limit_conn_module.html).
 
 ## Troubleshooting
 

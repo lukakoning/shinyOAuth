@@ -13,8 +13,7 @@ This vignette documents the configuration of OAuth 2.0 and OpenID Connect
 extensions supported by shinyOAuth: JWT client authentication, mutual TLS
 (mTLS), signed authorization requests (JAR), pushed authorization requests
 (PAR), Form Post responses, signed authorization responses (JARM), and tokens
-bound to a private key (DPoP). It also covers optional
-[rate limiting](#limiting-repeated-login-requests) for deployed apps.
+bound to a private key (DPoP).
 
 These features require corresponding support and configuration at the provider.
 The examples extend the provider and client setup in the [usage vignette](usage.html).
@@ -449,33 +448,3 @@ and the `jarm_*` arguments in [`oauth_client()`](https://lukakoning.github.io/sh
 Request Object encryption and JARM decryption support `RSA-OAEP` with
 `A128CBC-HS256`, `A192CBC-HS384`, or `A256CBC-HS512`. This does not imply
 support for encrypted ID tokens or encrypted userinfo, which are rejected.
-
-## Limiting repeated login requests
-
-For a public app, consider rate limiting at your web server or hosting service.
-This limits how many requests can reach the app, helping it stay responsive
-when someone repeatedly attempts to log in or sends invalid callbacks.
-NGINX, for example, can reject excess requests before they reach Shiny.
-
-shinyOAuth rejects invalid state without an artificial delay by default.
-Adding a delay with `shinyOAuth.state_fail_delay_ms` makes the Shiny worker
-wait and can slow down other users, even with `async = TRUE`. Keep the default
-of `0` and use rate limiting when you need protection against repeated requests.
-All state validation checks still apply.
-
-Ask whoever manages your hosting to:
-
-- Limit repeated requests and the number of open connections, both per visitor
-  IP address and across the app.
-- Cover login callbacks and new Shiny connections, including WebSocket
-  connections used by the browser.
-- Allow normal bursts of activity and tune the limits using real traffic.
-  People on the same office network may share one IP address.
-
-These controls complement login validation. They do not limit individual
-messages inside an already open WebSocket connection. There is no single
-request limit that suits every app.
-
-For configuration details, see NGINX's guides to
-[request rate limits](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html)
-and [connection limits](https://nginx.org/en/docs/http/ngx_http_limit_conn_module.html).
