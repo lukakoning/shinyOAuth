@@ -4,10 +4,20 @@
 \alias{oauth_provider_slack}
 \title{Create a Slack \link{OAuthProvider} (via OIDC discovery)}
 \usage{
-oauth_provider_slack(name = "slack")
+oauth_provider_slack(
+  name = "slack",
+  profile = c("confidential", "public_pkce")
+)
 }
 \arguments{
 \item{name}{Optional provider name (default "slack")}
+
+\item{profile}{Slack app registration profile: \code{"confidential"} (default)
+uses HTTP Basic and OIDC nonce validation without PKCE; \code{"public_pkce"}
+uses S256 PKCE and sends no client secret. Select the public profile only
+after enabling PKCE for that Slack app. Slack marks the app public, and
+reversing that registration setting requires contacting Slack support.
+See \url{https://docs.slack.dev/authentication/using-pkce/}.}
 }
 \value{
 \link{OAuthProvider} object configured for Slack

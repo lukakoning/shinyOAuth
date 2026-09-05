@@ -367,6 +367,12 @@ oauth_provider_spotify <- function(
 #' [oauth_client()] with your Slack app credentials.
 #'
 #' @param name Optional provider name (default "slack")
+#' @param profile Slack app registration profile: `"confidential"` (default)
+#'   uses HTTP Basic and OIDC nonce validation without PKCE; `"public_pkce"`
+#'   uses S256 PKCE and sends no client secret. Select the public profile only
+#'   after enabling PKCE for that Slack app. Slack marks the app public, and
+#'   reversing that registration setting requires contacting Slack support.
+#'   See <https://docs.slack.dev/authentication/using-pkce/>.
 #'
 #' @return [OAuthProvider] object configured for Slack
 #'
@@ -376,8 +382,19 @@ oauth_provider_spotify <- function(
 #' }
 #'
 #' @export
-oauth_provider_slack <- function(name = "slack") {
-  oauth_provider_oidc_discover(issuer = "https://slack.com", name = name)
+oauth_provider_slack <- function(name = "slack",
+                                 profile = c("confidential", "public_pkce")) {
+  profile <- match.arg(profile)
+  provider <- oauth_provider_oidc_discover(
+    issuer = "https://slack.com", name = name,
+    token_auth_style = "header", use_pkce = identical(profile, "public_pkce")
+  )
+  if (identical(profile, "public_pkce")) {
+    # Slack's global discovery omits `none`; the explicit app registration
+    # profile is the authority for this app-specific public-client setting.
+    provider@token_auth_style <- "public"
+  }
+  provider
 }
 
 #' Create a Keycloak [OAuthProvider] (via OIDC discovery)
