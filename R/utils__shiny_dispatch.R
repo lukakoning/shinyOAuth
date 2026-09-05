@@ -9,24 +9,13 @@
 
 #' Check whether mirai daemons are active
 #'
-#' Uses `mirai::daemons_set()` when available, and falls back to
-#' `mirai::info()` for older mirai versions that lack that helper.
+#' Uses the public `mirai::daemons_set()` API (mirai >= 2.5.1).
 #'
 #' @return `TRUE` when mirai daemons are active; otherwise `FALSE`.
 #' @keywords internal
 #' @noRd
 mirai_daemons_active <- function() {
-  tryCatch(
-    mirai::daemons_set(),
-    error = function(...) {
-      # Fallback for mirai < 2.3.0: daemons_set() doesn't exist.
-      # info() returns NULL when no daemons are configured.
-      tryCatch(
-        !is.null(mirai::info()),
-        error = function(...) FALSE
-      )
-    }
-  )
+  tryCatch(isTRUE(mirai::daemons_set()), error = function(...) FALSE)
 }
 
 #' Get the number of mirai daemon connections
@@ -39,7 +28,7 @@ mirai_daemons_active <- function() {
 #' @noRd
 mirai_connection_count <- function() {
   tryCatch(
-    as.integer(mirai::info()[["connections"]]),
+    as.integer(mirai::info()[["connections"]] %||% 0L),
     error = function(...) 0L
   )
 }

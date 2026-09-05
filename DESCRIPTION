@@ -37,7 +37,7 @@ Suggests:
     rmarkdown,
     webfakes,
     promises,
-    mirai (>= 2.0.0),
+    mirai (>= 2.5.1),
     future,
     withr,
     later,

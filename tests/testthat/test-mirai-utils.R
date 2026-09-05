@@ -25,29 +25,10 @@ testthat::test_that("mirai_daemons_active returns FALSE when no daemons", {
   testthat::expect_false(shinyOAuth:::mirai_daemons_active())
 })
 
-testthat::test_that("mirai_daemons_active falls back when daemons_set() unavailable", {
-  testthat::skip_on_cran()
+testthat::test_that("mirai_daemons_active fails closed on backend errors", {
   testthat::skip_if_not_installed("mirai")
-
-  # Simulate older mirai without daemons_set() by mocking it to error,
-  # and mock info() to return non-NULL (indicating active daemons)
   testthat::local_mocked_bindings(
-    daemons_set = function(...) stop("not available"),
-    info = function(...) list(connections = 2L),
-    .package = "mirai"
-  )
-  # Should still return TRUE via the info() fallback
-  testthat::expect_true(shinyOAuth:::mirai_daemons_active())
-})
-
-testthat::test_that("mirai_daemons_active fallback returns FALSE when no daemons and no daemons_set()", {
-  testthat::skip_on_cran()
-  testthat::skip_if_not_installed("mirai")
-
-  testthat::local_mocked_bindings(
-    daemons_set = function(...) stop("not available"),
-    info = function(...) NULL,
-    .package = "mirai"
+    daemons_set = function(...) stop("backend unavailable"), .package = "mirai"
   )
   testthat::expect_false(shinyOAuth:::mirai_daemons_active())
 })
