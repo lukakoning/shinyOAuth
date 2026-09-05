@@ -106,7 +106,7 @@ currently playing music, top artists, and recent tracks, with a bslib layout.
 It uses the same authentication setup as the example above.
 
 ```{r, eval = FALSE}
-install.packages(c("bslib", "ggplot2", "DT"))
+install.packages(c("bslib", "ggplot2", "DT", "purrr", "dplyr"))
 dashboard_file <- system.file(
   "examples", "spotify-dashboard.R", package = "shinyOAuth", mustWork = TRUE
 )

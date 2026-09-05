@@ -32,6 +32,10 @@ Imports:
     htmltools (>= 0.5.0),
     otel (>= 0.2.0)
 Suggests:
+    bslib,
+    ggplot2,
+    purrr,
+    dplyr,
     testthat (>= 3.0.0),
     DT,
     knitr,
