@@ -611,6 +611,7 @@ validate_client_bearer_sender_constraints <- function(
     oauth_client = oauth_client,
     token = token,
     access_token = access_token,
+    token_type = token_type,
     error_context = "input"
   )
 

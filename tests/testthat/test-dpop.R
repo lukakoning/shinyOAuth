@@ -989,6 +989,22 @@ test_that("DPoP can require observable cnf.jkt for opaque access tokens", {
   )
 })
 
+test_that("resource requests enforce observed DPoP binding for both token representations", {
+  cli <- make_dpop_test_client(
+    make_test_provider(use_pkce = TRUE, use_nonce = FALSE),
+    dpop_require_observed_cnf = TRUE
+  )
+  for (raw in list("opaque", build_dummy_jwt(list(sub = "user-1")))) {
+    for (token in list(raw, OAuthToken(access_token = raw, token_type = "DPoP"))) {
+      expect_error(
+        resource_req(token, "https://example.com/api", oauth_client = cli,
+                     token_type = "DPoP"),
+        "cnf\\.jkt", class = "shinyOAuth_input_error"
+      )
+    }
+  }
+})
+
 test_that("DPoP nonce cache is bounded by age and entry count", {
   info <- shinyOAuth:::dpop_nonce_cache$info()
 
