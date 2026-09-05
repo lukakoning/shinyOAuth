@@ -16,7 +16,7 @@ testthat::test_that("get_userinfo preserves transport errors", {
   on.exit(options(old_opts), add = TRUE)
 
   err <- testthat::with_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       stop("network down")
     },
     .package = "httr2",

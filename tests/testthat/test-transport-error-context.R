@@ -9,7 +9,7 @@ test_that("req_with_retry transport error includes method and url context", {
 
   # Mock req_perform to avoid real network and force transport error
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       stop("forced transport fail")
     },
     .package = "httr2"

@@ -536,7 +536,7 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
   ))
 
   testthat::local_mocked_bindings(
-    req_perform = function(req) {
+    req_perform = function(req, ...) {
       body_text <- request_body_text(req)
       assertion <- parse_query_param(
         paste0("https://example.com/?", body_text),

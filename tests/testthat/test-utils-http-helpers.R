@@ -36,7 +36,7 @@ test_that("req_with_retry passes through non-httr2 requests", {
   fake_req <- structure(list(id = "fake"), class = "fake_request")
   called <- FALSE
   testthat::local_mocked_bindings(
-    req_perform = function(req) {
+    req_perform = function(req, ...) {
       called <<- TRUE
       expect_identical(req, fake_req)
       "ok"
@@ -52,7 +52,7 @@ test_that("req_with_retry retries on transient errors then succeeds", {
   attempts <- 0
   sleeps <- numeric()
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       attempts <<- attempts + 1
       if (attempts < 2) {
         stop("boom")
@@ -86,7 +86,7 @@ test_that("req_with_retry honours Retry-After header and returns last response",
   sleeps <- numeric()
   attempts <- 0
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       attempts <<- attempts + 1
       httr2::response(
         url = request$url,
@@ -123,7 +123,7 @@ test_that("req_with_retry caps Retry-After delays by default", {
   sleeps <- numeric()
 
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       httr2::response(
         url = request$url,
         status = 503,
@@ -158,7 +158,7 @@ test_that("req_with_retry caps future-date Retry-After values", {
   sleeps <- numeric()
 
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       httr2::response(
         url = request$url,
         status = 503,

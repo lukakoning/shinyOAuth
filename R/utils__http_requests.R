@@ -153,10 +153,8 @@ add_req_defaults <- function(req) {
       as.character(utils::packageVersion("httr2"))
     )
   }
-  # Max response body size (bytes). Curl aborts the transfer when the server
-  # advertises Content-Length exceeding this value, preventing large allocations
-  # from malicious or compromised endpoints. Default 1 MiB. Chunked responses
-  # without Content-Length are caught post-download by check_resp_body_size().
+  # Early encoded transfer limit. req_perform_bounded() also enforces the
+  # decoded budget independently of the linked libcurl version.
   max_bytes <- resolve_max_body_bytes()
 
   req |>
@@ -381,6 +379,40 @@ check_resp_body_size <- function(
   invisible(TRUE)
 }
 
+# Download encoded bytes to a temporary file, then read at most the decoded
+# budget plus one sentinel byte. libcurl's connection API can buffer an entire
+# decompression burst before returning to R, so it is not a decoded-size guard.
+req_perform_bounded <- function(req) {
+  max_bytes <- resolve_max_body_bytes()
+  path <- tempfile("shinyOAuth-response-")
+  on.exit(unlink(path), add = TRUE)
+  req <- httr2::req_options(req,
+    accept_encoding = "gzip",
+    http_content_decoding = FALSE,
+    maxfilesize = max_bytes,
+    noprogress = FALSE,
+    progressfunction = function(down, up) down[[2L]] <= max_bytes
+  )
+  resp <- httr2::req_perform(req, path = path)
+  # httr2 mocks return an already buffered response.
+  if (is.raw(resp[["body"]])) {
+    check_resp_body_size(resp)
+    return(resp)
+  }
+  if (file.info(path)$size > max_bytes) {
+    err_parse("Response body too large during encoded download")
+  }
+  encoding <- tolower(trimws(httr2::resp_header(resp, "content-encoding") %||% "identity"))
+  if (!encoding %in% c("identity", "gzip", "x-gzip")) {
+    err_parse("Unsupported response Content-Encoding; expected identity or gzip")
+  }
+  conn <- if (encoding %in% c("gzip", "x-gzip")) gzfile(path, "rb") else file(path, "rb")
+  on.exit(close(conn), add = TRUE, after = FALSE)
+  resp[["body"]] <- readBin(conn, "raw", n = max_bytes + 1)
+  check_resp_body_size(resp)
+  resp
+}
+
 #' Internal: Perform an httr2 request with retries
 #'
 #' Retries on network errors and transient HTTP statuses (default: 408, 429,
@@ -448,9 +480,10 @@ req_with_retry <- function(req, idempotent = TRUE) {
   # or triggering refresh-token replay detection (full session revocation).
   if (!isTRUE(idempotent)) {
     attempt_req <- prepare_attempt_req(1L)
-    resp <- try(httr2::req_perform(attempt_req), silent = TRUE)
+    resp <- try(req_perform_bounded(attempt_req), silent = TRUE)
     if (inherits(resp, "try-error")) {
       parent <- attr(resp, "condition")
+      if (inherits(parent, "shinyOAuth_parse_error")) stop(parent)
       if (is.null(parent)) {
         parent <- simpleError(as.character(resp))
       }
@@ -518,9 +551,11 @@ req_with_retry <- function(req, idempotent = TRUE) {
   for (i in seq_len(max_tries)) {
     attempt_req <- prepare_attempt_req(i)
     # Try perform; catch transport errors
-    resp <- try(httr2::req_perform(attempt_req), silent = TRUE)
+    resp <- try(req_perform_bounded(attempt_req), silent = TRUE)
     # Transport error -> retry
     if (inherits(resp, "try-error")) {
+      parent <- attr(resp, "condition")
+      if (inherits(parent, "shinyOAuth_parse_error")) stop(parent)
       last_err <- resp
       # Backoff on transport errors (no Retry-After available)
       if (i < max_tries) {

@@ -1208,7 +1208,7 @@ test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce 
   )
 
   testthat::local_mocked_bindings(
-    req_perform = function(req) {
+    req_perform = function(req, ...) {
       state$count <- state$count + 1L
       body_text <- request_body_text(req)
       assertion <- parse_query_param(
@@ -1469,7 +1469,7 @@ test_that("req_with_dpop_retry regenerates DPoP proofs for transient retries", {
   ))
 
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       dry <- httr2::req_dry_run(request, quiet = TRUE, redact_headers = FALSE)
       proof <- dry[["headers"]][["dpop"]]
       payload <- decode_dpop_payload(proof)
@@ -1548,7 +1548,7 @@ test_that("req_with_dpop_retry preserves existing prepare-attempt hooks", {
   ))
 
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       dry <- httr2::req_dry_run(request, quiet = TRUE, redact_headers = FALSE)
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]

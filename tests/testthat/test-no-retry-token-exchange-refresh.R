@@ -7,7 +7,7 @@ test_that("req_with_retry(idempotent = FALSE) does not retry on transport error"
   req <- httr2::request("https://example.com/token")
   attempts <- 0
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       attempts <<- attempts + 1
       stop("connection reset")
     },
@@ -26,7 +26,7 @@ test_that("req_with_retry(idempotent = FALSE) returns 500 without retrying", {
   req <- httr2::request("https://example.com/token")
   attempts <- 0
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       attempts <<- attempts + 1
       httr2::response(
         url = request$url,
@@ -48,7 +48,7 @@ test_that("req_with_retry(idempotent = FALSE) returns success on first attempt",
   req <- httr2::request("https://example.com/token")
   attempts <- 0
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       attempts <<- attempts + 1
       httr2::response(
         url = request$url,
@@ -70,7 +70,7 @@ test_that("req_with_retry(idempotent = TRUE) still retries (default behavior)", 
   attempts <- 0
   sleeps <- numeric()
   testthat::local_mocked_bindings(
-    req_perform = function(request) {
+    req_perform = function(request, ...) {
       attempts <<- attempts + 1
       if (attempts < 2) {
         stop("timeout")

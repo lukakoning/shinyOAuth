@@ -568,9 +568,10 @@ you can unblock them using the following options:
   leaking to redirect targets. Set to `TRUE` only when you deliberately accept that redirect-following risk for a
   specific deployment; this opt-in is honored in all sessions
 - `options(shinyOAuth.max_body_bytes = 1048576)` – maximum response body size (bytes, default 1 MiB) accepted
-  from OAuth endpoints (token, introspection, userinfo, discovery, JWKS). Curl aborts the transfer early when
-  `Content-Length` exceeds this limit; a post-download guard catches chunked responses. Increase if a provider
-  legitimately returns larger payloads
+  from OAuth endpoints and resource requests. Encoded transfers are limited and temporarily spooled to disk;
+  gzip responses are decoded with a bounded read before entering memory. This protects older libcurl runtimes
+  too. Requests advertise gzip; other content encodings are rejected. Temporary files are removed after each
+  attempt. Increase if a provider legitimately returns larger payloads
 
 ### State store
 
