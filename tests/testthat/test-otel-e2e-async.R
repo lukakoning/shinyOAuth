@@ -992,7 +992,7 @@ otel_async_daemon("async module callback/login success exports correct main and 
       access_token = "ok_at",
       token_type = "Bearer",
       expires_in = 3600
-    ))
+    ), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
 
@@ -1236,12 +1236,12 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
       access_token = "ok_at",
       token_type = "Bearer",
       expires_in = 3600
-    ))
+    ), auto_unbox = TRUE)
   })
   app$get("/userinfo", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(sub = "user-123", name = "Ada"))
+    res$send_json(list(sub = "user-123", name = "Ada"), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
 
@@ -1478,7 +1478,7 @@ otel_async_daemon("refresh_token async exports correlated spans from a real daem
       access_token = "new_at",
       token_type = "Bearer",
       expires_in = 3600
-    ))
+    ), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
 
@@ -1574,7 +1574,7 @@ otel_async_daemon("refresh_token async exports logs correlated with spans from a
       access_token = "new_at",
       token_type = "Bearer",
       expires_in = 3600
-    ))
+    ), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
 

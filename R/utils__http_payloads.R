@@ -105,13 +105,13 @@ try_parse_token_response_json <- function(body, resp = NULL) {
   is_object <- json_text_is_object(body)
 
   out <- if (inherits(resp, "httr2_response")) {
-    try(httr2::resp_body_json(resp, simplifyVector = TRUE), silent = TRUE)
+    try(httr2::resp_body_json(resp, simplifyVector = FALSE), silent = TRUE)
   } else {
-    try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
+    try(jsonlite::fromJSON(body, simplifyVector = FALSE), silent = TRUE)
   }
 
   if (inherits(out, "try-error")) {
-    out <- try(jsonlite::fromJSON(body, simplifyVector = TRUE), silent = TRUE)
+    out <- try(jsonlite::fromJSON(body, simplifyVector = FALSE), silent = TRUE)
   }
   if (inherits(out, "try-error")) {
     return(list(ok = FALSE, value = NULL, is_object = is_object))
@@ -139,6 +139,11 @@ try_parse_token_response_json <- function(body, resp = NULL) {
 #' @keywords internal
 #' @noRd
 normalize_token_response_json <- function(value) {
+  for (field in c("access_token", "refresh_token", "id_token", "token_type", "expires_in", "scope")) {
+    if (is.list(value[[field]])) {
+      err_parse(paste0("Token response field '", field, "' must be a JSON scalar"))
+    }
+  }
   if (is.data.frame(value)) {
     return(as.list(value))
   }

@@ -200,7 +200,7 @@ get_userinfo <- function(
                 "UserInfo response JSON"
               )
               assert_json_text_is_object(body_txt, "UserInfo response JSON")
-              jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
+              jsonlite::fromJSON(body_txt, simplifyVector = FALSE)
             },
             silent = TRUE
           )
@@ -297,6 +297,12 @@ get_userinfo <- function(
               parse_context
             )
           )
+        }
+
+        if (!is_jwt_response) {
+          validate_userinfo_json_claim_types(ui, oauth_client, shiny_session)
+          # Normalize permitted profile arrays only after protocol type checks.
+          ui <- jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
         }
 
         otel_set_span_attributes(
@@ -445,6 +451,21 @@ audit_userinfo_event <- function(
 #' @return A named list of userinfo claims.
 #' @keywords internal
 #' @noRd
+validate_userinfo_json_claim_types <- function(claims, oauth_client, shiny_session = NULL) {
+  if (!provider_uses_oidc(oauth_client@provider)) return(invisible(TRUE))
+  if (!is_valid_oidc_sub(claims[["sub"]])) {
+    audit_userinfo_event(oauth_client, status = "userinfo_missing_sub", shiny_session = shiny_session)
+    err_userinfo("UserInfo response has a missing or invalid 'sub' claim")
+  }
+  for (field in c("email_verified", "phone_number_verified")) {
+    value <- claims[[field]]
+    if (!is.null(value) && !(is.logical(value) && length(value) == 1L && !is.na(value))) {
+      err_userinfo(paste0("UserInfo '", field, "' must be a JSON Boolean"))
+    }
+  }
+  invisible(TRUE)
+}
+
 decode_userinfo_jwt <- function(
   resp,
   oauth_client,
