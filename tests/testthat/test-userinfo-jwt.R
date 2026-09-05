@@ -1988,3 +1988,35 @@ test_that("application/jwt with HS256 algorithm must fail (non-asymmetric)", {
     regexp = "not in provider.*allowed"
   )
 })
+test_that("signed UserInfo enforces scalar Boolean verification claims", {
+  key <- openssl::rsa_keygen(2048)
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey))
+  jwk$kid <- "boolean-schema"
+  cli <- make_test_client(use_nonce = FALSE)
+  cli@provider@issuer <- "https://issuer.example.com"
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  jwt_body <- ""
+  local_mocked_bindings(
+    req_with_retry = function(...) httr2::response(status_code = 200L,
+      headers = list("Content-Type" = "application/jwt"),
+      body = charToRaw(jwt_body)),
+    fetch_jwks = function(...) list(keys = list(jwk)),
+    .package = "shinyOAuth"
+  )
+  for (field in c("email_verified", "phone_number_verified")) {
+    for (value in c('"false"', '0', '[true]', 'null', 'true', 'false')) {
+      payload <- paste0('{"sub":"user","iss":"https://issuer.example.com",',
+        '"aud":"abc","', field, '":', value, '}')
+      jwt_body <- make_signed_userinfo_json(payload, key, "boolean-schema")
+      if (value %in% c('true', 'false')) {
+        expect_identical(get_userinfo(cli, "token")[[field]], value == 'true')
+      } else {
+        expect_error(get_userinfo(cli, "token"), "JSON Boolean")
+      }
+    }
+    claims <- list(sub = "user")
+    claims[[field]] <- NA
+    expect_error(shinyOAuth:::validate_userinfo_json_claim_types(claims, cli),
+      "JSON Boolean")
+  }
+})

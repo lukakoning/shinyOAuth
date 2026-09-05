@@ -459,7 +459,7 @@ validate_userinfo_json_claim_types <- function(claims, oauth_client, shiny_sessi
   }
   for (field in c("email_verified", "phone_number_verified")) {
     value <- claims[[field]]
-    if (!is.null(value) && !(is.logical(value) && length(value) == 1L && !is.na(value))) {
+    if (field %in% names(claims) && !(is.logical(value) && length(value) == 1L && !is.na(value))) {
       err_userinfo(paste0("UserInfo '", field, "' must be a JSON Boolean"))
     }
   }
@@ -756,6 +756,7 @@ decode_userinfo_jwt <- function(
       oauth_client = oauth_client,
       shiny_session = shiny_session
     )
+    validate_userinfo_json_claim_types(claims, oauth_client, shiny_session)
     return(claims)
   }
 
