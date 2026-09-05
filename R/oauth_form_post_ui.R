@@ -795,6 +795,31 @@ oauth_form_post_redirect_location <- function(req, id, handle) {
 
 ## 3.1 Sealed bridge payloads -------------------------------------------------
 
+# Internal envelopes contain callback data plus decoded state/JARM claims.
+# Allow worst-case JSON escaping and both base64 layers, independently of the
+# smaller external state-token caps. Retain a hard ceiling for internal data.
+oauth_form_post_envelope_limits <- function() {
+  limits <- oauth_callback_limits()
+  ct <- min(
+    16 * 1024^2,
+    6 *
+      (2 *
+        max(limits$form_post_body, limits$query) +
+        limits$state +
+        limits$form_post_id +
+        limits$form_post_handle) +
+      4096
+  )
+  ct_b64 <- 4 * ceiling(ct / 3)
+  wrapper <- ct_b64 + 256
+  list(
+    ct = ct,
+    ct_b64 = ct_b64,
+    wrapper = wrapper,
+    token = 4 * ceiling(wrapper / 3)
+  )
+}
+
 #' Internal: seal one form_post bridge payload before storing it
 #'
 #' Wraps the accepted callback payload in an authenticated AES-GCM envelope so
@@ -820,7 +845,7 @@ oauth_form_post_seal_payload <- function(client, id, handle, payload) {
   payload <- oauth_form_post_compact_stored_payload(
     oauth_form_post_validate_payload(payload, client = client)
   )
-  state_encrypt_gcm(
+  sealed <- state_encrypt_gcm(
     payload = list(
       bridge_type = "form_post_handle",
       module_id = id,
@@ -830,6 +855,14 @@ oauth_form_post_seal_payload <- function(client, id, handle, payload) {
     ),
     key = client@state_key
   )
+  # Verify the entire stored representation fits the consumer's budgets before
+  # the POST handler can issue a redirect to its one-time handle.
+  state_decrypt_gcm(
+    sealed,
+    client@state_key,
+    size_limits = oauth_form_post_envelope_limits()
+  )
+  sealed
 }
 
 #' Internal: unseal one stored form_post bridge payload
@@ -868,7 +901,11 @@ oauth_form_post_unseal_payload <- function(client, id, handle, sealed_payload) {
   }
 
   envelope <- tryCatch(
-    state_decrypt_gcm(sealed_payload, key = client@state_key),
+    state_decrypt_gcm(
+      sealed_payload,
+      key = client@state_key,
+      size_limits = oauth_form_post_envelope_limits()
+    ),
     error = function(e) {
       err_invalid_state(
         paste0(
@@ -979,7 +1016,10 @@ oauth_form_post_store_set <- function(client, id, payload) {
     # A fixed, unguessable slot caps storage even if separate workers race.
     # The logical state is encrypted on the wire and contains fresh entropy.
     handle <- base64url_encode(openssl::sha256(charToRaw(paste0(
-      "form-post:", id, ":", logical_state
+      "form-post:",
+      id,
+      ":",
+      logical_state
     ))))
   } else {
     handle <- random_urlsafe(32)
@@ -987,7 +1027,8 @@ oauth_form_post_store_set <- function(client, id, payload) {
   key <- oauth_form_post_cache_key(id, handle)
   if (!is.null(logical_state)) {
     existing <- state_store_backend_call(
-      client@state_store$get(key, missing = NULL), "form_post_store_get"
+      client@state_store$get(key, missing = NULL),
+      "form_post_store_get"
     )
     if (!is.null(existing)) return(handle)
   }

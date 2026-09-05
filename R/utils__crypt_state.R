@@ -262,6 +262,8 @@ state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
 #' @param token Compact encrypted state token.
 #' @param key Character passphrase or raw key material.
 #' @param expected_version Expected envelope version.
+#' @param size_limits Optional internal envelope budgets; external state uses
+#'   the configured state limits by default.
 #' @param min_key_chars Minimum passphrase length for character keys.
 #' @return Parsed decrypted state payload list.
 #' @keywords internal
@@ -270,7 +272,8 @@ state_decrypt_gcm <- function(
   token,
   key,
   expected_version = 1L,
-  min_key_chars = 32L
+  min_key_chars = 32L,
+  size_limits = NULL
 ) {
   # Hard caps
   max_token_chars <- get_option_env_positive_number(
@@ -293,6 +296,26 @@ state_decrypt_gcm <- function(
     "shinyOAuth_STATE_MAX_CT_BYTES",
     8192
   )
+  if (!is.null(size_limits)) {
+    stopifnot(
+      is.list(size_limits),
+      length(size_limits) == 4L,
+      all(vapply(
+        size_limits,
+        function(x) {
+          is.numeric(x) &&
+            length(x) == 1L &&
+            is.finite(x) &&
+            x > 0
+        },
+        logical(1)
+      ))
+    )
+    max_token_chars <- size_limits$token
+    max_wrapper_bytes <- size_limits$wrapper
+    max_ct_b64_chars <- size_limits$ct_b64
+    max_ct_bytes <- size_limits$ct
+  }
 
   # Internal helper: emit an audit event for a parse or decrypt failure.
   # Used only by `state_decrypt_gcm()` so failure reasons are logged without
