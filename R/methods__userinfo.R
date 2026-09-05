@@ -681,7 +681,6 @@ decode_userinfo_jwt <- function(
   verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
   if (
     is.null(verified_key) &&
-      length(keys) > 0L &&
       !isTRUE(did_force_refresh)
   ) {
     refreshed_jwks <- try(

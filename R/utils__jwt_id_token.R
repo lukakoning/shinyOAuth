@@ -221,21 +221,12 @@ validate_id_token <- function(
       }
 
       keys <- filter_jwks_for_alg(keys, alg)
-      if (length(keys) == 0L) {
-        err_id_token("No compatible JWKS keys for alg")
-      }
       keys <- filter_microsoft_jwks_for_token_issuer(
         keys,
         provider_issuer = issuer,
         token_issuer = parsed_payload[["iss"]] %||% NULL,
         token_tid = issuer_expectation[["token_tid"]]
       )
-      if (
-        length(keys) == 0L &&
-          isTRUE(issuer_expectation[["enforce_key_issuer"]])
-      ) {
-        err_id_token("No Microsoft JWKS key matches token issuer scope")
-      }
 
       # A provider may rotate key material while retaining the same kid. If
       # cached candidates do not verify, refresh once under the shared throttle
@@ -268,6 +259,9 @@ validate_id_token <- function(
         }
       }
       if (is.null(verified_key)) {
+        if (length(keys) == 0L && isTRUE(issuer_expectation[["enforce_key_issuer"]])) {
+          err_id_token("No Microsoft JWKS key matches token issuer scope")
+        }
         err_id_token("ID token signature invalid")
       }
       if (identical(alg, "EdDSA")) {

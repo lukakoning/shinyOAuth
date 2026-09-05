@@ -266,8 +266,7 @@ test_that("UserInfo JWT fails closed when JWKS refresh is rate-limited", {
   )
 })
 
-test_that("UserInfo JWT does not refresh JWKS when kid is NULL", {
-  # When there's no kid in the header, no refresh-on-miss should happen
+test_that("UserInfo JWT attempts throttled JWKS recovery when kid is NULL", {
   key <- openssl::rsa_keygen(2048)
 
   claims <- list(sub = "user-no-kid", name = "No Kid User")
@@ -276,7 +275,7 @@ test_that("UserInfo JWT does not refresh JWKS when kid is NULL", {
 
   cli <- make_userinfo_client()
 
-  # JWKS is empty — should fail without attempting refresh
+  # JWKS remains empty after refresh, so verification must still fail.
   stale_jwks <- list(keys = list())
   refresh_called <- FALSE
   testthat::local_mocked_bindings(
@@ -294,6 +293,5 @@ test_that("UserInfo JWT does not refresh JWKS when kid is NULL", {
     class = "shinyOAuth_userinfo_error",
     regexp = "no compatible keys"
   )
-  # jwks_force_refresh_allowed should NOT have been called (no kid)
-  expect_false(refresh_called)
+  expect_true(refresh_called)
 })

@@ -254,9 +254,6 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
     )
   }
   keys <- filter_jwks_for_alg(keys, alg)
-  if (length(keys) == 0L) {
-    err_invalid_state("No compatible provider JWKS keys found for JARM")
-  }
 
   verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
   if (is.null(verified_key) && !isTRUE(did_force_refresh)) {
