@@ -54,6 +54,35 @@ make_client_with_store <- function(store) {
 
 # -- Tests for atomic $take() path ------------------------------------------
 
+test_that("backend secrets never enter public state errors or audit attributes", {
+  for (operation in c("get", "take", "set")) {
+    events <- list()
+    withr::local_options(list(shinyOAuth.audit_hook = function(e) {
+      events[[length(events) + 1L]] <<- e
+    }, shinyOAuth.expose_error_body = FALSE))
+    store <- make_atomic_store()
+    cli <- make_client_with_store(store)
+    store[[operation]] <- function(...) {
+      stop("redis://user:synthetic-password@localhost token=synthetic-token Cookie=synthetic-cookie")
+    }
+    cli@state_store <- store
+    err <- tryCatch({
+      switch(operation,
+        get = shinyOAuth:::state_store_get(cli, "test-state"),
+        take = shinyOAuth:::state_store_get_remove(cli, "test-state"),
+        set = prepare_call(cli, browser_token = valid_browser_token())
+      )
+      NULL
+    }, error = identity)
+    expect_s3_class(err, "shinyOAuth_state_error")
+    expect_false(grepl("synthetic-", conditionMessage(err), fixed = TRUE))
+    expect_gt(length(events), 0L)
+    expect_false(grepl("synthetic-", paste(capture.output(str(events)), collapse = ""), fixed = TRUE))
+    attrs <- lapply(events, shinyOAuth:::otel_event_attributes)
+    expect_false(grepl("synthetic-", paste(capture.output(str(attrs)), collapse = ""), fixed = TRUE))
+  }
+})
+
 test_that("state_store_get_remove uses $take() when available (single-use)", {
   store <- make_atomic_store()
   cli <- make_client_with_store(store)

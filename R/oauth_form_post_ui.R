@@ -989,7 +989,7 @@ oauth_form_post_store_set <- function(client, id, payload) {
       err_invalid_state(
         sprintf(
           "Failed to persist form_post callback payload: %s",
-          conditionMessage(e)
+          class(e)[[1L]]
         ),
         context = list(phase = "form_post_store_set")
       )
@@ -1024,7 +1024,7 @@ oauth_form_post_store_take <- function(client, id, handle) {
         err_invalid_state(
           sprintf(
             "Failed to consume form_post callback handle: %s",
-            conditionMessage(e)
+            class(e)[[1L]]
           ),
           context = list(phase = "form_post_store_take")
         )
@@ -1050,7 +1050,7 @@ oauth_form_post_store_take <- function(client, id, handle) {
         err_invalid_state(
           sprintf(
             "Failed to read form_post callback handle: %s",
-            conditionMessage(e)
+            class(e)[[1L]]
           ),
           context = list(phase = "form_post_store_get")
         )
@@ -1068,7 +1068,7 @@ oauth_form_post_store_take <- function(client, id, handle) {
         err_invalid_state(
           sprintf(
             "Failed to remove form_post callback handle: %s",
-            conditionMessage(e)
+            class(e)[[1L]]
           ),
           context = list(phase = "form_post_store_remove")
         )

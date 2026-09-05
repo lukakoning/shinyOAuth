@@ -888,7 +888,7 @@ state_store_get <- function(client, state, shiny_session = NULL) {
 
   tryCatch(
     {
-      ssv <- store$get(key, missing = NULL)
+      ssv <- state_store_backend_call(store$get(key, missing = NULL), "state_store_lookup")
       ssv <- validate_state_store_value(
         ssv,
         client,
@@ -1084,7 +1084,7 @@ state_store_consume_atomic <- function(
 
   tryCatch(
     {
-      ssv <- store$take(key, missing = NULL)
+      ssv <- state_store_backend_call(store$take(key, missing = NULL), "state_store_atomic_take")
       # Validate the returned value in the same tryCatch so failures are
       # audited consistently
       ssv <- validate_state_store_value(ssv, client)
@@ -1158,7 +1158,7 @@ state_store_consume_fallback <- function(
   # -- Step 1: Get the value --------------------------------------------------
   tryCatch(
     {
-      ssv <- store$get(key, missing = NULL)
+      ssv <- state_store_backend_call(store$get(key, missing = NULL), "state_store_lookup")
       ssv <- validate_state_store_value(ssv, client)
       get_succeeded <- TRUE
     },
@@ -1189,12 +1189,12 @@ state_store_consume_fallback <- function(
   # absence via a post-removal $get().
   tryCatch(
     {
-      store$remove(key)
+      state_store_backend_call(store$remove(key), "state_store_removal")
       # Post-check: the key MUST be absent now.  If the store is shared and
       # another consumer already removed the entry, the key is absent and
       # remove was a no-op — that is the expected single-use path. However,
       # if the key is *still present* after our remove, something went wrong.
-      post <- store$get(key, missing = NA)
+      post <- state_store_backend_call(store$get(key, missing = NA), "state_store_removal")
       remove_succeeded <- isTRUE(is.na(post))
     },
     error = function(e) {
@@ -1323,4 +1323,15 @@ validate_state_store_value <- function(
   }
 
   invisible(ssv)
+}
+
+# Backend exceptions can contain credentials or stored records. Never attach
+# the original condition as a parent or forward its message to audit/OTel.
+state_store_backend_call <- function(expr, phase) {
+  tryCatch(force(expr), error = function(e) {
+    err_invalid_state(
+      "State store backend operation failed",
+      context = list(phase = phase, backend_error_class = class(e)[[1L]])
+    )
+  })
 }

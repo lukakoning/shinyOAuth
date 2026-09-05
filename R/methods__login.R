@@ -178,8 +178,8 @@ prepare_call <- function(
             # Surface cache backend failures as state errors with context
             err_invalid_state(
               sprintf(
-                "Failed to persist state in state_store: %s",
-                conditionMessage(e)
+                "Failed to persist state in state_store (%s)",
+                class(e)[[1L]]
               ),
               context = list(phase = "prepare_call::state_store_set")
             )
