@@ -33,7 +33,8 @@ authorization endpoint. If FALSE, the module will not auto-redirect;
 instead, the returned object exposes helpers for triggering login
 manually (use \verb{$request_login()}).}
 
-\item{async}{If TRUE, dispatches token exchange and refresh through
+\item{async}{If TRUE, dispatches PAR, Request Object preparation, query JARM
+signature verification, token exchange, and refresh through
 shinyOAuth's async promise path and updates values when the promise
 resolves. \link[mirai:mirai]{mirai} is preferred when daemons are configured with
 \code{\link[mirai:daemons]{mirai::daemons()}}. Otherwise, if \link[promises:promises]{promises} and \link[future:future]{future}
@@ -41,7 +42,11 @@ are installed, the current \link[future:future]{future} plan is used. Non-sequen
 run off the main R session; \code{future::sequential()} stays in-process. If FALSE
 (default), token exchange and refresh are performed synchronously
 (which may block the Shiny event loop). For production apps, \code{async = TRUE}
-is usually the better choice.}
+is usually the better choice.
+State-store operations and Shiny Request Object publication remain on the
+main process. Discovery performed before module creation, standalone
+\code{prepare_call()}, and JARM validation at the \code{oauth_form_post_ui()} HTTP
+boundary are synchronous. Use bounded backend/network timeouts there.}
 
 \item{indefinite_session}{If TRUE, the module will not automatically clear
 the token due to access-token expiry or the \code{reauth_after_seconds} window,
@@ -198,6 +203,11 @@ returned string keeps \code{shinyOAuth.par_request_uri},
 so manual link-style flows can decide when to regenerate it. Typically
 you would not call this directly, but use \code{request_login()} instead,
 which calls it internally.
+With \code{async = TRUE}, PAR and Request Object configurations return a promise
+resolving to that URL (or \code{NA} on failure or stale completion). Plain
+parameter-only authorization returns a string immediately. Use
+\code{promises::then()} for manual links that use PAR or Request Objects;
+\code{request_login()} handles either result automatically.
 \item \code{set_browser_token()}: internal; injects JS to set the browser token
 cookie if missing. Normally called automatically on first load,
 but you can call it manually if needed. If a token is already present,

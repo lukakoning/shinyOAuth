@@ -988,11 +988,14 @@ otel_async_daemon("async module callback/login success exports correct main and 
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(
-      access_token = "ok_at",
-      token_type = "Bearer",
-      expires_in = 3600
-    ), auto_unbox = TRUE)
+    res$send_json(
+      list(
+        access_token = "ok_at",
+        token_type = "Bearer",
+        expires_in = 3600
+      ),
+      auto_unbox = TRUE
+    )
   })
   srv <- webfakes::local_app_process(app)
 
@@ -1029,7 +1032,11 @@ otel_async_daemon("async module callback/login success exports correct main and 
     ),
     expr = {
       testthat::expect_true(values$has_browser_token())
-      auth_url <- values$build_auth_url()
+      auth_url <- NULL
+      promises::then(values$build_auth_url(), function(url) {
+        auth_url <<- url
+      })
+      poll_for_async(function() !is.null(auth_url), session, timeout = 15)
       request_uri <- parse_query_param(auth_url, "request_uri", decode = TRUE)
       enc <- sub(
         "^urn:ietf:params:oauth:request_uri:async-daemon-par:",
@@ -1131,7 +1138,20 @@ otel_async_daemon("async module callback/login success exports correct main and 
   token_http_span <- token_http_span[[1L]]
 
   testthat::expect_identical(par_span$trace_id, login_span$trace_id)
-  testthat::expect_identical(par_span$parent_span_id, login_span$span_id)
+  preparation_worker <- otel_find_spans(
+    spans,
+    "shinyOAuth.login.request.worker"
+  )
+  testthat::expect_length(preparation_worker, 1L)
+  testthat::expect_identical(
+    preparation_worker[[1L]]$parent_span_id,
+    login_span$span_id
+  )
+  testthat::expect_identical(
+    par_span$parent_span_id,
+    preparation_worker[[1L]]$span_id
+  )
+  testthat::expect_false(identical(par_span$process_id, Sys.getpid()))
   testthat::expect_identical(par_http_span$trace_id, par_span$trace_id)
   testthat::expect_identical(par_http_span$parent_span_id, par_span$span_id)
   testthat::expect_identical(
@@ -1232,11 +1252,14 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(
-      access_token = "ok_at",
-      token_type = "Bearer",
-      expires_in = 3600
-    ), auto_unbox = TRUE)
+    res$send_json(
+      list(
+        access_token = "ok_at",
+        token_type = "Bearer",
+        expires_in = 3600
+      ),
+      auto_unbox = TRUE
+    )
   })
   app$get("/userinfo", function(req, res) {
     res$set_status(200L)
@@ -1474,11 +1497,14 @@ otel_async_daemon("refresh_token async exports correlated spans from a real daem
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(
-      access_token = "new_at",
-      token_type = "Bearer",
-      expires_in = 3600
-    ), auto_unbox = TRUE)
+    res$send_json(
+      list(
+        access_token = "new_at",
+        token_type = "Bearer",
+        expires_in = 3600
+      ),
+      auto_unbox = TRUE
+    )
   })
   srv <- webfakes::local_app_process(app)
 
@@ -1570,11 +1596,14 @@ otel_async_daemon("refresh_token async exports logs correlated with spans from a
   app$post("/token", function(req, res) {
     res$set_status(200L)
     res$set_type("application/json")
-    res$send_json(list(
-      access_token = "new_at",
-      token_type = "Bearer",
-      expires_in = 3600
-    ), auto_unbox = TRUE)
+    res$send_json(
+      list(
+        access_token = "new_at",
+        token_type = "Bearer",
+        expires_in = 3600
+      ),
+      auto_unbox = TRUE
+    )
   })
   srv <- webfakes::local_app_process(app)
 

@@ -8,7 +8,8 @@ prepare_call(
   oauth_client,
   browser_token,
   request_uri_publisher = NULL,
-  .requested_max_age = NULL
+  .requested_max_age = NULL,
+  .defer_build = FALSE
 )
 }
 \arguments{
@@ -24,6 +25,9 @@ arguments and return an absolute request-object URL.}
 
 \item{.requested_max_age}{Internal normalized OIDC \code{max_age} override used by
 the Shiny module for forced reauthentication.}
+
+\item{.defer_build}{Internal flag returning prepared local state for async
+authorization work instead of completing the authorization URL.}
 }
 \value{
 A length-1 string containing the authorization URL to send the user

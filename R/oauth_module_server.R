@@ -67,7 +67,8 @@
 #'   instead, the returned object exposes helpers for triggering login
 #'   manually (use `$request_login()`).
 #'
-#' @param async If TRUE, dispatches token exchange and refresh through
+#' @param async If TRUE, dispatches PAR, Request Object preparation, query JARM
+#'   signature verification, token exchange, and refresh through
 #'   shinyOAuth's async promise path and updates values when the promise
 #'   resolves. [mirai] is preferred when daemons are configured with
 #'   [mirai::daemons()]. Otherwise, if [promises][promises::promises] and [future][future::future]
@@ -76,6 +77,10 @@
 #'   (default), token exchange and refresh are performed synchronously
 #'   (which may block the Shiny event loop). For production apps, `async = TRUE`
 #'   is usually the better choice.
+#'   State-store operations and Shiny Request Object publication remain on the
+#'   main process. Discovery performed before module creation, standalone
+#'   `prepare_call()`, and JARM validation at the `oauth_form_post_ui()` HTTP
+#'   boundary are synchronous. Use bounded backend/network timeouts there.
 #'
 #' @param indefinite_session If TRUE, the module will not automatically clear
 #'   the token due to access-token expiry or the `reauth_after_seconds` window,
@@ -226,6 +231,11 @@
 #'    so manual link-style flows can decide when to regenerate it. Typically
 #'    you would not call this directly, but use `request_login()` instead,
 #'    which calls it internally.
+#'    With `async = TRUE`, PAR and Request Object configurations return a promise
+#'    resolving to that URL (or `NA` on failure or stale completion). Plain
+#'    parameter-only authorization returns a string immediately. Use
+#'    `promises::then()` for manual links that use PAR or Request Objects;
+#'    `request_login()` handles either result automatically.
 #'    \item `set_browser_token()`: internal; injects JS to set the browser token
 #'    cookie if missing. Normally called automatically on first load,
 #'    but you can call it manually if needed. If a token is already present,
@@ -1323,38 +1333,128 @@ oauth_module_server <- function(
         )
       }
 
-      # Build the auth URL (and set module errors on failure)
+      publisher <- function(
+        request_object,
+        request_handle_id,
+        expires_at,
+        oauth_client
+      ) {
+        publish_shiny_request_object(
+          session,
+          request_object,
+          request_handle_id,
+          expires_at,
+          base_url = request_uri_base_url
+        )
+      }
+      requested_max_age <- if (
+        isTRUE(auth_operations$force_oidc_reauth) &&
+          provider_uses_oidc(client@provider)
+      ) {
+        0
+      } else {
+        NULL
+      }
+      provider_work <- is_valid_string(client@provider@par_url) ||
+        !identical(client@request_object_mode, "parameters")
+      if (!isTRUE(async) || !provider_work) {
+        return(tryCatch(
+          prepare_call(
+            client,
+            values$browser_token,
+            publisher,
+            requested_max_age
+          ),
+          error = function(e) {
+            .set_error("auth_url_error", e, phase = "build_auth_url")
+            NA_character_
+          }
+        ))
+      }
+
+      operation <- .begin_auth_operation(
+        "authorization",
+        source_token = values$token,
+        new_epoch = TRUE
+      )
+      browser <- values$browser_token
+      prepared <- NULL
+      cleanup <- function() {
+        if (!is.null(prepared)) {
+          try(client@state_store$remove(prepared$state_key), silent = TRUE)
+        }
+      }
+      fail <- function(e) {
+        cleanup()
+        if (.auth_operation_can_apply(operation, "authorization")) {
+          .set_error("auth_url_error", e, phase = "build_auth_url")
+          .finish_auth_operation(operation, "authorization")
+        }
+        NA_character_
+      }
       tryCatch(
-        prepare_call(
-          client,
-          browser_token = values$browser_token,
-          .requested_max_age = if (
-            isTRUE(auth_operations$force_oidc_reauth) &&
-              provider_uses_oidc(client@provider)
-          ) {
-            0
-          } else {
-            NULL
-          },
-          request_uri_publisher = function(
-            request_object,
-            request_handle_id,
-            expires_at,
-            oauth_client
-          ) {
-            publish_shiny_request_object(
-              session = session,
-              request_object = request_object,
-              request_handle_id = request_handle_id,
-              expires_at = expires_at,
-              base_url = request_uri_base_url
+        {
+          prepared <- prepare_call(
+            client,
+            browser,
+            .requested_max_age = requested_max_age,
+            .defer_build = TRUE
+          )
+          worker <- prepare_client_for_worker(client)
+          if (is.null(worker)) {
+            err_config(
+              "Authorization client cannot be serialized for async work"
             )
           }
-        ),
-        error = function(e) {
-          .set_error("auth_url_error", e, phase = "build_auth_url")
-          NA_character_
-        }
+          async_dispatch(
+            quote({
+              .ns <- asNamespace("shinyOAuth")
+              .ns$with_async_options(captured_options, {
+                .ns$with_async_session_context(
+                  captured_session,
+                  .ns$build_prepared_authorization(worker, prepared)
+                )
+              })
+            }),
+            args = list(
+              worker = worker,
+              prepared = prepared,
+              captured_options = capture_async_options(),
+              captured_session = capture_shiny_session_context()
+            ),
+            otel_context = list(
+              headers = prepared$otel_headers,
+              worker_span_name = "shinyOAuth.login.request.worker",
+              shiny_session = capture_shiny_session_context(),
+              attributes = otel_client_attributes(
+                client,
+                module_id = id,
+                async = TRUE,
+                phase = "login.request.worker"
+              )
+            )
+          ) |>
+            promises::then(function(raw) {
+              if (
+                !.auth_operation_can_apply(operation, "authorization") ||
+                  !identical(values$browser_token, browser)
+              ) {
+                cleanup()
+                return(NA_character_)
+              }
+              result <- replay_async_conditions(raw)
+              url <- finish_prepared_authorization(
+                result,
+                client,
+                prepared,
+                publisher
+              )
+              .finish_auth_operation(operation, "authorization")
+              url
+            }) |>
+            promises::catch(fail)
+        },
+        error = fail
       )
     }
 
@@ -1376,11 +1476,25 @@ oauth_module_server <- function(
     # @return No return value; may redirect the browser and set
     #   `values$auto_redirected`.
     .initiate_login <- function() {
-      # Build URL first; only mark redirected if we successfully issued a redirect
       url <- .build_auth_url()
-      ok <- .redirect_to(url)
-      if (isTRUE(ok)) {
-        values$auto_redirected <- TRUE
+      epoch <- auth_operations$epoch
+      redirect <- function(url) {
+        if (
+          !isTRUE(auth_operations$session_active) ||
+            !identical(epoch, auth_operations$epoch) ||
+            .is_authenticated_now()
+        ) {
+          return(invisible(FALSE))
+        }
+        if (isTRUE(.redirect_to(url))) {
+          values$auto_redirected <- TRUE
+        }
+        invisible(NULL)
+      }
+      if (inherits(url, "promise")) {
+        promises::then(url, redirect)
+      } else {
+        redirect(url)
       }
     }
 
@@ -2526,50 +2640,119 @@ oauth_module_server <- function(
         authenticated_state_payload
       }
 
+      operation <- NULL
+      fail <- function(e) {
+        clear_oauth_module_callback_query(
+          session,
+          tab_title_replacement,
+          tab_title_cleaning,
+          drop_response = drop_response
+        )
+        .set_error(
+          oauth_module_callback_failure_error_code(e),
+          e,
+          phase = phase
+        )
+        try(
+          audit_event(
+            "callback_validation_failed",
+            context = list(
+              provider = client@provider@name %||% NA_character_,
+              issuer = client@provider@issuer %||% NA_character_,
+              client_id_digest = string_digest(client@client_id),
+              state_digest = NA_character_,
+              error_class = paste(class(e), collapse = ", "),
+              phase = phase
+            )
+          ),
+          silent = TRUE
+        )
+        NULL
+      }
+      report_failure <- function(e) {
+        if (
+          is.null(operation) || .auth_operation_can_apply(operation, "jarm")
+        ) {
+          fail(e)
+          if (!is.null(operation)) .finish_auth_operation(operation, "jarm")
+        }
+        invisible(NULL)
+      }
       normalized <- tryCatch(
         validate_jarm_response(
           client,
           response,
           transport = transport,
           outer_iss = outer_iss,
-          authenticate_state = authenticate_jarm_state
+          authenticate_state = authenticate_jarm_state,
+          .defer_signature = isTRUE(async)
         ),
-        error = function(e) {
-          clear_oauth_module_callback_query(
-            session,
-            tab_title_replacement,
-            tab_title_cleaning,
-            drop_response = drop_response
-          )
-          .set_error(
-            oauth_module_callback_failure_error_code(e),
-            e,
-            phase = phase
-          )
-          try(
-            audit_event(
-              "callback_validation_failed",
-              context = list(
-                provider = client@provider@name %||% NA_character_,
-                issuer = client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(client@client_id),
-                state_digest = NA_character_,
-                error_class = paste(class(e), collapse = ", "),
-                phase = phase
-              )
-            ),
-            silent = TRUE
-          )
-          NULL
-        }
+        error = report_failure
       )
       if (is.null(normalized)) {
         return(invisible(NULL))
       }
-
+      if (isTRUE(async)) {
+        # Local shape/issuer/state checks have passed. Only signature/key work
+        # crosses the worker boundary; logical state remains browser-bound.
+        operation <- .begin_auth_operation(
+          "jarm",
+          source_token = values$token,
+          new_epoch = TRUE
+        )
+        return(tryCatch(
+          {
+            worker <- prepare_client_for_worker(client)
+            if (is.null(worker)) {
+              err_config("JARM client cannot be serialized for async work")
+            }
+            async_dispatch(
+              quote({
+                .ns <- asNamespace("shinyOAuth")
+                .ns$with_async_options(captured_options, {
+                  .ns$with_async_session_context(captured_session, {
+                    .ns$verify_jarm_signature(
+                      worker,
+                      preflight$jwt_str,
+                      preflight$alg,
+                      preflight$kid
+                    )
+                    .ns$validate_jarm_claims(
+                      worker,
+                      preflight$claims,
+                      prechecked = preflight$prechecked
+                    )
+                  })
+                })
+              }),
+              args = list(
+                worker = worker,
+                preflight = normalized,
+                captured_options = capture_async_options(),
+                captured_session = capture_shiny_session_context()
+              )
+            ) |>
+              promises::then(function(raw) {
+                if (!.auth_operation_can_apply(operation, "jarm")) {
+                  return(invisible(NULL))
+                }
+                result <- replay_async_conditions(raw)
+                .finish_auth_operation(operation, "jarm")
+                .resume_cached_jarm_response(
+                  result,
+                  authenticated_state_payload,
+                  phase = phase,
+                  drop_response = drop_response
+                )
+              }) |>
+              promises::catch(report_failure)
+          },
+          error = report_failure
+        ))
+      }
       .resume_cached_jarm_response(
-        normalized_response = normalized,
-        decrypted_payload = authenticated_state_payload,
+        normalized,
+        authenticated_state_payload,
         phase = phase,
         drop_response = drop_response
       )

@@ -840,7 +840,8 @@ validate_jarm_response <- function(
   response,
   transport = c("query", "form_post"),
   outer_iss = NULL,
-  authenticate_state = NULL
+  authenticate_state = NULL,
+  .defer_signature = FALSE
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
   transport <- match.arg(transport)
@@ -1042,6 +1043,16 @@ validate_jarm_response <- function(
       err_config("authenticate_state must be NULL or a function")
     }
     authenticate_state(state)
+  }
+
+  if (isTRUE(.defer_signature)) {
+    return(list(
+      jwt_str = jwt_str,
+      alg = alg,
+      kid = header_fields[["kid"]],
+      claims = claims,
+      prechecked = prechecked
+    ))
   }
 
   verify_jarm_signature(

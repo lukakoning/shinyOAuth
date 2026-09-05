@@ -21,6 +21,8 @@
 #'   arguments and return an absolute request-object URL.
 #' @param .requested_max_age Internal normalized OIDC `max_age` override used by
 #'   the Shiny module for forced reauthentication.
+#' @param .defer_build Internal flag returning prepared local state for async
+#'   authorization work instead of completing the authorization URL.
 #'
 #' @return A length-1 string containing the authorization URL to send the user
 #'   to. When PAR is used, the returned string also carries
@@ -35,7 +37,8 @@ prepare_call <- function(
   oauth_client,
   browser_token,
   request_uri_publisher = NULL,
-  .requested_max_age = NULL
+  .requested_max_age = NULL,
+  .defer_build = FALSE
 ) {
   # Verify input  --------------------------------------------------------------
 
@@ -186,56 +189,53 @@ prepare_call <- function(
           }
         )
 
-        # Build authorization URL --------------------------------------------------
-
-        auth_url <- tryCatch(
-          {
-            build_auth_url(
-              oauth_client = oauth_client,
-              payload = payload,
-              scopes = effective_scopes,
-              pkce_code_challenge = pkce_code_challenge,
-              pkce_method = pkce_method,
-              nonce = nonce,
-              requested_max_age = requested_max_age,
-              request_uri_publisher = request_uri_publisher,
-              request_handle_id = state_cache_key(state)
-            )
-          },
-          error = function(e) {
-            try(
-              oauth_client@state_store$remove(state_cache_key(state)),
-              silent = TRUE
-            )
-            stop(e)
-          }
+        prepared <- list(
+          trace_id = flow_trace_id,
+          otel_headers = login_span_headers,
+          state_key = state_cache_key(state),
+          build_args = list(
+            payload = payload,
+            scopes = effective_scopes,
+            pkce_code_challenge = pkce_code_challenge,
+            pkce_method = pkce_method,
+            nonce = nonce,
+            requested_max_age = requested_max_age,
+            request_handle_id = state_cache_key(state)
+          ),
+          audit_context = list(
+            provider = oauth_client@provider@name %||% NA_character_,
+            issuer = oauth_client@provider@issuer %||% NA_character_,
+            client_id_digest = string_digest(oauth_client@client_id),
+            state_digest = string_digest(state),
+            browser_token_digest = string_digest(browser_token),
+            pkce_method = pkce_method %||% NA_character_,
+            par_used = isTRUE(par_used),
+            request_object_used = isTRUE(request_object_used),
+            request_uri_used = isTRUE(request_uri_used),
+            nonce_present = isTRUE(oauth_client@provider@use_nonce),
+            scopes_count = length(effective_scopes),
+            redirect_uri = oauth_client@redirect_uri %||% NA_character_
+          )
         )
-
-        # Audit: redirect issuance (redacted identifiers only)
-        try(
-          {
-            audit_event(
-              "redirect_issued",
-              context = list(
-                provider = oauth_client@provider@name %||% NA_character_,
-                issuer = oauth_client@provider@issuer %||% NA_character_,
-                client_id_digest = string_digest(oauth_client@client_id),
-                state_digest = string_digest(state),
-                browser_token_digest = string_digest(browser_token),
-                pkce_method = pkce_method %||% NA_character_,
-                par_used = isTRUE(par_used),
-                request_object_used = isTRUE(request_object_used),
-                request_uri_used = isTRUE(request_uri_used),
-                nonce_present = isTRUE(oauth_client@provider@use_nonce),
-                scopes_count = length(effective_scopes),
-                redirect_uri = oauth_client@redirect_uri %||% NA_character_
+        if (isTRUE(.defer_build)) {
+          prepared
+        } else {
+          tryCatch(
+            finish_prepared_authorization(
+              build_prepared_authorization(oauth_client, prepared),
+              oauth_client,
+              prepared,
+              request_uri_publisher
+            ),
+            error = function(e) {
+              try(
+                oauth_client@state_store$remove(prepared$state_key),
+                silent = TRUE
               )
-            )
-          },
-          silent = TRUE
-        )
-
-        auth_url
+              stop(e)
+            }
+          )
+        }
       },
       attributes = otel_client_attributes(
         client = oauth_client,
@@ -751,7 +751,10 @@ build_auth_url <- function(
   nonce,
   requested_max_age = provider_auth_max_age(oauth_client@provider),
   request_uri_publisher = NULL,
-  request_handle_id = NULL
+  request_handle_id = NULL,
+  .request_object = NULL,
+  .request_object_expires_at = NULL,
+  .defer_publication = FALSE
 ) {
   warn_if_request_uri_is_long <- function(request_uri) {
     request_uri_len <- nchar(enc2utf8(request_uri), type = "bytes")
@@ -847,12 +850,21 @@ build_auth_url <- function(
   }
 
   if (isTRUE(request_object_used)) {
-    request_object <- build_authorization_request_object(
-      oauth_client,
-      params
-    )
+    request_expires_at <- .request_object_expires_at %||%
+      (Sys.time() + (oauth_client@request_object_ttl %||% 45))
+    request_object <- .request_object %||%
+      build_authorization_request_object(
+        oauth_client,
+        params
+      )
 
     if (isTRUE(request_uri_used)) {
+      if (isTRUE(.defer_publication)) {
+        return(list(
+          request_object = request_object,
+          expires_at = request_expires_at
+        ))
+      }
       if (!is.function(request_uri_publisher)) {
         err_config(
           paste(
@@ -862,8 +874,6 @@ build_auth_url <- function(
         )
       }
 
-      request_expires_at <- Sys.time() +
-        (oauth_client@request_object_ttl %||% 45)
       request_uri <- tryCatch(
         {
           request_uri_publisher(
@@ -2538,16 +2548,19 @@ verify_token_set <- function(
       )
       # Only opaque, unobserved bindings may wait for required introspection.
       # Observable contradictions were checked above and must fail immediately.
-      if (!(isTRUE(introspection_pending) && !token_dpop_cnf_observable(
-        access_token = token_set[["access_token"]],
-        cnf = token_set[["cnf"]] %||% NULL
-      ))) {
+      if (
+        !(isTRUE(introspection_pending) &&
+          !token_dpop_cnf_observable(
+            access_token = token_set[["access_token"]],
+            cnf = token_set[["cnf"]] %||% NULL
+          ))
+      ) {
         validate_observed_dpop_cnf_required(
-        oauth_client = client,
-        access_token = token_set[["access_token"]],
-        token_type = token_set[["token_type"]] %||% NULL,
-        cnf = token_set[["cnf"]] %||% NULL,
-        error_context = "token",
+          oauth_client = client,
+          access_token = token_set[["access_token"]],
+          token_type = token_set[["token_type"]] %||% NULL,
+          cnf = token_set[["cnf"]] %||% NULL,
+          error_context = "token",
           phase = phase
         )
       }
@@ -3169,4 +3182,57 @@ compare_refresh_id_token_continuity <- function(
       "Refresh returned an ID token with nonce that does not match the original (OIDC 12.2)"
     )
   }
+}
+
+# State preparation and publication run in the owner process; this middle step
+# is safe to dispatch with a serialization-safe client and performs provider IO.
+build_prepared_authorization <- function(oauth_client, prepared) {
+  with_trace_id(
+    prepared$trace_id,
+    do.call(
+      build_auth_url,
+      c(
+        list(oauth_client = oauth_client, .defer_publication = TRUE),
+        prepared$build_args
+      )
+    )
+  )
+}
+
+finish_prepared_authorization <- function(
+  result,
+  oauth_client,
+  prepared,
+  request_uri_publisher = NULL
+) {
+  with_trace_id(prepared$trace_id, {
+    payload <- state_payload_decrypt_validate(
+      oauth_client,
+      prepared$build_args$payload
+    )
+    state_store_get(oauth_client, payload$state)
+    if (is.list(result) && !is.null(result$request_object)) {
+      if (Sys.time() >= result$expires_at) {
+        err_invalid_state("Prepared Request Object expired")
+      }
+      result <- do.call(
+        build_auth_url,
+        c(
+          list(
+            oauth_client = oauth_client,
+            .request_object = result$request_object,
+            .request_object_expires_at = result$expires_at,
+            request_uri_publisher = request_uri_publisher
+          ),
+          prepared$build_args
+        )
+      )
+    }
+    expiry <- attr(result, "shinyOAuth.par_expires_at")
+    if (!is.null(expiry) && Sys.time() >= expiry) {
+      err_invalid_state("Prepared PAR request expired")
+    }
+    audit_event("redirect_issued", context = prepared$audit_context)
+    result
+  })
 }
