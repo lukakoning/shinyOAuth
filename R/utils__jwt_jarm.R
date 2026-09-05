@@ -763,6 +763,10 @@ validate_encrypted_jarm_protected_header <- function(
 ) {
   stopifnot(is.list(encryption_config))
 
+  if ("zip" %in% names(header)) {
+    err_invalid_state("Encrypted JARM compression (zip) is unsupported")
+  }
+
   header_fields <- validate_jose_header_fields(
     header,
     signal_error = err_invalid_state
