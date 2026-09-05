@@ -253,6 +253,8 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
     return(req)
   }
 
+  validate_mtls_tls_backend()
+
   options <- compact_list(list(
     sslcert = cert_file,
     sslkey = key_file,
@@ -261,6 +263,20 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
   ))
 
   do.call(httr2::req_options, c(list(req), options))
+}
+
+# curl reports inactive alternatives in parentheses, e.g.
+# "(OpenSSL/3.5.0) Schannel". Only the active backend determines PEM support.
+validate_mtls_tls_backend <- function(ssl_version = curl::curl_version()$ssl_version) {
+  active <- gsub("\\([^)]*\\)", "", ssl_version)
+  if (grepl("Schannel", active, ignore.case = TRUE)) {
+    err_config(c(
+      "PEM mTLS certificate/key files require the OpenSSL curl backend on Windows",
+      "i" = paste("Set CURL_SSL_BACKEND=openssl before loading curl, httr2, or shinyOAuth.",
+                  "Restart R if curl is already loaded; install an OpenSSL-enabled curl build if needed.")
+    ))
+  }
+  invisible(TRUE)
 }
 
 #' Attach mTLS client authentication to authorization-server requests
