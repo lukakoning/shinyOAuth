@@ -591,25 +591,21 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
       return(NULL)
     }
 
-    token <- character(0)
     index <- start_index + 1L
     escaping <- FALSE
 
     while (index <= length(chars)) {
       ch <- chars[[index]]
       if (isTRUE(escaping)) {
-        token <- c(token, ch)
         escaping <- FALSE
       } else if (identical(ch, "\\")) {
-        token <- c(token, ch)
         escaping <- TRUE
       } else if (identical(ch, '"')) {
         return(list(
           end = index,
-          value = jwt_decode_json_string_token(paste(token, collapse = ""))
+          value = jwt_decode_json_string_token(if (index == start_index + 1L) "" else
+            paste(chars[seq.int(start_index + 1L, index - 1L)], collapse = ""))
         ))
-      } else {
-        token <- c(token, ch)
       }
       index <- index + 1L
     }
@@ -619,8 +615,10 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
 
   find_top_level_jarm_iss_members <- function() {
     index <- 1L
-    container_stack <- character(0)
-    members <- list()
+    container_stack <- character(length(chars))
+    depth <- 0L
+    members <- vector("list", length(chars))
+    member_count <- 0L
 
     while (index <= length(chars)) {
       ch <- chars[[index]]
@@ -641,7 +639,7 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
         }
 
         if (
-          length(container_stack) == 1L &&
+          depth == 1L &&
             identical(container_stack[[1L]], "object") &&
             lookahead <= length(chars) &&
             identical(chars[[lookahead]], ":") &&
@@ -660,7 +658,8 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
             return(list())
           }
 
-          members[[length(members) + 1L]] <- list(
+          member_count <- member_count + 1L
+          members[[member_count]] <- list(
             start = token_start,
             end = parsed_value[["end"]],
             value = parsed_value[["value"]]
@@ -669,19 +668,19 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
 
         index <- parsed_key[["end"]]
       } else if (identical(ch, "{")) {
-        container_stack <- c(container_stack, "object")
+        depth <- depth + 1L
+        container_stack[[depth]] <- "object"
       } else if (identical(ch, "[")) {
-        container_stack <- c(container_stack, "array")
+        depth <- depth + 1L
+        container_stack[[depth]] <- "array"
       } else if (identical(ch, "}") || identical(ch, "]")) {
-        if (length(container_stack) > 0L) {
-          container_stack <- container_stack[-length(container_stack)]
-        }
+        depth <- max(0L, depth - 1L)
       }
 
       index <- index + 1L
     }
 
-    members
+    members[seq_len(member_count)]
   }
 
   members <- find_top_level_jarm_iss_members()
@@ -694,7 +693,7 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
     return(payload_text)
   }
 
-  normalized <- payload_text
+  keep <- rep(TRUE, length(chars))
   duplicate_indices <- rev(seq_along(members)[-1L])
   for (idx in duplicate_indices) {
     remove_start <- members[[idx]][["start"]]
@@ -703,34 +702,32 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
     before <- remove_start - 1L
     while (
       before >= 1L &&
-        grepl("[[:space:]]", substr(normalized, before, before))
+        chars[[before]] %in% c(" ", "\t", "\r", "\n")
     ) {
       before <- before - 1L
     }
 
-    if (before >= 1L && identical(substr(normalized, before, before), ",")) {
+    if (before >= 1L && identical(chars[[before]], ",")) {
       remove_start <- before
     } else {
       after <- remove_end + 1L
       while (
-        after <= nchar(normalized) &&
-          grepl("[[:space:]]", substr(normalized, after, after))
+        after <= length(chars) &&
+          chars[[after]] %in% c(" ", "\t", "\r", "\n")
       ) {
         after <- after + 1L
       }
       if (
-        after <= nchar(normalized) &&
-          identical(substr(normalized, after, after), ",")
+        after <= length(chars) &&
+          identical(chars[[after]], ",")
       ) {
         remove_end <- after
       }
     }
 
-    normalized <- paste0(
-      substr(normalized, 1L, remove_start - 1L),
-      substr(normalized, remove_end + 1L, nchar(normalized))
-    )
+    keep[seq.int(remove_start, remove_end)] <- FALSE
   }
+  normalized <- paste(chars[keep], collapse = "")
 
   normalized_duplicate_check <- tryCatch(
     {
