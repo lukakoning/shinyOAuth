@@ -316,6 +316,8 @@ for the backend contract.
   pass it to `HTML()` as markup; keep table escaping enabled.
 - Wrap the UI with `oauth_ui()` (or `oauth_form_post_ui()` when required).
   These send a browser privacy header that keeps callback URLs out of referrers.
+- For public apps, consider [rate limiting at your web server](advanced-security.html#limiting-repeated-login-requests)
+  to help keep the app responsive during repeated login attempts.
 - Keep the provider's validation defaults and choose any extra protections
   to match your provider and deployment requirements.
 

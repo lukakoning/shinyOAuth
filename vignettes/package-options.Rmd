@@ -50,7 +50,14 @@ to this whitelist
   `client_secret_jwt` or `private_key_jwt` token endpoint authentication. Finite values below 60 seconds are coerced to
   60 seconds, finite values above 300 seconds are clamped to 300 seconds, and `NA` or non-finite values fall back to
   the 120-second default
-- `options(shinyOAuth.state_fail_delay_ms = c(10, 30))` – adds a small randomized delay (in milliseconds) before any state validation failure (e.g., malformed token, IV/tag/ciphertext issues, or GCM authentication failure). This helps reduce timing side‑channels between different failure modes
+- `options(shinyOAuth.state_fail_delay_ms = 0)` – delay in milliseconds before
+  state parsing or decryption failures. Defaults to `0` (no delay). A positive
+  number sets a fixed delay; two numbers, such as `c(10, 30)`, set bounds for a
+  randomized delay. Positive delays sleep synchronously and block the Shiny
+  worker, including initial state validation with `async = TRUE`. The delay
+  adds timing noise but does not provide constant-time validation. Use
+  [rate limiting at your web server](advanced-security.html#limiting-repeated-login-requests)
+  to control repeated callback attempts.
 
 Note on `allowed_hosts`: patterns support globs (`*`, `?`).
 Using a catch‑all like `"*"` matches any host and effectively disables endpoint host restrictions (scheme rules still apply).

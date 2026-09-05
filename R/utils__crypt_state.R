@@ -115,16 +115,17 @@ get_option_env_positive_number <- function(opt_name, env_name, default) {
   as.numeric(val)
 }
 
-#' Internal: add a tiny randomized delay before state decryption failure
+#' Internal: apply an optional delay before state decryption failure
 #'
-#' Used by `state_decrypt_fail()` to reduce timing differences between state
-#' parsing and decryption failure paths.
+#' Used by `state_decrypt_fail()`. Defaults to no delay so malformed state
+#' does not intentionally block the Shiny event loop. Explicit positive delays
+#' add timing noise but sleep synchronously, including during async prevalidation.
 #'
 #' @return No return value; may sleep briefly before returning invisibly.
 #' @keywords internal
 #' @noRd
 state_decrypt_delay_before_fail <- function() {
-  bounds <- getOption("shinyOAuth.state_fail_delay_ms", c(10, 30))
+  bounds <- getOption("shinyOAuth.state_fail_delay_ms", 0)
   ms <- 0
   if (is.numeric(bounds) && length(bounds) >= 1) {
     b1 <- suppressWarnings(as.numeric(bounds[1]))
@@ -152,7 +153,7 @@ state_decrypt_delay_before_fail <- function() {
 #' Internal: raise a normalized invalid-state error during state decryption
 #'
 #' Used by `state_decrypt_gcm()` so all invalid-state failures pass through the
-#' same delay and `err_invalid_state()` path.
+#' same optional delay and `err_invalid_state()` path.
 #'
 #' @param msg Invalid-state message.
 #' @param context Structured error context.

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* State parsing and decryption failures now default to no delay, avoiding
+  intentional blocking of the Shiny worker during malformed callbacks.
+  Explicit `shinyOAuth.state_fail_delay_ms` settings remain supported.
+
 * Documentation now starts with practical app setup and introduces protocol
   details later. The getting-started and authentication guides are shorter,
   function help focuses on app authors, and package-wide options have their
