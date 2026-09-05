@@ -1,6 +1,6 @@
 devtools::load_all()
 
-options(shinyOAuth.allow_insecure_urls = TRUE)
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 
 library(shiny)
 
