@@ -319,14 +319,34 @@ is_absolute_uri <- function(x) {
     return(FALSE)
   }
 
-  x <- trimws(x)
-  if (!grepl("^[A-Za-z][A-Za-z0-9+.-]*:[^[:space:]]+$", x, perl = TRUE)) {
+  # Validate RFC 3986 syntax before using a URL parser: URL parsers can be
+  # permissive about bad escapes, and often do not understand opaque URIs.
+  atom <- "(?:[A-Za-z0-9._~!$&'()*+,;=-]|%[0-9A-Fa-f]{2})"
+  pchar <- paste0("(?:", atom, "|[:@])")
+  authority <- paste0(
+    "(?:(?:", atom, "|:)*@)?(?:", atom,
+    "*|\\[[A-Za-z0-9:._~!$&'()*+,;=-]+\\])(?::[0-9]*)?"
+  )
+  syntax <- paste0(
+    "^[A-Za-z][A-Za-z0-9+.-]*:",
+    "(?://", authority, "(?:/", pchar, "*)*|/?(?:", pchar, ")(?:", pchar,
+    "|/)*|/|)",
+    "(?:\\?(?:", pchar, "|[/?])*)?(?:#(?:", pchar, "|[/?])*)?\\z"
+  )
+  if (!grepl(syntax, x, perl = TRUE)) {
     return(FALSE)
   }
-
-  parsed <- try(httr2::url_parse(x), silent = TRUE)
-  if (!inherits(parsed, "try-error")) {
-    return(is_valid_string(parsed[["scheme"]] %||% NA_character_))
+  # Brackets are reserved for IP literals in the authority.
+  if (grepl("[", x, fixed = TRUE)) {
+    literal <- sub("^[^[]*\\[([^]]+)\\].*$", "\\1", x)
+    ipvfuture <- grepl(
+      "^[vV][0-9A-Fa-f]+\\.[A-Za-z0-9._~!$&'()*+,;=:-]+$", literal
+    )
+    if (!ipvfuture && inherits(try(
+      normalize_mtls_registration_ipv6_literal(literal), silent = TRUE
+    ), "try-error")) {
+      return(FALSE)
+    }
   }
 
   TRUE
