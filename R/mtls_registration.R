@@ -775,35 +775,26 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
     key_file = oauth_client@mtls_client_key_file,
     key_password = oauth_client@mtls_client_key_password
   )
-  leaf_fingerprint <- tryCatch(
-    {
-      as.list(leaf_cert)[["pubkey"]][[
-        "fingerprint",
-        exact = TRUE
-      ]] %||%
-        NULL
-    },
-    error = function(...) NULL
-  )
-  ordered_certs <- c(
-    list(leaf_cert),
-    Filter(
-      function(cert) {
-        cert_fingerprint <- tryCatch(
-          {
-            as.list(cert)[["pubkey"]][[
-              "fingerprint",
-              exact = TRUE
-            ]] %||%
-              NULL
-          },
-          error = function(...) NULL
-        )
-        !identical(cert_fingerprint, leaf_fingerprint)
-      },
-      certs
-    )
-  )
+  # Renewed certificates can share a public key; deduplicate by certificate DER.
+  candidates <- c(list(leaf_cert), certs)
+  identities <- vapply(candidates, function(cert) {
+    as.character(openssl::base64_encode(openssl::write_der(cert)))
+  }, character(1))
+  candidates <- candidates[!duplicated(identities)]
+  ordered_certs <- candidates[1L]
+  remaining <- candidates[-1L]
+  while (length(remaining)) {
+    issuer <- as.list(ordered_certs[[length(ordered_certs)]])[["issuer"]]
+    matches <- which(vapply(remaining, function(cert) {
+      identical(as.list(cert)[["subject"]], issuer)
+    }, logical(1)))
+    if (!length(matches)) {
+      err_config("Configured mTLS certificate bundle is not an issuer chain")
+    }
+    next_index <- matches[[1L]]
+    ordered_certs[[length(ordered_certs) + 1L]] <- remaining[[next_index]]
+    remaining <- remaining[-next_index]
+  }
 
   pubkey <- try(openssl::read_pubkey(leaf_cert), silent = TRUE)
   if (inherits(pubkey, "try-error")) {
