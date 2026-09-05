@@ -151,19 +151,26 @@ testthat::test_that("PKCE docs distinguish exchange and browser binding", {
   ))
 })
 
-testthat::test_that("OTel catalog includes form-post state consumption", {
+testthat::test_that("OTel catalog uses implemented form-post and state phases", {
   otel_docs <- project_text("vignettes", "opentelemetry.Rmd")
 
   testthat::expect_match(
     otel_docs,
-    "Span: `shinyOAuth.form_post.callback.consume_state`",
+    "Span: `shinyOAuth.form_post.bridge`",
     fixed = TRUE
   )
   testthat::expect_match(
     otel_docs,
-    "oauth.phase = \"form_post.callback_state_consume\"",
+    "oauth.phase = \"form_post.callback_lookup\"",
     fixed = TRUE
   )
+  login_source <- project_text("R", "methods__login.R")
+  module_source <- project_text("R", "oauth_module_server.R")
+  for (phase in c("callback.state_store_consume", "form_post.callback_lookup")) {
+    expect_match(otel_docs, phase, fixed = TRUE)
+    expect_match(paste(login_source, module_source), phase, fixed = TRUE)
+  }
+  expect_false(grepl("form_post.callback.consume_state", otel_docs, fixed = TRUE))
 })
 
 testthat::test_that("OTel docs describe exception-message opt-in", {
