@@ -1005,6 +1005,53 @@ test_that("resource requests enforce observed DPoP binding for both token repres
   }
 })
 
+test_that("strict opaque DPoP login and refresh require binding from introspection", {
+  prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
+  prov@introspection_url <- "https://example.com/introspect"
+  cli <- make_dpop_test_client(prov, dpop_require_observed_cnf = TRUE)
+  cli@introspect <- TRUE
+  jkt <- shinyOAuth:::compute_jwk_thumbprint(shinyOAuth:::dpop_public_jwk(cli@dpop_private_key))
+  old <- OAuthToken(access_token = "old", refresh_token = "refresh",
+                    token_type = "DPoP", cnf = list(jkt = jkt))
+  token_set <- list(access_token = "opaque-new", token_type = "DPoP", expires_in = 60)
+  response <- httr2::response(status_code = 200L, url = prov@token_url,
+    headers = list("Content-Type" = "application/json"),
+    body = charToRaw(jsonlite::toJSON(token_set, auto_unbox = TRUE)))
+  calls <- 0L
+  outcome <- "matching"
+  testthat::local_mocked_bindings(
+    swap_code_for_token_set = function(...) token_set,
+    req_with_dpop_retry = function(...) response,
+    introspect_token = function(...) {
+      calls <<- calls + 1L
+      if (outcome == "failed") stop("introspection unavailable")
+      cnf <- switch(outcome, matching = list(jkt = jkt),
+                    mismatching = list(jkt = "wrong"),
+                    inactive = list(jkt = jkt), NULL)
+      list(supported = TRUE, active = outcome != "inactive",
+           raw = list(active = outcome != "inactive", cnf = cnf))
+    }, .package = "shinyOAuth"
+  )
+  for (flow in c("login", "refresh")) {
+    for (outcome in c("matching", "missing", "mismatching", "inactive", "failed")) {
+      before <- calls
+      result <- tryCatch({
+        if (flow == "refresh") refresh_token(cli, old, async = FALSE) else {
+          browser <- valid_browser_token()
+          url <- prepare_call(cli, browser_token = browser)
+          handle_callback(cli, code = "code", payload = parse_query_param(url, "state"),
+                          browser_token = browser)
+        }
+      }, error = identity)
+      expect_identical(calls, before + 1L, info = paste(flow, outcome))
+      if (outcome == "matching") {
+        expect_true(S7::S7_inherits(result, OAuthToken))
+        expect_identical(result@cnf$jkt, jkt)
+      } else expect_s3_class(result, "error")
+    }
+  }
+})
+
 test_that("DPoP nonce cache is bounded by age and entry count", {
   info <- shinyOAuth:::dpop_nonce_cache$info()
 

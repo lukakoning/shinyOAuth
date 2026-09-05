@@ -942,7 +942,8 @@ refresh_token <- function(
           original_id_token = token@id_token,
           prior_granted_scopes = token@granted_scopes,
           shiny_session = shiny_session,
-          defer_certificate_binding = defer_certificate_binding
+          defer_certificate_binding = defer_certificate_binding,
+          introspection_pending = isTRUE(effective_introspect)
         )
         effective_token_type <- resolve_effective_access_token_type(
           oauth_client,

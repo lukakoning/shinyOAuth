@@ -1683,7 +1683,8 @@ handle_callback_internal <- function(
         requested_max_age = payload_requested_max_age(payload),
         requested_scopes = payload[["scopes"]] %||% NULL,
         shiny_session = shiny_session,
-        defer_certificate_binding = defer_certificate_binding
+        defer_certificate_binding = defer_certificate_binding,
+        introspection_pending = isTRUE(introspect)
       )
       effective_token_type <- resolve_effective_access_token_type(
         oauth_client,
@@ -2450,7 +2451,8 @@ verify_token_set <- function(
   requested_scopes = NULL,
   prior_granted_scopes = NULL,
   shiny_session = NULL,
-  defer_certificate_binding = FALSE
+  defer_certificate_binding = FALSE,
+  introspection_pending = FALSE
 ) {
   # Helpers/types --------------------------------------------------------------
 
@@ -2534,14 +2536,21 @@ verify_token_set <- function(
         error_context = "token",
         phase = phase
       )
-      validate_observed_dpop_cnf_required(
+      # Only opaque, unobserved bindings may wait for required introspection.
+      # Observable contradictions were checked above and must fail immediately.
+      if (!(isTRUE(introspection_pending) && !token_dpop_cnf_observable(
+        access_token = token_set[["access_token"]],
+        cnf = token_set[["cnf"]] %||% NULL
+      ))) {
+        validate_observed_dpop_cnf_required(
         oauth_client = client,
         access_token = token_set[["access_token"]],
         token_type = token_set[["token_type"]] %||% NULL,
         cnf = token_set[["cnf"]] %||% NULL,
         error_context = "token",
-        phase = phase
-      )
+          phase = phase
+        )
+      }
       if (!isTRUE(defer_certificate_binding)) {
         validate_token_certificate_binding(
           access_token = token_set[["access_token"]],
