@@ -811,6 +811,7 @@ refresh_token <- function(
           body_mode = "encoded"
         )
         req <- httr2::req_method(req, "POST")
+        token_request_started_at <- as.numeric(Sys.time())
         resp <- with_otel_span(
           "shinyOAuth.token.exchange.http",
           {
@@ -932,10 +933,10 @@ refresh_token <- function(
           is.numeric(token_set[["expires_in"]]) &&
             is.finite(token_set[["expires_in"]])
         ) {
-          as.numeric(Sys.time()) +
+          token_request_started_at +
             as.numeric(token_set[["expires_in"]])
         } else {
-          resolve_missing_expires_in(phase = "refresh_token")
+          resolve_missing_expires_in(phase = "refresh_token", now = token_request_started_at)
         }
 
         refreshed_id_token <- if (is_valid_string(token_set[["id_token"]])) {
@@ -1081,6 +1082,7 @@ refresh_token <- function(
           )
         }
 
+        validate_token_acceptance_deadline(refreshed_token)
         token@access_token <- refreshed_token@access_token
         token@refresh_token <- refreshed_token@refresh_token
         token@token_type <- refreshed_token@token_type
@@ -1453,8 +1455,12 @@ dispatch_token_async <- function(
 
   promise |>
     promises::then(function(value) {
+      value <- replay_async_conditions(value)
+      if (identical(function_name, "refresh_token")) {
+        validate_token_acceptance_deadline(value)
+      }
       otel_end_async_parent(otel_parent, status = "ok")
-      replay_async_conditions(value)
+      value
     }) |>
     promises::catch(function(err) {
       otel_end_async_parent(otel_parent, status = "error", error = err)

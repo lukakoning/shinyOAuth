@@ -493,7 +493,7 @@ testthat::test_that("refresh_token validates token_type before fetching userinfo
   testthat::expect_identical(calls$userinfo, 0L)
 })
 
-testthat::test_that("refresh_token treats expires_in = 0 as expiring now", {
+testthat::test_that("refresh_token rejects expires_in = 0 before acceptance", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   testthat::local_mocked_bindings(
@@ -517,17 +517,14 @@ testthat::test_that("refresh_token treats expires_in = 0 as expiring now", {
     id_token = NA_character_
   )
 
-  before <- as.numeric(Sys.time())
   testthat::expect_warning(
-    t2 <- refresh_token(cli, t, async = FALSE, introspect = FALSE),
+    expect_error(
+      refresh_token(cli, t, async = FALSE, introspect = FALSE),
+      "expired before acceptance"
+    ),
     regexp = "expires_in = 0",
     fixed = TRUE
   )
-  after <- as.numeric(Sys.time())
-
-  testthat::expect_true(is.finite(t2@expires_at))
-  testthat::expect_gte(t2@expires_at, before)
-  testthat::expect_lte(t2@expires_at, after + 1)
 })
 
 testthat::test_that("refresh_token rejects negative expires_in", {

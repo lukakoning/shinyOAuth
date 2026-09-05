@@ -3454,6 +3454,7 @@ oauth_module_server <- function(
                       return(invisible(NULL))
                     }
                     .finish_auth_operation(login_operation, "login")
+                    validate_token_acceptance_deadline(tok)
                     values$token <- tok
                     values$error <- NULL
                     values$error_description <- NULL
@@ -3528,6 +3529,7 @@ oauth_module_server <- function(
                   return(invisible(NULL))
                 }
                 .finish_auth_operation(login_operation, "login")
+                validate_token_acceptance_deadline(res)
                 values$token <- res
                 values$error <- NULL
                 values$error_description <- NULL
@@ -3797,6 +3799,7 @@ oauth_module_server <- function(
                             )
                             return(invisible(NULL))
                           }
+                          validate_token_acceptance_deadline(res_resolved)
                           values$token <- res_resolved
                           values$error <- NULL
                           values$error_description <- NULL
@@ -3912,6 +3915,7 @@ oauth_module_server <- function(
                         .revoke_stale_credentials(new_tok)
                         return(invisible(NULL))
                       }
+                      validate_token_acceptance_deadline(new_tok)
                       values$token <- new_tok
                       values$error <- NULL
                       values$error_description <- NULL

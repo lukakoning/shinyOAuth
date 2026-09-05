@@ -1575,6 +1575,7 @@ handle_callback_internal <- function(
       )
 
       # Perform token exchange
+      token_request_started_at <- as.numeric(Sys.time())
       token_set <- tryCatch(
         {
           ts <- call_with_optional_shiny_session(
@@ -1727,12 +1728,12 @@ handle_callback_internal <- function(
           is.numeric(token_set[["expires_in"]]) &&
             is.finite(token_set[["expires_in"]])
         ) {
-          as.numeric(Sys.time()) +
+          token_request_started_at +
             as.numeric(
               token_set[["expires_in"]]
             )
         } else {
-          resolve_missing_expires_in(phase = "exchange_code")
+          resolve_missing_expires_in(phase = "exchange_code", now = token_request_started_at)
         },
         id_token = token_set[["id_token"]] %||% NA_character_,
         cnf = resolve_token_cnf(
@@ -1847,6 +1848,7 @@ handle_callback_internal <- function(
       }
 
       # Audit: login success with redacted identifiers
+      validate_token_acceptance_deadline(token)
       try(
         {
           # Best-effort subject extraction: prefer userinfo via selector, else ID token sub

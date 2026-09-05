@@ -164,10 +164,14 @@ client_state_store_max_age <- function(client, default = 300) {
 #' was not server-provided.
 #'
 #' @param phase Optional phase label.
+#' @param now Request-start timestamp in epoch seconds.
 #' @return Numeric scalar: computed `expires_at` (epoch seconds).
 #' @keywords internal
 #' @noRd
-resolve_missing_expires_in <- function(phase = NULL) {
+resolve_missing_expires_in <- function(
+  phase = NULL,
+  now = as.numeric(Sys.time())
+) {
   phase_msg <- if (is_valid_string(phase)) {
     paste0(" (phase: ", phase, ")")
   } else {
@@ -225,7 +229,17 @@ resolve_missing_expires_in <- function(phase = NULL) {
     )
   )
 
-  as.numeric(Sys.time()) + fallback_ei
+  now + fallback_ei
+}
+
+# Reject deadlines that elapsed during transport, verification, or async delivery.
+validate_token_acceptance_deadline <- function(token) {
+  if (
+    is.finite(token@expires_at) && token@expires_at <= as.numeric(Sys.time())
+  ) {
+    err_token("Access token expired before acceptance")
+  }
+  token
 }
 
 #' Internal: warn when expires_in is non-positive
