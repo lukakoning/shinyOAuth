@@ -52,16 +52,13 @@
 #' @param x Value to render.
 #' @param secret Whether `x` should be redacted.
 #' @param max_items Maximum number of vector or list entries to preview.
-#' @param preview_chars Number of leading and trailing characters to keep in
-#'   redacted scalar strings.
 #' @return A length-1 display string.
 #' @keywords internal
 #' @noRd
 .shinyoauth_format_field <- function(
   x,
   secret = FALSE,
-  max_items = 4L,
-  preview_chars = 4L
+  max_items = 4L
 ) {
   if (is.null(x)) {
     return("NULL")
@@ -109,23 +106,7 @@
         return(paste0("<redacted ", toupper(key_label), ">"))
       }
 
-      chars <- nchar(value, type = "chars")
-      if (chars <= (preview_chars * 2L + 3L)) {
-        return("<redacted>")
-      }
-
-      return(paste0(
-        "<redacted ",
-        encodeString(
-          paste0(
-            substr(value, 1L, preview_chars),
-            "...",
-            substr(value, chars - preview_chars + 1L, chars)
-          ),
-          quote = '"'
-        ),
-        ">"
-      ))
+      return("<redacted>")
     }
 
     return(paste0("<redacted ", .shinyoauth_object_label(x), ">"))
@@ -361,7 +342,14 @@ method(format, OAuthClient) <- function(x, ...) {
       authorization_server_mode = x@authorization_server_mode,
       authorization_server_redirect_uris = x@authorization_server_redirect_uris,
       scopes = x@scopes,
-      claims = x@claims,
+      claims = if (is.character(x@claims) && is_valid_string(x@claims)) {
+        tryCatch(
+          jsonlite::fromJSON(x@claims, simplifyVector = FALSE),
+          error = function(...) list()
+        )
+      } else {
+        x@claims
+      },
       state_store = x@state_store,
       state_payload_max_age = x@state_payload_max_age,
       jarm_max_lifetime = x@jarm_max_lifetime,

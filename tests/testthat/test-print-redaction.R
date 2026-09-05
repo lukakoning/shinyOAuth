@@ -31,9 +31,7 @@ test_that("OAuthToken printing redacts token material", {
 
   for (output in unname(rendered)) {
     expect_match(output, "<redacted", fixed = TRUE)
-    expect_match(output, "acce...7890", fixed = TRUE)
-    expect_match(output, "refr...GHIJ", fixed = TRUE)
-    expect_match(output, "idto...3210", fixed = TRUE)
+    expect_no_secret_material(output, c("7890", "GHIJ", "3210"))
     expect_no_secret_material(
       output,
       c(access_token, refresh_token, id_token, "user@example.com")
@@ -79,8 +77,7 @@ test_that("OAuthClient printing redacts secrets and private keys", {
 
   for (output in unname(rendered)) {
     expect_match(output, "<redacted", fixed = TRUE)
-    expect_match(output, "clie...0XYZ", fixed = TRUE)
-    expect_match(output, "stat...6789", fixed = TRUE)
+    expect_no_secret_material(output, c("0XYZ", "6789"))
     expect_match(output, "<redacted PRIVATE KEY>", fixed = TRUE)
     expect_no_secret_material(
       output,
