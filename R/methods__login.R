@@ -464,8 +464,10 @@ build_authorization_params <- function(
       "shinyOAuth.unblock_auth_params",
       character()
     )))
-    blocked_params <- union(immutable_oauth_params(),
-      setdiff(default_blocked_params, unblocked))
+    blocked_params <- union(
+      immutable_oauth_params(),
+      setdiff(default_blocked_params, unblocked)
+    )
 
     conflicts <- intersect(tolower(trimws(names(extra))), blocked_params)
     if (length(conflicts) > 0) {
@@ -709,7 +711,7 @@ attach_par_auth_url_metadata <- function(
     return(auth_url)
   }
 
-  expires_in <- as.integer(expires_in)
+  expires_in <- as.numeric(expires_in)
   issued_at_num <- suppressWarnings(as.numeric(issued_at))
   expires_at <- if (length(issued_at_num) == 1L && is.finite(issued_at_num)) {
     structure(
@@ -1733,7 +1735,10 @@ handle_callback_internal <- function(
               token_set[["expires_in"]]
             )
         } else {
-          resolve_missing_expires_in(phase = "exchange_code", now = token_request_started_at)
+          resolve_missing_expires_in(
+            phase = "exchange_code",
+            now = token_request_started_at
+          )
         },
         id_token = token_set[["id_token"]] %||% NA_character_,
         cnf = resolve_token_cnf(
@@ -2132,7 +2137,9 @@ enforce_token_introspection_policy <- function(
       requested_scopes %||% effective_client_scopes(oauth_client)
     )
     intro_scope_raw <- raw[["scope"]] %||% NULL
-    if ("scope" %in% names(raw)) validate_response_scope(intro_scope_raw, err_token)
+    if ("scope" %in% names(raw)) {
+      validate_response_scope(intro_scope_raw, err_token)
+    }
 
     if (!is.null(intro_scope_raw)) {
       token@granted_scopes <- normalize_scope_tokens(intro_scope_raw)
@@ -2309,7 +2316,10 @@ swap_code_for_token_set <- function(
       }
 
       if (length(client@provider@extra_token_params) > 0) {
-        params <- merge_oauth_extra_params(params, client@provider@extra_token_params)
+        params <- merge_oauth_extra_params(
+          params,
+          client@provider@extra_token_params
+        )
       }
 
       auth_client <- endpoint_auth_client(client, "token")

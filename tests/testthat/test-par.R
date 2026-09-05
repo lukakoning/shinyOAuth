@@ -116,7 +116,7 @@ test_that("prepare_call pushes authorization params and redirects with request_u
   )
   expect_identical(
     attr(auth_url, "shinyOAuth.par_expires_in"),
-    90L
+    90
   )
   expect_s3_class(
     attr(auth_url, "shinyOAuth.par_expires_at"),
@@ -1048,4 +1048,17 @@ test_that("OIDC discovery wires PAR metadata into provider", {
   prov <- oauth_provider_oidc_discover("https://issuer.example.com")
 
   expect_identical(prov@par_url, "https://issuer.example.com/par")
+})
+test_that("PAR expiry metadata preserves lifetimes beyond integer range", {
+  lifetime <- .Machine$integer.max + 1
+  url <- attach_par_auth_url_metadata(
+    "https://example.com/auth",
+    list(request_uri = "urn:example:par", expires_in = lifetime),
+    issued_at = 1000
+  )
+  expect_identical(attr(url, "shinyOAuth.par_expires_in"), lifetime)
+  expect_equal(
+    as.numeric(attr(url, "shinyOAuth.par_expires_at")),
+    1000 + lifetime
+  )
 })
