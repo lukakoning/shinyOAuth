@@ -93,8 +93,14 @@
       var expectedLen = 128; /* 64 bytes hex-encoded */
       if(!isValidHexToken(v, expectedLen)){ v = randomHex(64); }
       setCookie(name, v, ageMs, sameSite, /*forceSecure*/ requireSecure, cookiePath);
+      if (getCookie(name) !== v) throw new Error('cookie_unavailable');
       var shiny = ensureShiny();
       if (shiny) shiny.setInputValue(payload.inputId, v, {priority:'event'});
+      if (shiny && payload.requestId) {
+        shiny.setInputValue(payload.ackInputId, {
+          requestId: payload.requestId, token: v
+        }, {priority:'event'});
+      }
     } catch(e) {
       var shiny = ensureShiny();
       if (shiny) shiny.setInputValue(payload.errorInputId, String(e && e.message || e), {priority:'event'});

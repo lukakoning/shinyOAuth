@@ -30,7 +30,8 @@ make_callback_swap_browser_app <- function(client, title, module_id) {
     )
 
     shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
-      published_auth_url(auth$build_auth_url())
+      promises::then(auth$build_auth_url(), published_auth_url)
+      invisible(NULL)
     })
 
     output$ready_state <- shiny::renderText({

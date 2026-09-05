@@ -379,18 +379,20 @@ if (!exists("make_provider", mode = "function")) {
         })
 
         build_and_capture_auth_url <- function() {
-          url <- auth$build_auth_url()
-          browser_token <- auth$browser_token %||% NA_character_
+          promises::then(auth$build_auth_url(), function(url) {
+            browser_token <- auth$browser_token %||% NA_character_
 
-          if (keycloak_nonempty_string(browser_token)) {
-            published_auth_urls[[browser_token]] <- url
-          }
+            if (keycloak_nonempty_string(browser_token)) {
+              published_auth_urls[[browser_token]] <- url
+            }
 
-          url
+            url
+          })
         }
 
         shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
           build_and_capture_auth_url()
+          invisible(NULL)
         })
 
         output$ready_state <- shiny::renderText({

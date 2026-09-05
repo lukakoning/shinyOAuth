@@ -322,7 +322,20 @@ testthat::test_that("manual sync login succeeds with browser-token protection en
       testthat::expect_true(values$has_browser_token())
       testthat::expect_identical(values$browser_token, btok)
 
-      url <- values$build_auth_url()
+      url <- NULL
+      promises::then(values$build_auth_url(), function(value) {
+        url <<- value
+      })
+      session$setInputs(
+        shinyOAuth_cookie_ack = list(
+          requestId = browser_ack$id,
+          token = btok
+        )
+      )
+      for (i in seq_len(8)) {
+        later::run_now()
+        session$flushReact()
+      }
       testthat::expect_true(is.character(url) && nzchar(url))
       enc <- parse_query_param(url, "state")
       testthat::expect_true(is.character(enc) && nzchar(enc))

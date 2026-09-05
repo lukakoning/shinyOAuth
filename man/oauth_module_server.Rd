@@ -142,13 +142,15 @@ supported, following \code{async}. It does not sign out of the provider account.
 \item \code{auth$build_auth_url()}: advanced helper for a custom login link.
 Creates pending login state as well as the URL, so retain the result for
 the link instead of rebuilding it on every UI update.
-Requires \code{auth$has_browser_token()} to be true. Returns a URL, or \code{NA}
-if already authenticated. With async PAR or Request Objects, returns a
+Refreshes and reads the browser cookie before creating state. Returns a
 promise resolving to the URL (or \code{NA} on failure or an obsolete result);
 use \code{promises::then()}. PAR URLs carry \code{shinyOAuth.par_request_uri},
 \code{shinyOAuth.par_expires_in}, and \code{shinyOAuth.par_expires_at} attributes
 to help you decide when to regenerate the link. \code{request_login()}
 handles these details for button-based login.
+Inside \code{observeEvent()}, register the promise handler and then return
+\code{invisible(NULL)} so Shiny can process the browser acknowledgment. Do not
+return the pending promise from the observer itself.
 \item \code{auth$has_browser_token()}: reports whether the browser token is
 available. Use it before building a custom login URL; it does not report
 whether the user is authenticated.

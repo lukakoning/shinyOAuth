@@ -8,9 +8,14 @@ for (const path of ['/', '/app']) {
   const inputs = {};
   const handlers = {};
   const document = {addEventListener() {}};
+  const cookies = new Map([['shinyOAuth_sid-auth', planted]]);
   Object.defineProperty(document, 'cookie', {
-    get: () => 'shinyOAuth_sid-auth=' + planted,
-    set: value => writes.push(value)
+    get: () => Array.from(cookies, ([key, value]) => key + '=' + value).join('; '),
+    set: value => {
+      writes.push(value);
+      const [name, token] = value.split(';')[0].split('=');
+      cookies.set(name, token);
+    }
   });
   const Shiny = {
     addCustomMessageHandler: (name, fn) => { handlers[name] = fn; },

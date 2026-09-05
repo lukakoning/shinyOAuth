@@ -382,36 +382,39 @@ if (!exists("make_provider", mode = "function")) {
         })
 
         build_and_capture_auth_url <- function() {
-          url <- auth$build_auth_url()
-          browser_token <- auth$browser_token %||% NA_character_
+          promises::then(auth$build_auth_url(), function(url) {
+            browser_token <- auth$browser_token %||% NA_character_
 
-          if (keycloak_nonempty_string(browser_token)) {
-            published_auth_urls[[browser_token]] <- url
-            published_request_uris[[browser_token]] <- parse_query_param(
-              url,
-              "request_uri",
-              decode = TRUE
-            )
-          }
+            if (keycloak_nonempty_string(browser_token)) {
+              published_auth_urls[[browser_token]] <- url
+              published_request_uris[[browser_token]] <- parse_query_param(
+                url,
+                "request_uri",
+                decode = TRUE
+              )
+            }
 
-          url
+            url
+          })
         }
 
         shiny::observeEvent(input$login_btn, ignoreInit = TRUE, {
-          url <- build_and_capture_auth_url()
-
-          if (
-            is.character(url) &&
-              length(url) == 1L &&
-              !is.na(url) &&
-              nzchar(url)
-          ) {
-            shinyOAuth:::send_oauth_module_redirect(session, url)
-          }
+          promises::then(build_and_capture_auth_url(), function(url) {
+            if (
+              is.character(url) &&
+                length(url) == 1L &&
+                !is.na(url) &&
+                nzchar(url)
+            ) {
+              shinyOAuth:::send_oauth_module_redirect(session, url)
+            }
+          })
+          invisible(NULL)
         })
 
         shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
           build_and_capture_auth_url()
+          invisible(NULL)
         })
 
         output$ready_state <- shiny::renderText({

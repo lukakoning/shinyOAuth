@@ -162,13 +162,15 @@
 #'   - `auth$build_auth_url()`: advanced helper for a custom login link.
 #'     Creates pending login state as well as the URL, so retain the result for
 #'     the link instead of rebuilding it on every UI update.
-#'     Requires `auth$has_browser_token()` to be true. Returns a URL, or `NA`
-#'     if already authenticated. With async PAR or Request Objects, returns a
+#'     Refreshes and reads the browser cookie before creating state. Returns a
 #'     promise resolving to the URL (or `NA` on failure or an obsolete result);
 #'     use `promises::then()`. PAR URLs carry `shinyOAuth.par_request_uri`,
 #'     `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at` attributes
 #'     to help you decide when to regenerate the link. `request_login()`
 #'     handles these details for button-based login.
+#'     Inside `observeEvent()`, register the promise handler and then return
+#'     `invisible(NULL)` so Shiny can process the browser acknowledgment. Do not
+#'     return the pending promise from the observer itself.
 #'   - `auth$has_browser_token()`: reports whether the browser token is
 #'     available. Use it before building a custom login URL; it does not report
 #'     whether the user is authenticated.
@@ -917,10 +919,17 @@ oauth_module_server <- function(
       input$shinyOAuth_cookie_error,
       {
         reason <- input$shinyOAuth_cookie_error
-        if (!is.character(reason) || length(reason) != 1L ||
-            is.na(reason) || !reason %in% c(
-              "webcrypto_unavailable", "samesite_none_requires_https"
-            )) {
+        if (
+          !is.character(reason) ||
+            length(reason) != 1L ||
+            is.na(reason) ||
+            !reason %in%
+              c(
+                "webcrypto_unavailable",
+                "samesite_none_requires_https",
+                "cookie_unavailable"
+              )
+        ) {
           reason <- "unknown"
         }
 
@@ -935,6 +944,11 @@ oauth_module_server <- function(
         # Stop any pending login loop to avoid repeated redirects while the
         # browser cannot store/read the cookie.
         values$pending_login <- FALSE
+        if (!is.null(browser_ack$reject)) {
+          browser_ack$reject(simpleError("Browser cookie unavailable"))
+          browser_ack$reject <- NULL
+          browser_ack$resolve <- NULL
+        }
 
         # Emit an audit event with safe context
         proto <- tryCatch(
@@ -964,7 +978,7 @@ oauth_module_server <- function(
     # logout.
     # @return No return value; computes cookie settings and asks the browser to
     #   set the token.
-    .set_browser_token <- function() {
+    .set_browser_token <- function(request_id = NULL) {
       # Max age (sec); defaults to 300s (5 min) if state_store TTL is unavailable
       max_age_sec <- client_state_store_max_age(client)
       instance <- build_oauth_module_browser_token_instance(session, id)
@@ -974,9 +988,92 @@ oauth_module_server <- function(
         instance = instance,
         max_age_ms = max_age_sec * 1000,
         same_site = browser_cookie_samesite,
-        path = if (is.null(browser_cookie_path)) NULL else browser_cookie_path
+        path = if (is.null(browser_cookie_path)) NULL else browser_cookie_path,
+        request_id = request_id
       )
     }
+
+    # A cached mirror is insufficient: require read-after-write acknowledgment
+    # for this request before binding any new authorization state.
+    browser_ack <- new.env(parent = emptyenv())
+    .with_fresh_browser_token <- function(body) {
+      if (isTRUE(allow_skip_browser_token())) {
+        return(body())
+      }
+      if (!is.null(browser_ack$reject)) {
+        browser_ack$reject(simpleError("Browser cookie request superseded"))
+      }
+      request_id <- random_urlsafe(32)
+      epoch <- auth_operations$epoch
+      promise <- promises::promise(function(resolve, reject) {
+        browser_ack$id <- request_id
+        browser_ack$resolve <- resolve
+        browser_ack$reject <- reject
+        .set_browser_token(request_id)
+        later::later(
+          function() {
+            if (
+              identical(browser_ack$id, request_id) &&
+                !is.null(browser_ack$reject)
+            ) {
+              browser_ack$reject(simpleError(
+                "Browser cookie acknowledgment timed out"
+              ))
+              browser_ack$resolve <- NULL
+              browser_ack$reject <- NULL
+            }
+          },
+          delay = 10
+        )
+      })
+      promises::then(promise, function(token) {
+        if (
+          !isTRUE(auth_operations$session_active) ||
+            !identical(epoch, auth_operations$epoch)
+        ) {
+          return(NA_character_)
+        }
+        values$browser_token <- token
+        values$pending_login <- FALSE
+        body()
+      }) |>
+        promises::catch(function(e) {
+          if (
+            identical(browser_ack$id, request_id) &&
+              identical(epoch, auth_operations$epoch) &&
+              isTRUE(auth_operations$session_active)
+          ) {
+            values$pending_login <- FALSE
+            .set_error("browser_cookie_error", e, phase = "browser_cookie_ack")
+          }
+          NA_character_
+        })
+    }
+    shiny::observeEvent(
+      input$shinyOAuth_cookie_ack,
+      {
+        ack <- input$shinyOAuth_cookie_ack
+        if (
+          is.list(ack) &&
+            identical(ack$requestId, browser_ack$id) &&
+            !is.null(browser_ack$resolve)
+        ) {
+          valid <- tryCatch(
+            {
+              validate_browser_token(ack$token)
+              TRUE
+            },
+            error = function(e) FALSE
+          )
+          if (valid) {
+            browser_ack$resolve(ack$token)
+            browser_ack$resolve <- NULL
+            browser_ack$reject <- NULL
+          }
+        }
+      },
+      ignoreInit = TRUE
+    )
 
     # Internal helper: clear the browser token cookie and reset matching
     # server-side state. Used after successful login, during logout, and when
@@ -1375,7 +1472,11 @@ oauth_module_server <- function(
     # `.request_login()` and pending-login resume logic.
     # @return No return value; may redirect the browser and set
     #   `values$auto_redirected`.
-    .initiate_login <- function() {
+    .initiate_login <- function(cookie_acknowledged = FALSE) {
+      if (!cookie_acknowledged) {
+        return(.with_fresh_browser_token(function() .initiate_login(TRUE)))
+      }
+      values$pending_login <- FALSE
       url <- .build_auth_url()
       epoch <- auth_operations$epoch
       redirect <- function(url) {
@@ -1408,12 +1509,13 @@ oauth_module_server <- function(
         return(invisible(FALSE))
       }
 
-      if (.has_browser_token()) {
-        .initiate_login()
-      } else {
+      values$pending_login <- TRUE
+      if (isTRUE(allow_skip_browser_token()) && !.has_browser_token()) {
         .set_browser_token()
-        values$pending_login <- TRUE
+      } else {
+        .initiate_login()
       }
+      invisible(TRUE)
     }
 
     # Expose helpers for manual login flows when `auto_redirect = FALSE`.
@@ -1447,7 +1549,7 @@ oauth_module_server <- function(
     # @return Authorization URL string, or `NA_character_` after recording a
     #   module error.
     values$build_auth_url <- function() {
-      .build_auth_url()
+      .with_fresh_browser_token(.build_auth_url)
     }
 
     # Module value helper: request a login redirect.
@@ -3406,7 +3508,10 @@ oauth_module_server <- function(
               } else {
                 if (
                   isTRUE(callback_validated) ||
-                    identical(client@authorization_server_mode, "multi_redirect_uri") ||
+                    identical(
+                      client@authorization_server_mode,
+                      "multi_redirect_uri"
+                    ) ||
                     !is.null(decrypted_payload) ||
                     !is.null(state_store_values)
                 ) {
@@ -3649,7 +3754,9 @@ oauth_module_server <- function(
       values$browser_token,
       {
         if (
-          isTRUE(shiny::isolate(values$pending_login)) && .has_browser_token()
+          isTRUE(allow_skip_browser_token()) &&
+            isTRUE(shiny::isolate(values$pending_login)) &&
+            .has_browser_token()
         ) {
           # Guard against running during callback processing
           qs <- tryCatch(
@@ -4181,6 +4288,7 @@ build_oauth_module_browser_token_instance <- function(session, id) {
 #' @param session Shiny session object for the module instance.
 #' @param instance Browser-token cookie instance suffix.
 #' @param max_age_ms Cookie lifetime in milliseconds.
+#' @param request_id Optional identifier for a fresh cookie acknowledgment.
 #' @param same_site SameSite policy string.
 #' @param path Cookie path, or `NULL` to let the JavaScript handler use its
 #'   default.
@@ -4193,7 +4301,8 @@ send_oauth_module_set_browser_token <- function(
   instance,
   max_age_ms,
   same_site,
-  path
+  path,
+  request_id = NULL
 ) {
   session$sendCustomMessage(
     type = "shinyOAuth:setBrowserToken",
@@ -4203,6 +4312,8 @@ send_oauth_module_set_browser_token <- function(
       sameSite = same_site,
       path = path,
       inputId = session$ns("shinyOAuth_sid"),
+      requestId = request_id,
+      ackInputId = session$ns("shinyOAuth_cookie_ack"),
       errorInputId = session$ns("shinyOAuth_cookie_error")
     )
   )

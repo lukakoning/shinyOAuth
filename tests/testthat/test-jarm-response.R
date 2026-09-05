@@ -4206,7 +4206,7 @@ test_that("oauth_module_server rechecks pending query.jwt callbacks after JARM e
           url <- testthat::with_mocked_bindings(
             Sys.time = function() fixed_now,
             .package = "base",
-            values$build_auth_url()
+            prepare_call(client, browser_token = state_browser_token)
           )
           enc_state <- parse_query_param(url, "state")
           values$browser_token <- NULL
@@ -4596,22 +4596,47 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
 test_that("JARM verifies Ed25519 signatures and rejects corruption", {
   skip_if_not_installed("sodium")
   secret <- sodium::sig_keygen()
-  jwk <- list(kty = "OKP", crv = "Ed25519", kid = "ed-1",
-    x = shinyOAuth:::base64url_encode(sodium::sig_pubkey(secret)))
+  jwk <- list(
+    kty = "OKP",
+    crv = "Ed25519",
+    kid = "ed-1",
+    x = shinyOAuth:::base64url_encode(sodium::sig_pubkey(secret))
+  )
   client <- make_jarm_test_client(jarm_signed_response_alg = "EdDSA")
-  encode <- function(x) shinyOAuth:::base64url_encode(charToRaw(
-    jsonlite::toJSON(x, auto_unbox = TRUE)))
-  input <- paste(encode(list(alg = "EdDSA", kid = "ed-1")), encode(list(
-    iss = client@provider@issuer, aud = "abc", exp = as.numeric(Sys.time()) + 300,
-    code = "ok", state = "state-1")), sep = ".")
+  encode <- function(x) {
+    shinyOAuth:::base64url_encode(charToRaw(
+      jsonlite::toJSON(x, auto_unbox = TRUE)
+    ))
+  }
+  input <- paste(
+    encode(list(alg = "EdDSA", kid = "ed-1")),
+    encode(list(
+      iss = client@provider@issuer,
+      aud = "abc",
+      exp = as.numeric(Sys.time()) + 300,
+      code = "ok",
+      state = "state-1"
+    )),
+    sep = "."
+  )
   sig <- sodium::sig_sign(charToRaw(input), secret)
   response <- paste(input, shinyOAuth:::base64url_encode(sig), sep = ".")
-  local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)),
-    .package = "shinyOAuth")
-  expect_identical(shinyOAuth:::validate_jarm_response(client, response)$code, "ok")
+  local_mocked_bindings(
+    fetch_jwks = function(...) list(keys = list(jwk)),
+    .package = "shinyOAuth"
+  )
+  expect_identical(
+    shinyOAuth:::validate_jarm_response(client, response)$code,
+    "ok"
+  )
   sig[1] <- as.raw(bitwXor(as.integer(sig[1]), 1L))
-  expect_error(shinyOAuth:::validate_jarm_response(client,
-    paste(input, shinyOAuth:::base64url_encode(sig), sep = ".")), "signature")
+  expect_error(
+    shinyOAuth:::validate_jarm_response(
+      client,
+      paste(input, shinyOAuth:::base64url_encode(sig), sep = ".")
+    ),
+    "signature"
+  )
   jwk$x <- shinyOAuth:::base64url_encode(raw(31))
   expect_error(shinyOAuth:::jwk_to_pubkey(jwk), "32 bytes")
   jwk$crv <- "Ed448"

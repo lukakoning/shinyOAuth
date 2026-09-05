@@ -79,7 +79,12 @@ testthat::test_that("browser cookie test environment can launch Chrome", {
   )
 })
 
-make_test_app <- function(samesite = "Strict", path = NULL, id = "auth") {
+make_test_app <- function(
+  samesite = "Strict",
+  path = NULL,
+  id = "auth",
+  ttl = 60
+) {
   stopifnot(samesite %in% c("Strict", "Lax", "None"))
 
   # Minimal inert provider/client: hosts must pass is_ok_host(), but no calls occur
@@ -98,7 +103,7 @@ make_test_app <- function(samesite = "Strict", path = NULL, id = "auth") {
     client_secret = "test-secret-32-bytes-minimum-padding",
     redirect_uri = "http://127.0.0.1:1/callback",
     scopes = character(),
-    state_store = cachem::cache_mem(max_age = 60) # short TTL for test
+    state_store = cachem::cache_mem(max_age = ttl)
   )
 
   ui <- shiny::fluidPage(
@@ -106,6 +111,9 @@ make_test_app <- function(samesite = "Strict", path = NULL, id = "auth") {
     shiny::tags$h3("Cookie test app"),
     shiny::actionButton("set", "Set cookie"),
     shiny::actionButton("clear", "Clear cookie"),
+    shiny::actionButton("prepare", "Prepare login"),
+    shiny::verbatimTextOutput("prepared_url"),
+    shiny::verbatimTextOutput("browser_value"),
     shiny::actionButton("set_zero", "Set cookie (0 ms)")
   )
 
@@ -119,6 +127,13 @@ make_test_app <- function(samesite = "Strict", path = NULL, id = "auth") {
     )
 
     # Wire buttons to the module's helpers
+    prepared_url <- shiny::reactiveVal("")
+    shiny::observeEvent(input$prepare, {
+      promises::then(mod$build_auth_url(), prepared_url)
+      invisible(NULL)
+    })
+    output$prepared_url <- shiny::renderText(prepared_url())
+    output$browser_value <- shiny::renderText(mod$browser_token)
     shiny::observeEvent(input$set, {
       mod$set_browser_token()
     })
@@ -590,4 +605,32 @@ testthat::test_that("Zero TTL cookie is not persisted (maxAgeMs = 0)", {
   )
   v <- app$get_js(cookie_value_js(cookie_name))
   testthat::expect_true(is.null(v))
+})
+
+testthat::test_that("interactive preparation refreshes a browser cookie after idle expiry", {
+  require_browser_test_env()
+  app <- shinytest2::AppDriver$new(
+    make_test_app(ttl = 3),
+    name = "idle-cookie",
+    load_timeout = 10000
+  )
+  on.exit(stop_test_app_driver(app), add = TRUE)
+  name <- browser_cookie_name("auth")
+  old <- wait_for_browser_cookie(app, name)$value
+  app$wait_for_js(
+    paste0(
+      "document.cookie.indexOf(",
+      jsonlite::toJSON(name, auto_unbox = TRUE),
+      ") === -1"
+    ),
+    timeout = 7000
+  )
+  testthat::expect_identical(app$get_value(output = "browser_value"), old)
+  app$click("prepare")
+  app$wait_for_js(
+    "document.querySelector('#prepared_url').innerText.includes('state=')"
+  )
+  fresh <- get_browser_cookie(app, name)$value
+  testthat::expect_false(identical(fresh, old))
+  testthat::expect_identical(app$get_value(output = "browser_value"), fresh)
 })

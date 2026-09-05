@@ -34,7 +34,8 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
     shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
       tryCatch(
         {
-          published_auth_url(auth$build_auth_url())
+          promises::then(auth$build_auth_url(), published_auth_url)
+          invisible(NULL)
           published_auth_error(NULL)
         },
         error = function(e) {

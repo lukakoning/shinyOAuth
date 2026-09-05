@@ -42,7 +42,8 @@ make_error_callback_browser_app <- function(
     shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
       tryCatch(
         {
-          published_auth_url(auth$build_auth_url())
+          promises::then(auth$build_auth_url(), published_auth_url)
+          invisible(NULL)
           published_auth_error(NULL)
         },
         error = function(e) {
@@ -379,7 +380,7 @@ testthat::test_that("browser callback app sets the default HTTP cookie metadata"
   testthat::expect_false(startsWith(cookie$name %||% "", "__Host-"))
 })
 
-testthat::test_that("browser callback app honors configured SameSite and path metadata", {
+testthat::test_that("browser callback app reports an unreadable custom-path cookie", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
   testthat::skip_if_not_installed("chromote")
@@ -427,8 +428,8 @@ testthat::test_that("browser callback app honors configured SameSite and path me
   drv$wait_for_js(
     "
     (function () {
-      var el = document.querySelector('#ready_state');
-      return !!(el && el.innerText.indexOf('browser_ready: TRUE') !== -1);
+      var el = document.querySelector('#auth_state');
+      return !!(el && el.innerText.indexOf('browser_cookie_error') !== -1);
     })();
   ",
     timeout = 15000

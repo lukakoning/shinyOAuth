@@ -146,11 +146,13 @@ if (!exists("make_provider", mode = "function")) {
         })
 
         shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
-          url <- auth$build_auth_url()
-          browser_token <- auth$browser_token %||% NA_character_
-          if (keycloak_nonempty_string(browser_token)) {
-            published_auth_urls[[browser_token]] <- url
-          }
+          promises::then(auth$build_auth_url(), function(url) {
+            browser_token <- auth$browser_token %||% NA_character_
+            if (keycloak_nonempty_string(browser_token)) {
+              published_auth_urls[[browser_token]] <- url
+            }
+          })
+          invisible(NULL)
         })
 
         output$ready_state <- shiny::renderText({
@@ -312,18 +314,20 @@ if (!exists("make_provider", mode = "function")) {
     })
 
     build_and_capture_auth_url <- function() {
-      url <- auth$build_auth_url()
-      browser_token <- auth$browser_token %||% NA_character_
+      promises::then(auth$build_auth_url(), function(url) {
+        browser_token <- auth$browser_token %||% NA_character_
 
-      if (keycloak_nonempty_string(browser_token)) {
-        published_auth_urls[[browser_token]] <- url
-      }
+        if (keycloak_nonempty_string(browser_token)) {
+          published_auth_urls[[browser_token]] <- url
+        }
 
-      url
+        url
+      })
     }
 
     shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
       build_and_capture_auth_url()
+      invisible(NULL)
     })
 
     output$ready_state <- shiny::renderText({
@@ -750,8 +754,10 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
     )
   )
   testthat::expect_identical(httr2::resp_status(replayed_valid), 303L)
-  testthat::expect_identical(httr2::resp_header(replayed_valid, "location"),
-    httr2::resp_header(valid, "location"))
+  testthat::expect_identical(
+    httr2::resp_header(replayed_valid, "location"),
+    httr2::resp_header(valid, "location")
+  )
   .wait_for_form_post_state_store_count(drv, 2L)
 })
 
