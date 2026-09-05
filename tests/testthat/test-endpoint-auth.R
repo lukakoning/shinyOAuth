@@ -1,3 +1,46 @@
+test_that("async parent and PAR spans describe resolved endpoint authentication", {
+  client <- make_test_client()
+  client@provider@introspection_url <- "https://example.com/introspect"
+  client@provider@revocation_url <- "https://example.com/revoke"
+  client@provider@par_url <- "https://example.com/par"
+  client@provider@extra_token_headers <- c("X-Token" = "token-only")
+  client@endpoint_auth <- list(
+    introspection = list(token_auth_style = "body"),
+    revocation = list(token_auth_style = "body"),
+    par = list(token_auth_style = "body")
+  )
+  captured <- NULL
+  local_mocked_bindings(
+    dispatch_token_async = function(parent_extra, ...) parent_extra,
+    with_otel_span = function(name, code, attributes = list(), ...) {
+      if (name == "shinyOAuth.login.par") {
+        captured <<- attributes
+      }
+      force(code)
+    },
+    req_with_retry = function(req, ...) {
+      expect_null(req$headers[["X-Token"]])
+      httr2::response(
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"request_uri":"urn:example:par","expires_in":60}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+  token <- OAuthToken(access_token = "access", refresh_token = "refresh")
+  for (attrs in list(
+    introspect_token(client, token, async = TRUE),
+    revoke_token(client, token, async = TRUE)
+  )) {
+    expect_identical(attrs$oauth.client_auth_style, "body")
+    expect_identical(attrs$oauth.extra_token_headers_count, 0L)
+  }
+  push_authorization_request(client, list(client_id = client@client_id))
+  expect_identical(captured$oauth.client_auth_style, "body")
+  expect_identical(captured$oauth.extra_token_headers_count, 0L)
+})
+
 test_that("endpoint metadata order cannot overwrite explicit assertion policy", {
   client <- make_test_client()
   client@client_secret <- strrep("s", 64)
@@ -6,13 +49,23 @@ test_that("endpoint metadata order cannot overwrite explicit assertion policy", 
   client@provider@introspection_url <- "https://example.com/introspect"
   client@provider@revocation_url <- "https://example.com/revoke"
   for (endpoint in c("introspection", "revocation")) {
-    client@provider@endpoint_auth_metadata <- setNames(list(list(
-      methods = "client_secret_jwt", signing_algs = c("HS256", "HS384"))), endpoint)
+    client@provider@endpoint_auth_metadata <- setNames(
+      list(list(
+        methods = "client_secret_jwt",
+        signing_algs = c("HS256", "HS384")
+      )),
+      endpoint
+    )
     auth <- endpoint_auth_client(client, endpoint)
     jwt <- build_client_assertion(auth, "https://example.com/audience")
     expect_identical(parse_jwt_header(jwt)$alg, "HS384")
-    client@provider@endpoint_auth_metadata <- setNames(list(list(
-      methods = "client_secret_jwt", signing_algs = "HS256")), endpoint)
+    client@provider@endpoint_auth_metadata <- setNames(
+      list(list(
+        methods = "client_secret_jwt",
+        signing_algs = "HS256"
+      )),
+      endpoint
+    )
     expect_error(endpoint_auth_client(client, endpoint), "not supported")
   }
 })
@@ -23,13 +76,23 @@ test_that("private-key endpoint policy checks the explicitly selected algorithm"
   client@provider@token_auth_style <- "private_key_jwt"
   client@client_assertion_alg <- "ES384"
   client@provider@introspection_url <- "https://example.com/introspect"
-  client@provider@endpoint_auth_metadata <- list(introspection = list(
-    methods = "private_key_jwt", signing_algs = c("RS256", "ES384")))
+  client@provider@endpoint_auth_metadata <- list(
+    introspection = list(
+      methods = "private_key_jwt",
+      signing_algs = c("RS256", "ES384")
+    )
+  )
   auth <- endpoint_auth_client(client, "introspection")
-  expect_identical(parse_jwt_header(build_client_assertion(auth, "https://example.com"))$alg,
-                   "ES384")
-  client@provider@endpoint_auth_metadata <- list(introspection = list(
-    methods = "private_key_jwt", signing_algs = "RS256"))
+  expect_identical(
+    parse_jwt_header(build_client_assertion(auth, "https://example.com"))$alg,
+    "ES384"
+  )
+  client@provider@endpoint_auth_metadata <- list(
+    introspection = list(
+      methods = "private_key_jwt",
+      signing_algs = "RS256"
+    )
+  )
   expect_error(endpoint_auth_client(client, "introspection"), "not supported")
 })
 
@@ -104,7 +167,12 @@ test_that("JWT token clients use independent Basic credentials and headers at ot
     revocation = list(client_secret = "revoke-secret")
   )
   requests <- list()
+  spans <- list()
   local_mocked_bindings(
+    with_otel_span = function(name, code, attributes = list(), ...) {
+      spans[[name]] <<- attributes
+      force(code)
+    },
     req_with_retry = function(req, ...) {
       requests[[req$url]] <<- req
       httr2::response(
@@ -123,6 +191,22 @@ test_that("JWT token clients use independent Basic credentials and headers at ot
   )
   expect_true(introspect_token(client, token)$active)
   expect_true(revoke_token(client, token)$revoked)
+  expect_identical(
+    spans[["shinyOAuth.token.introspect"]]$oauth.client_auth_style,
+    "header"
+  )
+  expect_identical(
+    spans[["shinyOAuth.token.introspect"]]$oauth.extra_token_headers_count,
+    1L
+  )
+  expect_identical(
+    spans[["shinyOAuth.token.revoke"]]$oauth.client_auth_style,
+    "header"
+  )
+  expect_identical(
+    spans[["shinyOAuth.token.revoke"]]$oauth.extra_token_headers_count,
+    0L
+  )
   inspect <- requests[[client@provider@introspection_url]]
   revoke <- requests[[client@provider@revocation_url]]
   expect_null(inspect$headers[["X-Token-Secret"]])

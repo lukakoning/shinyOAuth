@@ -1591,7 +1591,7 @@ otel_e2e("revoke_token sync emits revoke + HTTP child span", {
     as.integer(r$traces[["shinyOAuth.token.revoke"]]$attributes[[
       "oauth.extra_token_headers_count"
     ]]),
-    1L
+    0L
   )
   testthat::expect_identical(
     r$traces[["shinyOAuth.token.revoke"]]$attributes[["oauth.token.which"]],
@@ -1651,7 +1651,7 @@ otel_e2e("introspect_token HTTP span marked error on 500", {
     as.integer(r$traces[["shinyOAuth.token.introspect"]]$attributes[[
       "oauth.extra_token_headers_count"
     ]]),
-    1L
+    0L
   )
   testthat::expect_identical(
     r$traces[["shinyOAuth.token.introspect"]]$attributes[[

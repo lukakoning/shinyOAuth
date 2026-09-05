@@ -59,6 +59,7 @@ revoke_token <- function(
   }
 
   which <- match.arg(which)
+  auth_client <- endpoint_auth_client(oauth_client, "revocation")
   async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
     NULL
   })) ||
@@ -84,10 +85,10 @@ revoke_token <- function(
         worker_phase = "token.revoke.worker",
         parent_extra = list(
           oauth.token.which = which,
-          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.client_auth_style = otel_client_auth_style(auth_client),
           oauth.extra_token_params_count = 0L,
           oauth.extra_token_headers_count = otel_count_items(
-            oauth_client@provider@extra_token_headers
+            auth_client@provider@extra_token_headers
           )
         ),
         worker_extra = list(oauth.token.which = which)
@@ -97,7 +98,6 @@ revoke_token <- function(
     with_otel_span(
       "shinyOAuth.token.revoke",
       {
-        auth_client <- endpoint_auth_client(oauth_client, "revocation")
         url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "revocation_endpoint",
@@ -262,10 +262,10 @@ revoke_token <- function(
         phase = "token.revoke",
         extra = list(
           oauth.token.which = which,
-          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.client_auth_style = otel_client_auth_style(auth_client),
           oauth.extra_token_params_count = 0L,
           oauth.extra_token_headers_count = otel_count_items(
-            oauth_client@provider@extra_token_headers
+            auth_client@provider@extra_token_headers
           )
         )
       ),
@@ -337,6 +337,7 @@ introspect_token <- function(
   }
 
   which <- match.arg(which)
+  auth_client <- endpoint_auth_client(oauth_client, "introspection")
   async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
     NULL
   })) ||
@@ -362,10 +363,10 @@ introspect_token <- function(
         worker_phase = "token.introspect.worker",
         parent_extra = list(
           oauth.token.which = which,
-          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.client_auth_style = otel_client_auth_style(auth_client),
           oauth.extra_token_params_count = 0L,
           oauth.extra_token_headers_count = otel_count_items(
-            oauth_client@provider@extra_token_headers
+            auth_client@provider@extra_token_headers
           )
         ),
         worker_extra = list(oauth.token.which = which)
@@ -374,7 +375,6 @@ introspect_token <- function(
     with_otel_span(
       "shinyOAuth.token.introspect",
       {
-        auth_client <- endpoint_auth_client(oauth_client, "introspection")
         url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "introspection_endpoint",
@@ -550,7 +550,9 @@ introspect_token <- function(
               "Introspection response JSON"
             )
             value <- jsonlite::fromJSON(body_txt, simplifyVector = FALSE)
-            if ("scope" %in% names(value)) validate_response_scope(value[["scope"]])
+            if ("scope" %in% names(value)) {
+              validate_response_scope(value[["scope"]])
+            }
             value
           },
           silent = TRUE
@@ -605,10 +607,10 @@ introspect_token <- function(
         phase = "token.introspect",
         extra = list(
           oauth.token.which = which,
-          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.client_auth_style = otel_client_auth_style(auth_client),
           oauth.extra_token_params_count = 0L,
           oauth.extra_token_headers_count = otel_count_items(
-            oauth_client@provider@extra_token_headers
+            auth_client@provider@extra_token_headers
           )
         )
       ),
@@ -711,6 +713,7 @@ refresh_token <- function(
     err_input("{.arg introspect} must be NULL or a single non-NA logical.")
   }
   effective_introspect <- isTRUE(oauth_client@introspect) || isTRUE(introspect)
+  auth_client <- endpoint_auth_client(oauth_client, "token")
 
   async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
     NULL
@@ -737,12 +740,12 @@ refresh_token <- function(
         worker_span_name = "shinyOAuth.refresh.worker",
         worker_phase = "refresh.worker",
         parent_extra = list(
-          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.client_auth_style = otel_client_auth_style(auth_client),
           oauth.extra_token_params_count = otel_count_items(
             oauth_client@provider@extra_token_params
           ),
           oauth.extra_token_headers_count = otel_count_items(
-            oauth_client@provider@extra_token_headers
+            auth_client@provider@extra_token_headers
           )
         )
       ))
@@ -767,10 +770,12 @@ refresh_token <- function(
         }
         # Allow provider to add custom token params (mirrors login path)
         if (length(oauth_client@provider@extra_token_params) > 0) {
-          params <- merge_oauth_extra_params(params, oauth_client@provider@extra_token_params)
+          params <- merge_oauth_extra_params(
+            params,
+            oauth_client@provider@extra_token_params
+          )
         }
 
-        auth_client <- endpoint_auth_client(oauth_client, "token")
         token_url <- resolve_provider_endpoint_url(
           oauth_client@provider,
           "token_endpoint",
@@ -936,7 +941,10 @@ refresh_token <- function(
           token_request_started_at +
             as.numeric(token_set[["expires_in"]])
         } else {
-          resolve_missing_expires_in(phase = "refresh_token", now = token_request_started_at)
+          resolve_missing_expires_in(
+            phase = "refresh_token",
+            now = token_request_started_at
+          )
         }
 
         refreshed_id_token <- if (is_valid_string(token_set[["id_token"]])) {
@@ -1126,12 +1134,12 @@ refresh_token <- function(
         async = async_attr,
         phase = "refresh",
         extra = list(
-          oauth.client_auth_style = otel_client_auth_style(oauth_client),
+          oauth.client_auth_style = otel_client_auth_style(auth_client),
           oauth.extra_token_params_count = otel_count_items(
             oauth_client@provider@extra_token_params
           ),
           oauth.extra_token_headers_count = otel_count_items(
-            oauth_client@provider@extra_token_headers
+            auth_client@provider@extra_token_headers
           )
         )
       ),

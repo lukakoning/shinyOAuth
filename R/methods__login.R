@@ -660,12 +660,12 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       shiny_session = shiny_session,
       phase = "login.par",
       extra = list(
-        oauth.client_auth_style = otel_client_auth_style(client),
+        oauth.client_auth_style = otel_client_auth_style(auth_client),
         oauth.extra_auth_params_count = otel_count_items(
           client@provider@extra_auth_params
         ),
         oauth.extra_token_headers_count = otel_count_items(
-          client@provider@extra_token_headers
+          auth_client@provider@extra_token_headers
         )
       )
     )
