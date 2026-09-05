@@ -239,21 +239,24 @@ warn_about_async_otel_cache_reset <- function(
     )
   }
 
-  warn_pkg(
-    "Async OpenTelemetry exporter changes may not take effect in reused workers",
-    c(
-      "!" = detail,
-      "i" = paste(
-        "OpenTelemetry tracing and logging are disabled for the current",
-        "async task so data cannot be sent through a stale provider."
+  tryCatch(
+    warn_pkg(
+      "Async OpenTelemetry exporter changes may not take effect in reused workers",
+      c(
+        "!" = detail,
+        "i" = paste(
+          "OpenTelemetry tracing and logging are disabled for the current",
+          "async task so data cannot be sent through a stale provider."
+        ),
+        "i" = paste(
+          "shinyOAuth feature-tests otel's cache reset hook and uses the",
+          "internal otel_clean_cache helper when it is available."
+        )
       ),
-      "i" = paste(
-        "shinyOAuth feature-tests otel's cache reset hook and uses the",
-        "internal otel_clean_cache helper when it is available."
-      )
+      .frequency = "once",
+      .frequency_id = paste0("async_otel_cache_reset_", reason)
     ),
-    .frequency = "once",
-    .frequency_id = paste0("async_otel_cache_reset_", reason)
+    error = function(...) invisible(NULL)
   )
 
   invisible(FALSE)
