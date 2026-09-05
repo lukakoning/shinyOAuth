@@ -1750,6 +1750,7 @@ otel_is_allowed_event_field <- function(name) {
       "sub_source",
       "supported",
       "target_module_id",
+      "token_digest",
       "token_endpoint",
       "transport_error",
       "url",
