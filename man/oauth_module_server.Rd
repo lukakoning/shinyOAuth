@@ -99,8 +99,10 @@ Caller-published Request Object URLs require HTTPS even when the ordinary
 \item{browser_cookie_path}{URL path covered by the login cookie. Default \code{NULL}
 uses \code{"/"}, covering all app routes. An explicit path, such as \code{"/app"},
 must cover both the starting page and callback, start with \code{/}, and contain
-no semicolons or control characters. On HTTPS with path \code{"/"}, the cookie
-uses the additional browser protections of the \verb{__Host-} name prefix.}
+no semicolons or control characters. On HTTPS the path is always \code{"/"}
+and the cookie always uses the \verb{__Host-} prefix to prevent sibling-domain
+cookie injection. Module identifiers isolate cookie names. Custom paths
+apply only to HTTP development; HTTP cannot provide this protection.}
 
 \item{browser_cookie_samesite}{Cookie setting controlling when the browser sends
 the login cookie on requests from other sites. One of \code{"Strict"} (default),

@@ -83,7 +83,10 @@
       var isHttps = window.location.protocol==='https:';
       var requireSecure = (sameSite === 'None');
       if (requireSecure && !isHttps) throw new Error('samesite_none_requires_https');
-      var useHostPrefix = isHttps && cookiePath === '/';
+      // HTTPS bindings must never trust cookies planted by a sibling domain.
+      // Module isolation is supplied by the cookie name, not its Path.
+      if (isHttps) cookiePath = '/';
+      var useHostPrefix = isHttps;
       var base = useHostPrefix ? '__Host-shinyOAuth_sid' : 'shinyOAuth_sid';
       var name = base + (inst ? ('-' + inst) : '');
       var v = getCookie(name);
