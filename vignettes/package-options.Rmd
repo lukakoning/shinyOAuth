@@ -74,13 +74,15 @@ Set the callback format with `oauth_client(response_mode = ...)`.
 If you have a specific, advanced use case where you need to override one of these blocked parameters,
 you can unblock them using the following options:
 
-- `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows overriding the specified
+- `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows replacing the specified
   authorization URL parameters. Default blocked: `response_type`, `client_id`, `redirect_uri`, `state`,
   `request_uri`, `request`, `scope`, `code_challenge`, `code_challenge_method`, `nonce`, `claims`
-- `request` and `request_uri` stay blocked by default because 'shinyOAuth' manages them internally for
-  PAR and Request Object flows; leave them reserved unless you are intentionally taking responsibility
-  for a fully custom advanced flow.
-- `options(shinyOAuth.unblock_token_params = c(...))` – allows overriding the specified token exchange
+- Transaction and credential fields can never be unblocked: `state`, `nonce`,
+  `client_id`, `code`, all PKCE fields, `refresh_token`, `client_secret`,
+  `client_assertion`, `client_assertion_type`, `request`, `request_uri`,
+  `response_type`, and `grant_type`. Allowed overrides replace existing names
+  case insensitively; they do not append a duplicate protocol parameter.
+- `options(shinyOAuth.unblock_token_params = c(...))` – allows replacing the specified token exchange
   parameters. Default blocked: `grant_type`, `code`, `redirect_uri`, `code_verifier`, `client_id`,
   `client_secret`, `client_assertion`, `client_assertion_type`
 - `options(shinyOAuth.unblock_token_headers = c("authorization"))` – allows overriding the specified

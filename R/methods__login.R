@@ -464,7 +464,8 @@ build_authorization_params <- function(
       "shinyOAuth.unblock_auth_params",
       character()
     )))
-    blocked_params <- setdiff(default_blocked_params, unblocked)
+    blocked_params <- union(immutable_oauth_params(),
+      setdiff(default_blocked_params, unblocked))
 
     conflicts <- intersect(tolower(trimws(names(extra))), blocked_params)
     if (length(conflicts) > 0) {
@@ -478,7 +479,7 @@ build_authorization_params <- function(
         "i" = "To unblock, set `options(shinyOAuth.unblock_auth_params = c(...))`"
       ))
     }
-    params <- c(params, extra)
+    params <- merge_oauth_extra_params(params, extra)
   }
 
   if (!is.null(explicit_response_mode)) {
@@ -2287,7 +2288,7 @@ swap_code_for_token_set <- function(
       }
 
       if (length(client@provider@extra_token_params) > 0) {
-        params <- c(params, client@provider@extra_token_params)
+        params <- merge_oauth_extra_params(params, client@provider@extra_token_params)
       }
 
       token_url <- resolve_provider_endpoint_url(

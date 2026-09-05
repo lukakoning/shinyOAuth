@@ -201,14 +201,14 @@ test_that("shinyOAuth.unblock_auth_params allows reserved keys when configured",
     regexp = "extra_auth_params must not contain reserved keys"
   )
 
-  # With unblock option, 'state' is allowed
+  # Transaction fields cannot be unblocked.
   withr::with_options(list(shinyOAuth.unblock_auth_params = "state"), {
-    expect_no_error(OAuthProvider(
+    expect_error(OAuthProvider(
       name = "test",
       auth_url = "https://example.com/authorize",
       token_url = "https://example.com/token",
       extra_auth_params = list(state = "custom")
-    ))
+    ), "reserved keys")
   })
 
   # Other params still blocked

@@ -1224,7 +1224,8 @@ oauth_provider_validate <- function(self) {
     "shinyOAuth.unblock_auth_params",
     character()
   )))
-  reserved_auth_keys <- setdiff(default_reserved_auth_keys, unblocked_auth)
+  reserved_auth_keys <- union(immutable_oauth_params(),
+    setdiff(default_reserved_auth_keys, unblocked_auth))
   if (length(self@extra_auth_params) > 0) {
     nms <- tolower(trimws(names(self@extra_auth_params)))
     bad <- intersect(nms, reserved_auth_keys)
@@ -1263,7 +1264,8 @@ oauth_provider_validate <- function(self) {
     "shinyOAuth.unblock_token_params",
     character()
   )))
-  reserved_token_keys <- setdiff(default_reserved_token_keys, unblocked_token)
+  reserved_token_keys <- union(immutable_oauth_params(),
+    setdiff(default_reserved_token_keys, unblocked_token))
   if (length(self@extra_token_params) > 0) {
     nms <- tolower(trimws(names(self@extra_token_params)))
     bad <- intersect(nms, reserved_token_keys)
