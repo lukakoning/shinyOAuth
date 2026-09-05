@@ -611,10 +611,19 @@ error behavior, and are intended for local testing/debugging only.
 `oauth_module_server()` binds the browser and server session with a short‑lived cookie 
 that must be readable from client‑side JavaScript to bridge values into Shiny.
 
-The cookie ensures that the same browser which initiated login is the one 
-receiving the callback. This specifically prevents an attack where an attacker 
-tricks a user into clicking a link which initiates login for the attacker's account,
-confusing the user into logging in as the attacker (login confusion).
+The cookie binds the callback to the client browser that initiated its login
+transaction. It rejects callbacks from independently initiated transactions whose
+browser binding does not match.
+
+This binding does not prove which browser or person authenticated at the provider.
+Someone who captures a victim's complete authorization request may complete that
+same transaction using another account and deliver its callback to the initiating
+browser. The browser cookie can still match in that case. Protect authorization
+URLs from disclosure. When your application already knows which account should
+authenticate, enforce an expected issuer and subject (or an explicit account
+selection policy) after OIDC validation and before granting application access.
+The login-CSRF browser integration test demonstrates this boundary and retains
+the application's rejection of an unexpected subject.
 
 The cookie is set with the `HttpOnly` flag disabled so that it can be read by
 JavaScript. This is necessary to bridge the cookie value into Shiny. However, 
