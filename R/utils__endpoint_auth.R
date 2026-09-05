@@ -241,6 +241,7 @@ endpoint_auth_client <- function(client, endpoint) {
   if (
     length(algs) &&
       is.null(override$client_assertion_alg) &&
+      !is_valid_string(client@client_assertion_alg) &&
       endpoint %in% c("introspection", "revocation")
   ) {
     compatible <- if (style == "client_secret_jwt") {

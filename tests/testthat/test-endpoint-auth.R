@@ -1,3 +1,38 @@
+test_that("endpoint metadata order cannot overwrite explicit assertion policy", {
+  client <- make_test_client()
+  client@client_secret <- strrep("s", 64)
+  client@provider@token_auth_style <- "client_secret_jwt"
+  client@client_assertion_alg <- "HS384"
+  client@provider@introspection_url <- "https://example.com/introspect"
+  client@provider@revocation_url <- "https://example.com/revoke"
+  for (endpoint in c("introspection", "revocation")) {
+    client@provider@endpoint_auth_metadata <- setNames(list(list(
+      methods = "client_secret_jwt", signing_algs = c("HS256", "HS384"))), endpoint)
+    auth <- endpoint_auth_client(client, endpoint)
+    jwt <- build_client_assertion(auth, "https://example.com/audience")
+    expect_identical(parse_jwt_header(jwt)$alg, "HS384")
+    client@provider@endpoint_auth_metadata <- setNames(list(list(
+      methods = "client_secret_jwt", signing_algs = "HS256")), endpoint)
+    expect_error(endpoint_auth_client(client, endpoint), "not supported")
+  }
+})
+
+test_that("private-key endpoint policy checks the explicitly selected algorithm", {
+  client <- make_test_client()
+  client@client_assertion_private_key <- openssl::ec_keygen("P-384")
+  client@provider@token_auth_style <- "private_key_jwt"
+  client@client_assertion_alg <- "ES384"
+  client@provider@introspection_url <- "https://example.com/introspect"
+  client@provider@endpoint_auth_metadata <- list(introspection = list(
+    methods = "private_key_jwt", signing_algs = c("RS256", "ES384")))
+  auth <- endpoint_auth_client(client, "introspection")
+  expect_identical(parse_jwt_header(build_client_assertion(auth, "https://example.com"))$alg,
+                   "ES384")
+  client@provider@endpoint_auth_metadata <- list(introspection = list(
+    methods = "private_key_jwt", signing_algs = "RS256"))
+  expect_error(endpoint_auth_client(client, "introspection"), "not supported")
+})
+
 test_that("discovery preserves independent authentication metadata and omission semantics", {
   issuer <- "https://example.com"
   doc <- list(

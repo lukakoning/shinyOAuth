@@ -1455,7 +1455,7 @@ oauth_client_validate <- function(self) {
       "HS256"
     }
   } else {
-    NA_character_
+    client_assertion_alg
   }
 
   provider_client_assertion_algs <- toupper(as.character(
