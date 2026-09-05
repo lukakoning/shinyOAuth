@@ -955,6 +955,30 @@ test_that("oauth_module_server keeps ordinary response params with form_post han
   )
 })
 
+test_that("form_post storage failures emit safe errors for every backend operation", {
+  for (operation in c("set", "get", "take", "remove")) {
+    cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+    url <- prepare_call(cli, browser_token = valid_browser_token())
+    payload <- list(code = "code", state = parse_query_param(url, "state", decode = TRUE))
+    handle <- shinyOAuth:::oauth_form_post_store_set(cli, "auth", payload)
+    store <- cli@state_store
+    store[[operation]] <- function(...) stop("redis://user:synthetic-password@host token=synthetic-token Cookie=synthetic-cookie")
+    cli@state_store <- store
+    events <- list()
+    withr::local_options(list(shinyOAuth.audit_hook = function(e) {
+      events[[length(events) + 1L]] <<- e
+    }))
+    err <- tryCatch({
+      if (operation == "set") shinyOAuth:::oauth_form_post_store_set(cli, "auth", payload)
+      else shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle)
+    }, error = identity)
+    expect_s3_class(err, "shinyOAuth_state_error")
+    expect_false(grepl("synthetic-", conditionMessage(err), fixed = TRUE))
+    expect_gt(length(events), 0L)
+    expect_false(grepl("synthetic-", paste(capture.output(str(events)), collapse = ""), fixed = TRUE))
+  }
+})
+
 test_that("form_post browser-token rejection preserves login state", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
