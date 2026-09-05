@@ -14,7 +14,7 @@
 ^cran-comments\.md$
 AGENTS.md
 .vscode/*
-playground/*
+^playground($|/)
 TODO.md
 lib/*
 cobertura.xml
@@ -25,7 +25,7 @@ codex/*
 ^doc$
 ^Meta$
 ^\.github$
-integration/*
+^integration($|/)
 .dockerignore
 ^jarl\.toml$
 ^otel_plan\.md$
