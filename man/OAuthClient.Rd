@@ -266,8 +266,10 @@ are not currently supported for outbound client assertions.}
 
 \item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
 JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth
-uses the exact token endpoint request URL. Some identity providers require a different
-audience value; set this to the exact value your IdP expects.}
+uses the active token, introspection, or revocation request URL. PAR uses
+the issuer when configured, otherwise the canonical PAR URL, including
+when the request uses an mTLS alias. Set an explicit value when required
+by the provider's registration agreement.}
 
 \item{mtls_client_cert_file}{Optional path to the PEM-encoded client
 certificate (or certificate chain) used for RFC 8705 mutual TLS (mTLS) client
