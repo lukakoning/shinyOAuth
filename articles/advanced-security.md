@@ -161,13 +161,25 @@ verifies before processing the request. Optional Request Object
 encryption also protects the request contents. Both settings must match
 the provider registration.
 
+For enforced request integrity, configure the authorization server to
+require signed Request Objects for this client, for example with the RFC
+9101 client registration field `require_signed_request_object = true`,
+and register its signing key and allowed algorithm. Confirm the server
+actually enforces this policy. Setting
+`signed_request_object_required = TRUE` below describes that server
+policy and enforces local construction; it does not register or change
+the client at the server. If unsigned requests remain accepted, signing
+is optional and cannot prevent a downgrade to unsigned authorization
+requests ([RFC 9101 section
+10.5](https://www.rfc-editor.org/rfc/rfc9101.html#section-10.5)).
+
 ``` r
 provider <- oauth_provider(
   name = "example-jar",
   issuer = "https://id.example.com",
   auth_url = "https://id.example.com/authorize",
   token_url = "https://id.example.com/token",
-  # Provider expects signed Request Objects
+  # The server registration must already require signed Request Objects
   signed_request_object_required = TRUE,
   request_parameter_supported = TRUE,
   request_object_signing_alg_values_supported = c("RS256")
@@ -186,6 +198,37 @@ client <- oauth_client(
   request_object_signing_alg = "RS256"
 )
 ```
+
+Test the server policy before deployment: send an otherwise valid
+authorization request for this same client without `request` or
+`request_uri`. For example:
+
+``` r
+unsigned <- httr2::request(provider@auth_url) |>
+  httr2::req_url_query(
+    client_id = client@client_id,
+    redirect_uri = client@redirect_uri,
+    response_type = "code", scope = "openid profile",
+    state = "unsigned-policy-probe",
+    code_challenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+    code_challenge_method = "S256"
+  ) |>
+  httr2::req_options(followlocation = FALSE) |>
+  httr2::req_error(is_error = function(resp) FALSE) |>
+  httr2::req_perform()
+httr2::resp_status(unsigned)
+httr2::resp_headers(unsigned)
+httr2::resp_body_string(unsigned)
+```
+
+The negative test passes only when the server explicitly rejects the
+request because the required signed Request Object is missing. Check its
+documented error response or server audit event for that reason; a
+generic HTTP error is insufficient. A login/consent page, authorization
+code, or `login_required` response does not establish enforcement.
+Repeat this probe in deployment tests alongside a successful signed
+request. The Keycloak compatibility examples in the integration suite do
+not certify server enforcement of all JAR claims.
 
 Register the signing key with your provider. To encrypt the signed
 request too, configure `request_object_encryption_alg = "RSA-OAEP"` and

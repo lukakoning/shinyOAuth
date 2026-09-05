@@ -394,7 +394,11 @@ userinfo[["sub"]]
   Logical. Whether the provider requires signed Request Objects for
   authorization requests. When `TRUE`, clients should use
   `request_object_mode = "request"` or
-  `request_object_mode = "request_uri"`.
+  `request_object_mode = "request_uri"`. This setting enforces local
+  construction only; it does not configure the authorization server.
+  Register `require_signed_request_object = true` (or the server's
+  equivalent) and verify unsigned requests are rejected before relying
+  on downgrade-resistant request integrity.
 
 - request_parameter_supported:
 
