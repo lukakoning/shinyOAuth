@@ -295,7 +295,11 @@ requires authorization requests to be sent via PAR. When \code{TRUE},
 \item{signed_request_object_required}{Logical. Whether the provider requires
 signed Request Objects for authorization requests. When \code{TRUE}, clients
 should use \code{request_object_mode = "request"} or
-\code{request_object_mode = "request_uri"}.}
+\code{request_object_mode = "request_uri"}.
+This setting enforces local construction only; it does not configure the
+authorization server. Register \code{require_signed_request_object = true} (or
+the server's equivalent) and verify unsigned requests are rejected before
+relying on downgrade-resistant request integrity.}
 
 \item{request_parameter_supported}{Logical or \code{NA}. Whether discovery
 metadata explicitly advertises support for the authorization-request

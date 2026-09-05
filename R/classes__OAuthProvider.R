@@ -244,6 +244,10 @@
 #'   signed Request Objects for authorization requests. When `TRUE`, clients
 #'   should use `request_object_mode = "request"` or
 #'   `request_object_mode = "request_uri"`.
+#'   This setting enforces local construction only; it does not configure the
+#'   authorization server. Register `require_signed_request_object = true` (or
+#'   the server's equivalent) and verify unsigned requests are rejected before
+#'   relying on downgrade-resistant request integrity.
 #' @param request_parameter_supported Logical or `NA`. Whether discovery
 #'   metadata explicitly advertises support for the authorization-request
 #'   `request` parameter. `NA` means the provider did not say. Discovery-derived
