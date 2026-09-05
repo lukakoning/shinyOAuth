@@ -921,7 +921,7 @@ testthat::test_that("browser form_post issuer mismatches are rejected without co
   )
 })
 
-testthat::test_that("browser form_post callbacks with tampered browser cookies are rejected", {
+testthat::test_that("browser form_post callbacks with tampered browser cookies preserve rightful callbacks", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
   testthat::skip_if_not_installed("chromote")
@@ -971,15 +971,16 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies a
   tampered_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
   testthat::expect_identical(tampered_cookie$value, attacker_cookie)
 
+  fields <- list(
+    error = "access_denied",
+    error_description = "Denied by Keycloak",
+    state = enc_state,
+    iss = client@provider@issuer
+  )
   .submit_form_post_browser_callback(
     drv,
     action_url = client@redirect_uri,
-    fields = list(
-      error = "access_denied",
-      error_description = "Denied by Keycloak",
-      state = enc_state,
-      iss = client@provider@issuer
-    )
+    fields = fields
   )
 
   auth_state <- .wait_for_form_post_auth_state_transition(
@@ -995,9 +996,33 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies a
     ignore.case = TRUE
   )
 
-  cleaned <- .wait_for_form_post_callback_cleanup(drv)
-  # Browser-token rejection now consumes the pending login state once the
-  # callback reaches module-side state handling.
+  .wait_for_form_post_callback_cleanup(drv)
+  # The bridge handle is consumed, but browser-token rejection preserves the
+  # pending login state so a foreign browser cannot invalidate the login.
+  .wait_for_form_post_state_store_count(drv, 1L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv)$state_store_count,
+    1L
+  )
+
+  .tamper_browser_token_cookie(drv, cookie$name, cookie$value)
+  restored_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  testthat::expect_identical(restored_cookie$value, cookie$value)
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = client@redirect_uri,
+    fields = fields
+  )
+
+  recovered_state <- .wait_for_form_post_auth_state_transition(
+    drv,
+    previous_state = auth_state
+  )
+  testthat::expect_match(recovered_state, "authenticated: FALSE", fixed = TRUE)
+  testthat::expect_match(recovered_state, "has_token: FALSE", fixed = TRUE)
+  testthat::expect_match(recovered_state, "error: access_denied", fixed = TRUE)
+
+  .wait_for_form_post_callback_cleanup(drv)
   .wait_for_form_post_state_store_count(drv, 0L)
   testthat::expect_identical(
     .read_form_post_browser_state(drv)$state_store_count,
@@ -1005,7 +1030,7 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies a
   )
 })
 
-testthat::test_that("browser form_post code callbacks with tampered browser cookies are rejected", {
+testthat::test_that("browser form_post code callbacks with tampered browser cookies preserve rightful callbacks", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
   testthat::skip_if_not_installed("chromote")
@@ -1080,8 +1105,32 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
   )
 
   .wait_for_form_post_callback_cleanup(drv)
-  # Browser-token rejection now consumes the pending login state once the
-  # callback reaches module-side state handling.
+  # The bridge handle is consumed, but the login state and authorization code
+  # must remain usable by the browser that started the login.
+  .wait_for_form_post_state_store_count(drv, 1L)
+  testthat::expect_identical(
+    .read_form_post_browser_state(drv)$state_store_count,
+    1L
+  )
+
+  .tamper_browser_token_cookie(drv, cookie$name, cookie$value)
+  restored_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  testthat::expect_identical(restored_cookie$value, cookie$value)
+  .submit_form_post_browser_callback(
+    drv,
+    action_url = client@redirect_uri,
+    fields = fields
+  )
+
+  recovered_state <- .wait_for_form_post_auth_state_transition(
+    drv,
+    previous_state = auth_state
+  )
+  testthat::expect_match(recovered_state, "authenticated: TRUE", fixed = TRUE)
+  testthat::expect_match(recovered_state, "has_token: TRUE", fixed = TRUE)
+  testthat::expect_match(recovered_state, "error: <none>", fixed = TRUE)
+
+  .wait_for_form_post_callback_cleanup(drv)
   .wait_for_form_post_state_store_count(drv, 0L)
   testthat::expect_identical(
     .read_form_post_browser_state(drv)$state_store_count,
