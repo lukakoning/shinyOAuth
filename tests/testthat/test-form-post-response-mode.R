@@ -713,20 +713,22 @@ test_that("oauth_form_post_ui injects shinyOAuth dependency for GET UIs", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   req <- new.env(parent = emptyenv())
   req$REQUEST_METHOD <- "GET"
+  req$PATH_INFO <- "/"
+  req$QUERY_STRING <- ""
 
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
   rendered_ui <- ui(req)
-  rt <- htmltools::renderTags(rendered_ui)
-  deps <- get_ui_dependency_names(rendered_ui)
-
-  expect_identical(sum(deps == "shinyOAuth"), 1L)
-  expect_identical(count_referrer_meta(rt$head), 1L)
+  expect_identical(rendered_ui$headers[["Referrer-Policy"]], "no-referrer")
+  expect_identical(length(gregexpr('src="[^"]*/shinyOAuth.js"', rendered_ui$content)[[1]]), 1L)
+  expect_identical(count_referrer_meta(rendered_ui$content), 1L)
 })
 
 test_that("oauth_form_post_ui does not duplicate existing helper output", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   req <- new.env(parent = emptyenv())
   req$REQUEST_METHOD <- "GET"
+  req$PATH_INFO <- "/"
+  req$QUERY_STRING <- ""
 
   ui <- oauth_form_post_ui(
     function(req) {
@@ -739,11 +741,9 @@ test_that("oauth_form_post_ui does not duplicate existing helper output", {
     client = cli
   )
   rendered_ui <- ui(req)
-  rt <- htmltools::renderTags(rendered_ui)
-  deps <- get_ui_dependency_names(rendered_ui)
-
-  expect_identical(sum(deps == "shinyOAuth"), 1L)
-  expect_identical(count_referrer_meta(rt$head), 1L)
+  expect_identical(rendered_ui$headers[["Referrer-Policy"]], "no-referrer")
+  expect_identical(length(gregexpr('src="[^"]*/shinyOAuth.js"', rendered_ui$content)[[1]]), 1L)
+  expect_identical(count_referrer_meta(rendered_ui$content), 1L)
 })
 
 test_that("oauth_module_server consumes form_post callback handles", {

@@ -685,3 +685,10 @@ While this R package has been developed with care and the OAuth 2.0/OIDC protoco
 no guarantees can be made in the realm of cybersecurity.
 For highly sensitive applications, consider a layered ('defense-in-depth') approach to security 
 (for example, adding an IP whitelist as an additional safeguard).
+<!-- Callback referrer protection -->
+
+Wrap the complete UI with `oauth_ui(ui)` to send `Referrer-Policy: no-referrer`
+before callback-page dependencies load. This wrapper also includes `use_shinyOAuth()`.
+Alternatively, set that header at the web server. The meta tag from
+`use_shinyOAuth()` alone arrives after Shiny dependencies and cannot protect their
+initial requests. `oauth_form_post_ui()` applies the HTTP header automatically.

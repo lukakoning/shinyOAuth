@@ -23,12 +23,14 @@
 #' `tagList()`), similar to how you would use `shinyjs::useShinyjs()`. If you
 #' wrap the app UI with [oauth_form_post_ui()], you usually do not need a
 #' separate call here because that wrapper injects this dependency for you.
+#' Wrap query-mode apps with [oauth_ui()] to set the HTTP referrer policy before
+#' any dependency requests. It also injects this JavaScript dependency.
 #'
 #' @param inject_referrer_meta If TRUE (default), injects a
 #'   `<meta name="referrer" content="no-referrer">` tag into the document
-#'   head. This reduces the risk of leaking OAuth callback query parameters
-#'   (like `code` and `state`) via the `Referer` header to third-party
-#'   subresources during the initial callback page load.
+#'   head. Shiny renders dependencies before this tag, so it cannot protect
+#'   initial subresource requests. Use [oauth_ui()] or a web-server
+#'   `Referrer-Policy: no-referrer` header for that protection.
 #'
 #' @return A `tagList` that loads the `inst/www/shinyOAuth.js` dependency once.
 #'

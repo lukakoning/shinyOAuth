@@ -36,6 +36,8 @@
 #' When this wrapper is used, it also injects [use_shinyOAuth()] automatically
 #' for the wrapped GET UI, so you do not need a separate top-level
 #' `use_shinyOAuth()` call.
+#' It also applies [oauth_ui()] to set `Referrer-Policy: no-referrer` on HTML
+#' responses before any browser subresource requests.
 #'
 #' The server-side callback handle is single-use and is rejected if it is older
 #' than the smaller of `client@state_payload_max_age` and the configured
@@ -146,7 +148,7 @@ oauth_form_post_ui <- function(
   supported <- unique(c(supported %||% "GET", "GET", "POST"))
   attr(ui, "http_methods_supported") <- supported
 
-  ui
+  oauth_ui(ui)
 }
 
 #' Internal: ensure shinyOAuth UI dependency is present

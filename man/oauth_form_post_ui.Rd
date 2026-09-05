@@ -63,6 +63,8 @@ main callback flow can resume from a prevalidated POST boundary.
 When this wrapper is used, it also injects \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} automatically
 for the wrapped GET UI, so you do not need a separate top-level
 \code{use_shinyOAuth()} call.
+It also applies \code{\link[=oauth_ui]{oauth_ui()}} to set \code{Referrer-Policy: no-referrer} on HTML
+responses before any browser subresource requests.
 
 The server-side callback handle is single-use and is rejected if it is older
 than the smaller of \code{client@state_payload_max_age} and the configured

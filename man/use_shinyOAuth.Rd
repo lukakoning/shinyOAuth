@@ -9,9 +9,9 @@ use_shinyOAuth(inject_referrer_meta = TRUE)
 \arguments{
 \item{inject_referrer_meta}{If TRUE (default), injects a
 \verb{<meta name="referrer" content="no-referrer">} tag into the document
-head. This reduces the risk of leaking OAuth callback query parameters
-(like \code{code} and \code{state}) via the \code{Referer} header to third-party
-subresources during the initial callback page load.}
+head. Shiny renders dependencies before this tag, so it cannot protect
+initial subresource requests. Use \code{\link[=oauth_ui]{oauth_ui()}} or a web-server
+\code{Referrer-Policy: no-referrer} header for that protection.}
 }
 \value{
 A \code{tagList} that loads the \code{inst/www/shinyOAuth.js} dependency once.
@@ -30,6 +30,8 @@ Place this near the top-level of your UI (e.g., inside \code{fluidPage()} or
 \code{tagList()}), similar to how you would use \code{shinyjs::useShinyjs()}. If you
 wrap the app UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, you usually do not need a
 separate call here because that wrapper injects this dependency for you.
+Wrap query-mode apps with \code{\link[=oauth_ui]{oauth_ui()}} to set the HTTP referrer policy before
+any dependency requests. It also injects this JavaScript dependency.
 }
 \examples{
 ui <- shiny::fluidPage(
