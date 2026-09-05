@@ -2,6 +2,11 @@
 
 ## shinyOAuth (development version)
 
+- State parsing and decryption failures now default to no delay,
+  avoiding intentional blocking of the Shiny worker during malformed
+  callbacks. Explicit `shinyOAuth.state_fail_delay_ms` settings remain
+  supported.
+
 - Documentation now starts with practical app setup and introduces
   protocol details later. The getting-started and authentication guides
   are shorter, function help focuses on app authors, and package-wide
@@ -340,9 +345,8 @@
 - Token, introspection, HTTP, and resource-request handling
   improvements:
 
-  - Token introspection requires a JSON Boolean `active`. Legacy
-    coercion can be restored temporarily with
-    `options(shinyOAuth.allow_legacy_introspection_active = TRUE)`.
+  - Token introspection requires a JSON Boolean `active`. Non-Boolean
+    values are rejected without a legacy coercion option.
   - Form-encoded token responses decode `+` as space while preserving
     percent-encoded literal plus signs. `client_secret_basic` likewise
     form-encodes client IDs and secrets before constructing credentials.

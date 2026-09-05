@@ -58,6 +58,7 @@ oauth_client(
   jarm_decryption_private_key = NULL,
   jarm_decryption_private_key_kid = NULL,
   jarm_max_lifetime = 600,
+  endpoint_auth = list(),
   ...
 )
 ```
@@ -311,17 +312,18 @@ oauth_client(
   Optional private key for `private_key_jwt` client authentication at
   the token endpoint. Can be an `openssl::key` or a PEM string
   containing a private key. Required when the provider's
-  `token_auth_style = 'private_key_jwt'`. Ignored for other auth styles.
-  Current outbound private-key JWT signing supports RSA and EC private
-  keys. For RSA keys, outbound signing is currently limited to `RS256`;
-  `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not
-  supported. Ed25519/Ed448 keys are also not currently supported.
+  `token_auth_style = 'private_key_jwt'`. Also used to sign JAR Request
+  Objects, regardless of the token auth style. Current outbound
+  private-key JWT signing supports RSA and EC private keys. For RSA
+  keys, outbound signing is currently limited to `RS256`; `RS384`,
+  `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not supported.
+  Ed25519/Ed448 keys are also not currently supported.
 
 - client_assertion_private_key_kid:
 
   Optional key identifier (kid) to include in the JWT header for
-  `private_key_jwt` assertions. Useful when the authorization server
-  uses kid to select the correct verification key.
+  `private_key_jwt` assertions and JAR Request Objects. Useful when the
+  authorization server uses kid to select the correct verification key.
 
 - client_assertion_alg:
 
@@ -344,9 +346,10 @@ oauth_client(
 
   Optional override for the `aud` claim used when building JWT client
   assertions (`client_secret_jwt` / `private_key_jwt`). By default,
-  shinyOAuth uses the exact token endpoint request URL. Some identity
-  providers require a different audience value; set this to the exact
-  value your IdP expects.
+  shinyOAuth uses the active token, introspection, or revocation request
+  URL. PAR uses the issuer when configured, otherwise the canonical PAR
+  URL, including when the request uses an mTLS alias. Set an explicit
+  value when required by the provider's registration agreement.
 
 - mtls_client_cert_file:
 
@@ -585,6 +588,22 @@ oauth_client(
   `exp - iat <= jarm_max_lifetime`; otherwise it falls back to the
   remaining `exp` window at validation time. Applies only when
   `response_mode` uses JARM.
+
+- endpoint_auth:
+
+  Named list of authentication overrides for `par`, `introspection`, and
+  `revocation`. Token exchange and refresh use the top-level
+  client/provider authentication settings. Each entry may supply
+  `token_auth_style`, `client_secret`, `client_assertion_private_key`,
+  `client_assertion_private_key_kid`, `client_assertion_alg`,
+  `client_assertion_audience`, `extra_headers` (named character vector),
+  and the `mtls_client_*` certificate/key/CA fields. Introspection and
+  revocation may also use a separate `client_id`. Unspecified
+  credentials inherit the client's settings. Discovered endpoint methods
+  and signing algorithms are checked independently. PAR inherits token
+  authentication. Extra token headers apply only to token exchange and
+  refresh; set `extra_headers` explicitly for every other endpoint that
+  needs them.
 
 - ...:
 

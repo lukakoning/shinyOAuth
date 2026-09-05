@@ -69,6 +69,7 @@ userinfo[["sub"]]
   dpop_signing_alg_values_supported = character(),
   mtls_endpoint_aliases = list(),
   mtls_client_certificate_bound_access_tokens = FALSE,
+  endpoint_auth_metadata = list(),
   ...
 )
 ```
@@ -263,9 +264,9 @@ userinfo[["sub"]]
 - extra_token_headers:
 
   Extra headers for back-channel token-style requests (named character
-  vector). shinyOAuth applies these headers to token exchange, refresh,
-  introspection, revocation, and PAR requests. Use this only for headers
-  you intentionally want on that full set of authorization-server calls.
+  vector), applied only to token exchange and refresh. Configure
+  `oauth_client(endpoint_auth = ...)` for headers needed by PAR,
+  introspection, or revocation.
 
 - jwks_uri:
 
@@ -546,6 +547,14 @@ userinfo[["sub"]]
   When `TRUE`, token responses may include a `cnf` claim with an
   `x5t#S256` thumbprint that downstream requests must match with the
   same certificate.
+
+- endpoint_auth_metadata:
+
+  Named list of independent `introspection` and `revocation`
+  authentication metadata. Each entry has `methods` and `signing_algs`
+  character vectors (or `NULL` for omitted metadata). Discovery retains
+  these fields and applies the RFC 8414 Basic-auth default for omitted
+  revocation methods. Omitted introspection methods have no default.
 
 - ...:
 

@@ -116,6 +116,7 @@ for OIDC, <code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_
 <span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  mtls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  endpoint_auth_metadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -292,10 +293,9 @@ a token, for example during logout (RFC 7009).</p></dd>
 
 <dt id="arg-extra-token-headers">extra_token_headers<a class="anchor" aria-label="anchor" href="#arg-extra-token-headers"></a></dt>
 <dd><p>Extra headers for back-channel token-style
-requests (named character vector). shinyOAuth applies these headers to
-token exchange, refresh, introspection, revocation, and PAR requests.
-Use this only for headers you intentionally want on that full set of
-authorization-server calls.</p></dd>
+requests (named character vector), applied only to token exchange and
+refresh. Configure <code>oauth_client(endpoint_auth = ...)</code> for headers needed
+by PAR, introspection, or revocation.</p></dd>
 
 
 <dt id="arg-jwks-uri">jwks_uri<a class="anchor" aria-label="anchor" href="#arg-jwks-uri"></a></dt>
@@ -570,6 +570,14 @@ certificate-bound access tokens. This describes server capability; the
 client still has to opt into mTLS separately. When <code>TRUE</code>, token responses
 may include a <code>cnf</code> claim with an <code>x5t#S256</code> thumbprint that downstream
 requests must match with the same certificate.</p></dd>
+
+
+<dt id="arg-endpoint-auth-metadata">endpoint_auth_metadata<a class="anchor" aria-label="anchor" href="#arg-endpoint-auth-metadata"></a></dt>
+<dd><p>Named list of independent <code>introspection</code> and
+<code>revocation</code> authentication metadata. Each entry has <code>methods</code> and
+<code>signing_algs</code> character vectors (or <code>NULL</code> for omitted metadata).
+Discovery retains these fields and applies the RFC 8414 Basic-auth default
+for omitted revocation methods. Omitted introspection methods have no default.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

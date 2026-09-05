@@ -8,7 +8,10 @@ with your Slack app credentials.
 ## Usage
 
 ``` r
-oauth_provider_slack(name = "slack")
+oauth_provider_slack(
+  name = "slack",
+  profile = c("confidential", "public_pkce")
+)
 ```
 
 ## Arguments
@@ -16,6 +19,15 @@ oauth_provider_slack(name = "slack")
 - name:
 
   Optional provider name (default "slack")
+
+- profile:
+
+  Slack app registration profile: `"confidential"` (default) uses HTTP
+  Basic and OIDC nonce validation without PKCE; `"public_pkce"` uses
+  S256 PKCE and sends no client secret. Select the public profile only
+  after enabling PKCE for that Slack app. Slack marks the app public,
+  and reversing that registration setting requires contacting Slack
+  support. See <https://docs.slack.dev/authentication/using-pkce/>.
 
 ## Value
 

@@ -117,10 +117,8 @@ means the result is unknown. Use <code>isTRUE(result$active)</code> if your code
 require a definite confirmation.</p>
 <p>Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 unusable response bodies return a descriptive <code>status</code>. The provider must
-return <code>active</code> as a JSON boolean. Other types return <code>"invalid_active"</code>;
-the compatibility option <code>shinyOAuth.allow_legacy_introspection_active</code>
-allows numeric/string coercion when explicitly enabled. Requests use the
-client's configured credentials and <code>token_auth_style</code>.</p>
+return <code>active</code> as a JSON boolean. Other types return <code>"invalid_active"</code>.
+Requests use the client's configured credentials and <code>token_auth_style</code>.</p>
     </div>
 
     <div class="section level2">

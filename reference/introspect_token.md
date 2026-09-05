@@ -74,10 +74,8 @@ code must require a definite confirmation.
 Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 unusable response bodies return a descriptive `status`. The provider
 must return `active` as a JSON boolean. Other types return
-`"invalid_active"`; the compatibility option
-`shinyOAuth.allow_legacy_introspection_active` allows numeric/string
-coercion when explicitly enabled. Requests use the client's configured
-credentials and `token_auth_style`.
+`"invalid_active"`. Requests use the client's configured credentials and
+`token_auth_style`.
 
 ## Examples
 

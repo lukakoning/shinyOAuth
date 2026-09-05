@@ -42,7 +42,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Documentation now starts with practical app setup and introduces protocol details later. The getting-started and authentication guides are shorter, function help focuses on app authors, and package-wide options have their own <code><a href="../articles/package-options.html">vignette("package-options")</a></code> reference. The Spotify guide starts with a small app; the full dashboard is installed as <code>examples/spotify-dashboard.R</code>.</p></li>
+<ul><li><p>State parsing and decryption failures now default to no delay, avoiding intentional blocking of the Shiny worker during malformed callbacks. Explicit <code>shinyOAuth.state_fail_delay_ms</code> settings remain supported.</p></li>
+<li><p>Documentation now starts with practical app setup and introduces protocol details later. The getting-started and authentication guides are shorter, function help focuses on app authors, and package-wide options have their own <code><a href="../articles/package-options.html">vignette("package-options")</a></code> reference. The Spotify guide starts with a small app; the full dashboard is installed as <code>examples/spotify-dashboard.R</code>.</p></li>
 <li><p>mTLS registration now accepts and normalizes IPv6 SANs whose compressed zero run appears at the end of the address.</p></li>
 <li><p>JWT claim parsing now preserves JSON arrays until claim-specific validation, preventing one-element arrays from being accepted as scalar claims.</p></li>
 <li><p><code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> now supports explicit trusted-proxy request URI normalization for HTTPS termination and mounted apps.</p></li>
@@ -240,7 +241,7 @@
 <li><p>JAR and PAR handling has been hardened. Client-hosted JAR <code>request_uri</code> values now require HTTPS regardless of the general non-HTTPS host policy. PAR POSTs no longer use generic transport or transient HTTP retries, avoiding duplicate <code>request_uri</code> allocations and Request Object replays; bounded DPoP nonce replay remains enabled.</p></li>
 <li>
 <p>Token, introspection, HTTP, and resource-request handling improvements:</p>
-<ul><li>Token introspection requires a JSON Boolean <code>active</code>. Legacy coercion can be restored temporarily with <code>options(shinyOAuth.allow_legacy_introspection_active = TRUE)</code>.</li>
+<ul><li>Token introspection requires a JSON Boolean <code>active</code>. Non-Boolean values are rejected without a legacy coercion option.</li>
 <li>Form-encoded token responses decode <code>+</code> as space while preserving percent-encoded literal plus signs. <code>client_secret_basic</code> likewise form-encodes client IDs and secrets before constructing credentials.</li>
 <li>Generic retries honor <code>Retry-After</code> up to <code>shinyOAuth.retry_after_cap</code> (60 seconds by default).</li>
 <li>Authenticated resource helpers reject <code>TRACE</code> and <code>TRACK</code> before attaching credentials.</li>

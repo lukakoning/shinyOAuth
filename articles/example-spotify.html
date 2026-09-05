@@ -77,6 +77,14 @@ their top tracks. It uses the same provider, client, and module setup as
 <a href="usage.html">Usage</a>, then calls Spotify’s API with the access
 token. Spotify supplies profile data through its API rather than an OIDC
 ID token.</p>
+<p>The helper identifies accounts using immutable
+<code>account_id</code>, as specified in <a href="https://developer.spotify.com/documentation/web-api/references/changes/may-2026" class="external-link">Spotify’s
+May 2026 changes</a>. Before upgrading an existing app, migrate stored
+<code>id</code> mappings and audit digests using both identifiers from
+an authenticated profile. Do not merge accounts by email or display
+name. <code>allow_legacy_id = TRUE</code> permits a temporary fallback
+only when <code>account_id</code> is missing; it does not preserve old
+mappings when both exist.</p>
 </div>
 <div class="section level2">
 <h2 id="spotify-app-registration">Spotify app registration<a class="anchor" aria-label="anchor" href="#spotify-app-registration"></a>
@@ -172,7 +180,7 @@ information, currently playing music, top artists, and recent tracks,
 with a bslib layout. It uses the same authentication setup as the
 example above.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bslib"</span>, <span class="st">"ggplot2"</span>, <span class="st">"DT"</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bslib"</span>, <span class="st">"ggplot2"</span>, <span class="st">"DT"</span>, <span class="st">"purrr"</span>, <span class="st">"dplyr"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">dashboard_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span></span>
 <span>  <span class="st">"examples"</span>, <span class="st">"spotify-dashboard.R"</span>, package <span class="op">=</span> <span class="st">"shinyOAuth"</span>, mustWork <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>

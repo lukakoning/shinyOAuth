@@ -9,7 +9,7 @@ not expect an ID token.
 ## Usage
 
 ``` r
-oauth_provider_spotify(name = "spotify")
+oauth_provider_spotify(name = "spotify", allow_legacy_id = FALSE)
 ```
 
 ## Arguments
@@ -17,6 +17,11 @@ oauth_provider_spotify(name = "spotify")
 - name:
 
   Optional provider name (default "spotify")
+
+- allow_legacy_id:
+
+  Whether to fall back to Spotify's mutable `id` when `account_id` is
+  absent. Default `FALSE`; enable only during migration.
 
 ## Value
 
@@ -27,6 +32,13 @@ object for use with a Spotify OAuth 2.0 app
 
 Spotify requires scopes to be included in the authorization request. Set
 requested scopes on the client with `oauth_client(..., scopes = ...)`.
+Identity uses Spotify's immutable `account_id`. Existing installations
+must migrate stored account mappings and audit digests from `id` before
+upgrading. Link the old and new identifiers only from a successfully
+authenticated profile; do not use display names or email to merge
+accounts. To temporarily preserve old mappings, explicitly replace
+`provider@userinfo_id_selector` with
+`function(userinfo) userinfo[["id"]]` while completing the migration.
 
 ## See also
 
@@ -66,31 +78,31 @@ oauth_provider_spotify()
 #>  @ jwks_cache                                      :List of 9
 #>  .. $ get   :function (key, missing = missing_)  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 232 10 263 3 10 3 933 964
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. $ set   :function (key, value)  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 265 10 335 3 10 3 966 1036
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. $ exists:function (key)  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 337 13 360 3 13 3 1038 1061
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. $ keys  :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 362 11 374 3 11 3 1063 1075
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. $ remove:function (key)  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 376 13 381 3 13 3 1077 1082
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. $ reset :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 217 12 230 3 12 3 918 931
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. $ prune :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 383 12 447 3 12 3 1084 1148
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. $ size  :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 449 11 458 3 11 3 1150 1159
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. $ info  :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 460 11 469 3 11 3 1161 1170
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x5596e1bc8708> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55c242cbf5d0> 
 #>  .. - attr(*, "class")= chr [1:2] "cache_mem" "cachem"
 #>  @ jwks_pins                                       : chr(0) 
 #>  @ jwks_pin_mode                                   : chr "any"
@@ -118,6 +130,7 @@ oauth_provider_spotify()
 #>  @ jarm_encryption_enc_values_supported            : chr(0) 
 #>  @ jarm_tolerate_duplicate_top_level_iss           : logi FALSE
 #>  @ token_endpoint_auth_signing_alg_values_supported: chr(0) 
+#>  @ endpoint_auth_metadata                          : list()
 #>  @ dpop_signing_alg_values_supported               : chr(0) 
 #>  @ mtls_endpoint_aliases                           : list()
 #>  @ mtls_client_certificate_bound_access_tokens     : logi FALSE

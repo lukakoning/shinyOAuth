@@ -143,9 +143,11 @@ oauth_module_server(
   URL path covered by the login cookie. Default `NULL` uses `"/"`,
   covering all app routes. An explicit path, such as `"/app"`, must
   cover both the starting page and callback, start with `/`, and contain
-  no semicolons or control characters. On HTTPS with path `"/"`, the
-  cookie uses the additional browser protections of the `__Host-` name
-  prefix.
+  no semicolons or control characters. On HTTPS the path is always `"/"`
+  and the cookie always uses the `__Host-` prefix to prevent
+  sibling-domain cookie injection. Module identifiers isolate cookie
+  names. Custom paths apply only to HTTP development; HTTP cannot
+  provide this protection.
 
 - browser_cookie_samesite:
 

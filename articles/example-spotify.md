@@ -8,6 +8,15 @@ their top tracks. It uses the same provider, client, and module setup as
 calls Spotify’s API with the access token. Spotify supplies profile data
 through its API rather than an OIDC ID token.
 
+The helper identifies accounts using immutable `account_id`, as
+specified in [Spotify’s May 2026
+changes](https://developer.spotify.com/documentation/web-api/references/changes/may-2026).
+Before upgrading an existing app, migrate stored `id` mappings and audit
+digests using both identifiers from an authenticated profile. Do not
+merge accounts by email or display name. `allow_legacy_id = TRUE`
+permits a temporary fallback only when `account_id` is missing; it does
+not preserve old mappings when both exist.
+
 ## Spotify app registration
 
 1.  Create an app in the [Spotify developer
@@ -104,7 +113,7 @@ with a bslib layout. It uses the same authentication setup as the
 example above.
 
 ``` r
-install.packages(c("bslib", "ggplot2", "DT"))
+install.packages(c("bslib", "ggplot2", "DT", "purrr", "dplyr"))
 dashboard_file <- system.file(
   "examples", "spotify-dashboard.R", package = "shinyOAuth", mustWork = TRUE
 )

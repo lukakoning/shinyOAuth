@@ -191,8 +191,10 @@ Caller-published Request Object URLs require HTTPS even when the ordinary
 <dd><p>URL path covered by the login cookie. Default <code>NULL</code>
 uses <code>"/"</code>, covering all app routes. An explicit path, such as <code>"/app"</code>,
 must cover both the starting page and callback, start with <code>/</code>, and contain
-no semicolons or control characters. On HTTPS with path <code>"/"</code>, the cookie
-uses the additional browser protections of the <code>__Host-</code> name prefix.</p></dd>
+no semicolons or control characters. On HTTPS the path is always <code>"/"</code>
+and the cookie always uses the <code>__Host-</code> prefix to prevent sibling-domain
+cookie injection. Module identifiers isolate cookie names. Custom paths
+apply only to HTTP development; HTTP cannot provide this protection.</p></dd>
 
 
 <dt id="arg-browser-cookie-samesite">browser_cookie_samesite<a class="anchor" aria-label="anchor" href="#arg-browser-cookie-samesite"></a></dt>

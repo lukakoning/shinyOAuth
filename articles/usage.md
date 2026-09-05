@@ -367,6 +367,8 @@ for the backend contract.
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
   when required). These send a browser privacy header that keeps
   callback URLs out of referrers.
+- If repeated login requests affect responsiveness, your hosting
+  provider can help with optional rate limiting.
 - Keep the provider’s validation defaults and choose any extra
   protections to match your provider and deployment requirements.
 

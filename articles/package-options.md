@@ -74,11 +74,13 @@ for more details about logs and traces via OpenTelemetry.
   60 seconds are coerced to 60 seconds, finite values above 300 seconds
   are clamped to 300 seconds, and `NA` or non-finite values fall back to
   the 120-second default
-- `options(shinyOAuth.state_fail_delay_ms = c(10, 30))` – adds a small
-  randomized delay (in milliseconds) before any state validation failure
-  (e.g., malformed token, IV/tag/ciphertext issues, or GCM
-  authentication failure). This helps reduce timing side‑channels
-  between different failure modes
+- `options(shinyOAuth.state_fail_delay_ms = 0)` – delay in milliseconds
+  before state parsing or decryption failures. Defaults to `0` (no
+  delay). A positive number sets a fixed delay; two numbers, such as
+  `c(10, 30)`, set bounds for a randomized delay. Positive delays sleep
+  synchronously and block the Shiny worker, including initial state
+  validation with `async = TRUE`. The delay adds timing noise but does
+  not provide constant-time validation.
 
 Note on `allowed_hosts`: patterns support globs (`*`, `?`). Using a
 catch‑all like `"*"` matches any host and effectively disables endpoint
@@ -100,16 +102,18 @@ of these blocked parameters, you can unblock them using the following
 options:
 
 - `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows
-  overriding the specified authorization URL parameters. Default
-  blocked: `response_type`, `client_id`, `redirect_uri`, `state`,
-  `request_uri`, `request`, `scope`, `code_challenge`,
-  `code_challenge_method`, `nonce`, `claims`
-- `request` and `request_uri` stay blocked by default because
-  ‘shinyOAuth’ manages them internally for PAR and Request Object flows;
-  leave them reserved unless you are intentionally taking responsibility
-  for a fully custom advanced flow.
-- `options(shinyOAuth.unblock_token_params = c(...))` – allows
-  overriding the specified token exchange parameters. Default blocked:
+  replacing the specified authorization URL parameters. Default blocked:
+  `response_type`, `client_id`, `redirect_uri`, `state`, `request_uri`,
+  `request`, `scope`, `code_challenge`, `code_challenge_method`,
+  `nonce`, `claims`
+- Transaction and credential fields can never be unblocked: `state`,
+  `nonce`, `client_id`, `code`, all PKCE fields, `refresh_token`,
+  `client_secret`, `client_assertion`, `client_assertion_type`,
+  `request`, `request_uri`, `response_type`, and `grant_type`. Allowed
+  overrides replace existing names case insensitively; they do not
+  append a duplicate protocol parameter.
+- `options(shinyOAuth.unblock_token_params = c(...))` – allows replacing
+  the specified token exchange parameters. Default blocked:
   `grant_type`, `code`, `redirect_uri`, `code_verifier`, `client_id`,
   `client_secret`, `client_assertion`, `client_assertion_type`
 - `options(shinyOAuth.unblock_token_headers = c("authorization"))` –

@@ -103,6 +103,7 @@ to <code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p
 <span>  jarm_decryption_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  jarm_decryption_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  jarm_max_lifetime <span class="op">=</span> <span class="fl">600</span>,</span>
+<span>  endpoint_auth <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -326,7 +327,8 @@ a memorable password. State uses AES-GCM authenticated encryption.</p></dd>
 <dd><p>Optional private key for <code>private_key_jwt</code> client authentication
 at the token endpoint. Can be an <code>openssl::key</code> or a PEM string containing a
 private key. Required when the provider's <code>token_auth_style = 'private_key_jwt'</code>.
-Ignored for other auth styles. Current outbound private-key JWT signing
+Also used to sign JAR Request Objects, regardless of the token auth style.
+Current outbound private-key JWT signing
 supports RSA and EC private keys. For RSA keys, outbound signing is currently
 limited to <code>RS256</code>; <code>RS384</code>, <code>RS512</code>, and RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>)
 are not supported. Ed25519/Ed448 keys are also not currently supported.</p></dd>
@@ -334,7 +336,7 @@ are not supported. Ed25519/Ed448 keys are also not currently supported.</p></dd>
 
 <dt id="arg-client-assertion-private-key-kid">client_assertion_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-client-assertion-private-key-kid"></a></dt>
 <dd><p>Optional key identifier (kid) to include in the JWT header
-for <code>private_key_jwt</code> assertions. Useful when the authorization server uses kid to
+for <code>private_key_jwt</code> assertions and JAR Request Objects. Useful when the authorization server uses kid to
 select the correct verification key.</p></dd>
 
 
@@ -356,8 +358,10 @@ are not currently supported for outbound client assertions.</p></dd>
 <dt id="arg-client-assertion-audience">client_assertion_audience<a class="anchor" aria-label="anchor" href="#arg-client-assertion-audience"></a></dt>
 <dd><p>Optional override for the <code>aud</code> claim used when building
 JWT client assertions (<code>client_secret_jwt</code> / <code>private_key_jwt</code>). By default, shinyOAuth
-uses the exact token endpoint request URL. Some identity providers require a different
-audience value; set this to the exact value your IdP expects.</p></dd>
+uses the active token, introspection, or revocation request URL. PAR uses
+the issuer when configured, otherwise the canonical PAR URL, including
+when the request uses an mTLS alias. Set an explicit value when required
+by the provider's registration agreement.</p></dd>
 
 
 <dt id="arg-mtls-client-cert-file">mtls_client_cert_file<a class="anchor" aria-label="anchor" href="#arg-mtls-client-cert-file"></a></dt>
@@ -596,6 +600,21 @@ JARM payload includes <code>iat</code>, shinyOAuth enforces
 <code>exp - iat &lt;= jarm_max_lifetime</code>; otherwise it falls back to the
 remaining <code>exp</code> window at validation time. Applies only when
 <code>response_mode</code> uses JARM.</p></dd>
+
+
+<dt id="arg-endpoint-auth">endpoint_auth<a class="anchor" aria-label="anchor" href="#arg-endpoint-auth"></a></dt>
+<dd><p>Named list of authentication overrides for <code>par</code>,
+<code>introspection</code>, and <code>revocation</code>. Token exchange and refresh use the
+top-level client/provider authentication settings. Each entry may supply
+<code>token_auth_style</code>, <code>client_secret</code>, <code>client_assertion_private_key</code>,
+<code>client_assertion_private_key_kid</code>, <code>client_assertion_alg</code>,
+<code>client_assertion_audience</code>, <code>extra_headers</code> (named character vector),
+and the <code>mtls_client_*</code> certificate/key/CA fields. Introspection and
+revocation may also use a separate <code>client_id</code>. Unspecified credentials
+inherit the client's settings. Discovered endpoint methods and signing
+algorithms are checked independently. PAR inherits token authentication.
+Extra token headers apply only to token exchange and refresh; set
+<code>extra_headers</code> explicitly for every other endpoint that needs them.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

@@ -233,19 +233,6 @@ differ between main-process and worker spans.
   - `oauth.phase = "form_post.callback_lookup"`
   - `oauth.form_post.handle_digest`
 
-#### Span: `shinyOAuth.form_post.callback.consume_state`
-
-- When: when a resumed form-post callback must consume its sealed state
-  from the state store because the pre-session bridge did not supply
-  stored state values
-- Represents: single-use state lookup and removal before callback
-  validation
-- Main attributes:
-  - `oauth.provider.name`, `oauth.provider.issuer`
-  - `oauth.client_id_digest`
-  - `shiny.module_id`
-  - `oauth.phase = "form_post.callback_state_consume"`
-
 #### Span: `shinyOAuth.callback.validate`
 
 - When: during callback validation sub-steps

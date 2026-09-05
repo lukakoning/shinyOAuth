@@ -63,6 +63,38 @@ Register the corresponding public key with your provider. For
 default; `client_assertion_audience` overrides the expected recipient if
 your provider requires a value other than the token request URL.
 
+Authentication can differ at PAR, introspection, and revocation
+endpoints. Discovery preserves their independent method and algorithm
+metadata; configure credentials and audiences to match each endpoint’s
+registration agreement:
+
+``` r
+client@endpoint_auth <- list(
+  introspection = list(
+    token_auth_style = "header",
+    client_id = "registered-inspector",
+    client_secret = Sys.getenv("INTROSPECTION_SECRET"),
+    extra_headers = c("X-App" = "registered-app")
+  ),
+  revocation = list(
+    token_auth_style = "private_key_jwt",
+    client_assertion_private_key = openssl::read_key("keys/revocation-key.pem"),
+    client_assertion_alg = "RS256",
+    client_assertion_audience = "https://id.example.com/revocation"
+  )
+)
+```
+
+Unspecified credentials inherit the client’s settings. Advertised
+methods and JWT algorithms are checked per endpoint. Discovery defaults
+omitted revocation methods to Basic authentication; omitted
+introspection methods have no standard default, so confirm the
+configured method with your provider. PAR inherits the token
+authentication settings unless explicitly overridden.
+`extra_token_headers` now applies only to exchange and refresh: opt in
+through `extra_headers` at each other endpoint that should receive those
+headers, even on the same origin.
+
 ## Mutual TLS (mTLS)
 
 With mutual TLS (mTLS), the client presents a certificate during the TLS
