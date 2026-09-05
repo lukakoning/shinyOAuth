@@ -144,6 +144,7 @@ normalize_token_response_json <- function(value) {
       err_parse(paste0("Token response field '", field, "' must be a JSON scalar"))
     }
   }
+  if ("scope" %in% names(value)) validate_response_scope(value[["scope"]])
   if (is.data.frame(value)) {
     return(as.list(value))
   }
@@ -164,7 +165,9 @@ parse_token_response_form <- function(body) {
   reject_duplicate_form_encoded_members(body, "Token response body")
   # httr2's query parser preserves "+", while HTML form encoding uses it for
   # spaces. Convert only literal plus signs; percent-encoded %2B remains "+".
-  httr2::url_query_parse(gsub("+", "%20", body, fixed = TRUE))
+  value <- httr2::url_query_parse(gsub("+", "%20", body, fixed = TRUE))
+  if ("scope" %in% names(value)) validate_response_scope(value[["scope"]])
+  value
 }
 
 #' Parse a legacy token response with weak or missing Content-Type

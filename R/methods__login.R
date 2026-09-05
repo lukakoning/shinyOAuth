@@ -2096,6 +2096,7 @@ enforce_token_introspection_policy <- function(
       requested_scopes %||% effective_client_scopes(oauth_client)
     )
     intro_scope_raw <- raw[["scope"]] %||% NULL
+    if ("scope" %in% names(raw)) validate_response_scope(intro_scope_raw, err_token)
 
     if (!is.null(intro_scope_raw)) {
       token@granted_scopes <- normalize_scope_tokens(intro_scope_raw)

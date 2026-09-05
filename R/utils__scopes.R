@@ -8,6 +8,16 @@
 
 ## 1.1 Normalize and validate scopes -------------------------------------------
 
+# Validate wire values before the permissive local-input normalizer sees them.
+# Preserve the existing empty-string representation of an empty grant.
+validate_response_scope <- function(scope, signal_error = err_parse) {
+  if (!is.character(scope) || length(scope) != 1L || is.na(scope) ||
+      !grepl("^(?:[!#-\\[\\]-~]+(?: [!#-\\[\\]-~]+)*)?$", scope, perl = TRUE)) {
+    signal_error("Response scope must be a scalar string of SP-delimited OAuth scope tokens")
+  }
+  invisible(TRUE)
+}
+
 #' Validate OAuth 2.0 scope strings
 #'
 #' Validates that scope values conform to the RFC 6749 §3.3 scope-token
@@ -149,6 +159,7 @@ resolve_granted_scope_state <- function(
   previous_granted_scopes <- normalize_scope_tokens(previous_granted_scopes)
 
   scope_is_omitted <- is.null(token_scope)
+  if (!scope_is_omitted) validate_response_scope(token_scope, err_token)
   scope_is_empty <- !scope_is_omitted &&
     length(token_scope) == 1L &&
     !nzchar(token_scope)
