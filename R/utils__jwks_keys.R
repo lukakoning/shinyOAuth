@@ -282,6 +282,16 @@ jwk_to_pubkey <- function(jwk) {
   if (!kty %in% c("RSA", "EC", "OKP")) {
     err_parse(paste0("Unsupported JWK kty: ", kty))
   }
+  if (identical(kty, "OKP")) {
+    if (!identical(jwk[["crv"]], "Ed25519")) {
+      err_parse("Unsupported OKP signing curve; only Ed25519 is supported")
+    }
+    public_bytes <- strict_decode_jwk_base64url_uint(jwk[["x"]], "OKP JWK x")
+    if (length(public_bytes) != 32L) {
+      err_parse("Ed25519 JWK x must decode to 32 bytes")
+    }
+    return(openssl::read_ed25519_pubkey(public_bytes))
+  }
   # jose::read_jwk takes a JSON string or file path
   jwk_json <- jsonlite::toJSON(jwk, auto_unbox = TRUE, null = "null")
   key <- try(jose::read_jwk(jwk_json), silent = TRUE)

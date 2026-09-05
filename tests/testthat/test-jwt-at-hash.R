@@ -65,23 +65,8 @@ compute_expected_at_hash <- function(access_token, alg, eddsa_curve = NULL) {
 make_ed25519_keypair <- function() {
   testthat::skip_if_not_installed("sodium")
 
-  exports <- getNamespaceExports("sodium")
-  kp <- if ("signature_keygen" %in% exports) {
-    try(sodium::signature_keygen(), silent = TRUE)
-  } else if ("signature_keypair" %in% exports) {
-    try(sodium::signature_keypair(), silent = TRUE)
-  } else {
-    NULL
-  }
-
-  if (inherits(kp, "try-error") || is.null(kp)) {
-    testthat::skip("Ed25519 key generation not supported on this platform")
-  }
-
-  list(
-    pubkey = kp$pubkey,
-    secret = if (!is.null(kp$key)) kp$key else kp$secretkey
-  )
+  secret <- sodium::sig_keygen()
+  list(pubkey = sodium::sig_pubkey(secret), secret = secret)
 }
 
 sign_ed25519_jwt <- function(header, claims, secret) {
@@ -92,7 +77,7 @@ sign_ed25519_jwt <- function(header, claims, secret) {
     ".",
     shinyOAuth:::base64url_encode(charToRaw(as.character(claims_json)))
   )
-  sig <- sodium::signature(charToRaw(signing_input), secret)
+  sig <- sodium::sig_sign(charToRaw(signing_input), secret)
 
   paste0(signing_input, ".", shinyOAuth:::base64url_encode(sig))
 }

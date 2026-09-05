@@ -1,17 +1,12 @@
-test_that("validate_id_token accepts a valid asymmetric JWT (EdDSA or RS256)", {
+for (test_alg in c("EdDSA", "RS256")) {
+test_that(paste("validate_id_token accepts a valid", test_alg, "JWT"), {
   testthat::skip_if_not_installed("jose")
-  # Prefer EdDSA when sodium supports it; otherwise fall back to RS256
-  have_sodium <- requireNamespace("sodium", quietly = TRUE)
-  use_eddsa <- FALSE
-  kp <- NULL
-  if (isTRUE(have_sodium)) {
-    if ("signature_keygen" %in% getNamespaceExports("sodium")) {
-      kp <- try(sodium::signature_keygen(), silent = TRUE)
-    } else if ("signature_keypair" %in% getNamespaceExports("sodium")) {
-      kp <- try(sodium::signature_keypair(), silent = TRUE)
-    }
-    use_eddsa <- !inherits(kp, "try-error") && !is.null(kp)
-  }
+  use_eddsa <- identical(test_alg, "EdDSA")
+  if (use_eddsa) testthat::skip_if_not_installed("sodium")
+  kp <- if (use_eddsa) {
+    secret <- sodium::sig_keygen()
+    list(pubkey = sodium::sig_pubkey(secret), key = secret)
+  } else NULL
 
   now <- as.numeric(Sys.time())
 
@@ -71,7 +66,7 @@ test_that("validate_id_token accepts a valid asymmetric JWT (EdDSA or RS256)", {
     h64 <- shinyOAuth:::base64url_encode(charToRaw(as.character(header_json)))
     p64 <- shinyOAuth:::base64url_encode(charToRaw(as.character(claims_json)))
     signing_input <- paste0(h64, ".", p64)
-    sig <- sodium::signature(charToRaw(signing_input), secret)
+    sig <- sodium::sig_sign(charToRaw(signing_input), secret)
     s64 <- shinyOAuth:::base64url_encode(sig)
     id_token <- paste(signing_input, s64, sep = ".")
   } else {
@@ -103,6 +98,8 @@ test_that("validate_id_token accepts a valid asymmetric JWT (EdDSA or RS256)", {
     shinyOAuth:::validate_id_token(cli, id_token)
   ))
 })
+
+}
 
 make_rsa_jwt_with_alg <- function(key, alg, claims, kid) {
   header_json <- jsonlite::toJSON(

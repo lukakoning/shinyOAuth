@@ -79,7 +79,7 @@ make_eddsa_signed_jwt <- function(
     shinyOAuth:::base64url_encode(charToRaw(as.character(payload_json)))
   )
   secret <- if (!is.null(keypair$key)) keypair$key else keypair$secretkey
-  sig <- sodium::signature(charToRaw(signing_input), secret)
+  sig <- sodium::sig_sign(charToRaw(signing_input), secret)
 
   paste0(signing_input, ".", shinyOAuth:::base64url_encode(sig))
 }
@@ -184,15 +184,8 @@ test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
 test_that("get_userinfo verifies signed EdDSA JWT userinfo against JWKS", {
   testthat::skip_if_not_installed("sodium")
 
-  keypair <- NULL
-  if ("signature_keygen" %in% getNamespaceExports("sodium")) {
-    keypair <- try(sodium::signature_keygen(), silent = TRUE)
-  } else if ("signature_keypair" %in% getNamespaceExports("sodium")) {
-    keypair <- try(sodium::signature_keypair(), silent = TRUE)
-  }
-  if (inherits(keypair, "try-error") || is.null(keypair)) {
-    testthat::skip("Ed25519 key generation not supported on this platform")
-  }
+  secret <- sodium::sig_keygen()
+  keypair <- list(key = secret, pubkey = sodium::sig_pubkey(secret))
 
   kid <- "test-ed25519-1"
   jwks <- list(

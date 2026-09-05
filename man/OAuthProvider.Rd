@@ -283,11 +283,8 @@ An empty vector rejects all signed UserInfo algorithms.}
 \item{allowed_algs}{Optional vector of allowed JWT algorithms for ID tokens.
 Use to restrict acceptable \code{alg} values on a per-provider basis. Supported
 asymmetric algorithms include \code{RS256}, \code{RS384}, \code{RS512}, \code{ES256},
-\code{ES384}, \code{ES512}, and \code{EdDSA} for OKP-backed signatures. When ID token
-\code{at_hash} validation is in play, Ed25519 is supported. Ed448 \code{at_hash}
-cannot be validated with the current crypto bindings, so any Ed448 ID
-token containing an \code{at_hash} claim fails closed, whether or not that
-claim was configured as required.
+\code{ES384}, \code{ES512}, and \code{EdDSA} with Ed25519 OKP keys (including \code{at_hash}
+validation). Ed448 verification is unsupported and fails closed.
 Symmetric HMAC algorithms \code{HS256}, \code{HS384}, \code{HS512} are also supported but
 require that you supply a \code{client_secret} and explicitly enable HMAC
 verification via the option \code{options(shinyOAuth.allow_hs = TRUE)}.
