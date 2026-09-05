@@ -39,6 +39,11 @@ for more details about logs and traces via OpenTelemetry.
 
 ## Validation and URL policy
 
+- `options(shinyOAuth.allow_legacy_introspection_active = TRUE)` – opt in to
+  numeric/string coercion of nonstandard introspection `active` values. Default
+  `FALSE`: RFC 7662 responses must contain a JSON boolean. Enable only for a
+  provider whose legacy response contract you have verified.
+
 - `options(shinyOAuth.leeway = 30)` – default clock skew leeway (seconds) for ID token `exp`/`iat`/`nbf` checks and state payload `issued_at` future check
 - `options(shinyOAuth.max_id_token_lifetime = 86400)` – maximum ID token lifetime in seconds (`exp - iat`). This is an additional package check beyond the OIDC expiry check. Default `86400` (24 hours). Set to `Inf` to disable the check
 - `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))` - allows these hosts to use `http://` in non-OIDC URL checks; it does not relax OIDC discovery
