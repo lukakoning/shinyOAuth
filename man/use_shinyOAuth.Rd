@@ -21,17 +21,15 @@ Adds shinyOAuth's client-side JavaScript dependency to your Shiny UI.
 This is required so the module can handle redirects and manage its
 browser-side session token.
 
-Without this call in the UI, \code{\link[=oauth_module_server]{oauth_module_server()}} will not work unless
-your app UI is wrapped with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, which injects this
-dependency automatically for form_post flows.
+For most apps, use \code{\link[=oauth_ui]{oauth_ui()}} around your complete UI instead. It includes
+this browser code and adds privacy protection for pages loaded after login.
+\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} also includes this setup for form_post flows.
 }
 \details{
 Place this near the top-level of your UI (e.g., inside \code{fluidPage()} or
 \code{tagList()}), similar to how you would use \code{shinyjs::useShinyjs()}. If you
-wrap the app UI with \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, you usually do not need a
-separate call here because that wrapper injects this dependency for you.
-Wrap query-mode apps with \code{\link[=oauth_ui]{oauth_ui()}} to set the HTTP referrer policy before
-any dependency requests. It also injects this JavaScript dependency.
+wrap the app UI with \code{\link[=oauth_ui]{oauth_ui()}} or \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, you do not need
+a separate call to this helper.
 }
 \examples{
 ui <- shiny::fluidPage(

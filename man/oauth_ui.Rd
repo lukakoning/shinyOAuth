@@ -2,27 +2,59 @@
 % Please edit documentation in R/oauth_ui.R
 \name{oauth_ui}
 \alias{oauth_ui}
-\title{Protect OAuth callback pages before browser subresources load}
+\title{Set up a Shiny UI for shinyOAuth}
 \usage{
 oauth_ui(base_ui)
 }
 \arguments{
-\item{base_ui}{A Shiny UI object or UI function accepting a request.}
+\item{base_ui}{Your app's complete UI, such as a \code{fluidPage()} or \code{tagList()}.
+Can also be a UI function, optionally accepting the Shiny request.}
 }
 \value{
-A UI function to pass to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
+A UI function to use as the \code{ui} argument to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
 }
 \description{
-Wrap the complete Shiny UI to set \code{Referrer-Policy: no-referrer} on HTML
-responses, including the initial OAuth callback page. This prevents callback
-query parameters from appearing in subresource Referer headers. The wrapper
-also includes \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} automatically.
+Use \code{oauth_ui()} around your app's UI when setting up login with
+\code{\link[=oauth_module_server]{oauth_module_server()}}. It adds the browser code needed for login and
+helps keep login details private when users return to your app.
+
+This is the recommended UI helper for most apps. It includes everything
+provided by \code{\link[=use_shinyOAuth]{use_shinyOAuth()}}, so you do not need to call both.
 }
 \details{
-A meta tag alone is insufficient: Shiny serializes dependency scripts before
-UI head tags. Use this wrapper, or set the same HTTP header at your web server.
-\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} applies this wrapper automatically.
+Build your UI as usual with \code{fluidPage()}, \code{tagList()}, or another Shiny
+page function, then wrap the complete UI in \code{oauth_ui()}. Pass the result
+as the \code{ui} argument to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}. If you already have a \code{ui}
+object, you can use \code{ui <- oauth_ui(ui)} and remove the separate
+\code{use_shinyOAuth()} call from your UI.
+
+For apps using \code{response_mode = "form_post"} or \code{"form_post.jwt"}, use
+\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} instead. It includes this setup and also handles
+the provider's POST response.
+
+For browser privacy, \code{oauth_ui()} sets the HTTP header
+\code{Referrer-Policy: no-referrer} on HTML pages. This prevents the browser
+from sharing the current page's URL when it requests scripts, images, or
+other resources. After login, that URL can contain an authorization code
+and state value. Setting the policy in the response header protects these
+values before any page resources load. The meta tag from \code{use_shinyOAuth()}
+takes effect later because Shiny places dependency scripts before UI head
+tags. You can also configure the same header at your web server.
+
+Existing UI functions are supported too, including functions that accept
+the Shiny request as their argument.
 }
 \examples{
-ui <- oauth_ui(shiny::fluidPage(shiny::h2("My app")))
+ui <- oauth_ui(
+  shiny::fluidPage(
+    shiny::h2("My app"),
+    shiny::uiOutput("login")
+  )
+)
+
+# Use this UI with your app's server function:
+# shiny::shinyApp(ui = ui, server = server)
+}
+\seealso{
+\code{\link[=oauth_module_server]{oauth_module_server()}}, \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, \code{\link[=use_shinyOAuth]{use_shinyOAuth()}}
 }

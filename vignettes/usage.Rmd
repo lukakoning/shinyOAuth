@@ -51,12 +51,10 @@ client <- oauth_client(
   scopes = c("read:user", "user:email")
 )
 
-ui <- fluidPage(
-  # Include JavaScript dependency:
-  use_shinyOAuth(),
+ui <- oauth_ui(fluidPage(
   # Render login status & user info:
   uiOutput("login")
-)
+))
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
@@ -83,9 +81,12 @@ runApp(
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
-`use_shinyOAuth()` must be included once in your UI. It loads the JavaScript
-helper that the login flow depends on. Place it near the top of your UI, for
-example inside `fluidPage()`, `tagList()`, or `bslib::page()`.
+`oauth_ui()` sets up the UI side of login. Build your page as usual, then wrap
+the complete UI with this helper. It adds the browser code used by
+`oauth_module_server()` and helps keep login details private.
+
+If your app already uses `use_shinyOAuth()`, you can remove that call and wrap
+your existing UI with `ui <- oauth_ui(ui)`. You do not need both helpers.
 
 Open the app in a regular browser, not an IDE viewer. Embedded viewers in tools
 like RStudio or Positron usually cannot complete the required redirects.
@@ -109,11 +110,10 @@ client <- oauth_client(
   scopes = c("read:user", "user:email")
 )
 
-ui <- fluidPage(
-  use_shinyOAuth(),
+ui <- oauth_ui(fluidPage(
   actionButton("login_btn", "Login"),
   uiOutput("login")
-)
+))
 
 server <- function(input, output, session) {
   auth <- oauth_module_server(
@@ -174,10 +174,9 @@ client <- oauth_client(
   scopes = c("read:user", "user:email")
 )
 
-ui <- fluidPage(
-  use_shinyOAuth(),
+ui <- oauth_ui(fluidPage(
   uiOutput("ui")
-)
+))
 
 server <- function(input, output, session) {
   auth <- oauth_module_server(
@@ -346,8 +345,8 @@ For some apps, when your provider explicitly requires or recommends
 Because Shiny apps do not handle POST callbacks by default, you need to enable
 this by wrapping your UI with `oauth_form_post_ui()`. This allows the provider
 to POST the authorization response back to the app. That wrapper also injects
-the shinyOAuth browser dependency automatically, so you do not need a separate
-`use_shinyOAuth()` call in the wrapped UI. The `/callback` path below is only
+the setup provided by `oauth_ui()`, so you do not need a separate
+`oauth_ui()` or `use_shinyOAuth()` call. The `/callback` path below is only
 an example sub-route; using the app root is also fine as long as the provider
 redirect URI matches the path handled by `oauth_form_post_ui()`. Here's how you
 can set it up:
@@ -661,6 +660,18 @@ This is because during the authorization code + PKCE flow, 'shinyOAuth' creates 
 
 When providing a custom state key, please ensure it has high entropy (minimum 32 characters or 32 raw bytes; recommended 64–128 characters) to prevent offline guessing attacks against the encrypted state. Do not use short or human‑memorable passphrases.
 
+## Privacy when returning from login
+
+After login, the page URL can contain temporary login details. Browsers may
+share that URL when requesting images, scripts, and other page resources.
+`oauth_ui()` prevents this by setting `Referrer-Policy: no-referrer` in the
+HTTP response, before any page resources load. `oauth_form_post_ui()` includes
+the same protection.
+
+The meta tag added by `use_shinyOAuth()` takes effect after Shiny's dependency
+scripts, so it cannot protect those initial requests. If you manage your own
+web server, setting the same HTTP header there also provides this protection.
+
 ## Security checklist
 
 Below is a checklist of things you may want to think about when bringing your app to production:
@@ -685,10 +696,3 @@ While this R package has been developed with care and the OAuth 2.0/OIDC protoco
 no guarantees can be made in the realm of cybersecurity.
 For highly sensitive applications, consider a layered ('defense-in-depth') approach to security 
 (for example, adding an IP whitelist as an additional safeguard).
-<!-- Callback referrer protection -->
-
-Wrap the complete UI with `oauth_ui(ui)` to send `Referrer-Policy: no-referrer`
-before callback-page dependencies load. This wrapper also includes `use_shinyOAuth()`.
-Alternatively, set that header at the web server. The meta tag from
-`use_shinyOAuth()` alone arrives after Shiny dependencies and cannot protect their
-initial requests. `oauth_form_post_ui()` applies the HTTP header automatically.
