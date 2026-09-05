@@ -40,6 +40,10 @@
 #' The server-side callback handle is single-use and is rejected if it is older
 #' than the smaller of `client@state_payload_max_age` and the configured
 #' `state_store` TTL. The raw POST body and transient handle query parameters
+#' are stored in at most one pending slot per live state and module, including
+#' concurrent POSTs. Repeated pending POSTs reuse the handle. After a failed
+#' browser binding, a new POST can stage the still-live transaction again.
+#' Consumed logical states cannot stage callbacks. Callback query parameters
 #' are also bounded by the `shinyOAuth.callback_max_form_post_*` options
 #' described in the usage vignette. Before reading the POST body, this wrapper
 #' compares the server-observed request scheme, authority, and path with the
@@ -979,8 +983,26 @@ oauth_form_post_store_set <- function(client, id, payload) {
   payload <- oauth_form_post_compact_stored_payload(
     oauth_form_post_validate_payload(payload, client = client)
   )
-  handle <- random_urlsafe(32)
+  logical_state <- payload[["state_payload"]][["state"]] %||% NULL
+  if (!is.null(logical_state)) {
+    # Decryption alone proves authenticity, not that the transaction is live.
+    # Reading preserves the rightful browser's state until browser binding.
+    state_store_get(client, logical_state)
+    # A fixed, unguessable slot caps storage even if separate workers race.
+    # The logical state is encrypted on the wire and contains fresh entropy.
+    handle <- base64url_encode(openssl::sha256(charToRaw(paste0(
+      "form-post:", id, ":", logical_state
+    ))))
+  } else {
+    handle <- random_urlsafe(32)
+  }
   key <- oauth_form_post_cache_key(id, handle)
+  if (!is.null(logical_state)) {
+    existing <- state_store_backend_call(
+      client@state_store$get(key, missing = NULL), "form_post_store_get"
+    )
+    if (!is.null(existing)) return(handle)
+  }
   sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
 
   tryCatch(

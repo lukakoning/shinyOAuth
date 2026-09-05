@@ -377,7 +377,7 @@ test_that("oauth_form_post_ui preserves state until browser-bound callback", {
   expect_identical(second[["status"]], 303L)
 
   keys <- cli@state_store$keys()
-  expect_equal(sum(startsWith(keys, "formpost")), 2L)
+  expect_equal(sum(startsWith(keys, "formpost")), 1L)
   expect_equal(sum(!startsWith(keys, "formpost")), 1L)
 
   handle <- parse_query_param(
@@ -1787,4 +1787,31 @@ test_that("form_post callback path emits existing OTel spans", {
 
   expect_true("shinyOAuth.form_post" %in% spans)
   expect_true("shinyOAuth.form_post.bridge" %in% spans)
+})
+test_that("repeated POSTs use one pending slot and consumed states allocate nothing", {
+  cli <- make_form_post_test_client(use_nonce = FALSE)
+  ui <- oauth_form_post_ui(shiny::fluidPage(), "auth", cli)
+  browser <- valid_browser_token()
+  url <- prepare_call(cli, browser)
+  enc <- parse_query_param(url, "state")
+  sealed <- parse_query_param(url, "state", decode = TRUE)
+  state_payload <- shinyOAuth:::state_payload_decrypt_validate(cli, sealed)
+  first <- ui(make_form_post_req(body = paste0("code=ok&state=", enc)))
+  expect_identical(first$status, 303L)
+  keys <- cli@state_store$keys()
+  for (i in seq_len(20L)) {
+    again <- ui(make_form_post_req(body = paste0("code=other&state=", enc)))
+    expect_identical(again$headers$Location, first$headers$Location)
+  }
+  expect_setequal(cli@state_store$keys(), keys)
+  expect_length(keys, 2L)
+  handle <- shiny::parseQueryString(first$headers$Location)$shinyOAuth_form_post
+  stored <- shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle)
+  expect_identical(stored$code, "ok")
+  expect_silent(shinyOAuth:::state_store_get(cli, state_payload$state))
+  cli@state_store$remove(shinyOAuth:::state_cache_key(state_payload$state))
+  for (i in seq_len(5L)) {
+    expect_identical(ui(make_form_post_req(body = paste0("code=ok&state=", enc)))$status, 400L)
+  }
+  expect_length(cli@state_store$keys(), 0L)
 })

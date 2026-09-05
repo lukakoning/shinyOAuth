@@ -750,7 +750,9 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
     )
   )
   testthat::expect_identical(httr2::resp_status(replayed_valid), 303L)
-  .wait_for_form_post_state_store_count(drv, 3L)
+  testthat::expect_identical(httr2::resp_header(replayed_valid, "location"),
+    httr2::resp_header(valid, "location"))
+  .wait_for_form_post_state_store_count(drv, 2L)
 })
 
 testthat::test_that("browser form_post provider error callbacks are surfaced and cleaned", {

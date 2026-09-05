@@ -67,6 +67,10 @@ for the wrapped GET UI, so you do not need a separate top-level
 The server-side callback handle is single-use and is rejected if it is older
 than the smaller of \code{client@state_payload_max_age} and the configured
 \code{state_store} TTL. The raw POST body and transient handle query parameters
+are stored in at most one pending slot per live state and module, including
+concurrent POSTs. Repeated pending POSTs reuse the handle. After a failed
+browser binding, a new POST can stage the still-live transaction again.
+Consumed logical states cannot stage callbacks. Callback query parameters
 are also bounded by the \verb{shinyOAuth.callback_max_form_post_*} options
 described in the usage vignette. Before reading the POST body, this wrapper
 compares the server-observed request scheme, authority, and path with the
