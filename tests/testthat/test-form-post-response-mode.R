@@ -955,7 +955,7 @@ test_that("oauth_module_server keeps ordinary response params with form_post han
   )
 })
 
-test_that("form_post browser-token rejection consumes login state", {
+test_that("form_post browser-token rejection preserves login state", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
@@ -994,12 +994,17 @@ test_that("form_post browser-token rejection consumes login state", {
       indefinite_session = TRUE
     ),
     expr = {
-      values$browser_token <- wrong_browser_token
       values$.process_query(form_post_query(handle, "auth"))
+      session$flushReact()
+      expect_false(is.null(values$pending_callback))
+      expect_false(is.null(cli@state_store$get(state_key, missing = NULL)))
+
+      values$browser_token <- wrong_browser_token
       session$flushReact()
 
       expect_identical(values$error, "invalid_state")
-      expect_null(cli@state_store$get(state_key, missing = NULL))
+      expect_match(values$error_description, "Browser token mismatch")
+      expect_false(is.null(cli@state_store$get(state_key, missing = NULL)))
     }
   )
 })
