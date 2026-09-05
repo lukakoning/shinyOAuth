@@ -242,13 +242,14 @@ a memorable password. State uses AES-GCM authenticated encryption.}
 \item{client_assertion_private_key}{Optional private key for \code{private_key_jwt} client authentication
 at the token endpoint. Can be an \code{openssl::key} or a PEM string containing a
 private key. Required when the provider's \code{token_auth_style = 'private_key_jwt'}.
-Ignored for other auth styles. Current outbound private-key JWT signing
+Also used to sign JAR Request Objects, regardless of the token auth style.
+Current outbound private-key JWT signing
 supports RSA and EC private keys. For RSA keys, outbound signing is currently
 limited to \code{RS256}; \code{RS384}, \code{RS512}, and RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512})
 are not supported. Ed25519/Ed448 keys are also not currently supported.}
 
 \item{client_assertion_private_key_kid}{Optional key identifier (kid) to include in the JWT header
-for \code{private_key_jwt} assertions. Useful when the authorization server uses kid to
+for \code{private_key_jwt} assertions and JAR Request Objects. Useful when the authorization server uses kid to
 select the correct verification key.}
 
 \item{client_assertion_alg}{Optional JWT signing algorithm to use for client assertions.
