@@ -7,11 +7,11 @@
 use_shinyOAuth(inject_referrer_meta = TRUE)
 }
 \arguments{
-\item{inject_referrer_meta}{If TRUE (default), injects a
-\verb{<meta name="referrer" content="no-referrer">} tag into the document
-head. Shiny renders dependencies before this tag, so it cannot protect
-initial subresource requests. Use \code{\link[=oauth_ui]{oauth_ui()}} or a web-server
-\code{Referrer-Policy: no-referrer} header for that protection.}
+\item{inject_referrer_meta}{If TRUE (default), adds a meta tag to the page:
+an instruction asking the browser not to share the page's address when
+loading images, scripts, or other files. Some files may start loading
+before the browser reads this instruction. Use \code{\link[=oauth_ui]{oauth_ui()}} to provide
+this protection from the start of page loading.}
 }
 \value{
 A \code{tagList} that loads the \code{inst/www/shinyOAuth.js} dependency once.

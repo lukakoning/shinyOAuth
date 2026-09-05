@@ -32,13 +32,18 @@ For apps using \code{response_mode = "form_post"} or \code{"form_post.jwt"}, use
 \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} instead. It includes this setup and also handles
 the provider's POST response.
 
-For browser privacy, \code{oauth_ui()} sets the HTTP header
-\code{Referrer-Policy: no-referrer} on HTML pages. This prevents the browser
-from sharing the current page's URL when it requests scripts, images, or
-other resources. After login, that URL can contain an authorization code
-and state value. Setting the policy in the response header protects these
-values before any page resources load. You can also configure the same
-header at your web server.
+By default, \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} adds a meta tag to your page: an instruction
+asking the browser not to share the page's address when loading images,
+scripts, or other files. This matters after login because the address can
+contain temporary login details.
+
+The browser may start loading some files before it reads the meta tag,
+so the tag alone cannot protect those first requests. \code{oauth_ui()} sends
+the same instruction in an HTTP header, which the browser reads before
+loading the page. This provides protection from the start.
+\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} includes the same protection. If you manage your
+own web server, you can also set the \code{Referrer-Policy: no-referrer} HTTP
+header there.
 
 Existing UI functions are supported too, including functions that accept
 the Shiny request as their argument.

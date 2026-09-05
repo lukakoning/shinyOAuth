@@ -24,11 +24,11 @@
 #' wrap the app UI with [oauth_ui()] or [oauth_form_post_ui()], you do not need
 #' a separate call to this helper.
 #'
-#' @param inject_referrer_meta If TRUE (default), injects a
-#'   `<meta name="referrer" content="no-referrer">` tag into the document
-#'   head. Shiny renders dependencies before this tag, so it cannot protect
-#'   initial subresource requests. Use [oauth_ui()] or a web-server
-#'   `Referrer-Policy: no-referrer` header for that protection.
+#' @param inject_referrer_meta If TRUE (default), adds a meta tag to the page:
+#'   an instruction asking the browser not to share the page's address when
+#'   loading images, scripts, or other files. Some files may start loading
+#'   before the browser reads this instruction. Use [oauth_ui()] to provide
+#'   this protection from the start of page loading.
 #'
 #' @return A `tagList` that loads the `inst/www/shinyOAuth.js` dependency once.
 #'

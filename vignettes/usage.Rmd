@@ -662,14 +662,18 @@ When providing a custom state key, please ensure it has high entropy (minimum 32
 
 ## Privacy when returning from login
 
-After login, the page URL can contain temporary login details. Browsers may
-share that URL when requesting images, scripts, and other page resources.
-`oauth_ui()` prevents this by setting `Referrer-Policy: no-referrer` in the
-HTTP response, before any page resources load. `oauth_form_post_ui()` includes
-the same protection.
+By default, `use_shinyOAuth()` adds a meta tag to your page: an instruction
+asking the browser not to share the page's address when loading images,
+scripts, or other files. This matters after login because the address can
+contain temporary login details.
 
-If you manage your own web server, setting the same HTTP header there also
-provides this protection.
+The browser may start loading some files before it reads the meta tag,
+so the tag alone cannot protect those first requests. `oauth_ui()` sends
+the same instruction in an HTTP header, which the browser reads before
+loading the page. This provides protection from the start.
+`oauth_form_post_ui()` includes the same protection. If you manage your
+own web server, you can also set the `Referrer-Policy: no-referrer` HTTP
+header there.
 
 ## Security checklist
 
