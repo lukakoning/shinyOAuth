@@ -29,23 +29,25 @@
 parse_token_response <- function(resp) {
   check_resp_body_size(resp, context = "token")
 
-  content_type <- tolower(httr2::resp_header(resp, "content-type") %||% "")
+  content_type <- tolower(trimws(sub(
+    ";.*$", "", httr2::resp_header(resp, "content-type") %||% ""
+  )))
   body <- httr2::resp_body_string(resp)
 
   # Some providers include charset, e.g. application/json; charset=utf-8.
-  if (grepl("application/json", content_type, fixed = TRUE)) {
+  if (identical(content_type, "application/json")) {
     return(parse_token_response_json(body, resp = resp))
   }
 
   # GitHub historically returns form-encoded unless Accept requests JSON.
-  if (grepl("application/x-www-form-urlencoded", content_type, fixed = TRUE)) {
+  if (identical(content_type, "application/x-www-form-urlencoded")) {
     return(parse_token_response_form(body))
   }
 
   # Legacy providers may omit the content type or send JSON as text/plain.
   if (
     identical(content_type, "") ||
-      grepl("text/plain", content_type, fixed = TRUE)
+      identical(content_type, "text/plain")
   ) {
     return(parse_lenient_token_response(body))
   }
