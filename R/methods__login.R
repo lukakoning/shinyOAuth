@@ -257,6 +257,9 @@ prepare_call <- function(
           oauth.scopes.requested_count = otel_scope_count(effective_scopes),
           oauth.claims.requested = otel_claims_requested(oauth_client@claims),
           oauth.claims.targets = otel_claim_targets(oauth_client@claims),
+          oauth.claims.targets_count = otel_claim_target_count(
+            oauth_client@claims
+          ),
           oauth.required_acr_values = otel_required_acr_values(
             oauth_client@required_acr_values %||% character(0)
           ),

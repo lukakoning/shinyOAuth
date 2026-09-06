@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OpenTelemetry omits raw scope names, claim targets, and ACR values by
+  default, while retaining counts. Set
+  `shinyOAuth.otel_include_authorization_details = TRUE` to opt in explicitly.
+
 * Added `trusted_id_token_audiences` for explicitly trusted additional OIDC ID
   token audiences. The default remains client-ID-only; multi-audience tokens
   still require a matching `azp` and all normal signature and claim checks.

@@ -478,6 +478,7 @@ testthat::test_that("otel scopes respect issuer-driven OIDC opt-out", {
 })
 
 testthat::test_that("otel_scope_string normalizes requested and granted scopes", {
+  withr::local_options(shinyOAuth.otel_include_authorization_details = TRUE)
   cli <- make_test_client(use_nonce = TRUE, scopes = c("profile", "email"))
 
   testthat::expect_identical(
@@ -495,6 +496,7 @@ testthat::test_that("otel_scope_string normalizes requested and granted scopes",
 })
 
 testthat::test_that("otel_claim_targets and list join helpers summarize safe lists", {
+  withr::local_options(shinyOAuth.otel_include_authorization_details = TRUE)
   testthat::expect_identical(
     shinyOAuth:::otel_claim_targets(
       list(
@@ -535,7 +537,8 @@ testthat::test_that("otel_token_response_attributes captures response shape", {
   testthat::expect_identical(attrs$oauth.expires_in_present, TRUE)
   testthat::expect_identical(attrs$oauth.expires_in_synthesized, FALSE)
   testthat::expect_identical(attrs$oauth.scope.present, TRUE)
-  testthat::expect_identical(attrs$oauth.scopes.granted, "openid profile")
+  testthat::expect_null(attrs[["oauth.scopes.granted"]])
+  testthat::expect_identical(attrs$oauth.scopes.granted_count, 2L)
 
   missing_attrs <- shinyOAuth:::otel_token_response_attributes(list(
     access_token = "at",
@@ -547,7 +550,7 @@ testthat::test_that("otel_token_response_attributes captures response shape", {
     TRUE
   )
   testthat::expect_identical(missing_attrs$oauth.scope.present, FALSE)
-  testthat::expect_null(missing_attrs$oauth.scopes.granted)
+  testthat::expect_null(missing_attrs[["oauth.scopes.granted"]])
 })
 
 # ===========================================================================

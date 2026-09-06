@@ -322,23 +322,18 @@ otel_e2e("prepare_call emits login.request span with attributes", {
   testthat::expect_identical(s$status, "ok")
   testthat::expect_identical(s$attributes[["oauth.provider.name"]], "example")
   testthat::expect_identical(s$attributes[["oauth.phase"]], "login.request")
-  testthat::expect_identical(
-    s$attributes[["oauth.scopes.requested"]],
-    "openid profile email"
-  )
+  testthat::expect_null(s$attributes[["oauth.scopes.requested"]])
   testthat::expect_identical(
     as.integer(s$attributes[["oauth.scopes.requested_count"]]),
     3L
   )
   testthat::expect_identical(s$attributes[["oauth.claims.requested"]], TRUE)
+  testthat::expect_null(s$attributes[["oauth.claims.targets"]])
   testthat::expect_identical(
-    s$attributes[["oauth.claims.targets"]],
-    "id_token"
+    as.integer(s$attributes[["oauth.claims.targets_count"]]),
+    1L
   )
-  testthat::expect_identical(
-    s$attributes[["oauth.required_acr_values"]],
-    "loa2 loa3"
-  )
+  testthat::expect_null(s$attributes[["oauth.required_acr_values"]])
   testthat::expect_identical(
     as.integer(s$attributes[["oauth.required_acr_values_count"]]),
     2L
@@ -1006,10 +1001,7 @@ otel_e2e("token.exchange span captures request and response attributes", {
     s$attributes[["oauth.received_refresh_token"]],
     TRUE
   )
-  testthat::expect_identical(
-    s$attributes[["oauth.scopes.granted"]],
-    "openid profile"
-  )
+  testthat::expect_null(s$attributes[["oauth.scopes.granted"]])
   testthat::expect_identical(s$attributes[["oauth.expires_in_present"]], TRUE)
   testthat::expect_identical(
     s$attributes[["oauth.expires_in_synthesized"]],
@@ -1109,26 +1101,17 @@ otel_e2e("token.verify span captures validation decision attributes", {
     s$attributes[["oauth.scope.validation_mode"]],
     "strict"
   )
-  testthat::expect_identical(
-    s$attributes[["oauth.scopes.requested"]],
-    "openid profile"
-  )
+  testthat::expect_null(s$attributes[["oauth.scopes.requested"]])
   testthat::expect_identical(
     as.integer(s$attributes[["oauth.scopes.requested_count"]]),
     2L
   )
-  testthat::expect_identical(
-    s$attributes[["oauth.scopes.granted"]],
-    "openid profile"
-  )
+  testthat::expect_null(s$attributes[["oauth.scopes.granted"]])
   testthat::expect_identical(
     as.integer(s$attributes[["oauth.scopes.granted_count"]]),
     2L
   )
-  testthat::expect_identical(
-    s$attributes[["oauth.required_acr_values"]],
-    "loa2"
-  )
+  testthat::expect_null(s$attributes[["oauth.required_acr_values"]])
   testthat::expect_identical(
     as.integer(s$attributes[["oauth.required_acr_values_count"]]),
     1L
@@ -1213,7 +1196,6 @@ otel_e2e("token.verify exports final decision attributes once", {
   exported_verify_span <- exported_verify_spans[[1L]]
   for (key in c(
     "oauth.id_token.validated",
-    "oauth.scopes.granted",
     "oauth.scopes.granted_count"
   )) {
     values <- otel_attr_values(exported_verify_span$attributes, key)
@@ -1227,12 +1209,12 @@ otel_e2e("token.verify exports final decision attributes once", {
     )[[1L]],
     TRUE
   )
-  testthat::expect_identical(
+  testthat::expect_length(
     otel_attr_values(
       exported_verify_span$attributes,
       "oauth.scopes.granted"
-    )[[1L]],
-    "openid profile"
+    ),
+    0L
   )
   testthat::expect_identical(
     as.integer(otel_attr_values(
@@ -1726,10 +1708,9 @@ otel_e2e("refresh_token sync emits span hierarchy", {
     ]],
     TRUE
   )
-  testthat::expect_identical(
-    r$traces[["shinyOAuth.refresh"]]$attributes[["oauth.scopes.granted"]],
-    "openid profile"
-  )
+  testthat::expect_null(r$traces[["shinyOAuth.refresh"]]$attributes[[
+    "oauth.scopes.granted"
+  ]])
   testthat::expect_identical(
     r$traces[["shinyOAuth.refresh"]]$attributes[["oauth.expires_in_present"]],
     TRUE

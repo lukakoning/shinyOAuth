@@ -446,6 +446,9 @@ otel_scope_string <- function(
   ensure_openid = FALSE,
   allow_commas = FALSE
 ) {
+  if (!otel_authorization_details_enabled()) {
+    return(NULL)
+  }
   otel_join_values(
     otel_scope_tokens(
       scopes = scopes,
@@ -516,6 +519,21 @@ otel_claims_requested <- function(claims) {
 #' @keywords internal
 #' @noRd
 otel_claim_targets <- function(claims) {
+  if (!otel_authorization_details_enabled()) {
+    return(NULL)
+  }
+  otel_join_values(
+    otel_claim_target_names(claims),
+    sep = ",",
+    sort_values = TRUE
+  )
+}
+
+otel_claim_target_count <- function(claims) {
+  as.integer(length(otel_claim_target_names(claims)))
+}
+
+otel_claim_target_names <- function(claims) {
   if (is.null(claims)) {
     return(NULL)
   }
@@ -535,7 +553,7 @@ otel_claim_targets <- function(claims) {
     return(NULL)
   }
 
-  otel_join_values(names(claims), sep = ",", sort_values = TRUE)
+  unique(names(claims))
 }
 
 #' Read a provider max_age value for telemetry
@@ -638,7 +656,16 @@ otel_http_content_type <- function(content_type = NULL, resp = NULL) {
 #' @keywords internal
 #' @noRd
 otel_required_acr_values <- function(values) {
+  if (!otel_authorization_details_enabled()) {
+    return(NULL)
+  }
   otel_join_values(values, sep = " ", sort_values = FALSE)
+}
+
+# Authorization names can reveal tenant or privilege information and produce
+# unbounded telemetry cardinality. Counts remain available without this opt-in.
+otel_authorization_details_enabled <- function() {
+  isTRUE(getOption("shinyOAuth.otel_include_authorization_details", FALSE))
 }
 
 #' Join introspection elements for telemetry
@@ -836,6 +863,7 @@ otel_token_response_attributes <- function(
       oauth.expires_in_present = isTRUE(expires_in_present),
       oauth.expires_in_synthesized = !isTRUE(expires_in_present),
       oauth.scope.present = length(scope_tokens) > 0L,
+      oauth.scopes.granted_count = as.integer(length(scope_tokens)),
       oauth.scopes.granted = otel_scope_string(
         token_set[["scope"]] %||% NULL,
         allow_commas = TRUE

@@ -55,7 +55,8 @@ capture_async_options <- function() {
 capture_async_otel_option_gates <- function() {
   list(
     shinyOAuth.otel_tracing_enabled = otel_tracing_enabled(),
-    shinyOAuth.otel_logging_enabled = otel_logging_enabled()
+    shinyOAuth.otel_logging_enabled = otel_logging_enabled(),
+    shinyOAuth.otel_include_authorization_details = otel_authorization_details_enabled()
   )
 }
 

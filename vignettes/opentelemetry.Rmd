@@ -92,6 +92,25 @@ run that setup in each worker or recreate workers after changing it.
 - Top-level package spans often start as roots so that they remain easy to
   find alongside Shiny's reactive-update spans.
 
+## Authorization metadata privacy
+
+Scope names, claim target names, and ACR values are omitted by default. The
+corresponding counts remain available, including `oauth.claims.targets_count`
+and `oauth.scopes.granted_count`. To include names in a controlled environment:
+
+```{r, eval = FALSE}
+options(shinyOAuth.otel_include_authorization_details = TRUE)
+```
+
+This option enables `oauth.scopes.requested`, `oauth.scopes.granted`,
+`oauth.claims.targets`, and `oauth.required_acr_values` in the catalog below.
+It is propagated to asynchronous workers. These names can reveal tenants,
+privileges, sensitive data categories, or authentication strength, and can
+create high-cardinality telemetry. Restrict exporter and dashboard access,
+set a short retention period appropriate to the diagnostic need, and avoid
+indexing these fields unless needed. Keep `shinyOAuth.expose_error_body`
+disabled in production; the authorization-details option does not enable it.
+
 ## Span catalog
 
 Use this as a reference for a span you see in your tracing system. Attributes

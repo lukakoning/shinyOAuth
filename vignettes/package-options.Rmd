@@ -32,6 +32,7 @@ module. See [Usage](usage.html) for app setup.
 - `options(shinyOAuth.audit_digest_key = ...)` – shared key of at least 32 bytes for HMAC-SHA256 digests used in audit/OTel attributes. Invalid configured keys cause an error; by default, 'shinyOAuth' generates a random per-process key when this is not configured
 - `options(shinyOAuth.otel_tracing_enabled = FALSE)` – disable 'shinyOAuth' OpenTelemetry span creation and async trace-context propagation. Default: `TRUE`
 - `options(shinyOAuth.otel_logging_enabled = FALSE)` – disable 'shinyOAuth' OpenTelemetry log emission. Default: `TRUE`
+- `options(shinyOAuth.otel_include_authorization_details = TRUE)` – include raw scope names, claim targets, and ACR values in telemetry. Default: `FALSE` (counts only). These fields may be sensitive and have high cardinality.
 
 See the [audit logging vignette](audit-logging.html) for details about
 audit hooks, and the [OpenTelemetry vignette](opentelemetry.html)
