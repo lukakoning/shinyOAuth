@@ -381,7 +381,13 @@ also uses the certificate and mTLS endpoints for authorization-server
 requests, even if the client uses another <code>token_auth_style</code>.
 Before protected API or userinfo requests, it checks the token’s
 certificate thumbprint (<code>cnf$x5t#S256</code>) against the
-configured certificate.</p>
+configured certificate. By default,
+<code>mtls_require_observed_cnf = TRUE</code> requires this confirmation
+to be visible. For opaque tokens whose binding is enforced only by the
+servers, keep <code>mtls_certificate_bound_access_tokens = TRUE</code>
+and set <code>mtls_require_observed_cnf = FALSE</code>. This permits
+missing confirmation while retaining certificate presentation and
+validation of any observed binding.</p>
 </div>
 <div class="section level4">
 <h4 id="tokens-bound-to-a-signing-key-dpop">Tokens bound to a signing key (DPoP)<a class="anchor" aria-label="anchor" href="#tokens-bound-to-a-signing-key-dpop"></a>

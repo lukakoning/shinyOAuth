@@ -220,20 +220,36 @@ mTLS.</p>
 <span>  <span class="co"># Require the matching certificate when access tokens are used</span></span>
 <span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code>mtls_certificate_bound_access_tokens = TRUE</code> is a strict
-local assurance policy: shinyOAuth must observe
-<code>cnf$x5t#S256</code> in the token response, a JWT access token, or
-introspection and match it to the configured certificate. An opaque
-bound token without observable binding fails this policy. RFC 8705 also
-permits opaque tokens whose binding is known only to the authorization
-and resource servers; it does not require a client to inspect that
-binding.</p>
-<p>For that deployment, configure the certificate and key and leave the
-strict flag <code>FALSE</code>; the servers must enforce certificate
-binding. Certificate configuration controls presenting the certificate,
-while the strict flag requires locally observable proof. Configure the
-needed mTLS endpoints explicitly when using this mode. Any binding
-shinyOAuth does observe must still match. See <a href="https://www.rfc-editor.org/rfc/rfc8705.html#section-3" class="external-link">RFC 8705,
+<p><code>mtls_certificate_bound_access_tokens = TRUE</code> enables
+certificate presentation and mTLS endpoint-alias selection independently
+of the OAuth client authentication method. Configuring certificate files
+alone does not enable certificate-bound token requests.</p>
+<p>The separate <code>mtls_require_observed_cnf</code> policy defaults
+to <code>TRUE</code>, preserving strict local assurance: shinyOAuth must
+observe <code>cnf$x5t#S256</code> in the token response, a JWT access
+token, or introspection and match it to the configured certificate. An
+opaque bound token without observable binding fails this policy.</p>
+<p>RFC 8705 also permits opaque tokens whose binding is known only to
+the authorization and resource servers. For that deployment, configure
+the certificate/key and provider capability as above, then use both
+settings:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
+<span>  mtls_client_cert_file <span class="op">=</span> <span class="st">"certs/client.pem"</span>,</span>
+<span>  mtls_client_key_file <span class="op">=</span> <span class="st">"certs/client-key.pem"</span>,</span>
+<span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  mtls_require_observed_cnf <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This mode still presents the certificate on token, refresh, UserInfo,
+and protected-resource requests, including with body authentication,
+public clients, or <code>private_key_jwt</code>. It prefers configured
+mTLS aliases and falls back to the configured endpoint URL when no alias
+is available. The servers must enforce binding; shinyOAuth allows
+missing confirmation but still rejects any observed mismatch or
+conflicting confirmation claims. See <a href="https://www.rfc-editor.org/rfc/rfc8705.html#section-3" class="external-link">RFC 8705,
 Section 3</a>.</p>
 <p>On Windows, separate PEM certificate/key files require curl’s OpenSSL
 backend. Set <code>CURL_SSL_BACKEND=openssl</code> in
@@ -268,7 +284,7 @@ does not register or change the client at the server. If unsigned
 requests remain accepted, signing is optional and cannot prevent a
 downgrade to unsigned authorization requests (<a href="https://www.rfc-editor.org/rfc/rfc9101.html#section-10.5" class="external-link">RFC 9101
 section 10.5</a>).</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-jar"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
@@ -295,7 +311,7 @@ section 10.5</a>).</p>
 <p>Test the server policy before deployment: send an otherwise valid
 authorization request for this same client without <code>request</code>
 or <code>request_uri</code>. For example:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">unsigned</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/request.html" class="external-link">request</a></span><span class="op">(</span><span class="va">provider</span><span class="op">@</span><span class="va">auth_url</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_url.html" class="external-link">req_url_query</a></span><span class="op">(</span></span>
 <span>    client_id <span class="op">=</span> <span class="va">client</span><span class="op">@</span><span class="va">client_id</span>,</span>
@@ -354,7 +370,7 @@ not just from the user’s browser</li>
 values, the public URL or wildcard prefix must already be registered
 there</li>
 </ul>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">request_uri_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-request-uri"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
@@ -405,7 +421,7 @@ first. The browser then gets redirected with a short
 redirect and avoids placing large requests in a URL. It also keeps most
 request details out of browser history and logs of browser requests. Set
 <code>par_required = TRUE</code> when the provider requires PAR.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-par"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
@@ -443,7 +459,7 @@ the response.</p>
 setup. Here <code>client</code> has a registered
 <code>redirect_uri</code> such as
 <code>https://app.example.com/callback</code>.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/textOutput.html" class="external-link">textOutput</a></span><span class="op">(</span><span class="st">"status"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui</a></span><span class="op">(</span><span class="va">base_ui</span>, id <span class="op">=</span> <span class="st">"auth"</span>, client <span class="op">=</span> <span class="va">client</span><span class="op">)</span></span>
 <span></span>
@@ -469,7 +485,7 @@ wrapper needs a trusted way to recover the public request address.
 Configure <code>request_uri_resolver</code> for your own proxy. This
 example accepts one proxy IP and a fixed public origin, including a
 mounted app path:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">trusted_proxy_uri</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">req</span><span class="op">[[</span><span class="st">"REMOTE_ADDR"</span><span class="op">]</span><span class="op">]</span>, <span class="st">"10.0.0.10"</span><span class="op">)</span> <span class="op">||</span></span>
 <span>      <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">req</span><span class="op">[[</span><span class="st">"HTTP_X_FORWARDED_PROTO"</span><span class="op">]</span><span class="op">]</span>, <span class="st">"https"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -495,7 +511,7 @@ provider returns a JWT, and shinyOAuth verifies its signature, issuer,
 audience, and expiry before processing the callback fields. If
 encryption is configured, shinyOAuth decrypts the response before
 validating the signed contents.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-jarm"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
@@ -519,7 +535,7 @@ validating the signed contents.</p>
 <span>  jarm_signed_response_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>For encrypted JARM, add the decryption settings:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
@@ -545,7 +561,7 @@ token or API request, and the receiving server verifies it against the
 token binding. An API enforcing DPoP requires both the access token and
 a proof from the matching private key. Configure it when supported by
 the authorization server and the API.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-dpop"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
@@ -567,7 +583,7 @@ the authorization server and the API.</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>After login, keep using the request helpers instead of adding
 <code>Authorization</code> or <code>DPoP</code> headers manually:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
 <span>  <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
 <span>  <span class="st">"https://api.example.com/me"</span>,</span>

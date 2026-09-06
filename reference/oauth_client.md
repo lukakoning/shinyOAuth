@@ -59,6 +59,7 @@ oauth_client(
   jarm_decryption_private_key_kid = NULL,
   jarm_max_lifetime = 600,
   endpoint_auth = list(),
+  mtls_require_observed_cnf = TRUE,
   ...
 )
 ```
@@ -386,18 +387,18 @@ oauth_client(
 
   Set this to `TRUE` for clients that should prefer discovered
   `mtls_endpoint_aliases` on authorization-server requests even when
-  `token_auth_style` itself is not an mTLS auth style, and that should
-  fail closed if the returned access token omits `cnf.x5t#S256`.
+  `token_auth_style` itself is not an mTLS auth style, and present the
+  certificate on token and protected-resource requests. Certificate/key
+  configuration alone does not enable this mode.
 
   Requires `mtls_client_cert_file` and `mtls_client_key_file`, and the
   provider must be configured with
-  `mtls_client_certificate_bound_access_tokens = TRUE`. This is a strict
-  local assurance policy. Opaque bound tokens require introspection or
-  another response surface exposing `cnf$x5t#S256`. RFC 8705 also allows
-  server-enforced opaque bindings without client-visible confirmation.
-  For those deployments, leave this flag `FALSE`, configure the
-  certificate/key and endpoint URLs, and rely on the servers to enforce
-  binding. Observed confirmation claims are still checked.
+  `mtls_client_certificate_bound_access_tokens = TRUE`. By default,
+  `mtls_require_observed_cnf = TRUE` also requires locally observable
+  confirmation of the certificate binding. For opaque tokens whose
+  binding is enforced only by the servers, keep
+  `mtls_certificate_bound_access_tokens = TRUE` and set
+  `mtls_require_observed_cnf = FALSE`.
 
 - dpop_private_key:
 
@@ -610,6 +611,19 @@ oauth_client(
   authentication. Extra token headers apply only to token exchange and
   refresh; set `extra_headers` explicitly for every other endpoint that
   needs them.
+
+- mtls_require_observed_cnf:
+
+  Logical, default `TRUE`. When
+  `mtls_certificate_bound_access_tokens = TRUE`, require `cnf$x5t#S256`
+  in the token response, JWT access token, or introspection and verify
+  that it matches the configured certificate. The default preserves
+  strict local assurance. Set `FALSE` for server-enforced opaque
+  bindings that the client cannot observe; this does not disable
+  certificate presentation or mTLS endpoint selection. Missing
+  confirmation is then allowed, but any observed confirmation is still
+  validated, including mismatches and conflicting claims. This flag does
+  not independently enable mTLS.
 
 - ...:
 

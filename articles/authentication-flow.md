@@ -309,7 +309,13 @@ advertises support and the client sets
 certificate and mTLS endpoints for authorization-server requests, even
 if the client uses another `token_auth_style`. Before protected API or
 userinfo requests, it checks the token’s certificate thumbprint
-(`cnf$x5t#S256`) against the configured certificate.
+(`cnf$x5t#S256`) against the configured certificate. By default,
+`mtls_require_observed_cnf = TRUE` requires this confirmation to be
+visible. For opaque tokens whose binding is enforced only by the
+servers, keep `mtls_certificate_bound_access_tokens = TRUE` and set
+`mtls_require_observed_cnf = FALSE`. This permits missing confirmation
+while retaining certificate presentation and validation of any observed
+binding.
 
 #### Tokens bound to a signing key (DPoP)
 
