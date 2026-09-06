@@ -5,14 +5,15 @@ local_app_driver_navigation <- function(.env = parent.frame()) {
 
   # shinytest2 0.5.1 navigates and immediately injects its tracer. Chrome can
   # still be replacing the initial document, destroying that tracer and its
-  # readiness promise. Subscribe before navigation, then wait before injection.
+  # readiness promise. A load event can also belong to the initial blank page;
+  # record that document and wait for the destination before injection.
   testthat::local_mocked_bindings(
     app_init_browser_log = function(self, private, options) {
       initialize_log(self, private, options)
       browser <- self$get_chromote_session()
-      pending[[browser$get_session_id()]] <- browser$Page$loadEventFired(
-        wait_ = FALSE,
-        timeout_ = private$load_timeout / 1000
+      pending[[browser$get_session_id()]] <- list(
+        frame = browser$Page$getFrameTree()$frameTree$frame,
+        timeout = private$load_timeout / 1000
       )
       invisible(NULL)
     },
@@ -21,7 +22,11 @@ local_app_driver_navigation <- function(.env = parent.frame()) {
       ready <- pending[[id]]
       if (!is.null(ready)) {
         pending[[id]] <- NULL
-        chromote_session$wait_for(ready)
+        wait_for_app_driver_document(
+          chromote_session,
+          ready$frame,
+          ready$timeout
+        )
       }
       evaluate(chromote_session, js, ...)
     },
@@ -29,6 +34,33 @@ local_app_driver_navigation <- function(.env = parent.frame()) {
     .env = .env
   )
   invisible(NULL)
+}
+
+wait_for_app_driver_document <- function(browser, initial_frame, timeout) {
+  deadline <- Sys.time() + timeout
+  repeat {
+    frame <- browser$Page$getFrameTree()$frameTree$frame
+    if (
+      !identical(frame$loaderId, initial_frame$loaderId) &&
+        !identical(frame$url, initial_frame$url)
+    ) {
+      ready <- browser$Runtime$evaluate(
+        "document.readyState === 'complete'",
+        returnByValue = TRUE
+      )$result$value
+      current <- browser$Page$getFrameTree()$frameTree$frame
+      if (isTRUE(ready) && identical(frame$loaderId, current$loaderId)) {
+        return(invisible(NULL))
+      }
+    }
+    if (Sys.time() >= deadline) {
+      stop(
+        "AppDriver destination document did not finish loading",
+        call. = FALSE
+      )
+    }
+    later::run_now(0.01, loop = browser$get_child_loop())
+  }
 }
 
 stop_test_app_driver <- function(drv) {
