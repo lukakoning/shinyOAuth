@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Callback bridge storage now has HMAC-derived client, provider, key, and
+  module namespaces with independent bounded quotas. Custom caches with
+  `set_if_absent` claim slots atomically without replacing concurrent writes.
+
 * OpenTelemetry omits raw scope names, claim targets, and ACR values by
   default, while retaining counts. Set
   `shinyOAuth.otel_include_authorization_details = TRUE` to opt in explicitly.

@@ -58,12 +58,16 @@ JWT Secured Authorization Response Mode (JARM).
 Every POST receives its own random handle. Handles expire after 120 seconds
 or the smaller of \code{state_payload_max_age} and the state store lifetime.
 The module still verifies the browser binding before consuming login state.
-Pending responses use a bounded pool in the state store: 256 partitions of
+Each client/provider/module namespace has a separate bounded pool in the
+state store: 256 partitions of
 eight slots, with each login assigned to one partition. When a partition is
 full, a new POST replaces its oldest response. An expired or replaced handle
 fails validation; it can never select the replacement response. Completed
-logins remove their remaining candidates. Shared stores still require atomic
-\code{take}; no additional backend methods are needed. Concurrent writers can also
+logins invalidate their remaining candidates and remove locally known
+candidates where possible. Shared stores still require atomic \code{take}.
+With \code{set_if_absent}, slots are claimed atomically with a short TTL; a full
+partition rejects new callbacks until a slot is consumed or expires.
+Otherwise, concurrent writers can also
 replace a candidate; handle validation fails closed in that case. Pending
 form-post handles issued by an older version must be restarted after upgrading.
 }

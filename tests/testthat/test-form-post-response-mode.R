@@ -1923,7 +1923,7 @@ test_that("maximum accepted callback fields survive the form-post bridge", {
       "shinyOAuth_form_post",
       decode = TRUE
     )
-    sealed <- client@state_store$get(oauth_form_post_cache_key("auth", handle))
+    sealed <- client@state_store$get(oauth_form_post_cache_key("auth", handle, client))
     expect_gt(nchar(sealed), 8192)
     expect_error(state_decrypt_gcm(sealed, client@state_key), "too large")
     payload <- oauth_form_post_store_take(client, "auth", handle)

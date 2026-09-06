@@ -3594,7 +3594,7 @@ test_that("oauth_form_post_ui stores compact encrypted form_post.jwt bridge payl
     "shinyOAuth_form_post",
     decode = TRUE
   )
-  cache_key <- shinyOAuth:::oauth_form_post_cache_key("auth", handle)
+  cache_key <- shinyOAuth:::oauth_form_post_cache_key("auth", handle, client)
   sealed_payload <- client@state_store$get(cache_key, missing = NULL)
 
   expect_type(sealed_payload, "character")
@@ -4059,7 +4059,7 @@ test_that("oauth_module_server rejects tampered bridged form_post.jwt payloads",
           )
 
           client@state_store$set(
-            shinyOAuth:::oauth_form_post_cache_key("auth", handle),
+            shinyOAuth:::oauth_form_post_cache_key("auth", handle, client),
             list(
               type = "response",
               response = response,

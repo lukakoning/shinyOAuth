@@ -1,4 +1,4 @@
-test_that("candidate storage has a global bound even without backend expiry", {
+test_that("candidate storage has a per-namespace bound even without backend expiry", {
   client <- make_test_client(response_mode = "form_post")
   backing <- cachem::cache_mem(max_age = Inf, max_n = Inf)
   client@state_store <- custom_cache(
@@ -106,7 +106,7 @@ test_that("evicted and foreign-module handles cannot consume a replacement", {
   )
   expect_error(
     shinyOAuth:::oauth_form_post_store_take(client, "other", handles[[9L]]),
-    "module mismatch"
+    "missing or already consumed"
   )
   payload <- shinyOAuth:::oauth_form_post_store_take(
     client,
@@ -127,7 +127,7 @@ test_that("a slot replacement racing atomic take never supplies another response
     "auth",
     list(code = "original", state = "fixture-state")
   )
-  key <- shinyOAuth:::oauth_form_post_cache_key("auth", handle)
+  key <- shinyOAuth:::oauth_form_post_cache_key("auth", handle, client)
   replacement_handle <- paste0(
     substr(handle, 1L, 9L),
     shinyOAuth:::random_urlsafe(43)
@@ -230,7 +230,7 @@ test_that("sibling cleanup preserves other transactions sharing a partition", {
   # Attach authentic state metadata as the POST boundary does. No live state
   # is needed for this narrow cleanup test.
   for (i in seq_along(handles)) {
-    key <- shinyOAuth:::oauth_form_post_cache_key("auth", handles[[i]])
+    key <- shinyOAuth:::oauth_form_post_cache_key("auth", handles[[i]], client)
     envelope <- shinyOAuth:::oauth_form_post_candidate_envelope(
       client,
       client@state_store$get(key)

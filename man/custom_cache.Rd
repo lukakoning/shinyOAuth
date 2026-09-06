@@ -51,7 +51,8 @@ TTL information from \verb{$info()} is used to align browser cookie max age in
 
 \item{set_if_absent}{A function(key, value, ttl = NULL) -> logical. Optional.
 
-An atomic set-if-missing operation for shared JWKS caches. It must store
+An atomic set-if-missing operation for shared JWKS caches and callback
+bridge slots. It must store
 \code{value} and return \code{TRUE} only when \code{key} did not already exist; otherwise
 it must leave the existing value unchanged and return \code{FALSE}. When \code{ttl}
 is supplied, the claimed key must expire after that many seconds. Map this
@@ -59,7 +60,10 @@ to a native backend primitive such as Redis \verb{SET ... NX EX} or a database
 uniqueness constraint with expiry. shinyOAuth uses this operation to make
 forced JWKS-refresh throttling safe across workers. Without it, forced
 refresh is disabled for shared/custom caches; \code{\link[cachem:cache_mem]{cachem::cache_mem()}} keeps
-its process-local serialized fallback.}
+its process-local serialized fallback.
+Callback bridges use it when available to avoid overwriting concurrent
+candidates; full partitions then reject callbacks until slots expire or
+are consumed. Other state-store writes still use \code{set}.}
 }
 \value{
 An R6 object exposing cachem-like \verb{$get/$set/$remove/$info} methods

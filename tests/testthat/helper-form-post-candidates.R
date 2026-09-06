@@ -73,7 +73,7 @@ expect_form_post_candidate_isolation <- function(
     expect_identical(exchanges, 0L)
     expect_silent(shinyOAuth:::state_store_get(client, state_payload$state))
     expect_false(is.null(client@state_store$get(
-      shinyOAuth:::oauth_form_post_cache_key("auth", second_handle),
+      shinyOAuth:::oauth_form_post_cache_key("auth", second_handle, client),
       missing = NULL
     )))
   }
