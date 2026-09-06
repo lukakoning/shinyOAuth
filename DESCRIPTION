@@ -48,6 +48,7 @@ Suggests:
     later,
     callr,
     processx,
+    pkgload,
     chromote,
     sodium,
     shinytest2,
