@@ -79,3 +79,37 @@ test_that("AppDriver idle failures retain their JavaScript diagnostic", {
     fixed = TRUE
   )
 })
+
+test_that("AppDriver rejects a ready document from the previous execution context", {
+  skip_if_not(tolower(Sys.getenv("SHINYOAUTH_BROWSER_TESTS")) == "true")
+  browser <- chromote::ChromoteSession$new()
+  on.exit(browser$close(), add = TRUE)
+  browser$go_to("about:blank")
+  initial <- browser$Page$getFrameTree()$frameTree$frame
+  destination <- "data:text/html,current-document"
+  # Reproduce CDP's transition: the frame reports a new loader while evaluation
+  # still runs in the old, already-complete document. Keep Runtime real.
+  frames <- new.env(parent = emptyenv())
+  frames$getFrameTree <- function() {
+    list(
+      frameTree = list(
+        frame = list(
+          loaderId = "pending-destination-loader",
+          url = destination
+        )
+      )
+    )
+  }
+  session <- list(
+    Page = frames,
+    Runtime = browser$Runtime,
+    get_child_loop = browser$get_child_loop
+  )
+  expect_error(
+    wait_for_app_driver_document(session, initial, timeout = 0.1),
+    "destination document did not finish loading",
+    fixed = TRUE
+  )
+  browser$go_to(destination)
+  expect_no_error(wait_for_app_driver_document(session, initial, timeout = 1))
+})

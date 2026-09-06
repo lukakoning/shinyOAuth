@@ -72,12 +72,24 @@ wait_for_app_driver_document <- function(browser, initial_frame, timeout) {
       !identical(frame$loaderId, initial_frame$loaderId) &&
         !identical(frame$url, initial_frame$url)
     ) {
-      ready <- browser$Runtime$evaluate(
-        "document.readyState === 'complete'",
+      document <- browser$Runtime$evaluate(
+        paste0(
+          "({ready: document.readyState === 'complete', ",
+          "url: document.URL, href: window.location.href})"
+        ),
         returnByValue = TRUE
       )$result$value
       current <- browser$Page$getFrameTree()$frameTree$frame
-      if (isTRUE(ready) && identical(frame$loaderId, current$loaderId)) {
+      # Page.getFrameTree can report the new loader while Runtime.evaluate
+      # still targets the old document. Its readyState is already complete.
+      # Check the evaluated document itself before accepting frame readiness.
+      url <- paste0(current$url, current$urlFragment)
+      if (
+        isTRUE(document$ready) &&
+          identical(document$url, url) &&
+          identical(document$href, url) &&
+          identical(frame$loaderId, current$loaderId)
+      ) {
         return(invisible(NULL))
       }
     }
