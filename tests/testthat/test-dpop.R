@@ -673,7 +673,7 @@ test_that("oauth_client rejects incompatible explicit DPoP signing algs", {
       dpop_signing_alg = "eddsa"
     ),
     regexp = paste0(
-      "dpop_signing_alg 'EdDSA' is incompatible with DPoP"
+      "dpop_signing_alg 'EdDSA' is incompatible with the provided dpop_private_key"
     )
   )
 
@@ -699,15 +699,9 @@ test_that("oauth_client rejects incompatible explicit DPoP signing algs", {
     testthat::skip("Ed25519 key generation not supported on this platform")
   }
 
-  expect_error(
-    make_dpop_test_client(
-      prov,
-      dpop_private_key = key_ed
-    ),
-    regexp = paste(
-      "outbound DPoP proofs currently support RSA and ECDSA",
-      "private keys only"
-    )
+  expect_identical(
+    resolve_dpop_alg(make_dpop_test_client(prov, dpop_private_key = key_ed)),
+    "EdDSA"
   )
 })
 

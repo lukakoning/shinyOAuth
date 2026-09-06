@@ -550,6 +550,17 @@ dpop_public_jwk <- function(key) {
   if (inherits(pub, "try-error")) {
     err_config("Failed to derive public key from dpop_private_key")
   }
+  if (inherits(pub, "ed25519")) {
+    public_bytes <- as.list(pub)$data
+    if (!is.raw(public_bytes) || length(public_bytes) != 32L) {
+      err_config("Invalid Ed25519 public key")
+    }
+    return(canonicalize_local_public_jwk(list(
+      kty = "OKP",
+      crv = "Ed25519",
+      x = base64url_encode(public_bytes)
+    )))
+  }
 
   jwk_json <- try(jose::jwk_write(pub), silent = TRUE)
   if (inherits(jwk_json, "try-error")) {
@@ -715,7 +726,7 @@ build_dpop_proof <- function(
 
   clm <- do.call(jose::jwt_claim, claims)
   proof <- try(
-    jose::jwt_encode_sig(clm, key = key, header = header),
+    encode_asymmetric_jwt_with_header(clm, key = key, header = header),
     silent = TRUE
   )
   if (inherits(proof, "try-error")) {

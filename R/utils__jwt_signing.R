@@ -176,7 +176,7 @@ build_client_assertion <- function(client, aud) {
       )
     }
     jwt <- try(
-      jose::jwt_encode_sig(clm, key = key, header = header),
+      encode_asymmetric_jwt_with_header(clm, key = key, header = header),
       silent = TRUE
     )
     if (inherits(jwt, "try-error")) {
@@ -297,7 +297,8 @@ resolve_request_object_signing_alg <- function(client) {
     "RS256",
     "ES256",
     "ES384",
-    "ES512"
+    "ES512",
+    "EdDSA"
   )
 
   if (!nzchar(alg)) {
@@ -473,7 +474,10 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
     return(alg %in% c("ES256", "ES384", "ES512"))
   }
 
-  if (inherits(key, "ed25519") || inherits(key, "ed448")) {
+  if (inherits(key, "ed25519")) {
+    return(identical(alg, "EdDSA"))
+  }
+  if (inherits(key, "ed448")) {
     return(FALSE)
   }
 
@@ -485,6 +489,33 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
   )
 
   !inherits(sig_try, "try-error")
+}
+
+# jose does not accept OKP private keys. Encode the standard JWS signing input
+# here and delegate Ed25519 itself to OpenSSL; do not prehash the signing input.
+encode_asymmetric_jwt_with_header <- function(claims, key, header) {
+  alg <- canonicalize_jws_alg(header[["alg"]])
+  if (!private_key_can_sign_jws_alg(key, alg)) {
+    err_config("JWT signing algorithm is incompatible with the private key")
+  }
+  if (!identical(alg, "EdDSA")) {
+    return(jose::jwt_encode_sig(claims, key = key, header = header))
+  }
+  encode <- function(value) {
+    base64url_encode(charToRaw(enc2utf8(jsonlite::toJSON(
+      unclass(value),
+      auto_unbox = TRUE,
+      null = "null",
+      digits = NA
+    ))))
+  }
+  header[["alg"]] <- "EdDSA"
+  signing_input <- paste(encode(header), encode(claims), sep = ".")
+  signature <- openssl::ed25519_sign(charToRaw(signing_input), key)
+  if (length(signature) != 64L) {
+    err_config("Ed25519 produced an invalid signature length")
+  }
+  paste(signing_input, base64url_encode(signature), sep = ".")
 }
 
 #' Encode a compact HMAC JWS while preserving a custom JOSE header.
@@ -697,7 +728,7 @@ build_authorization_request_object <- function(client, params) {
       )
     }
     jwt <- try(
-      jose::jwt_encode_sig(clm, key = key, header = header),
+      encode_asymmetric_jwt_with_header(clm, key = key, header = header),
       silent = TRUE
     )
     if (inherits(jwt, "try-error")) {
@@ -768,6 +799,7 @@ normalize_private_key_input <- function(
 #' Choose a default JWT alg compatible with a given private key
 #'
 #' For RSA keys, prefer RS256. For EC keys, try ES256/384/512 to match P-256/384/521.
+#' Ed25519 keys use EdDSA.
 #' Other key types are not currently supported for outbound JWT signing and
 #' fall back to a configuration error.
 #' @param key Private key object.
@@ -775,6 +807,9 @@ normalize_private_key_input <- function(
 #' @keywords internal
 #' @noRd
 choose_default_alg_for_private_key <- function(key) {
+  if (inherits(key, "ed25519")) {
+    return("EdDSA")
+  }
   if (inherits(key, "rsa")) {
     return("RS256")
   }
@@ -798,10 +833,10 @@ choose_default_alg_for_private_key <- function(key) {
     c(
       "x" = "Could not determine a compatible default outbound JWT signing algorithm for the provided private key",
       "i" = paste(
-        "shinyOAuth currently supports RSA and ECDSA private keys for",
+        "shinyOAuth currently supports RSA, ECDSA, and Ed25519 private keys for",
         "outbound client assertions, request objects, and DPoP proofs"
       ),
-      "i" = "EdDSA remains supported for inbound ID token verification"
+      "i" = "Ed448 is not supported by the current backend"
     )
   )
 }

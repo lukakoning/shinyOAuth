@@ -1702,7 +1702,7 @@ test_that("request mode rejects incompatible explicit signing alg combinations",
       request_object_signing_alg = "EdDSA"
     ),
     regexp = paste0(
-      "request_object_signing_alg 'EdDSA' is incompatible with signed authorization requests"
+      "request_object_signing_alg 'EdDSA' is incompatible with the provided private key"
     )
   )
 
@@ -1722,15 +1722,12 @@ test_that("request mode rejects incompatible explicit signing alg combinations",
     testthat::skip("Ed25519 key generation not supported on this platform")
   }
 
-  expect_error(
-    make_jar_test_client(
+  expect_identical(
+    resolve_request_object_signing_alg(make_jar_test_client(
       client_secret = "",
       client_assertion_private_key = key_ed
-    ),
-    regexp = paste(
-      "outbound signed authorization requests currently support RSA and ECDSA",
-      "private keys only"
-    )
+    )),
+    "EdDSA"
   )
 })
 

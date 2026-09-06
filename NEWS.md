@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Client assertions, Request Objects, and DPoP can now sign with Ed25519
+  (`EdDSA`) through OpenSSL, with key-aware defaults and provider algorithm
+  restrictions. DPoP exports only the public OKP JWK. RSA-PSS, OAEP-SHA256,
+  and GCM JWE modes remain explicit backend limitations.
+
 * Query and query-JARM callbacks now use `oauth_ui(ui, id = "auth", client =
   client)` to validate and seal responses before redirecting to a one-time URL
   and rendering application scripts. Existing query-flow applications must
