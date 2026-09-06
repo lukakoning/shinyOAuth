@@ -2865,7 +2865,7 @@ oauth_client_validate <- function(self) {
   if (
     !is.character(audiences) ||
       anyNA(audiences) ||
-      any(!nzchar(trimws(audiences)))
+      !all(nzchar(trimws(audiences)))
   ) {
     return(
       "OAuthClient: trusted_id_token_audiences must be a character vector without NA or empty values"

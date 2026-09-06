@@ -346,7 +346,7 @@ validate_id_token <- function(
   if (!(client_id %in% aud)) {
     err_id_token("Audience does not include client_id")
   }
-  if (any(!aud %in% c(client_id, client@trusted_id_token_audiences))) {
+  if (!all(aud %in% c(client_id, client@trusted_id_token_audiences))) {
     err_id_token("ID token contains untrusted additional audiences")
   }
   if (!is_valid_oidc_sub(payload[["sub"]])) {
