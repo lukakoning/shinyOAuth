@@ -182,6 +182,7 @@ test_that("audit hook failures cannot replace OAuth errors under warn = 2", {
     ),
     warning = function(w) {
       observed_warning <<- w
+      invokeRestart("muffleWarning")
     }
   )
 
