@@ -1633,7 +1633,7 @@ testthat::test_that("browser form_post.jwt direct callbacks are rejected before 
   )
 })
 
-testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong app while the rightful target callback still succeeds", {
+testthat::test_that("swapped form_post.jwt callbacks are rejected without consuming either rightful callback", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
   testthat::skip_if_not_installed("chromote")
@@ -1730,6 +1730,12 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
   .wait_for_form_post_ready(drv_a)
   .wait_for_form_post_ready(drv_b)
 
+  cookie_a <- find_browser_token_cookie(drv_a, "auth_a")
+  cookie_b <- find_browser_token_cookie(drv_b, "auth_b")
+  testthat::expect_false(is.null(cookie_a))
+  testthat::expect_false(is.null(cookie_b))
+  testthat::expect_false(identical(cookie_a$name, cookie_b$name))
+
   drv_a$run_js("document.querySelector('#prepare_login_btn').click();")
   drv_b$run_js("document.querySelector('#prepare_login_btn').click();")
 
@@ -1763,6 +1769,8 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
 
   .navigate_form_post_browser_to_url(drv_a, app_url_a)
   restored_a <- .wait_for_form_post_ready(drv_a)
+  .wait_for_form_post_state_store_count(drv_a, 1L)
+  .wait_for_form_post_state_store_count(drv_b, 1L)
 
   .submit_form_post_browser_callback(
     drv_b,
@@ -1791,13 +1799,18 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
     drv_a,
     previous_state = restored_a$auth_state
   )
-  testthat::expect_match(auth_state_a, "authenticated: FALSE", fixed = TRUE)
-  testthat::expect_match(auth_state_a, "error: invalid_state", fixed = TRUE)
+  # This is A's original callback in A's initiating browser. Rejecting B's
+  # foreign response must preserve this independent login too.
+  testthat::expect_match(auth_state_a, "authenticated: TRUE", fixed = TRUE)
+  testthat::expect_match(auth_state_a, "has_token: TRUE", fixed = TRUE)
+  testthat::expect_match(auth_state_a, "error: <none>", fixed = TRUE)
   testthat::expect_match(
     auth_state_a,
-    "error_description: Invalid OAuth state",
+    "error_description: <none>",
     fixed = TRUE
   )
 
   .wait_for_form_post_callback_cleanup(drv_a)
+  .wait_for_form_post_state_store_count(drv_a, 0L)
+  .wait_for_form_post_state_store_count(drv_b, 0L)
 })
