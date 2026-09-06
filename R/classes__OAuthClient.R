@@ -276,6 +276,12 @@
 #'   Requires `mtls_client_cert_file` and `mtls_client_key_file`, and the
 #'   provider must be configured with
 #'   `mtls_client_certificate_bound_access_tokens = TRUE`.
+#'   This is a strict local assurance policy. Opaque bound tokens require
+#'   introspection or another response surface exposing `cnf$x5t#S256`.
+#'   RFC 8705 also allows server-enforced opaque bindings without client-visible
+#'   confirmation. For those deployments, leave this flag `FALSE`, configure
+#'   the certificate/key and endpoint URLs, and rely on the servers to enforce
+#'   binding. Observed confirmation claims are still checked.
 #'
 #' @param dpop_private_key Private key for tying tokens to this app's requests
 #'   using Demonstrating Proof of Possession (DPoP). Only needed when your
