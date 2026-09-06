@@ -708,6 +708,18 @@ oauth_provider <- function(
     list2env(compat_args, envir = environment())
   }
 
+  nullable_flags <- c(
+    "use_nonce", "userinfo_required", "userinfo_id_token_match",
+    "id_token_required", "id_token_validation", "jwks_host_issuer_match"
+  )
+  for (field in oauth_provider_boolean_fields()) {
+    value <- get(field, inherits = FALSE)
+    if (is.null(value) && field %in% nullable_flags) next
+    if (!is_scalar_logical(value)) {
+      err_input(paste0(field, " must be a single non-NA logical"))
+    }
+  }
+
   # Validate scalar URL inputs before constructing the S7 object so callers
   # receive a clear error for vector inputs.
   for (url_arg in list(
@@ -1032,6 +1044,11 @@ oauth_provider <- function(
 #' @keywords internal
 #' @noRd
 oauth_provider_validate <- function(self) {
+  for (field in oauth_provider_boolean_fields()) {
+    if (!is_scalar_logical(S7::prop(self, field))) {
+      return(paste0("OAuthProvider: ", field, " must be a single non-NA logical"))
+    }
+  }
   endpoint_problem <- endpoint_auth_metadata_problem(self@endpoint_auth_metadata)
   if (!is.null(endpoint_problem)) return(endpoint_problem)
   # Reuse for all properties (required vs optional mirrors your S7 defs)
