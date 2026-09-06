@@ -382,7 +382,12 @@ parse_jwt_payload_or_null <- function(jwt) {
   Encoding(payload_text) <- "UTF-8"
 
   payload <- tryCatch(
-    jsonlite::fromJSON(payload_text, simplifyVector = TRUE),
+    {
+      reject_duplicate_json_object_members(
+        payload_text, "JWT payload", on_error = function(message) stop(message)
+      )
+      jsonlite::fromJSON(payload_text, simplifyVector = TRUE)
+    },
     error = function(...) NULL
   )
   if (is.data.frame(payload)) {
@@ -601,6 +606,7 @@ jwt_validate_b64_field <- function(value, signal_error) {
 #' @param json_text JSON text to inspect.
 #' @param label Human-readable label used in parse errors.
 #' @param max_depth Maximum permitted object/array nesting depth.
+#' @param on_error Error function; best-effort observers use a quiet local error.
 #' @return Invisibly returns `NULL` on success. Otherwise this function raises a
 #'   parse error.
 #' @keywords internal
@@ -608,7 +614,8 @@ jwt_validate_b64_field <- function(value, signal_error) {
 reject_duplicate_json_object_members <- function(
   json_text,
   label,
-  max_depth = 64L
+  max_depth = 64L,
+  on_error = err_parse
 ) {
   json_text <- enc2utf8(json_text)
   chars <- strsplit(json_text, "", fixed = TRUE)[[1]]
@@ -672,21 +679,21 @@ reject_duplicate_json_object_members <- function(
           base64url_encode(charToRaw(enc2utf8(key)))
         )
         if (exists(key_id, envir = seen, inherits = FALSE)) {
-          err_parse(paste0(label, " contains duplicate member name: ", key))
+          on_error(paste0(label, " contains duplicate member name: ", key))
         }
         assign(key_id, TRUE, envir = seen)
       }
     } else if (identical(ch, "{")) {
       level <- length(container_stack) + 1L
       if (level > max_depth) {
-        err_parse(paste0(label, " exceeds the maximum JSON nesting depth"))
+        on_error(paste0(label, " exceeds the maximum JSON nesting depth"))
       }
       container_stack[[level]] <- "object"
       seen_stack[level] <- list(new.env(hash = TRUE, parent = emptyenv()))
     } else if (identical(ch, "[")) {
       level <- length(container_stack) + 1L
       if (level > max_depth) {
-        err_parse(paste0(label, " exceeds the maximum JSON nesting depth"))
+        on_error(paste0(label, " exceeds the maximum JSON nesting depth"))
       }
       container_stack[[level]] <- "array"
       seen_stack[level] <- list(NULL)
