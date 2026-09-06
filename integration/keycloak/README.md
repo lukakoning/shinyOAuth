@@ -165,6 +165,18 @@ These tests exercise high-priority OAuth2/OIDC protocol behavior against the liv
 | `test_integration_keycloak_jwks_rotation.R` | OIDC JWKS refresh on key rotation | Rotates the disposable Keycloak realm signing key through the admin API; validates refresh-on-new-`kid` and rejects rogue signatures for old/new `kid` values |
 | `test_integration_keycloak_userinfo_jwt.R` | OIDC signed UserInfo JWT | Live RS256 UserInfo JWT from Keycloak is verified, issuer/audience checked, and subject-bound to the validated ID token |
 
+Additional integration suites:
+
+| Test file | Coverage |
+|-----------|----------|
+| `test_integration_browser_proactive_refresh.R` | Short-lived browser tokens refresh proactively and remain usable at UserInfo. |
+| `test_integration_helper_strict_mode.R` | Strict integration mode turns missing infrastructure into failures. |
+| `test_integration_keycloak_code_jwt_auth.R` | Authorization-code flows using `client_secret_jwt` and `private_key_jwt`. |
+| `test_integration_module_shiny_async_audit.R` | File audit events from the main process and a real mirai worker. |
+| `test_integration_module_shiny_browser_expiry.R` | Browser authentication state clears when tokens expire. |
+| `test_integration_module_shiny_browser_introspection.R` | Browser login with live Keycloak token introspection. |
+| `test_integration_module_shiny_future_multisession.R` | Shiny module login using a future multisession worker. |
+
 ## Security test reference
 
 These tests submit altered, reused, or mismatched login requests and check
