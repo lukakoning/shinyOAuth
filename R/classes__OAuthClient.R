@@ -1154,7 +1154,7 @@ oauth_client_validate <- function(self) {
   }
 
   # RFC 6749 Section 3.1.2: redirect URI MUST NOT include a fragment
-  if (nzchar(parsed[["fragment"]] %||% "")) {
+  if (has_uri_fragment(self@redirect_uri)) {
     return(
       "OAuthClient: redirect_uri must not contain a URI fragment (RFC 6749 Section 3.1.2)"
     )

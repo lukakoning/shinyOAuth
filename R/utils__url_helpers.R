@@ -240,6 +240,11 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
     )
   }
 
+  if (has_uri_fragment(u)) {
+    err_config("Endpoint must not contain a fragment component",
+               context = list(endpoint = u))
+  }
+
   p <- try(httr2::url_parse(u), silent = TRUE)
 
   if (inherits(p, "try-error")) {

@@ -1092,7 +1092,7 @@ oauth_provider_validate <- function(self) {
     if (
       !inherits(parsed_issuer, "try-error") &&
         (length(parsed_issuer[["query"]]) > 0L ||
-          nzchar(parsed_issuer[["fragment"]] %||% ""))
+          has_uri_fragment(self@issuer))
     ) {
       return(
         "OAuthProvider: issuer must not contain query or fragment components"
