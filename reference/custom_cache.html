@@ -123,7 +123,8 @@ guarantee single-use under concurrent access in shared stores.</p></dd>
 
 <dt id="arg-set-if-absent">set_if_absent<a class="anchor" aria-label="anchor" href="#arg-set-if-absent"></a></dt>
 <dd><p>A function(key, value, ttl = NULL) -&gt; logical. Optional.</p>
-<p>An atomic set-if-missing operation for shared JWKS caches. It must store
+<p>An atomic set-if-missing operation for shared JWKS caches and callback
+bridge slots. It must store
 <code>value</code> and return <code>TRUE</code> only when <code>key</code> did not already exist; otherwise
 it must leave the existing value unchanged and return <code>FALSE</code>. When <code>ttl</code>
 is supplied, the claimed key must expire after that many seconds. Map this
@@ -131,7 +132,10 @@ to a native backend primitive such as Redis <code>SET ... NX EX</code> or a data
 uniqueness constraint with expiry. shinyOAuth uses this operation to make
 forced JWKS-refresh throttling safe across workers. Without it, forced
 refresh is disabled for shared/custom caches; <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> keeps
-its process-local serialized fallback.</p></dd>
+its process-local serialized fallback.
+Callback bridges use it when available to avoid overwriting concurrent
+candidates; full partitions then reject callbacks until slots expire or
+are consumed. Other state-store writes still use <code>set</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

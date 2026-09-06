@@ -119,6 +119,11 @@ propagation. Default: <code>TRUE</code>
 disable ‘shinyOAuth’ OpenTelemetry log emission. Default:
 <code>TRUE</code>
 </li>
+<li>
+<code>options(shinyOAuth.otel_include_authorization_details = TRUE)</code>
+– include raw scope names, claim targets, and ACR values in telemetry.
+Default: <code>FALSE</code> (counts only). These fields may be sensitive
+and have high cardinality.</li>
 </ul>
 <p>See the <a href="audit-logging.html">audit logging vignette</a> for
 details about audit hooks, and the <a href="opentelemetry.html">OpenTelemetry vignette</a> for more details

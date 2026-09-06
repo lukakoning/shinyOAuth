@@ -134,7 +134,7 @@ client <- oauth_client(
 ui <- oauth_ui(fluidPage(
   # Show login information:
   uiOutput("login_information")
-))
+), id = "auth", client = client)
 
 # Server which obtains authentication
 server <- function(input, output, session) {

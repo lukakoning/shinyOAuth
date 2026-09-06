@@ -56,7 +56,7 @@ ui <- oauth_ui(fluidPage(
   h2("My top tracks"),
   actionButton("load", "Load top tracks"),
   tableOutput("tracks")
-))
+), id = "auth", client = client)
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)

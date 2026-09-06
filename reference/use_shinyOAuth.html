@@ -85,7 +85,12 @@ this protection from the start of page loading.</p></dd>
 sent as referrers when page resources load. When using <code>use_shinyOAuth()</code>
 directly, set that header in your HTTP response configuration for protection
 from the start of page loading; the optional meta tag takes effect later.
-<code><a href="oauth_ui.html">oauth_ui()</a></code> and <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code> already include this dependency.</p>
+<code><a href="oauth_ui.html">oauth_ui()</a></code> and <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code> already include this dependency.
+The dependency alone does not provide a callback bridge. Do not load
+application or third-party scripts on raw OAuth callback pages; use
+<code>oauth_ui(ui, id, client)</code> or a dedicated equivalent endpoint to redirect to
+a clean URL before rendering the app. Callback responses must also send
+<code>Cache-Control: no-store</code> and <code>Pragma: no-cache</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

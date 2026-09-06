@@ -180,6 +180,40 @@ refresh: opt in through <code>extra_headers</code> at each other
 endpoint that should receive those headers, even on the same origin.</p>
 </div>
 <div class="section level2">
+<h2 id="callback-pages-and-application-scripts">Callback pages and application scripts<a class="anchor" aria-label="anchor" href="#callback-pages-and-application-scripts"></a>
+</h2>
+<p>Use <code>oauth_ui(ui, id = "auth", client = client)</code> for query
+and query-JARM responses. The ID and client must match
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The wrapper validates callbacks and
+stores sealed, short-lived responses, then redirects to a one-time
+bridge URL before invoking the application UI. State remains single-use
+and browser-bound. Missing bridge configuration rejects raw callbacks;
+existing <code>oauth_ui(ui)</code> setups must add <code>id</code> and
+<code>client</code>.</p>
+<p>Callback and HTML responses send
+<code>Cache-Control: no-store</code>, <code>Pragma: no-cache</code>, and
+<code>Referrer-Policy: no-referrer</code>. These do not remove upstream
+access logs: configure proxies and hosting logs to omit callback
+queries. Keep third-party scripts off any unsanitized callback page,
+including when using <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> with a custom HTTP
+integration. Register fixed tenant or routing query parameters in the
+redirect URI; unregistered inbound parameters are discarded on
+continuation. For trusted HTTPS-terminating proxies, use
+<code>request_uri_resolver</code> with the same trust checks as
+<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
+</div>
+<div class="section level2">
+<h2 id="trusted-id-token-audiences">Trusted ID-token audiences<a class="anchor" aria-label="anchor" href="#trusted-id-token-audiences"></a>
+</h2>
+<p>ID tokens with multiple audiences remain rejected by default. If an
+issuer legitimately includes another trusted audience, configure
+<code>trusted_id_token_audiences = c("trusted-service")</code> on
+<code><a href="../reference/oauth_client.html">oauth_client()</a></code>. The token must still include this client’s
+ID in <code>aud</code>, and <code>azp</code> must equal this client’s ID
+when there are multiple audiences. Other audiences, incorrect authorized
+parties, and invalid signatures are rejected.</p>
+</div>
+<div class="section level2">
 <h2 id="mutual-tls-mtls">Mutual TLS (mTLS)<a class="anchor" aria-label="anchor" href="#mutual-tls-mtls"></a>
 </h2>
 <p>With mutual TLS (mTLS), the client presents a certificate during the
@@ -629,10 +663,13 @@ construction. Adding query parameters is allowed. Use
 <h2 id="signature-and-encryption-support">Signature and encryption support<a class="anchor" aria-label="anchor" href="#signature-and-encryption-support"></a>
 </h2>
 <p>For outgoing private-key client assertions, JAR, and DPoP, signing
-supports <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, and
-<code>ES512</code>. Secret-based assertions and JAR support
+supports <code>RS256</code>, <code>ES256</code>, <code>ES384</code>,
+<code>ES512</code>, and <code>EdDSA</code> with Ed25519 keys. Ed25519
+accepts an OpenSSL private key or PEM; DPoP embeds only its public OKP
+JWK. Algorithm inference and explicit choices remain constrained by
+provider metadata. Secret-based assertions and JAR support
 <code>HS256</code>, <code>HS384</code>, and <code>HS512</code>. RSA-PSS
-and EdDSA are not supported for outgoing signatures. Incoming signature
+and Ed448 are not supported for outgoing signatures. Incoming signature
 policies are separate; see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html"><code>oauth_provider()</code></a>
 and the <code>jarm_*</code> arguments in <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html"><code>oauth_client()</code></a>.</p>
 <p>Request Object encryption and JARM decryption support
@@ -640,6 +677,15 @@ and the <code>jarm_*</code> arguments in <a href="https://lukakoning.github.io/s
 <code>A192CBC-HS384</code>, or <code>A256CBC-HS512</code>. This does not
 imply support for encrypted ID tokens or encrypted userinfo, which are
 rejected.</p>
+<p>The R <code>openssl</code> API currently exposes neither OAEP digest
+selection nor RSA-PSS padding options. Its GCM functions do not accept
+the additional authenticated data needed to authenticate JWE protected
+headers. Consequently, <code>RSA-OAEP-256</code>,
+<code>PS256/384/512</code>, and <code>A128/192/256GCM</code> JWE modes
+remain unsupported and fail closed; provider metadata never causes a
+fallback to another algorithm. These are backend interoperability
+limits, not interchangeable names for the supported modes. See the <a href="https://jeroen.r-universe.dev/openssl/doc/manual.html" class="external-link">OpenSSL R
+API</a>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

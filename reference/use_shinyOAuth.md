@@ -43,7 +43,12 @@ optional meta tag takes effect later.
 [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
 and
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-already include this dependency.
+already include this dependency. The dependency alone does not provide a
+callback bridge. Do not load application or third-party scripts on raw
+OAuth callback pages; use `oauth_ui(ui, id, client)` or a dedicated
+equivalent endpoint to redirect to a clean URL before rendering the app.
+Callback responses must also send `Cache-Control: no-store` and
+`Pragma: no-cache`.
 
 ## See also
 

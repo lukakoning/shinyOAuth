@@ -60,7 +60,7 @@ client <- oauth_client(
 ui <- oauth_ui(fluidPage(
   h2("My app"),
   textOutput("greeting")
-))
+), id = "auth", client = client)
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
@@ -94,9 +94,9 @@ The **redirect URI**, also called the callback URL, is the address where
 the provider sends the browser back. Register it with the provider and
 use the same value in
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-including scheme, host, port, and path. **Scopes** are named
-permissions, such as `read:user`; the provider defines which names are
-available.
+including scheme, host, port, path, and fixed query parameters.
+**Scopes** are named permissions, such as `read:user`; the provider
+defines which names are available.
 
 Create your provider and client outside `server()` so they remain
 available when the browser returns from login. Create the module inside
@@ -139,7 +139,7 @@ ui <- oauth_ui(fluidPage(
   actionButton("login", "Sign in"),
   actionButton("logout", "Sign out"),
   textOutput("status")
-))
+), id = "auth", client = client)
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client, auto_redirect = FALSE)

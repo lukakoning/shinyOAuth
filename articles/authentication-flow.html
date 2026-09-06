@@ -129,8 +129,12 @@ exclusions again at serialization. Applications must not copy
 <code>auth$browser_token</code> into their own bookmark values or
 logs.</p>
 <p>Wrap your UI in <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.html"><code>oauth_ui()</code></a>
-to prevent callback addresses from being sent as referrers when the page
-loads.</p>
+with the module ID and client
+(<code>oauth_ui(ui, id = "auth", client = client)</code>). Query
+callbacks are validated and stored before a redirect to a one-time URL;
+only then does the application UI load. Responses disable caching and
+referrer disclosure. Logical state still requires browser binding before
+consumption.</p>
 </div>
 <div class="section level3">
 <h3 id="decide-whether-to-start-login">2. Decide whether to start login<a class="anchor" aria-label="anchor" href="#decide-whether-to-start-login"></a>

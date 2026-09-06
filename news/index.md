@@ -2,6 +2,45 @@
 
 ## shinyOAuth (development version)
 
+- Client assertions, Request Objects, and DPoP can now sign with Ed25519
+  (`EdDSA`) through OpenSSL, with key-aware defaults and provider
+  algorithm restrictions. DPoP exports only the public OKP JWK. RSA-PSS,
+  OAEP-SHA256, and GCM JWE modes remain explicit backend limitations.
+
+- Query and query-JARM callbacks now use
+  `oauth_ui(ui, id = "auth", client = client)` to validate and seal
+  responses before redirecting to a one-time URL and rendering
+  application scripts. Existing query-flow applications must add the
+  module ID and client; unconfigured raw callbacks fail closed. HTML and
+  callback responses prohibit caching and referrer disclosure.
+
+- Callback routing enforces registered fixed query parameters, including
+  repeated values. Bridge continuation URLs preserve only registered
+  application parameters and the one-time bridge handle.
+
+- Callback bridge storage now has HMAC-derived client, provider, key,
+  and module namespaces with independent bounded quotas. Custom caches
+  with `set_if_absent` claim slots atomically without replacing
+  concurrent writes.
+
+- OpenTelemetry omits raw scope names, claim targets, and ACR values by
+  default, while retaining counts. Set
+  `shinyOAuth.otel_include_authorization_details = TRUE` to opt in
+  explicitly.
+
+- Added `trusted_id_token_audiences` for explicitly trusted additional
+  OIDC ID token audiences. The default remains client-ID-only;
+  multi-audience tokens still require a matching `azp` and all normal
+  signature and claim checks.
+
+- RSA keys used for client assertions, Request Objects, or DPoP must
+  have at least 2048 bits. Weak keys now fail during client
+  construction, including when the signing algorithm is inferred.
+
+- JARM discovery now uses registered `authorization_*_values_supported`
+  metadata, falls back to legacy `jarm_*` aliases only when absent, and
+  rejects conflicting values.
+
 - Added `mtls_require_observed_cnf` (default `TRUE`) to separate strict
   local confirmation from certificate presentation. For server-enforced
   opaque certificate-bound tokens, set

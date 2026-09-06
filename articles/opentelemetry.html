@@ -166,6 +166,27 @@ easy to find alongside Shiny’s reactive-update spans.</li>
 </div>
 </div>
 <div class="section level2">
+<h2 id="authorization-metadata-privacy">Authorization metadata privacy<a class="anchor" aria-label="anchor" href="#authorization-metadata-privacy"></a>
+</h2>
+<p>Scope names, claim target names, and ACR values are omitted by
+default. The corresponding counts remain available, including
+<code>oauth.claims.targets_count</code> and
+<code>oauth.scopes.granted_count</code>. To include names in a
+controlled environment:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.otel_include_authorization_details <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>This option enables <code>oauth.scopes.requested</code>,
+<code>oauth.scopes.granted</code>, <code>oauth.claims.targets</code>,
+and <code>oauth.required_acr_values</code> in the catalog below. It is
+propagated to asynchronous workers. These names can reveal tenants,
+privileges, sensitive data categories, or authentication strength, and
+can create high-cardinality telemetry. Restrict exporter and dashboard
+access, set a short retention period appropriate to the diagnostic need,
+and avoid indexing these fields unless needed. Keep
+<code>shinyOAuth.expose_error_body</code> disabled in production; the
+authorization-details option does not enable it.</p>
+</div>
+<div class="section level2">
 <h2 id="span-catalog">Span catalog<a class="anchor" aria-label="anchor" href="#span-catalog"></a>
 </h2>
 <p>Use this as a reference for a span you see in your tracing system.

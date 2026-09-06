@@ -41,6 +41,10 @@ app setup.
   propagation. Default: `TRUE`
 - `options(shinyOAuth.otel_logging_enabled = FALSE)` – disable
   ‘shinyOAuth’ OpenTelemetry log emission. Default: `TRUE`
+- `options(shinyOAuth.otel_include_authorization_details = TRUE)` –
+  include raw scope names, claim targets, and ACR values in telemetry.
+  Default: `FALSE` (counts only). These fields may be sensitive and have
+  high cardinality.
 
 See the [audit logging
 vignette](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)

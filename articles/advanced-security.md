@@ -127,6 +127,40 @@ authentication settings unless explicitly overridden.
 through `extra_headers` at each other endpoint that should receive those
 headers, even on the same origin.
 
+## Callback pages and application scripts
+
+Use `oauth_ui(ui, id = "auth", client = client)` for query and
+query-JARM responses. The ID and client must match
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+The wrapper validates callbacks and stores sealed, short-lived
+responses, then redirects to a one-time bridge URL before invoking the
+application UI. State remains single-use and browser-bound. Missing
+bridge configuration rejects raw callbacks; existing `oauth_ui(ui)`
+setups must add `id` and `client`.
+
+Callback and HTML responses send `Cache-Control: no-store`,
+`Pragma: no-cache`, and `Referrer-Policy: no-referrer`. These do not
+remove upstream access logs: configure proxies and hosting logs to omit
+callback queries. Keep third-party scripts off any unsanitized callback
+page, including when using
+[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+with a custom HTTP integration. Register fixed tenant or routing query
+parameters in the redirect URI; unregistered inbound parameters are
+discarded on continuation. For trusted HTTPS-terminating proxies, use
+`request_uri_resolver` with the same trust checks as
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+
+## Trusted ID-token audiences
+
+ID tokens with multiple audiences remain rejected by default. If an
+issuer legitimately includes another trusted audience, configure
+`trusted_id_token_audiences = c("trusted-service")` on
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+The token must still include this client’s ID in `aud`, and `azp` must
+equal this client’s ID when there are multiple audiences. Other
+audiences, incorrect authorized parties, and invalid signatures are
+rejected.
+
 ## Mutual TLS (mTLS)
 
 With mutual TLS (mTLS), the client presents a certificate during the TLS
@@ -611,8 +645,11 @@ to manage nonce retries.
 ## Signature and encryption support
 
 For outgoing private-key client assertions, JAR, and DPoP, signing
-supports `RS256`, `ES256`, `ES384`, and `ES512`. Secret-based assertions
-and JAR support `HS256`, `HS384`, and `HS512`. RSA-PSS and EdDSA are not
+supports `RS256`, `ES256`, `ES384`, `ES512`, and `EdDSA` with Ed25519
+keys. Ed25519 accepts an OpenSSL private key or PEM; DPoP embeds only
+its public OKP JWK. Algorithm inference and explicit choices remain
+constrained by provider metadata. Secret-based assertions and JAR
+support `HS256`, `HS384`, and `HS512`. RSA-PSS and Ed448 are not
 supported for outgoing signatures. Incoming signature policies are
 separate; see
 [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html)
@@ -623,3 +660,12 @@ Request Object encryption and JARM decryption support `RSA-OAEP` with
 `A128CBC-HS256`, `A192CBC-HS384`, or `A256CBC-HS512`. This does not
 imply support for encrypted ID tokens or encrypted userinfo, which are
 rejected.
+
+The R `openssl` API currently exposes neither OAEP digest selection nor
+RSA-PSS padding options. Its GCM functions do not accept the additional
+authenticated data needed to authenticate JWE protected headers.
+Consequently, `RSA-OAEP-256`, `PS256/384/512`, and `A128/192/256GCM` JWE
+modes remain unsupported and fail closed; provider metadata never causes
+a fallback to another algorithm. These are backend interoperability
+limits, not interchangeable names for the supported modes. See the
+[OpenSSL R API](https://jeroen.r-universe.dev/openssl/doc/manual.html).

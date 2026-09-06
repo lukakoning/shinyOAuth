@@ -63,8 +63,12 @@ exclusions again at serialization. Applications must not copy
 
 Wrap your UI in
 [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.html)
-to prevent callback addresses from being sent as referrers when the page
-loads.
+with the module ID and client
+(`oauth_ui(ui, id = "auth", client = client)`). Query callbacks are
+validated and stored before a redirect to a one-time URL; only then does
+the application UI load. Responses disable caching and referrer
+disclosure. Logical state still requires browser binding before
+consumption.
 
 ### 2. Decide whether to start login
 

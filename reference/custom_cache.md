@@ -82,17 +82,20 @@ custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
 
   A function(key, value, ttl = NULL) -\> logical. Optional.
 
-  An atomic set-if-missing operation for shared JWKS caches. It must
-  store `value` and return `TRUE` only when `key` did not already exist;
-  otherwise it must leave the existing value unchanged and return
-  `FALSE`. When `ttl` is supplied, the claimed key must expire after
-  that many seconds. Map this to a native backend primitive such as
-  Redis `SET ... NX EX` or a database uniqueness constraint with expiry.
-  shinyOAuth uses this operation to make forced JWKS-refresh throttling
-  safe across workers. Without it, forced refresh is disabled for
-  shared/custom caches;
+  An atomic set-if-missing operation for shared JWKS caches and callback
+  bridge slots. It must store `value` and return `TRUE` only when `key`
+  did not already exist; otherwise it must leave the existing value
+  unchanged and return `FALSE`. When `ttl` is supplied, the claimed key
+  must expire after that many seconds. Map this to a native backend
+  primitive such as Redis `SET ... NX EX` or a database uniqueness
+  constraint with expiry. shinyOAuth uses this operation to make forced
+  JWKS-refresh throttling safe across workers. Without it, forced
+  refresh is disabled for shared/custom caches;
   [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
-  keeps its process-local serialized fallback.
+  keeps its process-local serialized fallback. Callback bridges use it
+  when available to avoid overwriting concurrent candidates; full
+  partitions then reject callbacks until slots expire or are consumed.
+  Other state-store writes still use `set`.
 
 ## Value
 

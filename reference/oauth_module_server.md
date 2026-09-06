@@ -336,9 +336,13 @@ if (
 
   # Example app with auto-redirect (1) -----------------------------------------
 
-  ui_1 <- oauth_ui(fluidPage(
-    uiOutput("login")
-  ))
+  ui_1 <- oauth_ui(
+    fluidPage(
+      uiOutput("login")
+    ),
+    id = "auth",
+    client = client
+  )
 
   server_1 <- function(input, output, session) {
     # Auto-redirect (default):
@@ -372,11 +376,15 @@ if (
 
   # Example app with manual login button (2) -----------------------------------
 
-  ui_2 <- oauth_ui(fluidPage(
-    actionButton("login_btn", "Login"),
-    actionButton("logout_btn", "Logout"),
-    uiOutput("login")
-  ))
+  ui_2 <- oauth_ui(
+    fluidPage(
+      actionButton("login_btn", "Login"),
+      actionButton("logout_btn", "Logout"),
+      uiOutput("login")
+    ),
+    id = "auth",
+    client = client
+  )
 
   server_2 <- function(input, output, session) {
     auth <- oauth_module_server(
@@ -419,9 +427,13 @@ if (
   # Below app shows the authenticated username + their GitHub repositories,
   # fetched via GitHub API using the access token obtained during login
 
-  ui_3 <- oauth_ui(fluidPage(
-    uiOutput("ui")
-  ))
+  ui_3 <- oauth_ui(
+    fluidPage(
+      uiOutput("ui")
+    ),
+    id = "auth",
+    client = client
+  )
 
   server_3 <- function(input, output, session) {
     auth <- oauth_module_server(

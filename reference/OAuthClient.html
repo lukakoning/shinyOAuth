@@ -110,7 +110,8 @@ resolves defaults from the provider and the supplied client settings.</p>
 <span>  jarm_decryption_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  jarm_decryption_private_key_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  jarm_max_lifetime <span class="op">=</span> <span class="fl">600</span>,</span>
-<span>  mtls_require_observed_cnf <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  mtls_require_observed_cnf <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  trusted_id_token_audiences <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -350,9 +351,9 @@ at the token endpoint. Can be an <code>openssl::key</code> or a PEM string conta
 private key. Required when the provider's <code>token_auth_style = 'private_key_jwt'</code>.
 Also used to sign JAR Request Objects, regardless of the token auth style.
 Current outbound private-key JWT signing
-supports RSA and EC private keys. For RSA keys, outbound signing is currently
+supports RSA, EC, and Ed25519 private keys. For RSA keys, outbound signing is currently
 limited to <code>RS256</code>; <code>RS384</code>, <code>RS512</code>, and RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>)
-are not supported. Ed25519/Ed448 keys are also not currently supported.</p></dd>
+are not supported. Ed25519 keys use <code>EdDSA</code>; Ed448 is not supported.</p></dd>
 
 
 <dt id="arg-client-assertion-private-key-kid">client_assertion_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-client-assertion-private-key-kid"></a></dt>
@@ -365,14 +366,14 @@ select the correct verification key.</p></dd>
 <dd><p>Optional JWT signing algorithm to use for client assertions.
 When omitted, defaults to <code>HS256</code> for <code>client_secret_jwt</code>. For <code>private_key_jwt</code>, a
 compatible default is selected based on the private key type/curve (e.g., <code>RS256</code> for RSA
-or <code>ES256</code>/<code>ES384</code>/<code>ES512</code> for EC P-256/384/521). If an explicit
+or <code>ES256</code>/<code>ES384</code>/<code>ES512</code> for EC P-256/384/521, or <code>EdDSA</code> for Ed25519). If an explicit
 value is provided but incompatible with the key, validation fails early with a configuration
 error. When the provider advertises
 <code>token_endpoint_auth_signing_alg_values_supported</code>, both explicit values and
 inferred defaults must be included in that set.
 Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> for client_secret_jwt and asymmetric algorithms
-supported for outbound signing (<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>) for
-private keys. <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, <code>PS512</code>, and <code>EdDSA</code>
+supported for outbound signing (<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
+<code>EdDSA</code> with Ed25519 keys) for private keys. <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code>
 are not currently supported for outbound client assertions.</p></dd>
 
 
@@ -435,10 +436,10 @@ whose binding is enforced only by the servers, keep
 <dd><p>Private key for tying tokens to this app's requests
 using Demonstrating Proof of Possession (DPoP). Only needed when your
 provider/API supports DPoP. Accepts an
-<code>openssl::key</code> or PEM private-key string, using RSA or EC.
+<code>openssl::key</code> or PEM private-key string, using RSA, EC, or Ed25519.
 <code><a href="oauth_client.html">oauth_client()</a></code> then defaults <code>dpop_require_access_token</code> to <code>TRUE</code>.
-Supported signing algorithms are <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, and <code>ES512</code>;
-RSA-PSS, other RSA signing algorithms, and EdDSA are not supported for
+Supported signing algorithms are <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
+<code>EdDSA</code> with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
 outgoing proofs. See <code>dpop_signing_alg</code> and the <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a>.</p></dd>
 
 
@@ -452,7 +453,7 @@ server expects a stable key identifier alongside the embedded public JWK.</p></d
 <dd><p>Optional JWT signing algorithm to use for DPoP
 proofs. When omitted, a compatible asymmetric default is selected based on
 the private key type/curve (for example <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or
-<code>ES512</code>). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, <code>PS512</code>, and <code>EdDSA</code> are
+<code>ES512</code>, or <code>EdDSA</code> for Ed25519). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code> are
 not currently supported for outbound DPoP proofs. If an explicit value is
 provided but incompatible with the key, validation fails early with a
 configuration error. When the provider advertises
@@ -520,8 +521,8 @@ signed authorization requests when <code>request_object_mode</code> uses a
 Request Object (<code>"request"</code> or <code>"request_uri"</code>).
 When omitted, shinyOAuth chooses <code>HS256</code> for HMAC-based signing or a
 compatible asymmetric default based on <code>client_assertion_private_key</code> (for example
-<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or <code>ES512</code>). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>,
-<code>PS384</code>, <code>PS512</code>, and <code>EdDSA</code> are not currently supported for outbound
+<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, or <code>EdDSA</code> for Ed25519). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>,
+<code>PS384</code>, and <code>PS512</code> are not currently supported for outbound
 signed authorization requests.</p></dd>
 
 
@@ -639,6 +640,15 @@ the client cannot observe; this does not disable certificate presentation
 or mTLS endpoint selection. Missing confirmation is then allowed, but
 any observed confirmation is still validated, including mismatches and
 conflicting claims. This flag does not independently enable mTLS.</p></dd>
+
+
+<dt id="arg-trusted-id-token-audiences">trusted_id_token_audiences<a class="anchor" aria-label="anchor" href="#arg-trusted-id-token-audiences"></a></dt>
+<dd><p>Character vector of additional ID-token
+audiences explicitly trusted by this client. Defaults to <code>character(0)</code>,
+which permits only <code>client_id</code>. The token must always include <code>client_id</code>
+in <code>aud</code>; multi-audience tokens must also have <code>azp</code> equal to <code>client_id</code>.
+Values are matched exactly and case-sensitively. Configure only audiences
+trusted for this application's identity tokens, not arbitrary API audiences.</p></dd>
 
 </dl></div>
     <div class="section level2">
