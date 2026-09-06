@@ -569,7 +569,7 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
 
   # Validate each key minimally and ensure no private params leaked
   supported_seen <- 0L
-  private_params <- c("d", "p", "q", "dp", "dq", "qi", "oth")
+  private_params <- c("d", "p", "q", "dp", "dq", "qi", "oth", "k")
   thumbprints <- character()
   for (i in seq_along(ks)) {
     k <- ks[[i]]
@@ -602,7 +602,7 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
       }
     }
     # No private key parameters in a JWKS
-    if (any(names(k) %in% private_params)) {
+    if (identical(kty, "oct") || any(names(k) %in% private_params)) {
       err_parse("JWKS contains private key material")
     }
     if (kty %in% c("RSA", "EC", "OKP")) {
