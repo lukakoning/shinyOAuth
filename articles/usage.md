@@ -372,12 +372,20 @@ for the backend contract.
 - Keep the provider’s validation defaults and choose any extra
   protections to match your provider and deployment requirements.
 
-The module uses a short-lived browser cookie to link a returning login
-to the browser that started it. JavaScript must be able to read this
-cookie, so preventing injected scripts (cross-site scripting, or XSS) in
-your app matters. This link cannot establish which account you expected
-to sign in: check that account yourself when your app has such a
-requirement.
+The module links a returning login to the browser using an origin-scoped
+token in local storage and an independent, short-lived cookie marker.
+Cookies and local storage must both be available. JavaScript reads this
+binding, so preventing injected scripts (cross-site scripting, or XSS)
+in your app matters. This link cannot establish which account you
+expected to sign in: check that account yourself when your app has such
+a requirement.
+
+Treat the entire hostname as a trust boundary and use a dedicated
+hostname if other services are untrusted. Cookies are shared across
+ports, even with `__Host-`, `Secure`, or `HttpOnly`. The local-storage
+check prevents another port from adopting a cookie as a binding, but
+cannot prevent cookie disruption. Different paths on the same origin
+also share local storage.
 
 ## Troubleshooting
 

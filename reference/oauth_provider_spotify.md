@@ -78,31 +78,31 @@ oauth_provider_spotify()
 #>  @ jwks_cache                                      :List of 9
 #>  .. $ get   :function (key, missing = missing_)  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 232 10 263 3 10 3 933 964
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. $ set   :function (key, value)  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 265 10 335 3 10 3 966 1036
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. $ exists:function (key)  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 337 13 360 3 13 3 1038 1061
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. $ keys  :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 362 11 374 3 11 3 1063 1075
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. $ remove:function (key)  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 376 13 381 3 13 3 1077 1082
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. $ reset :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 217 12 230 3 12 3 918 931
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. $ prune :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 383 12 447 3 12 3 1084 1148
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. $ size  :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 449 11 458 3 11 3 1150 1159
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. $ info  :function ()  
 #>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 460 11 469 3 11 3 1161 1170
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55aa2c7e9078> 
+#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x55a1fe8a3378> 
 #>  .. - attr(*, "class")= chr [1:2] "cache_mem" "cachem"
 #>  @ jwks_pins                                       : chr(0) 
 #>  @ jwks_pin_mode                                   : chr "any"

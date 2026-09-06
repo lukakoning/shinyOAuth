@@ -83,6 +83,34 @@ credentials, and key paths with your registered values. Each example
 shows the settings for the feature being discussed.</p>
 </div>
 <div class="section level2">
+<h2 id="browser-binding-and-deployment-boundary">Browser binding and deployment boundary<a class="anchor" aria-label="anchor" href="#browser-binding-and-deployment-boundary"></a>
+</h2>
+<p>Use HTTPS and treat every service on the same hostname as trusted,
+including services on other ports. Cookie scope does not include the
+port, as specified in <a href="https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5" class="external-link">RFC 6265
+section 8.5</a>. The <code>__Host-</code> prefix prevents sibling-domain
+cookie injection; it does not isolate ports. Signed or
+<code>HttpOnly</code> cookies still reach same-host services in HTTP
+requests. Use a dedicated hostname when those services are
+untrusted.</p>
+<p>shinyOAuth keeps the actual browser-binding token in origin-scoped
+local storage, accompanied by an independent random cookie marker. It
+restores the binding only when the cookie matches an unexpired local
+record. Reading or planting a cookie on another port cannot establish
+that record. Cookie disruption can still abort login; pages and scripts
+on the same origin can access local storage, so XSS prevention remains
+necessary. Cookies, local storage, and Web Crypto must be available, and
+pending logins from older cookie-only versions must be restarted after
+upgrading.</p>
+<p>Each new authorization request gets a fresh server-selected binding.
+Private module inputs are excluded from both URL and disk bookmarks.
+Avoid copying browser tokens into custom bookmark values or logs. The
+acknowledgment is a delivery check, not independent server verification
+of HTTP cookie possession. The standalone <code><a href="../reference/prepare_call.html">prepare_call()</a></code>
+and <code><a href="../reference/handle_callback.html">handle_callback()</a></code> APIs still require the caller to
+establish and protect their own browser binding.</p>
+</div>
+<div class="section level2">
 <h2 id="provider-metadata-and-oidc-discovery">Provider metadata and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-metadata-and-oidc-discovery"></a>
 </h2>
 <p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> reads provider metadata

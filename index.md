@@ -56,10 +56,10 @@ providers and protocol features.
   Auth0).
 
 - Security best practices: AES-GCM–sealed state payloads (AEAD),
-  server-side state validation coupled with local cookie verification,
-  HTTPS enforcement, PKCE (S256), ID token signature/claims validation
-  (including nonce), userinfo subject match, support for DPoP, mTLS,
-  JAR, PAR, and more (see
+  server-side state validation coupled with origin-scoped browser
+  binding, HTTPS enforcement, PKCE (S256), ID token signature/claims
+  validation (including nonce), userinfo subject match, support for
+  DPoP, mTLS, JAR, PAR, and more (see
   [`vignette("authentication-flow", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
   ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)))
 
@@ -70,6 +70,15 @@ providers and protocol features.
   and
   [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
   ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)))
+
+Deploy authentication on a hostname whose services you trust, or use a
+dedicated hostname. Cookies are shared across all ports of a hostname;
+`__Host-`, `Secure`, and `HttpOnly` do not provide port isolation.
+shinyOAuth keeps its binding token in origin-scoped local storage and
+checks an independent cookie marker, so another port cannot establish a
+binding by reading or replacing that cookie. Other services can still
+disrupt cookies. The browser must allow cookies, local storage, and Web
+Crypto.
 
 ## Installation
 
