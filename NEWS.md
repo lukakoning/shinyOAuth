@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Form-post callbacks now receive independent random bridge handles, preventing
+  an earlier response for the same login from replacing the response delivered
+  to the initiating browser. Candidates expire within 120 seconds, use bounded
+  storage, and are cleaned up after browser-bound state consumption. This also
+  applies to signed and encrypted JARM callbacks and provider error responses.
+
 * RSA JWK validation now rejects invalid public exponents, even moduli, and
   noncanonical or nonminimal integer encodings before keys are imported or
   used for JWT verification.

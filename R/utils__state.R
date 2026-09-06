@@ -1056,6 +1056,10 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
     )
   }
 
+  if (client@response_mode %in% c("form_post", "form_post.jwt")) {
+    oauth_form_post_store_remove_siblings(client, state)
+  }
+
   ssv
 }
 

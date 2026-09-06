@@ -4593,6 +4593,65 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
     }
   )
 })
+test_that("signed and encrypted form_post JARM keep response candidates independent", {
+  sig_key <- openssl::rsa_keygen(2048)
+  decrypt_key <- openssl::rsa_keygen(2048)
+  jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
+  local_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
+  for (encrypted in c(FALSE, TRUE)) {
+    for (first_error in c(FALSE, TRUE)) {
+      for (follow_first in c(FALSE, TRUE)) {
+        for (final_error in c(FALSE, TRUE)) {
+          client <- if (encrypted) {
+            make_jarm_test_client(
+              response_mode = "form_post.jwt",
+              jarm_encrypted_response_alg = "RSA-OAEP",
+              jarm_encrypted_response_enc = "A256CBC-HS512",
+              jarm_decryption_private_key = decrypt_key
+            )
+          } else {
+            make_jarm_test_client(response_mode = "form_post.jwt")
+          }
+          ui <- oauth_form_post_ui(shiny::fluidPage(), "auth", client)
+          expect_form_post_candidate_isolation(
+            client,
+            post_candidate = function(fields) {
+              response <- make_signed_jarm(
+                c(
+                  list(
+                    iss = client@provider@issuer,
+                    aud = client@client_id,
+                    exp = floor(as.numeric(Sys.time())) + 300
+                  ),
+                  fields
+                ),
+                key = sig_key,
+                kid = "sig-1"
+              )
+              if (encrypted) {
+                response <- make_encrypted_jarm(
+                  response,
+                  decrypt_key$pubkey,
+                  cty = "JWT"
+                )
+              }
+              ui(make_jarm_form_post_req(
+                body = httr2::url_query_build(list(response = response))
+              ))
+            },
+            first_error = first_error,
+            follow_first = follow_first,
+            final_error = final_error
+          )
+        }
+      }
+    }
+  }
+})
+
 test_that("JARM verifies Ed25519 signatures and rejects corruption", {
   skip_if_not_installed("sodium")
   secret <- sodium::sig_keygen()

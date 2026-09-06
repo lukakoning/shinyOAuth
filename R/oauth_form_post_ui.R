@@ -28,8 +28,17 @@
 #' single-use handle. Raw callback values do not appear in that redirected URL.
 #' For `"form_post.jwt"`, it also validates the signed response using
 #' JWT Secured Authorization Response Mode (JARM).
-#' The handle expires after the smaller of `state_payload_max_age` and the
-#' state store lifetime. The module still verifies the browser binding.
+#' Every POST receives its own random handle. Handles expire after 120 seconds
+#' or the smaller of `state_payload_max_age` and the state store lifetime.
+#' The module still verifies the browser binding before consuming login state.
+#' Pending responses use a bounded pool in the state store: 256 partitions of
+#' eight slots, with each login assigned to one partition. When a partition is
+#' full, a new POST replaces its oldest response. An expired or replaced handle
+#' fails validation; it can never select the replacement response. Completed
+#' logins remove their remaining candidates. Shared stores still require atomic
+#' `take`; no additional backend methods are needed. Concurrent writers can also
+#' replace a candidate; handle validation fails closed in that case. Pending
+#' form-post handles issued by an older version must be restarted after upgrading.
 #'
 #' @section Deployment behind a proxy:
 #' If a proxy receives HTTPS and forwards HTTP to Shiny, supply a
@@ -962,10 +971,88 @@ oauth_form_post_cache_key <- function(id, handle) {
     err_invalid_state("Invalid form_post callback handle")
   }
 
-  paste0(
-    "formpost",
-    raw_to_hex_lower(openssl::sha256(charToRaw(paste(id, handle, sep = "\n"))))
+  # The locator selects a bounded storage slot, never the response identity.
+  # Only the full random handle authenticated inside the envelope can do that.
+  if (grepl("^fp1_[0-9]{4}_[A-Za-z0-9_-]{43}$", handle)) {
+    slot <- as.integer(substr(handle, 5L, 8L))
+    if (slot >= 1L && slot <= 2048L) {
+      return(oauth_form_post_slot_key(slot))
+    }
+  }
+
+  # Pre-upgrade transaction-wide handles are deliberately not resumed.
+  err_invalid_state("Invalid form_post callback handle")
+}
+
+oauth_form_post_slot_key <- function(slot) {
+  paste0("formpostslot", sprintf("%04d", slot))
+}
+
+oauth_form_post_candidate_slots <- function(state) {
+  # Fixed keys keep both per-transaction and total storage bounded even when
+  # shared-store writers race. Hash collisions only share eviction capacity.
+  partition <- as.integer(openssl::sha256(charToRaw(state))[[1L]])
+  partition * 8L + seq_len(8L)
+}
+
+oauth_form_post_candidate_envelope <- function(client, sealed) {
+  if (!is_valid_string(sealed)) {
+    return(NULL)
+  }
+  tryCatch(
+    state_decrypt_gcm(
+      sealed,
+      client@state_key,
+      size_limits = oauth_form_post_envelope_limits()
+    ),
+    error = function(e) NULL
   )
+}
+
+oauth_form_post_candidate_slot <- function(client, state) {
+  slots <- oauth_form_post_candidate_slots(state)
+  timestamps <- vapply(
+    slots,
+    function(slot) {
+      sealed <- state_store_backend_call(
+        client@state_store$get(oauth_form_post_slot_key(slot), missing = NULL),
+        "form_post_store_get"
+      )
+      envelope <- oauth_form_post_candidate_envelope(client, sealed)
+      stored_at <- envelope[["stored_at"]] %||% NULL
+      if (
+        !is.numeric(stored_at) ||
+          length(stored_at) != 1L ||
+          !is.finite(stored_at)
+      ) {
+        return(-Inf)
+      }
+      stored_at
+    },
+    numeric(1)
+  )
+  slots[[which.min(timestamps)]]
+}
+
+oauth_form_post_store_remove_siblings <- function(client, state) {
+  # Called only after browser-bound single-use state consumption. Cleanup is
+  # best effort: stale candidates also fail the normal live-state check, and
+  # the pool bounds retention even if a backend cannot remove an entry.
+  for (slot in oauth_form_post_candidate_slots(state)) {
+    tryCatch(
+      {
+        key <- oauth_form_post_slot_key(slot)
+        sealed <- client@state_store$get(key, missing = NULL)
+        envelope <- oauth_form_post_candidate_envelope(client, sealed)
+        candidate_state <- envelope[["payload"]][["state_payload"]][["state"]]
+        if (identical(candidate_state, state)) {
+          client@state_store$remove(key)
+        }
+      },
+      error = function(e) NULL
+    )
+  }
+  invisible(NULL)
 }
 
 #' Internal: compact one stored form_post JARM payload
@@ -1013,25 +1100,13 @@ oauth_form_post_store_set <- function(client, id, payload) {
     # Decryption alone proves authenticity, not that the transaction is live.
     # Reading preserves the rightful browser's state until browser binding.
     state_store_get(client, logical_state)
-    # A fixed, unguessable slot caps storage even if separate workers race.
-    # The logical state is encrypted on the wire and contains fresh entropy.
-    handle <- base64url_encode(openssl::sha256(charToRaw(paste0(
-      "form-post:",
-      id,
-      ":",
-      logical_state
-    ))))
-  } else {
-    handle <- random_urlsafe(32)
   }
+  slot <- oauth_form_post_candidate_slot(
+    client,
+    logical_state %||% payload[["state"]] %||% random_urlsafe(32)
+  )
+  handle <- paste0("fp1_", sprintf("%04d", slot), "_", random_urlsafe(43))
   key <- oauth_form_post_cache_key(id, handle)
-  if (!is.null(logical_state)) {
-    existing <- state_store_backend_call(
-      client@state_store$get(key, missing = NULL),
-      "form_post_store_get"
-    )
-    if (!is.null(existing)) return(handle)
-  }
   sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
 
   tryCatch(
@@ -1065,6 +1140,17 @@ oauth_form_post_store_take <- function(client, id, handle) {
 
   key <- oauth_form_post_cache_key(id, handle)
   store <- client@state_store
+
+  # Reject stale locators before deleting anything. Recheck the atomically
+  # taken envelope below too: another worker can replace this slot between
+  # the read and take. Such a race must fail, never substitute its payload.
+  existing <- state_store_backend_call(
+    store$get(key, missing = NULL),
+    "form_post_store_get"
+  )
+  if (!is.null(existing)) {
+    oauth_form_post_unseal_payload(client, id, handle, existing)
+  }
 
   has_take <- !is.null(store$take) && is.function(store$take)
   payload <- NULL
@@ -1169,6 +1255,7 @@ oauth_form_post_validate_handle_freshness <- function(client, payload) {
   }
 
   max_age <- min(
+    120,
     client_state_payload_max_age(client),
     client_state_store_max_age(client)
   )

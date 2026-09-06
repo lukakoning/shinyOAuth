@@ -377,7 +377,7 @@ test_that("oauth_form_post_ui preserves state until browser-bound callback", {
   expect_identical(second[["status"]], 303L)
 
   keys <- cli@state_store$keys()
-  expect_equal(sum(startsWith(keys, "formpost")), 1L)
+  expect_equal(sum(startsWith(keys, "formpost")), 2L)
   expect_equal(sum(!startsWith(keys, "formpost")), 1L)
 
   handle <- parse_query_param(
@@ -1489,7 +1489,8 @@ test_that("oauth_module_server rejects missing form_post handles", {
       indefinite_session = TRUE
     ),
     expr = {
-      values$.process_query(form_post_query("missing-handle", "auth"))
+      missing_handle <- paste0("fp1_0001_", shinyOAuth:::random_urlsafe(43))
+      values$.process_query(form_post_query(missing_handle, "auth"))
       session$flushReact()
 
       expect_identical(values$error, "invalid_state")
@@ -1811,7 +1812,7 @@ test_that("form_post callback path emits existing OTel spans", {
   expect_true("shinyOAuth.form_post" %in% spans)
   expect_true("shinyOAuth.form_post.bridge" %in% spans)
 })
-test_that("repeated POSTs use one pending slot and consumed states allocate nothing", {
+test_that("repeated POSTs have bounded independent candidates and consumed states allocate nothing", {
   cli <- make_form_post_test_client(use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), "auth", cli)
   browser <- valid_browser_token()
@@ -1821,18 +1822,27 @@ test_that("repeated POSTs use one pending slot and consumed states allocate noth
   state_payload <- shinyOAuth:::state_payload_decrypt_validate(cli, sealed)
   first <- ui(make_form_post_req(body = paste0("code=ok&state=", enc)))
   expect_identical(first$status, 303L)
-  keys <- cli@state_store$keys()
+  locations <- first$headers$Location
   for (i in seq_len(20L)) {
     again <- ui(make_form_post_req(body = paste0("code=other&state=", enc)))
-    expect_identical(again$headers$Location, first$headers$Location)
+    expect_identical(again$status, 303L)
+    expect_false(again$headers$Location %in% locations)
+    locations <- c(locations, again$headers$Location)
+    expect_lte(length(cli@state_store$keys()), 9L)
   }
-  expect_setequal(cli@state_store$keys(), keys)
-  expect_length(keys, 2L)
+  expect_length(cli@state_store$keys(), 9L)
   handle <- shiny::parseQueryString(first$headers$Location)$shinyOAuth_form_post
-  stored <- shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle)
-  expect_identical(stored$code, "ok")
+  expect_error(
+    shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle),
+    "handle mismatch"
+  )
+  latest_handle <- shiny::parseQueryString(
+    again$headers$Location
+  )$shinyOAuth_form_post
+  stored <- shinyOAuth:::oauth_form_post_store_take(cli, "auth", latest_handle)
+  expect_identical(stored$code, "other")
   expect_silent(shinyOAuth:::state_store_get(cli, state_payload$state))
-  cli@state_store$remove(shinyOAuth:::state_cache_key(state_payload$state))
+  shinyOAuth:::state_store_get_remove(cli, state_payload$state)
   for (i in seq_len(5L)) {
     expect_identical(
       ui(make_form_post_req(body = paste0("code=ok&state=", enc)))$status,
@@ -1840,6 +1850,32 @@ test_that("repeated POSTs use one pending slot and consumed states allocate noth
     )
   }
   expect_length(cli@state_store$keys(), 0L)
+})
+
+test_that("form_post binds each browser redirect to its own response candidate", {
+  for (first_error in c(FALSE, TRUE)) {
+    for (follow_first in c(FALSE, TRUE)) {
+      for (final_error in c(FALSE, TRUE)) {
+        client <- make_form_post_test_client(
+          use_nonce = FALSE,
+          scopes = "openid"
+        )
+        client@provider@issuer <- "https://issuer.example.com"
+        client@provider@authorization_response_iss_parameter_supported <- TRUE
+        ui <- oauth_form_post_ui(shiny::fluidPage(), "auth", client)
+        expect_form_post_candidate_isolation(
+          client,
+          post_candidate = function(fields) {
+            fields$iss <- client@provider@issuer
+            ui(make_form_post_req(body = httr2::url_query_build(fields)))
+          },
+          first_error = first_error,
+          follow_first = follow_first,
+          final_error = final_error
+        )
+      }
+    }
+  }
 })
 
 test_that("maximum accepted callback fields survive the form-post bridge", {
