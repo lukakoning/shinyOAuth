@@ -14,7 +14,8 @@ resource_req(
   check_url = TRUE,
   oauth_client = NULL,
   token_type = NULL,
-  dpop_nonce = NULL
+  dpop_nonce = NULL,
+  resource_hosts = NULL
 )
 }
 \arguments{
@@ -45,6 +46,8 @@ understand the security implications.}
 \code{\link[=is_ok_host]{is_ok_host()}} before attaching the access token. This rejects relative
 URLs, plain HTTP to non-loopback hosts, and when
 \code{options(shinyOAuth.allowed_hosts)} is set, hosts outside the allowlist.
+Without an allowlist this performs HTTPS and URL-syntax validation only
+(with the configured non-HTTPS exceptions); any HTTPS host is accepted.
 Set to \code{FALSE} only if you have already validated the URL and understand
 the security implications.}
 
@@ -65,6 +68,13 @@ preserves \code{OAuthToken@token_type}, and may infer \code{DPoP} from explicit
 \item{dpop_nonce}{Optional DPoP nonce to embed in the proof for this
 request. This is primarily useful after a resource server challenges with
 \code{DPoP-Nonce}.}
+
+\item{resource_hosts}{Optional non-empty character vector of trusted resource
+host patterns, using \code{\link[=is_ok_host]{is_ok_host()}} matching rules. This call-scoped
+allowlist adds to the global policy and is enforced even if \code{check_url}
+is \code{FALSE}. Use exact hostnames for URLs derived from lower-trust input.
+It constrains the initial URL, not redirect destinations or resolved IPs;
+retain \code{follow_redirect = FALSE}. \code{NULL} adds no resource-specific policy.}
 }
 \value{
 An \link[httr2:httr2]{httr2} request object, ready to be performed with
@@ -123,5 +133,14 @@ if (interactive()) {
     httr2::req_url_query(limit = 5)
 
   response <- perform_resource_req(token, custom_request)
+
+  # Constrain dynamic URLs before attaching a token. check_url alone does not
+  # restrict HTTPS hosts unless a global allowed_hosts policy is configured.
+  response <- perform_resource_req(
+    token,
+    input$resource_url,
+    resource_hosts = "api.example.com",
+    follow_redirect = FALSE
+  )
 }
 }

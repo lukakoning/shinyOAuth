@@ -40,8 +40,16 @@
 #'   [is_ok_host()] before attaching the access token. This rejects relative
 #'   URLs, plain HTTP to non-loopback hosts, and when
 #'   `options(shinyOAuth.allowed_hosts)` is set, hosts outside the allowlist.
+#'   Without an allowlist this performs HTTPS and URL-syntax validation only
+#'   (with the configured non-HTTPS exceptions); any HTTPS host is accepted.
 #'   Set to `FALSE` only if you have already validated the URL and understand
 #'   the security implications.
+#' @param resource_hosts Optional non-empty character vector of trusted resource
+#'   host patterns, using [is_ok_host()] matching rules. This call-scoped
+#'   allowlist adds to the global policy and is enforced even if `check_url`
+#'   is `FALSE`. Use exact hostnames for URLs derived from lower-trust input.
+#'   It constrains the initial URL, not redirect destinations or resolved IPs;
+#'   retain `follow_redirect = FALSE`. `NULL` adds no resource-specific policy.
 #' @param oauth_client Optional [OAuthClient]. Required when the effective
 #'   token type is `DPoP`, because the client carries the configured DPoP proof
 #'   key, and also when using sender-constrained mTLS / certificate-bound
@@ -82,7 +90,8 @@ resource_req <- function(
   check_url = TRUE,
   oauth_client = NULL,
   token_type = NULL,
-  dpop_nonce = NULL
+  dpop_nonce = NULL,
+  resource_hosts = NULL
 ) {
   prepare_client_bearer_request(
     token = token,
@@ -94,7 +103,8 @@ resource_req <- function(
     check_url = check_url,
     oauth_client = oauth_client,
     token_type = token_type,
-    dpop_nonce = dpop_nonce
+    dpop_nonce = dpop_nonce,
+    resource_hosts = resource_hosts
   )[["req"]]
 }
 
@@ -120,7 +130,8 @@ client_bearer_req <- function(
   check_url = TRUE,
   oauth_client = NULL,
   token_type = NULL,
-  dpop_nonce = NULL
+  dpop_nonce = NULL,
+  resource_hosts = NULL
 ) {
   deprecate_warn_pkg(
     when = "0.4.0.9000",
@@ -141,7 +152,8 @@ client_bearer_req <- function(
     check_url = check_url,
     oauth_client = oauth_client,
     token_type = token_type,
-    dpop_nonce = dpop_nonce
+    dpop_nonce = dpop_nonce,
+    resource_hosts = resource_hosts
   )
 }
 
@@ -187,7 +199,8 @@ perform_resource_req <- function(
   oauth_client = NULL,
   token_type = NULL,
   dpop_nonce = NULL,
-  idempotent = NULL
+  idempotent = NULL,
+  resource_hosts = NULL
 ) {
   request_input <- inherits(url, "httr2_request")
   method_override <- if (request_input && missing(method)) NULL else method
@@ -203,7 +216,8 @@ perform_resource_req <- function(
     check_url = check_url,
     oauth_client = oauth_client,
     token_type = token_type,
-    dpop_nonce = dpop_nonce
+    dpop_nonce = dpop_nonce,
+    resource_hosts = resource_hosts
   )
 
   req <- prepared[["req"]]
@@ -264,7 +278,8 @@ perform_client_bearer_req <- function(
   oauth_client = NULL,
   token_type = NULL,
   dpop_nonce = NULL,
-  idempotent = NULL
+  idempotent = NULL,
+  resource_hosts = NULL
 ) {
   deprecate_warn_pkg(
     when = "0.4.0.9000",
@@ -285,7 +300,8 @@ perform_client_bearer_req <- function(
     oauth_client = oauth_client,
     token_type = token_type,
     dpop_nonce = dpop_nonce,
-    idempotent = idempotent
+    idempotent = idempotent,
+    resource_hosts = resource_hosts
   )
   if (!missing(method)) {
     args[["method"]] <- method
@@ -328,7 +344,8 @@ prepare_client_bearer_request <- function(
   check_url = TRUE,
   oauth_client = NULL,
   token_type = NULL,
-  dpop_nonce = NULL
+  dpop_nonce = NULL,
+  resource_hosts = NULL
 ) {
   request_method <- resolve_client_bearer_method(method = method, req = req)
   validate_client_bearer_method(method = request_method)
@@ -351,7 +368,8 @@ prepare_client_bearer_request <- function(
   )
 
   target_url <- resolve_client_bearer_target_url(url = url, req = req)
-  validate_client_bearer_url(target_url, check_url = check_url)
+  validate_client_bearer_url(target_url, check_url = check_url,
+                             resource_hosts = resource_hosts)
 
   req <- build_client_bearer_authorized_request(
     url = target_url,
@@ -634,8 +652,13 @@ validate_client_bearer_sender_constraints <- function(
 #'
 #' @keywords internal
 #' @noRd
-validate_client_bearer_url <- function(url, check_url = TRUE) {
-  if (!isTRUE(check_url)) {
+validate_client_bearer_url <- function(url, check_url = TRUE, resource_hosts = NULL) {
+  if (!is.null(resource_hosts) &&
+      !(is.character(resource_hosts) && length(resource_hosts) > 0L &&
+        !anyNA(resource_hosts) && all(nzchar(trimws(resource_hosts))))) {
+    err_input("resource_hosts must be NULL or a non-empty character vector of host patterns")
+  }
+  if (!isTRUE(check_url) && is.null(resource_hosts)) {
     return(invisible(TRUE))
   }
 
@@ -661,6 +684,10 @@ validate_client_bearer_url <- function(url, check_url = TRUE) {
       "i" = "and pass the `is_ok_host()` check. See `?is_ok_host` for details.",
       "i" = "Set `check_url = FALSE` to bypass this validation (not recommended)."
     ))
+  }
+
+  if (!is.null(resource_hosts) && !is_ok_host(url, allowed_hosts = resource_hosts)) {
+    err_input("url is not allowed by resource_hosts policy")
   }
 
   invisible(TRUE)

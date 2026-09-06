@@ -28,4 +28,13 @@ if (interactive()) {
     httr2::req_url_query(limit = 5)
 
   response <- perform_resource_req(token, custom_request)
+
+  # Constrain dynamic URLs before attaching a token. check_url alone does not
+  # restrict HTTPS hosts unless a global allowed_hosts policy is configured.
+  response <- perform_resource_req(
+    token,
+    input$resource_url,
+    resource_hosts = "api.example.com",
+    follow_redirect = FALSE
+  )
 }

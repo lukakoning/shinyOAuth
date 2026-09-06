@@ -1,3 +1,26 @@
+test_that("resource_hosts constrains URL and prebuilt requests before authentication", {
+  withr::local_options(shinyOAuth.allowed_hosts = NULL)
+  for (check in c(FALSE, TRUE)) {
+    req <- resource_req("fixture", "https://api.example.com/data",
+                        check_url = check, resource_hosts = "api.example.com")
+    expect_s3_class(req, "httr2_request")
+    for (url in c("https://other.example.com/data", "https://api.example.com.other/data")) {
+      expect_error(resource_req("fixture", url, check_url = check,
+                                resource_hosts = "api.example.com"), "resource_hosts")
+      expect_error(perform_resource_req("fixture", httr2::request(url),
+                                        check_url = check,
+                                        resource_hosts = "api.example.com"), "resource_hosts")
+    }
+  }
+  for (bad in list(character(), NA_character_, "", c("api.example.com", NA), 1)) {
+    expect_error(resource_req("fixture", "https://api.example.com",
+                              resource_hosts = bad), "resource_hosts must")
+  }
+  withr::local_options(shinyOAuth.allowed_hosts = "other.example.com")
+  expect_error(resource_req("fixture", "https://api.example.com",
+                            resource_hosts = "api.example.com"), "host/scheme")
+})
+
 # --- Relative URLs -----------------------------------------------------------
 
 test_that("resource_req rejects relative URLs", {
