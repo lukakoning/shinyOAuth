@@ -5007,7 +5007,22 @@ oauth_module_compose_error <- function(e, phase = NULL) {
     if (allow_expose_error_body()) {
       sanitize_diagnostic_text(conditionMessage(e))
     } else {
-      short_desc_for_class(class(e))
+      # Callback helpers add rlang wrappers to preserve the original condition.
+      # Resolve the safe category through those wrappers, as the callback error
+      # code mapper does, without exposing either condition's diagnostic text.
+      condition <- e
+      description <- short_desc_for_class(class(condition))
+      while (description %in% c("Miscellaneous error", "Error")) {
+        condition <- tryCatch(
+          condition[["parent"]],
+          error = function(...) NULL
+        )
+        if (is.null(condition)) {
+          break
+        }
+        description <- short_desc_for_class(class(condition))
+      }
+      description
     },
     error = function(...) {
       "Unknown error"
