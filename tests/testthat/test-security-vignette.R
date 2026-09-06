@@ -1,10 +1,11 @@
 test_that("the mTLS OIDC example validates the end-user identity", {
-  lines <- readLines(test_path(
-    "..",
-    "..",
-    "vignettes",
-    "advanced-security.Rmd"
-  ))
+  candidates <- c(
+    test_path("..", "..", "vignettes", "advanced-security.Rmd"),
+    system.file("doc", "advanced-security.Rmd", package = "shinyOAuth")
+  )
+  candidates <- candidates[nzchar(candidates) & file.exists(candidates)]
+  skip_if_not(length(candidates) > 0L, "Vignette source unavailable")
+  lines <- readLines(candidates[[1L]])
   start <- match("```{r mtls-provider, eval = FALSE}", lines) + 1L
   end <- start + match("```", lines[start:length(lines)]) - 2L
   env <- new.env(parent = environment())
