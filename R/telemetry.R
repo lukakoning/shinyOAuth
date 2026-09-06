@@ -286,6 +286,11 @@ otel_http_url_full <- function(url) {
     return(NULL)
   }
 
+  if (!is_valid_string(parsed[["scheme"]]) ||
+      !is_valid_string(parsed[["hostname"]])) {
+    return(NULL)
+  }
+
   parsed[["query"]] <- NULL
   parsed[["fragment"]] <- NULL
   parsed[["username"]] <- NULL

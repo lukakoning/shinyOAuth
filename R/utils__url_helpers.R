@@ -220,6 +220,7 @@ validate_discovery_issuer <- function(
 #' @noRd
 validate_endpoint <- function(u, allowed_hosts_vec) {
   is_scalar_string <- is.character(u) && length(u) == 1
+  display_url <- otel_http_url_full(u) %||% "[invalid URL]"
 
   # Allow NA/empty to pass silently (callers may treat missing endpoints as optional)
   if (is_scalar_string && (is.na(u) || !nzchar(u))) {
@@ -232,7 +233,7 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
         "x" = "Endpoint must be an absolute URL",
         "i" = paste0(
           "Got invalid URL: ",
-          paste(as.character(u), collapse = ", ")
+          display_url
         )
       ),
       context = list(endpoint = u)
@@ -247,7 +248,7 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
         "x" = "Endpoint must be an absolute URL",
         "i" = paste0(
           "Got invalid URL: ",
-          as.character(u)
+          display_url
         )
       ),
       context = list(endpoint = u)
@@ -266,7 +267,7 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
         "x" = "Endpoint must be an absolute URL",
         "i" = paste0(
           "Got invalid URL: ",
-          as.character(u)
+          display_url
         )
       ),
       context = list(endpoint = u)
@@ -284,7 +285,7 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
         "x" = "Endpoint host or scheme not allowed (see `?is_ok_host`)",
         "i" = paste0(
           "Got endpoint: ",
-          as.character(u)
+          display_url
         ),
         "i" = paste0(
           "Allowed hosts: ",
