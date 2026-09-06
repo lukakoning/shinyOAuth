@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* RSA keys used for client assertions, Request Objects, or DPoP must have at
+  least 2048 bits. Weak keys now fail during client construction, including
+  when the signing algorithm is inferred.
+
 * JARM discovery now uses registered `authorization_*_values_supported`
   metadata, falls back to legacy `jarm_*` aliases only when absent, and rejects
   conflicting values.

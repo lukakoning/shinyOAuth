@@ -448,7 +448,8 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
   alg <- canonicalize_jws_alg(alg)
 
   if (inherits(key, "rsa")) {
-    return(identical(alg, "RS256"))
+    bits <- jwe_rsa_key_size_bits(key)
+    return(!is.na(bits) && bits >= 2048L && identical(alg, "RS256"))
   }
 
   if (inherits(key, "ecdsa")) {

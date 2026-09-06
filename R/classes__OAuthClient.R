@@ -1175,6 +1175,29 @@ oauth_client_validate <- function(self) {
     return("OAuthClient: client_id must be a non-empty string")
   }
 
+  # Enforce RSA signing strength for both explicit and inferred algorithms,
+  # including direct S7 construction and later property updates.
+  for (field in c("client_assertion_private_key", "dpop_private_key")) {
+    configured <- S7::prop(self, field)
+    if (is.null(configured)) {
+      next
+    }
+    key <- try(
+      normalize_private_key_input(configured, arg_name = field),
+      silent = TRUE
+    )
+    if (!inherits(key, "try-error") && inherits(key, "rsa")) {
+      bits <- jwe_rsa_key_size_bits(key)
+      if (is.na(bits) || bits < 2048L) {
+        return(paste0(
+          "OAuthClient: ",
+          field,
+          " RSA modulus must be at least 2048 bits"
+        ))
+      }
+    }
+  }
+
   parsed <- try(httr2::url_parse(self@redirect_uri), silent = TRUE)
   if (
     inherits(parsed, "try-error") ||
