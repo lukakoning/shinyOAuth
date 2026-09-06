@@ -39,7 +39,7 @@ OAuthClient(
   dpop_private_key = NULL,
   dpop_private_key_kid = NA_character_,
   dpop_signing_alg = NA_character_,
-  dpop_require_access_token = FALSE,
+  dpop_require_access_token = !is.null(dpop_private_key),
   dpop_require_observed_cnf = FALSE,
   request_object_mode = "parameters",
   request_object_signing_alg = NA_character_,

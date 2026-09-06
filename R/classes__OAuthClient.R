@@ -567,7 +567,7 @@ OAuthClient <- S7::new_class(
     # Optional strict mode: require DPoP access tokens when DPoP is enabled.
     dpop_require_access_token = S7::new_property(
       S7::class_logical,
-      default = FALSE
+      default = quote(!is.null(dpop_private_key))
     ),
     # Optional high-assurance mode: require observable DPoP cnf.jkt binding.
     dpop_require_observed_cnf = S7::new_property(

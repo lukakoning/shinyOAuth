@@ -167,19 +167,18 @@ during token exchange. If no ID token is returned, the token exchange
 will fail. This only makes sense for OpenID Connect providers and may
 require the client's scope to include \code{openid}.
 
-Note: At the S7 class level, this defaults to FALSE so that pure OAuth 2.0
-providers can be configured without OIDC. Helper constructors like
-\code{\link[=oauth_provider]{oauth_provider()}} and \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} will enable this when an
-issuer is supplied or OIDC is explicitly requested.}
+Both the S7 constructor and \code{\link[=oauth_provider]{oauth_provider()}} enable this when an issuer
+is supplied and \code{issuer_thus_oidc = TRUE}. Pure OAuth 2.0 providers keep
+this disabled by default.}
 
 \item{id_token_validation}{Whether to perform ID token validation after token exchange.
 This requires the provider to be a valid OpenID Connect provider with a configured
 \code{issuer} and the token response to include an ID token (may require setting
 the client's scope to include \code{openid}).
 
-Note: At the S7 class level, this defaults to FALSE. Helper constructors like
-\code{\link[=oauth_provider]{oauth_provider()}} and \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} turn this on when an issuer
-is provided or when OIDC is used.}
+Both the S7 constructor and \code{\link[=oauth_provider]{oauth_provider()}} enable this when an issuer
+is provided and \code{issuer_thus_oidc = TRUE}. Set an explicit \code{FALSE} only
+when intentionally opting out of ID token validation.}
 
 \item{id_token_at_hash_required}{Whether to require the \code{at_hash} (Access Token hash)
 claim in the ID token. When \code{TRUE}, login fails if the ID token does not

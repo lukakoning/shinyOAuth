@@ -119,19 +119,18 @@
 #' will fail. This only makes sense for OpenID Connect providers and may
 #' require the client's scope to include `openid`.
 #'
-#' Note: At the S7 class level, this defaults to FALSE so that pure OAuth 2.0
-#' providers can be configured without OIDC. Helper constructors like
-#' [oauth_provider()] and [oauth_provider_oidc()] will enable this when an
-#' issuer is supplied or OIDC is explicitly requested.
+#' Both the S7 constructor and [oauth_provider()] enable this when an issuer
+#' is supplied and `issuer_thus_oidc = TRUE`. Pure OAuth 2.0 providers keep
+#' this disabled by default.
 #'
 #' @param id_token_validation Whether to perform ID token validation after token exchange.
 #' This requires the provider to be a valid OpenID Connect provider with a configured
 #' `issuer` and the token response to include an ID token (may require setting
 #' the client's scope to include `openid`).
 #'
-#' Note: At the S7 class level, this defaults to FALSE. Helper constructors like
-#' [oauth_provider()] and [oauth_provider_oidc()] turn this on when an issuer
-#' is provided or when OIDC is used.
+#' Both the S7 constructor and [oauth_provider()] enable this when an issuer
+#' is provided and `issuer_thus_oidc = TRUE`. Set an explicit `FALSE` only
+#' when intentionally opting out of ID token validation.
 #'
 #' @param id_token_at_hash_required Whether to require the `at_hash` (Access Token hash)
 #' claim in the ID token. When `TRUE`, login fails if the ID token does not
@@ -371,7 +370,10 @@ OAuthProvider <- S7::new_class(
     ),
     use_pkce = S7::new_property(S7::class_logical, default = TRUE),
     pkce_method = S7::new_property(S7::class_character, default = "S256"),
-    use_nonce = S7::new_property(S7::class_logical, default = FALSE),
+    use_nonce = S7::new_property(
+      S7::class_logical,
+      default = quote(is_valid_string(issuer) && isTRUE(issuer_thus_oidc))
+    ),
     userinfo_url = S7::new_property(
       S7::class_character,
       default = NA_character_
@@ -389,8 +391,14 @@ OAuthProvider <- S7::new_class(
       S7::class_logical,
       default = FALSE
     ),
-    id_token_required = S7::new_property(S7::class_logical, default = FALSE),
-    id_token_validation = S7::new_property(S7::class_logical, default = FALSE),
+    id_token_required = S7::new_property(
+      S7::class_logical,
+      default = quote(is_valid_string(issuer) && isTRUE(issuer_thus_oidc))
+    ),
+    id_token_validation = S7::new_property(
+      S7::class_logical,
+      default = quote(is_valid_string(issuer) && isTRUE(issuer_thus_oidc))
+    ),
     id_token_at_hash_required = S7::new_property(
       S7::class_logical,
       default = FALSE
@@ -421,7 +429,8 @@ OAuthProvider <- S7::new_class(
     jwks_pin_mode = S7::new_property(S7::class_character, default = "any"),
     jwks_host_issuer_match = S7::new_property(
       S7::class_logical,
-      default = FALSE
+      default = quote(is_valid_string(issuer) &&
+        (isTRUE(id_token_validation) || isTRUE(id_token_required)))
     ),
     # Use NA_character_ instead of NULL so the property always respects
     # the declared character type; constructors normalize to a hostname or NA
