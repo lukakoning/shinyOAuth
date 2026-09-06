@@ -22,9 +22,9 @@ client_has_dpop <- function(client) {
   !is.null(client@dpop_private_key)
 }
 
-# Cache DPoP nonces per issuing server, request class, and client key so later
-# requests can reuse server-provided nonces across same-server endpoints without
-# mixing token-endpoint and protected-resource nonce state. Bound the cache by
+# Cache DPoP nonces per issuer, endpoint path, request class, and client key.
+# An origin can host independent tenants and resource protection spaces; reuse
+# is conservatively limited to the same endpoint. Bound the cache by
 # age and entry count so long-lived apps do not accumulate unbounded state.
 dpop_nonce_cache <- cachem::cache_mem(max_age = 300, max_n = 256, evict = "lru")
 dpop_nonce_max_bytes <- 512L
@@ -100,7 +100,7 @@ dpop_nonce_cache_key <- function(
   }
   parsed[["query"]] <- NULL
   parsed[["fragment"]] <- NULL
-  parsed[["path"]] <- "/"
+  parsed[["path"]] <- parsed[["path"]] %||% "/"
   parsed[["scheme"]] <- tolower(parsed[["scheme"]] %||% "")
   parsed[["hostname"]] <- tolower(
     parsed[["hostname"]] %||% ""
@@ -133,6 +133,8 @@ dpop_nonce_cache_key <- function(
 
   cache_input <- paste(
     server_uri,
+    client@provider@issuer,
+    paste(sort(unique(client@resource)), collapse = " "),
     request_kind,
     client_id_key,
     dpop_jkt,

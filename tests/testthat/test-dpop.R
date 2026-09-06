@@ -1656,7 +1656,7 @@ test_that("req_with_dpop_retry reuses a nonce learned from a successful response
   expect_identical(state$proof_nonces, c("", "success-nonce-1"))
 })
 
-test_that("req_with_dpop_retry reuses a nonce across same-origin resource endpoints", {
+test_that("req_with_dpop_retry isolates same-origin resource endpoints", {
   prov <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
@@ -1723,7 +1723,20 @@ test_that("req_with_dpop_retry reuses a nonce across same-origin resource endpoi
   expect_identical(state$seen[[1]][["url"]], prov@userinfo_url)
   expect_identical(state$seen[[1]][["nonce"]], "")
   expect_identical(state$seen[[2]][["url"]], "https://example.com/profile")
-  expect_identical(state$seen[[2]][["nonce"]], "resource-nonce-1")
+  expect_identical(state$seen[[2]][["nonce"]], "")
+})
+
+test_that("DPoP nonce cache separates tenant paths and issuers", {
+  client <- make_dpop_test_client(make_test_provider())
+  key <- function(url) dpop_nonce_cache_key(client, url, "resource")
+  first <- key("https://example.test/tenant-a?x=1")
+  expect_identical(first, key("https://example.test/tenant-a?x=2"))
+  expect_false(identical(first, key("https://example.test/tenant-b")))
+  client@resource <- "https://example.test/resource-a"
+  expect_false(identical(first, key("https://example.test/tenant-a")))
+  client@resource <- character()
+  client@provider@issuer <- "https://example.test/issuer-b"
+  expect_false(identical(first, key("https://example.test/tenant-a")))
 })
 
 test_that("req_with_dpop_retry keeps token and resource nonces separate on the same origin", {
