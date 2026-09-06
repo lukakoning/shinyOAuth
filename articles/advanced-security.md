@@ -139,6 +139,22 @@ client <- oauth_client(
 )
 ```
 
+`mtls_certificate_bound_access_tokens = TRUE` is a strict local
+assurance policy: shinyOAuth must observe `cnf$x5t#S256` in the token
+response, a JWT access token, or introspection and match it to the
+configured certificate. An opaque bound token without observable binding
+fails this policy. RFC 8705 also permits opaque tokens whose binding is
+known only to the authorization and resource servers; it does not
+require a client to inspect that binding.
+
+For that deployment, configure the certificate and key and leave the
+strict flag `FALSE`; the servers must enforce certificate binding.
+Certificate configuration controls presenting the certificate, while the
+strict flag requires locally observable proof. Configure the needed mTLS
+endpoints explicitly when using this mode. Any binding shinyOAuth does
+observe must still match. See [RFC 8705, Section
+3](https://www.rfc-editor.org/rfc/rfc8705.html#section-3).
+
 On Windows, separate PEM certificate/key files require curl’s OpenSSL
 backend. Set `CURL_SSL_BACKEND=openssl` in `.Renviron` and restart R, or
 run `Sys.setenv(CURL_SSL_BACKEND = "openssl")` before loading curl,

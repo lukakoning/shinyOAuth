@@ -24,14 +24,14 @@ OAuthProvider(
   token_auth_style = "header",
   use_pkce = TRUE,
   pkce_method = "S256",
-  use_nonce = FALSE,
+  use_nonce = is_valid_string(issuer) && isTRUE(issuer_thus_oidc),
   userinfo_url = NA_character_,
   userinfo_required = FALSE,
   userinfo_id_selector = function(userinfo) userinfo[["sub"]],
   userinfo_id_token_match = FALSE,
   userinfo_signed_jwt_required = FALSE,
-  id_token_required = FALSE,
-  id_token_validation = FALSE,
+  id_token_required = is_valid_string(issuer) && isTRUE(issuer_thus_oidc),
+  id_token_validation = is_valid_string(issuer) && isTRUE(issuer_thus_oidc),
   id_token_at_hash_required = FALSE,
   introspection_url = NA_character_,
   revocation_url = NA_character_,
@@ -42,7 +42,8 @@ OAuthProvider(
   jwks_cache = cachem::cache_mem(max_age = 3600),
   jwks_pins = character(0),
   jwks_pin_mode = "any",
-  jwks_host_issuer_match = FALSE,
+  jwks_host_issuer_match = is_valid_string(issuer) && (isTRUE(id_token_validation) ||
+    isTRUE(id_token_required)),
   jwks_host_allow_only = NA_character_,
   userinfo_allowed_algs = NULL,
   allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
@@ -219,13 +220,10 @@ OAuthProvider(
   makes sense for OpenID Connect providers and may require the client's
   scope to include `openid`.
 
-  Note: At the S7 class level, this defaults to FALSE so that pure OAuth
-  2.0 providers can be configured without OIDC. Helper constructors like
+  Both the S7 constructor and
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  and
-  [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
-  will enable this when an issuer is supplied or OIDC is explicitly
-  requested.
+  enable this when an issuer is supplied and `issuer_thus_oidc = TRUE`.
+  Pure OAuth 2.0 providers keep this disabled by default.
 
 - id_token_validation:
 
@@ -234,12 +232,11 @@ OAuthProvider(
   configured `issuer` and the token response to include an ID token (may
   require setting the client's scope to include `openid`).
 
-  Note: At the S7 class level, this defaults to FALSE. Helper
-  constructors like
+  Both the S7 constructor and
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  and
-  [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
-  turn this on when an issuer is provided or when OIDC is used.
+  enable this when an issuer is provided and `issuer_thus_oidc = TRUE`.
+  Set an explicit `FALSE` only when intentionally opting out of ID token
+  validation.
 
 - id_token_at_hash_required:
 

@@ -94,7 +94,7 @@ resolves defaults from the provider and the supplied client settings.</p>
 <span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  dpop_require_access_token <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  dpop_require_access_token <span class="op">=</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">dpop_private_key</span><span class="op">)</span>,</span>
 <span>  dpop_require_observed_cnf <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  request_object_mode <span class="op">=</span> <span class="st">"parameters"</span>,</span>
 <span>  request_object_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
@@ -421,7 +421,13 @@ the provider advertises that capability. Default is <code>FALSE</code>.</p>
 closed if the returned access token omits <code>cnf.x5t#S256</code>.</p>
 <p>Requires <code>mtls_client_cert_file</code> and <code>mtls_client_key_file</code>, and the
 provider must be configured with
-<code>mtls_client_certificate_bound_access_tokens = TRUE</code>.</p></dd>
+<code>mtls_client_certificate_bound_access_tokens = TRUE</code>.
+This is a strict local assurance policy. Opaque bound tokens require
+introspection or another response surface exposing <code>cnf$x5t#S256</code>.
+RFC 8705 also allows server-enforced opaque bindings without client-visible
+confirmation. For those deployments, leave this flag <code>FALSE</code>, configure
+the certificate/key and endpoint URLs, and rely on the servers to enforce
+binding. Observed confirmation claims are still checked.</p></dd>
 
 
 <dt id="arg-dpop-private-key">dpop_private_key<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key"></a></dt>

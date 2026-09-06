@@ -249,8 +249,11 @@ legitimate provider response needs more space.
 - `options(shinyOAuth.debug = TRUE)` – re‑raise errors during token
   exchange
 - `options(shinyOAuth.expose_error_body = TRUE)` – include sanitized
-  HTTP bodies and claim values in diagnostics (may reveal sensitive
-  details)
+  HTTP bodies, claim values, and free-form error details in audit/OTel
+  output and module diagnostics during tests or interactive debugging.
+  Details omit URL credentials and control characters and are capped at
+  512 UTF-8 bytes per field; they may still contain sensitive
+  information. Production processes keep these details disabled.
 
 Don’t enable these options in production. They disable key security
 checks or alter error behavior, and are intended for local

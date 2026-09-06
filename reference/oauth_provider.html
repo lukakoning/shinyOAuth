@@ -249,10 +249,9 @@ registration requests signed userinfo.</p></dd>
 during token exchange. If no ID token is returned, the token exchange
 will fail. This only makes sense for OpenID Connect providers and may
 require the client's scope to include <code>openid</code>.</p>
-<p>Note: At the S7 class level, this defaults to FALSE so that pure OAuth 2.0
-providers can be configured without OIDC. Helper constructors like
-<code>oauth_provider()</code> and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> will enable this when an
-issuer is supplied or OIDC is explicitly requested.</p></dd>
+<p>Both the S7 constructor and <code>oauth_provider()</code> enable this when an issuer
+is supplied and <code>issuer_thus_oidc = TRUE</code>. Pure OAuth 2.0 providers keep
+this disabled by default.</p></dd>
 
 
 <dt id="arg-id-token-validation">id_token_validation<a class="anchor" aria-label="anchor" href="#arg-id-token-validation"></a></dt>
@@ -260,9 +259,9 @@ issuer is supplied or OIDC is explicitly requested.</p></dd>
 This requires the provider to be a valid OpenID Connect provider with a configured
 <code>issuer</code> and the token response to include an ID token (may require setting
 the client's scope to include <code>openid</code>).</p>
-<p>Note: At the S7 class level, this defaults to FALSE. Helper constructors like
-<code>oauth_provider()</code> and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> turn this on when an issuer
-is provided or when OIDC is used.</p></dd>
+<p>Both the S7 constructor and <code>oauth_provider()</code> enable this when an issuer
+is provided and <code>issuer_thus_oidc = TRUE</code>. Set an explicit <code>FALSE</code> only
+when intentionally opting out of ID token validation.</p></dd>
 
 
 <dt id="arg-id-token-at-hash-required">id_token_at_hash_required<a class="anchor" aria-label="anchor" href="#arg-id-token-at-hash-required"></a></dt>

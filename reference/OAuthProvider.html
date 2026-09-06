@@ -72,14 +72,14 @@ endpoint and validation settings.</p>
 <span>  token_auth_style <span class="op">=</span> <span class="st">"header"</span>,</span>
 <span>  use_pkce <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  pkce_method <span class="op">=</span> <span class="st">"S256"</span>,</span>
-<span>  use_nonce <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  use_nonce <span class="op">=</span> <span class="fu">is_valid_string</span><span class="op">(</span><span class="va">issuer</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">issuer_thus_oidc</span><span class="op">)</span>,</span>
 <span>  userinfo_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  userinfo_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  userinfo_id_selector <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">userinfo</span><span class="op">)</span> <span class="va">userinfo</span><span class="op">[[</span><span class="st">"sub"</span><span class="op">]</span><span class="op">]</span>,</span>
 <span>  userinfo_id_token_match <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  userinfo_signed_jwt_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  id_token_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  id_token_validation <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  id_token_required <span class="op">=</span> <span class="fu">is_valid_string</span><span class="op">(</span><span class="va">issuer</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">issuer_thus_oidc</span><span class="op">)</span>,</span>
+<span>  id_token_validation <span class="op">=</span> <span class="fu">is_valid_string</span><span class="op">(</span><span class="va">issuer</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">issuer_thus_oidc</span><span class="op">)</span>,</span>
 <span>  id_token_at_hash_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  introspection_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  revocation_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
@@ -90,7 +90,8 @@ endpoint and validation settings.</p>
 <span>  jwks_cache <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">3600</span><span class="op">)</span>,</span>
 <span>  jwks_pins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  jwks_pin_mode <span class="op">=</span> <span class="st">"any"</span>,</span>
-<span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  jwks_host_issuer_match <span class="op">=</span> <span class="fu">is_valid_string</span><span class="op">(</span><span class="va">issuer</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">id_token_validation</span><span class="op">)</span> <span class="op">||</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">id_token_required</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  jwks_host_allow_only <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  userinfo_allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
@@ -249,10 +250,9 @@ registration requests signed userinfo.</p></dd>
 during token exchange. If no ID token is returned, the token exchange
 will fail. This only makes sense for OpenID Connect providers and may
 require the client's scope to include <code>openid</code>.</p>
-<p>Note: At the S7 class level, this defaults to FALSE so that pure OAuth 2.0
-providers can be configured without OIDC. Helper constructors like
-<code><a href="oauth_provider.html">oauth_provider()</a></code> and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> will enable this when an
-issuer is supplied or OIDC is explicitly requested.</p></dd>
+<p>Both the S7 constructor and <code><a href="oauth_provider.html">oauth_provider()</a></code> enable this when an issuer
+is supplied and <code>issuer_thus_oidc = TRUE</code>. Pure OAuth 2.0 providers keep
+this disabled by default.</p></dd>
 
 
 <dt id="arg-id-token-validation">id_token_validation<a class="anchor" aria-label="anchor" href="#arg-id-token-validation"></a></dt>
@@ -260,9 +260,9 @@ issuer is supplied or OIDC is explicitly requested.</p></dd>
 This requires the provider to be a valid OpenID Connect provider with a configured
 <code>issuer</code> and the token response to include an ID token (may require setting
 the client's scope to include <code>openid</code>).</p>
-<p>Note: At the S7 class level, this defaults to FALSE. Helper constructors like
-<code><a href="oauth_provider.html">oauth_provider()</a></code> and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> turn this on when an issuer
-is provided or when OIDC is used.</p></dd>
+<p>Both the S7 constructor and <code><a href="oauth_provider.html">oauth_provider()</a></code> enable this when an issuer
+is provided and <code>issuer_thus_oidc = TRUE</code>. Set an explicit <code>FALSE</code> only
+when intentionally opting out of ID token validation.</p></dd>
 
 
 <dt id="arg-id-token-at-hash-required">id_token_at_hash_required<a class="anchor" aria-label="anchor" href="#arg-id-token-at-hash-required"></a></dt>

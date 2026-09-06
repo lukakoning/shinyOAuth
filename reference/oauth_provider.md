@@ -216,12 +216,9 @@ userinfo[["sub"]]
   makes sense for OpenID Connect providers and may require the client's
   scope to include `openid`.
 
-  Note: At the S7 class level, this defaults to FALSE so that pure OAuth
-  2.0 providers can be configured without OIDC. Helper constructors like
-  `oauth_provider()` and
-  [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
-  will enable this when an issuer is supplied or OIDC is explicitly
-  requested.
+  Both the S7 constructor and `oauth_provider()` enable this when an
+  issuer is supplied and `issuer_thus_oidc = TRUE`. Pure OAuth 2.0
+  providers keep this disabled by default.
 
 - id_token_validation:
 
@@ -230,10 +227,9 @@ userinfo[["sub"]]
   configured `issuer` and the token response to include an ID token (may
   require setting the client's scope to include `openid`).
 
-  Note: At the S7 class level, this defaults to FALSE. Helper
-  constructors like `oauth_provider()` and
-  [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
-  turn this on when an issuer is provided or when OIDC is used.
+  Both the S7 constructor and `oauth_provider()` enable this when an
+  issuer is provided and `issuer_thus_oidc = TRUE`. Set an explicit
+  `FALSE` only when intentionally opting out of ID token validation.
 
 - id_token_at_hash_required:
 

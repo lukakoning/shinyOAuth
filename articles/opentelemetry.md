@@ -84,6 +84,11 @@ workers after changing it.
   messages are omitted by default and are included only with
   `options(shinyOAuth.expose_error_body = TRUE)`; those messages may
   contain provider details and should be handled as sensitive data.
+- Log bodies default to the stable event type. The same exposure option
+  controls free-form native audit detail, module diagnostics, and sink
+  failure warnings. Opt-in detail has URL userinfo, query strings,
+  fragments, and control characters removed and is limited to 512 UTF-8
+  bytes per field.
 - Tokens, authorization codes, state payloads, and browser tokens are
   not included as ordinary span attributes. Digest fields support
   correlation without the raw value. Keep debugging options off for

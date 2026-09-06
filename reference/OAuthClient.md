@@ -46,7 +46,7 @@ OAuthClient(
   dpop_private_key = NULL,
   dpop_private_key_kid = NA_character_,
   dpop_signing_alg = NA_character_,
-  dpop_require_access_token = FALSE,
+  dpop_require_access_token = !is.null(dpop_private_key),
   dpop_require_observed_cnf = FALSE,
   request_object_mode = "parameters",
   request_object_signing_alg = NA_character_,
@@ -411,7 +411,13 @@ OAuthClient(
 
   Requires `mtls_client_cert_file` and `mtls_client_key_file`, and the
   provider must be configured with
-  `mtls_client_certificate_bound_access_tokens = TRUE`.
+  `mtls_client_certificate_bound_access_tokens = TRUE`. This is a strict
+  local assurance policy. Opaque bound tokens require introspection or
+  another response surface exposing `cnf$x5t#S256`. RFC 8705 also allows
+  server-enforced opaque bindings without client-visible confirmation.
+  For those deployments, leave this flag `FALSE`, configure the
+  certificate/key and endpoint URLs, and rely on the servers to enforce
+  binding. Observed confirmation claims are still checked.
 
 - dpop_private_key:
 
