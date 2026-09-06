@@ -65,13 +65,14 @@ if (!exists("make_provider", mode = "function")) {
   app_port,
   app_url,
   title,
-  client_id
+  client_id,
+  module_id = "auth"
 ) {
   stdout <- tempfile("form-post-jarm-app-stdout-", fileext = ".log")
   stderr <- tempfile("form-post-jarm-app-stderr-", fileext = ".log")
 
   process <- callr::r_bg(
-    func = function(repo_root, app_port, app_url, title, client_id) {
+    func = function(repo_root, app_port, app_url, title, client_id, module_id) {
       setwd(repo_root)
       options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
       if (requireNamespace("pkgload", quietly = TRUE)) {
@@ -123,7 +124,7 @@ if (!exists("make_provider", mode = "function")) {
       )
       ui <- shinyOAuth::oauth_form_post_ui(
         base_ui,
-        id = "auth",
+        id = module_id,
         client = client
       )
 
@@ -132,7 +133,7 @@ if (!exists("make_provider", mode = "function")) {
         session_browser_tokens <- shiny::reactiveValues()
 
         auth <- shinyOAuth::oauth_module_server(
-          "auth",
+          module_id,
           client,
           auto_redirect = FALSE,
           indefinite_session = TRUE
@@ -211,7 +212,8 @@ if (!exists("make_provider", mode = "function")) {
       app_port = app_port,
       app_url = app_url,
       title = title,
-      client_id = client_id
+      client_id = client_id,
+      module_id = module_id
     ),
     stdout = stdout,
     stderr = stderr,
@@ -1215,6 +1217,14 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
   .wait_for_form_post_ready(drv_a)
   .wait_for_form_post_ready(drv_b)
 
+  # AppDriver sessions share a browser cookie jar. Distinct module namespaces
+  # keep the two positive controls from replacing each other's marker.
+  cookie_a <- find_browser_token_cookie(drv_a, "auth_a")
+  cookie_b <- find_browser_token_cookie(drv_b, "auth_b")
+  testthat::expect_false(is.null(cookie_a))
+  testthat::expect_false(is.null(cookie_b))
+  testthat::expect_false(identical(cookie_a$name, cookie_b$name))
+
   drv_a$run_js("document.querySelector('#prepare_login_btn').click();")
   drv_b$run_js("document.querySelector('#prepare_login_btn').click();")
 
@@ -1684,7 +1694,8 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
     app_port = port_a,
     app_url = app_url_a,
     title = "Form post JWT swap A",
-    client_id = setup_a$fixture$client_id
+    client_id = setup_a$fixture$client_id,
+    module_id = "auth_a"
   )
   on.exit(try(app_process_a$process$kill(), silent = TRUE), add = TRUE)
   .wait_for_form_post_jarm_browser_app(app_process_a, port_a)
@@ -1694,7 +1705,8 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
     app_port = port_b,
     app_url = app_url_b,
     title = "Form post JWT swap B",
-    client_id = setup_b$fixture$client_id
+    client_id = setup_b$fixture$client_id,
+    module_id = "auth_b"
   )
   on.exit(try(app_process_b$process$kill(), silent = TRUE), add = TRUE)
   .wait_for_form_post_jarm_browser_app(app_process_b, port_b)
