@@ -4,23 +4,32 @@
 \alias{oauth_ui}
 \title{Set up a Shiny UI for shinyOAuth}
 \usage{
-oauth_ui(base_ui)
+oauth_ui(base_ui, id = NULL, client = NULL, request_uri_resolver = NULL)
 }
 \arguments{
 \item{base_ui}{Your app's complete UI, such as a \code{fluidPage()} or \code{tagList()}.
 Can also be a UI function, optionally accepting the Shiny request.}
+
+\item{id}{Shiny module ID, required with \code{client} for GET callbacks.}
+
+\item{client}{\link{OAuthClient} used by the server module, required with \code{id}.}
+
+\item{request_uri_resolver}{Optional trusted public request URI resolver;
+see \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} for proxy requirements.}
 }
 \value{
 A UI function to use as the \code{ui} argument to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
 }
 \description{
 Wrap your complete UI in \code{oauth_ui()} when using \code{\link[=oauth_module_server]{oauth_module_server()}}.
-It adds the browser code needed for login and a privacy header that keeps
-the returning callback address out of requests to other sites.
+It adds the browser code needed for login and protects callback responses
+from caching and referrer disclosure. Supply \code{id} and \code{client} to accept
+query callbacks before rendering any application UI or scripts.
 }
 \details{
 Build the page as usual, for example with \code{fluidPage()}, then use
-\code{ui <- oauth_ui(ui)}. Pass the result to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}. UI functions
+\code{ui <- oauth_ui(ui, id = "auth", client = client)}, using the same module
+ID and client as the server. Pass the result to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}. UI functions
 are supported too, including functions accepting the Shiny request.
 This wrapper includes \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} setup.
 
@@ -28,7 +37,22 @@ For \code{response_mode = "form_post"} or \code{"form_post.jwt"}, use
 \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} instead; it includes this setup and accepts POST
 callbacks.
 
-The privacy header is \code{Referrer-Policy: no-referrer}. The browser reads it
+GET callbacks are validated and sealed into short-lived, single-use bridge
+handles in the client's state store, then redirected to a clean URL before
+application HTML is rendered. Logical state is consumed only after the
+Shiny module verifies browser binding. The storage requirements and quotas
+are the same as \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}. Register any fixed application query
+parameters in \code{client@redirect_uri}; other inbound parameters are discarded.
+For non-root callback paths use \code{uiPattern = ".*"} in \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
+
+Without \code{id} and \code{client}, ordinary pages still render, but raw OAuth GET
+callbacks fail closed with a setup error. Earlier \code{oauth_ui(ui)} query-flow
+applications must add those arguments. When integrating \code{\link[=use_shinyOAuth]{use_shinyOAuth()}}
+directly, provide an equivalent dedicated callback endpoint: third-party or
+application scripts must not execute on an unsanitized callback page.
+
+HTML responses include \code{Cache-Control: no-store}, \code{Pragma: no-cache}, and
+\code{Referrer-Policy: no-referrer}. The browser reads these headers
 before loading page resources. The meta tag from \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} takes
 effect only once the browser reads that tag, so it may miss early resource
 requests. You can also set the same HTTP header at your web server.
@@ -41,6 +65,8 @@ ui <- oauth_ui(
   )
 )
 
+# After creating your OAuth client, enable the callback bridge:
+# ui <- oauth_ui(ui, id = "auth", client = client)
 # Use this UI with your app's server function:
 # shiny::shinyApp(ui = ui, server = server)
 }

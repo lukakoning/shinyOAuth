@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Query and query-JARM callbacks now use `oauth_ui(ui, id = "auth", client =
+  client)` to validate and seal responses before redirecting to a one-time URL
+  and rendering application scripts. Existing query-flow applications must
+  add the module ID and client; unconfigured raw callbacks fail closed.
+  HTML and callback responses prohibit caching and referrer disclosure.
+
 * Callback routing enforces registered fixed query parameters, including
   repeated values. Bridge continuation URLs preserve only registered
   application parameters and the one-time bridge handle.

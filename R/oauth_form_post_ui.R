@@ -313,30 +313,39 @@ oauth_form_post_request_matches <- function(
     )
 }
 
-oauth_form_post_handle_request <- function(req, id, client) {
+oauth_form_post_handle_request <- function(
+  req,
+  id,
+  client,
+  transport = "form_post"
+) {
   tryCatch(
     with_otel_span(
       "shinyOAuth.form_post",
       {
-        oauth_form_post_validate_content_type(req)
+        if (identical(transport, "form_post")) {
+          oauth_form_post_validate_content_type(req)
+        }
         limits <- oauth_callback_limits()
         validate_untrusted_query_string(
           req[["QUERY_STRING"]] %||% "",
           max_bytes = limits[["query"]]
         )
-        body <- oauth_form_post_read_body(
-          req,
-          limits[["form_post_body"]]
-        )
-        payload <- oauth_form_post_parse_body(body, limits, client = client)
+        payload <- if (identical(transport, "query")) {
+          oauth_get_parse_query(req[["QUERY_STRING"]] %||% "", limits, client)
+        } else {
+          body <- oauth_form_post_read_body(req, limits[["form_post_body"]])
+          oauth_form_post_parse_body(body, limits, client = client)
+        }
+        payload[["transport"]] <- transport
         otel_set_span_attributes(
           attributes = list(
             oauth.response_mode = if (
               identical(payload[["type"]], "response")
             ) {
-              "form_post.jwt"
+              paste0(transport, ".jwt")
             } else {
-              "form_post"
+              transport
             }
           )
         )
@@ -345,7 +354,7 @@ oauth_form_post_handle_request <- function(req, id, client) {
           normalized <- validate_jarm_response(
             client,
             payload[["response"]],
-            transport = "form_post",
+            transport = transport,
             outer_iss = payload[["iss"]] %||% NULL,
             authenticate_state = function(state) {
               state_payload <<- state_payload_decrypt_validate(

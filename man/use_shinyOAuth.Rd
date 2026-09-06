@@ -30,6 +30,11 @@ sent as referrers when page resources load. When using \code{\link[=use_shinyOAu
 directly, set that header in your HTTP response configuration for protection
 from the start of page loading; the optional meta tag takes effect later.
 \code{\link[=oauth_ui]{oauth_ui()}} and \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} already include this dependency.
+The dependency alone does not provide a callback bridge. Do not load
+application or third-party scripts on raw OAuth callback pages; use
+\code{oauth_ui(ui, id, client)} or a dedicated equivalent endpoint to redirect to
+a clean URL before rendering the app. Callback responses must also send
+\code{Cache-Control: no-store} and \code{Pragma: no-cache}.
 }
 \examples{
 ui <- shiny::fluidPage(

@@ -2,10 +2,12 @@ test_that("OAuth UI protects HTML and preserves custom response semantics", {
   req <- list(
     REQUEST_METHOD = "GET",
     PATH_INFO = "/",
-    QUERY_STRING = "code=synthetic"
+    QUERY_STRING = "theme=light"
   )
   response <- oauth_ui(shiny::fluidPage(shiny::h2("App")))(req)
   expect_identical(response$headers[["Referrer-Policy"]], "no-referrer")
+  expect_identical(response$headers[["Cache-Control"]], "no-store")
+  expect_identical(response$headers[["Pragma"]], "no-cache")
   expect_match(response$content, "shinyOAuth.js", fixed = TRUE)
   custom <- shiny::httpResponse(
     201L,
@@ -33,7 +35,7 @@ test_that("callback asset requests send no Referer in a real browser", {
   req <- list(
     REQUEST_METHOD = "GET",
     PATH_INFO = "/",
-    QUERY_STRING = "code=SYNTHETIC&state=SYNTHETIC"
+    QUERY_STRING = "theme=light"
   )
   response <- oauth_ui(shiny::fluidPage(use_shinyOAuth(), dep))(req)
   app <- webfakes::new_app()
@@ -59,7 +61,7 @@ test_that("callback asset requests send no Referer in a real browser", {
   browser <- chromote::ChromoteSession$new()
   withr::defer(browser$close())
   loaded <- browser$Page$loadEventFired(wait_ = FALSE)
-  browser$Page$navigate(srv$url("/?code=SYNTHETIC&state=SYNTHETIC"))
+  browser$Page$navigate(srv$url("/?theme=light"))
   browser$wait_for(loaded)
   observed <- browser$Runtime$evaluate("window.probeReferrer")$result$value
   expect_identical(observed, "")

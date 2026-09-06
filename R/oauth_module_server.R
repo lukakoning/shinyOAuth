@@ -2264,7 +2264,7 @@ oauth_module_server <- function(
 
           .handle_jarm_response(
             response = form_post_payload[["response"]],
-            transport = "form_post",
+            transport = form_post_payload[["transport"]] %||% "form_post",
             decrypted_payload = form_post_payload[[
               "state_payload",
               exact = TRUE

@@ -23,6 +23,11 @@
 #' directly, set that header in your HTTP response configuration for protection
 #' from the start of page loading; the optional meta tag takes effect later.
 #' [oauth_ui()] and [oauth_form_post_ui()] already include this dependency.
+#' The dependency alone does not provide a callback bridge. Do not load
+#' application or third-party scripts on raw OAuth callback pages; use
+#' `oauth_ui(ui, id, client)` or a dedicated equivalent endpoint to redirect to
+#' a clean URL before rendering the app. Callback responses must also send
+#' `Cache-Control: no-store` and `Pragma: no-cache`.
 #'
 #' @param inject_referrer_meta If TRUE (default), adds a meta tag to the page:
 #'   an instruction asking the browser not to share the page's address when

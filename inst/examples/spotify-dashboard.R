@@ -559,7 +559,7 @@ ui <- bslib::page_fluid(
 )
 
 
-ui <- oauth_ui(ui)
+ui <- oauth_ui(ui, id = "auth", client = client)
 
 ## Server ----------------------------------------------------------------------
 

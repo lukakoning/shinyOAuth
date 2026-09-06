@@ -118,6 +118,24 @@ token authentication settings unless explicitly overridden. `extra_token_headers
 now applies only to exchange and refresh: opt in through `extra_headers` at
 each other endpoint that should receive those headers, even on the same origin.
 
+## Callback pages and application scripts
+
+Use `oauth_ui(ui, id = "auth", client = client)` for query and query-JARM
+responses. The ID and client must match `oauth_module_server()`. The wrapper
+validates callbacks and stores sealed, short-lived responses, then redirects
+to a one-time bridge URL before invoking the application UI. State remains
+single-use and browser-bound. Missing bridge configuration rejects raw
+callbacks; existing `oauth_ui(ui)` setups must add `id` and `client`.
+
+Callback and HTML responses send `Cache-Control: no-store`, `Pragma: no-cache`,
+and `Referrer-Policy: no-referrer`. These do not remove upstream access logs:
+configure proxies and hosting logs to omit callback queries. Keep third-party
+scripts off any unsanitized callback page, including when using
+`use_shinyOAuth()` with a custom HTTP integration. Register fixed tenant or
+routing query parameters in the redirect URI; unregistered inbound parameters
+are discarded on continuation. For trusted HTTPS-terminating proxies, use
+`request_uri_resolver` with the same trust checks as `oauth_form_post_ui()`.
+
 ## Trusted ID-token audiences
 
 ID tokens with multiple audiences remain rejected by default. If an issuer

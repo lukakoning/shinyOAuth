@@ -71,16 +71,20 @@ if (
   )
 
   # UI
-  ui <- oauth_ui(fluidPage(
-    h3("OAuth demo (Microsoft Entra ID)"),
-    uiOutput("oauth_error"),
-    tags$hr(),
-    h4("Auth object (summary)"),
-    verbatimTextOutput("auth_print"),
-    tags$hr(),
-    h4("User info"),
-    verbatimTextOutput("user_info")
-  ))
+  ui <- oauth_ui(
+    fluidPage(
+      h3("OAuth demo (Microsoft Entra ID)"),
+      uiOutput("oauth_error"),
+      tags$hr(),
+      h4("Auth object (summary)"),
+      verbatimTextOutput("auth_print"),
+      tags$hr(),
+      h4("User info"),
+      verbatimTextOutput("user_info")
+    ),
+    id = "auth",
+    client = client
+  )
 
   # Server
   server <- function(input, output, session) {
