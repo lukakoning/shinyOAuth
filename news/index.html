@@ -42,7 +42,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>State parsing and decryption failures now default to no delay, avoiding intentional blocking of the Shiny worker during malformed callbacks. Explicit <code>shinyOAuth.state_fail_delay_ms</code> settings remain supported.</p></li>
+<ul><li><p>Form-post callbacks now receive independent random bridge handles, preventing an earlier response for the same login from replacing the response delivered to the initiating browser. Candidates expire within 120 seconds, use bounded storage, and are cleaned up after browser-bound state consumption. This also applies to signed and encrypted JARM callbacks and provider error responses.</p></li>
+<li><p>RSA JWK validation now rejects invalid public exponents, even moduli, and noncanonical or nonminimal integer encodings before keys are imported or used for JWT verification.</p></li>
+<li><p>State parsing and decryption failures now default to no delay, avoiding intentional blocking of the Shiny worker during malformed callbacks. Explicit <code>shinyOAuth.state_fail_delay_ms</code> settings remain supported.</p></li>
 <li><p>Documentation now starts with practical app setup and introduces protocol details later. The getting-started and authentication guides are shorter, function help focuses on app authors, and package-wide options have their own <code><a href="../articles/package-options.html">vignette("package-options")</a></code> reference. The Spotify guide starts with a small app; the full dashboard is installed as <code>examples/spotify-dashboard.R</code>.</p></li>
 <li><p>mTLS registration now accepts and normalizes IPv6 SANs whose compressed zero run appears at the end of the address.</p></li>
 <li><p>JWT claim parsing now preserves JSON arrays until claim-specific validation, preventing one-element arrays from being accepted as scalar claims.</p></li>

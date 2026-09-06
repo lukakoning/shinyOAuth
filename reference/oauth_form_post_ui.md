@@ -78,9 +78,19 @@ The wrapper checks the incoming address and login state, stores the
 callback temporarily, and redirects the browser to a normal Shiny page
 with a single-use handle. Raw callback values do not appear in that
 redirected URL. For `"form_post.jwt"`, it also validates the signed
-response using JWT Secured Authorization Response Mode (JARM). The
-handle expires after the smaller of `state_payload_max_age` and the
-state store lifetime. The module still verifies the browser binding.
+response using JWT Secured Authorization Response Mode (JARM). Every
+POST receives its own random handle. Handles expire after 120 seconds or
+the smaller of `state_payload_max_age` and the state store lifetime. The
+module still verifies the browser binding before consuming login state.
+Pending responses use a bounded pool in the state store: 256 partitions
+of eight slots, with each login assigned to one partition. When a
+partition is full, a new POST replaces its oldest response. An expired
+or replaced handle fails validation; it can never select the replacement
+response. Completed logins remove their remaining candidates. Shared
+stores still require atomic `take`; no additional backend methods are
+needed. Concurrent writers can also replace a candidate; handle
+validation fails closed in that case. Pending form-post handles issued
+by an older version must be restarted after upgrading.
 
 ## Deployment behind a proxy
 
