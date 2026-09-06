@@ -26,6 +26,7 @@ codex/*
 ^Meta$
 ^\.github$
 ^integration($|/)
+^tests/run-(browser-tests|local)\.R$
 .dockerignore
 ^jarl\.toml$
 ^otel_plan\.md$

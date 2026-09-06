@@ -60,6 +60,15 @@ testthat::test_that("browser tests run only in Chrome-provisioned CI", {
     "Rscript tests/run-browser-tests.R",
     fixed = TRUE
   )
+  buildignore <- readLines(file.path(root, ".Rbuildignore"), warn = FALSE)
+  for (runner in c("tests/run-browser-tests.R", "tests/run-local.R")) {
+    testthat::expect_true(any(vapply(
+      buildignore,
+      grepl,
+      logical(1),
+      x = runner
+    )))
+  }
   testthat::expect_match(
     paste(
       readLines(testthat::test_path("..", "run-browser-tests.R")),
