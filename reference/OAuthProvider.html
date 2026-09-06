@@ -416,7 +416,11 @@ requires authorization requests to be sent via PAR. When <code>TRUE</code>,
 <dd><p>Logical. Whether the provider requires
 signed Request Objects for authorization requests. When <code>TRUE</code>, clients
 should use <code>request_object_mode = "request"</code> or
-<code>request_object_mode = "request_uri"</code>.</p></dd>
+<code>request_object_mode = "request_uri"</code>.
+This setting enforces local construction only; it does not configure the
+authorization server. Register <code>require_signed_request_object = true</code> (or
+the server's equivalent) and verify unsigned requests are rejected before
+relying on downgrade-resistant request integrity.</p></dd>
 
 
 <dt id="arg-request-parameter-supported">request_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-parameter-supported"></a></dt>

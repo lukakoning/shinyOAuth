@@ -429,15 +429,18 @@ if (
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
       # This loads one page; use the API's pagination for further results.
-      repos_data <- tryCatch({
-        resp <- perform_resource_req(
-          auth$token,
-          "https://api.github.com/user/repos",
-          query = list(per_page = 30)
-        )
-        httr2::resp_check_status(resp)
-        httr2::resp_body_json(resp, simplifyVector = TRUE)
-      }, error = function(e) NULL)
+      repos_data <- tryCatch(
+        {
+          resp <- perform_resource_req(
+            auth$token,
+            "https://api.github.com/user/repos",
+            query = list(per_page = 30)
+          )
+          httr2::resp_check_status(resp)
+          httr2::resp_body_json(resp, simplifyVector = TRUE)
+        },
+        error = function(e) NULL
+      )
 
       repository_error(is.null(repos_data))
       repositories(repos_data)
@@ -463,8 +466,10 @@ if (
                   # Render names as text; accept only GitHub HTTPS links.
                   if (isTRUE(grepl("^https://github\\.com/", url))) {
                     tags$li(tags$a(
-                      href = url, target = "_blank",
-                      rel = "noopener noreferrer", name
+                      href = url,
+                      target = "_blank",
+                      rel = "noopener noreferrer",
+                      name
                     ))
                   } else {
                     tags$li(name)

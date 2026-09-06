@@ -442,15 +442,18 @@ The temporary browser cookie follows the state store's <code>max_age</code>, wit
 <span class="r-in"><span>      <span class="co"># Example additional API request using the access token</span></span></span>
 <span class="r-in"><span>      <span class="co"># (e.g., fetch user repositories from GitHub)</span></span></span>
 <span class="r-in"><span>      <span class="co"># This loads one page; use the API's pagination for further results.</span></span></span>
-<span class="r-in"><span>      <span class="va">repos_data</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="op">{</span></span></span>
-<span class="r-in"><span>        <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>          <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span></span>
-<span class="r-in"><span>          <span class="st">"https://api.github.com/user/repos"</span>,</span></span>
-<span class="r-in"><span>          query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>per_page <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span></span>
-<span class="r-in"><span>        <span class="op">)</span></span></span>
-<span class="r-in"><span>        <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_check_status</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span></span></span>
-<span class="r-in"><span>        <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="va">resp</span>, simplifyVector <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      <span class="op">}</span>, error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="cn">NULL</span><span class="op">)</span></span></span>
+<span class="r-in"><span>      <span class="va">repos_data</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>        <span class="op">{</span></span></span>
+<span class="r-in"><span>          <span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>            <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span></span>
+<span class="r-in"><span>            <span class="st">"https://api.github.com/user/repos"</span>,</span></span>
+<span class="r-in"><span>            query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>per_page <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span></span>
+<span class="r-in"><span>          <span class="op">)</span></span></span>
+<span class="r-in"><span>          <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_check_status</a></span><span class="op">(</span><span class="va">resp</span><span class="op">)</span></span></span>
+<span class="r-in"><span>          <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="va">resp</span>, simplifyVector <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>        <span class="op">}</span>,</span></span>
+<span class="r-in"><span>        error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="cn">NULL</span></span></span>
+<span class="r-in"><span>      <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>      <span class="fu">repository_error</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">repos_data</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>      <span class="fu">repositories</span><span class="op">(</span><span class="va">repos_data</span><span class="op">)</span></span></span>
@@ -476,8 +479,10 @@ The temporary browser cookie follows the state store's <code>max_age</code>, wit
 <span class="r-in"><span>                  <span class="co"># Render names as text; accept only GitHub HTTPS links.</span></span></span>
 <span class="r-in"><span>                  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"^https://github\\.com/"</span>, <span class="va">url</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>                    <span class="va">tags</span><span class="op">$</span><span class="fu">li</span><span class="op">(</span><span class="va">tags</span><span class="op">$</span><span class="fu">a</span><span class="op">(</span></span></span>
-<span class="r-in"><span>                      href <span class="op">=</span> <span class="va">url</span>, target <span class="op">=</span> <span class="st">"_blank"</span>,</span></span>
-<span class="r-in"><span>                      rel <span class="op">=</span> <span class="st">"noopener noreferrer"</span>, <span class="va">name</span></span></span>
+<span class="r-in"><span>                      href <span class="op">=</span> <span class="va">url</span>,</span></span>
+<span class="r-in"><span>                      target <span class="op">=</span> <span class="st">"_blank"</span>,</span></span>
+<span class="r-in"><span>                      rel <span class="op">=</span> <span class="st">"noopener noreferrer"</span>,</span></span>
+<span class="r-in"><span>                      <span class="va">name</span></span></span>
 <span class="r-in"><span>                    <span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>                  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>                    <span class="va">tags</span><span class="op">$</span><span class="fu">li</span><span class="op">(</span><span class="va">name</span><span class="op">)</span></span></span>
