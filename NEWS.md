@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* JARM discovery now uses registered `authorization_*_values_supported`
+  metadata, falls back to legacy `jarm_*` aliases only when absent, and rejects
+  conflicting values.
+
 * Added `mtls_require_observed_cnf` (default `TRUE`) to separate strict local
   confirmation from certificate presentation. For server-enforced opaque
   certificate-bound tokens, set `mtls_certificate_bound_access_tokens = TRUE`

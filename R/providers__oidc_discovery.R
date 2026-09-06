@@ -298,29 +298,20 @@ oauth_provider_oidc_discover <- function(
     disc[["response_modes_supported"]] %||% c("query", "fragment"),
     use.names = FALSE
   ))))
-  jarm_signing_alg_values_supported <- as.character(
-    unlist(
-      disc[["jarm_signing_alg_values_supported"]] %||%
-        disc[["authorization_signing_alg_values_supported"]] %||%
-        character(0),
-      use.names = FALSE
-    )
+  jarm_signing_alg_values_supported <- .discover_jarm_metadata(
+    disc,
+    "authorization_signing_alg_values_supported",
+    "jarm_signing_alg_values_supported"
   )
-  jarm_encryption_alg_values_supported <- as.character(
-    unlist(
-      disc[["jarm_encryption_alg_values_supported"]] %||%
-        disc[["authorization_encryption_alg_values_supported"]] %||%
-        character(0),
-      use.names = FALSE
-    )
+  jarm_encryption_alg_values_supported <- .discover_jarm_metadata(
+    disc,
+    "authorization_encryption_alg_values_supported",
+    "jarm_encryption_alg_values_supported"
   )
-  jarm_encryption_enc_values_supported <- as.character(
-    unlist(
-      disc[["jarm_encryption_enc_values_supported"]] %||%
-        disc[["authorization_encryption_enc_values_supported"]] %||%
-        character(0),
-      use.names = FALSE
-    )
+  jarm_encryption_enc_values_supported <- .discover_jarm_metadata(
+    disc,
+    "authorization_encryption_enc_values_supported",
+    "jarm_encryption_enc_values_supported"
   )
   token_endpoint_auth_signing_alg_values_supported <- toupper(as.character(
     unlist(
@@ -721,6 +712,28 @@ oauth_provider_oidc_discover <- function(
   }
 
   invisible(TRUE)
+}
+
+# Registered JARM metadata is authoritative. Accept legacy aliases only when
+# absent, and reject inconsistent documents rather than silently choosing one.
+.discover_jarm_metadata <- function(disc, registered, legacy) {
+  values <- function(field) {
+    as.character(unlist(disc[[field]] %||% character(), use.names = FALSE))
+  }
+  if (!is.null(disc[[registered]])) {
+    if (
+      !is.null(disc[[legacy]]) && !setequal(values(registered), values(legacy))
+    ) {
+      err_config(paste(
+        "Conflicting discovery metadata:",
+        registered,
+        "and",
+        legacy
+      ))
+    }
+    return(values(registered))
+  }
+  values(legacy)
 }
 
 #' Internal: require HTTPS for OIDC metadata URLs
