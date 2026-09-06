@@ -91,6 +91,12 @@
       var name = base + (inst ? ('-' + inst) : '');
       var v = getCookie(name);
       var expectedLen = 128; /* 64 bytes hex-encoded */
+      // A new authorization must use the binding selected by this Shiny
+      // session, even when an existing cookie is syntactically valid.
+      if (payload.requestId) {
+        if (!isValidHexToken(payload.token, expectedLen)) throw new Error('invalid_browser_token');
+        v = payload.token;
+      }
       if(!isValidHexToken(v, expectedLen)){ v = randomHex(64); }
       setCookie(name, v, ageMs, sameSite, /*forceSecure*/ requireSecure, cookiePath);
       if (getCookie(name) !== v) throw new Error('cookie_unavailable');
@@ -98,7 +104,7 @@
       if (shiny) shiny.setInputValue(payload.inputId, v, {priority:'event'});
       if (shiny && payload.requestId) {
         shiny.setInputValue(payload.ackInputId, {
-          requestId: payload.requestId, token: v
+          requestId: payload.requestId
         }, {priority:'event'});
       }
     } catch(e) {

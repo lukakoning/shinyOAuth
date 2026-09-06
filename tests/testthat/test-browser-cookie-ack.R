@@ -21,13 +21,14 @@ test_that("new login state waits for the current browser cookie acknowledgment",
     {
       session$flushReact()
       old <- valid_browser_token()
-      fresh <- paste0("ff", substring(old, 3))
       session$setInputs(shinyOAuth_sid = old)
       before <- client@state_store$keys()
       result <- NULL
       promises::then(values$build_auth_url(), function(url) {
         result <<- url
       })
+      fresh <- browser_ack$token
+      expect_false(identical(fresh, old))
       expect_null(result)
       expect_identical(client@state_store$keys(), before)
       session$setInputs(
@@ -37,7 +38,15 @@ test_that("new login state waits for the current browser cookie acknowledgment",
       session$flushReact()
       expect_null(result)
       session$setInputs(
-        shinyOAuth_cookie_ack = list(requestId = browser_ack$id, token = fresh)
+        shinyOAuth_cookie_ack = list(requestId = browser_ack$id, token = old)
+      )
+      later::run_now()
+      session$flushReact()
+      expect_null(result)
+      expect_identical(client@state_store$keys(), before)
+      session$setInputs(
+        shinyOAuth_sid = fresh,
+        shinyOAuth_cookie_ack = list(requestId = browser_ack$id)
       )
       for (i in seq_len(8)) {
         later::run_now()

@@ -1,5 +1,12 @@
 # shinyOAuth (development version)
 
+* Browser-binding inputs are excluded from URL and server bookmarks, with a
+  root-session bookmark hook as defense in depth. Cookie acknowledgments no
+  longer duplicate the token. Each interactive login now rotates to a fresh
+  server-selected binding, preventing adoption of a disclosed token through
+  Shiny inputs. Starting another login for the same module invalidates earlier
+  pending browser round trips; complete one login at a time.
+
 * Form-post callbacks now receive independent random bridge handles, preventing
   an earlier response for the same login from replacing the response delivered
   to the initiating browser. Candidates expire within 120 seconds, use bounded

@@ -91,9 +91,9 @@ testthat::test_that("pending login ignores partial matches in query params", {
       # A mirrored value alone cannot resume a newly requested login.
       testthat::expect_false(isTRUE(values$auto_redirected))
       session$setInputs(
+        shinyOAuth_sid = browser_ack$token,
         shinyOAuth_cookie_ack = list(
-          requestId = browser_ack$id,
-          token = values$browser_token
+          requestId = browser_ack$id
         )
       )
       for (i in seq_len(5)) {

@@ -19,18 +19,19 @@ const window = {Shiny, location: {protocol: 'https:', pathname: '/'},
   crypto: require('node:crypto').webcrypto};
 vm.runInNewContext(source, {window, document, Shiny});
 const send = () => handlers['shinyOAuth:setBrowserToken']({instance: 'test',
-  maxAgeMs: 3000, requestId: 'current', ackInputId: 'ack', inputId: 'sid', errorInputId: 'error'});
+  maxAgeMs: 3000, requestId: 'current', token: require('node:crypto').randomBytes(64).toString('hex'),
+  ackInputId: 'ack', inputId: 'sid', errorInputId: 'error'});
 send();
 const old = inputs.sid;
 now = 4; // Cookie expires while its Shiny mirror remains.
 assert.equal(document.cookie, '');
 send();
 assert.notEqual(inputs.sid, old);
-assert.equal(inputs.ack.token, inputs.sid);
+assert.equal(inputs.ack.token, undefined);
 assert.equal(inputs.ack.requestId, 'current');
 expiry = 0; // User deletion also rotates before acknowledgment.
 send();
-assert.ok(document.cookie.includes(inputs.ack.token));
+assert.ok(document.cookie.includes(inputs.sid));
 expiry = 0; blocked = true; delete inputs.ack;
 send();
 assert.equal(inputs.ack, undefined);

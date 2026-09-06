@@ -206,6 +206,10 @@ cookies and Web Crypto enabled. Embedded IDE viewers may prevent login.
 The temporary browser cookie follows the state store's \code{max_age}, with a
 300-second fallback when that lifetime is unavailable. The separate
 \code{state_payload_max_age} client setting limits the age of the login request.
+Each new login uses a fresh server-selected browser binding. Complete one
+login at a time per module; starting another replaces the pending binding.
+Private browser-binding inputs are excluded from Shiny bookmarks. Do not
+copy \code{auth$browser_token} into custom bookmark values, URLs, or logs.
 }
 
 \examples{

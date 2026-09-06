@@ -47,6 +47,10 @@
 #' The temporary browser cookie follows the state store's `max_age`, with a
 #' 300-second fallback when that lifetime is unavailable. The separate
 #' `state_payload_max_age` client setting limits the age of the login request.
+#' Each new login uses a fresh server-selected browser binding. Complete one
+#' login at a time per module; starting another replaces the pending binding.
+#' Private browser-binding inputs are excluded from Shiny bookmarks. Do not
+#' copy `auth$browser_token` into custom bookmark values, URLs, or logs.
 #'
 #' @param id A name for this Shiny module, such as `"auth"`.
 #'
@@ -484,6 +488,7 @@ oauth_module_server <- function(
   # 2 Shiny module -------------------------------------------------------------
 
   shiny::moduleServer(id, function(input, output, session) {
+    exclude_oauth_module_bookmarks(session)
     ## 2.1 Reactive values -----------------------------------------------------
 
     # Set browser token initial value to "__SKIPPED__" in test mode
@@ -978,7 +983,7 @@ oauth_module_server <- function(
     # logout.
     # @return No return value; computes cookie settings and asks the browser to
     #   set the token.
-    .set_browser_token <- function(request_id = NULL) {
+    .set_browser_token <- function(request_id = NULL, token = NULL) {
       # Max age (sec); defaults to 300s (5 min) if state_store TTL is unavailable
       max_age_sec <- client_state_store_max_age(client)
       instance <- build_oauth_module_browser_token_instance(session, id)
@@ -989,12 +994,14 @@ oauth_module_server <- function(
         max_age_ms = max_age_sec * 1000,
         same_site = browser_cookie_samesite,
         path = if (is.null(browser_cookie_path)) NULL else browser_cookie_path,
-        request_id = request_id
+        request_id = request_id,
+        token = token
       )
     }
 
-    # A cached mirror is insufficient: require read-after-write acknowledgment
-    # for this request before binding any new authorization state.
+    # Select the binding on the server for every new login. A request identifier
+    # alone does not prevent a client from adopting a disclosed browser token.
+    # The acknowledgment confirms delivery; it is not cookie-possession proof.
     browser_ack <- new.env(parent = emptyenv())
     .with_fresh_browser_token <- function(body) {
       if (isTRUE(allow_skip_browser_token())) {
@@ -1004,12 +1011,14 @@ oauth_module_server <- function(
         browser_ack$reject(simpleError("Browser cookie request superseded"))
       }
       request_id <- random_urlsafe(32)
+      token <- paste(format(openssl::rand_bytes(64)), collapse = "")
       epoch <- auth_operations$epoch
       promise <- promises::promise(function(resolve, reject) {
         browser_ack$id <- request_id
+        browser_ack$token <- token
         browser_ack$resolve <- resolve
         browser_ack$reject <- reject
-        .set_browser_token(request_id)
+        .set_browser_token(request_id, token)
         later::later(
           function() {
             if (
@@ -1060,13 +1069,13 @@ oauth_module_server <- function(
         ) {
           valid <- tryCatch(
             {
-              validate_browser_token(ack$token)
-              TRUE
+              validate_browser_token(input$shinyOAuth_sid)
+              constant_time_compare(input$shinyOAuth_sid, browser_ack$token)
             },
             error = function(e) FALSE
           )
           if (valid) {
-            browser_ack$resolve(ack$token)
+            browser_ack$resolve(browser_ack$token)
             browser_ack$resolve <- NULL
             browser_ack$reject <- NULL
           }
@@ -4259,6 +4268,23 @@ oauth_module_server <- function(
 
 ## 2.1 Browser-token message helpers -------------------------------------------
 
+# Exclude private inputs in module scope. Shiny's module onBookmark callbacks
+# receive a separate save-state object, so the defense-in-depth hook must update
+# the root save state's exclusions, which both URL and disk serializers use.
+exclude_oauth_module_bookmarks <- function(session) {
+  private_inputs <- c(
+    "shinyOAuth_sid", "shinyOAuth_cookie_ack", "shinyOAuth_cookie_error"
+  )
+  shiny::setBookmarkExclude(
+    union(session$getBookmarkExclude(), private_inputs), session = session
+  )
+  private_names <- session$ns(private_inputs)
+  shiny::onBookmark(function(state) {
+    state$exclude <- union(state$exclude, private_names)
+  }, session = session$rootScope())
+  invisible(NULL)
+}
+
 # Helpers in this section send messages to handlers defined in
 # `inst/www/shinyOAuth.js`, which applications load with `use_shinyOAuth()`.
 
@@ -4293,6 +4319,7 @@ build_oauth_module_browser_token_instance <- function(session, id) {
 #' @param instance Browser-token cookie instance suffix.
 #' @param max_age_ms Cookie lifetime in milliseconds.
 #' @param request_id Optional identifier for a fresh cookie acknowledgment.
+#' @param token Optional server-selected binding for a new authorization request.
 #' @param same_site SameSite policy string.
 #' @param path Cookie path, or `NULL` to let the JavaScript handler use its
 #'   default.
@@ -4306,7 +4333,8 @@ send_oauth_module_set_browser_token <- function(
   max_age_ms,
   same_site,
   path,
-  request_id = NULL
+  request_id = NULL,
+  token = NULL
 ) {
   session$sendCustomMessage(
     type = "shinyOAuth:setBrowserToken",
@@ -4317,6 +4345,7 @@ send_oauth_module_set_browser_token <- function(
       path = path,
       inputId = session$ns("shinyOAuth_sid"),
       requestId = request_id,
+      token = token,
       ackInputId = session$ns("shinyOAuth_cookie_ack"),
       errorInputId = session$ns("shinyOAuth_cookie_error")
     )

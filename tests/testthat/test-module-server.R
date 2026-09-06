@@ -327,9 +327,9 @@ testthat::test_that("manual sync login succeeds with browser-token protection en
         url <<- value
       })
       session$setInputs(
+        shinyOAuth_sid = browser_ack$token,
         shinyOAuth_cookie_ack = list(
-          requestId = browser_ack$id,
-          token = btok
+          requestId = browser_ack$id
         )
       )
       for (i in seq_len(8)) {
