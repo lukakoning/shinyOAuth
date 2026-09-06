@@ -118,6 +118,15 @@ token authentication settings unless explicitly overridden. `extra_token_headers
 now applies only to exchange and refresh: opt in through `extra_headers` at
 each other endpoint that should receive those headers, even on the same origin.
 
+## Trusted ID-token audiences
+
+ID tokens with multiple audiences remain rejected by default. If an issuer
+legitimately includes another trusted audience, configure
+`trusted_id_token_audiences = c("trusted-service")` on `oauth_client()`.
+The token must still include this client's ID in `aud`, and `azp` must equal
+this client's ID when there are multiple audiences. Other audiences, incorrect
+authorized parties, and invalid signatures are rejected.
+
 ## Mutual TLS (mTLS)
 
 With mutual TLS (mTLS), the client presents a certificate during the TLS

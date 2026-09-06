@@ -55,7 +55,8 @@ OAuthClient(
   jarm_decryption_private_key = NULL,
   jarm_decryption_private_key_kid = NA_character_,
   jarm_max_lifetime = 600,
-  mtls_require_observed_cnf = TRUE
+  mtls_require_observed_cnf = TRUE,
+  trusted_id_token_audiences = character(0)
 )
 }
 \arguments{
@@ -498,6 +499,13 @@ the client cannot observe; this does not disable certificate presentation
 or mTLS endpoint selection. Missing confirmation is then allowed, but
 any observed confirmation is still validated, including mismatches and
 conflicting claims. This flag does not independently enable mTLS.}
+
+\item{trusted_id_token_audiences}{Character vector of additional ID-token
+audiences explicitly trusted by this client. Defaults to \code{character(0)},
+which permits only \code{client_id}. The token must always include \code{client_id}
+in \code{aud}; multi-audience tokens must also have \code{azp} equal to \code{client_id}.
+Values are matched exactly and case-sensitively. Configure only audiences
+trusted for this application's identity tokens, not arbitrary API audiences.}
 }
 \description{
 An \code{OAuthClient} holds your app's registration with a provider: its client ID,

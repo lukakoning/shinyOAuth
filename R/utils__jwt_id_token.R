@@ -346,7 +346,7 @@ validate_id_token <- function(
   if (!(client_id %in% aud)) {
     err_id_token("Audience does not include client_id")
   }
-  if (any(aud != client_id)) {
+  if (any(!aud %in% c(client_id, client@trusted_id_token_audiences))) {
     err_id_token("ID token contains untrusted additional audiences")
   }
   if (!is_valid_oidc_sub(payload[["sub"]])) {
@@ -442,8 +442,8 @@ validate_id_token <- function(
     }
   }
   # Authorized party (azp) handling per OIDC Core §2: if azp is present, it
-  # must equal client_id. azp does not make other aud values trusted; those are
-  # rejected above because shinyOAuth has no separate audience allowlist.
+  # must equal client_id. Additional audiences must independently satisfy the
+  # explicit allowlist above; azp alone never grants audience trust.
   if (!is.null(payload[["azp"]])) {
     if (!identical(payload[["azp"]], client_id)) {
       err_id_token("azp claim does not match client_id")

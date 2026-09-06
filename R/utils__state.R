@@ -588,6 +588,9 @@ state_client_policy_fingerprint <- function(client) {
       transform = tolower
     ),
     required_acr_values = state_policy_string_set(client@required_acr_values),
+    trusted_id_token_audiences = state_policy_string_set(
+      client@trusted_id_token_audiences
+    ),
     introspect = isTRUE(client@introspect),
     introspect_elements = state_policy_string_set(client@introspect_elements),
     client_secret_digest = if (is_valid_string(client@client_secret)) {

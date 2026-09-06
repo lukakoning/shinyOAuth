@@ -140,6 +140,12 @@
 #'   requirements, and `"none"` otherwise. Checks on `claims$id_token` require
 #'   ID token validation (`id_token_validation = TRUE` or `use_nonce = TRUE`).
 #'
+#' @param trusted_id_token_audiences Character vector of additional ID-token
+#'   audiences explicitly trusted by this client. Defaults to `character(0)`,
+#'   which permits only `client_id`. The token must always include `client_id`
+#'   in `aud`; multi-audience tokens must also have `azp` equal to `client_id`.
+#'   Values are matched exactly and case-sensitively. Configure only audiences
+#'   trusted for this application's identity tokens, not arbitrary API audiences.
 #' @param required_acr_values Optional character vector of acceptable login
 #'   requirements, such as a provider's multi-factor authentication (MFA) policy.
 #'   Use the provider's Authentication Context Class Reference (ACR) identifiers.
@@ -660,6 +666,10 @@ OAuthClient <- S7::new_class(
     mtls_require_observed_cnf = S7::new_property(
       S7::class_logical,
       default = TRUE
+    ),
+    trusted_id_token_audiences = S7::new_property(
+      S7::class_character,
+      default = character(0)
     )
   ),
   validator = function(self) oauth_client_validate(self)
@@ -748,6 +758,7 @@ oauth_client <- function(
   jarm_max_lifetime = 600,
   endpoint_auth = list(),
   mtls_require_observed_cnf = TRUE,
+  trusted_id_token_audiences = character(0),
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(
@@ -1022,6 +1033,7 @@ oauth_client <- function(
     scope_validation = scope_validation,
     claims_validation = claims_validation,
     required_acr_values = required_acr_values,
+    trusted_id_token_audiences = trusted_id_token_audiences,
     userinfo_jwt_required_time_claims = userinfo_jwt_required_time_claims,
     introspect = introspect,
     introspect_elements = introspect_elements,
@@ -2844,6 +2856,17 @@ oauth_client_validate <- function(self) {
       paste(invalid_userinfo_temporal_claims, collapse = ", "),
       "; allowed values are: exp, iat, nbf"
     ))
+  }
+
+  audiences <- self@trusted_id_token_audiences
+  if (
+    !is.character(audiences) ||
+      anyNA(audiences) ||
+      any(!nzchar(trimws(audiences)))
+  ) {
+    return(
+      "OAuthClient: trusted_id_token_audiences must be a character vector without NA or empty values"
+    )
   }
 
   # Validate required_acr_values

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Added `trusted_id_token_audiences` for explicitly trusted additional OIDC ID
+  token audiences. The default remains client-ID-only; multi-audience tokens
+  still require a matching `azp` and all normal signature and claim checks.
+
 * RSA keys used for client assertions, Request Objects, or DPoP must have at
   least 2048 bits. Weak keys now fail during client construction, including
   when the signing algorithm is inferred.
