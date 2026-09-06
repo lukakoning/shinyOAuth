@@ -1,9 +1,8 @@
 ## Attack vector: Nonce Mismatch / Replay
 ##
-## Verifies that tampering with the nonce stored in the state store causes
-## stored-state integrity validation to fail before token acceptance.
-## These fixtures replace the stored envelope, so they assert invalid_state;
-## nonce claim comparison itself is covered by the ID-token unit tests.
+## Verifies rejection when the server-stored expected nonce is changed.
+## A different nonce fails ID-token validation during token exchange; a missing
+## nonce fails the earlier state validation. Both paths leave the session unauthenticated.
 ## Defense mechanisms tested:
 ##   1. Nonce is embedded in the ID token by the IdP and must match the
 ##      value stored in the state store during validation.
@@ -18,6 +17,7 @@ if (!exists("make_provider", mode = "function")) {
 testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token rejection", {
   skip_common()
   local_test_options()
+  audit <- local_keycloak_audit_events()
 
   prov <- make_provider()
   # Ensure provider uses nonces (Keycloak OIDC provider should by default)
@@ -65,7 +65,14 @@ testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token
       # Must fail: ID token nonce (original) != stored nonce (fake)
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_true(any(vapply(
+        audit$events,
+        function(event) {
+          identical(event$error_class, "shinyOAuth_id_token_error")
+        },
+        logical(1)
+      )))
       testthat::expect_no_match(
         values$error_description,
         fake_nonce,
@@ -121,6 +128,7 @@ testthat::test_that("Nonce tamper: removed nonce from state store", {
 testthat::test_that("Nonce replay: nonce from flow 1 injected into flow 2", {
   skip_common()
   local_test_options()
+  audit <- local_keycloak_audit_events()
 
   prov <- make_provider()
   testthat::expect_true(prov@use_nonce)
@@ -179,7 +187,14 @@ testthat::test_that("Nonce replay: nonce from flow 1 injected into flow 2", {
       # Must fail: ID token nonce (flow 2's) != stored nonce (flow 1's)
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_true(any(vapply(
+        audit$events,
+        function(event) {
+          identical(event$error_class, "shinyOAuth_id_token_error")
+        },
+        logical(1)
+      )))
       testthat::expect_no_match(
         values$error_description,
         captured_nonce,
