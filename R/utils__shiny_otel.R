@@ -230,7 +230,7 @@ warn_about_async_otel_cache_reset <- function(
       "worker, but the otel cache reset hook",
       if (is_valid_string(name)) paste0(" '", name, "'") else "",
       " failed: ",
-      conditionMessage(error %||% simpleError("unknown error"))
+      otel_setup_error_detail(error %||% simpleError("unknown error"))
     )
   } else {
     paste(
@@ -244,7 +244,7 @@ warn_about_async_otel_cache_reset <- function(
     warn_pkg(
       "Async OpenTelemetry exporter changes may not take effect in reused workers",
       c(
-        "!" = detail,
+        "!" = escape_diagnostic_markup(detail),
         "i" = paste(
           "OpenTelemetry tracing and logging are disabled for the current",
           "async task so data cannot be sent through a stale provider."
