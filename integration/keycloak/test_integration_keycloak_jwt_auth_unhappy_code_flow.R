@@ -24,7 +24,6 @@ extract_login_callback_response <- function(login) {
 
 expect_jwt_auth_code_flow_failure <- function(
   client,
-  description_pattern,
   expect_jarm = FALSE
 ) {
   shiny::testServer(
@@ -53,8 +52,8 @@ expect_jwt_auth_code_flow_failure <- function(
       testthat::expect_identical(values$error, "token_exchange_error")
       testthat::expect_match(
         values$error_description %||% "",
-        description_pattern,
-        ignore.case = TRUE
+        "HTTP request failed",
+        fixed = TRUE
       )
       testthat::expect_null(values$token)
       testthat::expect_null(
@@ -144,10 +143,7 @@ testthat::test_that("code flow fails with wrong client_secret_jwt secret", {
   prov <- make_provider(token_auth_style = "client_secret_jwt")
   client <- make_bad_client_secret_jwt_client(prov)
 
-  expect_jwt_auth_code_flow_failure(
-    client,
-    "Token exchange failed|invalid_client|401"
-  )
+  expect_jwt_auth_code_flow_failure(client)
 })
 
 testthat::test_that("code flow fails with wrong client_secret_jwt audience", {
@@ -157,10 +153,7 @@ testthat::test_that("code flow fails with wrong client_secret_jwt audience", {
   prov <- make_provider(token_auth_style = "client_secret_jwt")
   client <- make_bad_client_secret_jwt_aud_client(prov)
 
-  expect_jwt_auth_code_flow_failure(
-    client,
-    "Token exchange failed|invalid_client|aud|401"
-  )
+  expect_jwt_auth_code_flow_failure(client)
 })
 
 testthat::test_that("code flow fails with client_secret_jwt alg not allowed by client", {
@@ -170,10 +163,7 @@ testthat::test_that("code flow fails with client_secret_jwt alg not allowed by c
   prov <- make_provider(token_auth_style = "client_secret_jwt")
   client <- make_bad_client_secret_jwt_alg_client(prov)
 
-  expect_jwt_auth_code_flow_failure(
-    client,
-    "Token exchange failed|invalid_client|alg|401"
-  )
+  expect_jwt_auth_code_flow_failure(client)
 })
 
 testthat::test_that("code flow fails with wrong private_key_jwt key", {
@@ -184,10 +174,7 @@ testthat::test_that("code flow fails with wrong private_key_jwt key", {
   prov <- make_provider(token_auth_style = "private_key_jwt")
   client <- make_bad_private_key_jwt_client(prov)
 
-  expect_jwt_auth_code_flow_failure(
-    client,
-    "Token exchange failed|invalid_client|jwt|401"
-  )
+  expect_jwt_auth_code_flow_failure(client)
 })
 
 testthat::test_that("JARM code flow fails with wrong client_secret_jwt secret", {
@@ -203,7 +190,6 @@ testthat::test_that("JARM code flow fails with wrong client_secret_jwt secret", 
 
   expect_jwt_auth_code_flow_failure(
     client,
-    "Token exchange failed|invalid_client|401",
     expect_jarm = TRUE
   )
 })
@@ -221,7 +207,6 @@ testthat::test_that("JARM code flow fails with wrong client_secret_jwt audience"
 
   expect_jwt_auth_code_flow_failure(
     client,
-    "Token exchange failed|invalid_client|aud|401",
     expect_jarm = TRUE
   )
 })
@@ -239,7 +224,6 @@ testthat::test_that("JARM code flow fails with client_secret_jwt alg not allowed
 
   expect_jwt_auth_code_flow_failure(
     client,
-    "Token exchange failed|invalid_client|alg|401",
     expect_jarm = TRUE
   )
 })
@@ -258,7 +242,6 @@ testthat::test_that("JARM code flow fails with wrong private_key_jwt key", {
 
   expect_jwt_auth_code_flow_failure(
     client,
-    "Token exchange failed|invalid_client|jwt|401",
     expect_jarm = TRUE
   )
 })

@@ -579,10 +579,10 @@ testthat::test_that("Keycloak PAR over the mTLS alias accepts issuer-audience cl
       testthat::expect_identical(values$error, "auth_url_error")
       testthat::expect_match(
         values$error_description %||% "",
-        "Pushed authorization request failed",
+        "HTTP request failed",
         fixed = TRUE
       )
-      testthat::expect_match(
+      testthat::expect_no_match(
         values$error_description %||% "",
         "Authentication failed.",
         fixed = TRUE
@@ -701,10 +701,7 @@ testthat::test_that("Keycloak mTLS PAR build_auth_url fails on a wrong client ce
 
   expect_mtls_par_build_auth_url_failure(
     cert_variant = "wrong",
-    description_pattern = paste(
-      "Pushed authorization request failed|invalid_client|",
-      "invalid_client_credentials|unauthorized_client"
-    )
+    description_pattern = "^HTTP request failed"
   )
 })
 
@@ -714,10 +711,7 @@ testthat::test_that("Keycloak mTLS PAR fails closed on a rogue CA certificate at
 
   expect_mtls_par_build_auth_url_failure(
     cert_variant = "rogue",
-    description_pattern = paste(
-      "Pushed authorization request failed|Transport failure|",
-      "certificate unknown|unknown ca|tls alert|No HTTP response"
-    )
+    description_pattern = "^Transport failure"
   )
 })
 
@@ -749,7 +743,7 @@ testthat::test_that("Keycloak mTLS auth-code flow surfaces wrong certificate err
       combo <- paste(values$error_description %||% "")
       testthat::expect_match(
         combo,
-        "Transport failure|invalid_client|invalid_client_credentials|certificate|tls alert|No HTTP response",
+        "^(HTTP request failed|Transport failure)",
         ignore.case = TRUE
       )
       testthat::expect_null(

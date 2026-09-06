@@ -276,11 +276,10 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
   )
   testthat::expect_match(
     auth_state,
-    "browser.token|browser token|invalid browser token|mismatch",
-    perl = TRUE,
-    ignore.case = TRUE,
+    "error_description: Invalid OAuth state",
+    fixed = TRUE,
     info = paste0(
-      "Expected browser-token validation failure. auth_state:\n",
+      "Expected redacted state validation failure. auth_state:\n",
       auth_state
     )
   )

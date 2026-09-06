@@ -138,9 +138,9 @@ testthat::test_that("Keycloak missing essential ID token claim fails closed", {
 
   testthat::expect_false(isTRUE(result[["authenticated"]]))
   testthat::expect_identical(result[["error"]], "token_exchange_error")
-  testthat::expect_match(
+  testthat::expect_no_match(
     result[["error_description"]] %||% "",
-    "website|claim",
+    "website",
     ignore.case = TRUE
   )
   testthat::expect_null(result[["token"]])
@@ -168,9 +168,9 @@ testthat::test_that("Keycloak ACR downgrade fails required_acr_values enforcemen
   testthat::expect_identical(acr_values, required_acr)
   testthat::expect_false(isTRUE(result[["authenticated"]]))
   testthat::expect_identical(result[["error"]], "token_exchange_error")
-  testthat::expect_match(
+  testthat::expect_no_match(
     result[["error_description"]] %||% "",
-    "acr|required_acr_values",
+    required_acr,
     ignore.case = TRUE
   )
   testthat::expect_null(result[["token"]])

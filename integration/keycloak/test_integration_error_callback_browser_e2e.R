@@ -546,10 +546,7 @@ testthat::test_that("browser authorization error callbacks preserve state on iss
   testthat::expect_false(isTRUE(valid_state$browser_state$authenticated))
   testthat::expect_false(isTRUE(valid_state$browser_state$has_token))
   testthat::expect_identical(valid_state$browser_state$error, "access_denied")
-  testthat::expect_identical(
-    valid_state$browser_state$error_description,
-    "Consent denied by user"
-  )
+  testthat::expect_null(valid_state$browser_state$error_description)
   testthat::expect_identical(
     valid_state$browser_state$error_uri,
     paste0(get_https_issuer(), "/oauth-error")

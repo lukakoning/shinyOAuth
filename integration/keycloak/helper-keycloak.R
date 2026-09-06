@@ -628,6 +628,7 @@ local_test_options <- function(.local_envir = parent.frame()) {
     list(
       shinyOAuth.skip_browser_token = TRUE,
       shinyOAuth.allow_insecure_oidc_loopback = TRUE,
+      shinyOAuth.expose_error_body = FALSE,
       shinyOAuth.timeout = 10
     ),
     .local_envir = .local_envir
@@ -639,6 +640,18 @@ local_test_options <- function(.local_envir = parent.frame()) {
       .local_envir = .local_envir
     )
   }
+}
+
+local_keycloak_audit_events <- function(.local_envir = parent.frame()) {
+  captured <- new.env(parent = emptyenv())
+  captured$events <- list()
+  withr::local_options(
+    list(shinyOAuth.audit_hook = function(event) {
+      captured$events[[length(captured$events) + 1L]] <- event
+    }),
+    .local_envir = .local_envir
+  )
+  captured
 }
 
 ## Standard skip checks for testServer tests

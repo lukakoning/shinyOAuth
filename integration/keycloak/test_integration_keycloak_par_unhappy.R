@@ -203,6 +203,7 @@ testthat::test_that("push_authorization_request rejects request_uri in the pushe
 testthat::test_that("Keycloak PAR rejects wrong JWT client assertion audience", {
   skip_common()
   local_test_options()
+  audit <- local_keycloak_audit_events()
 
   prov <- make_provider(token_auth_style = "client_secret_jwt", use_par = TRUE)
   client <- shinyOAuth::oauth_client(
@@ -221,14 +222,16 @@ testthat::test_that("Keycloak PAR rejects wrong JWT client assertion audience", 
   testthat::expect_identical(built$error, "auth_url_error")
   testthat::expect_match(
     built$error_description %||% "",
-    "Pushed authorization request failed",
+    "HTTP request failed",
     fixed = TRUE
   )
-  testthat::expect_match(
-    built$error_description %||% "",
-    "401|Unauthorized|invalid_request|Authentication failed",
-    ignore.case = TRUE
+  failures <- Filter(
+    function(event) identical(event$type, "http_error"),
+    audit$events
   )
+  testthat::expect_length(failures, 1L)
+  testthat::expect_identical(failures[[1L]]$status, 401L)
+  testthat::expect_null(failures[[1L]]$oauth_error_description)
   expect_state_store_size(client, 0L)
 })
 
@@ -384,11 +387,7 @@ testthat::test_that("Keycloak PAR request_uri is rejected after realm-configured
 
         if (isTRUE(callback_bound)) {
           testthat::expect_identical(values$error, "invalid_request")
-          testthat::expect_match(
-            values$error_description %||% "",
-            "request|expired|invalid",
-            ignore.case = TRUE
-          )
+          testthat::expect_null(values$error_description)
           expect_state_store_entry_consumed(
             client,
             state_info,

@@ -823,7 +823,7 @@ testthat::test_that("browser form_post provider error callbacks are surfaced and
   testthat::expect_match(auth_state, "error: access_denied", fixed = TRUE)
   testthat::expect_match(
     auth_state,
-    "error_description: Denied by Keycloak",
+    "error_description: <none>",
     fixed = TRUE
   )
 
@@ -999,9 +999,8 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies p
   testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
   testthat::expect_match(
     auth_state,
-    "browser.token|browser token|invalid browser token|mismatch",
-    perl = TRUE,
-    ignore.case = TRUE
+    "error_description: Invalid OAuth state",
+    fixed = TRUE
   )
 
   .wait_for_form_post_callback_cleanup(drv)
@@ -1107,9 +1106,8 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
   testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
   testthat::expect_match(
     auth_state,
-    "browser.token|browser token|invalid browser token|mismatch",
-    perl = TRUE,
-    ignore.case = TRUE
+    "error_description: Invalid OAuth state",
+    fixed = TRUE
   )
 
   .wait_for_form_post_callback_cleanup(drv)
@@ -1530,9 +1528,8 @@ testthat::test_that("browser form_post.jwt callbacks with tampered browser cooki
   testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
   testthat::expect_match(
     auth_state,
-    "browser.token|browser token|invalid browser token|mismatch",
-    perl = TRUE,
-    ignore.case = TRUE
+    "error_description: Invalid OAuth state",
+    fixed = TRUE
   )
 
   .wait_for_form_post_callback_cleanup(drv)
@@ -1782,9 +1779,8 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected on the wrong a
   testthat::expect_match(auth_state_a, "error: invalid_state", fixed = TRUE)
   testthat::expect_match(
     auth_state_a,
-    "browser.token|browser token|invalid browser token|mismatch",
-    perl = TRUE,
-    ignore.case = TRUE
+    "error_description: Invalid OAuth state",
+    fixed = TRUE
   )
 
   .wait_for_form_post_callback_cleanup(drv_a)

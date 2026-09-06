@@ -25,6 +25,11 @@ installing dependencies, so install these prerequisites first.
 
 ## Run integration tests
 
+The shared test options keep `shinyOAuth.expose_error_body = FALSE`. Assertions
+use condition classes, module error codes, and structured audit fields. Only
+tests specifically inspecting provider diagnostics should enable detailed
+errors locally. The release runner retains a zero-skip budget by default.
+
 ```bash
 # One-shot script (starts Keycloak, waits, runs tests, tears down):
 # From repo root

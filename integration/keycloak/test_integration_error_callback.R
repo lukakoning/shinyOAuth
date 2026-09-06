@@ -87,10 +87,7 @@ testthat::test_that("authorization error callback consumes state and blocks repl
 
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_identical(values$error, "access_denied")
-      testthat::expect_identical(
-        values$error_description,
-        "Consent denied by user"
-      )
+      testthat::expect_null(values$error_description)
       testthat::expect_identical(
         values$error_uri,
         expected_error_uri
@@ -152,10 +149,7 @@ testthat::test_that("authorization error callback issuer is checked before state
       session$flushReact()
 
       testthat::expect_identical(values$error, "access_denied")
-      testthat::expect_identical(
-        values$error_description,
-        "Consent denied by user"
-      )
+      testthat::expect_null(values$error_description)
       expect_state_store_entry_consumed(client, state_info)
     }
   )

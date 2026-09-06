@@ -55,8 +55,7 @@ testthat::test_that("Browser token mismatch: tampered cookie value rejected", {
           browser_token = attacker_bt,
           iss = callback_iss(res)
         ),
-        regexp = "browser.token|Browser token|state|mismatch",
-        ignore.case = TRUE
+        class = "shinyOAuth_state_error"
       )
     }
   )
@@ -86,8 +85,7 @@ testthat::test_that("Browser token: NULL browser_token rejected", {
           browser_token = NULL,
           iss = callback_iss(res)
         ),
-        regexp = "browser.token|Browser token|invalid|state",
-        ignore.case = TRUE
+        class = "shinyOAuth_state_error"
       )
     }
   )
@@ -120,8 +118,7 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
           browser_token = short_token,
           iss = callback_iss(res)
         ),
-        regexp = "browser.token|length|hex|invalid|state",
-        ignore.case = TRUE
+        class = "shinyOAuth_state_error"
       )
 
       # Non-hex characters
@@ -137,8 +134,7 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
           browser_token = bad_chars_token,
           iss = callback_iss(res)
         ),
-        regexp = "browser.token|hex|invalid|state",
-        ignore.case = TRUE
+        class = "shinyOAuth_state_error"
       )
     }
   )

@@ -684,8 +684,8 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: missing code_verifier
       testthat::expect_identical(values$error, "invalid_state")
       testthat::expect_match(
         values$error_description %||% "",
-        "code verifier|PKCE",
-        ignore.case = TRUE
+        "Invalid OAuth state",
+        fixed = TRUE
       )
       testthat::expect_null(values$token)
       expect_state_store_entry_consumed(client, state)
@@ -763,8 +763,8 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: wrong code_verifier",
       testthat::expect_identical(values$error, "token_exchange_error")
       testthat::expect_match(
         values$error_description %||% "",
-        "invalid_grant|PKCE|code.verifier|code verifier",
-        ignore.case = TRUE
+        "HTTP request failed",
+        fixed = TRUE
       )
       testthat::expect_null(values$token)
       expect_state_store_entry_consumed(client, state)

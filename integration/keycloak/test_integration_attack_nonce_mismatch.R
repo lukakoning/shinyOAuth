@@ -1,7 +1,9 @@
 ## Attack vector: Nonce Mismatch / Replay
 ##
 ## Verifies that tampering with the nonce stored in the state store causes
-## ID token validation to fail (nonce claim mismatch).
+## stored-state integrity validation to fail before token acceptance.
+## These fixtures replace the stored envelope, so they assert invalid_state;
+## nonce claim comparison itself is covered by the ID-token unit tests.
 ## Defense mechanisms tested:
 ##   1. Nonce is embedded in the ID token by the IdP and must match the
 ##      value stored in the state store during validation.
@@ -63,12 +65,12 @@ testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token
       # Must fail: ID token nonce (original) != stored nonce (fake)
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
-      testthat::expect_true(grepl(
-        "nonce|id.token|ID token",
-        combo,
-        ignore.case = TRUE
-      ))
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_no_match(
+        values$error_description,
+        fake_nonce,
+        fixed = TRUE
+      )
     }
   )
 })
@@ -111,12 +113,7 @@ testthat::test_that("Nonce tamper: removed nonce from state store", {
       # Must fail: ID token has a nonce claim but no expected nonce to compare against
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
-      testthat::expect_true(grepl(
-        "nonce|id.token|ID token",
-        combo,
-        ignore.case = TRUE
-      ))
+      testthat::expect_identical(values$error, "invalid_state")
     }
   )
 })
@@ -182,12 +179,12 @@ testthat::test_that("Nonce replay: nonce from flow 1 injected into flow 2", {
       # Must fail: ID token nonce (flow 2's) != stored nonce (flow 1's)
       testthat::expect_false(isTRUE(values$authenticated))
       testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
-      testthat::expect_true(grepl(
-        "nonce|id.token|ID token",
-        combo,
-        ignore.case = TRUE
-      ))
+      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_no_match(
+        values$error_description,
+        captured_nonce,
+        fixed = TRUE
+      )
     }
   )
 })

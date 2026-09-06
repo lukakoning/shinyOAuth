@@ -114,10 +114,10 @@ testthat::test_that("Keycloak PAR rejects request-object wrong signing key", {
       testthat::expect_identical(values$error, "auth_url_error")
       testthat::expect_match(
         values$error_description %||% "",
-        "Pushed authorization request failed",
+        "HTTP request failed",
         fixed = TRUE
       )
-      testthat::expect_match(
+      testthat::expect_no_match(
         values$error_description %||% "",
         "invalid_request|request object|signature|jwt",
         ignore.case = TRUE
@@ -181,10 +181,10 @@ testthat::test_that("Keycloak PAR rejects request-object wrong encryption key", 
       testthat::expect_identical(values$error, "auth_url_error")
       testthat::expect_match(
         values$error_description %||% "",
-        "Pushed authorization request failed",
+        "HTTP request failed",
         fixed = TRUE
       )
-      testthat::expect_match(
+      testthat::expect_no_match(
         values$error_description %||% "",
         "invalid_request|request object|decrypt|encryption|jwt",
         ignore.case = TRUE

@@ -1393,9 +1393,8 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
   testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
   testthat::expect_match(
     auth_state,
-    "browser.token|browser token|invalid browser token|mismatch",
-    perl = TRUE,
-    ignore.case = TRUE
+    "error_description: Invalid OAuth state",
+    fixed = TRUE
   )
 })
 

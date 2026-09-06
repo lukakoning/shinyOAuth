@@ -999,7 +999,8 @@ testthat::test_that("hook errors in async workers propagate to main process", {
   # Set an audit hook that always errors
   withr::local_options(list(
     shinyOAuth.audit_hook = function(event) stop("broken hook"),
-    shinyOAuth.trace_hook = NULL
+    shinyOAuth.trace_hook = NULL,
+    shinyOAuth.expose_error_body = FALSE
   ))
 
   m <- shinyOAuth:::async_dispatch(
@@ -1024,13 +1025,18 @@ testthat::test_that("hook errors in async workers propagate to main process", {
   testthat::expect_length(resolved[["warnings"]], 1)
   testthat::expect_match(
     conditionMessage(resolved[["warnings"]][[1]]),
-    "audit_hook error: broken hook"
+    "audit_hook error: details withheld"
   )
+  testthat::expect_false(grepl(
+    "broken hook",
+    conditionMessage(resolved[["warnings"]][[1]]),
+    fixed = TRUE
+  ))
 
   # replay_async_conditions should re-emit the warning on the main thread
   testthat::expect_warning(
     val <- shinyOAuth:::replay_async_conditions(resolved),
-    "audit_hook error: broken hook"
+    "audit_hook error: details withheld"
   )
   testthat::expect_equal(val, "done")
 })
@@ -1141,7 +1147,8 @@ testthat::test_that("true-async: audit_hook takes precedence over trace_hook ali
   # Set hooks that error - these get serialized and sent to the daemon
   withr::local_options(list(
     shinyOAuth.trace_hook = function(event) stop("trace kaboom"),
-    shinyOAuth.audit_hook = function(event) stop("audit kaboom")
+    shinyOAuth.audit_hook = function(event) stop("audit kaboom"),
+    shinyOAuth.expose_error_body = FALSE
   ))
 
   captured_opts <- shinyOAuth:::capture_async_options()
@@ -1174,8 +1181,8 @@ testthat::test_that("true-async: audit_hook takes precedence over trace_hook ali
     conditionMessage,
     character(1)
   )
-  testthat::expect_true(any(grepl("audit_hook error: audit kaboom", msgs)))
-  testthat::expect_false(any(grepl("trace_hook error: trace kaboom", msgs)))
+  testthat::expect_true(any(grepl("audit_hook error: details withheld", msgs)))
+  testthat::expect_false(any(grepl("trace_hook error|kaboom", msgs)))
 
   # Replay surfaces them on main thread
   w_captured <- list()
@@ -1188,8 +1195,11 @@ testthat::test_that("true-async: audit_hook takes precedence over trace_hook ali
   )
   testthat::expect_equal(val, "hook_test_done")
   w_msgs <- vapply(w_captured, conditionMessage, character(1))
-  testthat::expect_true(any(grepl("audit kaboom", w_msgs)))
-  testthat::expect_false(any(grepl("trace kaboom", w_msgs)))
+  testthat::expect_true(any(grepl(
+    "audit_hook error: details withheld",
+    w_msgs
+  )))
+  testthat::expect_false(any(grepl("trace_hook error|kaboom", w_msgs)))
 })
 
 testthat::test_that("true-async: trace_hook alias captures conditions from daemon worker", {
