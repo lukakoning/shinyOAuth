@@ -221,6 +221,14 @@ oauth_token_validate <- function(self) {
     )
   }
 
+  if (
+    !is.logical(self@id_token_validated) ||
+      length(self@id_token_validated) != 1L ||
+      is.na(self@id_token_validated)
+  ) {
+    return("OAuthToken: id_token_validated must be a single non-NA logical")
+  }
+
   if (isTRUE(self@id_token_validated)) {
     if (!(is_valid_string(self@id_token) && nzchar(trimws(self@id_token)))) {
       return(
