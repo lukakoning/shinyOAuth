@@ -6,7 +6,7 @@ test_that("Unknown kid triggers at most one forced JWKS refresh per interval", {
 
   # Generate an RSA key pair and a public JWK that will be returned by the mocked JWKS fetch.
   rsa <- openssl::rsa_keygen(bits = 2048)
-  priv_jwk_json <- jose::write_jwk(rsa)
+  priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
   pub_jwk <- list(kty = priv_jwk$kty, n = priv_jwk$n, e = priv_jwk$e)
   pub_jwk$kid <- "rsa-1"
@@ -87,7 +87,7 @@ test_that("ID token verification refreshes rotated key material with the same ki
   old_key <- openssl::rsa_keygen(bits = 2048)
   new_key <- openssl::rsa_keygen(bits = 2048)
   as_public_jwk <- function(key) {
-    jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE)
+    jwk <- jsonlite::fromJSON(write_test_jwk(key), simplifyVector = TRUE)
     list(kty = jwk$kty, n = jwk$n, e = jwk$e, kid = "stable-kid")
   }
   stale_jwks <- list(keys = list(as_public_jwk(old_key)))
@@ -141,7 +141,7 @@ test_that("RSA to EC rotations refresh absent and retained kid candidates once",
   old_key <- openssl::rsa_keygen()
   new_key <- openssl::ec_keygen("P-256")
   public <- function(key) {
-    jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey))
+    jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey))
     jwk$kid <- "stable"
     jwk
   }

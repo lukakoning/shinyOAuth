@@ -49,7 +49,7 @@ make_jarm_test_client <- function(
 }
 
 make_jarm_public_jwk <- function(key, kid = "sig-1", use = "sig") {
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey), simplifyVector = TRUE)
+  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = TRUE)
   jwk$kid <- kid
   jwk$use <- use
   jwk

@@ -6,7 +6,7 @@ test_that("JWK selection filters use=sig and prefers alg match", {
 
   # Generate RSA key pair and public JWK
   rsa <- openssl::rsa_keygen(bits = 2048)
-  priv_jwk_json <- jose::write_jwk(rsa)
+  priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
   pub_jwk_sig_rs256 <- list(
     kty = priv_jwk$kty,
@@ -19,7 +19,7 @@ test_that("JWK selection filters use=sig and prefers alg match", {
 
   # Another RSA key with use=enc (should be filtered out)
   rsa2 <- openssl::rsa_keygen(bits = 2048)
-  priv_jwk_json2 <- jose::write_jwk(rsa2)
+  priv_jwk_json2 <- write_test_jwk(rsa2)
   priv_jwk2 <- jsonlite::fromJSON(priv_jwk_json2, simplifyVector = TRUE)
   pub_jwk_enc_rs256 <- list(
     kty = priv_jwk2$kty,
@@ -32,7 +32,7 @@ test_that("JWK selection filters use=sig and prefers alg match", {
 
   # A third RSA key with use=sig but different alg advertised (RS384)
   rsa3 <- openssl::rsa_keygen(bits = 2048)
-  priv_jwk_json3 <- jose::write_jwk(rsa3)
+  priv_jwk_json3 <- write_test_jwk(rsa3)
   priv_jwk3 <- jsonlite::fromJSON(priv_jwk_json3, simplifyVector = TRUE)
   pub_jwk_sig_rs384 <- list(
     kty = priv_jwk3$kty,

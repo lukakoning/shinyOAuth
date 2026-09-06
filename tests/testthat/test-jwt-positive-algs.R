@@ -22,7 +22,7 @@ test_that(paste("validate_id_token accepts a valid", test_alg, "JWT"), {
     pub_jwk$kid <- "ed25519-1"
   } else {
     rsa <- openssl::rsa_keygen(bits = 2048)
-    priv_jwk_json <- jose::write_jwk(rsa)
+    priv_jwk_json <- write_test_jwk(rsa)
     priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
     pub_jwk <- list(kty = priv_jwk$kty, n = priv_jwk$n, e = priv_jwk$e)
     pub_jwk$kid <- "rsa-1"
@@ -135,7 +135,7 @@ make_rsa_jwt_with_alg <- function(key, alg, claims, kid) {
 
 test_that("validate_id_token rejects a signed lowercase alg", {
   rsa <- openssl::rsa_keygen(bits = 2048)
-  jwk <- jsonlite::fromJSON(jose::write_jwk(rsa), simplifyVector = TRUE)
+  jwk <- jsonlite::fromJSON(write_test_jwk(rsa), simplifyVector = TRUE)
   jwk$kid <- "lowercase-alg"
   jwk$use <- "sig"
   jwk$alg <- "RS256"
@@ -181,7 +181,7 @@ test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
   testthat::skip_if_not_installed("jose")
 
   rsa <- openssl::rsa_keygen(bits = 2048)
-  priv_jwk_json <- jose::write_jwk(rsa)
+  priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
   pub_jwk <- list(kty = priv_jwk$kty, n = priv_jwk$n, e = priv_jwk$e)
   pub_jwk$kid <- "rsa-wide-1"

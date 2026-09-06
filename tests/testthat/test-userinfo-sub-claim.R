@@ -246,7 +246,7 @@ test_that("validate_signed_userinfo_claims accepts valid sub", {
 
 test_that("get_userinfo rejects signed JWT missing sub for OIDC provider", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key$pubkey)
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
   jwk$kid <- "test-kid-sub"
   jwk$use <- "sig"

@@ -131,7 +131,7 @@ test_that("UserInfo JWT with malformed crit (empty array) is rejected", {
 
 test_that("UserInfo signed JWT without crit header still passes", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key$pubkey)
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
   jwk$kid <- "kid-crit-ok"
   jwk$use <- "sig"
@@ -161,7 +161,7 @@ test_that("UserInfo signed JWT without crit header still passes", {
 
 test_that("UserInfo JWT triggers JWKS refresh when kid misses initially", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- jose::write_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key$pubkey)
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
   jwk$kid <- "rotated-kid"
   jwk$use <- "sig"
@@ -209,7 +209,7 @@ test_that("UserInfo JWT refreshes rotated material with the same kid", {
   new_key <- openssl::rsa_keygen(2048)
   as_public_jwk <- function(key) {
     jwk <- jsonlite::fromJSON(
-      jose::write_jwk(key$pubkey),
+      write_test_jwk(key$pubkey),
       simplifyVector = TRUE
     )
     jwk$kid <- "stable-kid"

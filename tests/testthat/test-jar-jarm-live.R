@@ -13,7 +13,7 @@ test_that(
     client_secret <- "hs256-request-object-secret-32b!"
     server_key <- openssl::rsa_keygen()
     server_jwk <- jsonlite::fromJSON(
-      jose::write_jwk(server_key$pubkey),
+      write_test_jwk(server_key$pubkey),
       simplifyVector = FALSE
     )
     server_jwk[["kid"]] <- "jarm-sig-1"

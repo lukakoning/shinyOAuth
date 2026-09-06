@@ -282,11 +282,19 @@ jwk_to_pubkey <- function(jwk) {
   if (!kty %in% c("RSA", "EC", "OKP")) {
     err_parse(paste0("Unsupported JWK kty: ", kty))
   }
+  if (identical(kty, "RSA")) {
+    # Importing a key does not validate its RSA public parameters.
+    validate_jwk_rsa_public_key(jwk)
+  }
   if (identical(kty, "OKP")) {
     if (!identical(jwk[["crv"]], "Ed25519")) {
       err_parse("Unsupported OKP signing curve; only Ed25519 is supported")
     }
-    public_bytes <- strict_decode_jwk_base64url_uint(jwk[["x"]], "OKP JWK x")
+    public_bytes <- strict_decode_jwk_base64url_uint(
+      jwk[["x"]],
+      "OKP JWK x",
+      minimal = FALSE
+    )
     if (length(public_bytes) != 32L) {
       err_parse("Ed25519 JWK x must decode to 32 bytes")
     }
@@ -387,14 +395,21 @@ compute_jwk_thumbprint <- function(jwk) {
 
 #' Strictly decode a JWK base64urlUInt field
 #'
-#' Used when RSA and EC key material is decoded from JWKS data.
+#' Used when RSA, EC, and OKP key material is decoded from JWKS data. EC and
+#' OKP fields contain fixed-width bytes rather than minimal integers.
 #'
 #' @param value Encoded field value.
 #' @param field_name Field name used in parse errors.
+#' @param minimal Require a minimal unsigned integer representation. Set to
+#'   `FALSE` for fixed-width EC coordinates and OKP public keys.
 #' @return Raw decoded bytes.
 #' @keywords internal
 #' @noRd
-strict_decode_jwk_base64url_uint <- function(value, field_name) {
+strict_decode_jwk_base64url_uint <- function(
+  value,
+  field_name,
+  minimal = TRUE
+) {
   if (
     !is.character(value) ||
       length(value) != 1L ||
@@ -412,8 +427,50 @@ strict_decode_jwk_base64url_uint <- function(value, field_name) {
   if (is.null(decoded) || !is.raw(decoded) || length(decoded) == 0L) {
     err_parse(paste0(field_name, " must be a valid base64urlUInt"))
   }
+  if (!identical(base64url_encode(decoded), value)) {
+    err_parse(paste0(field_name, " must be a canonical base64urlUInt"))
+  }
+  if (minimal && length(decoded) > 1L && decoded[[1]] == as.raw(0)) {
+    err_parse(paste0(field_name, " must be a minimal base64urlUInt"))
+  }
 
   decoded
+}
+
+#' Validate RSA public parameters before accepting or importing a JWK
+#'
+#' Enforces the public checks from RFC 8017 Section 3.1 and the minimum key
+#' size from RFC 7518 Section 3.3. The R openssl API does not expose a public-key
+#' validation primitive. Coprimality with lambda(n) cannot be checked without
+#' the private prime factors.
+#'
+#' @param jwk Parsed RSA JWK object.
+#' @return Invisibly returns `TRUE` on success; otherwise raises a parse error.
+#' @keywords internal
+#' @noRd
+validate_jwk_rsa_public_key <- function(jwk) {
+  if (!is.character(jwk[["n"]]) || !is.character(jwk[["e"]])) {
+    err_parse("RSA JWK missing n/e")
+  }
+  modulus_raw <- strict_decode_jwk_base64url_uint(jwk[["n"]], "RSA JWK n")
+  exponent_raw <- strict_decode_jwk_base64url_uint(jwk[["e"]], "RSA JWK e")
+  if (jwk_rsa_modulus_bits(modulus_raw) < 2048L) {
+    err_parse("RSA JWK modulus must be at least 2048 bits")
+  }
+
+  # Use OpenSSL big integers to avoid rounding large exponents or moduli.
+  modulus <- openssl::bignum(modulus_raw)
+  exponent <- openssl::bignum(exponent_raw)
+  if (modulus %% openssl::bignum(2) == 0) {
+    err_parse("RSA JWK modulus must be odd")
+  }
+  if (
+    exponent < 3 || exponent %% openssl::bignum(2) == 0 || exponent >= modulus
+  ) {
+    err_parse("RSA JWK exponent must be odd and satisfy 3 <= e < n")
+  }
+
+  invisible(TRUE)
 }
 
 #' Compute RSA modulus size in bits
@@ -447,7 +504,11 @@ jwk_rsa_modulus_bits <- function(modulus_raw) {
 #' @keywords internal
 #' @noRd
 strict_decode_jwk_ec_coordinate <- function(value, field_name, curve) {
-  decoded <- strict_decode_jwk_base64url_uint(value, field_name)
+  decoded <- strict_decode_jwk_base64url_uint(
+    value,
+    field_name,
+    minimal = FALSE
+  )
   expected_len <- switch(
     as.character(curve %||% ""),
     "P-256" = 32L,
@@ -548,23 +609,7 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
       supported_seen <- supported_seen + 1L
       # Minimal member presence
       if (kty == "RSA") {
-        if (
-          !is.character(k[["n"]]) ||
-            !is.character(k[["e"]])
-        ) {
-          err_parse("RSA JWK missing n/e")
-        }
-        modulus_raw <- strict_decode_jwk_base64url_uint(
-          k[["n"]],
-          "RSA JWK n"
-        )
-        strict_decode_jwk_base64url_uint(
-          k[["e"]],
-          "RSA JWK e"
-        )
-        if (jwk_rsa_modulus_bits(modulus_raw) < 2048L) {
-          err_parse("RSA JWK modulus must be at least 2048 bits")
-        }
+        validate_jwk_rsa_public_key(k)
       } else if (kty == "EC") {
         if (
           !is_valid_string(k[["crv"]]) ||
@@ -592,7 +637,8 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
         }
         strict_decode_jwk_base64url_uint(
           k[["x"]],
-          "OKP JWK x"
+          "OKP JWK x",
+          minimal = FALSE
         )
       }
       # Compute thumbprint for pinning

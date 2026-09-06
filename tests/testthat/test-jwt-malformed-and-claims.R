@@ -262,7 +262,7 @@ test_that("signed JWT scalar claims cannot be encoded as arrays", {
   now <- floor(as.numeric(Sys.time()))
   key <- openssl::rsa_keygen(bits = 2048)
   jwk <- jsonlite::fromJSON(
-    jose::write_jwk(key$pubkey),
+    write_test_jwk(key$pubkey),
     simplifyVector = TRUE
   )
   jwk$kid <- "raw-json-types"
@@ -467,7 +467,7 @@ test_that("signed RS256 temporal boundaries respect package leeway", {
   )
 
   rsa <- openssl::rsa_keygen(bits = 2048)
-  jwk <- jsonlite::fromJSON(jose::write_jwk(rsa), simplifyVector = TRUE)
+  jwk <- jsonlite::fromJSON(write_test_jwk(rsa), simplifyVector = TRUE)
   jwks <- list(
     keys = list(list(
       kty = jwk$kty,

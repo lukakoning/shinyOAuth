@@ -4,7 +4,7 @@ make_host_policy_rsa_jwk <- local({
   function(kid = "k1") {
     if (is.null(base_jwk)) {
       key <- openssl::rsa_keygen(bits = 2048)
-      jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE)
+      jwk <- jsonlite::fromJSON(write_test_jwk(key), simplifyVector = TRUE)
       base_jwk <<- list(kty = jwk$kty, n = jwk$n, e = jwk$e)
     }
 

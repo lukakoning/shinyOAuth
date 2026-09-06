@@ -1,12 +1,12 @@
 make_public_rsa_jwk <- function(bits = 2048, kid = "k1") {
   key <- openssl::rsa_keygen(bits = bits)
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE)
+  jwk <- jsonlite::fromJSON(write_test_jwk(key), simplifyVector = TRUE)
   list(kty = jwk$kty, n = jwk$n, e = jwk$e, kid = kid)
 }
 
 make_public_ec_jwk <- function(curve = "P-256", kid = "k2") {
   key <- openssl::ec_keygen(curve = curve)
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE)
+  jwk <- jsonlite::fromJSON(write_test_jwk(key), simplifyVector = TRUE)
   list(kty = jwk$kty, crv = jwk$crv, x = jwk$x, y = jwk$y, kid = kid)
 }
 

@@ -41,7 +41,7 @@ test_that("fetched key_ops arrays are usable and malformed arrays fail closed", 
 
   rsa <- openssl::rsa_keygen(bits = 2048)
   public_jwk <- jsonlite::fromJSON(
-    jose::write_jwk(rsa$pubkey),
+    write_test_jwk(rsa$pubkey),
     simplifyVector = FALSE
   )
   make_key <- function(kid, use, operations) {

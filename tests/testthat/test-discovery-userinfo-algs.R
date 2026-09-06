@@ -22,7 +22,7 @@ test_that("discovery negotiates ID token and UserInfo algorithms independently",
       )
     },
     fetch_jwks = function(...) {
-      list(keys = list(jsonlite::fromJSON(jose::write_jwk(key$pubkey))))
+      list(keys = list(jsonlite::fromJSON(write_test_jwk(key$pubkey))))
     },
     req_with_retry = function(...) {
       httr2::response(

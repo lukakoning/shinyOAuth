@@ -925,13 +925,13 @@ test_that("request object encryption only selects pinned recipient keys", {
   signing_key <- openssl::rsa_keygen(bits = 2048)
   encryption_key <- openssl::rsa_keygen(bits = 2048)
   signing_jwk <- jsonlite::fromJSON(
-    jose::write_jwk(signing_key$pubkey),
+    write_test_jwk(signing_key$pubkey),
     simplifyVector = FALSE
   )
   signing_jwk[["kid"]] <- "pinned-signing-key"
   signing_jwk[["use"]] <- "sig"
   encryption_jwk <- jsonlite::fromJSON(
-    jose::write_jwk(encryption_key$pubkey),
+    write_test_jwk(encryption_key$pubkey),
     simplifyVector = FALSE
   )
   encryption_jwk[["kid"]] <- "unpinned-encryption-key"
@@ -1007,7 +1007,7 @@ test_that("JAR encryption recovers from a rotated key with a throttled refresh",
   old_key <- openssl::rsa_keygen()
   new_key <- openssl::rsa_keygen()
   as_enc_jwk <- function(key, kid) {
-    jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey))
+    jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey))
     c(jwk, list(kid = kid, use = "enc", alg = "RSA-OAEP"))
   }
   old <- as_enc_jwk(old_key, "old")
@@ -1041,7 +1041,7 @@ test_that("JAR encryption recovers from a rotated key with a throttled refresh",
 test_that("JWK list and JSON encryption inputs enforce alg metadata", {
   encryption_key <- openssl::rsa_keygen(bits = 2048)
   encryption_jwk <- jsonlite::fromJSON(
-    jose::write_jwk(encryption_key$pubkey),
+    write_test_jwk(encryption_key$pubkey),
     simplifyVector = FALSE
   )
   encryption_jwk[["kid"]] <- "encryption-key-7"
@@ -1074,7 +1074,7 @@ test_that("JWK list and JSON encryption inputs enforce alg metadata", {
 test_that("JWK list and JSON encryption inputs retain kid and key policy", {
   encryption_key <- openssl::rsa_keygen(bits = 2048)
   encryption_jwk <- jsonlite::fromJSON(
-    jose::write_jwk(encryption_key$pubkey),
+    write_test_jwk(encryption_key$pubkey),
     simplifyVector = FALSE
   )
   encryption_jwk[["kid"]] <- "encryption-key-7"

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* RSA JWK validation now rejects invalid public exponents, even moduli, and
+  noncanonical or nonminimal integer encodings before keys are imported or
+  used for JWT verification.
+
 * State parsing and decryption failures now default to no delay, avoiding
   intentional blocking of the Shiny worker during malformed callbacks.
   Explicit `shinyOAuth.state_fail_delay_ms` settings remain supported.

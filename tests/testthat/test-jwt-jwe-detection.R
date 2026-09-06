@@ -25,7 +25,7 @@ test_that("validate_id_token still accepts valid JWS tokens (3 segments)", {
   now <- as.numeric(Sys.time())
 
   rsa <- openssl::rsa_keygen(bits = 2048)
-  priv_jwk_json <- jose::write_jwk(rsa)
+  priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
   pub_jwk <- list(kty = priv_jwk$kty, n = priv_jwk$n, e = priv_jwk$e)
   pub_jwk$kid <- "rsa-jwe-test"
