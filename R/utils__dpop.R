@@ -572,7 +572,7 @@ dpop_public_jwk <- function(key) {
     )
   }
 
-  jwk
+  canonicalize_local_public_jwk(jwk)
 }
 
 #' Normalize a DPoP target URI

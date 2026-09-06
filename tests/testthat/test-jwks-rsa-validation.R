@@ -16,6 +16,26 @@ expect_rsa_jwk_rejected <- function(jwk, regexp) {
   )
 }
 
+test_that("direct RSA thumbprints require canonical unsigned integers", {
+  original <- rsa_validation_public_jwk()
+  expect_type(compute_jwk_thumbprint(original), "character")
+  for (field in c("n", "e")) {
+    jwk <- original
+    jwk[[field]] <- base64url_encode(c(as.raw(0), base64url_decode_raw(jwk[[field]])))
+    expect_error(compute_jwk_thumbprint(jwk), "minimal base64urlUInt")
+    for (value in c("Ax", "AQF", "AQAB=")) {
+      jwk[[field]] <- value
+      expect_error(compute_jwk_thumbprint(jwk), "base64urlUInt")
+    }
+  }
+})
+
+test_that("locally serialized RSA keys publish canonical unsigned integers", {
+  jwk <- dpop_public_jwk(openssl::rsa_keygen(bits = 2048))
+  expect_silent(validate_jwks(list(keys = list(jwk))))
+  expect_type(compute_jwk_thumbprint(jwk), "character")
+})
+
 test_that("RSA JWK validation rejects invalid public exponents", {
   jwk <- rsa_validation_public_jwk()
   for (exponent in list(0, 1, 2, 4, c(1, 0), c(1, 0, 2))) {

@@ -411,7 +411,7 @@ state_policy_client_assertion_key_thumbprint <- function(client) {
     jose::write_jwk(public_key),
     simplifyVector = TRUE
   )
-  compute_jwk_thumbprint(jwk)
+  compute_jwk_thumbprint(canonicalize_local_public_jwk(jwk))
 }
 
 #' Identify an explicit provider Request Object encryption key
@@ -449,7 +449,7 @@ state_policy_request_encryption_key_identity <- function(value) {
   )
 
   list(
-    thumbprint = compute_jwk_thumbprint(public_jwk),
+    thumbprint = compute_jwk_thumbprint(canonicalize_local_public_jwk(public_jwk)),
     kid = metadata[["kid"]] %||% NA_character_,
     alg = metadata[["alg"]] %||% NA_character_,
     use = metadata[["use"]] %||% NA_character_,
@@ -521,7 +521,7 @@ state_policy_jarm_decryption_key_thumbprint <- function(client) {
   key_pubkey <- as.list(key)[["pubkey"]]
   jwk <- jsonlite::fromJSON(jose::write_jwk(key_pubkey), simplifyVector = TRUE)
 
-  compute_jwk_thumbprint(jwk)
+  compute_jwk_thumbprint(canonicalize_local_public_jwk(jwk))
 }
 
 #' Build a client-side callback policy fingerprint

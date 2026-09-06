@@ -359,6 +359,8 @@ compute_jwk_thumbprint <- function(jwk) {
     if (!is.character(e) || !is.character(n)) {
       err_parse("RSA JWK e/n must be character")
     }
+    strict_decode_jwk_base64url_uint(e, "RSA JWK e")
+    strict_decode_jwk_base64url_uint(n, "RSA JWK n")
     canon <- list(e = e, kty = "RSA", n = n)
     # Order keys explicitly as required by RFC 7638 (lexicographic)
     canon <- canon[c("e", "kty", "n")]
@@ -387,6 +389,27 @@ compute_jwk_thumbprint <- function(jwk) {
   json_raw <- charToRaw(as.character(json))
   digest <- openssl::sha256(json_raw)
   base64url_encode(digest)
+}
+
+#' Canonicalize a locally serialized public key
+#'
+#' Some JOSE serializers retain the ASN.1 sign octet of RSA integers. Remove
+#' it only for trusted local key serialization, before publishing or hashing.
+#' @param jwk Public JWK serialized from a local OpenSSL key.
+#' @return JWK with minimal unsigned RSA integers.
+#' @keywords internal
+#' @noRd
+canonicalize_local_public_jwk <- function(jwk) {
+  if (identical(jwk[["kty"]], "RSA")) {
+    for (field in c("n", "e")) {
+      bytes <- base64url_decode_raw(jwk[[field]])
+      while (length(bytes) > 1L && bytes[[1L]] == as.raw(0)) {
+        bytes <- bytes[-1L]
+      }
+      jwk[[field]] <- base64url_encode(bytes)
+    }
+  }
+  jwk
 }
 
 # 2 JWK decoding helpers -------------------------------------------------------

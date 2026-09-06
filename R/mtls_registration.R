@@ -824,6 +824,7 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
   if (inherits(jwk, "try-error") || !is.list(jwk)) {
     err_parse("Failed to parse serialized self-signed mTLS JWK")
   }
+  jwk <- canonicalize_local_public_jwk(jwk)
 
   private_members <- intersect(
     names(jwk),
