@@ -44,22 +44,22 @@
 
 ## Shiny Integration
 - Module cookies bind browser sessions using Web Crypto; tests and headless contexts can skip the requirement with `options(shinyOAuth.skip_browser_token = TRUE)` or by stubbing values via helper functions.
-- Async flows require promises, future, and later; configure a plan (e.g., `future::plan(multisession)`) when enabling `async = TRUE` or tests will degrade to synchronous warnings.
+- Async dispatch prefers active mirai daemons (`mirai::daemons(2)`), then uses promises/future with a configured plan (for example `future::plan(future::multisession)`). If neither backend is available, it raises `shinyOAuth_no_async_backend`; it does not silently run synchronously.
 - Tab title cleanup, cookie scope, and proactive refresh are all configurable arguments to `oauth_module_server()`; document new parameters with roxygen comments and guard them with `stopifnot` validations.
 
 ## Auditing & Diagnostics
-- `audit_event()`/`emit_trace_event()` in R/errors.R send redacted telemetry to `options(shinyOAuth.trace_hook)` and `options(shinyOAuth.audit_hook)`; preserve hashed identifiers via `string_digest()` when logging new fields.
+- `audit_event()`/`emit_trace_event()` in R/errors__events.R send redacted telemetry to `options(shinyOAuth.audit_hook)` and OpenTelemetry; preserve hashed identifiers via `string_digest()` when logging new fields.
 - All error paths should raise via `err_abort` wrappers (`err_token()`, `err_invalid_state()`, `err_userinfo()`, etc.) so trace ids and structured context propagate to Shiny logs and audit hooks.
-- Options like `shinyOAuth.print_errors` and `shinyOAuth.print_traceback` let operators tune verbosity; respect these flags instead of printing directly.
+- Respect `shinyOAuth.expose_error_body` for diagnostic detail and the audit/OTel options documented in vignettes/package-options.Rmd. `log_condition()` accepts explicit `enabled` and `include_traceback` arguments; there are no `shinyOAuth.print_errors` or `shinyOAuth.print_traceback` options.
 
 ## Error Handling
-- Throw failures with the typed helpers in R/errors.R (`err_abort()` plus `err_token()`/`err_invalid_state()`/`err_http()`, etc.); they wrap `rlang::abort` with package-specific classes and inject trace ids, so avoid base `stop()`.
+- Throw failures with the typed helpers in R/errors__constructors.R (`err_abort()` plus `err_token()`/`err_invalid_state()`/`err_http()`, etc.); they wrap `rlang::abort` with package-specific classes and inject trace ids, so avoid base `stop()`.
 - For recoverable notices, prefer `rlang::warn()`/`inform()` with cli-style bullet vectors and frequency guards (see `warn_about_missing_js_dependency()` and `client_state_store_max_age()`); surface structured context via `context = list()` and avoid `message()`/`warning()`.
 - Use `cli::cli_warn()`/`cli_inform()` only when matching surrounding file conventions or when direct CLI output is explicitly needed. Avoid `cat()`/`print()`/`message()` unless tests explicitly stub those paths.
 - Prefer adding new `err_*` or `warn_*` helpers next to existing ones when a named condition helps tests assert on condition classes or keeps message formats consistent, even if the helper is currently used once.
 
 ## Testing Workflow
-- Run tests: `Rscript -e "testthat::test_local()"` from the repo root.
+- Run tests from the repo root with `Rscript --vanilla tests/run-local.R`, optionally followed by a test filter. This selects curl's OpenSSL backend before package loading on Windows; direct `testthat::test_local()` or `devtools::test()` can load curl too early and produce false mTLS failures.
 - Tests extensively mock network calls with `testthat::with_mocked_bindings()` and spin up webfakes servers for HTTP integration tests; keep new HTTP helpers injectable and return httr2 responses so mocks remain simple.
 - Use the existing test helpers in tests/testthat/helper-login.R: `make_test_client()`, `make_test_provider()`, `valid_browser_token()`, `parse_query_param()` instead of reimplementing fixtures.
 - Async module tests reset `future::plan(future::sequential)` and use `poll_for_async()` helper to flush `later::run_now()` and `session$flushReact()` until conditions are met; timeout/interval configurable via `SHINYOAUTH_TEST_POLL_TIMEOUT` and `SHINYOAUTH_TEST_POLL_INTERVAL` env vars.
