@@ -799,6 +799,7 @@ test_that("oauth_module_server consumes form_post callback handles", {
 })
 
 test_that("oauth_module_server revalidates original state freshness after form_post bridging", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@state_payload_max_age <- 10
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
@@ -872,6 +873,7 @@ test_that("oauth_module_server revalidates original state freshness after form_p
 })
 
 test_that("oauth_module_server revalidates cached form_post error state against client policy", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
   browser_token <- valid_browser_token()
@@ -1003,6 +1005,7 @@ test_that("form_post storage failures emit safe errors for every backend operati
 })
 
 test_that("form_post browser-token rejection preserves login state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
@@ -1057,6 +1060,7 @@ test_that("form_post browser-token rejection preserves login state", {
 })
 
 test_that("oauth_module_server consumes form_post error callbacks", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1143,6 +1147,7 @@ test_that("oauth_module_server audits form_post error state consumption", {
 })
 
 test_that("oauth_module_server audits form_post handles missing module ids", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1181,6 +1186,7 @@ test_that("oauth_module_server audits form_post handles missing module ids", {
 })
 
 test_that("oauth_module_server rejects unknown form_post module ids", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1244,6 +1250,7 @@ test_that("oauth_module_server rejects unknown form_post module ids", {
 })
 
 test_that("oauth_module_server rejects form_post handles mixed with direct callback params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1301,6 +1308,7 @@ test_that("oauth_module_server rejects form_post handles mixed with direct callb
 })
 
 test_that("oauth_module_server rejects form_post handles mixed with JARM response params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1340,6 +1348,7 @@ test_that("oauth_module_server rejects form_post handles mixed with JARM respons
 })
 
 test_that("oauth_module_server rejects duplicate form_post handle query params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1420,6 +1429,7 @@ test_that("callback query duplicate rejection covers direct OAuth params", {
 })
 
 test_that("oauth_module_server rejects oversized form_post handle query params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,
     shinyOAuth.callback_max_form_post_handle_bytes = 8
@@ -1448,6 +1458,7 @@ test_that("oauth_module_server rejects oversized form_post handle query params",
 })
 
 test_that("oauth_module_server rejects oversized form_post module id query params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(
     shinyOAuth.skip_browser_token = TRUE,
     shinyOAuth.callback_max_form_post_id_bytes = 8
@@ -1476,6 +1487,7 @@ test_that("oauth_module_server rejects oversized form_post module id query param
 })
 
 test_that("oauth_module_server rejects missing form_post handles", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1501,6 +1513,7 @@ test_that("oauth_module_server rejects missing form_post handles", {
 })
 
 test_that("oauth_module_server rejects replayed form_post handles", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1562,6 +1575,7 @@ test_that("oauth_module_server rejects replayed form_post handles", {
 })
 
 test_that("form_post handles are ignored until the owning module claims them", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli_a <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1631,6 +1645,7 @@ test_that("form_post handles are ignored until the owning module claims them", {
 })
 
 test_that("authenticated modules do not clear foreign form_post handles", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli_a <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)

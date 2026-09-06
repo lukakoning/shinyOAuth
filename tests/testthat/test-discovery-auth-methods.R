@@ -166,6 +166,7 @@ testthat::test_that("public discovery auth does not read env client_secret", {
 })
 
 testthat::test_that("oidc discovery transport errors include discovery url and transport detail", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   testthat::local_mocked_bindings(
     req_with_retry = function(req) {
       stop("forced discovery transport fail")

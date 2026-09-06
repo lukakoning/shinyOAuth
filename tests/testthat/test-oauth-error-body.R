@@ -1,6 +1,7 @@
 # Tests for RFC 6749 §5.2 structured error extraction in err_http()
 
 test_that("err_http extracts RFC 6749 §5.2 error fields from JSON response", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   resp <- httr2::response(
     url = "https://user:pass@example.com/token?code=secret&state=abc#frag",
     status = 400,
@@ -60,6 +61,7 @@ test_that("err_http extracts RFC 6749 §5.2 error fields from JSON response", {
 })
 
 test_that("err_http extracts error + error_description without error_uri", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   resp <- httr2::response(
     url = "https://example.com/token",
     status = 401,
@@ -212,6 +214,7 @@ test_that("err_http only exposes oauth_error_description in events when enabled"
 })
 
 test_that("swap_code_for_token_set surfaces structured error on 400", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   testthat::local_mocked_bindings(
@@ -272,6 +275,7 @@ test_that("swap_code_for_token_set rejects oversized error bodies", {
 })
 
 test_that("refresh_token surfaces structured error on 400", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
   testthat::local_mocked_bindings(

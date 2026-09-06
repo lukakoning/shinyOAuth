@@ -190,7 +190,7 @@ test_that("audit hook failures cannot replace OAuth errors under warn = 2", {
   expect_match(conditionMessage(error), "original state failure", fixed = TRUE)
   expect_match(
     conditionMessage(observed_warning),
-    "audit_hook error: audit sink failed",
+    "audit_hook error: details withheld",
     fixed = TRUE
   )
 })

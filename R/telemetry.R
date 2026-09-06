@@ -1131,7 +1131,7 @@ otel_note_error <- function(error, span = NULL, attributes = list()) {
     "error"
   }
   exception_message <- if (isTRUE(allow_expose_error_body())) {
-    conditionMessage(error)
+    sanitize_diagnostic_text(conditionMessage(error))
   } else {
     NULL
   }
@@ -1781,7 +1781,7 @@ otel_event_attributes <- function(event) {
   if (!is.list(event) || !length(event)) {
     return(NULL)
   }
-  event <- sanitize_event_url_fields(event)
+  event <- sanitize_event_diagnostics(sanitize_event_url_fields(event))
 
   attrs <- list()
   for (nm in names(event)) {
@@ -1827,6 +1827,7 @@ otel_emit_log <- function(event) {
     return(invisible(NULL))
   }
 
+  event <- sanitize_event_diagnostics(sanitize_event_url_fields(event))
   severity <- otel_event_severity(
     event[["type"]] %||% NULL,
     status = event[["status"]] %||% NULL,

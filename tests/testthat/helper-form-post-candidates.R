@@ -7,6 +7,7 @@ expect_form_post_candidate_isolation <- function(
   follow_first = FALSE,
   final_error = FALSE
 ) {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
   browser <- valid_browser_token()
   url <- prepare_call(client, browser_token = browser)

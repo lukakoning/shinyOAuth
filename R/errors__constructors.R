@@ -29,7 +29,7 @@ err_abort <- function(
 ) {
   trace_id <- resolve_trace_id(trace_id)
   emit_trace_event(c(
-    list(type = "error", trace_id = trace_id, message = msg),
+    list(type = "error", trace_id = trace_id, error_class = class[[1L]], message = msg),
     context
   ))
   primary <- short_desc_for_class(c(class, "shinyOAuth_error"))
@@ -567,11 +567,11 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
         silent = TRUE
       )
       if (!inherits(parsed, "try-error") && is.list(parsed)) {
-        if (is_valid_string(parsed[["error"]])) {
-          oauth_error <- parsed[["error"]]
+        if (is_valid_string(parsed[["error"]]) && is_oauth_error_text(parsed[["error"]])) {
+          oauth_error <- sanitize_diagnostic_text(parsed[["error"]])
         }
-        if (is_valid_string(parsed[["error_description"]])) {
-          oauth_error_description <- parsed[["error_description"]]
+        if (expose && is_oauth_error_text(parsed[["error_description"]])) {
+          oauth_error_description <- sanitize_diagnostic_text(parsed[["error_description"]])
         }
         if (is_valid_string(parsed[["error_uri"]])) {
           oauth_error_uri <- otel_http_url_full(parsed[["error_uri"]])
@@ -617,7 +617,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
     if (!is.null(oauth_error_description)) {
       reason <- paste0(reason, ": ", oauth_error_description)
     }
-    stats::setNames(paste0("OAuth error: ", reason), "x")
+    stats::setNames(paste0("OAuth error: ", escape_diagnostic_markup(reason)), "x")
   } else {
     character()
   }
@@ -626,8 +626,8 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   } else {
     character()
   }
-  transport_msg <- if (is_valid_string(transport_error)) {
-    stats::setNames(paste0("Transport error: ", transport_error), "x")
+  transport_msg <- if (expose && is_valid_string(transport_error)) {
+    stats::setNames(paste0("Transport error: ", sanitize_diagnostic_text(transport_error)), "x")
   } else {
     character()
   }
@@ -643,7 +643,8 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   }
   trace_msg <- c("i" = paste0("Trace ID: ", trace_id))
   body_msg <- if (expose && !is.null(body_snippet)) {
-    stats::setNames(paste0("Body: ", body_snippet), "i")
+    stats::setNames(paste0("Body: ", escape_diagnostic_markup(
+      sanitize_diagnostic_text(body_snippet))), "i")
   } else {
     character()
   }

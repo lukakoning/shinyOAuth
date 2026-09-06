@@ -365,6 +365,7 @@ testthat::test_that("manual sync login succeeds with browser-token protection en
 })
 
 testthat::test_that("login fails when introspection validation fails", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -417,6 +418,7 @@ testthat::test_that("login fails when introspection validation fails", {
 })
 
 testthat::test_that("sync callback state failures surface invalid_state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -464,6 +466,7 @@ testthat::test_that("sync callback state failures surface invalid_state", {
 })
 
 testthat::test_that("async callback state failures surface invalid_state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   testthat::skip_if_not_installed("later")
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
@@ -896,6 +899,7 @@ testthat::test_that("indefinite_session keeps authenticated TRUE even when expir
 })
 
 testthat::test_that("provider error with valid state sets provider error and authenticated FALSE", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -940,6 +944,7 @@ testthat::test_that("provider error with valid state sets provider error and aut
 })
 
 testthat::test_that("query callback rejects code and error before consuming state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
@@ -981,6 +986,7 @@ testthat::test_that("query callback rejects code and error before consuming stat
 })
 
 testthat::test_that("code callback without state is rejected as invalid state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 
@@ -1006,6 +1012,7 @@ testthat::test_that("code callback without state is rejected as invalid state", 
 })
 
 testthat::test_that("error_uri from provider error callback is surfaced on a provider host", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1214,6 +1221,7 @@ testthat::test_that("error_uri is NULL when provider omits it", {
 })
 
 testthat::test_that("oversized error_uri in callback is rejected", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1250,6 +1258,7 @@ testthat::test_that("oversized error_uri in callback is rejected", {
 })
 
 testthat::test_that("oversized callback query params are rejected", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1315,6 +1324,7 @@ testthat::test_that("oversized callback query params are rejected", {
 })
 
 testthat::test_that("oversized raw callback query string is rejected", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1367,6 +1377,7 @@ testthat::test_that("oversized raw callback query string is rejected", {
 })
 
 testthat::test_that("callback_max_query_bytes option is enforced", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1637,6 +1648,7 @@ testthat::test_that("request_login can start reauth before authenticated observe
 })
 
 testthat::test_that("query size cap enforced even when token already exists", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)

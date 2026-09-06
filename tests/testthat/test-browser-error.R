@@ -1,4 +1,5 @@
 test_that("browser errors use bounded known codes and are reported once", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
   events <- list()
   local_mocked_bindings(audit_event = function(event, context = list(), ...) {

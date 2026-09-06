@@ -56,6 +56,7 @@ testthat::test_that("error response with state consumes state from store", {
 })
 
 testthat::test_that("unsolicited error response without state is rejected as invalid_state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -82,6 +83,7 @@ testthat::test_that("unsolicited error response without state is rejected as inv
 })
 
 testthat::test_that("error response with state waits for browser_token before validation", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   # Do NOT skip browser token for this test
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
 
@@ -170,6 +172,7 @@ testthat::test_that("error response with state waits for browser_token before va
 })
 
 testthat::test_that("error response with mismatched browser_token is rejected as invalid_state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -250,6 +253,7 @@ testthat::test_that("error response with mismatched browser_token is rejected as
 })
 
 testthat::test_that("error response without state is rejected after login initiation", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -285,6 +289,7 @@ testthat::test_that("error response without state is rejected after login initia
 })
 
 testthat::test_that("state consumption failure rejects callback as invalid_state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -332,6 +337,7 @@ testthat::test_that("state consumption failure rejects callback as invalid_state
 })
 
 testthat::test_that("error response with invalid state is rejected as invalid_state", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -370,6 +376,7 @@ testthat::test_that("error response with invalid state is rejected as invalid_st
 })
 
 testthat::test_that("error response with error_description preserves it", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)

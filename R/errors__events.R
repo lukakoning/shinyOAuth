@@ -220,7 +220,7 @@ warn_event_sink_failure <- function(title, bullets) {
   on.exit(options(warn = old_warn), add = TRUE)
   options(warn = 0)
   tryCatch(
-    warn_pkg(title, bullets),
+    warn_pkg(title, escape_diagnostic_markup(bullets)),
     error = function(...) invisible(NULL)
   )
   invisible(NULL)
@@ -253,7 +253,7 @@ emit_trace_event <- function(event) {
   event <- tryCatch(augment_with_shiny_context(event), error = function(...) {
     event
   })
-  event <- sanitize_event_url_fields(event)
+  event <- sanitize_event_diagnostics(sanitize_event_url_fields(event))
   tryCatch(
     {
       otel_emit_log(event)
@@ -264,7 +264,7 @@ emit_trace_event <- function(event) {
         c(
           "!" = paste0(
             "OpenTelemetry logging failed while handling an internal shinyOAuth event: ",
-            conditionMessage(e)
+            if (allow_expose_error_body()) sanitize_diagnostic_text(conditionMessage(e)) else "details withheld"
           )
         )
       )
@@ -281,7 +281,8 @@ emit_trace_event <- function(event) {
         warn_event_sink_failure(
           paste0("Configured shinyOAuth ", hook_name, " failed"),
           c(
-            "!" = paste0(hook_name, " error: ", conditionMessage(e))
+            "!" = paste0(hook_name, " error: ",
+              if (allow_expose_error_body()) sanitize_diagnostic_text(conditionMessage(e)) else "details withheld")
           )
         )
       }
@@ -330,7 +331,9 @@ log_condition <- function(
   )
   header <- paste(parts, collapse = " ")
 
-  msg <- conditionMessage(e)
+  msg <- if (allow_expose_error_body()) {
+    sanitize_diagnostic_text(conditionMessage(e))
+  } else short_desc_for_class(class(e))
 
   try(
     {

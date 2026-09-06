@@ -2878,7 +2878,9 @@ oauth_module_server <- function(
       # provider error context, but sanitize before surfacing it to callers.
       error_uri <- sanitize_callback_error_uri(error_uri, client@provider)
       values$error <- error
-      values$error_description <- error_description %||% NULL
+      values$error_description <- if (allow_expose_error_body()) {
+        sanitize_diagnostic_text(error_description)
+      } else NULL
       values$error_uri <- error_uri %||% NULL
       invisible(NULL)
     }
@@ -4867,7 +4869,9 @@ oauth_module_compose_error <- function(e, phase = NULL) {
   if (!is.null(phase)) {
     try(log_condition(e, context = list(phase = phase)))
   }
-  msg <- tryCatch(conditionMessage(e), error = function(...) {
+  msg <- tryCatch(if (allow_expose_error_body()) {
+    sanitize_diagnostic_text(conditionMessage(e))
+  } else short_desc_for_class(class(e)), error = function(...) {
     "Unknown error"
   })
   tid <- oauth_module_extract_trace_id(e)

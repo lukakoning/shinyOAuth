@@ -1719,6 +1719,7 @@ test_that("validate_jarm_response rejects mismatched outer iss parameter", {
 })
 
 test_that("oauth_module_server rejects mixed query.jwt and direct callback params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   sig_key <- openssl::rsa_keygen()
@@ -1792,6 +1793,7 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
 })
 
 test_that("oauth_module_server drops reserved response for oversized query JARM callbacks", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   oversized_response <- strrep("r", 30000)
@@ -1845,6 +1847,7 @@ test_that("oauth_module_server drops reserved response for oversized query JARM 
 })
 
 test_that("oauth_module_server drops reserved response for duplicate query JARM response params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   duplicate_response_query <- paste0(
@@ -1956,6 +1959,7 @@ test_that("oauth_module_server accepts matching outer iss with query.jwt callbac
 })
 
 test_that("oauth_module_server rejects direct query callbacks for query.jwt clients", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "query.jwt")
@@ -2007,6 +2011,7 @@ test_that("oauth_module_server rejects direct query callbacks for query.jwt clie
 })
 
 test_that("oauth_module_server rejects direct query callbacks for form_post.jwt clients", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   sig_key <- openssl::rsa_keygen()
@@ -2160,6 +2165,7 @@ test_that("oauth_module_server ignores query response params for form_post.jwt c
 })
 
 test_that("oauth_module_server rejects form_post.jwt handles mixed with compact response params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
@@ -2196,6 +2202,7 @@ test_that("oauth_module_server rejects form_post.jwt handles mixed with compact 
 })
 
 test_that("oauth_module_server rejects invalid query response params for query.jwt clients on the callback route", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "query.jwt")
@@ -2263,6 +2270,7 @@ test_that("oauth_module_server rejects invalid query response params for query.j
 })
 
 test_that("oauth_module_server rejects invalid query response params for jwt alias clients on the callback route", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   client <- make_jarm_test_client(response_mode = "jwt")
@@ -2398,6 +2406,7 @@ test_that("oauth_module_server ignores response app params off the query JARM ca
 })
 
 test_that("oauth_module_server rejects malformed query JARM response params", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   malformed_response <- make_compact_jose_token(
@@ -2476,6 +2485,7 @@ test_that("oauth_module_server rejects malformed query JARM response params", {
 })
 
 test_that("oauth_module_server handles query.jwt error callbacks and blocks replay", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   sig_key <- openssl::rsa_keygen()
@@ -3023,6 +3033,7 @@ test_that("oauth_module_server handles query.jwt callbacks", {
 })
 
 test_that("oauth_module_server exposes one encrypted query.jwt decryption failure message", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   sig_key <- openssl::rsa_keygen()
@@ -3266,6 +3277,7 @@ test_that("oauth_module_server ignores prefixed error callbacks for query JARM c
 })
 
 test_that("oauth_module_server rejects query JARM responses for form_post.jwt clients", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   sig_key <- openssl::rsa_keygen()
@@ -4075,6 +4087,7 @@ test_that("oauth_module_server rejects tampered bridged form_post.jwt payloads",
 })
 
 test_that("oauth_module_server rejects bridged form_post.jwt callbacks after JARM expiry", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   fixed_now <- as.POSIXct("2026-05-24 12:00:00", tz = "UTC")
@@ -4171,6 +4184,7 @@ test_that("oauth_module_server rejects bridged form_post.jwt callbacks after JAR
 })
 
 test_that("oauth_module_server rechecks pending query.jwt callbacks after JARM expiry", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
 
   fixed_now <- as.POSIXct("2026-05-24 12:00:00", tz = "UTC")

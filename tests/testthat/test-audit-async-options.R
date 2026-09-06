@@ -964,7 +964,7 @@ testthat::test_that("emit_trace_event surfaces trace_hook errors as warnings", {
 
   testthat::expect_warning(
     shinyOAuth:::emit_trace_event(list(type = "test")),
-    "trace_hook error: trace hook boom"
+    "trace_hook error: details withheld"
   )
 })
 
@@ -976,7 +976,7 @@ testthat::test_that("emit_trace_event surfaces audit_hook errors as warnings", {
 
   testthat::expect_warning(
     shinyOAuth:::emit_trace_event(list(type = "test")),
-    "audit_hook error: audit hook boom"
+    "audit_hook error: details withheld"
   )
 })
 

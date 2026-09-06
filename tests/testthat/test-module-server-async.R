@@ -66,6 +66,7 @@ testthat::test_that("async login flow resolves token and sets flags", {
 })
 
 testthat::test_that("async login failure surfaces error and keeps authenticated FALSE", {
+  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("later")
