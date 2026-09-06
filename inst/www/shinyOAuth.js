@@ -8,9 +8,15 @@
 (function(){
   'use strict';
 
-  function getCookie(name){
+  function getCookie(name, sameSite, cookiePath){
     var m=document.cookie.match('(?:^|; )'+name+'=([^;]*)');
-    return m?decodeURIComponent(m[1]):null;
+    if (!m) return null;
+    try { return decodeURIComponent(m[1]); }
+    catch(e) {
+      // A corrupt marker must not poison every subsequent login attempt.
+      clearCookiesFor(name.replace(/^__Host-/, ''), sameSite || 'Strict', cookiePath || '/');
+      return null;
+    }
   }
 
   function isValidHexToken(v, expectedLen){
@@ -118,7 +124,7 @@
       var useHostPrefix = isHttps;
       var base = useHostPrefix ? '__Host-shinyOAuth_sid' : 'shinyOAuth_sid';
       var name = base + (inst ? ('-' + inst) : '');
-      var marker = getCookie(name);
+      var marker = getCookie(name, sameSite, cookiePath);
       var binding = readBrowserBinding(name);
       var v = binding && binding.cookie === marker ? binding.token : null;
       var expectedLen = 128; /* 64 bytes hex-encoded */
@@ -135,7 +141,7 @@
       }
       writeBrowserBinding(name, v, marker, ageMs);
       setCookie(name, marker, ageMs, sameSite, /*forceSecure*/ requireSecure, cookiePath);
-      if (getCookie(name) !== marker) throw new Error('cookie_unavailable');
+      if (getCookie(name, sameSite, cookiePath) !== marker) throw new Error('cookie_unavailable');
       var shiny = ensureShiny();
       if (shiny) shiny.setInputValue(payload.inputId, v, {priority:'event'});
       if (shiny && payload.requestId) {
