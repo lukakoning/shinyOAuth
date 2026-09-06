@@ -4290,6 +4290,7 @@ test_that("oauth_module_server accepts bridged form_post.jwt callbacks with unre
 
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
+  client@redirect_uri <- paste0(client@redirect_uri, "?response=keep-me")
   jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
   browser_token <- valid_browser_token()
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)

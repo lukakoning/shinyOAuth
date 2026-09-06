@@ -245,6 +245,7 @@ test_that("oauth_form_post_ui validates request_uri_resolver", {
 
 test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  cli@redirect_uri <- paste0(cli@redirect_uri, "?return_to=dashboard")
   ui <- oauth_form_post_ui(
     shiny::fluidPage(),
     id = "auth",
@@ -312,10 +313,10 @@ test_that("oauth_form_post_ui strips compact response params from bridge redirec
   resp <- ui(req)
 
   expect_identical(resp[["status"]], 303L)
-  expect_match(
+  expect_false(grepl(
     resp[["headers"]][["Location"]],
-    "^\\?return_to=dashboard&"
-  )
+    pattern = "return_to"
+  ))
   expect_false(grepl(
     "response=header.payload.signature",
     resp[["headers"]][["Location"]],
@@ -1923,7 +1924,11 @@ test_that("maximum accepted callback fields survive the form-post bridge", {
       "shinyOAuth_form_post",
       decode = TRUE
     )
-    sealed <- client@state_store$get(oauth_form_post_cache_key("auth", handle, client))
+    sealed <- client@state_store$get(oauth_form_post_cache_key(
+      "auth",
+      handle,
+      client
+    ))
     expect_gt(nchar(sealed), 8192)
     expect_error(state_decrypt_gcm(sealed, client@state_key), "too large")
     payload <- oauth_form_post_store_take(client, "auth", handle)

@@ -39,7 +39,7 @@ make_mixup_route_client <- function(
 
 test_that("callback routes compare canonical scheme authority and path", {
   expect_true(shinyOAuth:::oauth_callback_route_matches(
-    "HTTPS://APP.EXAMPLE/callback",
+    "HTTPS://APP.EXAMPLE/callback?registered=1&code=ok&state=opaque",
     "https://app.example:443/callback?registered=1"
   ))
   expect_false(shinyOAuth:::oauth_callback_route_matches(

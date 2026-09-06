@@ -70,6 +70,8 @@
 #' proxies whose backend request has an HTTP Rook scheme. The function must
 #' verify the proxy trust boundary before using forwarded headers; its result is
 #' still required to match the configured redirect origin and `callback_path`.
+#' Registered fixed query parameters must also occur unchanged in the incoming
+#' request. Continuation URLs preserve only registered application parameters.
 #'
 #' @return
 #' A Shiny UI function. Pass it to [shiny::shinyApp()] and, for non-root
@@ -304,7 +306,11 @@ oauth_form_post_request_matches <- function(
   }
   expected[["path"]] <- callback_path
 
-  identical(actual, expected)
+  identical(actual, expected) &&
+    oauth_callback_fixed_query_matches(
+      req[["QUERY_STRING"]] %||% "",
+      oauth_callback_uri_query(redirect_uri)
+    )
 }
 
 oauth_form_post_handle_request <- function(req, id, client) {
@@ -420,7 +426,12 @@ oauth_form_post_handle_request <- function(req, id, client) {
           payload[["state_payload"]] <- state_payload
         }
         handle <- oauth_form_post_store_set(client, id, payload)
-        location <- oauth_form_post_redirect_location(req, id, handle)
+        location <- oauth_form_post_redirect_location(
+          req,
+          id,
+          handle,
+          client@redirect_uri
+        )
 
         shiny::httpResponse(
           status = 303L,
@@ -783,12 +794,24 @@ oauth_form_post_validate_payload <- function(
   payload
 }
 
-oauth_form_post_redirect_location <- function(req, id, handle) {
-  clean_query <- strip_oauth_module_callback_query(
-    req[["QUERY_STRING"]] %||% "",
-    query_jarm_client = TRUE
+oauth_form_post_redirect_location <- function(req, id, handle, redirect_uri) {
+  registered_parts <- strsplit(
+    oauth_callback_uri_query(redirect_uri),
+    "&",
+    fixed = TRUE
+  )[[1L]]
+  clean_query <- paste(
+    registered_parts[
+      !vapply(
+        registered_parts,
+        function(part) {
+          oauth_module_query_has_callback_keys(part, query_jarm_client = TRUE)
+        },
+        logical(1)
+      )
+    ],
+    collapse = "&"
   )
-  clean_query <- sub("^\\?", "", clean_query)
   handle_query <- httr2::url_query_build(stats::setNames(
     list(handle, id),
     c(oauth_form_post_handle_param, oauth_form_post_id_param)

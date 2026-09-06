@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Callback routing enforces registered fixed query parameters, including
+  repeated values. Bridge continuation URLs preserve only registered
+  application parameters and the one-time bridge handle.
+
 * Callback bridge storage now has HMAC-derived client, provider, key, and
   module namespaces with independent bounded quotas. Custom caches with
   `set_if_absent` claim slots atomically without replacing concurrent writes.

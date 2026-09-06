@@ -28,7 +28,9 @@ trusted, public absolute request URI without relying on query parameters.
 Return \code{NULL} to reject the route. This is intended for HTTPS-terminating
 proxies whose backend request has an HTTP Rook scheme. The function must
 verify the proxy trust boundary before using forwarded headers; its result is
-still required to match the configured redirect origin and \code{callback_path}.}
+still required to match the configured redirect origin and \code{callback_path}.
+Registered fixed query parameters must also occur unchanged in the incoming
+request. Continuation URLs preserve only registered application parameters.}
 }
 \value{
 A Shiny UI function. Pass it to \code{\link[shiny:shinyApp]{shiny::shinyApp()}} and, for non-root

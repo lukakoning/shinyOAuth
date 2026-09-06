@@ -4541,19 +4541,84 @@ oauth_callback_route <- function(uri) {
 #'
 #' @param current_uri Browser-visible absolute URI receiving the callback.
 #' @param redirect_uri Configured OAuth redirect URI.
-#' @return `TRUE` only when canonical scheme, authority, and path match.
+#' @return `TRUE` only when canonical scheme, authority, path, and registered
+#'   fixed query values match.
 #' @keywords internal
 #' @noRd
 oauth_callback_route_matches <- function(current_uri, redirect_uri) {
   current <- oauth_callback_route(current_uri)
   expected <- oauth_callback_route(redirect_uri)
-  !is.null(current) && !is.null(expected) && identical(current, expected)
+  !is.null(current) &&
+    !is.null(expected) &&
+    identical(current, expected) &&
+    oauth_callback_fixed_query_matches(
+      oauth_callback_uri_query(current_uri),
+      oauth_callback_uri_query(redirect_uri)
+    )
+}
+
+oauth_callback_uri_query <- function(uri) {
+  uri <- sub("#.*$", "", uri)
+  if (!grepl("?", uri, fixed = TRUE)) {
+    return("")
+  }
+  sub("^[^?]*\\?", "", uri)
+}
+
+# Compare each registered name as a multiset, retaining duplicate values.
+# Additional OAuth fields and application parameters do not change the fixed
+# context, but an extra value for a registered name does.
+oauth_callback_fixed_query_matches <- function(current, registered) {
+  pairs <- function(query) {
+    query <- sub("^\\?", "", query %||% "")
+    parts <- strsplit(query, "&", fixed = TRUE)[[1L]]
+    parts <- parts[nzchar(parts)]
+    decode <- function(value) {
+      if (grepl("(?i)%00|%(?![0-9a-f]{2})", value, perl = TRUE)) {
+        stop("Invalid query encoding")
+      }
+      value <- utils::URLdecode(gsub("+", " ", value, fixed = TRUE))
+      if (!validUTF8(value)) {
+        stop("Invalid query encoding")
+      }
+      value
+    }
+    keys <- vapply(parts, function(part) decode(sub("=.*$", "", part)), "")
+    values <- vapply(
+      parts,
+      function(part) {
+        decode(
+          if (grepl("=", part, fixed = TRUE)) sub("^[^=]*=", "", part) else ""
+        )
+      },
+      ""
+    )
+    split(unname(values), keys)
+  }
+  if (!nzchar(registered)) {
+    return(TRUE)
+  }
+  tryCatch(
+    {
+      expected <- pairs(registered)
+      actual <- pairs(current)
+      all(vapply(
+        names(expected),
+        function(name) {
+          identical(sort(actual[[name]]), sort(expected[[name]]))
+        },
+        logical(1)
+      ))
+    },
+    error = function(...) FALSE,
+    warning = function(...) FALSE
+  )
 }
 
 #' Read the browser-visible callback URI from a Shiny session
 #'
 #' @param session Active Shiny session.
-#' @return Absolute browser URI without query or fragment, or `NULL` when the
+#' @return Absolute browser URI including its query, without fragment, or `NULL` when the
 #'   necessary client data is unavailable.
 #' @keywords internal
 #' @noRd
@@ -4584,7 +4649,11 @@ oauth_shiny_session_callback_uri <- function(session) {
     hostname <- paste0("[", hostname, "]")
   }
   port_suffix <- if (is_valid_string(port)) paste0(":", port) else ""
-  paste0(protocol, "//", hostname, port_suffix, pathname)
+  search <- component("url_search")
+  if (!is_valid_string(search)) {
+    search <- ""
+  }
+  paste0(protocol, "//", hostname, port_suffix, pathname, search)
 }
 
 # OAuth/OIDC callback parameters that should be recognized and removed from the
