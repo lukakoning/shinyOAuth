@@ -90,7 +90,7 @@ testthat::test_that("manual build_auth_url keeps PAR lifetime metadata", {
       )
       testthat::expect_identical(
         attr(url, "shinyOAuth.par_expires_in"),
-        90L
+        90
       )
       testthat::expect_s3_class(
         attr(url, "shinyOAuth.par_expires_at"),
