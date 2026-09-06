@@ -1697,7 +1697,7 @@ handle_callback_internal <- function(
       # scope reconciliation, and token_type. Userinfo is NOT yet present; the
       # subject match check will run after userinfo is fetched below.
       defer_certificate_binding <- isTRUE(introspect) &&
-        client_requests_certificate_bound_tokens(oauth_client) &&
+        client_requires_observed_mtls_cnf(oauth_client) &&
         !is_valid_string(
           token_cnf_x5t_s256(
             access_token = token_set[["access_token"]],
@@ -1795,14 +1795,14 @@ handle_callback_internal <- function(
           phase = "exchange_code"
         )
 
-        if (isTRUE(defer_certificate_binding)) {
-          validate_token_certificate_binding(
-            token = token,
-            oauth_client = oauth_client,
-            error_context = "token",
-            phase = "exchange_code"
-          )
-        }
+        # Introspection can expose a binding even when local observation is
+        # optional. Any observed certificate thumbprint must still match.
+        validate_token_certificate_binding(
+          token = token,
+          oauth_client = oauth_client,
+          error_context = "token",
+          phase = "exchange_code"
+        )
       }
 
       # Fetch userinfo -------------------------------------------------------------

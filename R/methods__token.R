@@ -914,7 +914,7 @@ refresh_token <- function(
           scope = tok[["scope"]]
         )
         defer_certificate_binding <- isTRUE(effective_introspect) &&
-          client_requests_certificate_bound_tokens(oauth_client) &&
+          client_requires_observed_mtls_cnf(oauth_client) &&
           !is_valid_string(
             token_cnf_x5t_s256(
               access_token = token_set[["access_token"]],
@@ -1026,14 +1026,14 @@ refresh_token <- function(
             phase = "refresh_token"
           )
 
-          if (isTRUE(defer_certificate_binding)) {
-            validate_token_certificate_binding(
-              token = refreshed_token,
-              oauth_client = oauth_client,
-              error_context = "token",
-              phase = "refresh_token"
-            )
-          }
+          # Validate newly observed binding even when missing confirmation
+          # was permitted before introspection.
+          validate_token_certificate_binding(
+            token = refreshed_token,
+            oauth_client = oauth_client,
+            error_context = "token",
+            phase = "refresh_token"
+          )
         }
 
         if (isTRUE(oauth_client@provider@userinfo_required)) {

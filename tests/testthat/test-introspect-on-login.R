@@ -237,6 +237,13 @@ test_that("handle_callback with introspect=TRUE succeeds when token is active", 
 
 test_that("handle_callback with introspect=TRUE backfills cnf from introspection", {
   cli <- make_introspect_client(use_pkce = TRUE, use_nonce = FALSE)
+  S7::props(cli) <- list(
+    mtls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
+    mtls_client_key_file = mtls_pem_fixture("client-key.pem")
+  )
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(
+    cli@mtls_client_cert_file
+  )
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -256,7 +263,10 @@ test_that("handle_callback with introspect=TRUE backfills cnf from introspection
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
-          '{"active":true,"cnf":{"x5t#S256":"intro-thumbprint"}}'
+          jsonlite::toJSON(
+            list(active = TRUE, cnf = list(`x5t#S256` = thumbprint)),
+            auto_unbox = TRUE
+          )
         )
       )
     },
@@ -271,7 +281,7 @@ test_that("handle_callback with introspect=TRUE backfills cnf from introspection
 
       testthat::expect_identical(
         tok_obj@cnf[["x5t#S256"]],
-        "intro-thumbprint"
+        thumbprint
       )
     }
   )

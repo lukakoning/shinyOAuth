@@ -162,19 +162,39 @@ client <- oauth_client(
 )
 ```
 
-`mtls_certificate_bound_access_tokens = TRUE` is a strict local assurance
-policy: shinyOAuth must observe `cnf$x5t#S256` in the token response, a JWT
-access token, or introspection and match it to the configured certificate.
-An opaque bound token without observable binding fails this policy. RFC 8705
-also permits opaque tokens whose binding is known only to the authorization
-and resource servers; it does not require a client to inspect that binding.
+`mtls_certificate_bound_access_tokens = TRUE` enables certificate presentation
+and mTLS endpoint-alias selection independently of the OAuth client
+authentication method. Configuring certificate files alone does not enable
+certificate-bound token requests.
 
-For that deployment, configure the certificate and key and leave the strict
-flag `FALSE`; the servers must enforce certificate binding. Certificate
-configuration controls presenting the certificate, while the strict flag
-requires locally observable proof. Configure the needed mTLS endpoints
-explicitly when using this mode. Any binding shinyOAuth does observe must
-still match. See [RFC 8705, Section 3](https://www.rfc-editor.org/rfc/rfc8705.html#section-3).
+The separate `mtls_require_observed_cnf` policy defaults to `TRUE`, preserving
+strict local assurance: shinyOAuth must observe `cnf$x5t#S256` in the token
+response, a JWT access token, or introspection and match it to the configured
+certificate. An opaque bound token without observable binding fails this policy.
+
+RFC 8705 also permits opaque tokens whose binding is known only to the
+authorization and resource servers. For that deployment, configure the
+certificate/key and provider capability as above, then use both settings:
+
+```{r, eval = FALSE}
+client <- oauth_client(
+  provider = provider,
+  client_id = "client-id",
+  redirect_uri = "https://app.example.com/auth/callback",
+  mtls_client_cert_file = "certs/client.pem",
+  mtls_client_key_file = "certs/client-key.pem",
+  mtls_certificate_bound_access_tokens = TRUE,
+  mtls_require_observed_cnf = FALSE
+)
+```
+
+This mode still presents the certificate on token, refresh, UserInfo, and
+protected-resource requests, including with body authentication, public
+clients, or `private_key_jwt`. It prefers configured mTLS aliases and falls
+back to the configured endpoint URL when no alias is available. The servers
+must enforce binding; shinyOAuth allows missing confirmation but still
+rejects any observed mismatch or conflicting confirmation claims. See
+[RFC 8705, Section 3](https://www.rfc-editor.org/rfc/rfc8705.html#section-3).
 
 On Windows, separate PEM certificate/key files require curl's OpenSSL backend.
 Set `CURL_SSL_BACKEND=openssl` in `.Renviron` and restart R, or run

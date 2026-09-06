@@ -607,6 +607,7 @@ state_client_policy_fingerprint <- function(client) {
     mtls_certificate_bound_access_tokens = isTRUE(
       client@mtls_certificate_bound_access_tokens
     ),
+    mtls_require_observed_cnf = isTRUE(client@mtls_require_observed_cnf),
     request_object_mode = client@request_object_mode,
     request_object_signing_alg = client@request_object_signing_alg,
     request_object_audience = client@request_object_audience,

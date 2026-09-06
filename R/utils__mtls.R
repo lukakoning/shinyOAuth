@@ -167,6 +167,20 @@ client_requests_certificate_bound_tokens <- function(oauth_client) {
     client_has_mtls_certificate(oauth_client)
 }
 
+#' Check whether certificate binding must be locally observable
+#'
+#' Presentation and alias selection depend on certificate-bound intent. This
+#' separate policy only controls whether missing confirmation is rejected.
+#' Observed confirmation must always match, even when this policy is disabled.
+#' @param oauth_client OAuthClient-like object.
+#' @return `TRUE` when local confirmation is required; otherwise `FALSE`.
+#' @keywords internal
+#' @noRd
+client_requires_observed_mtls_cnf <- function(oauth_client) {
+  client_requests_certificate_bound_tokens(oauth_client) &&
+    isTRUE(oauth_client@mtls_require_observed_cnf)
+}
+
 #' Check whether a call should use mTLS endpoints
 #'
 #' Used before token, revocation, introspection, and PAR URLs are resolved.
@@ -849,9 +863,9 @@ validate_token_certificate_binding <- function(
     cnf = cnf
   )
   if (!is_valid_string(expected_thumbprint)) {
-    # If the client explicitly requests certificate-bound tokens, accepting a
-    # token without cnf.x5t#S256 would silently downgrade that contract.
-    if (client_requests_certificate_bound_tokens(oauth_client)) {
+    # Only the strict local policy requires client-visible confirmation.
+    # Server-enforced opaque bindings still require certificate presentation.
+    if (client_requires_observed_mtls_cnf(oauth_client)) {
       fail(
         paste(
           "oauth_client requires certificate-bound access tokens, but the token",

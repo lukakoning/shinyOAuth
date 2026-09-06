@@ -270,18 +270,27 @@
 #'
 #'   Set this to `TRUE` for clients that should prefer discovered
 #'   `mtls_endpoint_aliases` on authorization-server requests even when
-#'   `token_auth_style` itself is not an mTLS auth style, and that should fail
-#'   closed if the returned access token omits `cnf.x5t#S256`.
+#'   `token_auth_style` itself is not an mTLS auth style, and present the
+#'   certificate on token and protected-resource requests. Certificate/key
+#'   configuration alone does not enable this mode.
 #'
 #'   Requires `mtls_client_cert_file` and `mtls_client_key_file`, and the
 #'   provider must be configured with
 #'   `mtls_client_certificate_bound_access_tokens = TRUE`.
-#'   This is a strict local assurance policy. Opaque bound tokens require
-#'   introspection or another response surface exposing `cnf$x5t#S256`.
-#'   RFC 8705 also allows server-enforced opaque bindings without client-visible
-#'   confirmation. For those deployments, leave this flag `FALSE`, configure
-#'   the certificate/key and endpoint URLs, and rely on the servers to enforce
-#'   binding. Observed confirmation claims are still checked.
+#'   By default, `mtls_require_observed_cnf = TRUE` also requires locally
+#'   observable confirmation of the certificate binding. For opaque tokens
+#'   whose binding is enforced only by the servers, keep
+#'   `mtls_certificate_bound_access_tokens = TRUE` and set
+#'   `mtls_require_observed_cnf = FALSE`.
+#' @param mtls_require_observed_cnf Logical, default `TRUE`. When
+#'   `mtls_certificate_bound_access_tokens = TRUE`, require `cnf$x5t#S256`
+#'   in the token response, JWT access token, or introspection and verify that
+#'   it matches the configured certificate. The default preserves strict
+#'   local assurance. Set `FALSE` for server-enforced opaque bindings that
+#'   the client cannot observe; this does not disable certificate presentation
+#'   or mTLS endpoint selection. Missing confirmation is then allowed, but
+#'   any observed confirmation is still validated, including mismatches and
+#'   conflicting claims. This flag does not independently enable mTLS.
 #'
 #' @param dpop_private_key Private key for tying tokens to this app's requests
 #'   using Demonstrating Proof of Possession (DPoP). Only needed when your
@@ -646,7 +655,12 @@ OAuthClient <- S7::new_class(
       default = NA_character_
     ),
     # Maximum accepted JARM JWT lifetime in seconds.
-    jarm_max_lifetime = S7::new_property(S7::class_numeric, default = 600)
+    jarm_max_lifetime = S7::new_property(S7::class_numeric, default = 600),
+    # Require local confirmation independently of certificate presentation.
+    mtls_require_observed_cnf = S7::new_property(
+      S7::class_logical,
+      default = TRUE
+    )
   ),
   validator = function(self) oauth_client_validate(self)
 )
@@ -733,6 +747,7 @@ oauth_client <- function(
   jarm_decryption_private_key_kid = NULL,
   jarm_max_lifetime = 600,
   endpoint_auth = list(),
+  mtls_require_observed_cnf = TRUE,
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(
@@ -960,6 +975,15 @@ oauth_client <- function(
       )
     )
   }
+  if (
+    !(is.logical(mtls_require_observed_cnf) &&
+      length(mtls_require_observed_cnf) == 1L &&
+      !is.na(mtls_require_observed_cnf))
+  ) {
+    err_input(
+      "{.arg mtls_require_observed_cnf} must be a single non-NA logical."
+    )
+  }
 
   # Normalize scopes early so callers can provide a single space-delimited
   # string (common in OAuth examples) while internal code consistently sees
@@ -1017,6 +1041,7 @@ oauth_client <- function(
     mtls_certificate_bound_access_tokens = isTRUE(
       mtls_certificate_bound_access_tokens
     ),
+    mtls_require_observed_cnf = mtls_require_observed_cnf,
     dpop_private_key = dpop_private_key,
     dpop_private_key_kid = dpop_private_key_kid %||% NA_character_,
     dpop_signing_alg = dpop_signing_alg %||% NA_character_,
@@ -2470,6 +2495,17 @@ oauth_client_validate <- function(self) {
   ) {
     return(paste(
       "OAuthClient: mtls_certificate_bound_access_tokens",
+      "must be a single non-NA logical"
+    ))
+  }
+
+  if (
+    !(is.logical(self@mtls_require_observed_cnf) &&
+      length(self@mtls_require_observed_cnf) == 1L &&
+      !is.na(self@mtls_require_observed_cnf))
+  ) {
+    return(paste(
+      "OAuthClient: mtls_require_observed_cnf",
       "must be a single non-NA logical"
     ))
   }

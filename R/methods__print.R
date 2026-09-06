@@ -337,6 +337,7 @@ method(format, OAuthClient) <- function(x, ...) {
       dpop_require_access_token = x@dpop_require_access_token,
       dpop_require_observed_cnf = x@dpop_require_observed_cnf,
       mtls_certificate_bound_access_tokens = x@mtls_certificate_bound_access_tokens,
+      mtls_require_observed_cnf = x@mtls_require_observed_cnf,
       redirect_uri = x@redirect_uri,
       enforce_callback_issuer = x@enforce_callback_issuer,
       authorization_server_mode = x@authorization_server_mode,

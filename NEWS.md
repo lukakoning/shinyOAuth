@@ -1,5 +1,13 @@
 # shinyOAuth (development version)
 
+* Added `mtls_require_observed_cnf` (default `TRUE`) to separate strict local
+  confirmation from certificate presentation. For server-enforced opaque
+  certificate-bound tokens, set `mtls_certificate_bound_access_tokens = TRUE`
+  and `mtls_require_observed_cnf = FALSE`. Certificates and mTLS aliases remain
+  active while missing confirmation is allowed; observed confirmation still
+  must match. This corrects earlier documentation that incorrectly advised
+  leaving `mtls_certificate_bound_access_tokens = FALSE` in that mode.
+
 * Browser-binding tokens now stay in origin-scoped local storage. Cookies
   contain independent random markers and are accepted only with a matching,
   unexpired origin record, preventing adoption through same-host services on

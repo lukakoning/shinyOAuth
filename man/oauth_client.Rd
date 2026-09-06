@@ -55,6 +55,7 @@ oauth_client(
   jarm_decryption_private_key_kid = NULL,
   jarm_max_lifetime = 600,
   endpoint_auth = list(),
+  mtls_require_observed_cnf = TRUE,
   ...
 )
 }
@@ -298,18 +299,18 @@ the provider advertises that capability. Default is \code{FALSE}.
 
 Set this to \code{TRUE} for clients that should prefer discovered
 \code{mtls_endpoint_aliases} on authorization-server requests even when
-\code{token_auth_style} itself is not an mTLS auth style, and that should fail
-closed if the returned access token omits \code{cnf.x5t#S256}.
+\code{token_auth_style} itself is not an mTLS auth style, and present the
+certificate on token and protected-resource requests. Certificate/key
+configuration alone does not enable this mode.
 
 Requires \code{mtls_client_cert_file} and \code{mtls_client_key_file}, and the
 provider must be configured with
 \code{mtls_client_certificate_bound_access_tokens = TRUE}.
-This is a strict local assurance policy. Opaque bound tokens require
-introspection or another response surface exposing \code{cnf$x5t#S256}.
-RFC 8705 also allows server-enforced opaque bindings without client-visible
-confirmation. For those deployments, leave this flag \code{FALSE}, configure
-the certificate/key and endpoint URLs, and rely on the servers to enforce
-binding. Observed confirmation claims are still checked.}
+By default, \code{mtls_require_observed_cnf = TRUE} also requires locally
+observable confirmation of the certificate binding. For opaque tokens
+whose binding is enforced only by the servers, keep
+\code{mtls_certificate_bound_access_tokens = TRUE} and set
+\code{mtls_require_observed_cnf = FALSE}.}
 
 \item{dpop_private_key}{Private key for tying tokens to this app's requests
 using Demonstrating Proof of Possession (DPoP). Only needed when your
@@ -488,6 +489,16 @@ inherit the client's settings. Discovered endpoint methods and signing
 algorithms are checked independently. PAR inherits token authentication.
 Extra token headers apply only to token exchange and refresh; set
 \code{extra_headers} explicitly for every other endpoint that needs them.}
+
+\item{mtls_require_observed_cnf}{Logical, default \code{TRUE}. When
+\code{mtls_certificate_bound_access_tokens = TRUE}, require \code{cnf$x5t#S256}
+in the token response, JWT access token, or introspection and verify that
+it matches the configured certificate. The default preserves strict
+local assurance. Set \code{FALSE} for server-enforced opaque bindings that
+the client cannot observe; this does not disable certificate presentation
+or mTLS endpoint selection. Missing confirmation is then allowed, but
+any observed confirmation is still validated, including mismatches and
+conflicting claims. This flag does not independently enable mTLS.}
 
 \item{...}{Deprecated renamed arguments accepted temporarily for backward
 compatibility.}
