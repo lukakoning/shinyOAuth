@@ -738,7 +738,7 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
   )
   # A valid POST only creates a transient bridge handle. The logical login
   # state is consumed later, after the Shiny browser session proves the
-  # browser-bound cookie.
+  # browser binding.
   .wait_for_form_post_state_store_count(drv, 2L)
 
   replayed_valid <- .post_form_post_http_callback(
@@ -754,11 +754,13 @@ testthat::test_that("direct form_post HTTP envelope attacks do not consume login
     )
   )
   testthat::expect_identical(httr2::resp_status(replayed_valid), 303L)
-  testthat::expect_identical(
+  # Every accepted POST gets a separate one-time handle, including identical
+  # payloads. Both candidates coexist with the unconsumed login state.
+  testthat::expect_false(identical(
     httr2::resp_header(replayed_valid, "location"),
     httr2::resp_header(valid, "location")
-  )
-  .wait_for_form_post_state_store_count(drv, 2L)
+  ))
+  .wait_for_form_post_state_store_count(drv, 3L)
 })
 
 testthat::test_that("browser form_post provider error callbacks are surfaced and cleaned", {
