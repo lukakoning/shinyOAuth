@@ -280,7 +280,11 @@ testthat::test_that("audience-mapped Keycloak token is usable at an authenticate
 testthat::test_that("audience resource rejects corrupted expired and wrong-issuer tokens", {
   testthat::skip_if_not_installed("webfakes")
   key <- openssl::rsa_keygen(2048)
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey))
+  # jose can retain the ASN.1 sign byte when exporting an RSA modulus.
+  # The synthetic issuer must publish the same minimal integers as Keycloak.
+  jwk <- shinyOAuth:::canonicalize_local_public_jwk(
+    jsonlite::fromJSON(jose::write_jwk(key$pubkey))
+  )
   jwk$kid <- "resource-negative-control"
   issuer <- "https://synthetic-issuer.example"
   audience <- "https://synthetic-resource.example"
@@ -297,6 +301,10 @@ testthat::test_that("audience resource rejects corrupted expired and wrong-issue
     )
   }
   valid <- sign()
+  testthat::expect_identical(
+    verify_signed_access_token(valid, issuer, list(keys = list(jwk)))$sub,
+    "user"
+  )
   testthat::expect_identical(
     httr2::resp_status(
       perform_resource_audience_request(protected$url, valid)
