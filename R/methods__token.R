@@ -226,7 +226,7 @@ revoke_token <- function(
           return(annotate_token_revocation_span_result(which, result))
         }
 
-        if (httr2::resp_is_error(resp)) {
+        if (httr2::resp_status(resp) != 200L) {
           status_code <- paste0("http_", httr2::resp_status(resp))
           result <- list(
             supported = TRUE,
@@ -503,7 +503,7 @@ introspect_token <- function(
           return(annotate_token_introspection_span_result(which, result))
         }
 
-        if (httr2::resp_is_error(resp)) {
+        if (httr2::resp_status(resp) != 200L) {
           result <- list(
             supported = TRUE,
             active = NA,
@@ -545,6 +545,9 @@ introspect_token <- function(
         body_trimmed <- trimws(body_txt)
         parsed <- try(
           {
+            if (!response_has_json_media_type(resp)) {
+              err_parse("Introspection response must use a JSON media type")
+            }
             reject_duplicate_json_object_members(
               body_txt,
               "Introspection response JSON"

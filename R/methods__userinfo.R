@@ -145,7 +145,7 @@ get_userinfo <- function(
         reject_redirect_response(resp, context = "userinfo")
 
         # HTTP status errors are userinfo endpoint failures, not transport failures.
-        if (httr2::resp_is_error(resp)) {
+        if (httr2::resp_status(resp) != 200L) {
           err_http(
             c("x" = "Failed to get user info"),
             resp,
@@ -159,7 +159,7 @@ get_userinfo <- function(
           resp_ct <- NA_character_
         }
         is_jwt_response <- is_valid_string(resp_ct) &&
-          grepl("^application/jwt", resp_ct, ignore.case = TRUE)
+          identical(tolower(resp_ct), "application/jwt")
 
         otel_set_span_attributes(
           attributes = list(
@@ -213,6 +213,9 @@ get_userinfo <- function(
         } else {
           ui <- try(
             {
+              if (!response_has_json_media_type(resp)) {
+                err_parse("UserInfo response must use a JSON media type")
+              }
               body_txt <- httr2::resp_body_string(resp)
               reject_duplicate_json_object_members(
                 body_txt,
