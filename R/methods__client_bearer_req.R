@@ -31,8 +31,9 @@
 #'   Any user-supplied `Authorization` or `DPoP` header is ignored to ensure
 #'   the token authentication set by this function is not overridden.
 #' @param query Optional named list of query parameters to append to the URL.
-#' @param follow_redirect Logical. If `FALSE` (the default), HTTP redirects
-#'   are disabled to prevent leaking the access token to unexpected hosts.
+#' @param follow_redirect Logical or `NULL`. `FALSE` (the default) disables
+#'   HTTP redirects even when `shinyOAuth.allow_redirect` is enabled.
+#'   `NULL` inherits that global option (disabled by default).
 #'   Set to `TRUE` only if you trust all possible redirect targets and
 #'   understand the security implications.
 #' @param check_url Logical. If `TRUE` (the default), validates `url` against
@@ -750,10 +751,13 @@ finalize_client_bearer_request <- function(
   query = NULL,
   follow_redirect = FALSE
 ) {
-  # Security: disable redirects by default to prevent leaking the access token.
-  if (!isTRUE(follow_redirect)) {
-    req <- req_no_redirect(req)
+  if (!is.null(follow_redirect) &&
+      !(is.logical(follow_redirect) && length(follow_redirect) == 1L &&
+        !is.na(follow_redirect))) {
+    err_input("follow_redirect must be NULL or a single non-NA logical")
   }
+  follow <- if (is.null(follow_redirect)) allow_redirect() else follow_redirect
+  req <- httr2::req_options(req, followlocation = follow)
 
   req <- apply_client_bearer_headers(req, headers)
 

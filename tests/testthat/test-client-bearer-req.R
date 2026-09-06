@@ -264,7 +264,7 @@ test_that("resource_req allows redirects when follow_redirect = TRUE", {
     follow_redirect = TRUE
   )
   # When follow_redirect is TRUE, followlocation should not be set to FALSE
-  expect_null(req[["options"]][["followlocation"]])
+  expect_true(req[["options"]][["followlocation"]])
 })
 
 test_that("resource_req does not follow redirects by default (token leak prevention)", {

@@ -102,6 +102,7 @@ get_userinfo <- function(
         req <- resource_req(
           token = token,
           url = userinfo_url,
+          follow_redirect = NULL,
           oauth_client = oauth_client,
           token_type = effective_token_type
         )

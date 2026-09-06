@@ -40,8 +40,9 @@ the token authentication set by this function is not overridden.}
 
 \item{query}{Optional named list of query parameters to append to the URL.}
 
-\item{follow_redirect}{Logical. If \code{FALSE} (the default), HTTP redirects
-are disabled to prevent leaking the access token to unexpected hosts.
+\item{follow_redirect}{Logical or \code{NULL}. \code{FALSE} (the default) disables
+HTTP redirects even when \code{shinyOAuth.allow_redirect} is enabled.
+\code{NULL} inherits that global option (disabled by default).
 Set to \code{TRUE} only if you trust all possible redirect targets and
 understand the security implications.}
 
