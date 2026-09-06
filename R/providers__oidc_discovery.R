@@ -165,6 +165,7 @@ oauth_provider_oidc_discover <- function(
 
   # 3) Parse JSON and normalize to list
   disc <- .discover_parse_json(resp)
+  .discover_validate_jose_metadata(disc)
 
   # 3a) Reject incomplete or malformed required OIDC Provider Metadata.
   .discover_validate_required_metadata(disc)
@@ -1472,6 +1473,7 @@ oauth_provider_oidc_discover <- function(
 #' @keywords internal
 #' @noRd
 .discover_negotiate_algs <- function(allowed_algs, disc, iss) {
+  .discover_validate_jose_metadata(disc)
   disc_algs <- disc[["id_token_signing_alg_values_supported"]]
 
   aa <- toupper(as.character(allowed_algs %||% character(0)))
@@ -1494,6 +1496,35 @@ oauth_provider_oidc_discover <- function(
   }
 
   overlap
+}
+
+#' Validate case-sensitive discovery JOSE identifiers
+#'
+#' Rejects misspellings of supported JOSE identifiers before internal policy
+#' normalization can turn them into a different advertised algorithm.
+#' @param disc Parsed discovery metadata.
+#' @return Invisibly `NULL`, or a parse error for noncanonical casing.
+#' @keywords internal
+#' @noRd
+.discover_validate_jose_metadata <- function(disc) {
+  canonical <- c(
+    "none", "dir", "EdDSA", "RSA1_5", "RSA-OAEP", "RSA-OAEP-256",
+    "HS256", "HS384", "HS512", "RS256", "RS384", "RS512",
+    "PS256", "PS384", "PS512", "ES256", "ES384", "ES512", "ES256K",
+    "A128KW", "A192KW", "A256KW", "ECDH-ES", "ECDH-ES+A128KW",
+    "ECDH-ES+A192KW", "ECDH-ES+A256KW", "A128GCMKW", "A192GCMKW", "A256GCMKW",
+    "PBES2-HS256+A128KW", "PBES2-HS384+A192KW", "PBES2-HS512+A256KW",
+    "A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512",
+    "A128GCM", "A192GCM", "A256GCM"
+  )
+  fields <- grep("(signing|encryption)_(alg|enc)_values_supported$", names(disc), value = TRUE)
+  for (field in fields) {
+    values <- unlist(disc[[field]], use.names = FALSE)
+    if (any(toupper(values) %in% toupper(canonical) & !values %in% canonical)) {
+      err_parse(paste0("Discovery ", field, " contains a JOSE identifier with invalid case"))
+    }
+  }
+  invisible(NULL)
 }
 
 

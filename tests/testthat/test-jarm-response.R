@@ -423,7 +423,16 @@ test_that("oauth_client rejects non-canonical JARM discovery metadata casing", {
     jarm_encryption_enc_values_supported = list("a256cbc-hs512")
   )
 
-  prov <- discover_provider(metadata)
+  expect_error(discover_provider(metadata), "JOSE identifier with invalid case")
+  canonical <- metadata
+  canonical[["jarm_signing_alg_values_supported"]] <- list("RS256")
+  canonical[["jarm_encryption_alg_values_supported"]] <- list("RSA-OAEP")
+  canonical[["jarm_encryption_enc_values_supported"]] <- list("A256CBC-HS512")
+  prov <- discover_provider(canonical)
+  # Direct configuration still cannot use incorrectly cased JARM algorithms.
+  prov@jarm_signing_alg_values_supported <- "rs256"
+  prov@jarm_encryption_alg_values_supported <- "rsa-oaep"
+  prov@jarm_encryption_enc_values_supported <- "a256cbc-hs512"
 
   expect_identical(prov@jarm_signing_alg_values_supported, "rs256")
   expect_identical(
