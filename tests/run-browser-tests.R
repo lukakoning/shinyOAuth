@@ -31,12 +31,16 @@ if (!length(selected)) {
   stop("No browser test files discovered")
 }
 filters <- sub("^test[-_]", "", sub("[.]R$", "", basename(selected)))
-results <- testthat::test_local(
-  filter = paste0("^(", paste(filters, collapse = "|"), ")$"),
-  stop_on_failure = TRUE
-)
-if (any(as.data.frame(results)$skipped)) {
-  stop(
-    "Browser suite requires zero skipped tests; inspect browser/dependency setup"
+local({
+  source("tests/testthat/helper-shinytest2.R", local = TRUE)
+  local_app_driver_navigation()
+  results <- testthat::test_local(
+    filter = paste0("^(", paste(filters, collapse = "|"), ")$"),
+    stop_on_failure = TRUE
   )
-}
+  if (any(as.data.frame(results)$skipped)) {
+    stop(
+      "Browser suite requires zero skipped tests; inspect browser/dependency setup"
+    )
+  }
+})

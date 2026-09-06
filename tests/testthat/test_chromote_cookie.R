@@ -80,6 +80,42 @@ testthat::test_that("browser cookie test environment can launch Chrome", {
   )
 })
 
+testthat::test_that("AppDriver waits for navigation before injecting browser state", {
+  require_browser_test_env()
+  browser <- chromote::ChromoteSession$new()
+  on.exit(browser$close(), add = TRUE)
+  browser$go_to("about:blank")
+
+  # Use a real Chrome navigation and only stub the unrelated R-side log setup.
+  testthat::local_mocked_bindings(
+    app_init_browser_log = function(...) invisible(NULL),
+    .package = "shinytest2"
+  )
+  local_app_driver_navigation()
+  shinytest2:::app_init_browser_log(
+    self = list(get_chromote_session = function() browser),
+    private = list(load_timeout = 10000),
+    options = list()
+  )
+  url <- "data:text/html,navigation-ready"
+  later::later(
+    function() browser$Page$navigate(url, wait_ = FALSE),
+    delay = 0.1,
+    loop = browser$get_child_loop()
+  )
+  shinytest2:::chromote_eval(
+    browser,
+    "window.shinyOAuth_navigation_probe = window.location.href"
+  )
+  testthat::expect_identical(
+    browser$Runtime$evaluate(
+      "window.shinyOAuth_navigation_probe",
+      returnByValue = TRUE
+    )$result$value,
+    url
+  )
+})
+
 make_test_app <- function(
   samesite = "Strict",
   path = NULL,

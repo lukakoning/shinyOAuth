@@ -56,6 +56,9 @@ local({
 
   options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 
+  source("tests/testthat/helper-shinytest2.R", local = TRUE)
+  local_app_driver_navigation()
+
   results <- testthat::test_dir(
     "integration/keycloak",
     stop_on_failure = TRUE
