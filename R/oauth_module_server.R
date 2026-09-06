@@ -43,7 +43,9 @@
 #'
 #' @section Browser setup:
 #' Open the app at its registered return address in a regular browser with
-#' cookies and Web Crypto enabled. Embedded IDE viewers may prevent login.
+#' cookies, local storage, and Web Crypto enabled. Embedded IDE viewers may
+#' prevent login. The binding token stays in origin-scoped local storage; the
+#' cookie contains an independent marker, which must match the stored record.
 #' The temporary browser cookie follows the state store's `max_age`, with a
 #' 300-second fallback when that lifetime is unavailable. The separate
 #' `state_payload_max_age` client setting limits the age of the login request.
@@ -51,6 +53,10 @@
 #' login at a time per module; starting another replaces the pending binding.
 #' Private browser-binding inputs are excluded from Shiny bookmarks. Do not
 #' copy `auth$browser_token` into custom bookmark values, URLs, or logs.
+#' Treat the entire hostname as a trust boundary: cookies are shared across
+#' ports, even with `__Host-`, `Secure`, or `HttpOnly`. Use a dedicated hostname
+#' when other services are not trusted. The origin-scoped check prevents cookie
+#' adoption across ports, but co-hosted services can still disrupt cookies.
 #'
 #' @param id A name for this Shiny module, such as `"auth"`.
 #'
@@ -166,7 +172,7 @@
 #'   - `auth$build_auth_url()`: advanced helper for a custom login link.
 #'     Creates pending login state as well as the URL, so retain the result for
 #'     the link instead of rebuilding it on every UI update.
-#'     Refreshes and reads the browser cookie before creating state. Returns a
+#'     Rotates and checks the browser binding before creating state. Returns a
 #'     promise resolving to the URL (or `NA` on failure or an obsolete result);
 #'     use `promises::then()`. PAR URLs carry `shinyOAuth.par_request_uri`,
 #'     `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at` attributes
@@ -178,10 +184,10 @@
 #'   - `auth$has_browser_token()`: reports whether the browser token is
 #'     available. Use it before building a custom login URL; it does not report
 #'     whether the user is authenticated.
-#'   - `auth$set_browser_token()`: asks the browser to create its token cookie
+#'   - `auth$set_browser_token()`: asks the browser to establish its binding
 #'     when missing. The token becomes available after the browser reports it
 #'     back to Shiny. An existing token is left unchanged.
-#'   - `auth$clear_browser_token()`: clears the cookie and its reactive value,
+#'   - `auth$clear_browser_token()`: clears the cookie, local record, and reactive value,
 #'     for example when resetting browser setup in a custom integration.
 #'     `request_login()` manages cookie setup automatically, and `logout()`
 #'     handles cookie rotation when ending a session.
@@ -854,9 +860,9 @@ oauth_module_server <- function(
 
     ## 2.4 Browser token cookie ------------------------------------------------
 
-    # Install a small JS snippet to manage a first-party cookie (SameSite configurable)
-    # and mirror its value into input$shinyOAuth_sid. We set it once if missing
-    # and then keep input in sync on every page load.
+    # Manage a first-party cookie marker plus an origin-scoped binding record.
+    # Only the binding token is mirrored into input$shinyOAuth_sid; the marker
+    # alone cannot restore the binding on another origin.
     shiny::observeEvent(
       TRUE,
       {
@@ -932,7 +938,8 @@ oauth_module_server <- function(
               c(
                 "webcrypto_unavailable",
                 "samesite_none_requires_https",
-                "cookie_unavailable"
+                "cookie_unavailable",
+                "storage_unavailable"
               )
         ) {
           reason <- "unknown"
@@ -942,7 +949,7 @@ oauth_module_server <- function(
         # description directly to end users; app authors can decide how to render).
         values$error <- "browser_cookie_error"
         values$error_description <- sprintf(
-          "Browser cookie/WebCrypto error: %s. Cookies may be blocked or the WebCrypto API is unavailable; authentication cannot proceed.",
+          "Browser cookie/storage/WebCrypto error: %s. Cookies, local storage, and Web Crypto must be available; authentication cannot proceed.",
           reason %||% "unknown"
         )
 

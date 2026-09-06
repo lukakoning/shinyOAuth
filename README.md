@@ -48,7 +48,7 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
   contains built-in configurations for popular providers (e.g., GitHub, Google, Microsoft, Keycloak, Auth0).
 
 - Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with
-  local cookie verification, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce),
+  origin-scoped browser binding, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce),
   userinfo subject match, support for DPoP, mTLS, JAR, PAR, and more
   (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)))
 
@@ -56,6 +56,14 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
   like login successes or failures; also supports emitting OpenTelemetry signals
   (see `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
   and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)))
+
+Deploy authentication on a hostname whose services you trust, or use a dedicated
+hostname. Cookies are shared across all ports of a hostname; `__Host-`, `Secure`,
+and `HttpOnly` do not provide port isolation. shinyOAuth keeps its binding token
+in origin-scoped local storage and checks an independent cookie marker, so
+another port cannot establish a binding by reading or replacing that cookie.
+Other services can still disrupt cookies. The browser must allow cookies,
+local storage, and Web Crypto.
 
 ## Installation
 

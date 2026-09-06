@@ -34,16 +34,34 @@ the additional behavior for the relevant optional features.
 
 ### 1. First page load: set a browser token
 
-On first page load, the module asks the browser to create a random token in a
-cookie and pass its value to Shiny as an input. This lets shinyOAuth check later
+On first page load, the module asks the browser to create a random token in
+origin-scoped local storage and pass it to Shiny as a private input. A separate
+random cookie marker must match the stored record. This lets shinyOAuth check later
 that the browser returning from the provider is the one that started login.
 This browser token is separate from the access and ID tokens issued by the
 provider.
 
-The cookie is readable by JavaScript so its value can reach Shiny. The browser
-must support cookies and Web Crypto; if the cookie cannot be created or read,
-the module reports `browser_cookie_error` and stops login. An invalid browser
-token is rejected and replaced before login or callback processing continues.
+The cookie contains only the marker, so a service on another port cannot read
+the binding token from a Cookie header or establish a binding by replacing the
+cookie. Origin-scoped storage separates schemes, hosts, and ports. Treat the
+whole hostname as trusted nonetheless: other services can disrupt cookies,
+and applications on the same origin share local storage. Use a dedicated
+hostname for authentication when co-hosted services are untrusted.
+
+The browser must support cookies, local storage, and Web Crypto. If either
+storage mechanism cannot be written and read, the module reports
+`browser_cookie_error` and stops login. Missing, expired, or mismatched binding
+records are replaced; callbacks using the old binding then fail validation.
+Cookies created by older package versions cannot restore a binding without
+the origin record, so pending logins must be restarted after upgrading.
+
+Before each authorization request the server selects a fresh binding token.
+The browser stores it and acknowledges the request without duplicating the
+token in another input. The server rejects client-selected replacements.
+Starting a second login for the same module replaces the first pending binding.
+Private inputs are excluded from URL and server bookmarks, with a bookmark
+hook enforcing those exclusions again at serialization. Applications must
+not copy `auth$browser_token` into their own bookmark values or logs.
 
 Wrap your UI in
 [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.html)

@@ -4,6 +4,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(process.argv[2], 'utf8');
 let now = 0, stored = '', expiry = 0, blocked = false;
 const handlers = {}, inputs = {};
+const storage = new Map();
 const document = {addEventListener() {}};
 Object.defineProperty(document, 'cookie', {
   get: () => now < expiry ? stored : '',
@@ -16,6 +17,8 @@ Object.defineProperty(document, 'cookie', {
 const Shiny = {addCustomMessageHandler: (k, fn) => handlers[k] = fn,
   setInputValue: (k, v) => inputs[k] = v};
 const window = {Shiny, location: {protocol: 'https:', pathname: '/'},
+  localStorage: {getItem: k => storage.get(k) ?? null,
+    setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k)},
   crypto: require('node:crypto').webcrypto};
 vm.runInNewContext(source, {window, document, Shiny});
 const send = () => handlers['shinyOAuth:setBrowserToken']({instance: 'test',
@@ -31,7 +34,8 @@ assert.equal(inputs.ack.token, undefined);
 assert.equal(inputs.ack.requestId, 'current');
 expiry = 0; // User deletion also rotates before acknowledgment.
 send();
-assert.ok(document.cookie.includes(inputs.sid));
+assert.ok(!document.cookie.includes(inputs.sid));
+assert.equal(JSON.parse(storage.get('__Host-shinyOAuth_sid-test:binding')).token, inputs.sid);
 expiry = 0; blocked = true; delete inputs.ack;
 send();
 assert.equal(inputs.ack, undefined);

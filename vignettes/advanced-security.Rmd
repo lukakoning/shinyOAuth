@@ -20,6 +20,31 @@ The examples extend the provider and client setup in the [usage vignette](usage.
 Replace placeholder domains, credentials, and key paths with your registered
 values. Each example shows the settings for the feature being discussed.
 
+## Browser binding and deployment boundary
+
+Use HTTPS and treat every service on the same hostname as trusted, including
+services on other ports. Cookie scope does not include the port, as specified
+in [RFC 6265 section 8.5](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5).
+The `__Host-` prefix prevents sibling-domain cookie injection; it does not
+isolate ports. Signed or `HttpOnly` cookies still reach same-host services in
+HTTP requests. Use a dedicated hostname when those services are untrusted.
+
+shinyOAuth keeps the actual browser-binding token in origin-scoped local
+storage, accompanied by an independent random cookie marker. It restores the
+binding only when the cookie matches an unexpired local record. Reading or
+planting a cookie on another port cannot establish that record. Cookie
+disruption can still abort login; pages and scripts on the same origin can
+access local storage, so XSS prevention remains necessary. Cookies, local
+storage, and Web Crypto must be available, and pending logins from older
+cookie-only versions must be restarted after upgrading.
+
+Each new authorization request gets a fresh server-selected binding. Private
+module inputs are excluded from both URL and disk bookmarks. Avoid copying
+browser tokens into custom bookmark values or logs. The acknowledgment is a
+delivery check, not independent server verification of HTTP cookie possession.
+The standalone `prepare_call()` and `handle_callback()` APIs still require
+the caller to establish and protect their own browser binding.
+
 ## Provider metadata and OIDC discovery
 
 `oauth_provider_oidc_discover()` reads provider metadata used by these

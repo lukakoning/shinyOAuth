@@ -1,5 +1,13 @@
 # shinyOAuth (development version)
 
+* Browser-binding tokens now stay in origin-scoped local storage. Cookies
+  contain independent random markers and are accepted only with a matching,
+  unexpired origin record, preventing adoption through same-host services on
+  other ports. Login fails closed when local storage is unavailable. Use a
+  dedicated hostname for untrusted co-hosted services: cookies still share
+  ports and can be disrupted. Pending logins from cookie-only versions must
+  be restarted after upgrading.
+
 * Browser-binding inputs are excluded from URL and server bookmarks, with a
   root-session bookmark hook as defense in depth. Cookie acknowledgments no
   longer duplicate the token. Each interactive login now rotates to a fresh

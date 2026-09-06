@@ -1,6 +1,6 @@
 /* shinyOAuth.js - external client helpers to avoid inline scripts (CSP-friendly)
  * Handlers:
- *  - shinyOAuth:setBrowserToken    {instance, maxAgeMs, sameSite, path, inputId}
+ *  - shinyOAuth:setBrowserToken    {instance, maxAgeMs, sameSite, path, inputId, requestId, token}
  *  - shinyOAuth:clearBrowserToken  {instance, sameSite, path}
  *  - shinyOAuth:redirect           {url}
  *  - shinyOAuth:clearQueryAndFixTitle {titleReplacement, cleanTitle}
@@ -53,6 +53,35 @@
     return Array.from(a, function(x){return x.toString(16).padStart(2,'0');}).join('');
   }
 
+  // Cookies share a hostname across ports. Keep the actual binding in
+  // origin-scoped storage and put only an independent random marker in the
+  // cookie. Neither reading nor planting that marker establishes a binding.
+  function readBrowserBinding(name){
+    var saved;
+    try { saved = window.localStorage.getItem(name + ':binding'); }
+    catch(e) { throw new Error('storage_unavailable'); }
+    try {
+      var binding = JSON.parse(saved);
+      if (binding && binding.version === 1 &&
+          isValidHexToken(binding.token, 128) &&
+          isValidHexToken(binding.cookie, 128) &&
+          Number.isFinite(binding.expiresAt) && binding.expiresAt > Date.now()) {
+        return binding;
+      }
+    } catch(e) { /* Invalid or old records must never restore a binding. */ }
+    return null;
+  }
+
+  function writeBrowserBinding(name, token, cookie, ageMs){
+    var key = name + ':binding';
+    var saved = JSON.stringify({version: 1, token: token, cookie: cookie,
+      expiresAt: Date.now() + ageMs});
+    try {
+      window.localStorage.setItem(key, saved);
+      if (window.localStorage.getItem(key) !== saved) throw new Error();
+    } catch(e) { throw new Error('storage_unavailable'); }
+  }
+
   function clearCookiesFor(name, sameSite, cookiePath){
     var isHttps = window.location.protocol==='https:';
     var paths = [];
@@ -89,17 +118,24 @@
       var useHostPrefix = isHttps;
       var base = useHostPrefix ? '__Host-shinyOAuth_sid' : 'shinyOAuth_sid';
       var name = base + (inst ? ('-' + inst) : '');
-      var v = getCookie(name);
+      var marker = getCookie(name);
+      var binding = readBrowserBinding(name);
+      var v = binding && binding.cookie === marker ? binding.token : null;
       var expectedLen = 128; /* 64 bytes hex-encoded */
       // A new authorization must use the binding selected by this Shiny
       // session, even when an existing cookie is syntactically valid.
       if (payload.requestId) {
         if (!isValidHexToken(payload.token, expectedLen)) throw new Error('invalid_browser_token');
         v = payload.token;
+        marker = randomHex(64);
       }
-      if(!isValidHexToken(v, expectedLen)){ v = randomHex(64); }
-      setCookie(name, v, ageMs, sameSite, /*forceSecure*/ requireSecure, cookiePath);
-      if (getCookie(name) !== v) throw new Error('cookie_unavailable');
+      if(!isValidHexToken(v, expectedLen)){
+        v = randomHex(64);
+        marker = randomHex(64);
+      }
+      writeBrowserBinding(name, v, marker, ageMs);
+      setCookie(name, marker, ageMs, sameSite, /*forceSecure*/ requireSecure, cookiePath);
+      if (getCookie(name) !== marker) throw new Error('cookie_unavailable');
       var shiny = ensureShiny();
       if (shiny) shiny.setInputValue(payload.inputId, v, {priority:'event'});
       if (shiny && payload.requestId) {
@@ -110,7 +146,7 @@
     } catch(e) {
       var shiny = ensureShiny();
       if (shiny) shiny.setInputValue(payload.errorInputId, String(e && e.message || e), {priority:'event'});
-      if (window.console && console.warn) console.warn('shinyOAuth: failed to set browser token cookie:', e);
+      if (window.console && console.warn) console.warn('shinyOAuth: failed to set browser binding:', e);
     }
   }
 
@@ -125,6 +161,10 @@
     // sanitized IDs that collapse to empty.
     var base = 'shinyOAuth_sid';
     var target = inst ? (base + '-' + inst) : base;
+    try {
+      window.localStorage.removeItem(target + ':binding');
+      window.localStorage.removeItem('__Host-' + target + ':binding');
+    } catch(e) { /* Cookie deletion still invalidates any stored binding. */ }
     clearCookiesFor(target, sameSite, cookiePath);
     // Also clear the mirrored Shiny input so a subsequent set with the same
     // value is not suppressed by client-side de-duplication.

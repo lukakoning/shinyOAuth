@@ -3,7 +3,7 @@
 
 # These tests require explicit opt-in plus a launchable headless Chrome session
 # through chromote. They validate that:
-# - The module sets a browser token cookie on first load
+# - The module sets a browser marker cookie on first load
 # - The cookie can be cleared via the exposed helper
 # - After clearing, re-setting generates a fresh random value
 #
@@ -288,6 +288,11 @@ capture_set_cookie_writes <- function(
     "    location: { protocol: protocol, pathname: '/' },",
     "    history: { replaceState: function() {} },",
     "    crypto: window.crypto,",
+    "    localStorage: {",
+    "      data: {},",
+    "      getItem: function(k) { return this.data[k] || null; },",
+    "      setItem: function(k, v) { this.data[k] = v; }",
+    "    },",
     "    console: window.console,",
     "    Shiny: {",
     "      handlers: {},",
@@ -654,6 +659,8 @@ testthat::test_that("interactive preparation refreshes a browser cookie after id
   on.exit(stop_test_app_driver(app), add = TRUE)
   name <- browser_cookie_name("auth")
   old <- wait_for_browser_cookie(app, name)$value
+  old_binding <- app$get_value(output = "browser_value")
+  testthat::expect_false(identical(old_binding, old))
   app$wait_for_js(
     paste0(
       "document.cookie.indexOf(",
@@ -662,12 +669,14 @@ testthat::test_that("interactive preparation refreshes a browser cookie after id
     ),
     timeout = 7000
   )
-  testthat::expect_identical(app$get_value(output = "browser_value"), old)
+  testthat::expect_identical(app$get_value(output = "browser_value"), old_binding)
   app$click("prepare")
   app$wait_for_js(
     "document.querySelector('#prepared_url').innerText.includes('state=')"
   )
   fresh <- get_browser_cookie(app, name)$value
   testthat::expect_false(identical(fresh, old))
-  testthat::expect_identical(app$get_value(output = "browser_value"), fresh)
+  fresh_binding <- app$get_value(output = "browser_value")
+  testthat::expect_false(identical(fresh_binding, old_binding))
+  testthat::expect_false(identical(fresh_binding, fresh))
 })
