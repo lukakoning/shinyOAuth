@@ -78,7 +78,10 @@ normalize_request_uri_base_url <- function(
   }
 
   if (has_uri_fragment(base_url)) {
-    err_input(sprintf("{.arg %s} must not include a query string or fragment.", arg))
+    err_input(sprintf(
+      "{.arg %s} must not include a query string or fragment.",
+      arg
+    ))
   }
 
   validate_endpoint(

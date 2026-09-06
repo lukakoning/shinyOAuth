@@ -473,15 +473,29 @@ audit_userinfo_event <- function(
 #' @return A named list of userinfo claims.
 #' @keywords internal
 #' @noRd
-validate_userinfo_json_claim_types <- function(claims, oauth_client, shiny_session = NULL) {
-  if (!provider_uses_oidc(oauth_client@provider)) return(invisible(TRUE))
+validate_userinfo_json_claim_types <- function(
+  claims,
+  oauth_client,
+  shiny_session = NULL
+) {
+  if (!provider_uses_oidc(oauth_client@provider)) {
+    return(invisible(TRUE))
+  }
   if (!is_valid_oidc_sub(claims[["sub"]])) {
-    audit_userinfo_event(oauth_client, status = "userinfo_missing_sub", shiny_session = shiny_session)
+    audit_userinfo_event(
+      oauth_client,
+      status = "userinfo_missing_sub",
+      shiny_session = shiny_session
+    )
     err_userinfo("UserInfo response has a missing or invalid 'sub' claim")
   }
   for (field in c("email_verified", "phone_number_verified")) {
     value <- claims[[field]]
-    if (field %in% names(claims) && !(is.logical(value) && length(value) == 1L && !is.na(value))) {
+    if (
+      field %in%
+        names(claims) &&
+        !(is.logical(value) && length(value) == 1L && !is.na(value))
+    ) {
       err_userinfo(paste0("UserInfo '", field, "' must be a JSON Boolean"))
     }
   }
@@ -594,7 +608,11 @@ decode_userinfo_jwt <- function(
   # Use provider's UserInfo signing policy for algorithm enforcement (filtering to
   # asymmetric only, since HMAC is not supported for userinfo JWTs)
   asymmetric_algs <- intersect(
-    vapply(prov@userinfo_allowed_algs %||% prov@allowed_algs, canonicalize_jws_alg, character(1)),
+    vapply(
+      prov@userinfo_allowed_algs %||% prov@allowed_algs,
+      canonicalize_jws_alg,
+      character(1)
+    ),
     c(
       "RS256",
       "RS384",

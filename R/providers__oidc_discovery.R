@@ -231,12 +231,21 @@ oauth_provider_oidc_discover <- function(
 
   # UserInfo has independent discovery metadata and must retain the caller's
   # policy before the ID-token intersection narrows it.
-  userinfo_allowed_algs <- toupper(dots[["userinfo_allowed_algs"]] %||% allowed_algs)
-  userinfo_allowed_algs <- intersect(userinfo_allowed_algs,
-    c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EDDSA"))
+  userinfo_allowed_algs <- toupper(
+    dots[["userinfo_allowed_algs"]] %||% allowed_algs
+  )
+  userinfo_allowed_algs <- intersect(
+    userinfo_allowed_algs,
+    c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EDDSA")
+  )
   if (!is.null(disc[["userinfo_signing_alg_values_supported"]])) {
-    userinfo_allowed_algs <- intersect(userinfo_allowed_algs,
-      toupper(unlist(disc[["userinfo_signing_alg_values_supported"]], use.names = FALSE)))
+    userinfo_allowed_algs <- intersect(
+      userinfo_allowed_algs,
+      toupper(unlist(
+        disc[["userinfo_signing_alg_values_supported"]],
+        use.names = FALSE
+      ))
+    )
   }
   dots[["userinfo_allowed_algs"]] <- userinfo_allowed_algs
 
@@ -1508,20 +1517,58 @@ oauth_provider_oidc_discover <- function(
 #' @noRd
 .discover_validate_jose_metadata <- function(disc) {
   canonical <- c(
-    "none", "dir", "EdDSA", "RSA1_5", "RSA-OAEP", "RSA-OAEP-256",
-    "HS256", "HS384", "HS512", "RS256", "RS384", "RS512",
-    "PS256", "PS384", "PS512", "ES256", "ES384", "ES512", "ES256K",
-    "A128KW", "A192KW", "A256KW", "ECDH-ES", "ECDH-ES+A128KW",
-    "ECDH-ES+A192KW", "ECDH-ES+A256KW", "A128GCMKW", "A192GCMKW", "A256GCMKW",
-    "PBES2-HS256+A128KW", "PBES2-HS384+A192KW", "PBES2-HS512+A256KW",
-    "A128CBC-HS256", "A192CBC-HS384", "A256CBC-HS512",
-    "A128GCM", "A192GCM", "A256GCM"
+    "none",
+    "dir",
+    "EdDSA",
+    "RSA1_5",
+    "RSA-OAEP",
+    "RSA-OAEP-256",
+    "HS256",
+    "HS384",
+    "HS512",
+    "RS256",
+    "RS384",
+    "RS512",
+    "PS256",
+    "PS384",
+    "PS512",
+    "ES256",
+    "ES384",
+    "ES512",
+    "ES256K",
+    "A128KW",
+    "A192KW",
+    "A256KW",
+    "ECDH-ES",
+    "ECDH-ES+A128KW",
+    "ECDH-ES+A192KW",
+    "ECDH-ES+A256KW",
+    "A128GCMKW",
+    "A192GCMKW",
+    "A256GCMKW",
+    "PBES2-HS256+A128KW",
+    "PBES2-HS384+A192KW",
+    "PBES2-HS512+A256KW",
+    "A128CBC-HS256",
+    "A192CBC-HS384",
+    "A256CBC-HS512",
+    "A128GCM",
+    "A192GCM",
+    "A256GCM"
   )
-  fields <- grep("(signing|encryption)_(alg|enc)_values_supported$", names(disc), value = TRUE)
+  fields <- grep(
+    "(signing|encryption)_(alg|enc)_values_supported$",
+    names(disc),
+    value = TRUE
+  )
   for (field in fields) {
     values <- unlist(disc[[field]], use.names = FALSE)
     if (any(toupper(values) %in% toupper(canonical) & !values %in% canonical)) {
-      err_parse(paste0("Discovery ", field, " contains a JOSE identifier with invalid case"))
+      err_parse(paste0(
+        "Discovery ",
+        field,
+        " contains a JOSE identifier with invalid case"
+      ))
     }
   }
   invisible(NULL)

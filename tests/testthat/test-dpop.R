@@ -995,11 +995,19 @@ test_that("resource requests enforce observed DPoP binding for both token repres
     dpop_require_observed_cnf = TRUE
   )
   for (raw in list("opaque", build_dummy_jwt(list(sub = "user-1")))) {
-    for (token in list(raw, OAuthToken(access_token = raw, token_type = "DPoP"))) {
+    for (token in list(
+      raw,
+      OAuthToken(access_token = raw, token_type = "DPoP")
+    )) {
       expect_error(
-        resource_req(token, "https://example.com/api", oauth_client = cli,
-                     token_type = "DPoP"),
-        "cnf\\.jkt", class = "shinyOAuth_input_error"
+        resource_req(
+          token,
+          "https://example.com/api",
+          oauth_client = cli,
+          token_type = "DPoP"
+        ),
+        "cnf\\.jkt",
+        class = "shinyOAuth_input_error"
       )
     }
   }
@@ -1010,13 +1018,26 @@ test_that("strict opaque DPoP login and refresh require binding from introspecti
   prov@introspection_url <- "https://example.com/introspect"
   cli <- make_dpop_test_client(prov, dpop_require_observed_cnf = TRUE)
   cli@introspect <- TRUE
-  jkt <- shinyOAuth:::compute_jwk_thumbprint(shinyOAuth:::dpop_public_jwk(cli@dpop_private_key))
-  old <- OAuthToken(access_token = "old", refresh_token = "refresh",
-                    token_type = "DPoP", cnf = list(jkt = jkt))
-  token_set <- list(access_token = "opaque-new", token_type = "DPoP", expires_in = 60)
-  response <- httr2::response(status_code = 200L, url = prov@token_url,
+  jkt <- shinyOAuth:::compute_jwk_thumbprint(shinyOAuth:::dpop_public_jwk(
+    cli@dpop_private_key
+  ))
+  old <- OAuthToken(
+    access_token = "old",
+    refresh_token = "refresh",
+    token_type = "DPoP",
+    cnf = list(jkt = jkt)
+  )
+  token_set <- list(
+    access_token = "opaque-new",
+    token_type = "DPoP",
+    expires_in = 60
+  )
+  response <- httr2::response(
+    status_code = 200L,
+    url = prov@token_url,
     headers = list("Content-Type" = "application/json"),
-    body = charToRaw(jsonlite::toJSON(token_set, auto_unbox = TRUE)))
+    body = charToRaw(jsonlite::toJSON(token_set, auto_unbox = TRUE))
+  )
   calls <- 0L
   outcome <- "matching"
   testthat::local_mocked_bindings(
@@ -1024,30 +1045,57 @@ test_that("strict opaque DPoP login and refresh require binding from introspecti
     req_with_dpop_retry = function(...) response,
     introspect_token = function(...) {
       calls <<- calls + 1L
-      if (outcome == "failed") stop("introspection unavailable")
-      cnf <- switch(outcome, matching = list(jkt = jkt),
-                    mismatching = list(jkt = "wrong"),
-                    inactive = list(jkt = jkt), NULL)
-      list(supported = TRUE, active = outcome != "inactive",
-           raw = list(active = outcome != "inactive", cnf = cnf))
-    }, .package = "shinyOAuth"
+      if (outcome == "failed") {
+        stop("introspection unavailable")
+      }
+      cnf <- switch(
+        outcome,
+        matching = list(jkt = jkt),
+        mismatching = list(jkt = "wrong"),
+        inactive = list(jkt = jkt),
+        NULL
+      )
+      list(
+        supported = TRUE,
+        active = outcome != "inactive",
+        raw = list(active = outcome != "inactive", cnf = cnf)
+      )
+    },
+    .package = "shinyOAuth"
   )
   for (flow in c("login", "refresh")) {
-    for (outcome in c("matching", "missing", "mismatching", "inactive", "failed")) {
+    for (outcome in c(
+      "matching",
+      "missing",
+      "mismatching",
+      "inactive",
+      "failed"
+    )) {
       before <- calls
-      result <- tryCatch({
-        if (flow == "refresh") refresh_token(cli, old, async = FALSE) else {
-          browser <- valid_browser_token()
-          url <- prepare_call(cli, browser_token = browser)
-          handle_callback(cli, code = "code", payload = parse_query_param(url, "state"),
-                          browser_token = browser)
-        }
-      }, error = identity)
+      result <- tryCatch(
+        {
+          if (flow == "refresh") {
+            refresh_token(cli, old, async = FALSE)
+          } else {
+            browser <- valid_browser_token()
+            url <- prepare_call(cli, browser_token = browser)
+            handle_callback(
+              cli,
+              code = "code",
+              payload = parse_query_param(url, "state"),
+              browser_token = browser
+            )
+          }
+        },
+        error = identity
+      )
       expect_identical(calls, before + 1L, info = paste(flow, outcome))
       if (outcome == "matching") {
         expect_true(S7::S7_inherits(result, OAuthToken))
         expect_identical(result@cnf$jkt, jkt)
-      } else expect_s3_class(result, "error")
+      } else {
+        expect_s3_class(result, "error")
+      }
     }
   }
 })

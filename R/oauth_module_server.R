@@ -2880,7 +2880,9 @@ oauth_module_server <- function(
       values$error <- error
       values$error_description <- if (allow_expose_error_body()) {
         sanitize_diagnostic_text(error_description)
-      } else NULL
+      } else {
+        NULL
+      }
       values$error_uri <- error_uri %||% NULL
       invisible(NULL)
     }
@@ -4869,11 +4871,16 @@ oauth_module_compose_error <- function(e, phase = NULL) {
   if (!is.null(phase)) {
     try(log_condition(e, context = list(phase = phase)))
   }
-  msg <- tryCatch(if (allow_expose_error_body()) {
-    sanitize_diagnostic_text(conditionMessage(e))
-  } else short_desc_for_class(class(e)), error = function(...) {
-    "Unknown error"
-  })
+  msg <- tryCatch(
+    if (allow_expose_error_body()) {
+      sanitize_diagnostic_text(conditionMessage(e))
+    } else {
+      short_desc_for_class(class(e))
+    },
+    error = function(...) {
+      "Unknown error"
+    }
+  )
   tid <- oauth_module_extract_trace_id(e)
   if (!is.null(tid)) sprintf("%s (trace %s)", msg, tid) else msg
 }

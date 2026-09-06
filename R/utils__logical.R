@@ -18,10 +18,18 @@ is_scalar_logical <- function(value) {
 #' @noRd
 oauth_provider_boolean_fields <- function() {
   c(
-    "issuer_thus_oidc", "use_pkce", "use_nonce", "userinfo_required",
-    "userinfo_id_token_match", "userinfo_signed_jwt_required",
-    "id_token_required", "id_token_validation", "id_token_at_hash_required",
-    "jwks_host_issuer_match", "par_required", "signed_request_object_required",
+    "issuer_thus_oidc",
+    "use_pkce",
+    "use_nonce",
+    "userinfo_required",
+    "userinfo_id_token_match",
+    "userinfo_signed_jwt_required",
+    "id_token_required",
+    "id_token_validation",
+    "id_token_at_hash_required",
+    "jwks_host_issuer_match",
+    "par_required",
+    "signed_request_object_required",
     "authorization_response_iss_parameter_supported",
     "mtls_client_certificate_bound_access_tokens",
     "jarm_tolerate_duplicate_top_level_iss"

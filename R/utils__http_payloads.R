@@ -139,12 +139,25 @@ try_parse_token_response_json <- function(body, resp = NULL) {
 #' @keywords internal
 #' @noRd
 normalize_token_response_json <- function(value) {
-  for (field in c("access_token", "refresh_token", "id_token", "token_type", "expires_in", "scope")) {
+  for (field in c(
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "token_type",
+    "expires_in",
+    "scope"
+  )) {
     if (is.list(value[[field]])) {
-      err_parse(paste0("Token response field '", field, "' must be a JSON scalar"))
+      err_parse(paste0(
+        "Token response field '",
+        field,
+        "' must be a JSON scalar"
+      ))
     }
   }
-  if ("scope" %in% names(value)) validate_response_scope(value[["scope"]])
+  if ("scope" %in% names(value)) {
+    validate_response_scope(value[["scope"]])
+  }
   if (is.data.frame(value)) {
     return(as.list(value))
   }
@@ -166,7 +179,9 @@ parse_token_response_form <- function(body) {
   # httr2's query parser preserves "+", while HTML form encoding uses it for
   # spaces. Convert only literal plus signs; percent-encoded %2B remains "+".
   value <- httr2::url_query_parse(gsub("+", "%20", body, fixed = TRUE))
-  if ("scope" %in% names(value)) validate_response_scope(value[["scope"]])
+  if ("scope" %in% names(value)) {
+    validate_response_scope(value[["scope"]])
+  }
   value
 }
 

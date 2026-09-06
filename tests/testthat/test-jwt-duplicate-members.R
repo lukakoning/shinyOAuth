@@ -217,11 +217,15 @@ test_that("get_userinfo rejects duplicate claim members", {
 test_that("duplicate JARM issuer normalization stays fast at the callback limit", {
   padding <- paste(rep("x", 20000L), collapse = "")
   payload <- paste0('{"iss":"issuer","padding":"', padding, '","iss":"issuer"}')
-  elapsed <- system.time(out <- shinyOAuth:::normalize_duplicate_jarm_iss_claim(payload))[["elapsed"]]
+  elapsed <- system.time(
+    out <- shinyOAuth:::normalize_duplicate_jarm_iss_claim(payload)
+  )[["elapsed"]]
   expect_identical(jsonlite::fromJSON(out)$padding, padding)
   expect_equal(sum(names(jsonlite::fromJSON(out)) == "iss"), 1L)
   expect_lt(elapsed, 0.75)
   many <- paste0('{', paste(rep('"iss":"issuer"', 1500L), collapse = ','), '}')
-  expect_identical(jsonlite::fromJSON(shinyOAuth:::normalize_duplicate_jarm_iss_claim(many)),
-    list(iss = "issuer"))
+  expect_identical(
+    jsonlite::fromJSON(shinyOAuth:::normalize_duplicate_jarm_iss_claim(many)),
+    list(iss = "issuer")
+  )
 })

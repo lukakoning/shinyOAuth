@@ -38,8 +38,14 @@ reset_test_otel_cache <- function() {
   otel_test_cache[["instruments"]] <- NULL
   get("otel_restore_cache", envir = asNamespace("otel"))(otel_test_cache)
 
-  if (requireNamespace("mirai", quietly = TRUE) &&
-      exists("otel_cache_tracer", envir = asNamespace("mirai"), inherits = FALSE)) {
+  if (
+    requireNamespace("mirai", quietly = TRUE) &&
+      exists(
+        "otel_cache_tracer",
+        envir = asNamespace("mirai"),
+        inherits = FALSE
+      )
+  ) {
     mirai_otel_env <- environment(
       get("otel_cache_tracer", envir = asNamespace("mirai"))
     )
@@ -85,8 +91,14 @@ capture_test_otel_state <- function() {
     )()
   }
 
-  if (requireNamespace("mirai", quietly = TRUE) &&
-      exists("otel_cache_tracer", envir = asNamespace("mirai"), inherits = FALSE)) {
+  if (
+    requireNamespace("mirai", quietly = TRUE) &&
+      exists(
+        "otel_cache_tracer",
+        envir = asNamespace("mirai"),
+        inherits = FALSE
+      )
+  ) {
     mirai_otel_env <- environment(
       get("otel_cache_tracer", envir = asNamespace("mirai"))
     )

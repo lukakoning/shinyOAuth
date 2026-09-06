@@ -28,7 +28,8 @@ testthat::test_that("mirai_daemons_active returns FALSE when no daemons", {
 testthat::test_that("mirai_daemons_active fails closed on backend errors", {
   testthat::skip_if_not_installed("mirai")
   testthat::local_mocked_bindings(
-    daemons_set = function(...) stop("backend unavailable"), .package = "mirai"
+    daemons_set = function(...) stop("backend unavailable"),
+    .package = "mirai"
   )
   testthat::expect_false(shinyOAuth:::mirai_daemons_active())
 })

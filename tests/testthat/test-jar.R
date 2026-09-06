@@ -920,8 +920,10 @@ test_that("encrypted request objects accept SPKI and PKCS#1 public PEM", {
 })
 
 test_that("request object encryption only selects pinned recipient keys", {
-  local_mocked_bindings(force_refresh_provider_jwks = function(...) NULL,
-    .package = "shinyOAuth")
+  local_mocked_bindings(
+    force_refresh_provider_jwks = function(...) NULL,
+    .package = "shinyOAuth"
+  )
   signing_key <- openssl::rsa_keygen(bits = 2048)
   encryption_key <- openssl::rsa_keygen(bits = 2048)
   signing_jwk <- jsonlite::fromJSON(
@@ -1014,18 +1016,23 @@ test_that("JAR encryption recovers from a rotated key with a throttled refresh",
   fresh <- as_enc_jwk(new_key, "new")
   provider <- make_jar_test_provider()
   provider@jwks_cache <- cachem::cache_mem()
-  client <- make_jar_test_client(provider = provider,
+  client <- make_jar_test_client(
+    provider = provider,
     request_object_encryption_alg = "RSA-OAEP",
     request_object_encryption_enc = "A128CBC-HS256",
-    request_object_encryption_kid = "new")
+    request_object_encryption_kid = "new"
+  )
   refreshes <- 0L
-  local_mocked_bindings(fetch_jwks = function(..., force_refresh = FALSE) {
-    if (force_refresh) {
-      refreshes <<- refreshes + 1L
-      return(list(keys = list(old, fresh)))
-    }
-    list(keys = list(old))
-  }, .package = "shinyOAuth")
+  local_mocked_bindings(
+    fetch_jwks = function(..., force_refresh = FALSE) {
+      if (force_refresh) {
+        refreshes <<- refreshes + 1L
+        return(list(keys = list(old, fresh)))
+      }
+      list(keys = list(old))
+    },
+    .package = "shinyOAuth"
+  )
   url <- prepare_call(client, valid_browser_token())
   encrypted <- parse_query_param(url, "request", decode = TRUE)
   decrypted <- jwe_compact_decrypt(encrypted, new_key)
@@ -1033,8 +1040,10 @@ test_that("JAR encryption recovers from a rotated key with a throttled refresh",
   expect_identical(parse_jwt_payload(decrypted$plaintext)$client_id, "abc")
   expect_identical(refreshes, 1L)
   # A persistent cache/key miss must not trigger unbounded fetches.
-  expect_error(prepare_call(client, valid_browser_token()),
-    "No provider Request Object encryption key matched")
+  expect_error(
+    prepare_call(client, valid_browser_token()),
+    "No provider Request Object encryption key matched"
+  )
   expect_identical(refreshes, 1L)
 })
 

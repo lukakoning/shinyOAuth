@@ -101,9 +101,13 @@ validate_untrusted_query_param <- function(
     )
   }
 
-  if (name %in% c("error", "error_description") && !is_oauth_error_text(value)) {
-    err_invalid_state("OAuth error text must use the RFC 6749 printable ASCII character set",
-                      context = list(param = name))
+  if (
+    name %in% c("error", "error_description") && !is_oauth_error_text(value)
+  ) {
+    err_invalid_state(
+      "OAuth error text must use the RFC 6749 printable ASCII character set",
+      context = list(param = name)
+    )
   }
 
   max_bytes <- as.numeric(max_bytes)

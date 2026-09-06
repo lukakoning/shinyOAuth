@@ -97,16 +97,16 @@ test_that("multi-issuer mode requires advertised RFC 9207 for direct callbacks",
 
 test_that("JARM satisfies multi-issuer mode without RFC 9207 metadata", {
   for (mode in c("jwt", "query.jwt", "form_post.jwt")) {
-  cli <- make_iss_test_client(
-    authorization_response_iss_parameter_supported = FALSE,
-    authorization_server_mode = "multi_issuer",
-    response_mode = mode
-  )
+    cli <- make_iss_test_client(
+      authorization_response_iss_parameter_supported = FALSE,
+      authorization_server_mode = "multi_issuer",
+      response_mode = mode
+    )
 
-  expect_identical(cli@authorization_server_mode, "multi_issuer")
-  expect_identical(cli@response_mode, mode)
-  expect_false(isTRUE(cli@enforce_callback_issuer))
-  expect_silent(S7::validate(cli))
+    expect_identical(cli@authorization_server_mode, "multi_issuer")
+    expect_identical(cli@response_mode, mode)
+    expect_false(isTRUE(cli@enforce_callback_issuer))
+    expect_silent(S7::validate(cli))
   }
 })
 

@@ -429,8 +429,10 @@ OAuthProvider <- S7::new_class(
     jwks_pin_mode = S7::new_property(S7::class_character, default = "any"),
     jwks_host_issuer_match = S7::new_property(
       S7::class_logical,
-      default = quote(is_valid_string(issuer) &&
-        (isTRUE(id_token_validation) || isTRUE(id_token_required)))
+      default = quote(
+        is_valid_string(issuer) &&
+          (isTRUE(id_token_validation) || isTRUE(id_token_required))
+      )
     ),
     # Use NA_character_ instead of NULL so the property always respects
     # the declared character type; constructors normalize to a hostname or NA
@@ -718,12 +720,18 @@ oauth_provider <- function(
   }
 
   nullable_flags <- c(
-    "use_nonce", "userinfo_required", "userinfo_id_token_match",
-    "id_token_required", "id_token_validation", "jwks_host_issuer_match"
+    "use_nonce",
+    "userinfo_required",
+    "userinfo_id_token_match",
+    "id_token_required",
+    "id_token_validation",
+    "jwks_host_issuer_match"
   )
   for (field in oauth_provider_boolean_fields()) {
     value <- get(field, inherits = FALSE)
-    if (is.null(value) && field %in% nullable_flags) next
+    if (is.null(value) && field %in% nullable_flags) {
+      next
+    }
     if (!is_scalar_logical(value)) {
       err_input(paste0(field, " must be a single non-NA logical"))
     }
@@ -1055,11 +1063,19 @@ oauth_provider <- function(
 oauth_provider_validate <- function(self) {
   for (field in oauth_provider_boolean_fields()) {
     if (!is_scalar_logical(S7::prop(self, field))) {
-      return(paste0("OAuthProvider: ", field, " must be a single non-NA logical"))
+      return(paste0(
+        "OAuthProvider: ",
+        field,
+        " must be a single non-NA logical"
+      ))
     }
   }
-  endpoint_problem <- endpoint_auth_metadata_problem(self@endpoint_auth_metadata)
-  if (!is.null(endpoint_problem)) return(endpoint_problem)
+  endpoint_problem <- endpoint_auth_metadata_problem(
+    self@endpoint_auth_metadata
+  )
+  if (!is.null(endpoint_problem)) {
+    return(endpoint_problem)
+  }
   # Reuse for all properties (required vs optional mirrors your S7 defs)
   fields <- list(
     auth_url = list(val = self@auth_url, required = TRUE),
@@ -1263,8 +1279,10 @@ oauth_provider_validate <- function(self) {
     "shinyOAuth.unblock_auth_params",
     character()
   )))
-  reserved_auth_keys <- union(immutable_oauth_params(),
-    setdiff(default_reserved_auth_keys, unblocked_auth))
+  reserved_auth_keys <- union(
+    immutable_oauth_params(),
+    setdiff(default_reserved_auth_keys, unblocked_auth)
+  )
   if (length(self@extra_auth_params) > 0) {
     nms <- tolower(trimws(names(self@extra_auth_params)))
     bad <- intersect(nms, reserved_auth_keys)
@@ -1303,8 +1321,10 @@ oauth_provider_validate <- function(self) {
     "shinyOAuth.unblock_token_params",
     character()
   )))
-  reserved_token_keys <- union(immutable_oauth_params(),
-    setdiff(default_reserved_token_keys, unblocked_token))
+  reserved_token_keys <- union(
+    immutable_oauth_params(),
+    setdiff(default_reserved_token_keys, unblocked_token)
+  )
   if (length(self@extra_token_params) > 0) {
     nms <- tolower(trimws(names(self@extra_token_params)))
     bad <- intersect(nms, reserved_token_keys)

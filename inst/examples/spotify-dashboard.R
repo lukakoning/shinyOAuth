@@ -202,7 +202,10 @@ get_recently_played <- function(token, limit = 20) {
     )
 
     data.frame(
-      played_at = as.POSIXct(item[["played_at"]] %||% NA_character_, tz = "UTC"),
+      played_at = as.POSIXct(
+        item[["played_at"]] %||% NA_character_,
+        tz = "UTC"
+      ),
       track = track[["name"]] %||% NA_character_,
       artist = paste(artists, collapse = ", "),
       album = track[["album"]][["name"]] %||% NA_character_,
@@ -585,15 +588,19 @@ server <- function(input, output, session) {
     auth$logout()
   })
 
-  observeEvent(list(auth$error, auth$error_description), {
-    if (interactive() && !is.null(auth$error_description)) {
-      rlang::inform(c(
-        "OAuth error details",
-        "i" = paste0("error: ", auth$error),
-        "i" = paste0("error_description: ", auth$error_description)
-      ))
-    }
-  }, ignoreInit = TRUE)
+  observeEvent(
+    list(auth$error, auth$error_description),
+    {
+      if (interactive() && !is.null(auth$error_description)) {
+        rlang::inform(c(
+          "OAuth error details",
+          "i" = paste0("error: ", auth$error),
+          "i" = paste0("error_description: ", auth$error_description)
+        ))
+      }
+    },
+    ignoreInit = TRUE
+  )
 
   output$oauth_error <- renderUI({
     if (is.null(auth$error) || identical(auth$error, "logged_out")) {
@@ -1033,7 +1040,12 @@ server <- function(input, output, session) {
 
     ggplot(counts_df, aes_string(x = "plays", y = "artist")) +
       geom_col(fill = "#1DB954", width = 0.65) +
-      geom_text(aes_string(label = "plays"), hjust = -0.2, color = "#F5F6F8", size = 4) +
+      geom_text(
+        aes_string(label = "plays"),
+        hjust = -0.2,
+        color = "#F5F6F8",
+        size = 4
+      ) +
       scale_x_continuous(expand = expansion(mult = c(0, 0.08))) +
       labs(x = x_lab, y = NULL) +
       theme_minimal(base_family = "Inter", base_size = 13) +
@@ -1119,7 +1131,8 @@ server <- function(input, output, session) {
 # Run app ----------------------------------------------------------------------
 
 shiny::runApp(
-  shinyApp(ui, server), port = 8100,
+  shinyApp(ui, server),
+  port = 8100,
   launch.browser = FALSE
 )
 

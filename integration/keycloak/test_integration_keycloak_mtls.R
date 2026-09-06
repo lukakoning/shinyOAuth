@@ -27,8 +27,12 @@ perform_mtls_module_login <- function(
 
       if (isTRUE(values$authenticated)) {
         expect_keycloak_module_login_invariants(
-          values$authenticated, values$error, values$error_description,
-          values$error_uri, values$token, client
+          values$authenticated,
+          values$error,
+          values$error_description,
+          values$error_uri,
+          values$token,
+          client
         )
       }
 
@@ -52,21 +56,49 @@ testthat::test_that("strict OIDC validation and mTLS work across the token lifec
   testthat::expect_true(login$authenticated)
   token <- login$token
   testthat::expect_true(token@id_token_validated)
-  testthat::expect_identical(token@cnf[["x5t#S256"]], tls_client_thumbprint("valid"))
-  refreshed <- shinyOAuth::refresh_token(client, token, async = FALSE, introspect = TRUE)
+  testthat::expect_identical(
+    token@cnf[["x5t#S256"]],
+    tls_client_thumbprint("valid")
+  )
+  refreshed <- shinyOAuth::refresh_token(
+    client,
+    token,
+    async = FALSE,
+    introspect = TRUE
+  )
   testthat::expect_true(refreshed@id_token_validated)
-  testthat::expect_identical(refreshed@id_token_claims$iss, client@provider@issuer)
-  testthat::expect_identical(refreshed@id_token_claims$sub, token@id_token_claims$sub)
-  testthat::expect_identical(refreshed@cnf[["x5t#S256"]], tls_client_thumbprint("valid"))
+  testthat::expect_identical(
+    refreshed@id_token_claims$iss,
+    client@provider@issuer
+  )
+  testthat::expect_identical(
+    refreshed@id_token_claims$sub,
+    token@id_token_claims$sub
+  )
+  testthat::expect_identical(
+    refreshed@cnf[["x5t#S256"]],
+    tls_client_thumbprint("valid")
+  )
   intro <- shinyOAuth::introspect_token(client, refreshed, async = FALSE)
   testthat::expect_true(intro$active)
-  testthat::expect_identical(intro$raw$cnf[["x5t#S256"]], tls_client_thumbprint("valid"))
+  testthat::expect_identical(
+    intro$raw$cnf[["x5t#S256"]],
+    tls_client_thumbprint("valid")
+  )
   ui <- shinyOAuth::get_userinfo(client, refreshed)
   testthat::expect_identical(ui$sub, token@id_token_claims$sub)
-  response <- shinyOAuth::perform_resource_req(refreshed,
-    get_mtls_endpoint_url(client@provider, "userinfo_endpoint"), oauth_client = client)
+  response <- shinyOAuth::perform_resource_req(
+    refreshed,
+    get_mtls_endpoint_url(client@provider, "userinfo_endpoint"),
+    oauth_client = client
+  )
   testthat::expect_identical(httr2::resp_body_json(response)$sub, ui$sub)
-  revoked <- shinyOAuth::revoke_token(client, refreshed, which = "access", async = FALSE)
+  revoked <- shinyOAuth::revoke_token(
+    client,
+    refreshed,
+    which = "access",
+    async = FALSE
+  )
   testthat::expect_true(revoked$revoked)
 })
 

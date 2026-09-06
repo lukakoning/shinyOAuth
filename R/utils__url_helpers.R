@@ -241,8 +241,10 @@ validate_endpoint <- function(u, allowed_hosts_vec) {
   }
 
   if (has_uri_fragment(u)) {
-    err_config("Endpoint must not contain a fragment component",
-               context = list(endpoint = u))
+    err_config(
+      "Endpoint must not contain a fragment component",
+      context = list(endpoint = u)
+    )
   }
 
   p <- try(httr2::url_parse(u), silent = TRUE)
@@ -330,14 +332,28 @@ is_absolute_uri <- function(x) {
   atom <- "(?:[A-Za-z0-9._~!$&'()*+,;=-]|%[0-9A-Fa-f]{2})"
   pchar <- paste0("(?:", atom, "|[:@])")
   authority <- paste0(
-    "(?:(?:", atom, "|:)*@)?(?:", atom,
+    "(?:(?:",
+    atom,
+    "|:)*@)?(?:",
+    atom,
     "*|\\[[A-Za-z0-9:._~!$&'()*+,;=-]+\\])(?::[0-9]*)?"
   )
   syntax <- paste0(
     "^[A-Za-z][A-Za-z0-9+.-]*:",
-    "(?://", authority, "(?:/", pchar, "*)*|/?(?:", pchar, ")(?:", pchar,
+    "(?://",
+    authority,
+    "(?:/",
+    pchar,
+    "*)*|/?(?:",
+    pchar,
+    ")(?:",
+    pchar,
     "|/)*|/|)",
-    "(?:\\?(?:", pchar, "|[/?])*)?(?:#(?:", pchar, "|[/?])*)?\\z"
+    "(?:\\?(?:",
+    pchar,
+    "|[/?])*)?(?:#(?:",
+    pchar,
+    "|[/?])*)?\\z"
   )
   if (!grepl(syntax, x, perl = TRUE)) {
     return(FALSE)
@@ -346,11 +362,19 @@ is_absolute_uri <- function(x) {
   if (grepl("[", x, fixed = TRUE)) {
     literal <- sub("^[^[]*\\[([^]]+)\\].*$", "\\1", x)
     ipvfuture <- grepl(
-      "^[vV][0-9A-Fa-f]+\\.[A-Za-z0-9._~!$&'()*+,;=:-]+$", literal
+      "^[vV][0-9A-Fa-f]+\\.[A-Za-z0-9._~!$&'()*+,;=:-]+$",
+      literal
     )
-    if (!ipvfuture && inherits(try(
-      normalize_mtls_registration_ipv6_literal(literal), silent = TRUE
-    ), "try-error")) {
+    if (
+      !ipvfuture &&
+        inherits(
+          try(
+            normalize_mtls_registration_ipv6_literal(literal),
+            silent = TRUE
+          ),
+          "try-error"
+        )
+    ) {
       return(FALSE)
     }
   }

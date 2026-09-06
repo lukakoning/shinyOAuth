@@ -41,17 +41,28 @@ oauth_ui <- function(base_ui) {
   render_ui <- function(req) {
     value <- if (is.function(base_ui)) {
       if (length(formals(base_ui))) base_ui(req) else base_ui()
-    } else base_ui
-    if (is.null(value)) return(NULL)
+    } else {
+      base_ui
+    }
+    if (is.null(value)) {
+      return(NULL)
+    }
     oauth_form_post_ensure_ui_dependency(value)
   }
   attr(render_ui, "http_methods_supported") <- methods
   # Reuse Shiny's normal rendering through its public app constructor. This
   # preserves custom documents, dependencies, request UIs, and test mode.
-  handler <- shiny::shinyApp(render_ui, server = function(...) {}, uiPattern = ".*")$httpHandler
+  handler <- shiny::shinyApp(
+    render_ui,
+    server = function(...) {},
+    uiPattern = ".*"
+  )$httpHandler
   ui <- function(req) {
     response <- handler(req)
-    if (!is.null(response) && grepl("^text/html", response$content_type, ignore.case = TRUE)) {
+    if (
+      !is.null(response) &&
+        grepl("^text/html", response$content_type, ignore.case = TRUE)
+    ) {
       headers <- response$headers
       headers <- headers[tolower(names(headers)) != "referrer-policy"]
       headers[["Referrer-Policy"]] <- "no-referrer"

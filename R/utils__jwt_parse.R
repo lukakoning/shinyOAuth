@@ -384,7 +384,9 @@ parse_jwt_payload_or_null <- function(jwt) {
   payload <- tryCatch(
     {
       reject_duplicate_json_object_members(
-        payload_text, "JWT payload", on_error = function(message) stop(message)
+        payload_text,
+        "JWT payload",
+        on_error = function(message) stop(message)
       )
       jsonlite::fromJSON(payload_text, simplifyVector = TRUE)
     },

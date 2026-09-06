@@ -7,15 +7,27 @@
 #' @keywords internal
 #' @noRd
 sanitize_diagnostic_text <- function(value, max_bytes = 512L) {
-  if (!is.character(value) || !length(value) || anyNA(value)) return(NULL)
+  if (!is.character(value) || !length(value) || anyNA(value)) {
+    return(NULL)
+  }
   value <- paste(enc2utf8(value), collapse = " ")
-  if (!validUTF8(value)) return(NULL)
-  urls <- gregexpr("[A-Za-z][A-Za-z0-9+.-]*://[^[:space:]<>\"']+", value, perl = TRUE)
+  if (!validUTF8(value)) {
+    return(NULL)
+  }
+  urls <- gregexpr(
+    "[A-Za-z][A-Za-z0-9+.-]*://[^[:space:]<>\"']+",
+    value,
+    perl = TRUE
+  )
   matches <- regmatches(value, urls)[[1L]]
   if (length(matches)) {
-    regmatches(value, urls) <- list(vapply(matches, function(url) {
-      otel_http_url_full(url) %||% "[invalid URL]"
-    }, character(1)))
+    regmatches(value, urls) <- list(vapply(
+      matches,
+      function(url) {
+        otel_http_url_full(url) %||% "[invalid URL]"
+      },
+      character(1)
+    ))
   }
   value <- gsub("[[:cntrl:]\\p{Cf}]", " ", value, perl = TRUE)
   value <- substr(value, 1L, max_bytes)
@@ -34,16 +46,29 @@ sanitize_diagnostic_text <- function(value, max_bytes = 512L) {
 #' @keywords internal
 #' @noRd
 sanitize_event_diagnostics <- function(event) {
-  if (!is.list(event)) return(event)
-  detail_fields <- c("message", "error_message", "transport_error",
-                     "oauth_error_description", "error_description", "body",
-                     "body_snippet", "exception.message")
+  if (!is.list(event)) {
+    return(event)
+  }
+  detail_fields <- c(
+    "message",
+    "error_message",
+    "transport_error",
+    "oauth_error_description",
+    "error_description",
+    "body",
+    "body_snippet",
+    "exception.message"
+  )
   for (i in seq_along(event)) {
     field <- names(event)[i] %||% ""
     if (field %in% detail_fields) {
-      event[i] <- list(if (allow_expose_error_body()) {
-        sanitize_diagnostic_text(event[[i]])
-      } else NULL)
+      event[i] <- list(
+        if (allow_expose_error_body()) {
+          sanitize_diagnostic_text(event[[i]])
+        } else {
+          NULL
+        }
+      )
     } else if (is.list(event[[i]])) {
       event[i] <- list(sanitize_event_diagnostics(event[[i]]))
     }
@@ -59,7 +84,9 @@ sanitize_event_diagnostics <- function(event) {
 #' @keywords internal
 #' @noRd
 is_oauth_error_text <- function(value) {
-  is.character(value) && length(value) == 1L && !is.na(value) &&
+  is.character(value) &&
+    length(value) == 1L &&
+    !is.na(value) &&
     isTRUE(grepl("^[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]*$", value, perl = TRUE))
 }
 

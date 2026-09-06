@@ -1,104 +1,107 @@
 for (test_alg in c("EdDSA", "RS256")) {
-test_that(paste("validate_id_token accepts a valid", test_alg, "JWT"), {
-  testthat::skip_if_not_installed("jose")
-  use_eddsa <- identical(test_alg, "EdDSA")
-  if (use_eddsa) testthat::skip_if_not_installed("sodium")
-  kp <- if (use_eddsa) {
-    secret <- sodium::sig_keygen()
-    list(pubkey = sodium::sig_pubkey(secret), key = secret)
-  } else NULL
+  test_that(paste("validate_id_token accepts a valid", test_alg, "JWT"), {
+    testthat::skip_if_not_installed("jose")
+    use_eddsa <- identical(test_alg, "EdDSA")
+    if (use_eddsa) {
+      testthat::skip_if_not_installed("sodium")
+    }
+    kp <- if (use_eddsa) {
+      secret <- sodium::sig_keygen()
+      list(pubkey = sodium::sig_pubkey(secret), key = secret)
+    } else {
+      NULL
+    }
 
-  now <- as.numeric(Sys.time())
+    now <- as.numeric(Sys.time())
 
-  # Create key material and JWKS depending on chosen algorithm
-  if (isTRUE(use_eddsa)) {
-    pub <- kp$pubkey
-    secret <- if (!is.null(kp$key)) kp$key else kp$secretkey
-    pub_jwk <- list(
-      kty = "OKP",
-      crv = "Ed25519",
-      x = shinyOAuth:::base64url_encode(pub)
+    # Create key material and JWKS depending on chosen algorithm
+    if (isTRUE(use_eddsa)) {
+      pub <- kp$pubkey
+      secret <- if (!is.null(kp$key)) kp$key else kp$secretkey
+      pub_jwk <- list(
+        kty = "OKP",
+        crv = "Ed25519",
+        x = shinyOAuth:::base64url_encode(pub)
+      )
+      pub_jwk$kid <- "ed25519-1"
+    } else {
+      rsa <- openssl::rsa_keygen(bits = 2048)
+      priv_jwk_json <- write_test_jwk(rsa)
+      priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
+      pub_jwk <- list(kty = priv_jwk$kty, n = priv_jwk$n, e = priv_jwk$e)
+      pub_jwk$kid <- "rsa-1"
+    }
+
+    # Use a local issuer and mock JWKS fetch to avoid HTTP
+    base <- "http://localhost"
+
+    # Provider allows EdDSA; client configured with matching client_id
+    prov <- oauth_provider(
+      name = "local-asym",
+      auth_url = paste0(base, "/auth"),
+      token_url = paste0(base, "/token"),
+      issuer = base,
+      allowed_algs = c("EdDSA", "RS256")
     )
-    pub_jwk$kid <- "ed25519-1"
-  } else {
-    rsa <- openssl::rsa_keygen(bits = 2048)
-    priv_jwk_json <- write_test_jwk(rsa)
-    priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
-    pub_jwk <- list(kty = priv_jwk$kty, n = priv_jwk$n, e = priv_jwk$e)
-    pub_jwk$kid <- "rsa-1"
-  }
-
-  # Use a local issuer and mock JWKS fetch to avoid HTTP
-  base <- "http://localhost"
-
-  # Provider allows EdDSA; client configured with matching client_id
-  prov <- oauth_provider(
-    name = "local-asym",
-    auth_url = paste0(base, "/auth"),
-    token_url = paste0(base, "/token"),
-    issuer = base,
-    allowed_algs = c("EdDSA", "RS256")
-  )
-  cli <- oauth_client(
-    provider = prov,
-    client_id = "client-asym",
-    client_secret = "ignore-for-asym",
-    redirect_uri = paste0(base, "/cb")
-  )
-
-  # Create a valid ID token with EdDSA or RS256 signature
-  header <- list(
-    alg = if (isTRUE(use_eddsa)) "EdDSA" else "RS256",
-    kid = pub_jwk$kid,
-    typ = "JWT"
-  )
-  claims <- list(
-    iss = base,
-    aud = "client-asym",
-    sub = "user-123",
-    exp = now + 120,
-    iat = now - 1
-  )
-  if (isTRUE(use_eddsa)) {
-    # Manually construct and sign the JWT using Ed25519
-    header_json <- jsonlite::toJSON(header, auto_unbox = TRUE, null = "null")
-    claims_json <- jsonlite::toJSON(claims, auto_unbox = TRUE, null = "null")
-    h64 <- shinyOAuth:::base64url_encode(charToRaw(as.character(header_json)))
-    p64 <- shinyOAuth:::base64url_encode(charToRaw(as.character(claims_json)))
-    signing_input <- paste0(h64, ".", p64)
-    sig <- sodium::sig_sign(charToRaw(signing_input), secret)
-    s64 <- shinyOAuth:::base64url_encode(sig)
-    id_token <- paste(signing_input, s64, sep = ".")
-  } else {
-    id_token <- jose::jwt_encode_sig(
-      jose::jwt_claim(
-        iss = base,
-        aud = "client-asym",
-        sub = "user-123",
-        exp = now + 120,
-        iat = now - 1
-      ),
-      key = rsa,
-      header = header
+    cli <- oauth_client(
+      provider = prov,
+      client_id = "client-asym",
+      client_secret = "ignore-for-asym",
+      redirect_uri = paste0(base, "/cb")
     )
-  }
 
-  expect_silent(testthat::with_mocked_bindings(
-    fetch_jwks = function(
-      issuer,
-      jwks_cache,
-      force_refresh = FALSE,
-      pins = NULL,
-      pin_mode = c("any", "all"),
-      provider = NULL
-    ) {
-      list(keys = list(pub_jwk))
-    },
-    .package = "shinyOAuth",
-    shinyOAuth:::validate_id_token(cli, id_token)
-  ))
-})
+    # Create a valid ID token with EdDSA or RS256 signature
+    header <- list(
+      alg = if (isTRUE(use_eddsa)) "EdDSA" else "RS256",
+      kid = pub_jwk$kid,
+      typ = "JWT"
+    )
+    claims <- list(
+      iss = base,
+      aud = "client-asym",
+      sub = "user-123",
+      exp = now + 120,
+      iat = now - 1
+    )
+    if (isTRUE(use_eddsa)) {
+      # Manually construct and sign the JWT using Ed25519
+      header_json <- jsonlite::toJSON(header, auto_unbox = TRUE, null = "null")
+      claims_json <- jsonlite::toJSON(claims, auto_unbox = TRUE, null = "null")
+      h64 <- shinyOAuth:::base64url_encode(charToRaw(as.character(header_json)))
+      p64 <- shinyOAuth:::base64url_encode(charToRaw(as.character(claims_json)))
+      signing_input <- paste0(h64, ".", p64)
+      sig <- sodium::sig_sign(charToRaw(signing_input), secret)
+      s64 <- shinyOAuth:::base64url_encode(sig)
+      id_token <- paste(signing_input, s64, sep = ".")
+    } else {
+      id_token <- jose::jwt_encode_sig(
+        jose::jwt_claim(
+          iss = base,
+          aud = "client-asym",
+          sub = "user-123",
+          exp = now + 120,
+          iat = now - 1
+        ),
+        key = rsa,
+        header = header
+      )
+    }
 
+    expect_silent(testthat::with_mocked_bindings(
+      fetch_jwks = function(
+        issuer,
+        jwks_cache,
+        force_refresh = FALSE,
+        pins = NULL,
+        pin_mode = c("any", "all"),
+        provider = NULL
+      ) {
+        list(keys = list(pub_jwk))
+      },
+      .package = "shinyOAuth",
+      shinyOAuth:::validate_id_token(cli, id_token)
+    ))
+  })
 }
 
 make_rsa_jwt_with_alg <- function(key, alg, claims, kid) {

@@ -166,11 +166,18 @@ testthat::test_that("OTel catalog uses implemented form-post and state phases", 
   )
   login_source <- project_text("R", "methods__login.R")
   module_source <- project_text("R", "oauth_module_server.R")
-  for (phase in c("callback.state_store_consume", "form_post.callback_lookup")) {
+  for (phase in c(
+    "callback.state_store_consume",
+    "form_post.callback_lookup"
+  )) {
     expect_match(otel_docs, phase, fixed = TRUE)
     expect_match(paste(login_source, module_source), phase, fixed = TRUE)
   }
-  expect_false(grepl("form_post.callback.consume_state", otel_docs, fixed = TRUE))
+  expect_false(grepl(
+    "form_post.callback.consume_state",
+    otel_docs,
+    fixed = TRUE
+  ))
 })
 
 testthat::test_that("OTel docs describe exception-message opt-in", {

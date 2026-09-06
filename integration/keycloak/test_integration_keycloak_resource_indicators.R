@@ -123,7 +123,10 @@ start_resource_audience_server <- function(
     }
 
     access_token <- sub("^[Bb]earer\\s+", "", auth, perl = TRUE)
-    payload <- try(verify_access_token(access_token, issuer, jwks), silent = TRUE)
+    payload <- try(
+      verify_access_token(access_token, issuer, jwks),
+      silent = TRUE
+    )
     if (inherits(payload, "try-error")) {
       send_problem(res, 401L, "invalid_access_token")
       return()
@@ -281,22 +284,39 @@ testthat::test_that("audience resource rejects corrupted expired and wrong-issue
   jwk$kid <- "resource-negative-control"
   issuer <- "https://synthetic-issuer.example"
   audience <- "https://synthetic-resource.example"
-  protected <- start_resource_audience_server(audience, issuer, list(keys = list(jwk)))
+  protected <- start_resource_audience_server(
+    audience,
+    issuer,
+    list(keys = list(jwk))
+  )
   sign <- function(iss = issuer, exp = as.numeric(Sys.time()) + 300) {
-    jose::jwt_encode_sig(jose::jwt_claim(iss = iss, aud = audience, sub = "user", exp = exp),
-      key, header = list(alg = "RS256", kid = jwk$kid))
+    jose::jwt_encode_sig(
+      jose::jwt_claim(iss = iss, aud = audience, sub = "user", exp = exp),
+      key,
+      header = list(alg = "RS256", kid = jwk$kid)
+    )
   }
   valid <- sign()
-  testthat::expect_identical(httr2::resp_status(
-    perform_resource_audience_request(protected$url, valid)), 200L)
+  testthat::expect_identical(
+    httr2::resp_status(
+      perform_resource_audience_request(protected$url, valid)
+    ),
+    200L
+  )
   parts <- strsplit(valid, ".", fixed = TRUE)[[1]]
   sig <- shinyOAuth:::base64url_decode_raw(parts[[3]])
   sig[[1]] <- as.raw(bitwXor(as.integer(sig[[1]]), 1L))
   parts[[3]] <- shinyOAuth:::base64url_encode(sig)
-  for (invalid in c(paste(parts, collapse = "."), sign(exp = as.numeric(Sys.time()) - 60),
-      sign(iss = "https://wrong-issuer.example"))) {
+  for (invalid in c(
+    paste(parts, collapse = "."),
+    sign(exp = as.numeric(Sys.time()) - 60),
+    sign(iss = "https://wrong-issuer.example")
+  )) {
     response <- perform_resource_audience_request(protected$url, invalid)
     testthat::expect_identical(httr2::resp_status(response), 401L)
-    testthat::expect_identical(httr2::resp_body_json(response)$error, "invalid_access_token")
+    testthat::expect_identical(
+      httr2::resp_body_json(response)$error,
+      "invalid_access_token"
+    )
   }
 })

@@ -386,7 +386,8 @@ req_perform_bounded <- function(req) {
   max_bytes <- resolve_max_body_bytes()
   path <- tempfile("shinyOAuth-response-")
   on.exit(unlink(path), add = TRUE)
-  req <- httr2::req_options(req,
+  req <- httr2::req_options(
+    req,
     accept_encoding = "gzip",
     http_content_decoding = FALSE,
     maxfilesize = max_bytes,
@@ -402,11 +403,19 @@ req_perform_bounded <- function(req) {
   if (file.info(path)$size > max_bytes) {
     err_parse("Response body too large during encoded download")
   }
-  encoding <- tolower(trimws(httr2::resp_header(resp, "content-encoding") %||% "identity"))
+  encoding <- tolower(trimws(
+    httr2::resp_header(resp, "content-encoding") %||% "identity"
+  ))
   if (!encoding %in% c("identity", "gzip", "x-gzip")) {
-    err_parse("Unsupported response Content-Encoding; expected identity or gzip")
+    err_parse(
+      "Unsupported response Content-Encoding; expected identity or gzip"
+    )
   }
-  conn <- if (encoding %in% c("gzip", "x-gzip")) gzfile(path, "rb") else file(path, "rb")
+  conn <- if (encoding %in% c("gzip", "x-gzip")) {
+    gzfile(path, "rb")
+  } else {
+    file(path, "rb")
+  }
   on.exit(close(conn), add = TRUE, after = FALSE)
   resp[["body"]] <- readBin(conn, "raw", n = max_bytes + 1)
   check_resp_body_size(resp)
@@ -483,7 +492,9 @@ req_with_retry <- function(req, idempotent = TRUE) {
     resp <- try(req_perform_bounded(attempt_req), silent = TRUE)
     if (inherits(resp, "try-error")) {
       parent <- attr(resp, "condition")
-      if (inherits(parent, "shinyOAuth_parse_error")) stop(parent)
+      if (inherits(parent, "shinyOAuth_parse_error")) {
+        stop(parent)
+      }
       if (is.null(parent)) {
         parent <- simpleError(as.character(resp))
       }
@@ -555,7 +566,9 @@ req_with_retry <- function(req, idempotent = TRUE) {
     # Transport error -> retry
     if (inherits(resp, "try-error")) {
       parent <- attr(resp, "condition")
-      if (inherits(parent, "shinyOAuth_parse_error")) stop(parent)
+      if (inherits(parent, "shinyOAuth_parse_error")) {
+        stop(parent)
+      }
       last_err <- resp
       # Backoff on transport errors (no Retry-After available)
       if (i < max_tries) {

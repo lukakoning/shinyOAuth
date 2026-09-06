@@ -649,7 +649,10 @@ resolve_authorization_request_encryption_public_key <- function(
     )
     if (!is.null(refreshed)) {
       candidates <- select_candidate_jwks_for_encryption(
-        refreshed, alg = alg, kid = kid, pins = client@provider@jwks_pins
+        refreshed,
+        alg = alg,
+        kid = kid,
+        pins = client@provider@jwks_pins
       )
     }
   }

@@ -603,8 +603,13 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
       } else if (identical(ch, '"')) {
         return(list(
           end = index,
-          value = jwt_decode_json_string_token(if (index == start_index + 1L) "" else
-            paste(chars[seq.int(start_index + 1L, index - 1L)], collapse = ""))
+          value = jwt_decode_json_string_token(
+            if (index == start_index + 1L) {
+              ""
+            } else {
+              paste(chars[seq.int(start_index + 1L, index - 1L)], collapse = "")
+            }
+          )
         ))
       }
       index <- index + 1L

@@ -325,8 +325,10 @@ test_that("fetch_jwks evicts poisoned cache on pin mismatch even if refetch fail
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   # Good JWKS the server will return
-  good_rsa <- jsonlite::fromJSON(write_test_jwk(openssl::rsa_keygen()$pubkey),
-                                simplifyVector = FALSE)
+  good_rsa <- jsonlite::fromJSON(
+    write_test_jwk(openssl::rsa_keygen()$pubkey),
+    simplifyVector = FALSE
+  )
   good_jwks <- list(keys = list(good_rsa))
   good_pin <- shinyOAuth:::compute_jwk_thumbprint(good_rsa)
 
@@ -345,8 +347,10 @@ test_that("fetch_jwks evicts poisoned cache on pin mismatch even if refetch fail
   ckey <- shinyOAuth:::jwks_cache_key(base, pins = good_pin, pin_mode = "any")
 
   # Seed cache with a poisoned JWKS that won't match the pin
-  bad_rsa <- jsonlite::fromJSON(write_test_jwk(openssl::rsa_keygen()$pubkey),
-                               simplifyVector = FALSE)
+  bad_rsa <- jsonlite::fromJSON(
+    write_test_jwk(openssl::rsa_keygen()$pubkey),
+    simplifyVector = FALSE
+  )
   bad_jwks <- list(keys = list(bad_rsa))
   cache$set(ckey, list(jwks = bad_jwks, fetched_at = as.numeric(Sys.time())))
 

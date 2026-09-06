@@ -169,7 +169,10 @@ test_that("oauth_provider_spotify returns valid OAuthProvider with expected defa
   legacy <- oauth_provider_spotify(allow_legacy_id = TRUE)
   expect_identical(legacy@userinfo_id_selector(fake_ui), "stable-account")
   expect_identical(legacy@userinfo_id_selector(list(id = "old-id")), "old-id")
-  expect_true(is.na(legacy@userinfo_id_selector(list(account_id = "", id = "old"))))
+  expect_true(is.na(legacy@userinfo_id_selector(list(
+    account_id = "",
+    id = "old"
+  ))))
 })
 
 test_that("oauth_provider_microsoft with common tenant has correct defaults", {

@@ -1138,7 +1138,9 @@ validate_distinct_authorization_server_redirect_uris <- function(
 #' @noRd
 oauth_client_validate <- function(self) {
   endpoint_problem <- endpoint_auth_config_problem(self@endpoint_auth)
-  if (!is.null(endpoint_problem)) return(endpoint_problem)
+  if (!is.null(endpoint_problem)) {
+    return(endpoint_problem)
+  }
   if (!S7::S7_inherits(self@provider, OAuthProvider)) {
     return("OAuthClient: provider must be an OAuthProvider object")
   }

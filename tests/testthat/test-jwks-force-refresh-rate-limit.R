@@ -148,27 +148,58 @@ test_that("RSA to EC rotations refresh absent and retained kid candidates once",
   forced <- 0L
   testthat::local_mocked_bindings(
     fetch_jwks = function(..., force_refresh = FALSE) {
-      if (force_refresh) forced <<- forced + 1L
+      if (force_refresh) {
+        forced <<- forced + 1L
+      }
       list(keys = list(public(if (force_refresh) new_key else old_key)))
-    }, .package = "shinyOAuth"
+    },
+    .package = "shinyOAuth"
   )
   for (kind in c("id_token", "jarm", "userinfo")) {
     for (kid in list(NULL, "stable")) {
-      prov <- oauth_provider(name = "rotation", issuer = "https://example.com",
-        auth_url = "https://example.com/auth", token_url = "https://example.com/token",
-        allowed_algs = c("RS256", "ES256"), jwks_cache = cachem::cache_mem())
-      cli <- oauth_client(provider = prov, client_id = "client", client_secret = "secret",
-                          redirect_uri = "http://localhost:8100")
+      prov <- oauth_provider(
+        name = "rotation",
+        issuer = "https://example.com",
+        auth_url = "https://example.com/auth",
+        token_url = "https://example.com/token",
+        allowed_algs = c("RS256", "ES256"),
+        jwks_cache = cachem::cache_mem()
+      )
+      cli <- oauth_client(
+        provider = prov,
+        client_id = "client",
+        client_secret = "secret",
+        redirect_uri = "http://localhost:8100"
+      )
       header <- list(alg = "ES256")
-      if (!is.null(kid)) header$kid <- kid
-      jwt <- jose::jwt_encode_sig(jose::jwt_claim(iss = prov@issuer, aud = "client",
-        sub = "user", iat = as.numeric(Sys.time()), exp = as.numeric(Sys.time()) + 120),
-        key = new_key, header = header)
-      verify <- function() switch(kind,
-        id_token = shinyOAuth:::validate_id_token(cli, jwt),
-        jarm = shinyOAuth:::verify_jarm_signature(cli, jwt, "ES256", kid),
-        userinfo = shinyOAuth:::decode_userinfo_jwt(httr2::response(
-          status_code = 200L, body = charToRaw(jwt)), cli))
+      if (!is.null(kid)) {
+        header$kid <- kid
+      }
+      jwt <- jose::jwt_encode_sig(
+        jose::jwt_claim(
+          iss = prov@issuer,
+          aud = "client",
+          sub = "user",
+          iat = as.numeric(Sys.time()),
+          exp = as.numeric(Sys.time()) + 120
+        ),
+        key = new_key,
+        header = header
+      )
+      verify <- function() {
+        switch(
+          kind,
+          id_token = shinyOAuth:::validate_id_token(cli, jwt),
+          jarm = shinyOAuth:::verify_jarm_signature(cli, jwt, "ES256", kid),
+          userinfo = shinyOAuth:::decode_userinfo_jwt(
+            httr2::response(
+              status_code = 200L,
+              body = charToRaw(jwt)
+            ),
+            cli
+          )
+        )
+      }
       before <- forced
       expect_no_error(verify())
       expect_identical(forced, before + 1L)

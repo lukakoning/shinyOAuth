@@ -358,7 +358,8 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
     shinyOAuth.allowed_hosts = c("127.0.0.1", "api.example.com")
   ))
   prov <- oauth_provider_oidc_discover(
-    issuer = issuer, jwks_host_allow_only = "api.example.com"
+    issuer = issuer,
+    jwks_host_allow_only = "api.example.com"
   )
   testthat::expect_s3_class(prov, "S7_object")
   testthat::expect_true(grepl("^https://api.example.com/token", prov@token_url))
@@ -788,10 +789,20 @@ testthat::test_that("global host allowlist does not override strict JWKS pinning
   withr::local_options(list(shinyOAuth.allowed_hosts = ".example.com"))
   issuer <- "https://issuer.example.com"
   disc <- list(jwks_uri = "https://keys.example.com/jwks")
-  testthat::expect_error(shinyOAuth:::.discover_enforce_jwks_pinning(
-    disc, issuer, "issuer.example.com", ".example.com"),
-    "jwks_uri host does not match issuer")
+  testthat::expect_error(
+    shinyOAuth:::.discover_enforce_jwks_pinning(
+      disc,
+      issuer,
+      "issuer.example.com",
+      ".example.com"
+    ),
+    "jwks_uri host does not match issuer"
+  )
   testthat::expect_silent(shinyOAuth:::.discover_enforce_jwks_pinning(
-    disc, issuer, "issuer.example.com", ".example.com",
-    jwks_host_allow_only = "keys.example.com"))
+    disc,
+    issuer,
+    "issuer.example.com",
+    ".example.com",
+    jwks_host_allow_only = "keys.example.com"
+  ))
 })

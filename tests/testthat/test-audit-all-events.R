@@ -265,27 +265,62 @@ testthat::test_that("representative real producers emit required audit events", 
 
   # These assertions contain only real producer events. Catalog probes cannot
   # make a missing production emission pass.
-  required <- paste0("audit_", c("redirect_issued", "callback_received",
-    "callback_validation_failed", "callback_validation_success", "login_success",
-    "login_failed", "invalid_browser_token", "browser_cookie_error", "session_cleared",
-    "logout", "state_parse_failure", "token_refresh", "userinfo"))
+  required <- paste0(
+    "audit_",
+    c(
+      "redirect_issued",
+      "callback_received",
+      "callback_validation_failed",
+      "callback_validation_success",
+      "login_success",
+      "login_failed",
+      "invalid_browser_token",
+      "browser_cookie_error",
+      "session_cleared",
+      "logout",
+      "state_parse_failure",
+      "token_refresh",
+      "userinfo"
+    )
+  )
   testthat::expect_length(setdiff(required, audit_types(events)), 0L)
-  success <- Filter(function(e) identical(e$type, "audit_login_success"), events)[[1L]]
-  transaction <- Filter(function(e) identical(e$trace_id, success$trace_id), events)
+  success <- Filter(
+    function(e) identical(e$type, "audit_login_success"),
+    events
+  )[[1L]]
+  transaction <- Filter(
+    function(e) identical(e$trace_id, success$trace_id),
+    events
+  )
   types <- vapply(transaction, function(e) e$type, "")
-  ordered <- match(c("audit_callback_received", "audit_callback_validation_success", "audit_login_success"), types)
+  ordered <- match(
+    c(
+      "audit_callback_received",
+      "audit_callback_validation_success",
+      "audit_login_success"
+    ),
+    types
+  )
   testthat::expect_false(anyNA(ordered))
   testthat::expect_true(all(diff(ordered) > 0))
-  validation <- Filter(function(e) identical(e$type, "audit_callback_validation_success"), transaction)[[1L]]
-  testthat::expect_true(is.character(validation$state_digest) && nzchar(validation$state_digest))
+  validation <- Filter(
+    function(e) identical(e$type, "audit_callback_validation_success"),
+    transaction
+  )[[1L]]
+  testthat::expect_true(
+    is.character(validation$state_digest) && nzchar(validation$state_digest)
+  )
 })
 
 testthat::test_that("audit registry entries serialize and have documentation", {
   events <- list()
-  withr::local_options(list(shinyOAuth.otel_logging_enabled = FALSE,
-    shinyOAuth.otel_tracing_enabled = FALSE, shinyOAuth.audit_hook = function(e) {
-    events[[length(events) + 1L]] <<- e
-  }))
+  withr::local_options(list(
+    shinyOAuth.otel_logging_enabled = FALSE,
+    shinyOAuth.otel_tracing_enabled = FALSE,
+    shinyOAuth.audit_hook = function(e) {
+      events[[length(events) + 1L]] <<- e
+    }
+  ))
   audit_types <- function(events) vapply(events, function(e) e$type, "")
   for (type in shinyOAuth:::audit_event_registry()) {
     shinyOAuth:::audit_event(type, context = list(registry_probe = TRUE))

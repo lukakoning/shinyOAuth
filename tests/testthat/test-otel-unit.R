@@ -1105,7 +1105,8 @@ testthat::test_that("with_otel_span notes error and re-throws on failure", {
 testthat::test_that("malformed-state digest survives OTel event filtering", {
   digest <- shinyOAuth:::string_digest("synthetic-malformed-state")
   attrs <- shinyOAuth:::otel_event_attributes(list(
-    type = "state_parse_failure", token_digest = digest,
+    type = "state_parse_failure",
+    token_digest = digest,
     token = "synthetic-malformed-state"
   ))
   testthat::expect_identical(attrs[["token_digest"]], digest)

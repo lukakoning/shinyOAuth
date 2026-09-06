@@ -319,8 +319,11 @@ oauth_provider_spotify <- function(
   name = "spotify",
   allow_legacy_id = FALSE
 ) {
-  if (!is.logical(allow_legacy_id) || length(allow_legacy_id) != 1L ||
-      is.na(allow_legacy_id)) {
+  if (
+    !is.logical(allow_legacy_id) ||
+      length(allow_legacy_id) != 1L ||
+      is.na(allow_legacy_id)
+  ) {
     err_input("allow_legacy_id must be a single non-NA logical")
   }
   oauth_provider(
@@ -343,9 +346,16 @@ oauth_provider_spotify <- function(
 
     userinfo_id_selector = function(userinfo) {
       account_id <- userinfo[["account_id"]]
-      if (is_valid_string(account_id)) return(account_id)
-      if (isTRUE(allow_legacy_id) && is.null(account_id) &&
-          is_valid_string(userinfo[["id"]])) return(userinfo[["id"]])
+      if (is_valid_string(account_id)) {
+        return(account_id)
+      }
+      if (
+        isTRUE(allow_legacy_id) &&
+          is.null(account_id) &&
+          is_valid_string(userinfo[["id"]])
+      ) {
+        return(userinfo[["id"]])
+      }
       NA_character_
     },
     userinfo_required = TRUE,
@@ -382,12 +392,16 @@ oauth_provider_spotify <- function(
 #' }
 #'
 #' @export
-oauth_provider_slack <- function(name = "slack",
-                                 profile = c("confidential", "public_pkce")) {
+oauth_provider_slack <- function(
+  name = "slack",
+  profile = c("confidential", "public_pkce")
+) {
   profile <- match.arg(profile)
   provider <- oauth_provider_oidc_discover(
-    issuer = "https://slack.com", name = name,
-    token_auth_style = "header", use_pkce = identical(profile, "public_pkce")
+    issuer = "https://slack.com",
+    name = name,
+    token_auth_style = "header",
+    use_pkce = identical(profile, "public_pkce")
   )
   if (identical(profile, "public_pkce")) {
     # Slack's global discovery omits `none`; the explicit app registration

@@ -1,6 +1,9 @@
 test_that("provider policy flags reject malformed values before normalization", {
-  args <- list(name = "test", auth_url = "https://example.test/auth",
-               token_url = "https://example.test/token")
+  args <- list(
+    name = "test",
+    auth_url = "https://example.test/auth",
+    token_url = "https://example.test/token"
+  )
   for (field in oauth_provider_boolean_fields()) {
     for (value in list(NA, logical(), c(TRUE, FALSE), "false", 0)) {
       input <- args

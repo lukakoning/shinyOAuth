@@ -6,7 +6,7 @@ test_that(
     "against a local JAR/JARM server"
   ),
   {
-  withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
+    withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
     testthat::skip_if_not_installed("webfakes")
     testthat::skip_on_cran()
     withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))

@@ -285,11 +285,26 @@ test_that("endpoint validation rejects even empty fragment components", {
   for (suffix in c("#", "#fragment")) {
     url <- paste0("https://example.test/path", suffix)
     expect_error(validate_endpoint(url, "example.test"), "fragment")
-    expect_error(oauth_provider(name = "test", auth_url = "https://example.test/auth",
-                               token_url = "https://example.test/token", issuer = url),
-                 "fragment")
-    expect_error(oauth_client(provider = make_test_provider(), client_id = "test",
-                             redirect_uri = url), "fragment")
+    expect_error(
+      oauth_provider(
+        name = "test",
+        auth_url = "https://example.test/auth",
+        token_url = "https://example.test/token",
+        issuer = url
+      ),
+      "fragment"
+    )
+    expect_error(
+      oauth_client(
+        provider = make_test_provider(),
+        client_id = "test",
+        redirect_uri = url
+      ),
+      "fragment"
+    )
   }
-  expect_silent(validate_endpoint("https://example.test/path%23part", "example.test"))
+  expect_silent(validate_endpoint(
+    "https://example.test/path%23part",
+    "example.test"
+  ))
 })

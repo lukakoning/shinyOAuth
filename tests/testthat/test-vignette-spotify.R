@@ -41,26 +41,42 @@ test_that("Spotify dashboard loads and transforms data in a fresh R process", {
     skip_if_not_installed(pkg)
   }
   path <- normalizePath(spotify_dashboard_path(), mustWork = TRUE)
-  result <- callr::r(function(path, package_dir) {
-    if (file.exists(file.path(package_dir, "R", "classes__OAuthClient.R"))) {
-      pkgload::load_all(package_dir, quiet = TRUE)
-    }
-    Sys.setenv(SPOTIFY_OAUTH_CLIENT_ID = "smoke-client",
-      SPOTIFY_OAUTH_CLIENT_SECRET = "smoke-secret")
-    env <- new.env(parent = globalenv())
-    expressions <- parse(path)
-    for (expr in expressions) {
-      # Build the UI and helpers without starting the interactive HTTP server.
-      if (is.call(expr) && identical(expr[[1]], quote(shiny::runApp))) next
-      eval(expr, env)
-    }
-    env$spotify_get <- function(...) list(items = list(list(name = "Track",
-      artists = list(list(name = "Artist")), album = list(name = "Album"))))
-    list(ui = is.function(env$ui) || inherits(env$ui, "shiny.tag") ||
-        inherits(env$ui, "shiny.tag.list"),
-      track = env$get_top_tracks(NULL)$name)
-  }, args = list(path = path,
-    package_dir = normalizePath(test_path("..", ".."))))
+  result <- callr::r(
+    function(path, package_dir) {
+      if (file.exists(file.path(package_dir, "R", "classes__OAuthClient.R"))) {
+        pkgload::load_all(package_dir, quiet = TRUE)
+      }
+      Sys.setenv(
+        SPOTIFY_OAUTH_CLIENT_ID = "smoke-client",
+        SPOTIFY_OAUTH_CLIENT_SECRET = "smoke-secret"
+      )
+      env <- new.env(parent = globalenv())
+      expressions <- parse(path)
+      for (expr in expressions) {
+        # Build the UI and helpers without starting the interactive HTTP server.
+        if (is.call(expr) && identical(expr[[1]], quote(shiny::runApp))) {
+          next
+        }
+        eval(expr, env)
+      }
+      env$spotify_get <- function(...) {
+        list(
+          items = list(list(
+            name = "Track",
+            artists = list(list(name = "Artist")),
+            album = list(name = "Album")
+          ))
+        )
+      }
+      list(
+        ui = is.function(env$ui) ||
+          inherits(env$ui, "shiny.tag") ||
+          inherits(env$ui, "shiny.tag.list"),
+        track = env$get_top_tracks(NULL)$name
+      )
+    },
+    args = list(path = path, package_dir = normalizePath(test_path("..", "..")))
+  )
   expect_true(result$ui)
   expect_identical(result$track, "Track")
 })

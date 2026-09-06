@@ -259,7 +259,10 @@ validate_id_token <- function(
         }
       }
       if (is.null(verified_key)) {
-        if (length(keys) == 0L && isTRUE(issuer_expectation[["enforce_key_issuer"]])) {
+        if (
+          length(keys) == 0L &&
+            isTRUE(issuer_expectation[["enforce_key_issuer"]])
+        ) {
           err_id_token("No Microsoft JWKS key matches token issuer scope")
         }
         err_id_token("ID token signature invalid")

@@ -21,7 +21,10 @@ test_that("direct RSA thumbprints require canonical unsigned integers", {
   expect_type(compute_jwk_thumbprint(original), "character")
   for (field in c("n", "e")) {
     jwk <- original
-    jwk[[field]] <- base64url_encode(c(as.raw(0), base64url_decode_raw(jwk[[field]])))
+    jwk[[field]] <- base64url_encode(c(
+      as.raw(0),
+      base64url_decode_raw(jwk[[field]])
+    ))
     expect_error(compute_jwk_thumbprint(jwk), "minimal base64urlUInt")
     for (value in c("Ax", "AQF", "AQAB=")) {
       jwk[[field]] <- value

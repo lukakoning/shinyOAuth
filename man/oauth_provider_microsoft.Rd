@@ -49,7 +49,8 @@ leaves OAuth plus profile retrieval. Keep the default for OIDC sign-in.
 \examples{
 if (
   # Example requires configured Microsoft Entra ID (Azure AD) tenant:
-  nzchar(Sys.getenv("MS_TENANT")) && interactive() &&
+  nzchar(Sys.getenv("MS_TENANT")) &&
+    interactive() &&
     requireNamespace("later", quietly = TRUE)
 ) {
   library(shiny)

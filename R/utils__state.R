@@ -449,7 +449,9 @@ state_policy_request_encryption_key_identity <- function(value) {
   )
 
   list(
-    thumbprint = compute_jwk_thumbprint(canonicalize_local_public_jwk(public_jwk)),
+    thumbprint = compute_jwk_thumbprint(canonicalize_local_public_jwk(
+      public_jwk
+    )),
     kid = metadata[["kid"]] %||% NA_character_,
     alg = metadata[["alg"]] %||% NA_character_,
     use = metadata[["use"]] %||% NA_character_,
@@ -889,7 +891,10 @@ state_store_get <- function(client, state, shiny_session = NULL) {
 
   tryCatch(
     {
-      ssv <- state_store_backend_call(store$get(key, missing = NULL), "state_store_lookup")
+      ssv <- state_store_backend_call(
+        store$get(key, missing = NULL),
+        "state_store_lookup"
+      )
       ssv <- validate_state_store_value(
         ssv,
         client,
@@ -1089,7 +1094,10 @@ state_store_consume_atomic <- function(
 
   tryCatch(
     {
-      ssv <- state_store_backend_call(store$take(key, missing = NULL), "state_store_atomic_take")
+      ssv <- state_store_backend_call(
+        store$take(key, missing = NULL),
+        "state_store_atomic_take"
+      )
       # Validate the returned value in the same tryCatch so failures are
       # audited consistently
       ssv <- validate_state_store_value(ssv, client)
@@ -1163,7 +1171,10 @@ state_store_consume_fallback <- function(
   # -- Step 1: Get the value --------------------------------------------------
   tryCatch(
     {
-      ssv <- state_store_backend_call(store$get(key, missing = NULL), "state_store_lookup")
+      ssv <- state_store_backend_call(
+        store$get(key, missing = NULL),
+        "state_store_lookup"
+      )
       ssv <- validate_state_store_value(ssv, client)
       get_succeeded <- TRUE
     },
@@ -1199,7 +1210,10 @@ state_store_consume_fallback <- function(
       # another consumer already removed the entry, the key is absent and
       # remove was a no-op — that is the expected single-use path. However,
       # if the key is *still present* after our remove, something went wrong.
-      post <- state_store_backend_call(store$get(key, missing = NA), "state_store_removal")
+      post <- state_store_backend_call(
+        store$get(key, missing = NA),
+        "state_store_removal"
+      )
       remove_succeeded <- isTRUE(is.na(post))
     },
     error = function(e) {
