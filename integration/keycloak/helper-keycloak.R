@@ -890,6 +890,44 @@ get_browser_cookie <- function(drv, name) {
   matches[[1]]
 }
 
+# Snapshot the complete initiating browser for positive-control recovery.
+# The cookie contains only a marker; the capability is in origin storage.
+snapshot_browser_binding <- function(drv, cookie) {
+  key <- paste0(cookie$name, ":binding")
+  record <- drv$get_js(paste0(
+    "window.localStorage.getItem(",
+    jsonlite::toJSON(key, auto_unbox = TRUE),
+    ")"
+  ))
+  stopifnot(keycloak_nonempty_string(record))
+  list(cookie = cookie, key = key, record = record)
+}
+
+restore_browser_binding <- function(drv, snapshot) {
+  cookie <- snapshot$cookie
+  cookie_text <- paste0(
+    cookie$name,
+    "=",
+    cookie$value,
+    "; Path=",
+    cookie$path,
+    "; SameSite=",
+    cookie$sameSite %||% "Strict",
+    if (isTRUE(cookie$secure)) "; Secure" else ""
+  )
+  drv$run_js(paste0(
+    "window.localStorage.setItem(",
+    jsonlite::toJSON(snapshot$key, auto_unbox = TRUE),
+    ",",
+    jsonlite::toJSON(snapshot$record, auto_unbox = TRUE),
+    ");",
+    "document.cookie = ",
+    jsonlite::toJSON(cookie_text, auto_unbox = TRUE),
+    ";"
+  ))
+  invisible(NULL)
+}
+
 wait_for_browser_cookie <- function(
   drv,
   name,

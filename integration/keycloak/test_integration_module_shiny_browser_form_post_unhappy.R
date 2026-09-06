@@ -970,6 +970,7 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies p
 
   cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
   testthat::expect_false(is.null(cookie))
+  rightful_browser <- snapshot_browser_binding(drv, cookie)
 
   attacker_cookie <- .random_browser_token_hex()
   testthat::expect_false(identical(
@@ -1014,7 +1015,7 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies p
     1L
   )
 
-  .tamper_browser_token_cookie(drv, cookie$name, cookie$value)
+  restore_browser_binding(drv, rightful_browser)
   restored_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
   testthat::expect_identical(restored_cookie$value, cookie$value)
   .submit_form_post_browser_callback(
@@ -1083,6 +1084,7 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
 
   cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
   testthat::expect_false(is.null(cookie))
+  rightful_browser <- snapshot_browser_binding(drv, cookie)
 
   attacker_cookie <- .random_browser_token_hex()
   testthat::expect_false(identical(
@@ -1121,7 +1123,7 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
     1L
   )
 
-  .tamper_browser_token_cookie(drv, cookie$name, cookie$value)
+  restore_browser_binding(drv, rightful_browser)
   restored_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
   testthat::expect_identical(restored_cookie$value, cookie$value)
   .submit_form_post_browser_callback(
