@@ -10,7 +10,7 @@ test_that("AppDriver ignores a load event from the initial blank document", {
     app_init_browser_log = function(...) invisible(NULL),
     .package = "shinytest2"
   )
-  local_app_driver_navigation()
+  local_app_driver_navigation(.require_shiny = FALSE)
   shinytest2:::app_init_browser_log(
     self = list(get_chromote_session = function() browser),
     private = list(load_timeout = 10000),
@@ -112,4 +112,38 @@ test_that("AppDriver rejects a ready document from the previous execution contex
   )
   browser$go_to(destination)
   expect_no_error(wait_for_app_driver_document(session, initial, timeout = 1))
+})
+
+test_that("AppDriver waits through a temporary document at the application URL", {
+  skip_if_not(tolower(Sys.getenv("SHINYOAUTH_BROWSER_TESTS")) == "true")
+  local_app_driver_navigation()
+  requests <- 0L
+  app <- shiny::shinyApp(
+    ui = function(request) {
+      browser_request <- any(grepl("Chrome", request[["HTTP_USER_AGENT"]]))
+      if (browser_request) {
+        requests <<- requests + 1L
+      }
+      if (browser_request && requests == 1L) {
+        return(shiny::httpResponse(
+          content = paste0(
+            '<html><head><meta http-equiv="refresh" content="1"></head>',
+            '<body>Loading application</body></html>'
+          )
+        ))
+      }
+      shiny::fluidPage(
+        shiny::actionButton("increment", "Increment"),
+        shiny::verbatimTextOutput("count")
+      )
+    },
+    server = function(input, output, session) {
+      output$count <- shiny::renderText(input$increment)
+    }
+  )
+  driver <- shinytest2::AppDriver$new(app, load_timeout = 10000)
+  on.exit(stop_test_app_driver(driver), add = TRUE)
+  expect_identical(driver$get_value(output = "count"), "0")
+  driver$click("increment")
+  expect_identical(driver$get_value(output = "count"), "1")
 })

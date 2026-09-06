@@ -92,7 +92,7 @@ testthat::test_that("AppDriver waits for navigation before injecting browser sta
     app_init_browser_log = function(...) invisible(NULL),
     .package = "shinytest2"
   )
-  local_app_driver_navigation()
+  local_app_driver_navigation(.require_shiny = FALSE)
   shinytest2:::app_init_browser_log(
     self = list(get_chromote_session = function() browser),
     private = list(load_timeout = 10000),

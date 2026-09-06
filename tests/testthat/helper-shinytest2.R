@@ -1,4 +1,7 @@
-local_app_driver_navigation <- function(.env = parent.frame()) {
+local_app_driver_navigation <- function(
+  .env = parent.frame(),
+  .require_shiny = TRUE
+) {
   pending <- new.env(parent = emptyenv())
   initialize_log <- getFromNamespace("app_init_browser_log", "shinytest2")
   evaluate <- getFromNamespace("chromote_eval", "shinytest2")
@@ -30,7 +33,8 @@ local_app_driver_navigation <- function(.env = parent.frame()) {
         wait_for_app_driver_document(
           chromote_session,
           ready$frame,
-          ready$timeout
+          ready$timeout,
+          require_shiny = .require_shiny
         )
         if (is.function(ready$log)) {
           ready$log("AppDriver destination document loaded")
@@ -64,7 +68,12 @@ local_app_driver_navigation <- function(.env = parent.frame()) {
   invisible(NULL)
 }
 
-wait_for_app_driver_document <- function(browser, initial_frame, timeout) {
+wait_for_app_driver_document <- function(
+  browser,
+  initial_frame,
+  timeout,
+  require_shiny = FALSE
+) {
   deadline <- Sys.time() + timeout
   repeat {
     frame <- browser$Page$getFrameTree()$frameTree$frame
@@ -75,7 +84,8 @@ wait_for_app_driver_document <- function(browser, initial_frame, timeout) {
       document <- browser$Runtime$evaluate(
         paste0(
           "({ready: document.readyState === 'complete', ",
-          "url: document.URL, href: window.location.href})"
+          "url: document.URL, href: window.location.href, ",
+          "shiny: !!window.Shiny, jquery: typeof window.jQuery === 'function'})"
         ),
         returnByValue = TRUE
       )$result$value
@@ -88,7 +98,9 @@ wait_for_app_driver_document <- function(browser, initial_frame, timeout) {
         isTRUE(document$ready) &&
           identical(document$url, url) &&
           identical(document$href, url) &&
-          identical(frame$loaderId, current$loaderId)
+          identical(frame$loaderId, current$loaderId) &&
+          (!require_shiny ||
+            (isTRUE(document$shiny) && isTRUE(document$jquery)))
       ) {
         return(invisible(NULL))
       }
