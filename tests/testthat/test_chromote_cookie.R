@@ -68,6 +68,7 @@ require_browser_test_env <- function(check_launch = TRUE) {
       paste0("Chrome launchability probe failed: ", probe$message)
     )
   }
+  local_app_driver_navigation(.env = parent.frame())
 }
 
 testthat::test_that("browser cookie test environment can launch Chrome", {
@@ -669,7 +670,10 @@ testthat::test_that("interactive preparation refreshes a browser cookie after id
     ),
     timeout = 7000
   )
-  testthat::expect_identical(app$get_value(output = "browser_value"), old_binding)
+  testthat::expect_identical(
+    app$get_value(output = "browser_value"),
+    old_binding
+  )
   app$click("prepare")
   app$wait_for_js(
     "document.querySelector('#prepared_url').innerText.includes('state=')"

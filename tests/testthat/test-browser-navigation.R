@@ -50,3 +50,32 @@ test_that("AppDriver document wait times out when navigation never happens", {
     fixed = TRUE
   )
 })
+
+test_that("AppDriver idle failures retain their JavaScript diagnostic", {
+  local_mocked_bindings(
+    app_abort = function(self, private, message, ...) {
+      stop(paste(message, collapse = "\n"), call. = FALSE)
+    },
+    .package = "shinytest2"
+  )
+  local_app_driver_navigation()
+  fail_idle <- function() {
+    ret <- list(
+      exceptionDetails = list(
+        exception = list(
+          description = "ReferenceError: test navigation context was replaced"
+        )
+      )
+    )
+    shinytest2:::app_abort(
+      list(),
+      list(),
+      "An error occurred while waiting for Shiny to be stable"
+    )
+  }
+  expect_error(
+    fail_idle(),
+    "ReferenceError: test navigation context was replaced",
+    fixed = TRUE
+  )
+})

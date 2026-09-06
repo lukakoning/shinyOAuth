@@ -2,6 +2,7 @@ local_app_driver_navigation <- function(.env = parent.frame()) {
   pending <- new.env(parent = emptyenv())
   initialize_log <- getFromNamespace("app_init_browser_log", "shinytest2")
   evaluate <- getFromNamespace("chromote_eval", "shinytest2")
+  abort <- getFromNamespace("app_abort", "shinytest2")
 
   # shinytest2 0.5.1 navigates and immediately injects its tracer. Chrome can
   # still be replacing the initial document, destroying that tracer and its
@@ -13,7 +14,8 @@ local_app_driver_navigation <- function(.env = parent.frame()) {
       browser <- self$get_chromote_session()
       pending[[browser$get_session_id()]] <- list(
         frame = browser$Page$getFrameTree()$frameTree$frame,
-        timeout = private$load_timeout / 1000
+        timeout = private$load_timeout / 1000,
+        log = self$log_message
       )
       invisible(NULL)
     },
@@ -22,13 +24,39 @@ local_app_driver_navigation <- function(.env = parent.frame()) {
       ready <- pending[[id]]
       if (!is.null(ready)) {
         pending[[id]] <- NULL
+        if (is.function(ready$log)) {
+          ready$log("Waiting for AppDriver destination document")
+        }
         wait_for_app_driver_document(
           chromote_session,
           ready$frame,
           ready$timeout
         )
+        if (is.function(ready$log)) {
+          ready$log("AppDriver destination document loaded")
+        }
       }
       evaluate(chromote_session, js, ...)
+    },
+    app_abort = function(self, private, message, ...) {
+      # shinytest2 discards the CDP exception when its idle check fails. Keep
+      # that diagnostic in the test failure instead of reporting only a timeout.
+      if (
+        identical(
+          message,
+          "An error occurred while waiting for Shiny to be stable"
+        )
+      ) {
+        result <- get0("ret", envir = parent.frame(), inherits = FALSE)
+        detail <- result$exceptionDetails$exception$description
+        if (is.null(detail)) {
+          detail <- result$result$description
+        }
+        if (is.character(detail) && length(detail) == 1L) {
+          message <- c(message, detail)
+        }
+      }
+      abort(self, private, message, ...)
     },
     .package = "shinytest2",
     .env = .env
