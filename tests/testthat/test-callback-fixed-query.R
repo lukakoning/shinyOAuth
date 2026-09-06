@@ -1,3 +1,17 @@
+test_that("client configuration rejects reserved fixed callback query names", {
+  for (key in c(oauth_module_callback_query_keys, "response", "scope", "%73tate")) {
+    client <- make_test_client()
+    expect_error(
+      client@redirect_uri <- paste0("https://example.com/callback?", key, "=fixed"),
+      "callback-reserved"
+    )
+  }
+  client <- make_test_client()
+  expect_no_error(
+    client@redirect_uri <- "https://example.com/callback?tenant=one&tag=a&tag=b"
+  )
+})
+
 test_that("callback routes enforce the registered query multiset", {
   registered <- "https://app.example/callback?tenant=one&tag=a&tag=b&empty=&label=hello+world"
   valid <- "label=hello%20world&tag=b&empty&tenant=one&tag=a"

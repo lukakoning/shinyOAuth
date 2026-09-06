@@ -4285,12 +4285,12 @@ test_that("oauth_module_server rechecks pending query.jwt callbacks after JARM e
   )
 })
 
-test_that("oauth_module_server accepts bridged form_post.jwt callbacks with unrelated response query params", {
+test_that("oauth_module_server accepts bridged form_post.jwt callbacks with fixed application query params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 
   sig_key <- openssl::rsa_keygen()
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
-  client@redirect_uri <- paste0(client@redirect_uri, "?response=keep-me")
+  client@redirect_uri <- paste0(client@redirect_uri, "?tenant=keep-me")
   jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
   browser_token <- valid_browser_token()
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
@@ -4328,7 +4328,7 @@ test_that("oauth_module_server accepts bridged form_post.jwt callbacks with unre
           )
 
           post_resp <- ui(make_jarm_form_post_req(
-            query = "response=keep-me",
+            query = "tenant=keep-me",
             body = paste0(
               "response=",
               utils::URLencode(response, reserved = TRUE)
@@ -4338,7 +4338,7 @@ test_that("oauth_module_server accepts bridged form_post.jwt callbacks with unre
           expect_identical(
             parse_query_param(
               post_resp$headers$Location,
-              "response",
+              "tenant",
               decode = TRUE
             ),
             "keep-me"
