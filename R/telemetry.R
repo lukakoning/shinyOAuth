@@ -1693,6 +1693,7 @@ otel_is_allowed_event_field <- function(name) {
       "active",
       "actual_bytes",
       "alg",
+      "jwt_alg",
       "authenticated",
       "body_bytes",
       "body_digest",
