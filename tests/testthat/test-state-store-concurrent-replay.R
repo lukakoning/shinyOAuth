@@ -153,7 +153,7 @@ test_that("shared store without $take() errors at consume time (not just warns)"
   state <- "REPLAY-FAIL-CLOSED"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, ssv)
+  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # Must error (shinyOAuth_config_error), not just warn
   expect_error(
@@ -190,7 +190,7 @@ test_that("cache_disk() without $take() errors at consume time", {
   state <- "DISK-FAIL-CLOSED"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  disk$set(key, ssv)
+  disk$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # cache_disk without $take() must error
   expect_error(
@@ -279,7 +279,7 @@ test_that("allow_non_atomic_state_store option enables fallback for shared store
   state <- "OPT-IN-FALLBACK"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt_opt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, ssv)
+  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # Without the option, must error
   expect_error(
@@ -332,7 +332,7 @@ test_that("allow_non_atomic_state_store option works with cache_disk", {
     pkce_code_verifier = "cv",
     nonce = "nn"
   )
-  disk$set(key, ssv)
+  disk$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # Without the option, errors
   expect_error(
@@ -389,7 +389,7 @@ test_that("allow_non_atomic_state_store = FALSE (explicit) still errors", {
   state <- "EXPLICIT-FALSE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, ssv)
+  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   withr::local_options(shinyOAuth.allow_non_atomic_state_store = FALSE)
 
@@ -454,7 +454,7 @@ test_that("allow_non_atomic_state_store does not affect stores with $take()", {
     pkce_code_verifier = "cv",
     nonce = "nn"
   )
-  store$set(key, ssv)
+  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # Should succeed via atomic $take(), no warning
   withr::local_options(shinyOAuth.allow_non_atomic_state_store = TRUE)

@@ -43,9 +43,15 @@
 #' [cachem::cache_disk()], cannot ensure single-use state under concurrent access.
 #' See the [deployment guidance](https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes).
 #'
-#' Store values are small R lists. Preserve `browser_token` as a non-empty
-#' string, and preserve `pkce_code_verifier` and `nonce` when those features are
-#' enabled. When disabled, these two fields can be `NULL` or omitted.
+#' Store values are small R lists; preserve them without interpreting fields.
+#' Pending login records in external stores are AES-GCM sealed with a distinct
+#' key derived from `state_key` and bound to the client, provider, and state key.
+#' The backend receives an opaque `sealed_state_record` string instead of the
+#' browser binding, PKCE verifier, and nonce. Existing unsealed external records
+#' are rejected; users with logins pending across an upgrade must restart login.
+#' The default process-local memory store keeps records within the R trust boundary.
+#' Encryption does not replace backend access controls, expiry, or atomic `take`:
+#' a backend able to restore consumed entries can still violate single-use state.
 #'
 #' For a state store, returning `max_age` in seconds from `info()` also lets
 #' [oauth_module_server()] align the browser cookie lifetime with the store.

@@ -180,11 +180,11 @@ prepare_call <- function(
           {
             oauth_client@state_store$set(
               key = state_cache_key(state),
-              value = list(
+              value = state_store_seal(list(
                 browser_token = browser_token,
                 pkce_code_verifier = pkce_code_verifier,
                 nonce = nonce
-              )
+              ), oauth_client, state)
             )
           },
           error = function(e) {

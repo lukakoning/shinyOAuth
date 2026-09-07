@@ -107,7 +107,7 @@ test_that("state_store_get_remove uses $take() when available (single-use)", {
   state <- "TAKE-SINGLE-USE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, ssv)
+  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # First call succeeds via atomic take
   out <- shinyOAuth:::state_store_get_remove(cli, state)
@@ -174,6 +174,9 @@ test_that("atomic $take() prevents simulated stale-read replay", {
 
   cli <- make_client_with_store(store)
 
+  ssv <- shinyOAuth:::state_store_seal(ssv, cli, state)
+  assign(key, ssv, envir = env)
+
   # First consumer succeeds
   out <- shinyOAuth:::state_store_get_remove(cli, state)
   expect_equal(out$browser_token, "bt_atomic")
@@ -238,7 +241,7 @@ test_that("custom_cache() with take passes OAuthClient validation and works", {
   state <- "CC-TAKE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt_cc", pkce_code_verifier = "cv", nonce = "n")
-  cc$set(key, ssv)
+  cc$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   out <- shinyOAuth:::state_store_get_remove(cli, state)
   expect_equal(out$browser_token, "bt_cc")
@@ -277,7 +280,7 @@ test_that("fallback errors for non-cachem store without $take()", {
   state <- "ERR-NO-TAKE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, ssv)
+  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # Non-cache_mem store without $take() must error (fail closed)
   expect_error(
@@ -311,7 +314,7 @@ test_that("fallback errors for cachem::cache_disk() (shared store)", {
   state <- "ERR-CACHE-DISK"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  disk_store$set(key, ssv)
+  disk_store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # cache_disk() without $take() must error (fail closed)
   expect_error(

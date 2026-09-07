@@ -696,6 +696,12 @@ test_that("oauth_form_post_ui hides internal callback POST failures", {
       value
     }
   )
+  login_state <- shinyOAuth:::state_decrypt_gcm(enc_state, cli@state_key)$state
+  for (key in stored_keys) {
+    assign(key, shinyOAuth:::state_store_seal(
+      get(key, envir = backing, inherits = FALSE), cli, login_state
+    ), envir = backing)
+  }
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
 
   resp <- ui(make_form_post_req(

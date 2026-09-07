@@ -900,7 +900,7 @@ state_store_get <- function(client, state, shiny_session = NULL) {
         "state_store_lookup"
       )
       ssv <- validate_state_store_value(
-        ssv,
+        state_store_unseal(ssv, client, state),
         client,
         validate_policy_fields = FALSE
       )
@@ -1104,7 +1104,7 @@ state_store_consume_atomic <- function(
       )
       # Validate the returned value in the same tryCatch so failures are
       # audited consistently
-      ssv <- validate_state_store_value(ssv, client)
+      ssv <- validate_state_store_value(state_store_unseal(ssv, client, state), client)
     },
     error = function(e) {
       consume_error_class <<- paste(class(e), collapse = ", ")
@@ -1179,7 +1179,7 @@ state_store_consume_fallback <- function(
         store$get(key, missing = NULL),
         "state_store_lookup"
       )
-      ssv <- validate_state_store_value(ssv, client)
+      ssv <- validate_state_store_value(state_store_unseal(ssv, client, state), client)
       get_succeeded <- TRUE
     },
     error = function(e) {
@@ -1346,6 +1346,39 @@ validate_state_store_value <- function(
   }
 
   invisible(ssv)
+}
+
+# External state-store records use a separate, context-bound AES-GCM key. The
+# HMAC derivation binds ciphertext to this client/provider and state lookup key,
+# preventing a backend from moving valid records between login transactions.
+state_store_sealing_key <- function(client, state) {
+  openssl::sha256(
+    serialize(list(
+      "shinyOAuth:external-state-record:v1",
+      state_cache_key(state), client@client_id,
+      client@provider@issuer, client@provider@token_url
+    ), NULL, version = 2),
+    key = normalize_key32(client@state_key)
+  )
+}
+
+state_store_seal <- function(record, client, state) {
+  if (inherits(client@state_store, "cache_mem")) return(record)
+  list(sealed_state_record = state_encrypt_gcm(
+    record, key = state_store_sealing_key(client, state)
+  ))
+}
+
+state_store_unseal <- function(record, client, state) {
+  if (inherits(client@state_store, "cache_mem")) return(record)
+  if (!is.list(record) || !is_valid_string(record[["sealed_state_record"]])) {
+    err_invalid_state("External state store entry is missing or is not sealed")
+  }
+  state_decrypt_gcm(
+    record[["sealed_state_record"]],
+    key = state_store_sealing_key(client, state),
+    size_limits = list(token = 16384, wrapper = 12288, ct_b64 = 12288, ct = 8192)
+  )
 }
 
 # Bind all fields used by callback processing, with stable names and NULLs so

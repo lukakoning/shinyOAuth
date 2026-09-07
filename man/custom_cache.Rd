@@ -101,9 +101,15 @@ settings on every worker. Separate reads and deletes, including those in
 \code{\link[cachem:cache_disk]{cachem::cache_disk()}}, cannot ensure single-use state under concurrent access.
 See the \href{https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes}{deployment guidance}.
 
-Store values are small R lists. Preserve \code{browser_token} as a non-empty
-string, and preserve \code{pkce_code_verifier} and \code{nonce} when those features are
-enabled. When disabled, these two fields can be \code{NULL} or omitted.
+Store values are small R lists; preserve them without interpreting fields.
+Pending login records in external stores are AES-GCM sealed with a distinct
+key derived from \code{state_key} and bound to the client, provider, and state key.
+The backend receives an opaque \code{sealed_state_record} string instead of the
+browser binding, PKCE verifier, and nonce. Existing unsealed external records
+are rejected; users with logins pending across an upgrade must restart login.
+The default process-local memory store keeps records within the R trust boundary.
+Encryption does not replace backend access controls, expiry, or atomic \code{take}:
+a backend able to restore consumed entries can still violate single-use state.
 
 For a state store, returning \code{max_age} in seconds from \code{info()} also lets
 \code{\link[=oauth_module_server]{oauth_module_server()}} align the browser cookie lifetime with the store.

@@ -60,7 +60,7 @@ test_that("OAuthClient accepts duck-typed state_store and methods work", {
     missing = NULL
   )
   expect_type(entry, "list")
-  expect_identical(entry$browser_token, browser_token)
+  expect_identical(names(entry), "sealed_state_record")
 
   # Simulate callback verification path that removes the entry
   # Slightly hacky: call internal remove directly to test duck-typed remove
