@@ -134,8 +134,9 @@ options:
 - `options(shinyOAuth.async_timeout = 10000)` – per-task timeout in
   milliseconds for mirai async tasks. When using mirai with dispatcher
   (the default), timed-out tasks are automatically cancelled and resolve
-  as a mirai error. Default is `NULL` (no timeout). Ignored when falling
-  back to the ‘future’ backend
+  as a mirai error. Use `NULL` (the default) for no timeout, or a whole
+  number from 0 to 2147483647. Ignored when falling back to the ‘future’
+  backend
 
 ## Async condition replay
 

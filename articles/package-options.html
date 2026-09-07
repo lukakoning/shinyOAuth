@@ -246,8 +246,9 @@ blocked: <code>grant_type</code>, <code>code</code>,
 <code>options(shinyOAuth.async_timeout = 10000)</code> – per-task
 timeout in milliseconds for mirai async tasks. When using mirai with
 dispatcher (the default), timed-out tasks are automatically cancelled
-and resolve as a mirai error. Default is <code>NULL</code> (no timeout).
-Ignored when falling back to the ‘future’ backend</li>
+and resolve as a mirai error. Use <code>NULL</code> (the default) for no
+timeout, or a whole number from 0 to 2147483647. Ignored when falling
+back to the ‘future’ backend</li>
 </ul>
 </div>
 <div class="section level2">
