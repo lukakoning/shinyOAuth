@@ -1,6 +1,6 @@
 test_that("endpoint values are redacted recursively for native and OTel events", {
   url <- "https://user:password@example.test/token?code=private#private"
-  expected <- "https://example.test/token"
+  expected <- "https://example.test/"
   event <- list(
     type = "test_endpoint",
     endpoint = url,

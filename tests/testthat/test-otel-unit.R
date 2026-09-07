@@ -285,14 +285,14 @@ testthat::test_that("otel_event_attributes sanitizes every URL-valued field", {
     api_key = sentinel
   ))
 
-  testthat::expect_identical(attrs[["url"]], "https://example.test/resource")
+  testthat::expect_identical(attrs[["url"]], "https://example.test/")
   testthat::expect_identical(
     attrs[["redirect_uri"]],
-    "https://client.example.test/cb"
+    "https://client.example.test/"
   )
   testthat::expect_identical(
     attrs[["oauth.provider.issuer"]],
-    "https://issuer.example.test/tenant"
+    "https://issuer.example.test/"
   )
   serialized <- as.character(jsonlite::toJSON(attrs, auto_unbox = TRUE))
   testthat::expect_no_match(serialized, sentinel, fixed = TRUE)
@@ -380,7 +380,7 @@ testthat::test_that("otel_http_attributes extracts host from URL", {
     url = "https://example.com/token?secret=1#frag"
   )
   testthat::expect_identical(attrs$http.request.method, "POST")
-  testthat::expect_identical(attrs$url.full, "https://example.com/token")
+  testthat::expect_identical(attrs$url.full, "https://example.com/")
   testthat::expect_identical(attrs$server.address, "example.com")
   testthat::expect_identical(attrs$server.port, 443L)
 })
@@ -401,7 +401,7 @@ testthat::test_that("otel_http_attributes extracts from httr2 response", {
   )
   testthat::expect_identical(
     attrs$url.full,
-    "https://provider.example.com:8443/token"
+    "https://provider.example.com:8443/"
   )
   testthat::expect_identical(attrs$server.address, "provider.example.com")
   testthat::expect_identical(attrs$server.port, 8443L)

@@ -198,7 +198,7 @@ testthat::test_that("oidc discovery transport errors include discovery url and t
   )
   testthat::expect_match(
     msg,
-    "https://issuer.example.com/tenant/.well-known/openid-configuration",
+    "URL: https://issuer.example.com/",
     fixed = TRUE
   )
   testthat::expect_match(

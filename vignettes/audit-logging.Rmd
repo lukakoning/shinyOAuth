@@ -57,7 +57,7 @@ When a Shiny session is available, `shiny_session` contains:
 - `session_token_digest`: a protected identifier for correlating the session.
 - `is_async` and `process_id`: whether work ran in a background worker and
   which R process emitted the event. Async context also includes `main_process_id`.
-- `http`: a summary with request method, path, host, and scheme by default.
+- `http`: a summary with request method, host, and scheme by default.
 
 The session context is a JSON-friendly list suitable for `jsonlite::toJSON()`;
 the raw Shiny `session$request` object is not included. If
@@ -70,7 +70,7 @@ trace/span IDs; OTel exports it as `shinyoauth.trace_id`.
 
 ## HTTP context and redaction
 
-By default, the HTTP summary omits query strings, headers, and client addresses.
+By default, the HTTP summary omits paths, query strings, headers, and client addresses.
 The raw Shiny session token is also omitted. To omit HTTP context entirely:
 
 ```{r, eval = FALSE}
@@ -78,6 +78,15 @@ options(shinyOAuth.audit_include_http = FALSE)
 ```
 
 With this setting, `shiny_session$http` is `NULL`.
+
+Outbound URLs retain only scheme and authority by default. To include safe route
+names in audit and OTel URLs and incoming HTTP context, configure
+`shinyOAuth.telemetry_path_scrubber` as a function of the path returning a safe
+absolute path (for example `/users/:id`), or `NULL` to omit it. Use an allowlist
+or replace all identifying path segments; the function should be idempotent.
+Scrubber errors and invalid results omit the path. Scrubber input is limited to
+2048 bytes; exported paths to 512 bytes. Method, host, and scheme are limited to
+32, 255, and 16 bytes. Control and Unicode format characters are removed.
 
 For local debugging, `shinyOAuth.audit_redact_http = FALSE` includes raw
 request details, and `shinyOAuth.audit_include_raw_session_token = TRUE`
@@ -431,7 +440,7 @@ failures to the same sink as audit events.
 - Fields:
 	- `type` (`"http_error"`), `trace_id`, `message`
 	- `status`: HTTP status code (integer, or `NA` if unavailable)
-	- `url`: the request URL without userinfo, query, or fragment
+	- `url`: the request scheme and authority, plus an approved path only when a path scrubber is configured
 	- `body_digest`: HMAC-SHA-256 hex digest of the response body using the configured or per-process audit digest key (for correlation without leaking content)
 	- `oauth_error`, `oauth_error_uri`: RFC 6749 §5.2 structured error fields extracted
 	  from JSON error responses (e.g., from the token endpoint)

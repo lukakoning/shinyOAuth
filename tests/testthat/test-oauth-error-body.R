@@ -31,10 +31,10 @@ test_that("err_http extracts RFC 6749 §5.2 error fields from JSON response", {
     cond$oauth_error_description,
     "The authorization code has expired"
   )
-  expect_identical(cond$url, "https://example.com/token")
+  expect_identical(cond$url, "https://example.com/")
   expect_identical(
     cond$oauth_error_uri,
-    "https://example.com/docs/errors"
+    "https://example.com/"
   )
   # Message should contain the structured error
 
@@ -46,12 +46,12 @@ test_that("err_http extracts RFC 6749 §5.2 error fields from JSON response", {
   )
   expect_match(
     conditionMessage(cond),
-    "https://example.com/docs/errors",
+    "Error URI: https://example.com/",
     fixed = TRUE
   )
   expect_match(
     conditionMessage(cond),
-    "URL: https://example.com/token",
+    "URL: https://example.com/",
     fixed = TRUE
   )
   expect_no_match(conditionMessage(cond), "user:pass", fixed = TRUE)
@@ -174,7 +174,7 @@ test_that("err_http propagates RFC 6749 §5.2 fields to trace event", {
   expect_true(length(events) >= 1)
   ev <- events[[1]]
   expect_identical(ev$oauth_error, "invalid_grant")
-  expect_identical(ev$url, "https://example.com/token")
+  expect_identical(ev$url, "https://example.com/")
   expect_null(ev$oauth_error_description)
   expect_null(ev$oauth_error_uri)
 })

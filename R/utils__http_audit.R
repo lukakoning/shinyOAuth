@@ -10,6 +10,40 @@
 # Functions in this subsection summarize request metadata and redact values
 # that should not appear in audit events.
 
+# Bound untrusted metadata before normalization, including raw diagnostic mode.
+bounded_http_text <- function(value, max_bytes = 512L) {
+  if (!is_valid_string(value)) return(NULL)
+  value <- enc2utf8(substr(value, 1L, max_bytes))
+  if (!validUTF8(value)) return(NULL)
+  value <- gsub("[[:cntrl:]\\p{Cf}]", "", value, perl = TRUE)
+  while (nchar(value, type = "bytes") > max_bytes) {
+    value <- substr(value, 1L, nchar(value) - 1L)
+  }
+  if (nzchar(value)) value else NULL
+}
+
+# Paths can contain user identifiers or credentials. Only export paths after an
+# application scrubber has converted them to safe, low-cardinality routes.
+telemetry_safe_path <- function(path) {
+  scrubber <- getOption("shinyOAuth.telemetry_path_scrubber")
+  if (!is.function(scrubber)) return(NULL)
+  path <- bounded_http_text(path, 2048L)
+  if (is.null(path)) return(NULL)
+  route <- tryCatch(scrubber(path), error = function(...) NULL)
+  route <- bounded_http_text(route, 512L)
+  if (is.null(route) || !startsWith(route, "/") ||
+      startsWith(route, "//") || grepl("[?#]", route)) return(NULL)
+  route
+}
+
+bound_http_summary <- function(summary) {
+  for (field in c("method", "path", "host", "scheme")) {
+    limit <- switch(field, method = 32L, scheme = 16L, host = 255L, 512L)
+    summary[[field]] <- bounded_http_text(summary[[field]], limit)
+  }
+  summary
+}
+
 #' Build a safe HTTP audit summary
 #'
 #' Creates a compact request summary that is suitable for audit events. Query
@@ -105,7 +139,7 @@ build_http_summary <- function(req) {
   if (!include_raw) {
     sanitize_http_summary(raw)
   } else {
-    raw
+    bound_http_summary(raw)
   }
 }
 
@@ -127,8 +161,9 @@ sanitize_http_summary <- function(summary) {
   summary[["query_string"]] <- NULL
   summary[["headers"]] <- NULL
   summary[["remote_addr"]] <- NULL
+  summary[["path"]] <- telemetry_safe_path(summary[["path"]])
 
-  summary
+  bound_http_summary(summary)
 }
 
 #' Redact sensitive OAuth query parameters

@@ -225,10 +225,10 @@ test_that("transport audit events strip secrets from URL-valued fields", {
     class = "shinyOAuth_transport_error"
   )
 
-  expect_identical(events[[1L]][["url"]], "https://example.test/resource")
+  expect_identical(events[[1L]][["url"]], "https://example.test/")
   expect_identical(
     events[[1L]][["redirect_uri"]],
-    "https://client.example.test/cb"
+    "https://client.example.test/"
   )
   serialized <- as.character(jsonlite::toJSON(
     events[[1L]],
@@ -508,7 +508,7 @@ test_that("sanitize_http_summary omits unbounded request fields", {
   expect_null(result[["remote_addr"]])
   # Other fields should remain
   expect_equal(result[["method"]], "GET")
-  expect_equal(result[["path"]], "/callback")
+  expect_null(result[["path"]])
   expect_equal(result[["host"]], "example.com")
 })
 
@@ -566,7 +566,7 @@ test_that("build_http_summary returns closed-by-default output", {
   expect_null(result[["headers"]])
   expect_null(result[["remote_addr"]])
   expect_equal(result[["method"]], "GET")
-  expect_equal(result[["path"]], "/callback")
+  expect_null(result[["path"]])
 })
 
 test_that("build_http_summary respects shinyOAuth.audit_redact_http option", {

@@ -242,7 +242,7 @@ otel_http_host <- function(url) {
     return(NULL)
   }
 
-  tolower(host)
+  bounded_http_text(tolower(host), 255L)
 }
 
 #' Extract an HTTP port for telemetry
@@ -282,7 +282,8 @@ otel_http_port <- function(url) {
 #' Sanitize an HTTP URL for telemetry
 #'
 #' Used by HTTP attribute builders to preserve the request target without
-#' logging query strings, fragments, or userinfo.
+#' logging query strings, fragments, or userinfo. Paths are omitted unless the
+#' application's telemetry_path_scrubber returns an approved route.
 #'
 #' @param url URL string to inspect.
 #' @return Sanitized absolute URL string, or `NULL` when the URL cannot be
@@ -310,6 +311,7 @@ otel_http_url_full <- function(url) {
   parsed[["fragment"]] <- NULL
   parsed[["username"]] <- NULL
   parsed[["password"]] <- NULL
+  parsed[["path"]] <- telemetry_safe_path(parsed[["path"]]) %||% ""
   parsed[["scheme"]] <- tolower(parsed[["scheme"]] %||% "")
   parsed[["hostname"]] <- tolower(
     parsed[["hostname"]] %||% ""
@@ -320,7 +322,7 @@ otel_http_url_full <- function(url) {
     return(NULL)
   }
 
-  sanitized
+  bounded_http_text(sanitized, 1024L)
 }
 
 #' Count telemetry items
@@ -1078,7 +1080,7 @@ otel_http_attributes <- function(
 
   compact_list(c(
     list(
-      http.request.method = method,
+      http.request.method = bounded_http_text(method, 32L),
       url.full = otel_http_url_full(url),
       http.response.status_code = as.integer(status_code %||% NA_integer_),
       http.response.content_type = otel_http_content_type(
