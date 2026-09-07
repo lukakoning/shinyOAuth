@@ -653,6 +653,15 @@ introspect_token <- function(
 #' A returned ID token must have an `iat` at or after the refresh request start,
 #' allowing the provider's configured clock leeway and same-second issuance.
 #'
+#' Within one R process, overlapping asynchronous calls for the same client and
+#' refresh token share one promise and result. Token snapshots, client settings,
+#' and validation options must match; conflicting calls fail before dispatch.
+#' A synchronous or reentrant call while that refresh is pending raises an error;
+#' await the existing promise instead. Separate R processes require coordination
+#' by the application. The input token is a value object: store the returned
+#' token for subsequent refreshes, and use an application generation check when
+#' assigning results after logout or a new login. Completed results are not cached.
+#'
 #' @param oauth_client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
 #' @param async If `TRUE`, return a promise resolving to the result.
@@ -708,6 +717,96 @@ refresh_token <- function(
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
+  if (!(is.logical(async) && length(async) == 1L && !is.na(async))) {
+    err_input("{.arg async} must be a single non-NA logical.")
+  }
+  if (!is.null(introspect) &&
+      !(is.logical(introspect) && length(introspect) == 1L && !is.na(introspect))) {
+    err_input("{.arg introspect} must be NULL or a single non-NA logical.")
+  }
+  if (!is_valid_string(token@refresh_token)) {
+    err_input("No refresh token available")
+  }
+  effective_introspect <- isTRUE(oauth_client@introspect) || isTRUE(introspect)
+  key <- refresh_flight_key(oauth_client, token)
+  flights <- refresh_flights$active
+  active <- flights[[key]]
+  policy_options <- capture_async_options()
+  if (!is.null(active)) {
+    if (!isTRUE(async) || is.null(active$promise)) {
+      err_token("Refresh already in progress; await the outstanding async refresh")
+    }
+    if (!identical(active$client, oauth_client) ||
+        !identical(active$token, token) ||
+        !identical(active$introspect, effective_introspect) ||
+        !identical(active$options, policy_options)) {
+      err_token("Refresh already in progress with different token or validation settings")
+    }
+    return(active$promise)
+  }
+
+  flight <- new.env(parent = emptyenv())
+  flight$client <- oauth_client
+  flight$token <- token
+  flight$introspect <- effective_introspect
+  flight$options <- policy_options
+  flights[[key]] <- flight
+  release <- function() {
+    # An older completion must never remove a newer operation's lock.
+    if (identical(flights[[key]], flight)) {
+      rm(list = key, envir = flights)
+    }
+  }
+  deferred <- FALSE
+  on.exit(if (!deferred) release(), add = TRUE)
+  result <- refresh_token_impl(
+    oauth_client, token, async = async, introspect = effective_introspect,
+    shiny_session = shiny_session
+  )
+  if (isTRUE(async) && promises::is.promise(result)) {
+    flight$promise <- promises::then(result,
+      onFulfilled = function(value) {
+        release()
+        value
+      },
+      onRejected = function(error) {
+        release()
+        stop(error)
+      }
+    )
+    deferred <- TRUE
+    return(flight$promise)
+  }
+  result
+}
+
+# Process-local coordination happens before dispatch. Workers execute only the
+# implementation, including when a sequential future executes in this process.
+refresh_flights <- new.env(parent = emptyenv())
+refresh_flights$active <- new.env(parent = emptyenv())
+
+refresh_flight_key <- function(client, token) {
+  if (is.null(refresh_flights$key)) {
+    refresh_flights$key <- openssl::rand_bytes(32L)
+  }
+  raw_to_hex_lower(openssl::sha256(
+    serialize(list(
+      client@provider@issuer, client@provider@token_url, client@client_id,
+      token@refresh_token
+    ), NULL, version = 2),
+    key = refresh_flights$key
+  ))
+}
+
+refresh_token_impl <- function(
+  oauth_client,
+  token,
+  async = FALSE,
+  introspect = NULL,
+  shiny_session = NULL
+) {
+  S7::check_is_S7(oauth_client, OAuthClient)
+  S7::check_is_S7(token, OAuthToken)
   if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
     err_input("{.arg async} must be a single non-NA logical.")
   }
@@ -731,7 +830,7 @@ refresh_token <- function(
   with_trace_id(trace_id, {
     if (isTRUE(async)) {
       return(dispatch_token_async(
-        function_name = "refresh_token",
+        function_name = "refresh_token_impl",
         call_args = list(
           oauth_client = oauth_client,
           token = token,
@@ -1470,7 +1569,7 @@ dispatch_token_async <- function(
   promise |>
     promises::then(function(value) {
       value <- replay_async_conditions(value)
-      if (identical(function_name, "refresh_token")) {
+      if (function_name %in% c("refresh_token", "refresh_token_impl")) {
         validate_token_acceptance_deadline(value)
       }
       otel_end_async_parent(otel_parent, status = "ok")

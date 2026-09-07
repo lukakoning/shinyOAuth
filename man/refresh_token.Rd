@@ -86,6 +86,15 @@ Refresh does not establish a new interactive login. Use the module's
 \code{reauth_after_seconds} argument when a fresh login is required.
 A returned ID token must have an \code{iat} at or after the refresh request start,
 allowing the provider's configured clock leeway and same-second issuance.
+
+Within one R process, overlapping asynchronous calls for the same client and
+refresh token share one promise and result. Token snapshots, client settings,
+and validation options must match; conflicting calls fail before dispatch.
+A synchronous or reentrant call while that refresh is pending raises an error;
+await the existing promise instead. Separate R processes require coordination
+by the application. The input token is a value object: store the returned
+token for subsequent refreshes, and use an application generation check when
+assigning results after logout or a new login. Completed results are not cached.
 }
 \examples{
 # get_userinfo(), introspect_token(), and refresh_token() are typically
