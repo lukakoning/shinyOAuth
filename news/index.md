@@ -202,6 +202,11 @@
     asynchronous refreshes are combined, and proactive refresh backs off
     after failures.
 
+- Long token lifetimes and future timestamps no longer overflow R’s
+  integer range. Shiny module timers safely handle multi-year access
+  tokens and reauthentication periods. PAR expiry metadata preserves
+  large numeric lifetimes, and DPoP timestamps remain valid beyond 2038.
+
 - DPoP-bound tokens are handled consistently by UserInfo and resource
   helpers. They cannot be downgraded to Bearer, and valid nonce
   challenges are retried safely.
@@ -218,8 +223,7 @@
     refreshes JWKS once on a key-selection miss.
   - PAR POSTs do not use generic transport or transient HTTP retries,
     avoiding duplicate `request_uri` allocations and Request Object
-    replays. Bounded DPoP nonce replay remains enabled, and large
-    numeric PAR lifetimes no longer overflow R integers.
+    replays. Bounded DPoP nonce replay remains enabled.
 
 - mTLS handling improvements:
 

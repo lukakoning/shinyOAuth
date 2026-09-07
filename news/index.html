@@ -186,12 +186,13 @@
 <code>reauth_after_seconds</code> is a fixed session limit and is not extended by token refresh. OIDC reauthentication uses the provider-confirmed login time, while OAuth-only providers retain a local session limit. Token expiry is measured from the start of an exchange, and introspection can only shorten it.</li>
 <li>Client-level introspection cannot be disabled per call. Concurrent asynchronous refreshes are combined, and proactive refresh backs off after failures.</li>
 </ul></li>
+<li><p>Long token lifetimes and future timestamps no longer overflow R’s integer range. Shiny module timers safely handle multi-year access tokens and reauthentication periods. PAR expiry metadata preserves large numeric lifetimes, and DPoP timestamps remain valid beyond 2038.</p></li>
 <li><p>DPoP-bound tokens are handled consistently by UserInfo and resource helpers. They cannot be downgraded to Bearer, and valid nonce challenges are retried safely.</p></li>
 <li>
 <p>JAR and PAR handling has been hardened:</p>
 <ul><li>Client-hosted JAR <code>request_uri</code> values require HTTPS regardless of the general non-HTTPS policy. Request Objects are published through short-lived, one-time handles; apps using this mode must wrap their UI with <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code>.</li>
 <li>Request Object encryption accepts public PEM keys, preserves JWK selection metadata, enforces minimum RSA size and key pins, and refreshes JWKS once on a key-selection miss.</li>
-<li>PAR POSTs do not use generic transport or transient HTTP retries, avoiding duplicate <code>request_uri</code> allocations and Request Object replays. Bounded DPoP nonce replay remains enabled, and large numeric PAR lifetimes no longer overflow R integers.</li>
+<li>PAR POSTs do not use generic transport or transient HTTP retries, avoiding duplicate <code>request_uri</code> allocations and Request Object replays. Bounded DPoP nonce replay remains enabled.</li>
 </ul></li>
 <li>
 <p>mTLS handling improvements:</p>
