@@ -679,15 +679,17 @@ oauth_module_server <- function(
       TRUE
     }
 
-    # Export for tests
+    # Test snapshots are browser-accessible in Shiny test mode. Keep credentials,
+    # callback payloads and provider-controlled text out of this surface.
     shiny::exportTestValues(
-      token = values$token,
-      error = values$error,
-      error_description = values$error_description,
-      error_uri = values$error_uri,
+      token_present = !is.null(values$token),
+      token_expires_at = if (!is.null(values$token)) values$token@expires_at else NULL,
+      id_token_validated = !is.null(values$token) &&
+        isTRUE(values$token@id_token_validated),
+      error_present = !is.null(values$error),
       authenticated = values$authenticated,
-      browser_token = values$browser_token,
-      pending_callback = values$pending_callback,
+      browser_token_present = is_valid_string(values$browser_token),
+      callback_pending = !is.null(values$pending_callback),
       pending_login = values$pending_login,
       auto_redirected = values$auto_redirected,
       reauth_triggered = values$reauth_triggered,
