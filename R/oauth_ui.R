@@ -118,7 +118,10 @@ oauth_ui <- function(
       if (
         !is_valid_string(uri) ||
           !oauth_callback_route_matches(
-            paste0(sub("[?#].*$", "", uri), "?", req[["QUERY_STRING"]] %||% ""),
+            paste0(
+              sub("[?#].*$", "", uri), "?",
+              sub("^\\?", "", req[["QUERY_STRING"]] %||% "")
+            ),
             client@redirect_uri
           )
       ) {
@@ -197,7 +200,9 @@ oauth_get_parse_query <- function(query, limits, client) {
     query_jarm_client = TRUE,
     response_is_callback = !is.null(resolve_jarm_callback_transport(client))
   )
-  parsed <- shiny::parseQueryString(paste0("?", query))
+  # Shiny requests can include the leading '?'; parseQueryString accepts both
+  # representations. Adding another '?' would rename the first parameter.
+  parsed <- shiny::parseQueryString(query)
   keys <- c("code", "state", "error", "error_description", "error_uri", "iss")
   if (
     !is.null(resolve_jarm_callback_transport(client)) ||

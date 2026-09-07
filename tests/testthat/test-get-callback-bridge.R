@@ -52,6 +52,28 @@ make_get_bridge_case <- function(kind) {
   )
 }
 
+test_that("GET callback bridges accept prefixed Shiny queries in either parameter order", {
+  for (kind in c("code", "error", "jarm")) {
+    for (prefix in c("", "?")) {
+      for (state_first in c(FALSE, TRUE)) {
+        case <- make_get_bridge_case(kind)
+        parts <- strsplit(case$req$QUERY_STRING, "&", fixed = TRUE)[[1L]]
+        if (state_first) {
+          first <- startsWith(parts, "state=") | startsWith(parts, "response=")
+          parts <- c(parts[first], parts[!first])
+        }
+        case$req$QUERY_STRING <- paste0(prefix, paste(parts, collapse = "&"))
+        ui <- oauth_ui(shiny::fluidPage(), "auth", case$client)
+        response <- ui(case$req)
+        expect_identical(response$status, 303L, info = response$content)
+        continuation <- response$headers[["Location"]]
+        expect_match(continuation, "tenant=one")
+        expect_match(continuation, "shinyOAuth_form_post=")
+      }
+    }
+  }
+})
+
 test_that("GET code, error and JARM callbacks redirect before application rendering", {
   for (kind in c("code", "error", "jarm")) {
     case <- make_get_bridge_case(kind)
