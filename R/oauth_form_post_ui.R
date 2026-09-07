@@ -149,7 +149,7 @@ oauth_form_post_ui <- function(
   supported <- unique(c(supported %||% "GET", "GET", "POST"))
   attr(ui, "http_methods_supported") <- supported
 
-  oauth_ui(ui)
+  oauth_ui(ui, id = id, client = client, request_uri_resolver = request_uri_resolver)
 }
 
 #' Internal: ensure shinyOAuth UI dependency is present

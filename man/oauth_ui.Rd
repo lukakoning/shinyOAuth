@@ -32,6 +32,9 @@ Build the page as usual, for example with \code{fluidPage()}, then use
 ID and client as the server. Pass the result to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}. UI functions
 are supported too, including functions accepting the Shiny request.
 This wrapper includes \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} setup.
+With \code{client}, it also serves client-hosted Request Objects at the app root
+using independent, single-use handles. Shared-worker apps need a shared
+\code{client@state_store} with atomic \code{take()}; a memory store supports one process.
 
 For \code{response_mode = "form_post"} or \code{"form_post.jwt"}, use
 \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} instead; it includes this setup and accepts POST

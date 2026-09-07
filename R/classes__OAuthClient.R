@@ -1239,7 +1239,9 @@ oauth_client_validate <- function(self) {
   if (is.null(fixed_keys)) {
     return("OAuthClient: redirect_uri contains an invalid fixed query name")
   }
-  if (any(fixed_keys %in% c(oauth_module_callback_query_keys, "response", "scope"))) {
+  if (any(fixed_keys %in% c(
+    oauth_module_callback_query_keys, "response", "scope", shiny_request_object_param
+  ))) {
     return("OAuthClient: redirect_uri fixed query must not use callback-reserved parameter names")
   }
 

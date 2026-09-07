@@ -127,6 +127,9 @@
 #'   value must use HTTPS and contain no query string or fragment.
 #'   Caller-published Request Object URLs require HTTPS even when the ordinary
 #'   [is_ok_host()] policy permits HTTP for that host (RFC 9101 Section 5.2).
+#'   Wrap the app in `oauth_ui(ui, id, client)` or [oauth_form_post_ui()] to
+#'   serve these URLs. Handles contain no Shiny session token and expire within
+#'   120 seconds. Shared workers require a shared state store with atomic `take()`.
 #'
 #' @param browser_cookie_path URL path covered by the login cookie. Default `NULL`
 #'   uses `"/"`, covering all app routes. An explicit path, such as `"/app"`,
@@ -1378,7 +1381,8 @@ oauth_module_server <- function(
           request_object,
           request_handle_id,
           expires_at,
-          base_url = request_uri_base_url
+          base_url = request_uri_base_url,
+          oauth_client = oauth_client
         )
       }
       requested_max_age <- if (

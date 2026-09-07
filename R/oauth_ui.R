@@ -12,6 +12,9 @@
 #' ID and client as the server. Pass the result to [shiny::shinyApp()]. UI functions
 #' are supported too, including functions accepting the Shiny request.
 #' This wrapper includes [use_shinyOAuth()] setup.
+#' With `client`, it also serves client-hosted Request Objects at the app root
+#' using independent, single-use handles. Shared-worker apps need a shared
+#' `client@state_store` with atomic `take()`; a memory store supports one process.
 #'
 #' For `response_mode = "form_post"` or `"form_post.jwt"`, use
 #' [oauth_form_post_ui()] instead; it includes this setup and accepts POST
@@ -98,6 +101,10 @@ oauth_ui <- function(
     uiPattern = ".*"
   )$httpHandler
   ui <- function(req) {
+    object_response <- shiny_request_object_http_handler(req, client)
+    if (!is.null(object_response)) {
+      return(object_response)
+    }
     if (
       identical(req[["REQUEST_METHOD"]], "GET") &&
         oauth_get_query_is_callback(req[["QUERY_STRING"]] %||% "", client)
@@ -149,7 +156,9 @@ oauth_ui <- function(
     }
     response
   }
-  attr(ui, "http_methods_supported") <- methods
+  attr(ui, "http_methods_supported") <- unique(c(
+    methods, "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+  ))
   ui
 }
 

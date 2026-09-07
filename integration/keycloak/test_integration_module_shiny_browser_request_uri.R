@@ -252,7 +252,8 @@ if (!exists("make_provider", mode = "function")) {
           request_object,
           request_handle_id = NULL,
           expires_at = NULL,
-          base_url = NULL
+          base_url = NULL,
+          oauth_client
         ) {
           session_token <- session$token %||% NA_character_
           browser_token <- if (
@@ -275,7 +276,8 @@ if (!exists("make_provider", mode = "function")) {
             request_object = request_object,
             request_handle_id = request_handle_id,
             expires_at = expires_at,
-            base_url = base_url
+            base_url = base_url,
+            oauth_client = oauth_client
           )
         },
         envir = shinyoauth_ns
@@ -526,7 +528,7 @@ if (!exists("make_provider", mode = "function")) {
       }
 
       shiny::runApp(
-        shiny::shinyApp(ui, server),
+        shiny::shinyApp(shinyOAuth::oauth_ui(ui, module_id, client), server),
         port = app_port,
         host = "0.0.0.0",
         launch.browser = FALSE
@@ -854,7 +856,8 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
       public_base_url
     )
   )
-  testthat::expect_match(request_uri_url, "/session/")
+  testthat::expect_match(request_uri_url, "shinyOAuth_request_object=")
+  testthat::expect_false(grepl("/session/", request_uri_url, fixed = TRUE))
 
   .navigate_browser_to_url(drv, state$auth_url)
 
@@ -1227,7 +1230,8 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
       public_base_url
     )
   )
-  testthat::expect_match(request_uri_url, "/session/")
+  testthat::expect_match(request_uri_url, "shinyOAuth_request_object=")
+  testthat::expect_false(grepl("/session/", request_uri_url, fixed = TRUE))
 
   request_object_meta <- drv$get_js(
     "(function(){var el=document.querySelector('#request_object_meta');return el?el.innerText:'';})()"

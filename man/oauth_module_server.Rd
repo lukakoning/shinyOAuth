@@ -94,7 +94,10 @@ Object through a different public host or proxy address than the browser
 uses, or when you prefer to declare the public origin explicitly. The
 value must use HTTPS and contain no query string or fragment.
 Caller-published Request Object URLs require HTTPS even when the ordinary
-\code{\link[=is_ok_host]{is_ok_host()}} policy permits HTTP for that host (RFC 9101 Section 5.2).}
+\code{\link[=is_ok_host]{is_ok_host()}} policy permits HTTP for that host (RFC 9101 Section 5.2).
+Wrap the app in \code{oauth_ui(ui, id, client)} or \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} to
+serve these URLs. Handles contain no Shiny session token and expire within
+120 seconds. Shared workers require a shared state store with atomic \code{take()}.}
 
 \item{browser_cookie_path}{URL path covered by the login cookie. Default \code{NULL}
 uses \code{"/"}, covering all app routes. An explicit path, such as \code{"/app"},

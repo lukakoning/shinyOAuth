@@ -134,7 +134,8 @@ testthat::test_that("manual build_auth_url wires request_uri mode through the mo
           request_object,
           request_handle_id,
           expires_at,
-          base_url
+          base_url,
+          oauth_client
         ) {
           testthat::expect_true(
             is.character(request_object) && nzchar(request_object)
@@ -144,6 +145,7 @@ testthat::test_that("manual build_auth_url wires request_uri mode through the mo
           )
           testthat::expect_true(inherits(expires_at, c("POSIXct", "POSIXt")))
           testthat::expect_null(base_url)
+          testthat::expect_identical(oauth_client@state_store, cli@state_store)
           "https://client.example.com/request-object"
         },
         .package = "shinyOAuth",
@@ -266,7 +268,8 @@ testthat::test_that("manual build_auth_url forwards request_uri_base_url through
           request_object,
           request_handle_id,
           expires_at,
-          base_url
+          base_url,
+          oauth_client
         ) {
           testthat::expect_true(
             is.character(request_object) && nzchar(request_object)
@@ -276,6 +279,7 @@ testthat::test_that("manual build_auth_url forwards request_uri_base_url through
           )
           testthat::expect_true(inherits(expires_at, c("POSIXct", "POSIXt")))
           testthat::expect_identical(base_url, "https://public.example.com/app")
+          testthat::expect_identical(oauth_client@state_store, cli@state_store)
           "https://public.example.com/app/request-object"
         },
         .package = "shinyOAuth",
