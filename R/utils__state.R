@@ -1348,6 +1348,34 @@ validate_state_store_value <- function(
   invisible(ssv)
 }
 
+# Bind all fields used by callback processing, with stable names and NULLs so
+# harmless backend field reordering or omission of unused NULLs is tolerated.
+state_store_record_digest <- function(record, client) {
+  fields <- c("browser_token", "pkce_code_verifier", "nonce")
+  canonical <- stats::setNames(lapply(fields, function(nm) record[[nm]]), fields)
+  openssl::sha256(
+    serialize(canonical, NULL, version = 2),
+    key = openssl::sha256(
+      charToRaw("shinyOAuth:state-record-comparison:v1"),
+      key = normalize_key32(client@state_key)
+    )
+  )
+}
+
+# Capture the preliminary record before consuming. Reject a changed record
+# before its PKCE verifier, nonce, or browser binding can be used.
+state_store_consume_checked <- function(client, state, expected_record,
+                                        shiny_session = NULL) {
+  expected_digest <- state_store_record_digest(expected_record, client)
+  consumed <- state_store_get_remove(client, state, shiny_session = shiny_session)
+  if (!constant_time_compare(
+    expected_digest, state_store_record_digest(consumed, client)
+  )) {
+    err_invalid_state("State store record changed during consumption")
+  }
+  consumed
+}
+
 # Backend exceptions can contain credentials or stored records. Never attach
 # the original condition as a parent or forward its message to audit/OTel.
 state_store_backend_call <- function(expr, phase) {

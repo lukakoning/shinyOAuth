@@ -1520,9 +1520,10 @@ handle_callback_internal <- function(
           {
             # Centralized auditing for state store consumption occurs in
             # state_store_get_remove().
-            state_store_get_remove(
+            state_store_consume_checked(
               oauth_client,
               payload[["state"]],
+              expected_record = state_store_values,
               shiny_session = shiny_session
             )
           },

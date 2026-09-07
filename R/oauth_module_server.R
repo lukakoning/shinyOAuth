@@ -3437,9 +3437,10 @@ oauth_module_server <- function(
                             with_otel_span(
                               "shinyOAuth.callback.validate",
                               {
-                                state_store_get_remove(
+                                state_store_consume_checked(
                                   client,
                                   pre_payload[["state"]],
+                                  expected_record = pre_state,
                                   shiny_session = captured_shiny_session
                                 )
                               },
