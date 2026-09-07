@@ -2489,6 +2489,8 @@ swap_code_for_token_set <- function(
 #' @param is_refresh Whether `token_set` came from a refresh flow.
 #' @param original_id_token Previous ID token used for refresh continuity
 #'   checks.
+#' @param refresh_request_started_at Refresh request start time (Unix seconds),
+#'   used to require a newly issued ID token with provider clock leeway.
 #' @param requested_max_age Normalized OIDC `max_age` sent in the authorization
 #'   request and recovered from the sealed state payload.
 #' @param requested_scopes Scopes originally requested, defaulting to the
@@ -2513,7 +2515,8 @@ verify_token_set <- function(
   prior_granted_scopes = NULL,
   shiny_session = NULL,
   defer_certificate_binding = FALSE,
-  introspection_pending = FALSE
+  introspection_pending = FALSE,
+  refresh_request_started_at = NULL
 ) {
   # Helpers/types --------------------------------------------------------------
 
@@ -2750,7 +2753,11 @@ verify_token_set <- function(
               "Refresh returned an ID token with sub that does not match the original (OIDC 12.2)"
             )
           }
-          compare_refresh_id_token_continuity(new_payload, original_payload)
+          compare_refresh_id_token_continuity(
+            new_payload, original_payload,
+            request_started_at = refresh_request_started_at,
+            leeway = client@provider@leeway
+          )
         }
       }
 
@@ -2801,7 +2808,9 @@ verify_token_set <- function(
           }
           compare_refresh_id_token_continuity(
             new_payload_for_refresh,
-            original_payload
+            original_payload,
+            request_started_at = refresh_request_started_at,
+            leeway = client@provider@leeway
           )
         }
       }
@@ -3133,13 +3142,30 @@ resolve_effective_access_token_type <- function(
 #'
 #' @param new_payload Parsed refreshed ID token payload.
 #' @param original_payload Parsed original ID token payload.
+#' @param request_started_at Refresh request start time, if available.
+#' @param leeway Allowed provider clock skew in seconds.
 #' @return No return value; raises `err_id_token()` on any continuity mismatch.
 #' @keywords internal
 #' @noRd
 compare_refresh_id_token_continuity <- function(
   new_payload,
-  original_payload
+  original_payload,
+  request_started_at = NULL,
+  leeway = 0
 ) {
+  if (!is.null(request_started_at)) {
+    if (!jwt_is_single_finite_number(request_started_at)) {
+      err_input("Refresh request start time must be a single finite number")
+    }
+    if (!jwt_is_single_finite_number(new_payload[["iat"]])) {
+      err_id_token("Refreshed ID token iat must be a single finite number")
+    }
+    # Providers commonly issue integer-second timestamps. Round the request
+    # down so a same-second token remains valid even with zero clock leeway.
+    if (new_payload[["iat"]] < floor(request_started_at) - leeway) {
+      err_id_token("Refreshed ID token was issued before the refresh request")
+    }
+  }
   original_iss <- original_payload[["iss"]]
   original_aud <- normalize_jwt_audience(original_payload[["aud"]])
   new_aud <- normalize_jwt_audience(new_payload[["aud"]])

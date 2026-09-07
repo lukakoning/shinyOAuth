@@ -650,6 +650,8 @@ introspect_token <- function(
 #'
 #' Refresh does not establish a new interactive login. Use the module's
 #' `reauth_after_seconds` argument when a fresh login is required.
+#' A returned ID token must have an `iat` at or after the refresh request start,
+#' allowing the provider's configured clock leeway and same-second issuance.
 #'
 #' @param oauth_client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
@@ -927,6 +929,7 @@ refresh_token <- function(
           nonce = NULL,
           is_refresh = TRUE,
           original_id_token = token@id_token,
+          refresh_request_started_at = token_request_started_at,
           prior_granted_scopes = token@granted_scopes,
           shiny_session = shiny_session,
           defer_certificate_binding = defer_certificate_binding,

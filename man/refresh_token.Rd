@@ -84,6 +84,8 @@ against a validated ID token when both are available;
 
 Refresh does not establish a new interactive login. Use the module's
 \code{reauth_after_seconds} argument when a fresh login is required.
+A returned ID token must have an \code{iat} at or after the refresh request start,
+allowing the provider's configured clock leeway and same-second issuance.
 }
 \examples{
 # get_userinfo(), introspect_token(), and refresh_token() are typically
