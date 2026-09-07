@@ -18,6 +18,40 @@ test_that("shiny_timer_delay_ms chunks long-lived durations", {
   expect_equal(shinyOAuth:::shiny_timer_delay_ms(90 * 86400), max_ms)
 })
 
+test_that("oauth_module_server accepts multi-year token expiry", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  client <- make_test_client(use_nonce = FALSE)
+
+  expect_no_warning(
+    withCallingHandlers(
+      shiny::testServer(
+        oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = FALSE,
+          refresh_proactively = FALSE
+        ),
+        expr = {
+          values$token <- OAuthToken(
+            access_token = "long-lived-token",
+            expires_at = as.numeric(Sys.time()) + 20 * 365.25 * 86400
+          )
+          session$flushReact()
+
+          testthat::expect_true(values$authenticated)
+        }
+      ),
+      warning = function(w) {
+        if (grepl("package 'shiny' was built", conditionMessage(w), fixed = TRUE)) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
+  )
+})
+
 test_that("oauth_module_server rejects infinite timer durations", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
   client <- make_test_client(use_nonce = FALSE)
