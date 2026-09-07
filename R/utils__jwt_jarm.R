@@ -415,6 +415,9 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   if (!is.null(nbf) && !jwt_is_single_finite_number(nbf)) {
     err_invalid_state("JARM nbf claim must be a single finite number")
   }
+  if (!is.null(nbf) && as.numeric(nbf) > exp) {
+    err_invalid_state("JARM nbf claim must not be after exp")
+  }
   if (!is.null(nbf) && as.numeric(nbf) > (now + leeway)) {
     err_invalid_state("JARM payload is not yet valid")
   }

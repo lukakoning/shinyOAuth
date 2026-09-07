@@ -1012,6 +1012,14 @@ validate_signed_userinfo_claims <- function(
     }
 
     iat_val <- as.numeric(claims[["iat"]])
+    if ("exp" %in% claim_names && iat_val > exp_val) {
+      fail_signed_userinfo_claim_validation(
+        status = "userinfo_jwt_invalid_iat",
+        bullets = c("x" = "Signed UserInfo JWT iat claim must not be after exp"),
+        oauth_client = oauth_client,
+        shiny_session = shiny_session
+      )
+    }
     if (iat_val > (now + lwe)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_iat_future",
@@ -1046,6 +1054,14 @@ validate_signed_userinfo_claims <- function(
     }
 
     nbf_val <- as.numeric(claims[["nbf"]])
+    if ("exp" %in% claim_names && nbf_val > exp_val) {
+      fail_signed_userinfo_claim_validation(
+        status = "userinfo_jwt_invalid_nbf",
+        bullets = c("x" = "Signed UserInfo JWT nbf claim must not be after exp"),
+        oauth_client = oauth_client,
+        shiny_session = shiny_session
+      )
+    }
     if (nbf_val > (now + lwe)) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_nbf_future",

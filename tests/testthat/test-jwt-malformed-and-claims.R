@@ -369,7 +369,7 @@ test_that("exp/iat/nbf boundary conditions respect leeway", {
   )
 
   # exp at just inside the window (now - leeway + 1) should be valid
-  c1 <- modifyList(base_claims, list(exp = now - 5 + 1))
+  c1 <- modifyList(base_claims, list(exp = now - 5 + 1, iat = now - 10))
   jwt1 <- build_jwt(list(alg = "none"), c1)
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
     expect_silent(validate_at_fixed_time(jwt1))
@@ -462,8 +462,8 @@ test_that("signed RS256 temporal boundaries respect package leeway", {
     iss = client@provider@issuer,
     aud = client@client_id,
     sub = "u",
-    iat = now - 1,
-    exp = now + 60
+    iat = now - 300,
+    exp = now + 600
   )
 
   rsa <- openssl::rsa_keygen(bits = 2048)
@@ -566,7 +566,7 @@ test_that("signed HS256 exp boundary respects package leeway", {
     )
   }
 
-  jwt1 <- sign_hs256(modifyList(base_claims, list(exp = now - 61)))
+  jwt1 <- sign_hs256(modifyList(base_claims, list(exp = now - 61, iat = now - 300)))
   testthat::expect_silent(shinyOAuth:::validate_id_token(client, jwt1))
 
   jwt2 <- sign_hs256(modifyList(base_claims, list(exp = now - 121)))
