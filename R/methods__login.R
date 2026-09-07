@@ -2541,9 +2541,6 @@ verify_token_set <- function(
   scope_is_omitted <- isTRUE(
     granted_scope_state[["scope_is_omitted"]]
   )
-  scope_is_empty <- isTRUE(
-    granted_scope_state[["scope_is_empty"]]
-  )
   requested_scope_string <- otel_scope_string(requested_scopes %||% NULL)
   granted_scope_string <- otel_scope_string(granted_scopes %||% NULL)
   granted_scope_count <- {
@@ -2637,56 +2634,33 @@ verify_token_set <- function(
       # omitted scope as unchanged from the request rather than as an error.
       # Skip explicit scope reconciliation when provider omits scope. Per RFC
       # 6749 Sections 5.1 and 6, omission means unchanged from the requested
-      # scope. During refresh we also continue tolerating empty string scope to
-      # preserve compatibility with providers that serialize an unchanged scope
-      # that way.
+      # scope. Explicit empty scope values are rejected by the wire validator.
       if (
         !identical(scope_validation_mode, "none") &&
           length(requested_scopes) > 0 &&
-          !scope_is_omitted &&
-          !(isTRUE(is_refresh) && scope_is_empty)
+          !scope_is_omitted
       ) {
-        if (scope_is_empty) {
-          msg <- "Token response scope is empty; cannot verify requested scopes were granted"
+        missing <- setdiff(requested_scopes, granted_scopes)
+        if (length(missing) > 0) {
+          msg <- paste0(
+            "Granted scopes missing requested entries: ",
+            paste(missing, collapse = ", ")
+          )
           if (identical(scope_validation_mode, "strict")) {
             err_token(c(
               "x" = msg,
-              "i" = "Set scope_validation = 'warn' or 'none' to allow empty scope in response"
+              "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
             ))
           } else if (identical(scope_validation_mode, "warn")) {
             warn_pkg(
-              "Unable to validate requested scopes from token response",
+              "Granted scopes missing requested entries",
               c(
                 "!" = msg,
                 "i" = "Set scope_validation = 'none' to suppress this warning"
               ),
               .frequency = "once",
-              .frequency_id = "scope-validation-empty-scope"
+              .frequency_id = "scope-validation-missing-scopes"
             )
-          }
-        } else {
-          missing <- setdiff(requested_scopes, granted_scopes)
-          if (length(missing) > 0) {
-            msg <- paste0(
-              "Granted scopes missing requested entries: ",
-              paste(missing, collapse = ", ")
-            )
-            if (identical(scope_validation_mode, "strict")) {
-              err_token(c(
-                "x" = msg,
-                "i" = "Set scope_validation = 'warn' or 'none' to allow reduced scopes"
-              ))
-            } else if (identical(scope_validation_mode, "warn")) {
-              warn_pkg(
-                "Granted scopes missing requested entries",
-                c(
-                  "!" = msg,
-                  "i" = "Set scope_validation = 'none' to suppress this warning"
-                ),
-                .frequency = "once",
-                .frequency_id = "scope-validation-missing-scopes"
-              )
-            }
           }
         }
       }

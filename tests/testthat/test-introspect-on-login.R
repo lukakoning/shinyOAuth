@@ -879,7 +879,7 @@ test_that("introspection scope checks use effective OIDC callback scopes", {
         url = as.character(req[["url"]]),
         status = 200,
         headers = list("content-type" = "application/json"),
-        body = charToRaw('{"active":true,"scope":""}')
+        body = charToRaw('{"active":true,"scope":"profile"}')
       )
     },
     .package = "shinyOAuth",

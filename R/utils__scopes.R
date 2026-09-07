@@ -9,12 +9,13 @@
 ## 1.1 Normalize and validate scopes -------------------------------------------
 
 # Validate wire values before the permissive local-input normalizer sees them.
-# Preserve the existing empty-string representation of an empty grant.
+# An omitted scope is allowed by callers; an explicit empty string is not.
 validate_response_scope <- function(scope, signal_error = err_parse) {
   if (
     !is.character(scope) ||
       length(scope) != 1L ||
       is.na(scope) ||
+      !nzchar(scope) ||
       !grepl("^(?:[!#-\\[\\]-~]+(?: [!#-\\[\\]-~]+)*)?$", scope, perl = TRUE)
   ) {
     signal_error(
@@ -171,8 +172,7 @@ resolve_granted_scope_state <- function(
   scope_is_empty <- !scope_is_omitted &&
     length(token_scope) == 1L &&
     !nzchar(token_scope)
-  explicit_scope <- !scope_is_omitted &&
-    !(isTRUE(is_refresh) && scope_is_empty)
+  explicit_scope <- !scope_is_omitted
 
   granted_scopes <- if (isTRUE(explicit_scope)) {
     normalize_scope_tokens(token_scope)
