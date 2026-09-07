@@ -322,7 +322,8 @@ honored in all sessions</li>
 response body size (bytes, default 1 MiB) accepted from OAuth endpoints
 and resource requests. Increase this if an API legitimately returns
 larger payloads. The limit also applies after gzip decompression; other
-content encodings are rejected</li>
+content encodings are rejected. Values above R’s supported binary-read
+size are capped</li>
 </ul>
 </div>
 <div class="section level2">

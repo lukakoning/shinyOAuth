@@ -185,7 +185,8 @@ options:
   size (bytes, default 1 MiB) accepted from OAuth endpoints and resource
   requests. Increase this if an API legitimately returns larger
   payloads. The limit also applies after gzip decompression; other
-  content encodings are rejected
+  content encodings are rejected. Values above R’s supported binary-read
+  size are capped
 
 ## State store
 
