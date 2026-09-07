@@ -91,7 +91,10 @@ see <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code> for 
 <code>ui &lt;- oauth_ui(ui, id = "auth", client = client)</code>, using the same module
 ID and client as the server. Pass the result to <code><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shiny::shinyApp()</a></code>. UI functions
 are supported too, including functions accepting the Shiny request.
-This wrapper includes <code><a href="use_shinyOAuth.html">use_shinyOAuth()</a></code> setup.</p>
+This wrapper includes <code><a href="use_shinyOAuth.html">use_shinyOAuth()</a></code> setup.
+With <code>client</code>, it also serves client-hosted Request Objects at the app root
+using independent, single-use handles. Shared-worker apps need a shared
+<code>client@state_store</code> with atomic <code>take()</code>; a memory store supports one process.</p>
 <p>For <code>response_mode = "form_post"</code> or <code>"form_post.jwt"</code>, use
 <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code> instead; it includes this setup and accepts POST
 callbacks.</p>

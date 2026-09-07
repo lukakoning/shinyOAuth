@@ -147,10 +147,16 @@ alternative.
 
 The two uses of `request_uri` differ: JAR by reference points to an
 object published by the app; PAR uses a handle issued by the provider.
-The default Shiny publisher’s URL includes session-routing paths that
-may appear in provider or proxy logs. `request_uri_base_url` changes its
-public origin, but does not hide those paths. PAR provides an opaque
-provider-issued handle. See [Advanced security
+The default Shiny publisher uses an independent, single-use handle
+served by
+[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+or
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md),
+with no Shiny session token in the URL. Configure the same client and
+state store for the UI and server. `request_uri_base_url` sets the
+public app base URL. Handles expire within 120 seconds and should be
+redacted from logs. Prefer PAR for an opaque provider-issued handle. See
+[Advanced security
 configuration](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.md)
 for setup.
 

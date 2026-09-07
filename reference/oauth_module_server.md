@@ -136,7 +136,12 @@ oauth_module_server(
   fragment. Caller-published Request Object URLs require HTTPS even when
   the ordinary
   [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
-  policy permits HTTP for that host (RFC 9101 Section 5.2).
+  policy permits HTTP for that host (RFC 9101 Section 5.2). Wrap the app
+  in `oauth_ui(ui, id, client)` or
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  to serve these URLs. Handles contain no Shiny session token and expire
+  within 120 seconds. Shared workers require a shared state store with
+  atomic `take()`.
 
 - browser_cookie_path:
 

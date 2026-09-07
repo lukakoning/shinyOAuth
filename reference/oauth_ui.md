@@ -52,7 +52,10 @@ module ID and client as the server. Pass the result to
 functions are supported too, including functions accepting the Shiny
 request. This wrapper includes
 [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-setup.
+setup. With `client`, it also serves client-hosted Request Objects at
+the app root using independent, single-use handles. Shared-worker apps
+need a shared `client@state_store` with atomic `take()`; a memory store
+supports one process.
 
 For `response_mode = "form_post"` or `"form_post.jwt"`, use
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)

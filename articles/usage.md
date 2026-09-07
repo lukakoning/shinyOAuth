@@ -94,9 +94,15 @@ The **redirect URI**, also called the callback URL, is the address where
 the provider sends the browser back. Register it with the provider and
 use the same value in
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-including scheme, host, port, path, and fixed query parameters.
-**Scopes** are named permissions, such as `read:user`; the provider
-defines which names are available.
+including scheme, host, port, path, and fixed query parameters. Fixed
+query names must not use OAuth/OIDC response fields such as `state`,
+`code`, `error`, `iss`, `response`, `scope`, token fields, or the
+`shinyOAuth_form_post` and `shinyOAuth_form_post_id` bridge fields, or
+the `shinyOAuth_request_object` retrieval field. These names are
+reserved for callback processing and are rejected when configuring the
+client. Application parameters such as `tenant=one&tag=a&tag=b` are
+supported. **Scopes** are named permissions, such as `read:user`; the
+provider defines which names are available.
 
 Create your provider and client outside `server()` so they remain
 available when the browser returns from login. Create the module inside

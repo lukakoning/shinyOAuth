@@ -63,7 +63,8 @@ Use <code><a href="resource_req.html">resource_req()</a></code> for Bearer, DPoP
 <span>  check_url <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  oauth_client <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  token_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  dpop_nonce <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  dpop_nonce <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  resource_hosts <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -99,8 +100,9 @@ the token authentication set by this function is not overridden.</p></dd>
 
 
 <dt id="arg-follow-redirect">follow_redirect<a class="anchor" aria-label="anchor" href="#arg-follow-redirect"></a></dt>
-<dd><p>Logical. If <code>FALSE</code> (the default), HTTP redirects
-are disabled to prevent leaking the access token to unexpected hosts.
+<dd><p>Logical or <code>NULL</code>. <code>FALSE</code> (the default) disables
+HTTP redirects even when <code>shinyOAuth.allow_redirect</code> is enabled.
+<code>NULL</code> inherits that global option (disabled by default).
 Set to <code>TRUE</code> only if you trust all possible redirect targets and
 understand the security implications.</p></dd>
 
@@ -110,6 +112,8 @@ understand the security implications.</p></dd>
 <code><a href="is_ok_host.html">is_ok_host()</a></code> before attaching the access token. This rejects relative
 URLs, plain HTTP to non-loopback hosts, and when
 <code>options(shinyOAuth.allowed_hosts)</code> is set, hosts outside the allowlist.
+Without an allowlist this performs HTTPS and URL-syntax validation only
+(with the configured non-HTTPS exceptions); any HTTPS host is accepted.
 Set to <code>FALSE</code> only if you have already validated the URL and understand
 the security implications.</p></dd>
 
@@ -136,6 +140,15 @@ preserves <code>OAuthToken@token_type</code>, and may infer <code>DPoP</code> fr
 <dd><p>Optional DPoP nonce to embed in the proof for this
 request. This is primarily useful after a resource server challenges with
 <code>DPoP-Nonce</code>.</p></dd>
+
+
+<dt id="arg-resource-hosts">resource_hosts<a class="anchor" aria-label="anchor" href="#arg-resource-hosts"></a></dt>
+<dd><p>Optional non-empty character vector of trusted resource
+host patterns, using <code><a href="is_ok_host.html">is_ok_host()</a></code> matching rules. This call-scoped
+allowlist adds to the global policy and is enforced even if <code>check_url</code>
+is <code>FALSE</code>. Use exact hostnames for URLs derived from lower-trust input.
+It constrains the initial URL, not redirect destinations or resolved IPs;
+retain <code>follow_redirect = FALSE</code>. <code>NULL</code> adds no resource-specific policy.</p></dd>
 
 </dl></div>
     <div class="section level2">

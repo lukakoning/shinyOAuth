@@ -157,7 +157,16 @@ information.</p>
 <p>The <strong>redirect URI</strong>, also called the callback URL, is
 the address where the provider sends the browser back. Register it with
 the provider and use the same value in <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
-including scheme, host, port, path, and fixed query parameters.
+including scheme, host, port, path, and fixed query parameters. Fixed
+query names must not use OAuth/OIDC response fields such as
+<code>state</code>, <code>code</code>, <code>error</code>,
+<code>iss</code>, <code>response</code>, <code>scope</code>, token
+fields, or the <code>shinyOAuth_form_post</code> and
+<code>shinyOAuth_form_post_id</code> bridge fields, or the
+<code>shinyOAuth_request_object</code> retrieval field. These names are
+reserved for callback processing and are rejected when configuring the
+client. Application parameters such as
+<code>tenant=one&amp;tag=a&amp;tag=b</code> are supported.
 <strong>Scopes</strong> are named permissions, such as
 <code>read:user</code>; the provider defines which names are
 available.</p>

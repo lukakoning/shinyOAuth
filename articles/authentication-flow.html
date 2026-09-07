@@ -214,11 +214,13 @@ be combined with a signed Request Object. The module uses PAR when
 that requires PAR does not allow that caller-managed alternative.</p>
 <p>The two uses of <code>request_uri</code> differ: JAR by reference
 points to an object published by the app; PAR uses a handle issued by
-the provider. The default Shiny publisher’s URL includes session-routing
-paths that may appear in provider or proxy logs.
-<code>request_uri_base_url</code> changes its public origin, but does
-not hide those paths. PAR provides an opaque provider-issued handle. See
-<a href="advanced-security.html">Advanced security configuration</a> for
+the provider. The default Shiny publisher uses an independent,
+single-use handle served by <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> or
+<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>, with no Shiny session token in the
+URL. Configure the same client and state store for the UI and server.
+<code>request_uri_base_url</code> sets the public app base URL. Handles
+expire within 120 seconds and should be redacted from logs. Prefer PAR
+for an opaque provider-issued handle. See <a href="advanced-security.html">Advanced security configuration</a> for
 setup.</p>
 <p>The module handles request preparation automatically. <a href="https://lukakoning.github.io/shinyOAuth/reference/prepare_call.html"><code>prepare_call()</code></a>
 exposes it for custom integrations.</p>

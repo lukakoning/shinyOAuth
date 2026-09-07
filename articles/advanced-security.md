@@ -399,11 +399,27 @@ auth <- oauth_module_server(
 )
 ```
 
-Shiny’s published request URL contains session-routing path segments.
-These can appear in provider or proxy logs; changing
-`request_uri_base_url` changes the public origin, not that path. Use PAR
-when you need a provider-issued opaque reference. OIDC signed requests
-retain outer `client_id`, `response_type`, and `scope` parameters.
+Wrap the app UI in `oauth_ui(ui, id = "auth", client = client)` (or
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+for POST callbacks). The app root serves Request Objects using a random,
+single-purpose `shinyOAuth_request_object` query handle. Only its digest
+is stored alongside the object in `client@state_store`. GET consumes it
+atomically; HEAD does not consume it. Retrieval expires at the earlier
+of the object expiry and 120 seconds after publication. Cache eviction
+can shorten availability; the store’s retention policy controls physical
+cleanup. For multiple workers, use a shared state store with atomic
+`take()`; a memory store works only when publication and retrieval reach
+the same R process.
+
+Earlier versions used Shiny’s raw live session token in
+`registerDataObj()` URLs. Those URLs could disclose a capability also
+used by other session resources through browser, provider, or proxy
+logs. The new handles contain no session token. Still redact request
+URLs in logs and limit log retention: disclosing a live handle allows
+its holder to consume the pending object. Prefer PAR when supported to
+use a provider-issued reference and avoid a public app retrieval
+endpoint. OIDC signed requests retain outer `client_id`,
+`response_type`, and `scope` parameters.
 `authorization_request_front_channel_mode = "minimal"` is available for
 compatible PAR providers, but is rejected for OIDC inline or
 client-published signed requests.
