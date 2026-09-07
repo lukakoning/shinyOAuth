@@ -378,6 +378,8 @@ its digest is stored alongside the object in `client@state_store`. GET consumes
 it atomically; HEAD does not consume it. Retrieval expires at the earlier of the
 object expiry and 120 seconds after publication. Cache eviction can shorten
 availability; the store's retention policy controls physical cleanup.
+If the provider requires `request_uri` registration, update its permitted URLs
+to cover this app-root endpoint when migrating from the old `/session/` paths.
 For multiple workers, use a shared state store with atomic `take()`; a memory
 store works only when publication and retrieval reach the same R process.
 

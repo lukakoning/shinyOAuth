@@ -23,6 +23,14 @@ stops it afterward. The preconfigured accounts are for local testing only.
 The one-shot script installs the local shinyOAuth source package without
 installing dependencies, so install these prerequisites first.
 
+Client-hosted Request Objects use URLs at the app root with a
+`shinyOAuth_request_object` query handle. The JAR clients' `request.uris`
+registration therefore permits `https://host.docker.internal:18100/*`.
+Keycloak's path-wildcard matching does not constrain query values. The old
+`/session/*` registration rejects these URLs before retrieval. Recreate the
+disposable Keycloak container to import an updated realm fixture; restarting
+an existing realm does not replace its client registrations.
+
 ## Run integration tests
 
 The shared test options keep `shinyOAuth.expose_error_body = FALSE`. Assertions

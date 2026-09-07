@@ -67,9 +67,11 @@ if (!exists("make_provider", mode = "function")) {
   )
   template$redirectUris <- keycloak_default_redirect_uris()
   template$attributes <- template$attributes %||% list()
+  # Keycloak's URI matcher ignores query values for path wildcards. Register
+  # the public app root where independent Request Object handles are served.
   template$attributes[["request.uris"]] <- paste0(
     sub("/+$", "", public_base_url),
-    "/session/*"
+    "/*"
   )
   template$id <- NULL
   template$secret <- NULL
@@ -441,7 +443,9 @@ if (!exists("make_provider", mode = "function")) {
         })
 
         output$state_store_count <- shiny::renderText({
-          as.character(length(client@state_store$keys()))
+          # Count logical login state (SHA-256 keys), excluding Request Objects
+          # and callback bridge entries that share this store.
+          as.character(sum(grepl("^[a-f0-9]{64}$", client@state_store$keys())))
         })
 
         output$auth_url <- shiny::renderText({
@@ -1543,13 +1547,13 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   legit_for_b <- .replace_callback_base_url(login_b$callback_url, app_url_b)
 
   .navigate_browser_to_url(drv_a, swapped_for_a)
-  attacked_state <- keycloak_get_auth_state_robust(drv_a)
-  testthat::expect_match(attacked_state, "authenticated: FALSE", fixed = TRUE)
-  testthat::expect_match(
-    attacked_state,
-    "invalid_state|state",
-    ignore.case = TRUE
+  # The GET bridge rejects foreign state before rendering the Shiny app.
+  drv_a$wait_for_js(
+    "document.body && document.body.innerText.includes('Invalid OAuth state')",
+    timeout = 10000
   )
+  testthat::expect_match(.read_request_uri_page_text(drv_a), "Invalid OAuth state", fixed = TRUE)
+  testthat::expect_true(drv_a$get_js("document.querySelector('#auth_state') === null"))
 
   .navigate_browser_to_url(drv_b, legit_for_b)
   auth_state_b <- .wait_for_request_uri_auth_state_transition(
@@ -1564,7 +1568,7 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   .navigate_browser_to_url(drv_a, legit_for_a)
   recovered_state_a <- .wait_for_request_uri_auth_state_transition(
     drv_a,
-    previous_state = attacked_state,
+    previous_state = state_a$auth_state,
     timeout = 20000
   )
   user_a <- .read_request_uri_user_info(drv_a)
