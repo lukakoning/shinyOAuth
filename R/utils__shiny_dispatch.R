@@ -33,6 +33,39 @@ mirai_connection_count <- function() {
   )
 }
 
+#' Resolve and validate the mirai task timeout
+#'
+#' @param timeout Optional timeout in milliseconds. When `NULL`, the
+#'   `shinyOAuth.async_timeout` option is used.
+#' @return `NULL` or a non-negative integer accepted by mirai.
+#' @keywords internal
+#' @noRd
+resolve_async_timeout <- function(timeout = NULL) {
+  timeout <- timeout %||% getOption("shinyOAuth.async_timeout")
+  if (is.null(timeout)) {
+    return(NULL)
+  }
+  if (
+    !is.numeric(timeout) ||
+      length(timeout) != 1L ||
+      is.na(timeout) ||
+      !is.finite(timeout) ||
+      timeout < 0 ||
+      timeout != floor(timeout) ||
+      timeout > .Machine$integer.max
+  ) {
+    err_config(c(
+      "Invalid async timeout",
+      "i" = paste0(
+        "Use NULL or one whole number from 0 to ",
+        .Machine$integer.max,
+        " milliseconds."
+      )
+    ))
+  }
+  as.integer(timeout)
+}
+
 #' Dispatch async work through the configured backend
 #'
 #' Main async entry point used by [oauth_module_server()] and the async token
@@ -50,7 +83,6 @@ mirai_connection_count <- function() {
 #' @keywords internal
 #' @noRd
 async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
-  .timeout <- .timeout %||% getOption("shinyOAuth.async_timeout")
   captured_otel_envvars <- capture_async_otel_envvars()
   captured_otel_option_gates <- capture_async_otel_option_gates()
   captured_trace_id <- get_current_trace_id()
@@ -169,6 +201,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   if (mirai_available) {
     # Use mirai - inject the expression and args into the call.
     # .timeout enables per-task cancellation when using dispatcher.
+    .timeout <- resolve_async_timeout(.timeout)
     return(rlang::inject(
       mirai::mirai(!!wrapped_expr, .args = args, .timeout = .timeout)
     ))

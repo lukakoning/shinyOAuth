@@ -152,6 +152,27 @@ testthat::test_that("classify_mirai_error returns 'mirai_error_value' for other 
 
 # --- async_dispatch: .timeout / shinyOAuth.async_timeout --------------------
 
+testthat::test_that("resolve_async_timeout enforces mirai's integer range", {
+  testthat::expect_null(shinyOAuth:::resolve_async_timeout())
+  testthat::expect_identical(shinyOAuth:::resolve_async_timeout(0), 0L)
+  testthat::expect_identical(
+    shinyOAuth:::resolve_async_timeout(.Machine$integer.max),
+    .Machine$integer.max
+  )
+
+  withr::local_options(list(warn = 2))
+  testthat::expect_error(
+    shinyOAuth:::resolve_async_timeout(
+      as.double(.Machine$integer.max) + 1
+    ),
+    class = "shinyOAuth_config_error"
+  )
+  testthat::expect_error(
+    shinyOAuth:::resolve_async_timeout(1.5),
+    class = "shinyOAuth_config_error"
+  )
+})
+
 testthat::test_that("async_dispatch passes explicit .timeout to mirai", {
   testthat::skip_on_cran()
   testthat::skip_if_not_installed("mirai")
@@ -183,6 +204,26 @@ testthat::test_that("async_dispatch reads shinyOAuth.async_timeout option", {
     args = list()
   )
   testthat::expect_true(inherits(m, "mirai"))
+})
+
+testthat::test_that("async_dispatch rejects oversized mirai timeout options", {
+  testthat::skip_on_cran()
+  testthat::skip_if_not_installed("mirai")
+
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
+  withr::local_options(list(
+    shinyOAuth.async_timeout = as.double(.Machine$integer.max) + 1,
+    warn = 2
+  ))
+
+  testthat::expect_error(
+    shinyOAuth:::async_dispatch(
+      expr = quote(1 + 1),
+      args = list()
+    ),
+    class = "shinyOAuth_config_error"
+  )
 })
 
 testthat::test_that("async_dispatch explicit .timeout overrides option", {
