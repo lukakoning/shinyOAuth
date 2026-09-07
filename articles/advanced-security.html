@@ -443,7 +443,10 @@ stored alongside the object in <code>client@state_store</code>. GET
 consumes it atomically; HEAD does not consume it. Retrieval expires at
 the earlier of the object expiry and 120 seconds after publication.
 Cache eviction can shorten availability; the store’s retention policy
-controls physical cleanup. For multiple workers, use a shared state
+controls physical cleanup. If the provider requires
+<code>request_uri</code> registration, update its permitted URLs to
+cover this app-root endpoint when migrating from the old
+<code>/session/</code> paths. For multiple workers, use a shared state
 store with atomic <code>take()</code>; a memory store works only when
 publication and retrieval reach the same R process.</p>
 <p>Earlier versions used Shiny’s raw live session token in
