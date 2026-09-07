@@ -127,7 +127,7 @@ you can unblock them using the following options:
   specific deployment; this opt-in is honored in all sessions
 - `options(shinyOAuth.max_body_bytes = 1048576)` – maximum response body size (bytes, default 1 MiB) accepted
   from OAuth endpoints and resource requests. Increase this if an API legitimately returns larger payloads. The limit also applies
-  after gzip decompression; other content encodings are rejected
+  after gzip decompression; other content encodings are rejected. Values above R's supported binary-read size are capped
 
 ## State store
 

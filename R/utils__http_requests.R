@@ -320,12 +320,25 @@ req_refresh_jwt_client_assertion_on_retry <- function(
 #' @keywords internal
 #' @noRd
 resolve_max_body_bytes <- function() {
-  max_bytes <- suppressWarnings(
-    as.numeric(getOption("shinyOAuth.max_body_bytes", 1048576L))
-  )
-  if (!is.finite(max_bytes) || is.na(max_bytes) || max_bytes < 1024) {
-    max_bytes <- 1048576L
+  max_bytes <- suppressWarnings(tryCatch(
+    as.numeric(getOption("shinyOAuth.max_body_bytes", 1048576L)),
+    error = function(...) NA_real_
+  ))
+  if (
+    length(max_bytes) != 1L ||
+      is.na(max_bytes) ||
+      !is.finite(max_bytes) ||
+      max_bytes < 1024
+  ) {
+    return(1048576L)
   }
+
+  # req_perform_bounded() reads one extra byte to detect an oversized body.
+  # Leave room for that sentinel without overflowing readBin()'s integer n.
+  max_bytes <- min(
+    max_bytes,
+    as.double(.Machine$integer.max) - 1
+  )
   as.integer(max_bytes)
 }
 

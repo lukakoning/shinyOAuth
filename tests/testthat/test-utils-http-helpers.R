@@ -643,6 +643,26 @@ test_that("resolve_max_body_bytes falls back to 1 MiB for invalid values", {
   expect_equal(shinyOAuth:::resolve_max_body_bytes(), 1048576L)
 })
 
+test_that("resolve_max_body_bytes caps values before integer overflow", {
+  max_safe_bytes <- .Machine$integer.max - 1L
+
+  withr::local_options(list(
+    shinyOAuth.max_body_bytes = as.double(.Machine$integer.max) + 1
+  ))
+  expect_no_warning({
+    expect_identical(
+      shinyOAuth:::resolve_max_body_bytes(),
+      max_safe_bytes
+    )
+  })
+
+  req <- httr2::request("https://example.com")
+  expect_no_warning({
+    req <- shinyOAuth:::add_req_defaults(req)
+  })
+  expect_identical(req$options$maxfilesize, max_safe_bytes)
+})
+
 test_that("add_req_defaults sets maxfilesize curl option", {
   req <- httr2::request("https://example.com")
   req2 <- shinyOAuth:::add_req_defaults(req)
