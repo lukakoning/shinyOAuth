@@ -32,6 +32,11 @@ app setup.
   redaction of sensitive data in audit events (default: `TRUE`). Debug
   only: raw mode can expose cookies, authorization headers, codes, state
   values, and client IP addresses
+- `options(shinyOAuth.telemetry_path_scrubber = function(path) NULL)` –
+  optionally return an approved route template for audit and OTel paths.
+  Paths are omitted by default. Return `NULL` for unknown routes; remove
+  identifying segments and make the function idempotent. Input is
+  bounded to 2048 bytes and output to 512 bytes.
 - `options(shinyOAuth.audit_digest_key = ...)` – shared key of at least
   32 bytes for HMAC-SHA256 digests used in audit/OTel attributes.
   Invalid configured keys cause an error; by default, ‘shinyOAuth’

@@ -132,8 +132,8 @@ correlating the session.</li>
 in a background worker and which R process emitted the event. Async
 context also includes <code>main_process_id</code>.</li>
 <li>
-<code>http</code>: a summary with request method, path, host, and
-scheme by default.</li>
+<code>http</code>: a summary with request method, host, and scheme
+by default.</li>
 </ul>
 <p>The session context is a JSON-friendly list suitable for
 <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code>; the raw Shiny
@@ -149,13 +149,23 @@ OTel exports it as <code>shinyoauth.trace_id</code>.</p>
 <div class="section level2">
 <h2 id="http-context-and-redaction">HTTP context and redaction<a class="anchor" aria-label="anchor" href="#http-context-and-redaction"></a>
 </h2>
-<p>By default, the HTTP summary omits query strings, headers, and client
-addresses. The raw Shiny session token is also omitted. To omit HTTP
-context entirely:</p>
+<p>By default, the HTTP summary omits paths, query strings, headers, and
+client addresses. The raw Shiny session token is also omitted. To omit
+HTTP context entirely:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_include_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>With this setting, <code>shiny_session$http</code> is
 <code>NULL</code>.</p>
+<p>Outbound URLs retain only scheme and authority by default. To include
+safe route names in audit and OTel URLs and incoming HTTP context,
+configure <code>shinyOAuth.telemetry_path_scrubber</code> as a function
+of the path returning a safe absolute path (for example
+<code>/users/:id</code>), or <code>NULL</code> to omit it. Use an
+allowlist or replace all identifying path segments; the function should
+be idempotent. Scrubber errors and invalid results omit the path.
+Scrubber input is limited to 2048 bytes; exported paths to 512 bytes.
+Method, host, and scheme are limited to 32, 255, and 16 bytes. Control
+and Unicode format characters are removed.</p>
 <p>For local debugging,
 <code>shinyOAuth.audit_redact_http = FALSE</code> includes raw request
 details, and
@@ -929,8 +939,8 @@ non-success status</li>
 <code>status</code>: HTTP status code (integer, or <code>NA</code>
 if unavailable)</li>
 <li>
-<code>url</code>: the request URL without userinfo, query, or
-fragment</li>
+<code>url</code>: the request scheme and authority, plus an approved
+path only when a path scrubber is configured</li>
 <li>
 <code>body_digest</code>: HMAC-SHA-256 hex digest of the response
 body using the configured or per-process audit digest key (for

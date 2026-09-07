@@ -165,9 +165,15 @@ that can do this. Use the same <code>state_key</code> and matching provider/clie
 settings on every worker. Separate reads and deletes, including those in
 <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code>, cannot ensure single-use state under concurrent access.
 See the <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes">deployment guidance</a>.</p>
-<p>Store values are small R lists. Preserve <code>browser_token</code> as a non-empty
-string, and preserve <code>pkce_code_verifier</code> and <code>nonce</code> when those features are
-enabled. When disabled, these two fields can be <code>NULL</code> or omitted.</p>
+<p>Store values are small R lists; preserve them without interpreting fields.
+Pending login records in external stores are AES-GCM sealed with a distinct
+key derived from <code>state_key</code> and bound to the client, provider, and state key.
+The backend receives an opaque <code>sealed_state_record</code> string instead of the
+browser binding, PKCE verifier, and nonce. Existing unsealed external records
+are rejected; users with logins pending across an upgrade must restart login.
+The default process-local memory store keeps records within the R trust boundary.
+Encryption does not replace backend access controls, expiry, or atomic <code>take</code>:
+a backend able to restore consumed entries can still violate single-use state.</p>
 <p>For a state store, returning <code>max_age</code> in seconds from <code>info()</code> also lets
 <code><a href="oauth_module_server.html">oauth_module_server()</a></code> align the browser cookie lifetime with the store.
 Reporting this value does not expire entries; your backend must enforce it.</p>
