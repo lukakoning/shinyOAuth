@@ -57,15 +57,6 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
   (see `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
   and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)))
 
-Deploy authentication on a hostname whose services you trust, or use a dedicated
-hostname. Cookies are shared across all ports of a hostname; `__Host-`, `Secure`,
-and `HttpOnly` do not provide port isolation. shinyOAuth keeps its binding token
-in origin- and tab-scoped session storage and checks an independent cookie marker, so
-another port cannot establish a binding by reading or replacing that cookie.
-Other services can still disrupt cookies. The browser must allow cookies,
-session storage, and Web Crypto. Each pending transaction has its own marker;
-complete login in the tab that started it.
-
 ## Installation
 
 Install from [CRAN](https://CRAN.R-project.org/package=shinyOAuth):
