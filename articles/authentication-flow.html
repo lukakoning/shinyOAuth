@@ -460,9 +460,9 @@ key. ID tokens must be signed; encrypted ID tokens are not
 supported.</li>
 <li>
 <code>iss</code> must match the expected issuer; <code>aud</code>
-must include the client ID; <code>sub</code> must identify a user. When
-multiple audiences are present, <code>azp</code> must equal the client
-ID; if <code>azp</code> appears at all, it must match.</li>
+must include the client ID; <code>sub</code> must identify a user.
+Additional audiences must be explicitly trusted. If <code>azp</code> is
+present, it must equal the client ID.</li>
 <li>
 <code>exp</code> (expiry) and <code>iat</code> (issue time) are
 required. <code>nbf</code> (valid from) is checked when present. Small

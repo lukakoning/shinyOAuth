@@ -646,7 +646,7 @@ conflicting claims. This flag does not independently enable mTLS.</p></dd>
 <dd><p>Character vector of additional ID-token
 audiences explicitly trusted by this client. Defaults to <code>character(0)</code>,
 which permits only <code>client_id</code>. The token must always include <code>client_id</code>
-in <code>aud</code>; multi-audience tokens must also have <code>azp</code> equal to <code>client_id</code>.
+in <code>aud</code>; when <code>azp</code> is present it must equal <code>client_id</code>.
 Values are matched exactly and case-sensitively. Configure only audiences
 trusted for this application's identity tokens, not arbitrary API audiences.</p></dd>
 

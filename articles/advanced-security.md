@@ -200,6 +200,28 @@ discarded on continuation. For trusted HTTPS-terminating proxies, use
 `request_uri_resolver` with the same trust checks as
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
 
+## Provider key-set validation
+
+shinyOAuth validates the whole fetched JWKS before selecting a key by
+`kid`, usage, operations, or algorithm. A malformed RSA, EC, or OKP
+public entry can therefore reject the set even when another entry would
+validate the token. This is a deliberately stricter availability policy
+than the recommendation to ignore individual unusable keys in [RFC 7517
+section 5](https://www.rfc-editor.org/rfc/rfc7517.html#section-5).
+Providers must publish structurally valid public entries throughout key
+rotation; an unrelated broken entry can interrupt login, signed
+UserInfo, JARM, or Request Object encryption until the provider repairs
+its JWKS.
+
+Unknown key types are ignored for selection after common structural
+checks. Malformed set structure, duplicate JSON members, and secret key
+material are rejected. With pinning mode `"any"`, at least one supported
+public key must match a configured thumbprint, and selected keys must be
+pinned. Mode `"all"` requires every RSA, EC, and OKP entry in the set to
+have a computable, configured thumbprint, including entries that would
+later be filtered out. Neither mode skips the whole-set structural
+checks or the selected key’s strength checks.
+
 ## Trusted ID-token audiences
 
 ID tokens with multiple audiences remain rejected by default. If an
@@ -207,9 +229,11 @@ issuer legitimately includes another trusted audience, configure
 `trusted_id_token_audiences = c("trusted-service")` on
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
 The token must still include this client’s ID in `aud`, and `azp` must
-equal this client’s ID when there are multiple audiences. Other
-audiences, incorrect authorized parties, and invalid signatures are
-rejected.
+equal this client’s ID when present. Trusted multiple audiences do not
+require an `azp` claim under [OIDC Core section
+3.1.3.7](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
+Other audiences, incorrect authorized parties, and invalid signatures
+are rejected.
 
 ## Mutual TLS (mTLS)
 

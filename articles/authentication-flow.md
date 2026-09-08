@@ -392,9 +392,8 @@ defaults.
 - The signature must use an allowed algorithm and a matching provider
   key. ID tokens must be signed; encrypted ID tokens are not supported.
 - `iss` must match the expected issuer; `aud` must include the client
-  ID; `sub` must identify a user. When multiple audiences are present,
-  `azp` must equal the client ID; if `azp` appears at all, it must
-  match.
+  ID; `sub` must identify a user. Additional audiences must be
+  explicitly trusted. If `azp` is present, it must equal the client ID.
 - `exp` (expiry) and `iat` (issue time) are required. `nbf` (valid from)
   is checked when present. Small clock differences are allowed by
   `leeway`, defaulting to 30 seconds. `exp - iat` is capped at 24 hours

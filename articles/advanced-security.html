@@ -250,6 +250,28 @@ continuation. For trusted HTTPS-terminating proxies, use
 <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
 </div>
 <div class="section level2">
+<h2 id="provider-key-set-validation">Provider key-set validation<a class="anchor" aria-label="anchor" href="#provider-key-set-validation"></a>
+</h2>
+<p>shinyOAuth validates the whole fetched JWKS before selecting a key by
+<code>kid</code>, usage, operations, or algorithm. A malformed RSA, EC,
+or OKP public entry can therefore reject the set even when another entry
+would validate the token. This is a deliberately stricter availability
+policy than the recommendation to ignore individual unusable keys in <a href="https://www.rfc-editor.org/rfc/rfc7517.html#section-5" class="external-link">RFC 7517
+section 5</a>. Providers must publish structurally valid public entries
+throughout key rotation; an unrelated broken entry can interrupt login,
+signed UserInfo, JARM, or Request Object encryption until the provider
+repairs its JWKS.</p>
+<p>Unknown key types are ignored for selection after common structural
+checks. Malformed set structure, duplicate JSON members, and secret key
+material are rejected. With pinning mode <code>"any"</code>, at least
+one supported public key must match a configured thumbprint, and
+selected keys must be pinned. Mode <code>"all"</code> requires every
+RSA, EC, and OKP entry in the set to have a computable, configured
+thumbprint, including entries that would later be filtered out. Neither
+mode skips the whole-set structural checks or the selected key’s
+strength checks.</p>
+</div>
+<div class="section level2">
 <h2 id="trusted-id-token-audiences">Trusted ID-token audiences<a class="anchor" aria-label="anchor" href="#trusted-id-token-audiences"></a>
 </h2>
 <p>ID tokens with multiple audiences remain rejected by default. If an
@@ -257,8 +279,10 @@ issuer legitimately includes another trusted audience, configure
 <code>trusted_id_token_audiences = c("trusted-service")</code> on
 <code><a href="../reference/oauth_client.html">oauth_client()</a></code>. The token must still include this client’s
 ID in <code>aud</code>, and <code>azp</code> must equal this client’s ID
-when there are multiple audiences. Other audiences, incorrect authorized
-parties, and invalid signatures are rejected.</p>
+when present. Trusted multiple audiences do not require an
+<code>azp</code> claim under <a href="https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation" class="external-link">OIDC
+Core section 3.1.3.7</a>. Other audiences, incorrect authorized parties,
+and invalid signatures are rejected.</p>
 </div>
 <div class="section level2">
 <h2 id="mutual-tls-mtls">Mutual TLS (mTLS)<a class="anchor" aria-label="anchor" href="#mutual-tls-mtls"></a>
