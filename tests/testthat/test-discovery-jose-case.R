@@ -10,7 +10,16 @@ test_that("discovery never repairs case-sensitive JOSE algorithm identifiers", {
     "dpop_signing_alg_values_supported"
   )
   for (field in fields) {
-    for (alg in c("rs256", "eddsa", "EDDSA", "ed25519", "ED25519", "rsa-oaep", "a256gcm", "DIR")) {
+    for (alg in c(
+      "rs256",
+      "eddsa",
+      "EDDSA",
+      "ed25519",
+      "ED25519",
+      "rsa-oaep",
+      "a256gcm",
+      "DIR"
+    )) {
       expect_error(
         .discover_validate_jose_metadata(setNames(
           list(c("RS256", alg)),

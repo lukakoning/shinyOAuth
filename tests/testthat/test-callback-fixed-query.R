@@ -1,8 +1,17 @@
 test_that("client configuration rejects reserved fixed callback query names", {
-  for (key in c(oauth_module_callback_query_keys, "response", "scope", "%73tate")) {
+  for (key in c(
+    oauth_module_callback_query_keys,
+    "response",
+    "scope",
+    "%73tate"
+  )) {
     client <- make_test_client()
     expect_error(
-      client@redirect_uri <- paste0("https://example.com/callback?", key, "=fixed"),
+      client@redirect_uri <- paste0(
+        "https://example.com/callback?",
+        key,
+        "=fixed"
+      ),
       "callback-reserved"
     )
   }

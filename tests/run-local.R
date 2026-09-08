@@ -11,7 +11,10 @@ test_library <- tempfile("shinyOAuth-local-library-")
 dir.create(test_library)
 .libPaths(c(test_library, .libPaths()))
 invisible(processx::run(
-  file.path(R.home("bin"), if (.Platform$OS.type == "windows") "R.exe" else "R"),
+  file.path(
+    R.home("bin"),
+    if (.Platform$OS.type == "windows") "R.exe" else "R"
+  ),
   c("CMD", "INSTALL", paste0("--library=", test_library), "."),
   echo = FALSE
 ))
@@ -21,12 +24,16 @@ Sys.setenv(
   SHINYOAUTH_TEST_LIBRARY = normalizePath(test_library, winslash = "/")
 )
 expected_package <- normalizePath(
-  file.path(test_library, "shinyOAuth"), winslash = "/"
+  file.path(test_library, "shinyOAuth"),
+  winslash = "/"
 )
-worker_package <- callr::r(function() {
-  loadNamespace("shinyOAuth")
-  normalizePath(find.package("shinyOAuth"), winslash = "/")
-}, libpath = .libPaths())
+worker_package <- callr::r(
+  function() {
+    loadNamespace("shinyOAuth")
+    normalizePath(find.package("shinyOAuth"), winslash = "/")
+  },
+  libpath = .libPaths()
+)
 stopifnot(identical(worker_package, expected_package))
 message("Worker package: ", worker_package)
 results <- testthat::test_local(
@@ -35,5 +42,9 @@ results <- testthat::test_local(
 )
 skipped <- sum(as.data.frame(results)$skipped)
 if (skipped > 0L) {
-  message("Local suite skipped ", skipped, " test(s); inspect the skip reasons above.")
+  message(
+    "Local suite skipped ",
+    skipped,
+    " test(s); inspect the skip reasons above."
+  )
 }

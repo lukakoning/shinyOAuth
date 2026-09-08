@@ -74,7 +74,8 @@ oauth_client_mtls_registration <- function(
   }
   if (!is.null(tls_client_auth_value)) {
     tls_client_auth_value <- normalize_mtls_registration_alt_name_value(
-      tls_client_auth_type, tls_client_auth_value
+      tls_client_auth_type,
+      tls_client_auth_value
     )
   }
   if (!is.null(jwks_uri) && !is_valid_string(jwks_uri)) {
@@ -250,7 +251,8 @@ resolve_mtls_registration_identifier_value <- function(
 ) {
   if (is_valid_string(tls_client_auth_value)) {
     return(normalize_mtls_registration_alt_name_value(
-      tls_client_auth_type, tls_client_auth_value
+      tls_client_auth_type,
+      tls_client_auth_value
     ))
   }
 
@@ -418,7 +420,9 @@ parse_certificate_alt_name <- function(alt_name) {
 #' @noRd
 normalize_mtls_registration_alt_name_value <- function(type, value) {
   if (!is_valid_string(value) || grepl("[[:cntrl:]]", value, perl = TRUE)) {
-    err_input("mTLS registration identifiers must be non-empty strings without control characters")
+    err_input(
+      "mTLS registration identifiers must be non-empty strings without control characters"
+    )
   }
   normalized <- trimws(as.character(value %||% ""))
   if (!nzchar(normalized)) {

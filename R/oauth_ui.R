@@ -119,7 +119,8 @@ oauth_ui <- function(
         !is_valid_string(uri) ||
           !oauth_callback_route_matches(
             paste0(
-              sub("[?#].*$", "", uri), "?",
+              sub("[?#].*$", "", uri),
+              "?",
               sub("^\\?", "", req[["QUERY_STRING"]] %||% "")
             ),
             client@redirect_uri
@@ -160,7 +161,14 @@ oauth_ui <- function(
     response
   }
   attr(ui, "http_methods_supported") <- unique(c(
-    methods, "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+    methods,
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS"
   ))
   ui
 }

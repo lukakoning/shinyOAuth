@@ -856,7 +856,9 @@ test_that("explicit empty scope is rejected for every validation policy", {
 
 test_that("only omitted refresh scope carries forward the previous grant", {
   result <- shinyOAuth:::resolve_granted_scope_state(
-    NULL, c("read:user", "repo"), is_refresh = TRUE,
+    NULL,
+    c("read:user", "repo"),
+    is_refresh = TRUE,
     previous_granted_scopes = "read:user"
   )
   expect_equal(result$granted_scopes, "read:user")

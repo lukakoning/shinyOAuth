@@ -40,7 +40,10 @@ otel_telemetry_warning <- function(context, error) {
 otel_setup_error_detail <- function(error) {
   message <- conditionMessage(error)
   summary <- paste0(
-    class(error)[[1L]], " (diagnostic digest: ", string_digest(message), ")"
+    class(error)[[1L]],
+    " (diagnostic digest: ",
+    string_digest(message),
+    ")"
   )
   if (allow_expose_error_body()) {
     summary <- paste(summary, sanitize_diagnostic_text(message), sep = ": ")

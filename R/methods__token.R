@@ -720,8 +720,12 @@ refresh_token <- function(
   if (!(is.logical(async) && length(async) == 1L && !is.na(async))) {
     err_input("{.arg async} must be a single non-NA logical.")
   }
-  if (!is.null(introspect) &&
-      !(is.logical(introspect) && length(introspect) == 1L && !is.na(introspect))) {
+  if (
+    !is.null(introspect) &&
+      !(is.logical(introspect) &&
+        length(introspect) == 1L &&
+        !is.na(introspect))
+  ) {
     err_input("{.arg introspect} must be NULL or a single non-NA logical.")
   }
   if (!is_valid_string(token@refresh_token)) {
@@ -734,13 +738,19 @@ refresh_token <- function(
   policy_options <- capture_async_options()
   if (!is.null(active)) {
     if (!isTRUE(async) || is.null(active$promise)) {
-      err_token("Refresh already in progress; await the outstanding async refresh")
+      err_token(
+        "Refresh already in progress; await the outstanding async refresh"
+      )
     }
-    if (!identical(active$client, oauth_client) ||
+    if (
+      !identical(active$client, oauth_client) ||
         !identical(active$token, token) ||
         !identical(active$introspect, effective_introspect) ||
-        !identical(active$options, policy_options)) {
-      err_token("Refresh already in progress with different token or validation settings")
+        !identical(active$options, policy_options)
+    ) {
+      err_token(
+        "Refresh already in progress with different token or validation settings"
+      )
     }
     return(active$promise)
   }
@@ -760,11 +770,15 @@ refresh_token <- function(
   deferred <- FALSE
   on.exit(if (!deferred) release(), add = TRUE)
   result <- refresh_token_impl(
-    oauth_client, token, async = async, introspect = effective_introspect,
+    oauth_client,
+    token,
+    async = async,
+    introspect = effective_introspect,
     shiny_session = shiny_session
   )
   if (isTRUE(async) && promises::is.promise(result)) {
-    flight$promise <- promises::then(result,
+    flight$promise <- promises::then(
+      result,
       onFulfilled = function(value) {
         release()
         value
@@ -790,10 +804,16 @@ refresh_flight_key <- function(client, token) {
     refresh_flights$key <- openssl::rand_bytes(32L)
   }
   raw_to_hex_lower(openssl::sha256(
-    serialize(list(
-      client@provider@issuer, client@provider@token_url, client@client_id,
-      token@refresh_token
-    ), NULL, version = 2),
+    serialize(
+      list(
+        client@provider@issuer,
+        client@provider@token_url,
+        client@client_id,
+        token@refresh_token
+      ),
+      NULL,
+      version = 2
+    ),
     key = refresh_flights$key
   ))
 }

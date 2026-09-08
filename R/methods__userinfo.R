@@ -1025,7 +1025,9 @@ validate_signed_userinfo_claims <- function(
     if ("exp" %in% claim_names && iat_val > exp_val) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_iat",
-        bullets = c("x" = "Signed UserInfo JWT iat claim must not be after exp"),
+        bullets = c(
+          "x" = "Signed UserInfo JWT iat claim must not be after exp"
+        ),
         oauth_client = oauth_client,
         shiny_session = shiny_session
       )
@@ -1067,7 +1069,9 @@ validate_signed_userinfo_claims <- function(
     if ("exp" %in% claim_names && nbf_val > exp_val) {
       fail_signed_userinfo_claim_validation(
         status = "userinfo_jwt_invalid_nbf",
-        bullets = c("x" = "Signed UserInfo JWT nbf claim must not be after exp"),
+        bullets = c(
+          "x" = "Signed UserInfo JWT nbf claim must not be after exp"
+        ),
         oauth_client = oauth_client,
         shiny_session = shiny_session
       )

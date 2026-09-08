@@ -566,7 +566,10 @@ test_that("signed HS256 exp boundary respects package leeway", {
     )
   }
 
-  jwt1 <- sign_hs256(modifyList(base_claims, list(exp = now - 61, iat = now - 300)))
+  jwt1 <- sign_hs256(modifyList(
+    base_claims,
+    list(exp = now - 61, iat = now - 300)
+  ))
   testthat::expect_silent(shinyOAuth:::validate_id_token(client, jwt1))
 
   jwt2 <- sign_hs256(modifyList(base_claims, list(exp = now - 121)))

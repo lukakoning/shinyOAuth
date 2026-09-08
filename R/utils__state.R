@@ -1104,7 +1104,10 @@ state_store_consume_atomic <- function(
       )
       # Validate the returned value in the same tryCatch so failures are
       # audited consistently
-      ssv <- validate_state_store_value(state_store_unseal(ssv, client, state), client)
+      ssv <- validate_state_store_value(
+        state_store_unseal(ssv, client, state),
+        client
+      )
     },
     error = function(e) {
       consume_error_class <<- paste(class(e), collapse = ", ")
@@ -1179,7 +1182,10 @@ state_store_consume_fallback <- function(
         store$get(key, missing = NULL),
         "state_store_lookup"
       )
-      ssv <- validate_state_store_value(state_store_unseal(ssv, client, state), client)
+      ssv <- validate_state_store_value(
+        state_store_unseal(ssv, client, state),
+        client
+      )
       get_succeeded <- TRUE
     },
     error = function(e) {
@@ -1353,31 +1359,49 @@ validate_state_store_value <- function(
 # preventing a backend from moving valid records between login transactions.
 state_store_sealing_key <- function(client, state) {
   openssl::sha256(
-    serialize(list(
-      "shinyOAuth:external-state-record:v1",
-      state_cache_key(state), client@client_id,
-      client@provider@issuer, client@provider@token_url
-    ), NULL, version = 2),
+    serialize(
+      list(
+        "shinyOAuth:external-state-record:v1",
+        state_cache_key(state),
+        client@client_id,
+        client@provider@issuer,
+        client@provider@token_url
+      ),
+      NULL,
+      version = 2
+    ),
     key = normalize_key32(client@state_key)
   )
 }
 
 state_store_seal <- function(record, client, state) {
-  if (inherits(client@state_store, "cache_mem")) return(record)
-  list(sealed_state_record = state_encrypt_gcm(
-    record, key = state_store_sealing_key(client, state)
-  ))
+  if (inherits(client@state_store, "cache_mem")) {
+    return(record)
+  }
+  list(
+    sealed_state_record = state_encrypt_gcm(
+      record,
+      key = state_store_sealing_key(client, state)
+    )
+  )
 }
 
 state_store_unseal <- function(record, client, state) {
-  if (inherits(client@state_store, "cache_mem")) return(record)
+  if (inherits(client@state_store, "cache_mem")) {
+    return(record)
+  }
   if (!is.list(record) || !is_valid_string(record[["sealed_state_record"]])) {
     err_invalid_state("External state store entry is missing or is not sealed")
   }
   state_decrypt_gcm(
     record[["sealed_state_record"]],
     key = state_store_sealing_key(client, state),
-    size_limits = list(token = 16384, wrapper = 12288, ct_b64 = 12288, ct = 8192)
+    size_limits = list(
+      token = 16384,
+      wrapper = 12288,
+      ct_b64 = 12288,
+      ct = 8192
+    )
   )
 }
 
@@ -1385,7 +1409,10 @@ state_store_unseal <- function(record, client, state) {
 # harmless backend field reordering or omission of unused NULLs is tolerated.
 state_store_record_digest <- function(record, client) {
   fields <- c("browser_token", "pkce_code_verifier", "nonce")
-  canonical <- stats::setNames(lapply(fields, function(nm) record[[nm]]), fields)
+  canonical <- stats::setNames(
+    lapply(fields, function(nm) record[[nm]]),
+    fields
+  )
   openssl::sha256(
     serialize(canonical, NULL, version = 2),
     key = openssl::sha256(
@@ -1397,13 +1424,24 @@ state_store_record_digest <- function(record, client) {
 
 # Capture the preliminary record before consuming. Reject a changed record
 # before its PKCE verifier, nonce, or browser binding can be used.
-state_store_consume_checked <- function(client, state, expected_record,
-                                        shiny_session = NULL) {
+state_store_consume_checked <- function(
+  client,
+  state,
+  expected_record,
+  shiny_session = NULL
+) {
   expected_digest <- state_store_record_digest(expected_record, client)
-  consumed <- state_store_get_remove(client, state, shiny_session = shiny_session)
-  if (!constant_time_compare(
-    expected_digest, state_store_record_digest(consumed, client)
-  )) {
+  consumed <- state_store_get_remove(
+    client,
+    state,
+    shiny_session = shiny_session
+  )
+  if (
+    !constant_time_compare(
+      expected_digest,
+      state_store_record_digest(consumed, client)
+    )
+  ) {
     err_invalid_state("State store record changed during consumption")
   }
   consumed

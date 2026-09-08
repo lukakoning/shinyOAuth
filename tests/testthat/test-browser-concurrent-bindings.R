@@ -3,11 +3,17 @@
 test_that("real tabs and same-origin applications retain independent pending bindings", {
   skip_if_not(tolower(Sys.getenv("SHINYOAUTH_BROWSER_TESTS")) == "true")
   skip_if(Sys.which("node") == "")
-  server <- processx::process$new(Sys.which("node"), c(
-    test_path("..", "browser-two-port-server.cjs"),
-    system.file("www", "shinyOAuth.js", package = "shinyOAuth"),
-    mtls_pem_fixture("server-cert.pem"), mtls_pem_fixture("client-key.pem")
-  ), stdout = "|", stderr = "|")
+  server <- processx::process$new(
+    Sys.which("node"),
+    c(
+      test_path("..", "browser-two-port-server.cjs"),
+      system.file("www", "shinyOAuth.js", package = "shinyOAuth"),
+      mtls_pem_fixture("server-cert.pem"),
+      mtls_pem_fixture("client-key.pem")
+    ),
+    stdout = "|",
+    stderr = "|"
+  )
   withr::defer(server$kill())
   server$poll_io(5000)
   ports <- jsonlite::fromJSON(server$read_output_lines()[[1]])
@@ -21,25 +27,49 @@ test_that("real tabs and same-origin applications retain independent pending bin
     browser$Security$setIgnoreCertificateErrors(ignore = TRUE)
     browser$go_to(paste0(origin, "/app-a"))
   }
-  evaluate <- function(browser, script) browser$Runtime$evaluate(
-    script, returnByValue = TRUE, awaitPromise = TRUE
-  )$result$value
+  evaluate <- function(browser, script) {
+    browser$Runtime$evaluate(
+      script,
+      returnByValue = TRUE,
+      awaitPromise = TRUE
+    )$result$value
+  }
   # Confirm these tabs really share the same origin's local storage/cookie jar.
   evaluate(first, "localStorage.setItem('shared-fixture', 'yes')")
-  expect_identical(evaluate(second, "localStorage.getItem('shared-fixture')"), "yes")
-  instance <- function(app) build_oauth_module_browser_token_instance(
-    list(ns = function(x) paste0("auth-", x)), "auth", paste0(origin, "/", app)
+  expect_identical(
+    evaluate(second, "localStorage.getItem('shared-fixture')"),
+    "yes"
   )
+  instance <- function(app) {
+    build_oauth_module_browser_token_instance(
+      list(ns = function(x) paste0("auth-", x)),
+      "auth",
+      paste0(origin, "/", app)
+    )
+  }
   send <- function(browser, app = "app-a", token = NULL, clear = FALSE) {
-    payload <- list(instance = instance(app), path = "/", maxAgeMs = 60000,
-                    inputId = "sid", ackInputId = "ack", errorInputId = "error")
+    payload <- list(
+      instance = instance(app),
+      path = "/",
+      maxAgeMs = 60000,
+      inputId = "sid",
+      ackInputId = "ack",
+      errorInputId = "error"
+    )
     if (!is.null(token)) {
       payload$token <- token
       if (!clear) payload$requestId <- paste0("request-", substr(token, 1L, 1L))
     }
-    evaluate(browser, paste0("Shiny.handlers['shinyOAuth:",
-      if (clear) "clearBrowserToken" else "setBrowserToken", "'](",
-      jsonlite::toJSON(payload, auto_unbox = TRUE), "); window.inputs.sid"))
+    evaluate(
+      browser,
+      paste0(
+        "Shiny.handlers['shinyOAuth:",
+        if (clear) "clearBrowserToken" else "setBrowserToken",
+        "'](",
+        jsonlite::toJSON(payload, auto_unbox = TRUE),
+        "); window.inputs.sid"
+      )
+    )
   }
   a <- paste(rep("a", 128), collapse = "")
   b <- paste(rep("b", 128), collapse = "")

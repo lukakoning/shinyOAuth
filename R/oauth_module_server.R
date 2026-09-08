@@ -687,7 +687,11 @@ oauth_module_server <- function(
     # callback payloads and provider-controlled text out of this surface.
     shiny::exportTestValues(
       token_present = !is.null(values$token),
-      token_expires_at = if (!is.null(values$token)) values$token@expires_at else NULL,
+      token_expires_at = if (!is.null(values$token)) {
+        values$token@expires_at
+      } else {
+        NULL
+      },
       id_token_validated = !is.null(values$token) &&
         isTRUE(values$token@id_token_validated),
       error_present = !is.null(values$error),
@@ -1006,7 +1010,11 @@ oauth_module_server <- function(
       browser_ack$accept_input <- TRUE
       # Max age (sec); defaults to 300s (5 min) if state_store TTL is unavailable
       max_age_sec <- client_state_store_max_age(client)
-      instance <- build_oauth_module_browser_token_instance(session, id, client@redirect_uri)
+      instance <- build_oauth_module_browser_token_instance(
+        session,
+        id,
+        client@redirect_uri
+      )
 
       send_oauth_module_set_browser_token(
         session = session,
@@ -1127,7 +1135,11 @@ oauth_module_server <- function(
       if (!is.null(reject)) {
         reject(simpleError("Browser binding cleared"))
       }
-      instance <- build_oauth_module_browser_token_instance(session, id, client@redirect_uri)
+      instance <- build_oauth_module_browser_token_instance(
+        session,
+        id,
+        client@redirect_uri
+      )
 
       send_oauth_module_clear_browser_token(
         session = session,
@@ -3976,7 +3988,10 @@ oauth_module_server <- function(
                           values$token_stale <- FALSE
                           # Successful refresh should allow future reauth cycles
                           values$reauth_triggered <- FALSE
-                          .record_refresh_result(refresh_operation, token = res_resolved)
+                          .record_refresh_result(
+                            refresh_operation,
+                            token = res_resolved
+                          )
                           .finish_auth_operation(refresh_operation, "refresh")
                         }) |>
                         promises::catch(function(e) {
@@ -4371,13 +4386,23 @@ exclude_oauth_module_bookmarks <- function(session) {
 #'   underscores, and hyphens.
 #' @keywords internal
 #' @noRd
-build_oauth_module_browser_token_instance <- function(session, id, redirect_uri = NULL) {
+build_oauth_module_browser_token_instance <- function(
+  session,
+  id,
+  redirect_uri = NULL
+) {
   ns_prefix <- tryCatch(session$ns(""), error = function(...) id %||% "")
   instance <- sub("-$", "", ns_prefix)
   route <- oauth_callback_route(redirect_uri)
-  identity <- if (is.null(route)) ns_prefix else paste(
-    ns_prefix, jsonlite::toJSON(route, auto_unbox = TRUE), sep = "\n"
-  )
+  identity <- if (is.null(route)) {
+    ns_prefix
+  } else {
+    paste(
+      ns_prefix,
+      jsonlite::toJSON(route, auto_unbox = TRUE),
+      sep = "\n"
+    )
+  }
   ns_hash <- substr(as.character(openssl::sha256(identity)), 1, 16)
   instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
   paste0(instance, "-", ns_hash)

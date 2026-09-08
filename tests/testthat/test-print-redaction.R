@@ -33,7 +33,8 @@ test_that("all public objects hide custom credentials and URL components", {
     redirect_uri = "http://localhost:8100/?hint=synthetic-redirect-secret"
   )
   tok <- OAuthToken(
-    access_token = "synthetic-token-secret", token_type = "Bearer",
+    access_token = "synthetic-token-secret",
+    token_type = "Bearer",
     userinfo = list(nested = prov)
   )
   outputs <- c(
@@ -41,9 +42,22 @@ test_that("all public objects hide custom credentials and URL components", {
     paste(capture.output(print(list(prov, cli, tok))), collapse = "\n")
   )
   for (output in unname(outputs)) {
-      expect_no_secret_material(output, paste0("synthetic-", c(
-        "query", "param", "nested", "header", "client", "redirect", "token"
-      ), "-secret"))
+    expect_no_secret_material(
+      output,
+      paste0(
+        "synthetic-",
+        c(
+          "query",
+          "param",
+          "nested",
+          "header",
+          "client",
+          "redirect",
+          "token"
+        ),
+        "-secret"
+      )
+    )
   }
   expect_match(paste(format(prov), collapse = "\n"), "X-API-Key", fixed = TRUE)
   expect_match(paste(format(prov), collapse = "\n"), "list [1]", fixed = TRUE)

@@ -12,9 +12,13 @@
 
 # Bound untrusted metadata before normalization, including raw diagnostic mode.
 bounded_http_text <- function(value, max_bytes = 512L) {
-  if (!is_valid_string(value)) return(NULL)
+  if (!is_valid_string(value)) {
+    return(NULL)
+  }
   value <- enc2utf8(substr(value, 1L, max_bytes))
-  if (!validUTF8(value)) return(NULL)
+  if (!validUTF8(value)) {
+    return(NULL)
+  }
   value <- gsub("[[:cntrl:]\\p{Cf}]", "", value, perl = TRUE)
   while (nchar(value, type = "bytes") > max_bytes) {
     value <- substr(value, 1L, nchar(value) - 1L)
@@ -26,13 +30,23 @@ bounded_http_text <- function(value, max_bytes = 512L) {
 # application scrubber has converted them to safe, low-cardinality routes.
 telemetry_safe_path <- function(path) {
   scrubber <- getOption("shinyOAuth.telemetry_path_scrubber")
-  if (!is.function(scrubber)) return(NULL)
+  if (!is.function(scrubber)) {
+    return(NULL)
+  }
   path <- bounded_http_text(path, 2048L)
-  if (is.null(path)) return(NULL)
+  if (is.null(path)) {
+    return(NULL)
+  }
   route <- tryCatch(scrubber(path), error = function(...) NULL)
   route <- bounded_http_text(route, 512L)
-  if (is.null(route) || !startsWith(route, "/") ||
-      startsWith(route, "//") || grepl("[?#]", route)) return(NULL)
+  if (
+    is.null(route) ||
+      !startsWith(route, "/") ||
+      startsWith(route, "//") ||
+      grepl("[?#]", route)
+  ) {
+    return(NULL)
+  }
   route
 }
 

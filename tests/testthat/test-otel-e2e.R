@@ -41,18 +41,26 @@ otel_e2e("issuer URLs share the privacy policy across hooks, logs, and spans", {
     }
   )
   record <- otelsdk::with_otel_record({
-    with_otel_span("issuer-privacy", {
-      audit_event("userinfo", context = list(issuer = cli@provider@issuer))
-      otel_set_span_attributes(attributes = list(
-        oauth.callback.issuer = cli@provider@issuer
-      ))
-    }, attributes = otel_client_attributes(cli))
+    with_otel_span(
+      "issuer-privacy",
+      {
+        audit_event("userinfo", context = list(issuer = cli@provider@issuer))
+        otel_set_span_attributes(
+          attributes = list(
+            oauth.callback.issuer = cli@provider@issuer
+          )
+        )
+      },
+      attributes = otel_client_attributes(cli)
+    )
   })
   attrs <- record$traces[["issuer-privacy"]]$attributes
   expect_identical(attrs[["oauth.provider.issuer"]], "https://example.com/")
   expect_identical(attrs[["oauth.callback.issuer"]], "https://example.com/")
-  expect_identical(attrs[["oauth.provider.issuer_digest"]],
-                   string_digest(cli@provider@issuer))
+  expect_identical(
+    attrs[["oauth.provider.issuer_digest"]],
+    string_digest(cli@provider@issuer)
+  )
   expect_length(events, 1L)
   expect_false(any(grepl("synthetic-private-tenant", unlist(events))))
   expect_true(file.exists(log_file))
@@ -64,12 +72,19 @@ otel_e2e("issuer URLs share the privacy policy across hooks, logs, and spans", {
 otel_e2e("HTTP result status follows client span conventions", {
   for (status in c(200L, 204L, 302L, 400L, 401L, 500L)) {
     record <- otelsdk::with_otel_record({
-      with_otel_span("http-status", {
-        otel_record_http_result(httr2::response(status_code = status))
-      }, mark_ok = FALSE)
+      with_otel_span(
+        "http-status",
+        {
+          otel_record_http_result(httr2::response(status_code = status))
+        },
+        mark_ok = FALSE
+      )
     })
     span <- record$traces[["http-status"]]
-    expect_identical(as.integer(span$attributes[["http.response.status_code"]]), status)
+    expect_identical(
+      as.integer(span$attributes[["http.response.status_code"]]),
+      status
+    )
     expect_identical(span$status, if (status >= 400L) "error" else "unset")
   }
 })

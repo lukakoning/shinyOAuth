@@ -302,27 +302,43 @@ publish_shiny_request_object <- function(
   expiry <- as.POSIXct(min(expiry, now + 120), origin = "1970-01-01")
   handle <- random_urlsafe(43)
   absolute_url <- paste0(
-    public_base_url, "/?", shiny_request_object_param, "=", handle
+    public_base_url,
+    "/?",
+    shiny_request_object_param,
+    "=",
+    handle
   )
   validate_endpoint(
     absolute_url,
     getOption("shinyOAuth.allowed_hosts", default = NULL)
   )
   require_https_request_uri(absolute_url)
-  store$set(shiny_request_object_key(oauth_client, handle), list(
-    request_object = request_object,
-    expires_at = expiry
-  ))
+  store$set(
+    shiny_request_object_key(oauth_client, handle),
+    list(
+      request_object = request_object,
+      expires_at = expiry
+    )
+  )
   absolute_url
 }
 
 shiny_request_object_param <- "shinyOAuth_request_object"
 
 shiny_request_object_key <- function(client, handle) {
-  paste0("request_object_", string_digest(paste(
-    client@client_id, client@provider@name, client@redirect_uri, handle,
-    sep = "\n"
-  ), key = NULL))
+  paste0(
+    "request_object_",
+    string_digest(
+      paste(
+        client@client_id,
+        client@provider@name,
+        client@redirect_uri,
+        handle,
+        sep = "\n"
+      ),
+      key = NULL
+    )
+  )
 }
 
 require_request_object_atomic_store <- function(store) {
@@ -343,14 +359,24 @@ shiny_request_object_http_handler <- function(req, client) {
     return(NULL)
   }
   method <- toupper(req[["REQUEST_METHOD"]] %||% "GET")
-  response <- function(status, content = "Request Object unavailable", allow = FALSE) {
+  response <- function(
+    status,
+    content = "Request Object unavailable",
+    allow = FALSE
+  ) {
     shiny::httpResponse(
-      status, content_type = "text/plain; charset=utf-8",
+      status,
+      content_type = "text/plain; charset=utf-8",
       content = if (identical(method, "HEAD")) "" else content,
-      headers = c(list(
-        "Cache-Control" = "no-store", "Pragma" = "no-cache",
-        "Referrer-Policy" = "no-referrer", "X-Content-Type-Options" = "nosniff"
-      ), if (allow) list(Allow = "GET, HEAD"))
+      headers = c(
+        list(
+          "Cache-Control" = "no-store",
+          "Pragma" = "no-cache",
+          "Referrer-Policy" = "no-referrer",
+          "X-Content-Type-Options" = "nosniff"
+        ),
+        if (allow) list(Allow = "GET, HEAD")
+      )
     )
   }
   if (!method %in% c("GET", "HEAD")) {
@@ -362,35 +388,44 @@ shiny_request_object_http_handler <- function(req, client) {
   if (is.null(client)) {
     return(response(410L))
   }
-  tryCatch({
-    store <- client@state_store
-    require_request_object_atomic_store(store)
-    key <- shiny_request_object_key(client, handles[[1L]])
-    data <- if (identical(method, "GET") && is.function(store$take)) {
-      store$take(key, missing = NULL)
-    } else {
-      value <- store$get(key, missing = NULL)
-      if (identical(method, "GET")) {
-        # No event-loop yield occurs between read and removal in cache_mem.
-        store$remove(key)
-        if (!is.null(store$get(key, missing = NULL))) {
-          stop("Request Object removal failed")
+  tryCatch(
+    {
+      store <- client@state_store
+      require_request_object_atomic_store(store)
+      key <- shiny_request_object_key(client, handles[[1L]])
+      data <- if (identical(method, "GET") && is.function(store$take)) {
+        store$take(key, missing = NULL)
+      } else {
+        value <- store$get(key, missing = NULL)
+        if (identical(method, "GET")) {
+          # No event-loop yield occurs between read and removal in cache_mem.
+          store$remove(key)
+          if (!is.null(store$get(key, missing = NULL))) {
+            stop("Request Object removal failed")
+          }
         }
+        value
       }
-      value
-    }
-    if (!is.list(data) || !is_valid_string(data$request_object) ||
-        length(data$expires_at) != 1L || !is.finite(as.numeric(data$expires_at)) ||
-        Sys.time() >= data$expires_at) {
-      return(response(410L))
-    }
-    result <- serve_shiny_request_object(data, req)
-    shiny::httpResponse(
-      result$status,
-      content_type = result$headers[["Content-Type"]],
-      content = result$body,
-      headers = c(as.list(result$headers[names(result$headers) != "Content-Type"]),
-                  list("Referrer-Policy" = "no-referrer"))
-    )
-  }, error = function(...) response(503L))
+      if (
+        !is.list(data) ||
+          !is_valid_string(data$request_object) ||
+          length(data$expires_at) != 1L ||
+          !is.finite(as.numeric(data$expires_at)) ||
+          Sys.time() >= data$expires_at
+      ) {
+        return(response(410L))
+      }
+      result <- serve_shiny_request_object(data, req)
+      shiny::httpResponse(
+        result$status,
+        content_type = result$headers[["Content-Type"]],
+        content = result$body,
+        headers = c(
+          as.list(result$headers[names(result$headers) != "Content-Type"]),
+          list("Referrer-Policy" = "no-referrer")
+        )
+      )
+    },
+    error = function(...) response(503L)
+  )
 }

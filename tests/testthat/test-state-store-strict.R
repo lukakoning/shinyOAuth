@@ -247,7 +247,10 @@ test_that("state_store_get_remove accepts omitted optional fields when disabled"
 
   st <- "missing-optional-fields-state"
   key <- shinyOAuth:::state_cache_key(st)
-  store$set(key, shinyOAuth:::state_store_seal(list(browser_token = "bt"), client, st))
+  store$set(
+    key,
+    shinyOAuth:::state_store_seal(list(browser_token = "bt"), client, st)
+  )
 
   out <- shinyOAuth:::state_store_get_remove(client, st)
 
@@ -301,7 +304,14 @@ test_that("state_store_get_remove still requires policy-enabled fields", {
 
   st_pkce <- "missing-pkce-field-state"
   key_pkce <- shinyOAuth:::state_cache_key(st_pkce)
-  store$set(key_pkce, shinyOAuth:::state_store_seal(list(browser_token = "bt"), pkce_client, st_pkce))
+  store$set(
+    key_pkce,
+    shinyOAuth:::state_store_seal(
+      list(browser_token = "bt"),
+      pkce_client,
+      st_pkce
+    )
+  )
 
   expect_error(
     shinyOAuth:::state_store_get_remove(pkce_client, st_pkce),
@@ -324,7 +334,14 @@ test_that("state_store_get_remove still requires policy-enabled fields", {
 
   st_nonce <- "missing-nonce-field-state"
   key_nonce <- shinyOAuth:::state_cache_key(st_nonce)
-  store$set(key_nonce, shinyOAuth:::state_store_seal(list(browser_token = "bt"), nonce_client, st_nonce))
+  store$set(
+    key_nonce,
+    shinyOAuth:::state_store_seal(
+      list(browser_token = "bt"),
+      nonce_client,
+      st_nonce
+    )
+  )
 
   expect_error(
     shinyOAuth:::state_store_get_remove(nonce_client, st_nonce),

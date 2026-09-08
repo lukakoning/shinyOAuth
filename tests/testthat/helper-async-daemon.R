@@ -88,11 +88,18 @@ assert_shinyoauth_available_in_daemon <- function() {
   test_library <- Sys.getenv("SHINYOAUTH_TEST_LIBRARY", unset = "")
   if (nzchar(test_library)) {
     expected_path <- normalizePath(
-      file.path(test_library, "shinyOAuth"), winslash = "/", mustWork = TRUE
+      file.path(test_library, "shinyOAuth"),
+      winslash = "/",
+      mustWork = TRUE
     )
-    if (!isTRUE(pkg_data[["available"]]) ||
-        !identical(pkg_data[["path"]], expected_path)) {
-      stop("mirai daemon did not load the checkout installed in ", expected_path)
+    if (
+      !isTRUE(pkg_data[["available"]]) ||
+        !identical(pkg_data[["path"]], expected_path)
+    ) {
+      stop(
+        "mirai daemon did not load the checkout installed in ",
+        expected_path
+      )
     }
     return(invisible(NULL))
   }

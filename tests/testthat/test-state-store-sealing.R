@@ -13,8 +13,10 @@ test_that("external state records hide credentials and authenticate context", {
   )
   browser <- valid_browser_token()
   url <- prepare_call(client, browser_token = browser)
-  payload <- shinyOAuth:::state_decrypt_gcm(parse_query_param(url, "state"),
-                                           client@state_key)
+  payload <- shinyOAuth:::state_decrypt_gcm(
+    parse_query_param(url, "state"),
+    client@state_key
+  )
   state <- payload$state
   key <- shinyOAuth:::state_cache_key(state)
   sealed <- memory$get(key)
@@ -25,15 +27,27 @@ test_that("external state records hide credentials and authenticate context", {
   expect_true(nzchar(record$pkce_code_verifier))
   expect_true(nzchar(record$nonce))
   same_worker <- client
-  expect_identical(shinyOAuth:::state_store_unseal(sealed, same_worker, state), record)
+  expect_identical(
+    shinyOAuth:::state_store_unseal(sealed, same_worker, state),
+    record
+  )
   other <- client
   other@client_id <- "other-client"
-  expect_error(shinyOAuth:::state_store_unseal(sealed, other, state),
-               class = "shinyOAuth_state_error")
-  expect_error(shinyOAuth:::state_store_unseal(sealed, client, "other-state"),
-               class = "shinyOAuth_state_error")
-  expect_error(shinyOAuth:::state_store_unseal(record, client, state), "not sealed")
+  expect_error(
+    shinyOAuth:::state_store_unseal(sealed, other, state),
+    class = "shinyOAuth_state_error"
+  )
+  expect_error(
+    shinyOAuth:::state_store_unseal(sealed, client, "other-state"),
+    class = "shinyOAuth_state_error"
+  )
+  expect_error(
+    shinyOAuth:::state_store_unseal(record, client, state),
+    "not sealed"
+  )
   expect_identical(shinyOAuth:::state_store_get_remove(client, state), record)
-  expect_error(shinyOAuth:::state_store_get_remove(client, state),
-               class = "shinyOAuth_state_error")
+  expect_error(
+    shinyOAuth:::state_store_get_remove(client, state),
+    class = "shinyOAuth_state_error"
+  )
 })

@@ -79,13 +79,21 @@ make_existing_refresh_token <- function(original_jwt) {
 test_that("refresh requires a newly issued ID token with clock tolerance", {
   withr::local_options(shinyOAuth.skip_id_sig = TRUE)
   now <- floor(as.numeric(Sys.time()))
-  original <- list(iss = "https://issuer.example.com", sub = "user-1",
-                   aud = "abc", iat = now - 600, exp = now + 3600)
+  original <- list(
+    iss = "https://issuer.example.com",
+    sub = "user-1",
+    aud = "abc",
+    iat = now - 600,
+    exp = now + 3600
+  )
   for (validate in c(TRUE, FALSE)) {
     cli <- make_refresh_client(id_token_validation = validate)
     token <- make_existing_refresh_token(make_fake_jwt(original))
     mock_refresh_response(make_fake_jwt(original), function() {
-      expect_error(refresh_token(cli, token), "issued before the refresh request")
+      expect_error(
+        refresh_token(cli, token),
+        "issued before the refresh request"
+      )
     })
     fresh <- original
     fresh$iat <- now
@@ -97,12 +105,21 @@ test_that("refresh requires a newly issued ID token with clock tolerance", {
     fresh <- original
     fresh$iat <- now - skew
     expect_no_error(shinyOAuth:::compare_refresh_id_token_continuity(
-      fresh, original, request_started_at = now + 0.9, leeway = skew
+      fresh,
+      original,
+      request_started_at = now + 0.9,
+      leeway = skew
     ))
     fresh$iat <- now - skew - 1
-    expect_error(shinyOAuth:::compare_refresh_id_token_continuity(
-      fresh, original, request_started_at = now + 0.9, leeway = skew
-    ), "issued before the refresh request")
+    expect_error(
+      shinyOAuth:::compare_refresh_id_token_continuity(
+        fresh,
+        original,
+        request_started_at = now + 0.9,
+        leeway = skew
+      ),
+      "issued before the refresh request"
+    )
   }
 })
 

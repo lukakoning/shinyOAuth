@@ -1462,7 +1462,16 @@ oauth_provider_validate <- function(self) {
         anyNA(ua) ||
         !all(
           toupper(ua) %in%
-            c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "ED25519", "EDDSA")
+            c(
+              "RS256",
+              "RS384",
+              "RS512",
+              "ES256",
+              "ES384",
+              "ES512",
+              "ED25519",
+              "EDDSA"
+            )
         )
     ) {
       return(

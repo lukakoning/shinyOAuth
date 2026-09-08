@@ -185,7 +185,9 @@ oauth_provider_oidc_discover <- function(
     # metadata URL. That URL cannot distinguish the two exact identifiers.
     .discover_assert_valid_issuer(disc[["issuer"]])
     if (!identical(rtrim_slash(disc[["issuer"]]), issuer)) {
-      err_config("OIDC discovery issuer mismatch: issuer does not map to the requested metadata location")
+      err_config(
+        "OIDC discovery issuer mismatch: issuer does not map to the requested metadata location"
+      )
     }
     expected_issuer <- disc[["issuer"]]
   }

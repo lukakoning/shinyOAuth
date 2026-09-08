@@ -1552,8 +1552,14 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     "document.body && document.body.innerText.includes('Invalid OAuth state')",
     timeout = 10000
   )
-  testthat::expect_match(.read_request_uri_page_text(drv_a), "Invalid OAuth state", fixed = TRUE)
-  testthat::expect_true(drv_a$get_js("document.querySelector('#auth_state') === null"))
+  testthat::expect_match(
+    .read_request_uri_page_text(drv_a),
+    "Invalid OAuth state",
+    fixed = TRUE
+  )
+  testthat::expect_true(drv_a$get_js(
+    "document.querySelector('#auth_state') === null"
+  ))
 
   .navigate_browser_to_url(drv_b, legit_for_b)
   auth_state_b <- .wait_for_request_uri_auth_state_transition(

@@ -2,25 +2,44 @@ test_that("clock leeway does not allow contradictory temporal claims", {
   client <- oauth_client(
     oauth_provider(
       name = "temporal-test",
-      issuer = "https://issuer.example", auth_url = "https://issuer.example/auth",
-      token_url = "https://issuer.example/token", leeway = 30
+      issuer = "https://issuer.example",
+      auth_url = "https://issuer.example/auth",
+      token_url = "https://issuer.example/token",
+      leeway = 30
     ),
-    client_id = "temporal-test", client_secret = "secret",
-    redirect_uri = "http://localhost:8100", scopes = "openid"
+    client_id = "temporal-test",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:8100",
+    scopes = "openid"
   )
   withr::local_options(list(shinyOAuth.skip_id_sig = TRUE))
   now <- floor(as.numeric(Sys.time()))
-  claims <- list(iss = client@provider@issuer, aud = client@client_id,
-                 sub = "subject", iat = now, exp = now + 10)
-  encode <- function(x) shinyOAuth:::base64url_encode(charToRaw(
-    jsonlite::toJSON(x, auto_unbox = TRUE)
-  ))
-  validate_id <- function(x) shinyOAuth:::validate_id_token(
-    client, paste(encode(list(alg = "none")), encode(x), "", sep = ".")
+  claims <- list(
+    iss = client@provider@issuer,
+    aud = client@client_id,
+    sub = "subject",
+    iat = now,
+    exp = now + 10
   )
-  validate_ui <- function(x) shinyOAuth:::validate_signed_userinfo_claims(
-    x, client@provider@issuer, client@client_id, client
-  )
+  encode <- function(x) {
+    shinyOAuth:::base64url_encode(charToRaw(
+      jsonlite::toJSON(x, auto_unbox = TRUE)
+    ))
+  }
+  validate_id <- function(x) {
+    shinyOAuth:::validate_id_token(
+      client,
+      paste(encode(list(alg = "none")), encode(x), "", sep = ".")
+    )
+  }
+  validate_ui <- function(x) {
+    shinyOAuth:::validate_signed_userinfo_claims(
+      x,
+      client@provider@issuer,
+      client@client_id,
+      client
+    )
+  }
   for (claim in c("iat", "nbf")) {
     bad <- claims
     bad[[claim]] <- now + 20

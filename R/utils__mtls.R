@@ -756,7 +756,9 @@ read_keyed_client_certificate <- function(
       !is.null(cert_fingerprint) && identical(cert_fingerprint, key_fingerprint)
     ) {
       if (i != 1L) {
-        err_config("mtls_client_cert_file must put the client certificate matching mtls_client_key_file first, followed by its issuer chain")
+        err_config(
+          "mtls_client_cert_file must put the client certificate matching mtls_client_key_file first, followed by its issuer chain"
+        )
       }
       return(cert)
     }

@@ -44,7 +44,9 @@ test_that("oauth_module_server accepts multi-year token expiry", {
         }
       ),
       warning = function(w) {
-        if (grepl("package 'shiny' was built", conditionMessage(w), fixed = TRUE)) {
+        if (
+          grepl("package 'shiny' was built", conditionMessage(w), fixed = TRUE)
+        ) {
           invokeRestart("muffleWarning")
         }
       }

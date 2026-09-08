@@ -1241,18 +1241,32 @@ oauth_client_validate <- function(self) {
   fixed_query <- oauth_callback_uri_query(self@redirect_uri)
   fixed_parts <- strsplit(fixed_query, "&", fixed = TRUE)[[1L]]
   fixed_keys <- tryCatch(
-    vapply(fixed_parts[nzchar(fixed_parts)], function(part) {
-      decode_form_member(sub("=.*$", "", part), "redirect_uri", "query name")
-    }, character(1)),
+    vapply(
+      fixed_parts[nzchar(fixed_parts)],
+      function(part) {
+        decode_form_member(sub("=.*$", "", part), "redirect_uri", "query name")
+      },
+      character(1)
+    ),
     error = function(...) NULL
   )
   if (is.null(fixed_keys)) {
     return("OAuthClient: redirect_uri contains an invalid fixed query name")
   }
-  if (any(fixed_keys %in% c(
-    oauth_module_callback_query_keys, "response", "scope", shiny_request_object_param
-  ))) {
-    return("OAuthClient: redirect_uri fixed query must not use callback-reserved parameter names")
+  if (
+    any(
+      fixed_keys %in%
+        c(
+          oauth_module_callback_query_keys,
+          "response",
+          "scope",
+          shiny_request_object_param
+        )
+    )
+  ) {
+    return(
+      "OAuthClient: redirect_uri fixed query must not use callback-reserved parameter names"
+    )
   }
 
   if (!is_ok_host(self@redirect_uri)) {

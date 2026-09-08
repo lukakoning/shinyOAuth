@@ -218,7 +218,8 @@ cookie_value_js <- function(name) {
 
 browser_cookie_instance <- function(id) {
   shinyOAuth:::build_oauth_module_browser_token_instance(
-    list(ns = function(x) paste0(id, "-", x)), id,
+    list(ns = function(x) paste0(id, "-", x)),
+    id,
     "http://127.0.0.1:1/callback"
   )
 }
@@ -233,7 +234,9 @@ get_browser_cookie <- function(app, name) {
     jsonlite::toJSON(paste0(name, ":binding"), auto_unbox = TRUE),
     "))?.id || null"
   ))
-  if (is.null(binding_id)) return(NULL)
+  if (is.null(binding_id)) {
+    return(NULL)
+  }
   name <- paste0(name, "-", binding_id)
   cookies <- app$get_chromote_session()$Network$getAllCookies()$cookies
   matches <- Filter(function(cookie) identical(cookie$name, name), cookies)
@@ -507,7 +510,10 @@ testthat::test_that("setBrowserToken writes __Host- cookie attributes for HTTPS 
   )
 
   testthat::expect_length(writes, 1L)
-  testthat::expect_match(writes[[1]], "^__Host-shinyOAuth_sid-securetest-[a-f0-9]{32}=")
+  testthat::expect_match(
+    writes[[1]],
+    "^__Host-shinyOAuth_sid-securetest-[a-f0-9]{32}="
+  )
   testthat::expect_match(writes[[1]], "; Expires=")
   testthat::expect_match(writes[[1]], "; Max-Age=60;")
   testthat::expect_match(writes[[1]], "; Path=/; SameSite=Strict; Secure$")

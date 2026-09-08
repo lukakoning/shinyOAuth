@@ -37,7 +37,15 @@ test_that("DT escaping covers adversarial Spotify metadata", {
 })
 
 test_that("Spotify dashboard loads and transforms data in a fresh R process", {
-  for (pkg in c("callr", "pkgload", "bslib", "ggplot2", "DT", "purrr", "dplyr")) {
+  for (pkg in c(
+    "callr",
+    "pkgload",
+    "bslib",
+    "ggplot2",
+    "DT",
+    "purrr",
+    "dplyr"
+  )) {
     skip_if_not_installed(pkg)
   }
   path <- normalizePath(spotify_dashboard_path(), mustWork = TRUE)

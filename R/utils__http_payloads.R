@@ -30,7 +30,9 @@ parse_token_response <- function(resp) {
   check_resp_body_size(resp, context = "token")
 
   content_type <- tolower(trimws(sub(
-    ";.*$", "", httr2::resp_header(resp, "content-type") %||% ""
+    ";.*$",
+    "",
+    httr2::resp_header(resp, "content-type") %||% ""
   )))
   body <- httr2::resp_body_string(resp)
 

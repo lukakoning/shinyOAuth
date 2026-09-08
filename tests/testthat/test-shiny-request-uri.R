@@ -27,14 +27,22 @@ make_request_uri_test_session <- function(
 test_that("app handlers serve independent handles once without rendering UI", {
   fixture <- make_request_uri_test_session()
   client <- fixture$client
-  publish <- function(...) publish_shiny_request_object(
-    fixture$session, "header.payload.signature", request_handle_id = "same-state",
-    oauth_client = client, ...
-  )
-  request <- function(url, method = "GET") list(
-    REQUEST_METHOD = method, PATH_INFO = "/",
-    QUERY_STRING = oauth_callback_uri_query(url)
-  )
+  publish <- function(...) {
+    publish_shiny_request_object(
+      fixture$session,
+      "header.payload.signature",
+      request_handle_id = "same-state",
+      oauth_client = client,
+      ...
+    )
+  }
+  request <- function(url, method = "GET") {
+    list(
+      REQUEST_METHOD = method,
+      PATH_INFO = "/",
+      QUERY_STRING = oauth_callback_uri_query(url)
+    )
+  }
   ui <- oauth_ui(function(...) stop("must not render UI"), "auth", client)
   handler <- shiny::shinyApp(ui, function(...) {})$httpHandler
   url <- publish()
@@ -59,18 +67,29 @@ test_that("app handlers serve independent handles once without rendering UI", {
   expired <- publish(expires_at = Sys.time() - 1)
   expect_identical(handler(request(expired))$status, 410L)
   future <- publish(expires_at = Sys.time() + 600)
-  handle <- oauth_module_query_raw_values(request(future)$QUERY_STRING, shiny_request_object_param)
+  handle <- oauth_module_query_raw_values(
+    request(future)$QUERY_STRING,
+    shiny_request_object_param
+  )
   data <- client@state_store$get(shiny_request_object_key(client, handle))
-  expect_lte(as.numeric(difftime(data$expires_at, Sys.time(), units = "secs")), 120)
+  expect_lte(
+    as.numeric(difftime(data$expires_at, Sys.time(), units = "secs")),
+    120
+  )
   bad <- request(future)
   bad$QUERY_STRING <- paste(bad$QUERY_STRING, bad$QUERY_STRING, sep = "&")
   expect_identical(handler(bad)$status, 400L)
   other <- client
   other@client_id <- "other-client"
-  expect_identical(shiny_request_object_http_handler(request(future), other)$status, 410L)
+  expect_identical(
+    shiny_request_object_http_handler(request(future), other)$status,
+    410L
+  )
   expect_identical(handler(request(future))$status, 200L)
-  expect_error(client@redirect_uri <- "https://example.com/?shinyOAuth_request_object=x",
-               "callback-reserved")
+  expect_error(
+    client@redirect_uri <- "https://example.com/?shinyOAuth_request_object=x",
+    "callback-reserved"
+  )
 })
 
 test_that("shared Request Object stores require and use atomic take", {
@@ -78,7 +97,10 @@ test_that("shared Request Object stores require and use atomic take", {
   memory <- cachem::cache_mem(max_age = 600)
   takes <- 0L
   store <- list(
-    get = memory$get, set = memory$set, remove = memory$remove, info = memory$info,
+    get = memory$get,
+    set = memory$set,
+    remove = memory$remove,
+    info = memory$info,
     take = function(key, missing = NULL) {
       takes <<- takes + 1L
       value <- memory$get(key, missing = missing)
@@ -88,19 +110,35 @@ test_that("shared Request Object stores require and use atomic take", {
   )
   client <- fixture$client
   client@state_store <- store
-  url <- publish_shiny_request_object(fixture$session, "fixture", oauth_client = client)
-  req <- list(REQUEST_METHOD = "HEAD", QUERY_STRING = oauth_callback_uri_query(url))
+  url <- publish_shiny_request_object(
+    fixture$session,
+    "fixture",
+    oauth_client = client
+  )
+  req <- list(
+    REQUEST_METHOD = "HEAD",
+    QUERY_STRING = oauth_callback_uri_query(url)
+  )
   expect_identical(shiny_request_object_http_handler(req, client)$status, 200L)
   expect_identical(takes, 0L)
   req$REQUEST_METHOD <- "GET"
-  expect_identical(shiny_request_object_http_handler(req, client)$content, "fixture")
+  expect_identical(
+    shiny_request_object_http_handler(req, client)$content,
+    "fixture"
+  )
   expect_identical(shiny_request_object_http_handler(req, client)$status, 410L)
   expect_identical(takes, 2L)
   store$take <- NULL
   client@state_store <- store
   withr::local_options(shinyOAuth.allow_non_atomic_state_store = TRUE)
-  expect_error(publish_shiny_request_object(fixture$session, "fixture", oauth_client = client),
-               "requires atomic")
+  expect_error(
+    publish_shiny_request_object(
+      fixture$session,
+      "fixture",
+      oauth_client = client
+    ),
+    "requires atomic"
+  )
 })
 
 test_that("form-post UI also serves Request Objects", {
@@ -108,9 +146,16 @@ test_that("form-post UI also serves Request Objects", {
   client <- fixture$client
   client@response_mode <- "form_post"
   ui <- oauth_form_post_ui(shiny::fluidPage(), "auth", client)
-  url <- publish_shiny_request_object(fixture$session, "fixture", oauth_client = client)
-  req <- list(REQUEST_METHOD = "GET", PATH_INFO = "/",
-              QUERY_STRING = oauth_callback_uri_query(url))
+  url <- publish_shiny_request_object(
+    fixture$session,
+    "fixture",
+    oauth_client = client
+  )
+  req <- list(
+    REQUEST_METHOD = "GET",
+    PATH_INFO = "/",
+    QUERY_STRING = oauth_callback_uri_query(url)
+  )
   expect_identical(ui(req)$content, "fixture")
 })
 
@@ -126,7 +171,8 @@ test_that("publish_shiny_request_object returns an absolute same-origin URL", {
   )
 
   expect_match(
-    url, "^https://app[.]example[.]com/app/\\?shinyOAuth_request_object=[A-Za-z0-9_-]{43}$"
+    url,
+    "^https://app[.]example[.]com/app/\\?shinyOAuth_request_object=[A-Za-z0-9_-]{43}$"
   )
   expect_false(grepl("session-token|deadbeef|session/", url))
   handle <- httr2::url_parse(url)$query[[shiny_request_object_param]]
@@ -151,7 +197,8 @@ test_that("publish_shiny_request_object uses an explicit public base URL", {
   )
 
   expect_match(
-    url, "^https://public[.]example[.]net/proxy/app/\\?shinyOAuth_request_object="
+    url,
+    "^https://public[.]example[.]net/proxy/app/\\?shinyOAuth_request_object="
   )
 })
 

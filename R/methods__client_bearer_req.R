@@ -368,8 +368,11 @@ prepare_client_bearer_request <- function(
   )
 
   target_url <- resolve_client_bearer_target_url(url = url, req = req)
-  validate_client_bearer_url(target_url, check_url = check_url,
-                             resource_hosts = resource_hosts)
+  validate_client_bearer_url(
+    target_url,
+    check_url = check_url,
+    resource_hosts = resource_hosts
+  )
 
   req <- build_client_bearer_authorized_request(
     url = target_url,
@@ -652,11 +655,21 @@ validate_client_bearer_sender_constraints <- function(
 #'
 #' @keywords internal
 #' @noRd
-validate_client_bearer_url <- function(url, check_url = TRUE, resource_hosts = NULL) {
-  if (!is.null(resource_hosts) &&
-      !(is.character(resource_hosts) && length(resource_hosts) > 0L &&
-        !anyNA(resource_hosts) && all(nzchar(trimws(resource_hosts))))) {
-    err_input("resource_hosts must be NULL or a non-empty character vector of host patterns")
+validate_client_bearer_url <- function(
+  url,
+  check_url = TRUE,
+  resource_hosts = NULL
+) {
+  if (
+    !is.null(resource_hosts) &&
+      !(is.character(resource_hosts) &&
+        length(resource_hosts) > 0L &&
+        !anyNA(resource_hosts) &&
+        all(nzchar(trimws(resource_hosts))))
+  ) {
+    err_input(
+      "resource_hosts must be NULL or a non-empty character vector of host patterns"
+    )
   }
   if (!isTRUE(check_url) && is.null(resource_hosts)) {
     return(invisible(TRUE))
@@ -686,7 +699,9 @@ validate_client_bearer_url <- function(url, check_url = TRUE, resource_hosts = N
     ))
   }
 
-  if (!is.null(resource_hosts) && !is_ok_host(url, allowed_hosts = resource_hosts)) {
+  if (
+    !is.null(resource_hosts) && !is_ok_host(url, allowed_hosts = resource_hosts)
+  ) {
     err_input("url is not allowed by resource_hosts policy")
   }
 
@@ -778,9 +793,12 @@ finalize_client_bearer_request <- function(
   query = NULL,
   follow_redirect = FALSE
 ) {
-  if (!is.null(follow_redirect) &&
-      !(is.logical(follow_redirect) && length(follow_redirect) == 1L &&
-        !is.na(follow_redirect))) {
+  if (
+    !is.null(follow_redirect) &&
+      !(is.logical(follow_redirect) &&
+        length(follow_redirect) == 1L &&
+        !is.na(follow_redirect))
+  ) {
     err_input("follow_redirect must be NULL or a single non-NA logical")
   }
   follow <- if (is.null(follow_redirect)) allow_redirect() else follow_redirect

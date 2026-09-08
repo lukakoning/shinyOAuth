@@ -1833,9 +1833,13 @@ test_that("certificate binding requires the transport certificate first in PEM b
   on.exit(unlink(bundle_file, force = TRUE), add = TRUE)
 
   writeLines(c(readLines(ca_file), readLines(cert_file)), bundle_file)
-  expect_error(shinyOAuth:::tls_client_cert_thumbprint_s256(
-    bundle_file, key_file = key_file
-  ), "must put the client certificate.*first")
+  expect_error(
+    shinyOAuth:::tls_client_cert_thumbprint_s256(
+      bundle_file,
+      key_file = key_file
+    ),
+    "must put the client certificate.*first"
+  )
   writeLines(c(readLines(cert_file), readLines(ca_file)), bundle_file)
 
   provider <- oauth_provider(

@@ -87,22 +87,45 @@ test_that("explicit mTLS identifiers are validated after normalization", {
   client <- make_mtls_registration_client("tls_client_auth")
   for (type in c("subject_dn", "san_dns", "san_uri", "san_ip", "san_email")) {
     for (value in c(" ", "\t", "client\nname", "client\r", "client\x01name")) {
-      expect_error(oauth_client_mtls_registration(
-        client, tls_client_auth_type = type, tls_client_auth_value = value
-      ), class = "shinyOAuth_input_error")
+      expect_error(
+        oauth_client_mtls_registration(
+          client,
+          tls_client_auth_type = type,
+          tls_client_auth_value = value
+        ),
+        class = "shinyOAuth_input_error"
+      )
     }
   }
-  for (value in c("not-an-ip", "256.0.0.1", "192.0.2.1.", "2001:::1", "fe80::1%eth0")) {
-    expect_error(oauth_client_mtls_registration(
-      client, tls_client_auth_type = "san_ip", tls_client_auth_value = value
-    ), class = "shinyOAuth_input_error")
-  }
-  for (value in c(" 192.000.002.010 ", " 2001:0DB8:0000:0000:0000:0000:0000:0001 ")) {
-    metadata <- oauth_client_mtls_registration(
-      client, tls_client_auth_type = "san_ip", tls_client_auth_value = value
+  for (value in c(
+    "not-an-ip",
+    "256.0.0.1",
+    "192.0.2.1.",
+    "2001:::1",
+    "fe80::1%eth0"
+  )) {
+    expect_error(
+      oauth_client_mtls_registration(
+        client,
+        tls_client_auth_type = "san_ip",
+        tls_client_auth_value = value
+      ),
+      class = "shinyOAuth_input_error"
     )
-    expect_identical(metadata$tls_client_auth_san_ip,
-                     if (grepl(":", value)) "2001:db8::1" else "192.0.2.10")
+  }
+  for (value in c(
+    " 192.000.002.010 ",
+    " 2001:0DB8:0000:0000:0000:0000:0000:0001 "
+  )) {
+    metadata <- oauth_client_mtls_registration(
+      client,
+      tls_client_auth_type = "san_ip",
+      tls_client_auth_value = value
+    )
+    expect_identical(
+      metadata$tls_client_auth_san_ip,
+      if (grepl(":", value)) "2001:db8::1" else "192.0.2.10"
+    )
   }
 })
 
@@ -277,7 +300,10 @@ test_that("self-signed registration requires and retains a leaf-first chain", {
   issuer <- mtls_pem_fixture("ca-cert.pem")
   writeLines(c(readLines(issuer), readLines(leaf), readLines(issuer)), bundle)
   client@mtls_client_cert_file <- bundle
-  expect_error(oauth_client_mtls_registration(client), "must put the client certificate.*first")
+  expect_error(
+    oauth_client_mtls_registration(client),
+    "must put the client certificate.*first"
+  )
   writeLines(c(readLines(leaf), readLines(issuer), readLines(issuer)), bundle)
   metadata <- oauth_client_mtls_registration(client)
   expected <- vapply(
