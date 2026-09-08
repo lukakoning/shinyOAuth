@@ -84,7 +84,7 @@ build_http_summary <- function(req) {
     }
   ))
   path <- .scalar_chr(tryCatch(req[["PATH_INFO"]], error = function(...) NULL))
-  include_raw <- !isTRUE(getOption("shinyOAuth.audit_redact_http", TRUE))
+  include_raw <- identical(getOption("shinyOAuth.audit_redact_http", TRUE), FALSE)
   query_string <- if (include_raw) {
     .scalar_chr(tryCatch(req[["QUERY_STRING"]], error = function(...) NULL))
   } else {

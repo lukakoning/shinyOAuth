@@ -1,3 +1,26 @@
+test_that("raw HTTP metadata requires an explicit logical FALSE", {
+  req <- list(
+    REQUEST_METHOD = "GET", HTTP_HOST = "example.test",
+    PATH_INFO = "/private", QUERY_STRING = "sample=value",
+    HTTP_X_SAMPLE = "sample-header", REMOTE_ADDR = "192.0.2.1"
+  )
+  for (value in list(TRUE, "TRUE", "FALSE", 1, 0, NA, NULL,
+                     logical(), character(), c(TRUE, FALSE), c(FALSE, FALSE))) {
+    local_options(shinyOAuth.audit_redact_http = value)
+    summary <- shinyOAuth:::build_http_summary(req)
+    expect_identical(summary$method, "GET")
+    expect_identical(summary$host, "example.test")
+    expect_null(summary$query_string)
+    expect_null(summary$headers)
+    expect_null(summary$remote_addr)
+  }
+  local_options(shinyOAuth.audit_redact_http = FALSE)
+  summary <- shinyOAuth:::build_http_summary(req)
+  expect_identical(summary$query_string, "sample=value")
+  expect_identical(summary$headers$x_sample, "sample-header")
+  expect_identical(summary$remote_addr, "192.0.2.1")
+})
+
 test_that("HTTP paths are omitted by default and route export is explicit", {
   local_options(shinyOAuth.telemetry_path_scrubber = NULL)
   url <- "https://user:password@example.test/users/private-name?secret=1#fragment"
