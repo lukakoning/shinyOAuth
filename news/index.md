@@ -2,13 +2,6 @@
 
 ## shinyOAuth (development version)
 
-- Added read-only
-  [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-  configuration assessments for OAuth 2.1 draft 16 (ruleset `1.0.0`).
-  Reports separate mandatory configuration failures, unresolved external
-  prerequisites, and recommendations without changing the configuration
-  or making requests. OAuth 2.0 remains supported.
-
 - Added
   [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
   for Shiny apps using URL-based OAuth callbacks. Wrap the app’s
@@ -18,6 +11,12 @@
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
   Apps using form-post callbacks should continue to use
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+
+- Added
+  [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md),
+  a new function to analyze a configured `OAuthClient` and
+  `OAuthProvider` for compliance with the OAuth 2.1 draft 16 (ruleset
+  `1.0.0`) specification.
 
 - Browser and callback handling is more secure. Browser bindings are
   isolated by origin, tab, login, and app/module, and excluded from URLs
