@@ -11,10 +11,7 @@ test_that("accepted leaf-first certificate layouts complete an mTLS exchange", {
     stderr = "|"
   )
   withr::defer(server$kill())
-  server$poll_io(5000)
-  port <- as.integer(server$read_output_lines(n = 1L))
-  expect_length(port, 1L)
-  expect_false(is.na(port))
+  port <- wait_for_mtls_server_port(server)
   cert <- mtls_pem_fixture("client-cert.pem")
   ca <- mtls_pem_fixture("ca-cert.pem")
   bundle <- withr::local_tempfile(fileext = ".pem")

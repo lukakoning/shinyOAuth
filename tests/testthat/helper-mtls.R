@@ -23,3 +23,40 @@ mtls_pem_fixture <- function(filename) {
     mustWork = TRUE
   )
 }
+
+wait_for_mtls_server_port <- function(server, timeout = 30) {
+  deadline <- unname(proc.time()["elapsed"]) + timeout
+  diagnostics <- ""
+  repeat {
+    # poll_io() can wake for stderr or process exit before stdout is ready.
+    server$poll_io(100)
+    diagnostics <- paste0(diagnostics, server$read_error())
+    line <- server$read_output_lines(n = 1L)
+    if (length(line)) {
+      port <- suppressWarnings(as.integer(line))
+      if (
+        !grepl("^[0-9]+$", line) || is.na(port) || port < 1L || port > 65535L
+      ) {
+        stop("TLS fixture published an invalid port: ", line, call. = FALSE)
+      }
+      return(port)
+    }
+    if (!server$is_alive()) {
+      stop(
+        "TLS fixture exited before publishing its port (status ",
+        server$get_exit_status(),
+        "): ",
+        diagnostics,
+        server$read_all_error(),
+        call. = FALSE
+      )
+    }
+    if (unname(proc.time()["elapsed"]) >= deadline) {
+      stop(
+        "Timed out waiting for the TLS fixture port: ",
+        diagnostics,
+        call. = FALSE
+      )
+    }
+  }
+}
