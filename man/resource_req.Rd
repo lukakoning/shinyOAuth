@@ -94,6 +94,13 @@ URL policy, timeouts, and redirect defaults. It supports Bearer authentication
 and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
 also supply \code{oauth_client} so the request uses the matching key or
 certificate.
+
+Managed Authorization credentials cannot be combined with an \code{access_token}
+query parameter or form field. Inspection covers URL/query inputs and prebuilt
+httr2 form, raw and string bodies labelled \code{application/x-www-form-urlencoded}.
+JSON business fields are unaffected. File, multipart and streaming bodies are
+not parsed; callers must ensure these contain no additional OAuth credential
+transport. Later request changes outside these helpers require a new check.
 }
 \section{DPoP note}{
 

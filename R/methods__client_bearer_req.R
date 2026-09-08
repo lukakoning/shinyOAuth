@@ -19,6 +19,13 @@
 #' also supply `oauth_client` so the request uses the matching key or
 #' certificate.
 #'
+#' Managed Authorization credentials cannot be combined with an `access_token`
+#' query parameter or form field. Inspection covers URL/query inputs and prebuilt
+#' httr2 form, raw and string bodies labelled `application/x-www-form-urlencoded`.
+#' JSON business fields are unaffected. File, multipart and streaming bodies are
+#' not parsed; callers must ensure these contain no additional OAuth credential
+#' transport. Later request changes outside these helpers require a new check.
+#'
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param url The absolute URL to call.
 #' @param method Optional HTTP method (character). Defaults to "GET". When
@@ -811,7 +818,49 @@ finalize_client_bearer_request <- function(
     req <- do.call(httr2::req_url_query, c(list(req), query))
   }
 
+  validate_resource_token_transport(req)
   req
+}
+
+# Called after shaping, independently of URL host-policy opt-outs. All package
+# resource builders attach Authorization, so any supported OAuth token field is
+# an additional transport. Do not print the request or any parameter values.
+validate_resource_token_transport <- function(req) {
+  decode <- function(text) {
+    tryCatch(decode_form_pairs(text), error = function(e) {
+      err_input("Resource request contains malformed form/query encoding")
+    })
+  }
+  fields <- decode(url_raw_query(req[["url"]]))
+  body <- req[["body"]]
+  if (identical(body$type, "form")) {
+    fields <- c(fields, body$data)
+  } else if (isTRUE(body$type %in% c("raw", "string"))) {
+    headers <- req[["headers"]]
+    header_index <- which(tolower(names(headers)) == "content-type")
+    content_type <- if (length(header_index)) {
+      headers[[header_index[[1L]]]]
+    } else {
+      body$content_type %||% ""
+    }
+    content_type <- tolower(trimws(sub(";.*$", "", content_type)))
+    if (identical(content_type, "application/x-www-form-urlencoded")) {
+      text <- if (is.raw(body$data)) {
+        tryCatch(rawToChar(body$data), error = function(e) {
+          err_input("Resource request contains malformed form encoding")
+        })
+      } else {
+        body$data
+      }
+      fields <- c(fields, decode(text))
+    }
+  }
+  if ("access_token" %in% names(fields)) {
+    err_input(
+      "Resource request must not combine Authorization with an access_token query or form parameter"
+    )
+  }
+  invisible(NULL)
 }
 
 #' Apply caller-supplied headers to an authorized API request
