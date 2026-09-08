@@ -33,6 +33,19 @@ test_that("OAuthClient state_entropy fails fast on NA and non-scalar", {
     ),
     regexp = "state_entropy"
   )
+
+  # Oversized whole numbers should reach the range check without overflowing.
+  withr::local_options(list(warn = 2))
+  expect_error(
+    oauth_client(
+      provider = prov,
+      client_id = "id",
+      client_secret = "",
+      redirect_uri = "https://app.example.com/callback",
+      state_entropy = as.double(.Machine$integer.max) + 1
+    ),
+    regexp = "state_entropy must be between 22 and 128"
+  )
 })
 
 test_that("OAuthProvider accepts advertised JWS algorithm supersets", {

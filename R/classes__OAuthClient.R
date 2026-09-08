@@ -2663,13 +2663,12 @@ oauth_client_validate <- function(self) {
     return("OAuthClient: state_entropy must be a finite numeric value")
   }
   # Require integer-like (avoid fractional lengths causing truncation surprises)
-  if (!isTRUE(all.equal(ent, as.integer(ent)))) {
+  if (!isTRUE(all.equal(ent, trunc(ent)))) {
     return(
       "OAuthClient: state_entropy must be an integer number of characters"
     )
   }
-  ent <- as.integer(ent)
-  if (ent < 22L || ent > 128L) {
+  if (ent < 22 || ent > 128) {
     return("OAuthClient: state_entropy must be between 22 and 128")
   }
 
