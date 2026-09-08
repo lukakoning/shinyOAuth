@@ -111,6 +111,19 @@ you can unblock them using the following options:
 
 ## HTTP settings (timeout, retries, user agent)
 
+- `options(shinyOAuth.tls_min_version = "1.2")` - optionally require TLS 1.2
+  or later on package-owned HTTPS requests. `"1.3"` requires TLS 1.3 or later;
+  `NULL` (default) retains the linked curl/TLS backend's defaults. Applies before
+  discovery and to token, PAR, JWKS, UserInfo and resource requests, including
+  async workers. A stronger supplied minimum and a compatible supplied maximum
+  survive; a conflicting maximum or disabled certificate/hostname verification
+  raises an error when a minimum is selected. Custom CA settings remain usable.
+  The setting is bound to pending login transactions, so change it before
+  initiating login. It does not configure browser/proxy TLS or disallow HTTP
+  development endpoints. Older wolfSSL backends require curl 8.10.0 or later to
+  apply minimum-version semantics. Actual negotiated connections remain runtime
+  evidence; an absent option alone says nothing about their TLS version.
+
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds) applied to all outbound requests
   (discovery, JWKS, token exchange, userinfo). Increase if your provider/network is slow. Values beyond
   curl's supported timeout range are capped

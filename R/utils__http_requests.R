@@ -180,7 +180,8 @@ add_req_defaults <- function(req) {
   req |>
     httr2::req_timeout(timeout) |>
     httr2::req_user_agent(ua) |>
-    httr2::req_options(maxfilesize = max_bytes)
+    httr2::req_options(maxfilesize = max_bytes) |>
+    req_apply_tls_policy()
 }
 
 ## 1.2 Client-auth request shaping ---------------------------------------------
@@ -416,6 +417,7 @@ check_resp_body_size <- function(
 # budget plus one sentinel byte. libcurl's connection API can buffer an entire
 # decompression burst before returning to R, so it is not a decoded-size guard.
 req_perform_bounded <- function(req) {
+  req <- req_apply_tls_policy(req)
   max_bytes <- resolve_max_body_bytes()
   path <- tempfile("shinyOAuth-response-")
   on.exit(unlink(path), add = TRUE)

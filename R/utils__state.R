@@ -554,6 +554,7 @@ state_client_policy_fingerprint <- function(client) {
 
   components <- list(
     response_mode = response_mode,
+    tls_min_version = configured_tls_minimum() %||% NA_character_,
     oidc_max_age = provider_auth_max_age(client@provider) %||% NA_real_,
     enforce_callback_issuer = isTRUE(client@enforce_callback_issuer),
     compare_callback_issuer = isTRUE(client@compare_callback_issuer),
