@@ -370,7 +370,7 @@ check_oauth21 <- function(
   }
 
   dev <- .is_test_or_interactive()
-  skip_signature <- dev && isTRUE(getOption("shinyOAuth.skip_id_sig", FALSE))
+  skip_signature <- oauth21_test_bypass_active("shinyOAuth.skip_id_sig", dev)
   identity_ok <- if (!oidc && !validates_id) {
     TRUE
   } else {
@@ -482,7 +482,7 @@ check_oauth21 <- function(
     add(
       "state.browser_binding",
       status(
-        !(dev && isTRUE(getOption("shinyOAuth.skip_browser_token", FALSE)))
+        !oauth21_test_bypass_active("shinyOAuth.skip_browser_token", dev)
       ),
       "Pending logins bind callback state to the initiating browser unless the development bypass is active.",
       "Disable shinyOAuth.skip_browser_token.",

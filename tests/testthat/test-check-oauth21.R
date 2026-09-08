@@ -554,6 +554,32 @@ test_that("private-key assessment does not probe signatures or require optional 
   }
 })
 
+test_that("development bypass assessment follows legacy numeric flag semantics", {
+  withr::local_options(list(
+    shinyOAuth.tls_min_version = "1.2",
+    shinyOAuth.skip_browser_token = 1
+  ))
+  client <- oauth21_test_client()
+  expect_true(allow_skip_browser_token())
+  expect_false(check_oauth21(client)$configuration_compliant)
+  withr::local_options(list(shinyOAuth.skip_browser_token = NA))
+  expect_identical(check_oauth21(client)$configuration_compliant, NA)
+  withr::local_options(list(
+    shinyOAuth.skip_browser_token = 0,
+    shinyOAuth.skip_id_sig = 1
+  ))
+  expect_true(check_oauth21(client)$configuration_compliant)
+  client <- oauth21_test_client(
+    list(
+      issuer = "https://issuer.example",
+      jwks_uri = "https://issuer.example/jwks"
+    ),
+    scopes = "openid"
+  )
+  expect_true(allow_skip_signature())
+  expect_false(check_oauth21(client)$configuration_compliant)
+})
+
 test_that("malformed API arguments are programming errors with redacted diagnostics", {
   client <- oauth21_test_client()
   expect_error(check_oauth21(list(secret = "SENTINEL")), "client must")

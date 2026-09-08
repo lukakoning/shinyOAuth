@@ -57,6 +57,15 @@ oauth21_url_parts <- function(url) {
   tryCatch(httr2::url_parse(url), error = function(e) NULL)
 }
 
+# The legacy skip helpers use R's condition coercion, including numeric flags.
+# Preserve their effective meaning; malformed flags are unresolved, not passes.
+oauth21_test_bypass_active <- function(option, development) {
+  tryCatch(
+    if (!getOption(option, FALSE)) FALSE else development,
+    error = function(e) NA
+  )
+}
+
 oauth21_https <- function(url) {
   parts <- oauth21_url_parts(url)
   !is.null(parts) &&
@@ -275,7 +284,8 @@ oauth21_authorization_settings <- function(client) {
   # A selected redirect override must still agree with the callback transaction.
   redirect <- merged$params$redirect_uri
   conflict <- !identical(redirect, client@redirect_uri) ||
-    (provider_uses_oidc(provider) && !"openid" %in% as_scope_tokens(merged$params$scope))
+    (provider_uses_oidc(provider) &&
+      !"openid" %in% as_scope_tokens(merged$params$scope))
   list(
     status = if (!is.null(resolved$problem) || conflict) {
       "fail"
