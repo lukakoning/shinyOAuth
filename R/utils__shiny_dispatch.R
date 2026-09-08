@@ -263,7 +263,11 @@ replay_async_conditions <- function(result) {
         message(m)
       }
       for (w in result[["warnings"]]) {
-        warning(w)
+        if (inherits(w, "shinyOAuth_event_sink_warning")) {
+          with_event_sink_warning_policy(warning(w))
+        } else {
+          warning(w)
+        }
       }
     }
     return(result[["value"]])

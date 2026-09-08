@@ -213,6 +213,16 @@ sanitize_event_url_fields <- function(event, field_name = NULL) {
 #' @keywords internal
 #' @noRd
 warn_event_sink_failure <- function(title, bullets) {
+  with_event_sink_warning_policy(
+    warn_pkg(
+      title, escape_diagnostic_markup(bullets),
+      class = "shinyOAuth_event_sink_warning"
+    )
+  )
+}
+
+# Apply the same observational policy at emission and async replay.
+with_event_sink_warning_policy <- function(expr) {
   # Audit and telemetry are observational side effects. A strict global warning
   # policy must not turn their failure into a replacement for the OAuth error
   # that the package is in the process of constructing.
@@ -220,7 +230,7 @@ warn_event_sink_failure <- function(title, bullets) {
   on.exit(options(warn = old_warn), add = TRUE)
   options(warn = 0)
   tryCatch(
-    warn_pkg(title, escape_diagnostic_markup(bullets)),
+    force(expr),
     error = function(...) invisible(NULL)
   )
   invisible(NULL)
