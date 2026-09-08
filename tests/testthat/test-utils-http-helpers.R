@@ -56,6 +56,26 @@ test_that("add_req_defaults caps timeout before curl integer conversion", {
   })
 })
 
+test_that("resolve_retry_status ignores values beyond the integer range", {
+  withr::local_options(list(
+    shinyOAuth.retry_status = c(
+      500,
+      as.double(.Machine$integer.max) + 1
+    ),
+    warn = 2
+  ))
+
+  expect_no_warning({
+    expect_identical(shinyOAuth:::resolve_retry_status(), 500L)
+  })
+
+  withr::local_options(list(shinyOAuth.retry_status = 1e100))
+  expect_identical(
+    shinyOAuth:::resolve_retry_status(),
+    c(408L, 429L, 500:599)
+  )
+})
+
 test_that("req_with_retry passes through non-httr2 requests", {
   fake_req <- structure(list(id = "fake"), class = "fake_request")
   called <- FALSE

@@ -455,6 +455,24 @@ req_perform_bounded <- function(req) {
   resp
 }
 
+#' Internal: resolve retryable HTTP statuses
+#'
+#' @return Unique integer status codes, with safe defaults when none are valid.
+#' @keywords internal
+#' @noRd
+resolve_retry_status <- function() {
+  default_status <- c(408L, 429L, 500:599)
+  retry_status <- suppressWarnings(tryCatch(
+    as.integer(getOption("shinyOAuth.retry_status", default_status)),
+    error = function(...) NA_integer_
+  ))
+  retry_status <- unique(retry_status[!is.na(retry_status)])
+  if (!length(retry_status)) {
+    return(default_status)
+  }
+  retry_status
+}
+
 #' Internal: Perform an httr2 request with retries
 #'
 #' Retries on network errors and transient HTTP statuses (default: 408, 429,
@@ -582,14 +600,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
   ) {
     retry_after_cap <- 60
   }
-  retry_status <- getOption("shinyOAuth.retry_status", c(408L, 429L, 500:599))
-  retry_status <- unique(as.integer(retry_status))
-  # Drop malformed entries to avoid NA propagation in %in% checks
-  retry_status <- retry_status[!is.na(retry_status)]
-  # If everything was invalid, restore safe defaults to preserve guardrails
-  if (length(retry_status) == 0L) {
-    retry_status <- c(408L, 429L, 500:599)
-  }
+  retry_status <- resolve_retry_status()
 
   last_err <- NULL
   for (i in seq_len(max_tries)) {
