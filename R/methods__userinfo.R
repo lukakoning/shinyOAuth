@@ -441,37 +441,13 @@ audit_userinfo_event <- function(
   invisible(NULL)
 }
 
-#' Internal: decode JWT-encoded userinfo response (OIDC Core §5.3.2)
+#' Validate protocol-sensitive JSON UserInfo claim types
 #'
-#' When the UserInfo endpoint returns Content-Type: application/jwt, the
-#' response body is a signed (and optionally encrypted) JWT whose payload
-#' contains the claims.
-#'
-#' Per §5.3.2, if the JWT is signed, the claims MUST include `iss` (matching
-#' the OP's Issuer Identifier) and `aud` (matching or including the RP's
-#' Client ID). These are validated after successful signature verification.
-#'
-#' Encrypted JWTs (JWE, 5-part compact serialization) are detected and
-#' rejected with a clear error since JWE decryption is not supported.
-#'
-#' Signature verification uses the provider's `allowed_algs` (filtered to
-#' asymmetric algorithms) and fail-closes unconditionally: if the JWKS
-#' cannot be fetched, no compatible keys exist, or all candidate keys fail
-#' verification, an error is raised.
-#'
-#' Verification is always enforced when a JWT response is received,
-#' regardless of `userinfo_signed_jwt_required`. That flag only controls
-#' whether the response *must* be `application/jwt` (vs. JSON).
-#' `alg=none` is always rejected unless the testing-only softener
-#' `allow_unsigned_userinfo_jwt()` permits it (requires test or interactive mode).
-#' Unparseable headers, missing issuer/JWKS infrastructure, and algorithms
-#' not in `allowed_algs` all raise errors with audit events.
-#'
-#' @param resp An httr2 response object with a JWT body.
-#' @param oauth_client An OAuthClient object (used for JWKS-based verification).
-#' @param shiny_session Optional pre-captured Shiny session context for audit
-#'   events emitted during JWT validation.
-#' @return A named list of userinfo claims.
+#' Checks the subject and verification flags before claim-policy validation.
+#' @param claims UserInfo claims parsed without simplifying JSON arrays.
+#' @param oauth_client OAuth client associated with the response.
+#' @param shiny_session Optional Shiny session context for audit events.
+#' @return Invisibly returns `TRUE`, or raises a UserInfo error.
 #' @keywords internal
 #' @noRd
 validate_userinfo_json_claim_types <- function(
@@ -503,6 +479,39 @@ validate_userinfo_json_claim_types <- function(
   invisible(TRUE)
 }
 
+#' Internal: decode JWT-encoded userinfo response (OIDC Core §5.3.2)
+#'
+#' When the UserInfo endpoint returns Content-Type: application/jwt, the
+#' response body is a signed (and optionally encrypted) JWT whose payload
+#' contains the claims.
+#'
+#' Per §5.3.2, if the JWT is signed, the claims MUST include `iss` (matching
+#' the OP's Issuer Identifier) and `aud` (matching or including the RP's
+#' Client ID). These are validated after successful signature verification.
+#'
+#' Encrypted JWTs (JWE, 5-part compact serialization) are detected and
+#' rejected with a clear error since JWE decryption is not supported.
+#'
+#' Signature verification uses the provider's `userinfo_allowed_algs` (filtered to
+#' asymmetric algorithms) and fail-closes unconditionally: if the JWKS
+#' cannot be fetched, no compatible keys exist, or all candidate keys fail
+#' verification, an error is raised.
+#'
+#' Verification is always enforced when a JWT response is received,
+#' regardless of `userinfo_signed_jwt_required`. That flag only controls
+#' whether the response *must* be `application/jwt` (vs. JSON).
+#' `alg=none` is always rejected unless the testing-only softener
+#' `allow_unsigned_userinfo_jwt()` permits it (requires test or interactive mode).
+#' Unparseable headers, missing issuer/JWKS infrastructure, and algorithms
+#' not in `userinfo_allowed_algs` all raise errors with audit events.
+#'
+#' @param resp An httr2 response object with a JWT body.
+#' @param oauth_client An OAuthClient object (used for JWKS-based verification).
+#' @param shiny_session Optional pre-captured Shiny session context for audit
+#'   events emitted during JWT validation.
+#' @return A named list of userinfo claims.
+#' @keywords internal
+#' @noRd
 decode_userinfo_jwt <- function(
   resp,
   oauth_client,
