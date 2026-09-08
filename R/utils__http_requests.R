@@ -103,6 +103,29 @@ reject_redirect_response <- function(resp, context = "request") {
   TRUE
 }
 
+#' Internal: resolve the outbound HTTP timeout
+#'
+#' @return Validated timeout in seconds, bounded to curl's integer range.
+#' @keywords internal
+#' @noRd
+resolve_http_timeout <- function() {
+  timeout <- suppressWarnings(tryCatch(
+    as.numeric(getOption("shinyOAuth.timeout", 5)),
+    error = function(...) NA_real_
+  ))
+  if (
+    length(timeout) != 1L ||
+      is.na(timeout) ||
+      !is.finite(timeout) ||
+      timeout < 0.001
+  ) {
+    return(10)
+  }
+
+  # curl represents timeout_ms as a signed 32-bit integer.
+  min(timeout, as.double(.Machine$integer.max) / 1000)
+}
+
 #' Internal: HTTP defaults (timeout and User-Agent)
 #'
 #' Applies a modest timeout and a descriptive User-Agent to an httr2 request.
@@ -122,10 +145,7 @@ add_req_defaults <- function(req) {
     return(req)
   }
   # Resolve timeout (seconds)
-  t <- suppressWarnings(as.numeric(getOption("shinyOAuth.timeout", 5)))
-  if (!is.finite(t) || is.na(t) || t <= 0) {
-    t <- 10
-  }
+  timeout <- resolve_http_timeout()
 
   # Resolve UA
   ua <- getOption("shinyOAuth.user_agent", NULL)
@@ -158,7 +178,7 @@ add_req_defaults <- function(req) {
   max_bytes <- resolve_max_body_bytes()
 
   req |>
-    httr2::req_timeout(t) |>
+    httr2::req_timeout(timeout) |>
     httr2::req_user_agent(ua) |>
     httr2::req_options(maxfilesize = max_bytes)
 }

@@ -30,6 +30,30 @@ test_that("add_req_defaults falls back to default timeout when invalid", {
     req2[["options"]][["timeout_ms"]],
     10000
   )
+
+  withr::local_options(list(shinyOAuth.timeout = 0.0005))
+  req3 <- shinyOAuth:::add_req_defaults(req)
+  expect_equal(req3[["options"]][["timeout_ms"]], 10000)
+})
+
+test_that("add_req_defaults caps timeout before curl integer conversion", {
+  req <- httr2::request("https://example.com")
+  withr::local_options(list(
+    shinyOAuth.timeout = 30 * 86400,
+    warn = 2
+  ))
+
+  expect_no_warning({
+    req2 <- shinyOAuth:::add_req_defaults(req)
+    expect_equal(
+      req2[["options"]][["timeout_ms"]],
+      as.double(.Machine$integer.max)
+    )
+    expect_identical(
+      as.integer(req2[["options"]][["timeout_ms"]]),
+      .Machine$integer.max
+    )
+  })
 })
 
 test_that("req_with_retry passes through non-httr2 requests", {

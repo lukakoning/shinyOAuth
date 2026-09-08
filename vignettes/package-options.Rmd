@@ -112,7 +112,8 @@ you can unblock them using the following options:
 ## HTTP settings (timeout, retries, user agent)
 
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds) applied to all outbound requests
-  (discovery, JWKS, token exchange, userinfo). Increase if your provider/network is slow
+  (discovery, JWKS, token exchange, userinfo). Increase if your provider/network is slow. Values beyond
+  curl's supported timeout range are capped
 - `options(shinyOAuth.retry_max_tries = 3L)` – maximum attempts for retryable requests after network errors or HTTP 408, 429, or 5xx responses. Authorization-code exchange and refresh are not automatically retried, apart from a single DPoP nonce challenge retry
 - `options(shinyOAuth.retry_backoff_base = 0.5)` – base backoff in seconds used for exponential backoff with jitter
 - `options(shinyOAuth.retry_backoff_cap = 5)` – per‑attempt cap on backoff seconds (before jitter)
