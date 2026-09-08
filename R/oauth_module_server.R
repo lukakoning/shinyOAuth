@@ -3902,7 +3902,9 @@ oauth_module_server <- function(
         # Default: wake up on a coarse interval when token missing/unknown
         wake_ms <- refresh_check_interval
 
-        if (!is.null(tok)) {
+        # Access tokens without refresh credentials remain usable until their
+        # normal expiry; lack of a refresh token is not a refresh failure.
+        if (!is.null(tok) && is_valid_string(tok@refresh_token)) {
           exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
           now <- as.numeric(Sys.time())
 
