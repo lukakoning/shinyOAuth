@@ -100,6 +100,12 @@ The module creates and checks these values automatically. OIDC provider
 helpers enable PKCE and nonce by default.
 Public clients must use PKCE, and `S256` is the default PKCE method.
 
+Configured authorization endpoint queries are preserved. Matching managed
+singleton values are emitted once; conflicting or repeated singleton values
+are rejected before use. Repeated `resource` indicators remain supported, and
+parameter names are case sensitive. The same composition checks apply to
+direct, PAR and JAR browser URLs.
+
 #### State storage and expiry
 
 The encrypted state includes the client, provider, return address, requested
@@ -207,6 +213,13 @@ and checks that the browser token matches. It waits for the browser-token
 input to reach Shiny if necessary, and rejects malformed or oversized callback
 values.
 
+The default authorization-code budget is 8192 decoded bytes across direct,
+GET/POST bridge, module and JARM processing. Explicit field and aggregate
+limits still apply; oversized values are rejected without truncation. Tests
+cover an encoded 8000-byte request-line envelope, but larger codes, state or
+JARM values can exceed a deployment's proxy limits. Check the whole encoded
+callback when configuring those limits.
+
 The state-store entry is consumed once. Missing, expired, or already-used
 entries cannot complete login. A Form Post handle must also be valid and
 unused; passing the earlier POST checks does not replace the browser-binding
@@ -308,6 +321,11 @@ Binding data decoded from a JWT access token is observed payload data:
 shinyOAuth does not independently verify that access token's signature.
 This distinction also applies to mTLS certificate thumbprints. See the
 [advanced guide](advanced-security.html) for binding policies and setup.
+
+Token requests retain `redirect_uri` by default for OAuth 2.0 interoperability;
+[OAuth 2.1 draft 16 section 10.2](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16#section-10.2)
+describes this compatibility behavior. Selecting newer assertion or transport
+settings does not enable a separate global protocol-version switch.
 
 ### 9. Validate the ID token (OIDC)
 

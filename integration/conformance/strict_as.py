@@ -73,7 +73,51 @@ client_der = client_cert.public_bytes(serialization.Encoding.DER)
 seen = set()
 codes = {}
 pushed = {}
+refreshes = {}
+access_tokens = set()
 issuer = None
+
+
+def verify_client_assertion(params, path, profile, authorization):
+    require(not authorization and 'client_secret' not in params, 'single_client_auth')
+    require(params.get('client_assertion_type') ==
+            'urn:ietf:params:oauth:client-assertion-type:jwt-bearer', 'assertion_type')
+    h, p, s = params['client_assertion'].split('.')
+    header, claims = json.loads(unb64(h)), json.loads(unb64(p))
+    require(header.get('alg') == 'RS256', 'assertion_algorithm')
+    expected_type = 'client-authentication+jwt' if profile == 'oauth21' else 'JWT'
+    require(header.get('typ') == expected_type, 'assertion_header_type')
+    registered_key.verify(unb64(s), (h + '.' + p).encode(), padding.PKCS1v15(), hashes.SHA256())
+    require(claims.get('iss') == 'client' and claims.get('sub') == 'client', 'assertion_client')
+    expected_audience = issuer if profile == 'oauth21' or path == '/par' else issuer + path
+    require(claims.get('aud') == expected_audience, 'assertion_audience')
+    now = time.time()
+    require(now < claims.get('exp', 0) <= now + 305, 'assertion_expiry')
+    require(abs(now - claims.get('iat', 0)) < 60, 'assertion_issued_at')
+    require(bool(claims.get('jti')) and claims['jti'] not in seen, 'assertion_freshness')
+    seen.add(claims['jti'])
+
+
+def assertion_profile(claims):
+    scopes = claims.get('scope', '').split()
+    if 'jwt-oauth21' in scopes:
+        return 'oauth21'
+    if 'jwt-legacy' in scopes:
+        return 'legacy'
+    return None
+
+
+def token_response(claims, cnf=None):
+    cnf = cnf or {}
+    access = secrets.token_urlsafe(32)
+    access_tokens.add(access)
+    response = {'access_token': access, 'token_type': 'DPoP' if 'jkt' in cnf else 'Bearer',
+                'expires_in': 60, 'scope': claims.get('scope', ''), 'cnf': cnf}
+    if assertion_profile(claims):
+        refresh = secrets.token_urlsafe(32)
+        refreshes[refresh] = claims
+        response['refresh_token'] = refresh
+    return response
 
 
 def verify_jar(token):
@@ -159,6 +203,9 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     claims = verify_jar(params.get('request'))
                 if path == '/par':
+                    profile = assertion_profile(claims)
+                    if profile:
+                        verify_client_assertion(params, path, profile, self.headers.get('Authorization'))
                     handle = 'urn:strict:par:' + secrets.token_urlsafe(24)
                     pushed[handle] = claims
                     return self.respond(201, {'request_uri': handle, 'expires_in': 60})
@@ -172,12 +219,21 @@ class Handler(BaseHTTPRequestHandler):
                     response = {'response': signing + '.' + b64(server_key.sign(signing.encode(), padding.PKCS1v15(), hashes.SHA256()))}
                 return self.respond(302, {}, claims['redirect_uri'] + '?' + urlencode(response))
             if path == '/token':
+                if params.get('grant_type') == 'refresh_token':
+                    require(params.get('refresh_token') in refreshes, 'refresh_token')
+                    claims = refreshes[params['refresh_token']]
+                    verify_client_assertion(params, path, assertion_profile(claims), self.headers.get('Authorization'))
+                    del refreshes[params['refresh_token']]
+                    return self.respond(200, token_response(claims))
                 require(params.get('code') in codes, 'invalid_code')
                 claims = codes[params['code']]
                 require(params.get('client_id') == 'client', 'client_id')
                 require(params.get('redirect_uri') == claims['redirect_uri'], 'redirect_uri')
                 challenge = b64(hashlib.sha256(params.get('code_verifier', '').encode()).digest())
                 require(challenge == claims['code_challenge'], 'pkce_mismatch')
+                profile = assertion_profile(claims)
+                if profile:
+                    verify_client_assertion(params, path, profile, self.headers.get('Authorization'))
                 cnf = {}
                 if claims.get('dpop_jkt'):
                     verify_dpop(self.headers.get('DPoP'), claims['dpop_jkt'])
@@ -186,9 +242,14 @@ class Handler(BaseHTTPRequestHandler):
                     require(self.connection.getpeercert(binary_form=True) == client_der, 'mtls_certificate')
                     cnf = {'x5t#S256': b64(hashlib.sha256(client_der).digest())}
                 del codes[params['code']]
-                return self.respond(200, {'access_token': secrets.token_urlsafe(32),
-                    'token_type': 'DPoP' if 'jkt' in cnf else 'Bearer', 'expires_in': 60,
-                    'scope': claims.get('scope', ''), 'cnf': cnf})
+                return self.respond(200, token_response(claims, cnf))
+            if path in ('/legacy/introspect', '/oauth21/introspect', '/legacy/revoke', '/oauth21/revoke'):
+                profile = path.split('/')[1]
+                verify_client_assertion(params, path, profile, self.headers.get('Authorization'))
+                if path.endswith('/introspect'):
+                    return self.respond(200, {'active': params.get('token') in access_tokens})
+                access_tokens.discard(params.get('token'))
+                return self.respond(200, {})
             self.respond(404, {'error': 'unknown_endpoint'})
         except Exception as error:
             self.respond(400, {'error': 'invalid_request', 'reason': str(error) or type(error).__name__})

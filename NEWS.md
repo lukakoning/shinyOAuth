@@ -1,5 +1,33 @@
 # shinyOAuth (development version)
 
+* Added optional `check_oauth21()` configuration assessments targeting
+`draft-ietf-oauth-v2-1-16`, ruleset `1.0.0`. Reports distinguish mandatory
+configuration failures, unresolved prerequisites, recommendations and external
+evidence. Assessment performs no network or login operations and never enables
+automatic enforcement. OAuth 2.0 configurations remain available.
+
+* Added `client_assertion_typ`, including endpoint authentication overrides,
+with the existing `JWT` default and optional `client-authentication+jwt` type.
+Issuer audiences remain explicitly configurable through
+`client_assertion_audience`; legacy endpoint-audience defaults are preserved.
+
+* Added `compare_callback_issuer` to compare a supplied issuer while allowing
+absence. Existing explicit `enforce_callback_issuer = FALSE` retains its complete
+opt-out unless comparison is explicitly enabled. Required presence always
+compares the issuer; validated JARM does not need a redundant outer issuer.
+
+* Added `shinyOAuth.tls_min_version = NULL` (runtime default), `"1.2"`, or
+`"1.3"` across package HTTPS requests and async workers. Explicit minima preserve
+stronger caller constraints and custom trust roots, and reject incompatible
+maxima or disabled certificate verification.
+
+* Authorization URL composition rejects conflicting or repeated managed
+singleton parameters, emits matching fixed values once, and preserves fixed
+query bytes and repeated resource indicators. Resource request builders reject
+competing `access_token` transport in URLs or supported form bodies. Callback
+limits now share one resolver and default to 8192 decoded authorization-code
+bytes; explicit field and aggregate limits remain effective.
+
 * Added `oauth_ui()` for Shiny apps using URL-based OAuth callbacks. Wrap the
 app's existing UI with `oauth_ui(ui, id = "auth", client = client)` so
 shinyOAuth can handle the provider's response before the rest of the app loads.

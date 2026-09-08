@@ -91,6 +91,23 @@ Register the corresponding public key with your provider. For
 `client_assertion_audience` overrides the expected recipient if your provider
 requires a value other than the token request URL.
 
+For the client assertion profile referenced by OAuth 2.1 draft 16, select the
+trusted authorization-server issuer as the sole audience and optionally use
+the recommended explicit type:
+
+```{r, eval = FALSE}
+client@client_assertion_audience <- provider@issuer
+client@client_assertion_typ <- "client-authentication+jwt"
+```
+
+[RFC7523bis draft 11 section 4](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-rfc7523bis-11#section-4)
+requires the issuer audience and recommends this type. The package preserves
+the existing `JWT` type and request-endpoint audience defaults, including PAR's
+existing issuer handling. The checker treats audience mismatches as mandatory
+findings and legacy typing as an advisory. These settings affect client
+authentication assertions, including retries, and do not change JAR, JARM or ID
+token headers. The same settings can be selected in `endpoint_auth` overrides.
+
 Authentication can differ at PAR, introspection, and revocation endpoints.
 Discovery preserves their independent method and algorithm metadata; configure
 credentials and audiences to match each endpoint's registration agreement:
@@ -119,6 +136,32 @@ default, so confirm the configured method with your provider. PAR inherits the
 token authentication settings unless explicitly overridden. `extra_token_headers`
 now applies only to exchange and refresh: opt in through `extra_headers` at
 each other endpoint that should receive those headers, even on the same origin.
+
+## Issuer comparison and transport policy
+
+`compare_callback_issuer = TRUE` compares a supplied callback `iss` exactly
+against `provider@issuer`. Pair it with `enforce_callback_issuer = FALSE` when
+absence is permitted for your older provider. Required presence always implies
+comparison. An explicitly supplied legacy `enforce_callback_issuer = FALSE`
+retains complete opt-out unless comparison is explicitly enabled. Otherwise,
+issuer-configured clients enable comparison automatically.
+
+Participating clients require `iss` when the provider advertises RFC 9207
+support. Validated JARM supplies its own issuer and does not require a redundant
+outer value. Multi-server applications must retain their selected issuer or
+distinct-route defense. The expected issuer comes from trusted configuration;
+it is not inferred from a token URL or normalized before comparison.
+See [RFC 9207 section 2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4).
+
+`options(shinyOAuth.tls_min_version = "1.2")` requires TLS 1.2 or later on
+package HTTPS requests; `"1.3"` selects a higher minimum and `NULL` preserves
+runtime defaults. Configure it before discovery or login. The policy preserves
+stronger supplied minima, compatible maxima and custom CA roots. It also
+applies in async workers and participates in pending-login policy checks.
+An absent option is insufficient evidence about an actual handshake; the
+checker reports older unresolved backend defaults as unknown. Browser/proxy
+hops and future resource requests need separate validation. Details and
+constraints are in [package options](package-options.html#http-settings-timeout-retries-user-agent).
 
 ## Callback pages and application scripts
 

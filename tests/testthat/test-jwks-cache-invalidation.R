@@ -1,13 +1,13 @@
 test_that("jwks_cache_key changes with pins and mode; validate_jwks used to evict incompatible entries", {
-  # Build a minimal JWKS and two pins
-  rsa_jwk <- list(kty = "RSA", n = "n", e = "AQAB", kid = "k1")
+  # Use valid fixture material so pinning failures cannot be mistaken for a
+  # malformed placeholder key or hidden behind a generic skip.
+  key <- openssl::read_key(mtls_pem_fixture("client-key.pem"))
+  rsa_jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey))
+  rsa_jwk$kid <- "k1"
   jwks <- list(keys = list(rsa_jwk))
 
-  # Compute actual pin for our key using helper; if it errors, skip
-  tp <- try(shinyOAuth:::compute_jwk_thumbprint(rsa_jwk), silent = TRUE)
-  if (inherits(tp, "try-error")) {
-    skip("thumbprint not available")
-  }
+  tp <- shinyOAuth:::compute_jwk_thumbprint(rsa_jwk)
+  expect_silent(shinyOAuth:::validate_jwks(jwks, pins = tp, pin_mode = "all"))
 
   cache <- cachem::cache_mem(max_age = 3600)
   issuer <- "https://issuer.example.com"
@@ -33,11 +33,13 @@ test_that("jwks_cache_key changes with pins and mode; validate_jwks used to evic
     class = "shinyOAuth_parse_error"
   )
 
-  # Storing under one policy does not satisfy 'all' with an extra fake key
+  # Storing under one policy does not satisfy 'all' with another valid key.
+  second_jwk <- jsonlite::fromJSON(write_test_jwk(openssl::ec_keygen()$pubkey))
+  second_jwk$kid <- "k2"
   jwks2 <- list(
     keys = list(
       rsa_jwk,
-      list(kty = "EC", crv = "P-256", x = "x", y = "y", kid = "k2")
+      second_jwk
     )
   )
   cache$set(k_any_pin, list(jwks = jwks2, fetched_at = as.numeric(Sys.time())))

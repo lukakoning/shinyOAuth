@@ -29,6 +29,7 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
   issuer <- jsonlite::fromJSON(ready[[1]])$issuer
   withr::local_envvar(CURL_CA_BUNDLE = file.path(root, "ca.pem"))
   withr::local_options(list(
+    shinyOAuth.tls_min_version = "1.2",
     shinyOAuth.timeout = 5,
     shinyOAuth.otel_tracing_enabled = FALSE,
     shinyOAuth.otel_logging_enabled = FALSE
@@ -120,8 +121,42 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
   replay <- get(url)
   testthat::expect_identical(httr2::resp_body_json(replay)$reason, "jar_replay")
 
-  for (mode in c("dpop", "dpop-par", "mtls", "mtls-par", "jarm")) {
+  for (mode in c(
+    "dpop",
+    "dpop-par",
+    "mtls",
+    "mtls-par",
+    "jarm",
+    "jwt-legacy",
+    "jwt-legacy-par",
+    "jwt-oauth21",
+    "jwt-oauth21-par"
+  )) {
     configured <- client
+    jwt_profile <- startsWith(mode, "jwt-")
+    if (jwt_profile) {
+      profile <- if (grepl("oauth21", mode)) "oauth21" else "legacy"
+      configured@provider@issuer_thus_oidc <- FALSE
+      configured@provider@token_auth_style <- "private_key_jwt"
+      configured@client_assertion_alg <- "RS256"
+      configured@scopes <- paste0("jwt-", profile)
+      configured@provider@introspection_url <- paste0(
+        issuer,
+        "/",
+        profile,
+        "/introspect"
+      )
+      configured@provider@revocation_url <- paste0(
+        issuer,
+        "/",
+        profile,
+        "/revoke"
+      )
+      if (profile == "oauth21") {
+        configured@client_assertion_audience <- issuer
+        configured@client_assertion_typ <- "client-authentication+jwt"
+      }
+    }
     if (grepl("dpop", mode)) {
       configured@dpop_private_key <- openssl::ec_keygen("P-256")
       configured@dpop_require_access_token <- TRUE
@@ -144,11 +179,21 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
       configured@response_mode <- "query.jwt"
       configured@jarm_signed_response_alg <- "RS256"
     }
+    if (jwt_profile) {
+      assessment <- shinyOAuth::check_oauth21(
+        configured,
+        context = list(operations = c("introspection", "revocation"))
+      )
+      testthat::expect_identical(
+        assessment$configuration_compliant,
+        profile == "oauth21"
+      )
+    }
     url <- shinyOAuth::prepare_call(configured, browser_token = browser)
     response <- get(url)
     testthat::expect_identical(httr2::resp_status(response), 302L, info = mode)
     callback <- query(httr2::resp_header(response, "location"))
-    if (mode != "jarm") {
+    if (mode != "jarm" && !jwt_profile) {
       state <- shinyOAuth:::state_payload_decrypt_validate(
         configured,
         callback$state
@@ -202,5 +247,34 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
       if (grepl("dpop", mode)) "DPoP" else "Bearer"
     )
     testthat::expect_gt(token@expires_at, as.numeric(Sys.time()))
+    if (jwt_profile) {
+      refreshed <- shinyOAuth::refresh_token(configured, token, async = FALSE)
+      testthat::expect_false(identical(
+        refreshed@refresh_token,
+        token@refresh_token
+      ))
+      testthat::expect_true(
+        shinyOAuth::introspect_token(
+          configured,
+          refreshed,
+          async = FALSE
+        )$active
+      )
+      testthat::expect_true(
+        shinyOAuth::revoke_token(
+          configured,
+          refreshed,
+          which = "access",
+          async = FALSE
+        )$revoked
+      )
+      testthat::expect_false(
+        shinyOAuth::introspect_token(
+          configured,
+          refreshed,
+          async = FALSE
+        )$active
+      )
+    }
   }
 })
