@@ -32,10 +32,10 @@ A \code{shinyOAuth_oauth21_assessment} list with \code{configuration_compliant},
 remain visible separately.
 }
 \description{
-Optional, read-only assessment of the package's authorization-code and refresh
-client configuration. It makes no requests, creates no login state, and does
-not warn or enforce its findings. Existing OAuth 2.0 configurations remain
-available independently of this assessment.
+This function inspects a configured \link{OAuthClient} and its \link{OAuthProvider} for
+compliance with the OAuth 2.1 draft 16 (ruleset \verb{1.0.0}) specification. It
+reports configuration gaps, unresolved external prerequisites, and recommendations
+without changing the configuration or making requests.
 }
 \details{
 Ruleset \verb{1.0.0} covers code/refresh, enabled PAR, required UserInfo and

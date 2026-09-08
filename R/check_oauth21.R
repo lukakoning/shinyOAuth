@@ -1,9 +1,9 @@
 #' Assess an OAuth configuration against a pinned OAuth 2.1 draft
 #'
-#' Optional, read-only assessment of the package's authorization-code and refresh
-#' client configuration. It makes no requests, creates no login state, and does
-#' not warn or enforce its findings. Existing OAuth 2.0 configurations remain
-#' available independently of this assessment.
+#' This function inspects a configured [OAuthClient] and its [OAuthProvider] for
+#' compliance with the OAuth 2.1 draft 16 (ruleset `1.0.0`) specification. It
+#' reports configuration gaps, unresolved external prerequisites, and recommendations
+#' without changing the configuration or making requests.
 #'
 #' @param client An [OAuthClient] or [OAuthProvider]. Provider-only assessments
 #'   are partial and cannot establish missing client settings.
