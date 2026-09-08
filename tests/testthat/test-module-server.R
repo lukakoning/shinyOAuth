@@ -1291,7 +1291,7 @@ testthat::test_that("oversized callback query params are rejected", {
         {
           values$.process_query(paste0(
             "?code=",
-            strrep("a", 5000),
+            strrep("a", 8193),
             "&state=",
             enc
           ))
@@ -1353,7 +1353,7 @@ testthat::test_that("oversized raw callback query string is rejected", {
         "?code=ok&state=",
         enc,
         "&pad=",
-        strrep("x", 25000)
+        strrep("x", 50000)
       )
 
       called <- FALSE

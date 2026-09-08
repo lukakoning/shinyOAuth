@@ -333,6 +333,9 @@ test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
 
 test_that("handle_callback rejects oversized authorization code", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  local_mocked_bindings(swap_code_for_token_set = function(...) {
+    stop("Unexpected code exchange")
+  })
 
   tok <- valid_browser_token()
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -341,7 +344,7 @@ test_that("handle_callback rejects oversized authorization code", {
   expect_error(
     shinyOAuth:::handle_callback(
       cli,
-      code = strrep("a", 5000),
+      code = strrep("a", 8193),
       payload = enc,
       browser_token = tok
     ),
