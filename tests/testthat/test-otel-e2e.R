@@ -21,6 +21,46 @@ otel_e2e <- function(desc, code) {
   })
 }
 
+otel_e2e("issuer URLs share the privacy policy across hooks, logs, and spans", {
+  cli <- make_test_client(use_nonce = FALSE)
+  cli@provider@issuer <- "https://example.com/synthetic-private-tenant"
+  events <- list()
+  log_file <- tempfile(fileext = ".jsonl")
+  withr::local_envvar(c(
+    OTEL_R_LOGS_EXPORTER = "otlp/file",
+    OTEL_LOGS_EXPORTER = "otlp/file",
+    OTEL_EXPORTER_OTLP_LOGS_FILE = log_file,
+    OTEL_EXPORTER_OTLP_LOGS_FILE_FLUSH_COUNT = "1",
+    OTEL_EXPORTER_OTLP_LOGS_FILE_FLUSH_INTERVAL = "1ms"
+  ))
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  withr::local_options(
+    shinyOAuth.telemetry_path_scrubber = NULL,
+    shinyOAuth.audit_hook = function(event) {
+      events[[length(events) + 1L]] <<- event
+    }
+  )
+  record <- otelsdk::with_otel_record({
+    with_otel_span("issuer-privacy", {
+      audit_event("userinfo", context = list(issuer = cli@provider@issuer))
+      otel_set_span_attributes(attributes = list(
+        oauth.callback.issuer = cli@provider@issuer
+      ))
+    }, attributes = otel_client_attributes(cli))
+  })
+  attrs <- record$traces[["issuer-privacy"]]$attributes
+  expect_identical(attrs[["oauth.provider.issuer"]], "https://example.com/")
+  expect_identical(attrs[["oauth.callback.issuer"]], "https://example.com/")
+  expect_identical(attrs[["oauth.provider.issuer_digest"]],
+                   string_digest(cli@provider@issuer))
+  expect_length(events, 1L)
+  expect_false(any(grepl("synthetic-private-tenant", unlist(events))))
+  expect_true(file.exists(log_file))
+  logs <- readLines(log_file, warn = FALSE)
+  expect_true(length(logs) > 0L)
+  expect_false(any(grepl("synthetic-private-tenant", logs)))
+})
+
 otel_named_spans <- function(traces, name) {
   Filter(function(span) identical(span$name %||% NA_character_, name), traces)
 }

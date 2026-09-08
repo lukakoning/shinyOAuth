@@ -200,6 +200,7 @@ otel_attributes <- function(x) {
     return(NULL)
   }
 
+  x <- sanitize_event_url_fields(x)
   attrs <- list()
   for (nm in names(x)) {
     if (!is_valid_string(nm)) {
@@ -1005,6 +1006,7 @@ otel_client_attributes <- function(
     list(
       oauth.provider.name = provider,
       oauth.provider.issuer = issuer,
+      oauth.provider.issuer_digest = string_digest(issuer),
       oauth.client_id_digest = client_id_digest,
       shiny.module_id = module_id,
       oauth.async = async,
@@ -1111,7 +1113,7 @@ otel_set_span_attributes <- function(span = NULL, attributes = list()) {
     return(invisible(NULL))
   }
 
-  attributes <- compact_list(attributes)
+  attributes <- compact_list(sanitize_event_url_fields(attributes))
   if (!length(attributes)) {
     return(invisible(NULL))
   }
