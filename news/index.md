@@ -2,38 +2,12 @@
 
 ## shinyOAuth (development version)
 
-- Added optional
+- Added read-only
   [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-  configuration assessments targeting `draft-ietf-oauth-v2-1-16`,
-  ruleset `1.0.0`. Reports distinguish mandatory configuration failures,
-  unresolved prerequisites, recommendations and external evidence.
-  Assessment performs no network or login operations and never enables
-  automatic enforcement. OAuth 2.0 configurations remain available.
-
-- Added `client_assertion_typ`, including endpoint authentication
-  overrides, with the existing `JWT` default and optional
-  `client-authentication+jwt` type. Issuer audiences remain explicitly
-  configurable through `client_assertion_audience`; legacy
-  endpoint-audience defaults are preserved.
-
-- Added `compare_callback_issuer` to compare a supplied issuer while
-  allowing absence. Existing explicit `enforce_callback_issuer = FALSE`
-  retains its complete opt-out unless comparison is explicitly enabled.
-  Required presence always compares the issuer; validated JARM does not
-  need a redundant outer issuer.
-
-- Added `shinyOAuth.tls_min_version = NULL` (runtime default), `"1.2"`,
-  or `"1.3"` across package HTTPS requests and async workers. Explicit
-  minima preserve stronger caller constraints and custom trust roots,
-  and reject incompatible maxima or disabled certificate verification.
-
-- Authorization URL composition rejects conflicting or repeated managed
-  singleton parameters, emits matching fixed values once, and preserves
-  fixed query bytes and repeated resource indicators. Resource request
-  builders reject competing `access_token` transport in URLs or
-  supported form bodies. Callback limits now share one resolver and
-  default to 8192 decoded authorization-code bytes; explicit field and
-  aggregate limits remain effective.
+  configuration assessments for OAuth 2.1 draft 16 (ruleset `1.0.0`).
+  Reports separate mandatory configuration failures, unresolved external
+  prerequisites, and recommendations without changing the configuration
+  or making requests. OAuth 2.0 remains supported.
 
 - Added
   [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
@@ -45,13 +19,12 @@
   Apps using form-post callbacks should continue to use
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
 
-- Browser and callback handling is more secure. Each login uses an
-  origin-scoped browser binding that is excluded from URLs and
-  bookmarks. Callbacks use bounded, short-lived one-time handles;
-  external state-store records are encrypted at rest, and shared custom
-  caches must support atomic `set_if_absent`. Callback routes, inputs,
-  size limits, and stored security policy are checked before state is
-  consumed.
+- Browser and callback handling is more secure. Browser bindings are
+  isolated by origin, tab, login, and app/module, and excluded from URLs
+  and bookmarks. Callback routes, state, and input limits are validated
+  consistently; authorization codes have an 8192-byte default limit.
+  Shared callback state is encrypted at rest and must be stored
+  atomically.
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
   also supports trusted-proxy request URI resolution.
 
@@ -69,6 +42,9 @@
   JARM or RFC 9207 issuer identification, and distinct per-server
   redirect URIs whose browser-visible routes are verified by
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+  `compare_callback_issuer` can also compare a supplied callback issuer
+  without requiring older providers to send one; required issuer and
+  JARM validation remain enforced.
 
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)/`OAuthClient`
   and
@@ -133,7 +109,8 @@
     no longer defaults `client_id` or `client_secret` from
     `OAUTH_CLIENT_ID`/`OAUTH_CLIENT_SECRET`. An omitted secret is
     treated as absent, supporting public and `private_key_jwt` clients;
-    printing also handles an explicitly empty secret.
+    printed client and provider objects redact credentials and sensitive
+    URL components.
   - Public clients must use PKCE.
   - New `endpoint_auth` settings can override credentials,
     authentication style, assertion details, mTLS files, and headers
@@ -141,6 +118,9 @@
     endpoint authentication methods and signing algorithms are retained
     in `endpoint_auth_metadata` and negotiated independently; token
     exchange and refresh retain the top-level settings.
+  - `client_assertion_typ`, including per-endpoint overrides, supports
+    the existing `JWT` default and `client-authentication+jwt`;
+    assertion audiences remain separately configurable.
   - Low-level `OAuthProvider` and `OAuthClient` constructors now use the
     same OIDC and DPoP security defaults as their helper constructors
     and reject malformed security booleans and assurance flags.
@@ -211,18 +191,18 @@
 - JWKS discovery and key handling are stricter. Malformed or insecure
   keys are rejected, configured host and pinning policies apply
   consistently, and signing key rotation is handled even when a provider
-  reuses a key ID. Ed25519 keys are supported for verification and for
-  client assertions, Request Objects, and DPoP; RSA signing and
-  encryption keys must be at least 2048 bits. Generic OAuth discovery
-  can fall back to OIDC well-known locations when needed.
+  reuses a key ID. Ed25519 keys and the `EdDSA` and `Ed25519` algorithm
+  identifiers are supported for verification, client assertions, Request
+  Objects, and DPoP; RSA signing and encryption keys must be at least
+  2048 bits. Generic OAuth discovery can fall back to OIDC well-known
+  locations when needed.
 
-- OIDC validation is stricter. UserInfo must contain the same `sub` as
-  the validated ID token, regardless of any custom application identity
-  mapping. Additional ID-token audiences beyond the client ID must be
-  listed in `trusted_id_token_audiences`, and multi-audience tokens
-  still require the correct `azp`. Invalid claim types, missing required
-  values, inconsistent time claims, and unsuccessful or incorrectly
-  typed UserInfo responses are rejected.
+- OIDC validation is stricter. UserInfo must match the validated ID
+  token’s `sub`, with JSON claim types preserved during policy checks.
+  Additional ID-token audiences must be explicitly trusted, and
+  multi-audience tokens require the correct `azp`. Invalid, missing, or
+  inconsistent claims and unsuccessful or incorrectly typed UserInfo
+  responses are rejected.
 
 - Authentication lifetime and refresh handling is more predictable:
 
@@ -232,20 +212,25 @@
     Token expiry is measured from the start of an exchange, and
     introspection can only shorten it.
   - Client-level introspection cannot be disabled per call. Concurrent
-    asynchronous refreshes are combined, and proactive refresh backs off
+    asynchronous refreshes are combined, stale login or refresh results
+    cannot replace the active token, and proactive refresh backs off
     after failures.
 
-- Long token lifetimes and future timestamps no longer overflow R’s
-  integer range. Shiny module timers safely handle multi-year access
-  tokens and reauthentication periods. PAR expiry metadata preserves
-  large numeric lifetimes, and DPoP timestamps remain valid beyond 2038.
+- Long token lifetimes, future timestamps, and oversized numeric
+  settings no longer overflow R’s integer range. Shiny module timers
+  safely handle multi-year access tokens and reauthentication periods.
+  PAR expiry metadata preserves large numeric lifetimes, and DPoP
+  timestamps remain valid beyond 2038.
 
 - DPoP-bound tokens are handled consistently by UserInfo and resource
   helpers. They cannot be downgraded to Bearer, and valid nonce
   challenges are retried safely.
 
-- JAR and PAR handling has been hardened:
+- Authorization request, JAR, and PAR handling has been hardened:
 
+  - Authorization URLs reject conflicting or repeated package-managed
+    parameters while preserving matching fixed query parameters and
+    repeated resource indicators.
   - Client-hosted JAR `request_uri` values require HTTPS regardless of
     the general non-HTTPS policy. Request Objects are published through
     short-lived, one-time handles; apps using this mode must wrap their
@@ -266,9 +251,9 @@
     `mtls_certificate_bound_access_tokens = TRUE` and set
     `mtls_require_observed_cnf = FALSE`; observed confirmation must
     still match.
-  - Registration preserves certificate identity and issuer ordering,
-    accepts trailing-compressed IPv6 SANs, requires explicit SAN values
-    when certificate types are unavailable, and requires HTTPS
+  - Client certificate chains must be leaf-first. Registration validates
+    and normalizes explicit subject/SAN identifiers, preserves issuer
+    ordering, accepts trailing-compressed IPv6 SANs, and requires HTTPS
     registration JWKS URIs.
   - Unsupported PEM-based mTLS on Windows Schannel now produces a
     targeted diagnostic instead of failing later in request setup.
@@ -280,9 +265,13 @@
     activity, and scopes before use. Form encoding is handled
     consistently, and OAuth parameter overrides replace existing values
     rather than creating duplicates.
-  - Resource helpers support call-specific `resource_hosts` allowlists
-    and consistently apply redirect and HTTP-method policies. Retries
-    honor bounded `Retry-After` values.
+  - Resource helpers reject competing `access_token` query or form
+    values, support call-specific `resource_hosts` allowlists, and
+    consistently apply redirect and HTTP-method policies. Retries honor
+    bounded `Retry-After` values.
+  - `shinyOAuth.tls_min_version` can require TLS 1.2 or 1.3 across
+    package HTTPS requests and async workers; leaving it unset retains
+    the TLS backend defaults.
 
 - Audit and OpenTelemetry output is safer by default:
 
@@ -292,7 +281,7 @@
     least 32 bytes.
   - Sensitive request, callback, credential, and provider-controlled
     data is omitted, redacted, or summarized. OpenTelemetry uses an
-    attribute allowlist; set
+    attribute allowlist; span URLs follow the same privacy policy. Set
     `shinyOAuth.otel_include_authorization_details = TRUE` to include
     authorization details.
   - Shiny test exports expose credential presence and assurance metadata
