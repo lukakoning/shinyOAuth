@@ -28,7 +28,25 @@ test_that("audit events fire on malformed state tokens", {
     class = "shinyOAuth_state_error"
   )
 
-  # 3) Cache key invalid state
+  # 3) Oversized envelope versions fail cleanly without integer overflow
+  huge_version_env <- jsonlite::toJSON(
+    list(
+      v = as.double(.Machine$integer.max) + 1,
+      iv = "?",
+      tg = "?",
+      ct = "?"
+    ),
+    auto_unbox = TRUE
+  )
+  huge_version_token <- base64url_encode(charToRaw(huge_version_env))
+  withr::local_options(list(warn = 2))
+  expect_error(
+    state_decrypt_gcm(huge_version_token, key = key),
+    "state token version mismatch",
+    class = "shinyOAuth_state_error"
+  )
+
+  # 4) Cache key invalid state
   expect_error(state_cache_key(""), class = "shinyOAuth_state_error")
 
   # Assert at least one audit_state_parse_failure event was emitted

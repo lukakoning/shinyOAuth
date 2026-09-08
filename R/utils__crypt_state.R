@@ -251,6 +251,27 @@ state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
   base64url_encode(charToRaw(jsonlite::toJSON(token_obj, auto_unbox = TRUE)))
 }
 
+#' Normalize a state-envelope version
+#'
+#' @param value Candidate version value.
+#' @return A non-negative integer or `NA_integer_` when invalid.
+#' @keywords internal
+#' @noRd
+normalize_state_envelope_version <- function(value) {
+  if (
+    !is.numeric(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !is.finite(value) ||
+      value < 0 ||
+      value > .Machine$integer.max ||
+      value != trunc(value)
+  ) {
+    return(NA_integer_)
+  }
+  as.integer(value)
+}
+
 #' Internal: decrypt and validate the compact state GCM envelope
 #'
 #' Decodes the outer base64url wrapper, validates the version and envelope
@@ -414,17 +435,18 @@ state_decrypt_gcm <- function(
       context = list(phase = "decrypt")
     )
   }
+  found_version <- normalize_state_envelope_version(obj[["v"]])
+  expected_version <- normalize_state_envelope_version(expected_version)
   if (
-    !identical(
-      as.integer(obj[["v"]]),
-      as.integer(expected_version)
-    )
+    is.na(found_version) ||
+      is.na(expected_version) ||
+      !identical(found_version, expected_version)
   ) {
     audit_fail(
       "token_version_mismatch",
       details = list(
-        found_version = as.integer(obj[["v"]]),
-        expected_version = as.integer(expected_version)
+        found_version = found_version,
+        expected_version = expected_version
       )
     )
     state_fail(
