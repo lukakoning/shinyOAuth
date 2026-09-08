@@ -1,4 +1,5 @@
 ^.*\.Rproj$
+^\.git$
 ^\.Rprofile$
 ^\.Rproj\.user$
 ^\.venv$
