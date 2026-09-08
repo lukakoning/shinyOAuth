@@ -65,8 +65,9 @@
 #'
 #' @param issuer The OIDC issuer base URL (including scheme), e.g.,
 #'   "https://login.example.com". The standard discovery-document URL ending
-#'   in `/.well-known/openid-configuration` is also accepted and normalized
-#'   back to the issuer base URL before validation and fetch.
+#'   in `/.well-known/openid-configuration` is also accepted. Its discovered
+#'   issuer must map back to that metadata location; the exact returned issuer,
+#'   including any trailing slash, is retained for subsequent validation.
 #' @param name Optional friendly provider name. Defaults to the issuer hostname
 #' @param use_pkce Logical, whether to use PKCE for this provider. Defaults to
 #'   TRUE. Public clients require PKCE. Setting FALSE also prevents automatic
@@ -104,8 +105,9 @@
 #'  discovery document's `issuer` against the input `issuer`.
 #'
 #'  - `"url"` (default): require the issuer used for discovery to match
-#'    exactly after normalizing a full discovery-document input back to its
-#'    issuer base URL, including any trailing slash (recommended).
+#'    exactly, including any trailing slash (recommended). For a full discovery
+#'    URL input, require the discovered issuer's standard metadata location to
+#'    match that URL instead.
 #'  - `"host"`: compare only scheme + host (explicit opt-out; not recommended).
 #'  - `"none"`: do not validate issuer consistency.
 #'
@@ -142,7 +144,9 @@ oauth_provider_oidc_discover <- function(
   ...
 ) {
   issuer_match <- match.arg(issuer_match)
+  original_input <- issuer
   issuer <- .discover_normalize_issuer_input(issuer)
+  document_input <- !identical(original_input, issuer)
 
   # If callers explicitly turn off ID
   # token validation and do not explicitly opt back into nonce handling,
@@ -174,8 +178,18 @@ oauth_provider_oidc_discover <- function(
   endpoints <- .discover_extract_endpoints(disc)
 
   # 5) Resolve issuer (prefer discovery) and normalize host
+  expected_issuer <- issuer
+  if (document_input && identical(issuer_match, "url")) {
+    # Discovery §4.1 removes the issuer's terminal slash when constructing the
+    # metadata URL. That URL cannot distinguish the two exact identifiers.
+    .discover_assert_valid_issuer(disc[["issuer"]])
+    if (!identical(rtrim_slash(disc[["issuer"]]), issuer)) {
+      err_config("OIDC discovery issuer mismatch: issuer does not map to the requested metadata location")
+    }
+    expected_issuer <- disc[["issuer"]]
+  }
   iss <- validate_discovery_issuer(
-    issuer_input = issuer,
+    issuer_input = expected_issuer,
     issuer_discovered = disc[["issuer"]],
     issuer_match = issuer_match
   )
