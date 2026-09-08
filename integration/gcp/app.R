@@ -5,6 +5,12 @@
 # - OAUTH_REDIRECT_URI (must exactly match your Cloud Run URL registered in GitHub OAuth app)
 
 library(shiny)
+
+# Standalone fallback for R 4.1-4.3 (base exports this only since R 4.4).
+`%||%` <- function(x, fallback) {
+  if (is.null(x)) fallback else x
+}
+
 library(shinyOAuth)
 
 # Provider and client configured via env vars

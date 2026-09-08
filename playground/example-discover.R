@@ -1,6 +1,12 @@
 devtools::load_all()
 
 library(shiny)
+
+# Standalone fallback for R 4.1-4.3 (base exports this only since R 4.4).
+`%||%` <- function(x, fallback) {
+  if (is.null(x)) fallback else x
+}
+
 library(shinyjs)
 
 # Configure provider and client (Google OIDC)

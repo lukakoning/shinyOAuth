@@ -4,6 +4,12 @@ options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 
 library(shiny)
 
+# Standalone fallback for R 4.1-4.3 (base exports this only since R 4.4).
+`%||%` <- function(x, fallback) {
+  if (is.null(x)) fallback else x
+}
+
+
 # Configure provider and client (Auth0)
 provider <- oauth_provider_auth0(
   domain = Sys.getenv("AUTH0_OAUTH_DOMAIN")
