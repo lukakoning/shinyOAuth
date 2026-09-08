@@ -72,6 +72,11 @@ oauth_client_mtls_registration <- function(
       "{.arg tls_client_auth_value} must be NULL or a single non-empty string."
     )
   }
+  if (!is.null(tls_client_auth_value)) {
+    tls_client_auth_value <- normalize_mtls_registration_alt_name_value(
+      tls_client_auth_type, tls_client_auth_value
+    )
+  }
   if (!is.null(jwks_uri) && !is_valid_string(jwks_uri)) {
     err_input(
       "{.arg jwks_uri} must be NULL or a single non-empty string."
@@ -244,7 +249,9 @@ resolve_mtls_registration_identifier_value <- function(
   tls_client_auth_value = NULL
 ) {
   if (is_valid_string(tls_client_auth_value)) {
-    return(trimws(tls_client_auth_value))
+    return(normalize_mtls_registration_alt_name_value(
+      tls_client_auth_type, tls_client_auth_value
+    ))
   }
 
   cert_info <- read_mtls_registration_certificate_info(oauth_client)
@@ -410,6 +417,9 @@ parse_certificate_alt_name <- function(alt_name) {
 #' @keywords internal
 #' @noRd
 normalize_mtls_registration_alt_name_value <- function(type, value) {
+  if (!is_valid_string(value) || grepl("[[:cntrl:]]", value, perl = TRUE)) {
+    err_input("mTLS registration identifiers must be non-empty strings without control characters")
+  }
   normalized <- trimws(as.character(value %||% ""))
   if (!nzchar(normalized)) {
     err_input("Certificate SAN values must be non-empty strings")
@@ -456,7 +466,7 @@ normalize_mtls_registration_ip_literal <- function(value) {
 
   err_input(paste(
     "Could not normalize certificate SAN IP value to dotted-decimal IPv4 or",
-    "RFC 5952 IPv6 text; pass tls_client_auth_value explicitly."
+    "RFC 5952 IPv6 text."
   ))
 }
 
@@ -470,6 +480,9 @@ normalize_mtls_registration_ip_literal <- function(value) {
 #' @keywords internal
 #' @noRd
 normalize_mtls_registration_ipv4_literal <- function(value) {
+  if (!grepl("^[0-9]{1,3}(\\.[0-9]{1,3}){3}$", value, perl = TRUE)) {
+    err_input("Invalid IPv4 SAN literal")
+  }
   parts <- strsplit(value, ".", fixed = TRUE)[[1]]
   if (length(parts) != 4L || !all(grepl("^[0-9]{1,3}$", parts, perl = TRUE))) {
     err_input("Invalid IPv4 SAN literal")
