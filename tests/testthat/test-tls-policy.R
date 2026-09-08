@@ -95,35 +95,87 @@ test_that("TLS policy changes invalidate the pending transaction policy", {
   expect_false(identical(before, state_client_policy_fingerprint(client)))
 })
 
-test_that("explicit TLS minima interoperate with local mTLS and custom trust roots", {
-  python <- Sys.which("python3")
-  if (!nzchar(python)) {
-    python <- Sys.which("python")
-  }
-  skip_if(!nzchar(python), "Python is required for the loopback TLS fixture")
-  server <- processx::process$new(
-    python,
-    mtls_pem_fixture("roundtrip-server.py"),
-    stdout = "|",
-    stderr = "|"
+test_that("TLS fixture capability handling preserves transport errors and minima", {
+  req <- httr2::request("https://127.0.0.1")
+  failure <- rlang::error_cnd(
+    "httr2_failure",
+    parent = rlang::error_cnd("curl_error_not_built_in")
   )
-  withr::defer(server$kill())
-  port <- wait_for_mtls_server_port(server)
-  client <- oauth_client(
-    provider = make_test_provider(use_nonce = FALSE),
-    client_id = "tls",
-    redirect_uri = "http://localhost:8100",
-    mtls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
-    mtls_client_key_file = mtls_pem_fixture("client-key.pem"),
-    mtls_client_ca_file = mtls_pem_fixture("server-cert.pem")
+  versions <- integer()
+  testthat::local_mocked_bindings(
+    req_perform = function(req, ...) {
+      versions <<- c(versions, req$options$sslversion)
+      stop(failure)
+    },
+    .package = "httr2"
   )
-  for (minimum in c("1.2", "1.3")) {
-    withr::local_options(list(shinyOAuth.tls_min_version = minimum))
-    req <- httr2::request(paste0("https://127.0.0.1:", port, "/"))
-    req <- req_apply_mtls_client_certificate(req, client)
-    expect_identical(
-      httr2::resp_body_string(req_perform_bounded(req)),
-      "client certificate accepted"
+  withr::local_options(list(shinyOAuth.tls_min_version = "1.3"))
+  expect_condition(req_perform_tls_fixture(req, "1.3"), class = "skip")
+  withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
+  err <- expect_error(
+    req_perform_tls_fixture(req, "1.2"),
+    class = "httr2_failure"
+  )
+  expect_identical(err$parent, failure$parent)
+  withr::local_options(list(shinyOAuth.tls_min_version = "1.3"))
+  for (cause in c(
+    "curl_error_ssl_connect_error",
+    "curl_error_peer_failed_verification",
+    "curl_error_couldnt_connect"
+  )) {
+    failure <- rlang::error_cnd(
+      "httr2_failure",
+      parent = rlang::error_cnd(cause)
     )
+    err <- expect_error(
+      req_perform_tls_fixture(req, "1.3"),
+      class = "httr2_failure"
+    )
+    expect_identical(err$parent, failure$parent)
   }
+  # Each call reaches the transport once, with its original minimum intact.
+  expect_identical(versions, c(7L, 6L, 7L, 7L, 7L))
 })
+
+for (minimum in c("1.2", "1.3")) {
+  test_that(
+    paste0(
+      "TLS ",
+      minimum,
+      " minimum interoperates with local mTLS and custom trust roots"
+    ),
+    {
+      python <- Sys.which("python3")
+      if (!nzchar(python)) {
+        python <- Sys.which("python")
+      }
+      skip_if(
+        !nzchar(python),
+        "Python is required for the loopback TLS fixture"
+      )
+      server <- processx::process$new(
+        python,
+        mtls_pem_fixture("roundtrip-server.py"),
+        stdout = "|",
+        stderr = "|"
+      )
+      withr::defer(server$kill())
+      port <- wait_for_mtls_server_port(server)
+      client <- oauth_client(
+        provider = make_test_provider(use_nonce = FALSE),
+        client_id = "tls",
+        redirect_uri = "http://localhost:8100",
+        mtls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
+        mtls_client_key_file = mtls_pem_fixture("client-key.pem"),
+        mtls_client_ca_file = mtls_pem_fixture("server-cert.pem")
+      )
+      withr::local_options(list(shinyOAuth.tls_min_version = minimum))
+      req <- httr2::request(paste0("https://127.0.0.1:", port, "/"))
+      req <- req_apply_mtls_client_certificate(req, client)
+      expect_identical(
+        httr2::resp_body_string(req_perform_tls_fixture(req, minimum)),
+        "client certificate accepted"
+      )
+    }
+  )
+}
