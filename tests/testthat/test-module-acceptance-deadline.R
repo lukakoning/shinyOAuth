@@ -21,7 +21,9 @@ for (async in c(FALSE, TRUE)) {
         result
       },
       async_dispatch = function(...) {
-        promises::promise(function(resolve, reject) finish <<- resolve)
+        promises::promise(function(resolve, reject) {
+          finish <<- resolve
+        })
       },
       .package = "shinyOAuth"
     )
@@ -71,7 +73,9 @@ for (async in c(FALSE, TRUE)) {
       )
       local_mocked_bindings(refresh_token = function(...) {
         if (async) {
-          promises::promise(function(resolve, reject) finish <<- resolve)
+          promises::promise(function(resolve, reject) {
+            finish <<- resolve
+          })
         } else {
           now <<- now + 2
           result

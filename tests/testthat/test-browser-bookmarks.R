@@ -24,7 +24,9 @@ bookmark_binding_app <- function(store, bookmark_dir, scrub_only = FALSE) {
     shiny::setBookmarkExclude(c("dont_save", "bookmark", "prepare"))
     if (scrub_only) {
       # Simulate another bookmark hook discarding the normal exclusions.
-      shiny::onBookmark(function(state) state$exclude <- "dont_save")
+      shiny::onBookmark(function(state) {
+        state$exclude <- "dont_save"
+      })
     }
     client@redirect_uri <- shiny::isolate(paste0(
       session$clientData$url_protocol, "//", session$clientData$url_hostname,

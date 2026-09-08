@@ -7,9 +7,9 @@ test_that("client configuration rejects reserved fixed callback query names", {
     )
   }
   client <- make_test_client()
-  expect_no_error(
+  expect_no_error({
     client@redirect_uri <- "https://example.com/callback?tenant=one&tag=a&tag=b"
-  )
+  })
 })
 
 test_that("callback routes enforce the registered query multiset", {
