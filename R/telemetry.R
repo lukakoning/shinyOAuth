@@ -1254,9 +1254,9 @@ otel_record_http_result <- function(resp, span = NULL) {
     return(invisible(NULL))
   }
 
-  if (status_code < 300L) {
-    try(span$set_status("ok"), silent = TRUE)
-  } else {
+  # HTTP client spans leave ordinary successes and redirects unset. OAuth
+  # operation spans independently decide whether the protocol result succeeded.
+  if (status_code >= 400L) {
     try(
       span$set_status("error", description = paste0("HTTP ", status_code)),
       silent = TRUE
@@ -1298,13 +1298,15 @@ with_otel_span <- function(
   }
 
   span_started <- FALSE
+  span <- NULL
   tryCatch(
     {
-      otel::start_local_active_span(
+      span <- otel::start_local_active_span(
         name = name,
         attributes = otel_attributes(otel_with_trace_attribute(attributes)),
         options = span_options,
-        activation_scope = environment()
+        activation_scope = environment(),
+        end_on_exit = FALSE
       )
       span_started <- TRUE
     },
@@ -1319,10 +1321,13 @@ with_otel_span <- function(
     {
       if (isTRUE(span_started)) {
         if (isTRUE(ok) && isTRUE(mark_ok)) {
-          otel_mark_span_ok()
+          otel_mark_span_ok(span)
         } else if (!is.null(err)) {
-          otel_note_error(err)
+          otel_note_error(err, span = span)
         }
+        # End explicitly: the SDK's automatic scope finalizer marks an unset
+        # status OK even when mark_ok = FALSE (including HTTP client spans).
+        try(span$end(), silent = TRUE)
       }
     },
     add = TRUE

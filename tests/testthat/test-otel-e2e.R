@@ -61,6 +61,19 @@ otel_e2e("issuer URLs share the privacy policy across hooks, logs, and spans", {
   expect_false(any(grepl("synthetic-private-tenant", logs)))
 })
 
+otel_e2e("HTTP result status follows client span conventions", {
+  for (status in c(200L, 204L, 302L, 400L, 401L, 500L)) {
+    record <- otelsdk::with_otel_record({
+      with_otel_span("http-status", {
+        otel_record_http_result(httr2::response(status_code = status))
+      }, mark_ok = FALSE)
+    })
+    span <- record$traces[["http-status"]]
+    expect_identical(as.integer(span$attributes[["http.response.status_code"]]), status)
+    expect_identical(span$status, if (status >= 400L) "error" else "unset")
+  }
+})
+
 otel_named_spans <- function(traces, name) {
   Filter(function(span) identical(span$name %||% NA_character_, name), traces)
 }
@@ -1313,7 +1326,7 @@ otel_e2e("userinfo HTTP response attributes stay on HTTP child span", {
     parent_span$attributes[["oauth.userinfo.subject_present"]],
     TRUE
   )
-  testthat::expect_identical(http_span$status, "ok")
+  testthat::expect_identical(http_span$status, "unset")
 })
 
 otel_e2e("userinfo spans capture sender-constraint details", {
