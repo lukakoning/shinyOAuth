@@ -220,7 +220,9 @@ For the browser `request_uri` integration test, the Shiny app listens on all
 interfaces but the browser uses `127.0.0.1` so redirect cookies stay on one
 origin. Keycloak fetches the published Request Object through
 `SHINYOAUTH_E2E_REQUEST_URI_BASE_URL`. When unset, the test defaults to
-`http://host.docker.internal:${SHINYOAUTH_E2E_PORT}` and the compose file maps
-`host.docker.internal` back to the host on Linux runners via `host-gateway`.
+`https://host.docker.internal:<app_port + 10000>`, served by the test's TLS
+proxy. For example, Shiny port `8100` uses public Request Object port `18100`.
+The compose file maps `host.docker.internal` back to the host on Linux runners
+via `host-gateway`.
 If you override that URL, the matching public `request_uri` prefix must also be
 registered on the Keycloak client.
