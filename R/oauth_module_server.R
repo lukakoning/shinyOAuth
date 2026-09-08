@@ -3589,9 +3589,6 @@ oauth_module_server <- function(
 
                 res |>
                   promises::then(function(raw) {
-                    if (!is.null(callback_parent)) {
-                      otel_end_async_parent(callback_parent, status = "ok")
-                    }
                     tok <- replay_async_conditions(raw)
                     if (
                       !isTRUE(.auth_operation_can_apply(
@@ -3604,9 +3601,11 @@ oauth_module_server <- function(
                         tok,
                         shiny_session = captured_shiny_session
                       )
+                      if (!is.null(callback_parent)) {
+                        otel_end_async_parent(callback_parent, status = "ok")
+                      }
                       return(invisible(NULL))
                     }
-                    .finish_auth_operation(login_operation, "login")
                     validate_token_acceptance_deadline(tok)
                     values$token <- tok
                     values$error <- NULL
@@ -3621,6 +3620,10 @@ oauth_module_server <- function(
                     # A successful login completes any prior reauth cycle
                     values$reauth_triggered <- FALSE
                     auth_operations$force_oidc_reauth <- FALSE
+                    .finish_auth_operation(login_operation, "login")
+                    if (!is.null(callback_parent)) {
+                      otel_end_async_parent(callback_parent, status = "ok")
+                    }
                   }) |>
                   promises::catch(function(e) {
                     failure_phase <- tryCatch(
@@ -3681,7 +3684,6 @@ oauth_module_server <- function(
                   .revoke_stale_credentials(res)
                   return(invisible(NULL))
                 }
-                .finish_auth_operation(login_operation, "login")
                 validate_token_acceptance_deadline(res)
                 values$token <- res
                 values$error <- NULL
@@ -3696,6 +3698,7 @@ oauth_module_server <- function(
                 # Reset reauth guard on successful sync login
                 values$reauth_triggered <- FALSE
                 auth_operations$force_oidc_reauth <- FALSE
+                .finish_auth_operation(login_operation, "login")
                 if (!is.null(callback_parent)) {
                   otel_end_async_parent(callback_parent, status = "ok")
                 }
@@ -3841,13 +3844,18 @@ oauth_module_server <- function(
         token = NULL,
         condition = NULL
       ) {
-        if (!isTRUE(.auth_operation_can_apply(operation, "refresh"))) {
+        can_record <- if (is.null(token)) {
+          .auth_operation_can_apply(operation, "refresh")
+        } else {
+          .auth_operation_is_owner(operation, "refresh") &&
+            identical(values$token, token)
+        }
+        if (!isTRUE(can_record)) {
           .finish_auth_operation(operation, "refresh")
           return(FALSE)
         }
 
         now <- as.numeric(Sys.time())
-        .finish_auth_operation(operation, "refresh")
 
         if (!is.null(token)) {
           values$refresh_failure_count <- 0L
@@ -3943,11 +3951,12 @@ oauth_module_server <- function(
                         promises::then(function(raw) {
                           res_resolved <- replay_async_conditions(raw)
                           if (
-                            !isTRUE(.record_refresh_result(
+                            !isTRUE(.auth_operation_can_apply(
                               refresh_operation,
-                              token = res_resolved
+                              "refresh"
                             ))
                           ) {
+                            .finish_auth_operation(refresh_operation, "refresh")
                             .revoke_stale_credentials(
                               res_resolved,
                               shiny_session = captured_shiny_session_refresh
@@ -3962,6 +3971,8 @@ oauth_module_server <- function(
                           values$token_stale <- FALSE
                           # Successful refresh should allow future reauth cycles
                           values$reauth_triggered <- FALSE
+                          .record_refresh_result(refresh_operation, token = res_resolved)
+                          .finish_auth_operation(refresh_operation, "refresh")
                         }) |>
                         promises::catch(function(e) {
                           if (
@@ -3997,6 +4008,7 @@ oauth_module_server <- function(
                           if (isTRUE(indefinite_session)) {
                             values$token_stale <- TRUE
                           }
+                          .finish_auth_operation(refresh_operation, "refresh")
                           if (isTRUE(indefinite_session)) {
                             try(
                               audit_event(
@@ -4062,11 +4074,12 @@ oauth_module_server <- function(
                       # Sync path; directly set values
                       new_tok <- res
                       if (
-                        !isTRUE(.record_refresh_result(
+                        !isTRUE(.auth_operation_can_apply(
                           refresh_operation,
-                          token = new_tok
+                          "refresh"
                         ))
                       ) {
+                        .finish_auth_operation(refresh_operation, "refresh")
                         .revoke_stale_credentials(new_tok)
                         return(invisible(NULL))
                       }
@@ -4078,6 +4091,8 @@ oauth_module_server <- function(
                       values$token_stale <- FALSE
                       # Successful sync refresh resets reauth guard as well
                       values$reauth_triggered <- FALSE
+                      .record_refresh_result(refresh_operation, token = new_tok)
+                      .finish_auth_operation(refresh_operation, "refresh")
                     }
                   },
                   error = function(e) {
@@ -4104,6 +4119,7 @@ oauth_module_server <- function(
                     if (isTRUE(indefinite_session)) {
                       values$token_stale <- TRUE
                     }
+                    .finish_auth_operation(refresh_operation, "refresh")
                     if (isTRUE(indefinite_session)) {
                       try(
                         audit_event(
