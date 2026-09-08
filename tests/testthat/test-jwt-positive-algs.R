@@ -1,7 +1,7 @@
-for (test_alg in c("EdDSA", "RS256")) {
+for (test_alg in c("Ed25519", "EdDSA", "RS256")) {
   test_that(paste("validate_id_token accepts a valid", test_alg, "JWT"), {
     testthat::skip_if_not_installed("jose")
-    use_eddsa <- identical(test_alg, "EdDSA")
+    use_eddsa <- test_alg %in% c("Ed25519", "EdDSA")
     if (use_eddsa) {
       testthat::skip_if_not_installed("sodium")
     }
@@ -41,7 +41,7 @@ for (test_alg in c("EdDSA", "RS256")) {
       auth_url = paste0(base, "/auth"),
       token_url = paste0(base, "/token"),
       issuer = base,
-      allowed_algs = c("EdDSA", "RS256")
+      allowed_algs = c("Ed25519", "EdDSA", "RS256")
     )
     cli <- oauth_client(
       provider = prov,
@@ -52,7 +52,7 @@ for (test_alg in c("EdDSA", "RS256")) {
 
     # Create a valid ID token with EdDSA or RS256 signature
     header <- list(
-      alg = if (isTRUE(use_eddsa)) "EdDSA" else "RS256",
+      alg = test_alg,
       kid = pub_jwk$kid,
       typ = "JWT"
     )

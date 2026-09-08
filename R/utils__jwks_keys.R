@@ -262,6 +262,7 @@ jwk_is_compatible_with_alg <- function(jwk, alg) {
     ES256 = (kty == "EC" && crv == "P-256"),
     ES384 = (kty == "EC" && crv == "P-384"),
     ES512 = (kty == "EC" && crv == "P-521"),
+    Ed25519 = (kty == "OKP" && crv == "Ed25519"),
     EdDSA = (kty == "OKP" && crv %in% c("Ed25519", "Ed448")),
     FALSE
   )

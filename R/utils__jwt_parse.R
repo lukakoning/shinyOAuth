@@ -926,7 +926,10 @@ verify_jws_signature_no_time <- function(jwt, key, alg) {
         )))
       }
 
-      if (identical(alg_upper, "EDDSA")) {
+      if (alg_upper %in% c("ED25519", "EDDSA")) {
+        if (identical(alg_upper, "ED25519") && !inherits(key, "ed25519")) {
+          return(FALSE)
+        }
         return(isTRUE(openssl::signature_verify(
           parts[["data"]],
           parts[["sig"]],

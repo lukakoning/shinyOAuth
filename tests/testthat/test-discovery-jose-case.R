@@ -10,7 +10,7 @@ test_that("discovery never repairs case-sensitive JOSE algorithm identifiers", {
     "dpop_signing_alg_values_supported"
   )
   for (field in fields) {
-    for (alg in c("rs256", "eddsa", "EDDSA", "rsa-oaep", "a256gcm", "DIR")) {
+    for (alg in c("rs256", "eddsa", "EDDSA", "ed25519", "ED25519", "rsa-oaep", "a256gcm", "DIR")) {
       expect_error(
         .discover_validate_jose_metadata(setNames(
           list(c("RS256", alg)),
@@ -20,7 +20,7 @@ test_that("discovery never repairs case-sensitive JOSE algorithm identifiers", {
       )
     }
     expect_silent(.discover_validate_jose_metadata(setNames(
-      list(c("RS256", "EdDSA", "dir")),
+      list(c("RS256", "Ed25519", "EdDSA", "dir")),
       field
     )))
   }
@@ -31,6 +31,14 @@ test_that("discovery never repairs case-sensitive JOSE algorithm identifiers", {
       "https://example.test"
     ),
     "invalid case"
+  )
+  expect_identical(
+    .discover_negotiate_algs(
+      "Ed25519",
+      list(id_token_signing_alg_values_supported = "Ed25519"),
+      "https://example.test"
+    ),
+    "ED25519"
   )
   expect_identical(
     .discover_negotiate_algs(

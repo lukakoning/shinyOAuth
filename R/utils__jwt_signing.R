@@ -298,6 +298,7 @@ resolve_request_object_signing_alg <- function(client) {
     "ES256",
     "ES384",
     "ES512",
+    "Ed25519",
     "EdDSA"
   )
 
@@ -410,6 +411,9 @@ canonicalize_jws_alg <- function(alg) {
   }
 
   alg_upper <- toupper(alg_chr)
+  if (identical(alg_upper, "ED25519")) {
+    return("Ed25519")
+  }
   if (identical(alg_upper, "EDDSA")) {
     return("EdDSA")
   }
@@ -475,7 +479,7 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
   }
 
   if (inherits(key, "ed25519")) {
-    return(identical(alg, "EdDSA"))
+    return(alg %in% c("Ed25519", "EdDSA"))
   }
   if (inherits(key, "ed448")) {
     return(FALSE)
@@ -498,7 +502,7 @@ encode_asymmetric_jwt_with_header <- function(claims, key, header) {
   if (!private_key_can_sign_jws_alg(key, alg)) {
     err_config("JWT signing algorithm is incompatible with the private key")
   }
-  if (!identical(alg, "EdDSA")) {
+  if (!(alg %in% c("Ed25519", "EdDSA"))) {
     return(jose::jwt_encode_sig(claims, key = key, header = header))
   }
   encode <- function(value) {
@@ -509,7 +513,7 @@ encode_asymmetric_jwt_with_header <- function(claims, key, header) {
       digits = NA
     ))))
   }
-  header[["alg"]] <- "EdDSA"
+  header[["alg"]] <- alg
   signing_input <- paste(encode(header), encode(claims), sep = ".")
   signature <- openssl::ed25519_sign(charToRaw(signing_input), key)
   if (length(signature) != 64L) {

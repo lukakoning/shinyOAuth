@@ -630,6 +630,7 @@ decode_userinfo_jwt <- function(
       "ES256",
       "ES384",
       "ES512",
+      "Ed25519",
       "EdDSA"
     )
   )

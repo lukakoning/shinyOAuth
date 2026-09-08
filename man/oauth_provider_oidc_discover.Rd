@@ -11,7 +11,8 @@ oauth_provider_oidc_discover(
   use_nonce = TRUE,
   id_token_validation = TRUE,
   token_auth_style = NULL,
-  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
+  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519",
+    "EdDSA"),
   allowed_token_types = c("Bearer"),
   jwks_host_issuer_match = TRUE,
   issuer_match = c("url", "host", "none"),
@@ -51,7 +52,7 @@ the helper prefers \code{"header"} (client_secret_basic) when available, then
 
 \item{allowed_algs}{Character vector of allowed ID token signing algorithms.
 Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
-(ES*), and EdDSA. If the discovery document advertises
+(ES*), Ed25519, and legacy EdDSA. If the discovery document advertises
 supported algorithms, the intersection of advertised and caller-provided
 algorithms is used to avoid runtime mismatches. If there's no overlap,
 discovery fails with a configuration error (no fallback).}

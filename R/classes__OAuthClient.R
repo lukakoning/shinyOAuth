@@ -218,7 +218,8 @@
 #'   Current outbound private-key JWT signing
 #'   supports RSA, EC, and Ed25519 private keys. For RSA keys, outbound signing is currently
 #'   limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`)
-#'   are not supported. Ed25519 keys use `EdDSA`; Ed448 is not supported.
+#'   are not supported. Ed25519 keys support `Ed25519` (RFC 9864) and legacy
+#'   `EdDSA` (the default for compatibility); Ed448 is not supported.
 #'
 #' @param client_assertion_private_key_kid Optional key identifier (kid) to include in the JWT header
 #'   for `private_key_jwt` assertions and JAR Request Objects. Useful when the authorization server uses kid to
@@ -234,7 +235,7 @@
 #'   inferred defaults must be included in that set.
 #'   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
 #'   supported for outbound signing (`RS256`, `ES256`, `ES384`, `ES512`, and
-#'   `EdDSA` with Ed25519 keys) for private keys. `RS384`, `RS512`, `PS256`, `PS384`, and `PS512`
+#'   `Ed25519` or legacy `EdDSA` with Ed25519 keys) for private keys. `RS384`, `RS512`, `PS256`, `PS384`, and `PS512`
 #'   are not currently supported for outbound client assertions.
 #'
 #' @param client_assertion_audience Optional override for the `aud` claim used when building
@@ -306,7 +307,7 @@
 #'   `openssl::key` or PEM private-key string, using RSA, EC, or Ed25519.
 #'   [oauth_client()] then defaults `dpop_require_access_token` to `TRUE`.
 #'   Supported signing algorithms are `RS256`, `ES256`, `ES384`, `ES512`, and
-#'   `EdDSA` with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
+#'   `Ed25519` or legacy `EdDSA` with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
 #'   outgoing proofs. See `dpop_signing_alg` and the [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html).
 #'
 #' @param dpop_private_key_kid Optional key identifier (`kid`) to include in
@@ -422,7 +423,7 @@
 #'   value is not sent dynamically on the authorization request; it must match
 #'   the client metadata and provider behavior configured out-of-band for that
 #'   client. Current inbound support accepts `HS256`, `HS384`, `HS512`,
-#'   `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`.
+#'   `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `Ed25519`, and `EdDSA`.
 #'   RSA-PSS (`PS256`, `PS384`, `PS512`) and unsecured `none` are not accepted
 #'   for inbound JARM.
 #' @param jarm_encrypted_response_alg Optional expected JWE
@@ -1461,6 +1462,7 @@ oauth_client_validate <- function(self) {
         "ES256",
         "ES384",
         "ES512",
+        "Ed25519",
         "EdDSA"
       )
       if (
@@ -1704,6 +1706,7 @@ oauth_client_validate <- function(self) {
           "ES256",
           "ES384",
           "ES512",
+          "Ed25519",
           "EdDSA"
         ))
   ) {
@@ -2153,6 +2156,7 @@ oauth_client_validate <- function(self) {
       "ES256",
       "ES384",
       "ES512",
+      "Ed25519",
       "EdDSA"
     )
     alg <- canonicalize_jws_alg(arsa)
@@ -2438,6 +2442,7 @@ oauth_client_validate <- function(self) {
       "ES256",
       "ES384",
       "ES512",
+      "Ed25519",
       "EdDSA"
     )
     if (!(dpop_alg %in% allowed_dpop_algs)) {

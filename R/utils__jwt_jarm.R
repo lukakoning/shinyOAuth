@@ -178,6 +178,7 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
         "ES256",
         "ES384",
         "ES512",
+        "Ed25519",
         "EdDSA"
       )
   ) {

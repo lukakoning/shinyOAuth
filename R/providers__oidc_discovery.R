@@ -89,7 +89,7 @@
 #'   [oauth_provider()] for the supported methods and their credentials.
 #' @param allowed_algs Character vector of allowed ID token signing algorithms.
 #'  Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
-#'  (ES*), and EdDSA. If the discovery document advertises
+#'  (ES*), Ed25519, and legacy EdDSA. If the discovery document advertises
 #'  supported algorithms, the intersection of advertised and caller-provided
 #'  algorithms is used to avoid runtime mismatches. If there's no overlap,
 #'  discovery fails with a configuration error (no fallback).
@@ -136,6 +136,7 @@ oauth_provider_oidc_discover <- function(
     "ES256",
     "ES384",
     "ES512",
+    "Ed25519",
     "EdDSA"
   ),
   allowed_token_types = c('Bearer'),
@@ -250,7 +251,7 @@ oauth_provider_oidc_discover <- function(
   )
   userinfo_allowed_algs <- intersect(
     userinfo_allowed_algs,
-    c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EDDSA")
+    c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "ED25519", "EDDSA")
   )
   if (!is.null(disc[["userinfo_signing_alg_values_supported"]])) {
     userinfo_allowed_algs <- intersect(
@@ -1546,6 +1547,7 @@ oauth_provider_oidc_discover <- function(
   canonical <- c(
     "none",
     "dir",
+    "Ed25519",
     "EdDSA",
     "RSA1_5",
     "RSA-OAEP",

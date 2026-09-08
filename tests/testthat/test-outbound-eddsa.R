@@ -2,7 +2,8 @@ test_that("Ed25519 signs interoperable client assertions, Request Objects and DP
   key <- openssl::ed25519_keygen()
   for (role in c("assertion", "request", "dpop")) {
     for (input in list(key, openssl::write_pem(key))) {
-      for (alg in list(NULL, "eddsa")) {
+      for (alg in list(NULL, "eddsa", "Ed25519", "ed25519")) {
+        expected_alg <- if (is.null(alg)) "EdDSA" else canonicalize_jws_alg(alg)
         provider <- make_test_provider()
         provider@issuer <- "https://issuer.example.com"
         provider@token_auth_style <- if (role == "assertion") {
@@ -16,7 +17,7 @@ test_that("Ed25519 signs interoperable client assertions, Request Objects and DP
           request = "request_object_signing_alg_values_supported",
           dpop = "dpop_signing_alg_values_supported"
         )
-        S7::prop(provider, metadata) <- "EdDSA"
+        S7::prop(provider, metadata) <- expected_alg
         args <- list(
           provider = provider,
           client_id = "client",
@@ -56,7 +57,7 @@ test_that("Ed25519 signs interoperable client assertions, Request Objects and DP
         )
         parts <- strsplit(jwt, ".", fixed = TRUE)[[1L]]
         header <- jsonlite::fromJSON(base64url_decode(parts[[1L]]))
-        expect_identical(header$alg, "EdDSA")
+        expect_identical(header$alg, expected_alg)
         signing_input <- charToRaw(paste(parts[1:2], collapse = "."))
         signature <- base64url_decode_raw(parts[[3L]])
         expect_length(signature, 64L)

@@ -261,7 +261,8 @@ Also used to sign JAR Request Objects, regardless of the token auth style.
 Current outbound private-key JWT signing
 supports RSA, EC, and Ed25519 private keys. For RSA keys, outbound signing is currently
 limited to \code{RS256}; \code{RS384}, \code{RS512}, and RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512})
-are not supported. Ed25519 keys use \code{EdDSA}; Ed448 is not supported.}
+are not supported. Ed25519 keys support \code{Ed25519} (RFC 9864) and legacy
+\code{EdDSA} (the default for compatibility); Ed448 is not supported.}
 
 \item{client_assertion_private_key_kid}{Optional key identifier (kid) to include in the JWT header
 for \code{private_key_jwt} assertions and JAR Request Objects. Useful when the authorization server uses kid to
@@ -277,7 +278,7 @@ error. When the provider advertises
 inferred defaults must be included in that set.
 Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_jwt and asymmetric algorithms
 supported for outbound signing (\code{RS256}, \code{ES256}, \code{ES384}, \code{ES512}, and
-\code{EdDSA} with Ed25519 keys) for private keys. \code{RS384}, \code{RS512}, \code{PS256}, \code{PS384}, and \code{PS512}
+\code{Ed25519} or legacy \code{EdDSA} with Ed25519 keys) for private keys. \code{RS384}, \code{RS512}, \code{PS256}, \code{PS384}, and \code{PS512}
 are not currently supported for outbound client assertions.}
 
 \item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
@@ -333,7 +334,7 @@ provider/API supports DPoP. Accepts an
 \code{openssl::key} or PEM private-key string, using RSA, EC, or Ed25519.
 \code{\link[=oauth_client]{oauth_client()}} then defaults \code{dpop_require_access_token} to \code{TRUE}.
 Supported signing algorithms are \code{RS256}, \code{ES256}, \code{ES384}, \code{ES512}, and
-\code{EdDSA} with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
+\code{Ed25519} or legacy \code{EdDSA} with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
 outgoing proofs. See \code{dpop_signing_alg} and the \href{https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html}{advanced security vignette}.}
 
 \item{dpop_private_key_kid}{Optional key identifier (\code{kid}) to include in
@@ -456,7 +457,7 @@ effective response mode is JARM, shinyOAuth defaults to \code{RS256}. This
 value is not sent dynamically on the authorization request; it must match
 the client metadata and provider behavior configured out-of-band for that
 client. Current inbound support accepts \code{HS256}, \code{HS384}, \code{HS512},
-\code{RS256}, \code{RS384}, \code{RS512}, \code{ES256}, \code{ES384}, \code{ES512}, and \code{EdDSA}.
+\code{RS256}, \code{RS384}, \code{RS512}, \code{ES256}, \code{ES384}, \code{ES512}, \code{Ed25519}, and \code{EdDSA}.
 RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512}) and unsecured \code{none} are not accepted
 for inbound JARM.}
 

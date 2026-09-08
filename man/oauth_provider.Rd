@@ -36,7 +36,8 @@ oauth_provider(
   jwks_pin_mode = "any",
   jwks_host_issuer_match = NULL,
   jwks_host_allow_only = NULL,
-  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"),
+  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519",
+    "EdDSA"),
   userinfo_allowed_algs = NULL,
   allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30),
@@ -247,12 +248,12 @@ and only the hostname part is used for matching. Takes precedence over
 \item{allowed_algs}{Optional vector of allowed JWT algorithms for ID tokens.
 Use to restrict acceptable \code{alg} values on a per-provider basis. Supported
 asymmetric algorithms include \code{RS256}, \code{RS384}, \code{RS512}, \code{ES256},
-\code{ES384}, \code{ES512}, and \code{EdDSA} with Ed25519 OKP keys (including \code{at_hash}
+\code{ES384}, \code{ES512}, and \code{Ed25519} or legacy \code{EdDSA} with Ed25519 OKP keys (including \code{at_hash}
 validation). Ed448 verification is unsupported and fails closed.
 Symmetric HMAC algorithms \code{HS256}, \code{HS384}, \code{HS512} are also supported but
 require that you supply a \code{client_secret} and explicitly enable HMAC
 verification via the option \code{options(shinyOAuth.allow_hs = TRUE)}.
-Defaults to \code{c("RS256","RS384","RS512","ES256","ES384","ES512","EdDSA")},
+Defaults to \code{c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")},
 which intentionally excludes HS*.
 Only include \verb{HS*} if you are certain the \code{client_secret} is stored strictly
 server-side and is never shipped to, or derivable by, the browser or other

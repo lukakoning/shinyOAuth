@@ -66,6 +66,7 @@ validate_id_token <- function(
         "ES256",
         "ES384",
         "ES512",
+        "Ed25519",
         "EdDSA"
       ),
     canonicalize_jws_alg,
@@ -104,6 +105,7 @@ validate_id_token <- function(
     "ES256",
     "ES384",
     "ES512",
+    "Ed25519",
     "EdDSA",
     "HS256",
     "HS384",
@@ -145,6 +147,7 @@ validate_id_token <- function(
           "ES256",
           "ES384",
           "ES512",
+          "Ed25519",
           "EdDSA"
         )
     ) {
@@ -686,7 +689,9 @@ compute_at_hash <- function(access_token, alg, eddsa_curve = NULL) {
 
   # Map JWT alg to hash function per RFC 7518:
   # *256 -> SHA-256, *384 -> SHA-384, *512 -> SHA-512
-  hash_fn <- if (grepl("256", alg, fixed = TRUE)) {
+  hash_fn <- if (identical(alg, "ED25519")) {
+    openssl::sha512
+  } else if (grepl("256", alg, fixed = TRUE)) {
     openssl::sha256
   } else if (grepl("384", alg, fixed = TRUE)) {
     openssl::sha384
