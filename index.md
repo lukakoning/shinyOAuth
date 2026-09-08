@@ -174,6 +174,15 @@ for OpenTelemetry details.
 
 ## More information
 
+The package retains OAuth 2.0 provider configurations and exposes
+settings for the authorization-code/refresh client role in OAuth 2.1
+draft 16. Optional `check_oauth21(client)` reports mandatory
+configuration results, recommendations and unresolved deployment
+obligations; it does not initiate login or enforce a version policy. See
+[assessing OAuth 2.1
+configuration](https://lukakoning.github.io/shinyOAuth/articles/usage.html#assessing-oauth-21-configuration)
+for the pinned draft, supported scope and examples.
+
 ### What happens during the authentication flow?
 
 For an in-depth step-by-step explanation of what happens during the

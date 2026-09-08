@@ -61,6 +61,8 @@ oauth_client(
   endpoint_auth = list(),
   mtls_require_observed_cnf = TRUE,
   trusted_id_token_audiences = character(0),
+  compare_callback_issuer = NULL,
+  client_assertion_typ = "JWT",
   ...
 )
 ```
@@ -609,14 +611,14 @@ oauth_client(
   client/provider authentication settings. Each entry may supply
   `token_auth_style`, `client_secret`, `client_assertion_private_key`,
   `client_assertion_private_key_kid`, `client_assertion_alg`,
-  `client_assertion_audience`, `extra_headers` (named character vector),
-  and the `mtls_client_*` certificate/key/CA fields. Introspection and
-  revocation may also use a separate `client_id`. Unspecified
-  credentials inherit the client's settings. Discovered endpoint methods
-  and signing algorithms are checked independently. PAR inherits token
-  authentication. Extra token headers apply only to token exchange and
-  refresh; set `extra_headers` explicitly for every other endpoint that
-  needs them.
+  `client_assertion_audience`, `client_assertion_typ`, `extra_headers`
+  (named character vector), and the `mtls_client_*` certificate/key/CA
+  fields. Introspection and revocation may also use a separate
+  `client_id`. Unspecified credentials inherit the client's settings.
+  Discovered endpoint methods and signing algorithms are checked
+  independently. PAR inherits token authentication. Extra token headers
+  apply only to token exchange and refresh; set `extra_headers`
+  explicitly for every other endpoint that needs them.
 
 - mtls_require_observed_cnf:
 
@@ -640,6 +642,30 @@ oauth_client(
   Values are matched exactly and case-sensitively. Configure only
   audiences trusted for this application's identity tokens, not
   arbitrary API audiences.
+
+- compare_callback_issuer:
+
+  Logical or `NULL`. Compare any supplied callback `iss` exactly with
+  `provider@issuer`, while allowing absence when
+  `enforce_callback_issuer = FALSE`. `NULL` enables comparison when an
+  issuer is configured, except when `enforce_callback_issuer = FALSE`
+  was explicitly supplied. This preserves the existing complete opt-out.
+  Set `compare_callback_issuer = TRUE` with
+  `enforce_callback_issuer = FALSE` to check present values without
+  requiring older providers to send `iss`. Required issuer presence
+  always enables comparison, even when this separate flag is `FALSE`.
+  Validated JARM supplies its own issuer protection without requiring a
+  redundant outer `iss`.
+
+- client_assertion_typ:
+
+  JWT header `typ` for client authentication. Defaults to `"JWT"` for
+  existing providers. Use `"client-authentication+jwt"` with
+  `client_assertion_audience` set to the provider's trusted issuer
+  identifier for RFC7523bis-11 / OAuth 2.1 draft 16. The explicit type
+  is recommended; it does not replace audience validation. This setting
+  does not change JAR, JARM, ID token or DPoP types, or the OAuth form
+  parameter `client_assertion_type`.
 
 - ...:
 

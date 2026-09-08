@@ -131,6 +131,14 @@ authentication and tokens tied to a key (DPoP) or certificate (mTLS).
 For DPoP or mTLS, also supply `oauth_client` so the request uses the
 matching key or certificate.
 
+Managed Authorization credentials cannot be combined with an
+`access_token` query parameter or form field. Inspection covers
+URL/query inputs and prebuilt httr2 form, raw and string bodies labelled
+`application/x-www-form-urlencoded`. JSON business fields are
+unaffected. File, multipart and streaming bodies are not parsed; callers
+must ensure these contain no additional OAuth credential transport.
+Later request changes outside these helpers require a new check.
+
 ## DPoP note
 
 DPoP proofs bind the current HTTP method and target URI (without query

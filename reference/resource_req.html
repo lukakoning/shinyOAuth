@@ -166,6 +166,12 @@ URL policy, timeouts, and redirect defaults. It supports Bearer authentication
 and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
 also supply <code>oauth_client</code> so the request uses the matching key or
 certificate.</p>
+<p>Managed Authorization credentials cannot be combined with an <code>access_token</code>
+query parameter or form field. Inspection covers URL/query inputs and prebuilt
+httr2 form, raw and string bodies labelled <code>application/x-www-form-urlencoded</code>.
+JSON business fields are unaffected. File, multipart and streaming bodies are
+not parsed; callers must ensure these contain no additional OAuth credential
+transport. Later request changes outside these helpers require a new check.</p>
     </div>
     <div class="section level2">
     <h2 id="dpop-note">DPoP note<a class="anchor" aria-label="anchor" href="#dpop-note"></a></h2>

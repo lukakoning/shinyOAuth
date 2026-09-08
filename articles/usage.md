@@ -262,6 +262,105 @@ This option is for local development only. Production provider URLs need
 HTTPS. The ordinary HTTP host option allows local app addresses; it does
 not relax OIDC discovery.
 
+## Assessing OAuth 2.1 configuration
+
+shinyOAuth supports configurable OAuth 2.0 behavior and an optional
+assessment of the authorization-code/refresh client role against [OAuth
+2.1 draft
+16](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16),
+published 3 September 2026. This is an Internet-Draft, not a published
+RFC.
+[`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
+currently implements only that revision, with ruleset `1.0.0`. It makes
+no network requests, creates no login state and never enables automatic
+enforcement. Existing provider examples and applications remain usable.
+
+This example constructs an OAuth-only public client with S256 PKCE and
+HTTPS:
+
+``` r
+options(shinyOAuth.tls_min_version = "1.2") # Set before discovery or login.
+provider <- oauth_provider(
+  name = "Example authorization server",
+  auth_url = "https://auth.example/authorize",
+  token_url = "https://auth.example/token",
+  token_auth_style = "public",
+  use_pkce = TRUE,
+  pkce_method = "S256"
+)
+client <- oauth_client(
+  provider,
+  client_id = "registered-client",
+  redirect_uri = "https://app.example/callback",
+  scopes = "read"
+)
+assessment <- check_oauth21(client)
+assessment$configuration_compliant
+assessment$checks
+```
+
+Choose credentials and endpoints to match your actual registration.
+Basic and body-secret authentication remain available; JWT
+authentication also supports the issuer-audience configuration described
+in [advanced
+security](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#jwt-client-authentication).
+The checker does not require optional DPoP, mTLS, PAR, JAR and JARM
+together, nor does it require OIDC metadata for an OAuth-only provider.
+
+The result records the draft, ruleset, package version, assessment time
+and operation scope. Its verdict has three meanings:
+
+| `configuration_compliant` | Meaning                                                                                                                                 |
+|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `FALSE`                   | At least one applicable mandatory configuration check failed. This takes precedence over unknown findings.                              |
+| `NA`                      | No known mandatory failure, but at least one mandatory configuration prerequisite is unresolved. Provider-only assessments are partial. |
+| `TRUE`                    | Applicable mandatory checks in the recorded configuration scope passed. External behavior remains unverified.                           |
+
+Every finding has a stable ID, status, requirement strength, evidence
+source, remediation, reference and `affects_verdict` flag. Unmet
+recommendations do not turn the verdict into `FALSE`. Code and refresh,
+enabled PAR, required UserInfo and enabled introspection are included.
+Include optional operations explicitly:
+
+``` r
+assessment <- check_oauth21(
+  client,
+  context = list(operations = c("introspection", "revocation"))
+)
+```
+
+The checker does not contact a server to establish PKCE enforcement,
+refresh rotation/replay protection, secret custody, registered redirect
+matching or browser/proxy TLS. It cannot assess future resource URLs or
+later arbitrary request mutations. Actual application scope enforcement
+and estimated token expiry also require review. A positive report is a
+bounded configuration result, not certification. Rerun it after changing
+options, objects or the runtime.
+
+Applications choose how to use the result. For example, a deployment
+script may decide to block a known failure and separately flag
+unresolved prerequisites:
+
+``` r
+if (identical(assessment$configuration_compliant, FALSE)) {
+  stop("Resolve the mandatory configuration findings before deployment.")
+}
+if (is.na(assessment$configuration_compliant)) {
+  message("Review unresolved configuration prerequisites before deployment.")
+}
+```
+
+S256 is the straightforward PKCE choice. Legacy `plain` remains
+constructible but fails this draft assessment. Omitting PKCE has a
+narrow exception under draft section 7.5.1.1: confidential client
+authentication, correct OIDC nonce validation, and server assurance for
+the particular deployment and request. Missing local prerequisites fail;
+unestablished server assurance is unresolved.
+`context = list(nonce_exception = TRUE)` records an explicit declaration
+of that assurance after it has been established. It cannot supply
+missing local settings and is never treated as observed server evidence.
+S256 remains recommended.
+
 ## Asynchronous execution
 
 By default, network work runs in the app’s R process. A slow provider

@@ -105,6 +105,8 @@
 
 ## Deployment helpers
 
+- [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
+  : Assess an OAuth configuration against a pinned OAuth 2.1 draft
 - [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
   : Check a URL against the package's host policy
 - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)

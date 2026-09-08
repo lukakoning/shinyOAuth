@@ -314,6 +314,112 @@ need HTTPS. The ordinary HTTP host option allows local app addresses; it
 does not relax OIDC discovery.</p>
 </div>
 <div class="section level2">
+<h2 id="assessing-oauth-2-1-configuration">Assessing OAuth 2.1 configuration<a class="anchor" aria-label="anchor" href="#assessing-oauth-2-1-configuration"></a>
+</h2>
+<p>shinyOAuth supports configurable OAuth 2.0 behavior and an optional
+assessment of the authorization-code/refresh client role against <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16" class="external-link">OAuth
+2.1 draft 16</a>, published 3 September 2026. This is an Internet-Draft,
+not a published RFC. <code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> currently implements
+only that revision, with ruleset <code>1.0.0</code>. It makes no network
+requests, creates no login state and never enables automatic
+enforcement. Existing provider examples and applications remain
+usable.</p>
+<p>This example constructs an OAuth-only public client with S256 PKCE
+and HTTPS:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.tls_min_version <span class="op">=</span> <span class="st">"1.2"</span><span class="op">)</span> <span class="co"># Set before discovery or login.</span></span>
+<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"Example authorization server"</span>,</span>
+<span>  auth_url <span class="op">=</span> <span class="st">"https://auth.example/authorize"</span>,</span>
+<span>  token_url <span class="op">=</span> <span class="st">"https://auth.example/token"</span>,</span>
+<span>  token_auth_style <span class="op">=</span> <span class="st">"public"</span>,</span>
+<span>  use_pkce <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  pkce_method <span class="op">=</span> <span class="st">"S256"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  <span class="va">provider</span>,</span>
+<span>  client_id <span class="op">=</span> <span class="st">"registered-client"</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example/callback"</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="st">"read"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
+<span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span></span>
+<span><span class="va">assessment</span><span class="op">$</span><span class="va">checks</span></span></code></pre></div>
+<p>Choose credentials and endpoints to match your actual registration.
+Basic and body-secret authentication remain available; JWT
+authentication also supports the issuer-audience configuration described
+in <a href="advanced-security.html#jwt-client-authentication">advanced
+security</a>. The checker does not require optional DPoP, mTLS, PAR, JAR
+and JARM together, nor does it require OIDC metadata for an OAuth-only
+provider.</p>
+<p>The result records the draft, ruleset, package version, assessment
+time and operation scope. Its verdict has three meanings:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th><code>configuration_compliant</code></th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>FALSE</code></td>
+<td>At least one applicable mandatory configuration check failed. This
+takes precedence over unknown findings.</td>
+</tr>
+<tr class="even">
+<td><code>NA</code></td>
+<td>No known mandatory failure, but at least one mandatory configuration
+prerequisite is unresolved. Provider-only assessments are partial.</td>
+</tr>
+<tr class="odd">
+<td><code>TRUE</code></td>
+<td>Applicable mandatory checks in the recorded configuration scope
+passed. External behavior remains unverified.</td>
+</tr>
+</tbody>
+</table>
+<p>Every finding has a stable ID, status, requirement strength, evidence
+source, remediation, reference and <code>affects_verdict</code> flag.
+Unmet recommendations do not turn the verdict into <code>FALSE</code>.
+Code and refresh, enabled PAR, required UserInfo and enabled
+introspection are included. Include optional operations explicitly:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span></span>
+<span>  <span class="va">client</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>operations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"introspection"</span>, <span class="st">"revocation"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The checker does not contact a server to establish PKCE enforcement,
+refresh rotation/replay protection, secret custody, registered redirect
+matching or browser/proxy TLS. It cannot assess future resource URLs or
+later arbitrary request mutations. Actual application scope enforcement
+and estimated token expiry also require review. A positive report is a
+bounded configuration result, not certification. Rerun it after changing
+options, objects or the runtime.</p>
+<p>Applications choose how to use the result. For example, a deployment
+script may decide to block a known failure and separately flag
+unresolved prerequisites:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span>, <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Resolve the mandatory configuration findings before deployment."</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Review unresolved configuration prerequisites before deployment."</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>S256 is the straightforward PKCE choice. Legacy <code>plain</code>
+remains constructible but fails this draft assessment. Omitting PKCE has
+a narrow exception under draft section 7.5.1.1: confidential client
+authentication, correct OIDC nonce validation, and server assurance for
+the particular deployment and request. Missing local prerequisites fail;
+unestablished server assurance is unresolved.
+<code>context = list(nonce_exception = TRUE)</code> records an explicit
+declaration of that assurance after it has been established. It cannot
+supply missing local settings and is never treated as observed server
+evidence. S256 remains recommended.</p>
+</div>
+<div class="section level2">
 <h2 id="asynchronous-execution">Asynchronous execution<a class="anchor" aria-label="anchor" href="#asynchronous-execution"></a>
 </h2>
 <p>By default, network work runs in the app’s R process. A slow provider
@@ -321,7 +427,7 @@ can make other sessions on that process wait too. To run the module’s
 network work in background R processes, install <code>mirai</code> and
 <code>promises</code>, then configure workers before
 <code>server()</code>:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -337,7 +443,7 @@ and does not avoid blocking.</p>
 <p>For an app using future instead of mirai, configure its worker plan
 before starting the server and release the workers when the app
 stops:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">sequential</a></span><span class="op">)</span><span class="op">)</span></span>
 <span></span>

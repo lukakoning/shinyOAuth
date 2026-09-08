@@ -154,28 +154,50 @@ options:
 
 ## HTTP settings (timeout, retries, user agent)
 
+- `options(shinyOAuth.tls_min_version = "1.2")` - optionally require TLS
+  1.2 or later on package-owned HTTPS requests. `"1.3"` requires TLS 1.3
+  or later; `NULL` (default) retains the linked curl/TLS backend’s
+  defaults. Applies before discovery and to token, PAR, JWKS, UserInfo
+  and resource requests, including async workers. A stronger supplied
+  minimum and a compatible supplied maximum survive; a conflicting
+  maximum or disabled certificate/hostname verification raises an error
+  when a minimum is selected. Custom CA settings remain usable. The
+  setting is bound to pending login transactions, so change it before
+  initiating login. It does not configure browser/proxy TLS or disallow
+  HTTP development endpoints. Older wolfSSL backends require curl 8.10.0
+  or later to apply minimum-version semantics. Actual negotiated
+  connections remain runtime evidence; an absent option alone says
+  nothing about their TLS version.
+
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds)
   applied to all outbound requests (discovery, JWKS, token exchange,
   userinfo). Increase if your provider/network is slow. Values beyond
   curl’s supported timeout range are capped
+
 - `options(shinyOAuth.retry_max_tries = 3L)` – maximum attempts for
   retryable requests after network errors or HTTP 408, 429, or 5xx
   responses. Authorization-code exchange and refresh are not
   automatically retried, apart from a single DPoP nonce challenge retry
+
 - `options(shinyOAuth.retry_backoff_base = 0.5)` – base backoff in
   seconds used for exponential backoff with jitter
+
 - `options(shinyOAuth.retry_backoff_cap = 5)` – per‑attempt cap on
   backoff seconds (before jitter)
+
 - `options(shinyOAuth.retry_after_cap = 60)` – maximum synchronous sleep
   in seconds for a server-provided `Retry-After` value; this is separate
   from the client-side backoff cap
+
 - `options(shinyOAuth.retry_status = c(408L, 429L, 500:599))` – HTTP
   statuses considered transient and retried
+
 - `options(shinyOAuth.user_agent = "shinyOAuth/<version> R/<version> httr2/<version>")`
   – override the default User‑Agent header applied to all outbound
   requests. By default this string is built dynamically from the
   installed package/runtime versions; set a custom string here if your
   organization requires a specific format
+
 - `options(shinyOAuth.allow_redirect = FALSE)` – when `FALSE` (default),
   all sensitive HTTP requests (token exchange, refresh, introspection,
   revocation, userinfo, OIDC discovery, JWKS) refuse to follow redirects
@@ -183,6 +205,7 @@ options:
   and PKCE verifiers from leaking to redirect targets. Set to `TRUE`
   only when you deliberately accept that redirect-following risk for a
   specific deployment; this opt-in is honored in all sessions
+
 - `options(shinyOAuth.max_body_bytes = 1048576)` – maximum response body
   size (bytes, default 1 MiB) accepted from OAuth endpoints and resource
   requests. Increase this if an API legitimately returns larger
@@ -218,8 +241,10 @@ CPU or memory usage during decoding and decryption.
 
 ### Callback query
 
-- `options(shinyOAuth.callback_max_code_bytes = 4096)` – maximum byte
-  length of the `code` query parameter
+- `options(shinyOAuth.callback_max_code_bytes = 8192)` – maximum decoded
+  byte length of the `code` callback parameter across direct, GET/POST
+  bridge, module and JARM paths. Explicit lower or higher limits remain
+  effective; values are rejected rather than truncated
 - `options(shinyOAuth.callback_max_state_bytes = 8192)` – maximum byte
   length of the `state` query parameter (outer token string)
 - `options(shinyOAuth.callback_max_error_bytes = 256)` – maximum byte
