@@ -1,12 +1,7 @@
 write_fake_pem <- function(path, label) {
-  writeLines(
-    c(
-      paste0("-----BEGIN ", label, "-----"),
-      "test",
-      paste0("-----END ", label, "-----")
-    ),
-    path
-  )
+  # Request/configuration tests need parseable, matching certificate material.
+  fixture <- if (label == "PRIVATE KEY") "client-key.pem" else "client-cert.pem"
+  file.copy(mtls_pem_fixture(fixture), path, overwrite = TRUE)
 }
 
 make_mtls_test_files <- function() {

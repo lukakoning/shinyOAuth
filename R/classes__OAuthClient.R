@@ -259,7 +259,9 @@
 #'   certificate (or certificate chain) used for RFC 8705 mutual TLS (mTLS) client
 #'   authentication and certificate-bound protected-resource requests. Required
 #'   when `provider@token_auth_style` is `"tls_client_auth"` or
-#'   `"self_signed_tls_client_auth"`.
+#'   `"self_signed_tls_client_auth"`. The certificate matching the private key
+#'   must appear first, followed by its issuers in chain order. CA-first bundles
+#'   are rejected.
 #' @param mtls_client_key_file Optional path to the PEM-encoded private key used
 #'   with `mtls_client_cert_file`. Must be supplied together with
 #'   `mtls_client_cert_file`, and is required for RFC 8705 mTLS client
@@ -1083,6 +1085,13 @@ oauth_client <- function(
     jarm_max_lifetime = jarm_max_lifetime
   )
 
+  if (client_has_mtls_certificate(client)) {
+    tls_client_cert_thumbprint_s256(
+      client@mtls_client_cert_file,
+      client@mtls_client_key_file,
+      client@mtls_client_key_password
+    )
+  }
   client
 }
 

@@ -279,7 +279,9 @@ by the provider's registration agreement.}
 certificate (or certificate chain) used for RFC 8705 mutual TLS (mTLS) client
 authentication and certificate-bound protected-resource requests. Required
 when \code{provider@token_auth_style} is \code{"tls_client_auth"} or
-\code{"self_signed_tls_client_auth"}.}
+\code{"self_signed_tls_client_auth"}. The certificate matching the private key
+must appear first, followed by its issuers in chain order. CA-first bundles
+are rejected.}
 
 \item{mtls_client_key_file}{Optional path to the PEM-encoded private key used
 with \code{mtls_client_cert_file}. Must be supplied together with

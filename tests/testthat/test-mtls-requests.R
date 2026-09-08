@@ -1825,7 +1825,7 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
   expect_identical(captured_reqs[[2]]$options$sslcert, files$cert_file)
 })
 
-test_that("certificate binding uses the key-matched certificate from PEM bundles", {
+test_that("certificate binding requires the transport certificate first in PEM bundles", {
   cert_file <- mtls_pem_fixture("client-cert.pem")
   key_file <- mtls_pem_fixture("client-key.pem")
   ca_file <- mtls_pem_fixture("ca-cert.pem")
@@ -1833,6 +1833,10 @@ test_that("certificate binding uses the key-matched certificate from PEM bundles
   on.exit(unlink(bundle_file, force = TRUE), add = TRUE)
 
   writeLines(c(readLines(ca_file), readLines(cert_file)), bundle_file)
+  expect_error(shinyOAuth:::tls_client_cert_thumbprint_s256(
+    bundle_file, key_file = key_file
+  ), "must put the client certificate.*first")
+  writeLines(c(readLines(cert_file), readLines(ca_file)), bundle_file)
 
   provider <- oauth_provider(
     name = "example",
@@ -1885,7 +1889,7 @@ test_that("certificate thumbprints are cached for repeated PEM lookups", {
   bundle_b <- tempfile(fileext = ".pem")
   on.exit(unlink(c(bundle_a, bundle_b), force = TRUE), add = TRUE)
 
-  writeLines(c(readLines(ca_file), readLines(cert_file)), bundle_a)
+  writeLines(c(readLines(cert_file), readLines(ca_file)), bundle_a)
   writeLines(readLines(cert_file), bundle_b)
 
   original_read_keyed_client_certificate <-

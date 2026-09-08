@@ -270,13 +270,15 @@ test_that("oauth_client_mtls_registration supports self-signed jwks_uri", {
   expect_identical(metadata$jwks_uri, "https://example.com/jwks.json")
   expect_null(metadata[["jwks"]])
 })
-test_that("self-signed registration retains and orders the configured chain", {
+test_that("self-signed registration requires and retains a leaf-first chain", {
   client <- make_mtls_registration_client("self_signed_tls_client_auth")
   bundle <- withr::local_tempfile(fileext = ".pem")
   leaf <- mtls_pem_fixture("client-cert.pem")
   issuer <- mtls_pem_fixture("ca-cert.pem")
   writeLines(c(readLines(issuer), readLines(leaf), readLines(issuer)), bundle)
   client@mtls_client_cert_file <- bundle
+  expect_error(oauth_client_mtls_registration(client), "must put the client certificate.*first")
+  writeLines(c(readLines(leaf), readLines(issuer), readLines(issuer)), bundle)
   metadata <- oauth_client_mtls_registration(client)
   expected <- vapply(
     c(leaf, issuer),

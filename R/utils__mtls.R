@@ -268,6 +268,9 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
   }
 
   validate_mtls_tls_backend()
+  # Revalidate after certificate rotation, using the same leaf as binding and
+  # registration. curl presents the first certificate in the configured file.
+  read_keyed_client_certificate(cert_file, key_file, key_password)
 
   options <- compact_list(list(
     sslcert = cert_file,
@@ -740,7 +743,8 @@ read_keyed_client_certificate <- function(
     error = function(...) NULL
   )
 
-  for (cert in certs) {
+  for (i in seq_along(certs)) {
+    cert <- certs[[i]]
     cert_fingerprint <- tryCatch(
       {
         cert_pubkey <- as.list(cert)[["pubkey"]]
@@ -751,6 +755,9 @@ read_keyed_client_certificate <- function(
     if (
       !is.null(cert_fingerprint) && identical(cert_fingerprint, key_fingerprint)
     ) {
+      if (i != 1L) {
+        err_config("mtls_client_cert_file must put the client certificate matching mtls_client_key_file first, followed by its issuer chain")
+      }
       return(cert)
     }
   }
@@ -795,8 +802,7 @@ tls_client_cert_thumbprint_s256 <- function(
     }
   }
 
-  # PEM bundles may contain a full chain; hash the certificate bound to the
-  # configured private key instead of assuming bundle order.
+  # Validate the leaf-first transport contract before hashing the certificate.
   cert <- read_keyed_client_certificate(
     cert_file,
     key_file = key_file,
