@@ -30,21 +30,25 @@ first, then the additional behavior for the relevant optional features.
 ### 1. First page load: set a browser token
 
 On first page load, the module asks the browser to create a random token
-in origin-scoped local storage and pass it to Shiny as a private input.
-A separate random cookie marker must match the stored record. This lets
-shinyOAuth check later that the browser returning from the provider is
-the one that started login. This browser token is separate from the
-access and ID tokens issued by the provider.
+in origin- and tab-scoped session storage and pass it to Shiny as a
+private input. A separate random cookie marker must match the stored
+record. This lets shinyOAuth check later that the browser returning from
+the provider is the one that started login. This browser token is
+separate from the access and ID tokens issued by the provider.
 
 The cookie contains only the marker, so a service on another port cannot
 read the binding token from a Cookie header or establish a binding by
 replacing the cookie. Origin-scoped storage separates schemes, hosts,
 and ports. Treat the whole hostname as trusted nonetheless: other
-services can disrupt cookies, and applications on the same origin share
-local storage. Use a dedicated hostname for authentication when
-co-hosted services are untrusted.
+services can disrupt cookies, and same-origin scripts can access session
+storage. Use a dedicated hostname for authentication when co-hosted
+services are untrusted.
 
-The browser must support cookies, local storage, and Web Crypto. If
+Each new transaction has its own cookie marker; separate tabs and
+application callback routes keep independent records. Complete login in
+the tab that started it.
+
+The browser must support cookies, session storage, and Web Crypto. If
 either storage mechanism cannot be written and read, the module reports
 `browser_cookie_error` and stops login. Missing, expired, or mismatched
 binding records are replaced; callbacks using the old binding then fail

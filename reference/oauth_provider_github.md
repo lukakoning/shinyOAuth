@@ -33,88 +33,18 @@ settings](https://github.com/settings/developers).
 ``` r
 oauth_provider_github()
 #> <shinyOAuth::OAuthProvider>
-#>  @ name                                            : chr "github"
-#>  @ auth_url                                        : chr "https://github.com/login/oauth/authorize"
-#>  @ token_url                                       : chr "https://github.com/login/oauth/access_token"
-#>  @ issuer                                          : chr NA
-#>  @ issuer_thus_oidc                                : logi TRUE
-#>  @ issuer_match                                    : chr "url"
-#>  @ token_auth_style                                : chr "body"
-#>  @ use_pkce                                        : logi TRUE
-#>  @ pkce_method                                     : chr "S256"
-#>  @ use_nonce                                       : logi FALSE
-#>  @ userinfo_url                                    : chr "https://api.github.com/user"
-#>  @ userinfo_required                               : logi TRUE
-#>  @ userinfo_id_selector                            : function (userinfo)  
-#>  @ userinfo_id_token_match                         : logi FALSE
-#>  @ userinfo_signed_jwt_required                    : logi FALSE
-#>  @ id_token_required                               : logi FALSE
-#>  @ id_token_validation                             : logi FALSE
-#>  @ id_token_at_hash_required                       : logi FALSE
-#>  @ introspection_url                               : chr NA
-#>  @ revocation_url                                  : chr NA
-#>  @ extra_auth_params                               : list()
-#>  @ extra_token_params                              : list()
-#>  @ extra_token_headers                             : Named chr "application/json"
-#>  .. - attr(*, "names")= chr "Accept"
-#>  @ jwks_uri                                        : chr NA
-#>  @ jwks_cache                                      :List of 9
-#>  .. $ get   :function (key, missing = missing_)  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 232 10 263 3 10 3 933 964
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. $ set   :function (key, value)  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 265 10 335 3 10 3 966 1036
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. $ exists:function (key)  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 337 13 360 3 13 3 1038 1061
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. $ keys  :function ()  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 362 11 374 3 11 3 1063 1075
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. $ remove:function (key)  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 376 13 381 3 13 3 1077 1082
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. $ reset :function ()  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 217 12 230 3 12 3 918 931
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. $ prune :function ()  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 383 12 447 3 12 3 1084 1148
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. $ size  :function ()  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 449 11 458 3 11 3 1150 1159
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. $ info  :function ()  
-#>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 460 11 469 3 11 3 1161 1170
-#>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' <environment: 0x561c7d620c50> 
-#>  .. - attr(*, "class")= chr [1:2] "cache_mem" "cachem"
-#>  @ jwks_pins                                       : chr(0) 
-#>  @ jwks_pin_mode                                   : chr "any"
-#>  @ jwks_host_issuer_match                          : logi FALSE
-#>  @ jwks_host_allow_only                            : chr NA
-#>  @ userinfo_allowed_algs                           : NULL
-#>  @ allowed_algs                                    : chr [1:7] "RS256" "RS384" "RS512" "ES256" "ES384" "ES512" "EDDSA"
-#>  @ allowed_token_types                             : chr "Bearer"
-#>  @ leeway                                          : num 30
-#>  @ par_url                                         : chr NA
-#>  @ par_required                                    : logi FALSE
-#>  @ signed_request_object_required                  : logi FALSE
-#>  @ request_parameter_supported                     : logi NA
-#>  @ request_uri_parameter_supported                 : logi NA
-#>  @ request_uri_registration_required               : logi NA
-#>  @ request_object_signing_alg_values_supported     : chr(0) 
-#>  @ request_object_encryption_alg_values_supported  : chr(0) 
-#>  @ request_object_encryption_enc_values_supported  : chr(0) 
-#>  @ request_object_encryption_jwk                   : NULL
-#>  @ authorization_request_front_channel_mode        : chr "compat"
-#>  @ authorization_response_iss_parameter_supported  : logi FALSE
-#>  @ response_modes_supported                        : chr(0) 
-#>  @ jarm_signing_alg_values_supported               : chr(0) 
-#>  @ jarm_encryption_alg_values_supported            : chr(0) 
-#>  @ jarm_encryption_enc_values_supported            : chr(0) 
-#>  @ jarm_tolerate_duplicate_top_level_iss           : logi FALSE
-#>  @ token_endpoint_auth_signing_alg_values_supported: chr(0) 
-#>  @ endpoint_auth_metadata                          : list()
-#>  @ dpop_signing_alg_values_supported               : chr(0) 
-#>  @ mtls_endpoint_aliases                           : list()
-#>  @ mtls_client_certificate_bound_access_tokens     : logi FALSE
+#>  @ name               : chr "github"
+#>  @ auth_url           : chr "https://github.com/"
+#>  @ token_url          : chr "https://github.com/"
+#>  @ issuer             : NA
+#>  @ userinfo_url       : chr "https://api.github.com/"
+#>  @ jwks_uri           : NA
+#>  @ introspection_url  : NA
+#>  @ revocation_url     : NA
+#>  @ token_auth_style   : chr "body"
+#>  @ use_pkce           : logi TRUE
+#>  @ use_nonce          : logi FALSE
+#>  @ extra_auth_params  : list()
+#>  @ extra_token_params : list()
+#>  @ extra_token_headers: list [1] (Accept)
 ```

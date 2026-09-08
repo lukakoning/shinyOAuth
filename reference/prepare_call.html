@@ -129,13 +129,17 @@ returning callback themselves.</p>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Get the login URL and store state in client's state store</span></span></span>
-<span class="r-in"><span>  <span class="co"># `&lt;browser_token&gt;` is a token that identifies the browser session</span></span></span>
-<span class="r-in"><span>  <span class="co">#  and would typically be stored in a browser cookie</span></span></span>
-<span class="r-in"><span>  <span class="co">#  (`oauth_module_server()` handles this typically)</span></span></span>
+<span class="r-in"><span>  <span class="co"># `&lt;browser_token&gt;` must be unpredictable and persisted for this transaction</span></span></span>
+<span class="r-in"><span>  <span class="co"># in storage bound to the application's exact origin (scheme, host, port).</span></span></span>
+<span class="r-in"><span>  <span class="co"># The module combines origin-scoped storage with an independent marker cookie</span></span></span>
+<span class="r-in"><span>  <span class="co"># and checks both on return. A cookie alone does not provide this boundary:</span></span></span>
+<span class="r-in"><span>  <span class="co"># cookies can be shared by applications on different ports of the same host.</span></span></span>
+<span class="r-in"><span>  <span class="co"># Shiny applications should use oauth_module_server() for the complete flow.</span></span></span>
 <span class="r-in"><span>  <span class="va">authorization_url</span> <span class="op">&lt;-</span> <span class="fu">prepare_call</span><span class="op">(</span><span class="va">client</span>, <span class="st">"&lt;browser_token&gt;"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Redirect user to authorization URL; retrieve code &amp; state from the query;</span></span></span>
-<span class="r-in"><span>  <span class="co"># read also `&lt;browser_token&gt;` from browser cookie</span></span></span>
+<span class="r-in"><span>  <span class="co"># recover this transaction's `&lt;browser_token&gt;` through the origin-bound flow</span></span></span>
+<span class="r-in"><span>  <span class="co"># and verify its independent marker before calling handle_callback().</span></span></span>
 <span class="r-in"><span>  <span class="va">code</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
 <span class="r-in"><span>  <span class="va">state</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>
 <span class="r-in"><span>  <span class="va">browser_token</span> <span class="op">&lt;-</span> <span class="st">"..."</span></span></span>

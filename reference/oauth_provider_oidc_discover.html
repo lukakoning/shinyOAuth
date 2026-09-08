@@ -63,7 +63,8 @@ Pass the result to <code><a href="oauth_client.html">oauth_client()</a></code>.<
 <span>  use_nonce <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  id_token_validation <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  token_auth_style <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
+<span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"Ed25519"</span>,</span>
+<span>    <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Bearer"</span><span class="op">)</span>,</span>
 <span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  issuer_match <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"url"</span>, <span class="st">"host"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
@@ -78,8 +79,9 @@ Pass the result to <code><a href="oauth_client.html">oauth_client()</a></code>.<
 <dl><dt id="arg-issuer">issuer<a class="anchor" aria-label="anchor" href="#arg-issuer"></a></dt>
 <dd><p>The OIDC issuer base URL (including scheme), e.g.,
 "https://login.example.com". The standard discovery-document URL ending
-in <code>/.well-known/openid-configuration</code> is also accepted and normalized
-back to the issuer base URL before validation and fetch.</p></dd>
+in <code>/.well-known/openid-configuration</code> is also accepted. Its discovered
+issuer must map back to that metadata location; the exact returned issuer,
+including any trailing slash, is retained for subsequent validation.</p></dd>
 
 
 <dt id="arg-name">name<a class="anchor" aria-label="anchor" href="#arg-name"></a></dt>
@@ -119,7 +121,7 @@ the helper prefers <code>"header"</code> (client_secret_basic) when available, t
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>
 <dd><p>Character vector of allowed ID token signing algorithms.
 Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
-(ES*), and EdDSA. If the discovery document advertises
+(ES*), Ed25519, and legacy EdDSA. If the discovery document advertises
 supported algorithms, the intersection of advertised and caller-provided
 algorithms is used to avoid runtime mismatches. If there's no overlap,
 discovery fails with a configuration error (no fallback).</p></dd>
@@ -142,8 +144,9 @@ Disabling (<code>FALSE</code>) is not recommended unless you also pin JWKS via
 <dt id="arg-issuer-match">issuer_match<a class="anchor" aria-label="anchor" href="#arg-issuer-match"></a></dt>
 <dd><p>Character scalar controlling how strictly to validate the
 discovery document's <code>issuer</code> against the input <code>issuer</code>.</p><ul><li><p><code>"url"</code> (default): require the issuer used for discovery to match
-exactly after normalizing a full discovery-document input back to its
-issuer base URL, including any trailing slash (recommended).</p></li>
+exactly, including any trailing slash (recommended). For a full discovery
+URL input, require the discovered issuer's standard metadata location to
+match that URL instead.</p></li>
 <li><p><code>"host"</code>: compare only scheme + host (explicit opt-out; not recommended).</p></li>
 <li><p><code>"none"</code>: do not validate issuer consistency.</p></li>
 </ul><p>Prefer <code>"url"</code> and tighten hosts via <code>options(shinyOAuth.allowed_hosts)</code>

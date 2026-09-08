@@ -97,89 +97,20 @@ display the user's listening data, see the <a href="https://lukakoning.github.io
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">oauth_provider_spotify</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;shinyOAuth::OAuthProvider&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ name                                            : chr "spotify"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ auth_url                                        : chr "https://accounts.spotify.com/authorize"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ token_url                                       : chr "https://accounts.spotify.com/api/token"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ issuer                                          : chr NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ issuer_thus_oidc                                : logi TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ issuer_match                                    : chr "url"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ token_auth_style                                : chr "header"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ use_pkce                                        : logi TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ pkce_method                                     : chr "S256"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ use_nonce                                       : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ userinfo_url                                    : chr "https://api.spotify.com/v1/me"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ userinfo_required                               : logi TRUE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ userinfo_id_selector                            : function (userinfo)  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ userinfo_id_token_match                         : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ userinfo_signed_jwt_required                    : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ id_token_required                               : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ id_token_validation                             : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ id_token_at_hash_required                       : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ introspection_url                               : chr NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ revocation_url                                  : chr NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ extra_auth_params                               : list()</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ extra_token_params                              : list()</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ extra_token_headers                             : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jwks_uri                                        : chr NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jwks_cache                                      :List of 9</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ get   :function (key, missing = missing_)  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 232 10 263 3 10 3 933 964</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ set   :function (key, value)  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 265 10 335 3 10 3 966 1036</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ exists:function (key)  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 337 13 360 3 13 3 1038 1061</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ keys  :function ()  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 362 11 374 3 11 3 1063 1075</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ remove:function (key)  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 376 13 381 3 13 3 1077 1082</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ reset :function ()  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 217 12 230 3 12 3 918 931</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ prune :function ()  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 383 12 447 3 12 3 1084 1148</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ size  :function ()  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 449 11 458 3 11 3 1150 1159</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. $ info  :function ()  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  ..- attr(*, "srcref")= 'srcref' int [1:8] 460 11 469 3 11 3 1161 1170</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  ..  .. ..- attr(*, "srcfile")=Classes 'srcfilealias', 'srcfile' &lt;environment: 0x561c7d620c50&gt; </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. - attr(*, "class")= chr [1:2] "cache_mem" "cachem"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jwks_pins                                       : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jwks_pin_mode                                   : chr "any"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jwks_host_issuer_match                          : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jwks_host_allow_only                            : chr NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ userinfo_allowed_algs                           : NULL</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ allowed_algs                                    : chr [1:7] "RS256" "RS384" "RS512" "ES256" "ES384" "ES512" "EDDSA"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ allowed_token_types                             : chr "Bearer"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ leeway                                          : num 30</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ par_url                                         : chr NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ par_required                                    : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ signed_request_object_required                  : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ request_parameter_supported                     : logi NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ request_uri_parameter_supported                 : logi NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ request_uri_registration_required               : logi NA</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ request_object_signing_alg_values_supported     : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ request_object_encryption_alg_values_supported  : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ request_object_encryption_enc_values_supported  : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ request_object_encryption_jwk                   : NULL</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ authorization_request_front_channel_mode        : chr "compat"</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ authorization_response_iss_parameter_supported  : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ response_modes_supported                        : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jarm_signing_alg_values_supported               : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jarm_encryption_alg_values_supported            : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jarm_encryption_enc_values_supported            : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jarm_tolerate_duplicate_top_level_iss           : logi FALSE</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ token_endpoint_auth_signing_alg_values_supported: chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ endpoint_auth_metadata                          : list()</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ dpop_signing_alg_values_supported               : chr(0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ mtls_endpoint_aliases                           : list()</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ mtls_client_certificate_bound_access_tokens     : logi FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ name               : chr "spotify"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ auth_url           : chr "https://accounts.spotify.com/"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ token_url          : chr "https://accounts.spotify.com/"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ issuer             : NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ userinfo_url       : chr "https://api.spotify.com/"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ jwks_uri           : NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ introspection_url  : NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ revocation_url     : NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ token_auth_style   : chr "header"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ use_pkce           : logi TRUE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ use_nonce          : logi FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ extra_auth_params  : list()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ extra_token_params : list()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ extra_token_headers: list()</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

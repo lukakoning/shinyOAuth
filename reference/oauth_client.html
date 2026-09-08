@@ -333,7 +333,8 @@ Also used to sign JAR Request Objects, regardless of the token auth style.
 Current outbound private-key JWT signing
 supports RSA, EC, and Ed25519 private keys. For RSA keys, outbound signing is currently
 limited to <code>RS256</code>; <code>RS384</code>, <code>RS512</code>, and RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>)
-are not supported. Ed25519 keys use <code>EdDSA</code>; Ed448 is not supported.</p></dd>
+are not supported. Ed25519 keys support <code>Ed25519</code> (RFC 9864) and legacy
+<code>EdDSA</code> (the default for compatibility); Ed448 is not supported.</p></dd>
 
 
 <dt id="arg-client-assertion-private-key-kid">client_assertion_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-client-assertion-private-key-kid"></a></dt>
@@ -353,7 +354,7 @@ error. When the provider advertises
 inferred defaults must be included in that set.
 Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> for client_secret_jwt and asymmetric algorithms
 supported for outbound signing (<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
-<code>EdDSA</code> with Ed25519 keys) for private keys. <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code>
+<code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys) for private keys. <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code>
 are not currently supported for outbound client assertions.</p></dd>
 
 
@@ -371,7 +372,9 @@ by the provider's registration agreement.</p></dd>
 certificate (or certificate chain) used for RFC 8705 mutual TLS (mTLS) client
 authentication and certificate-bound protected-resource requests. Required
 when <code>provider@token_auth_style</code> is <code>"tls_client_auth"</code> or
-<code>"self_signed_tls_client_auth"</code>.</p></dd>
+<code>"self_signed_tls_client_auth"</code>. The certificate matching the private key
+must appear first, followed by its issuers in chain order. CA-first bundles
+are rejected.</p></dd>
 
 
 <dt id="arg-mtls-client-key-file">mtls_client_key_file<a class="anchor" aria-label="anchor" href="#arg-mtls-client-key-file"></a></dt>
@@ -419,7 +422,7 @@ provider/API supports DPoP. Accepts an
 <code>openssl::key</code> or PEM private-key string, using RSA, EC, or Ed25519.
 <code>oauth_client()</code> then defaults <code>dpop_require_access_token</code> to <code>TRUE</code>.
 Supported signing algorithms are <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
-<code>EdDSA</code> with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
+<code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
 outgoing proofs. See <code>dpop_signing_alg</code> and the <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a>.</p></dd>
 
 
@@ -563,7 +566,7 @@ effective response mode is JARM, shinyOAuth defaults to <code>RS256</code>. This
 value is not sent dynamically on the authorization request; it must match
 the client metadata and provider behavior configured out-of-band for that
 client. Current inbound support accepts <code>HS256</code>, <code>HS384</code>, <code>HS512</code>,
-<code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code>.
+<code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, <code>Ed25519</code>, and <code>EdDSA</code>.
 RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>) and unsecured <code>none</code> are not accepted
 for inbound JARM.</p></dd>
 

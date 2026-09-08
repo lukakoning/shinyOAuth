@@ -339,7 +339,8 @@ OAuthClient(
   private-key JWT signing supports RSA, EC, and Ed25519 private keys.
   For RSA keys, outbound signing is currently limited to `RS256`;
   `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not
-  supported. Ed25519 keys use `EdDSA`; Ed448 is not supported.
+  supported. Ed25519 keys support `Ed25519` (RFC 9864) and legacy
+  `EdDSA` (the default for compatibility); Ed448 is not supported.
 
 - client_assertion_private_key_kid:
 
@@ -360,9 +361,10 @@ OAuthClient(
   explicit values and inferred defaults must be included in that set.
   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt
   and asymmetric algorithms supported for outbound signing (`RS256`,
-  `ES256`, `ES384`, `ES512`, and `EdDSA` with Ed25519 keys) for private
-  keys. `RS384`, `RS512`, `PS256`, `PS384`, and `PS512` are not
-  currently supported for outbound client assertions.
+  `ES256`, `ES384`, `ES512`, and `Ed25519` or legacy `EdDSA` with
+  Ed25519 keys) for private keys. `RS384`, `RS512`, `PS256`, `PS384`,
+  and `PS512` are not currently supported for outbound client
+  assertions.
 
 - client_assertion_audience:
 
@@ -379,7 +381,9 @@ OAuthClient(
   chain) used for RFC 8705 mutual TLS (mTLS) client authentication and
   certificate-bound protected-resource requests. Required when
   `provider@token_auth_style` is `"tls_client_auth"` or
-  `"self_signed_tls_client_auth"`.
+  `"self_signed_tls_client_auth"`. The certificate matching the private
+  key must appear first, followed by its issuers in chain order.
+  CA-first bundles are rejected.
 
 - mtls_client_key_file:
 
@@ -429,10 +433,10 @@ OAuthClient(
   private-key string, using RSA, EC, or Ed25519.
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   then defaults `dpop_require_access_token` to `TRUE`. Supported signing
-  algorithms are `RS256`, `ES256`, `ES384`, `ES512`, and `EdDSA` with
-  Ed25519 keys; RSA-PSS and other RSA signing algorithms are not
-  supported for outgoing proofs. See `dpop_signing_alg` and the
-  [advanced security
+  algorithms are `RS256`, `ES256`, `ES384`, `ES512`, and `Ed25519` or
+  legacy `EdDSA` with Ed25519 keys; RSA-PSS and other RSA signing
+  algorithms are not supported for outgoing proofs. See
+  `dpop_signing_alg` and the [advanced security
   vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html).
 
 - dpop_private_key_kid:
@@ -578,9 +582,9 @@ OAuthClient(
   dynamically on the authorization request; it must match the client
   metadata and provider behavior configured out-of-band for that client.
   Current inbound support accepts `HS256`, `HS384`, `HS512`, `RS256`,
-  `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, and `EdDSA`. RSA-PSS
-  (`PS256`, `PS384`, `PS512`) and unsecured `none` are not accepted for
-  inbound JARM.
+  `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `Ed25519`, and `EdDSA`.
+  RSA-PSS (`PS256`, `PS384`, `PS512`) and unsecured `none` are not
+  accepted for inbound JARM.
 
 - jarm_encrypted_response_alg:
 

@@ -379,19 +379,21 @@ for the backend contract.
   protections to match your provider and deployment requirements.
 
 The module links a returning login to the browser using an origin-scoped
-token in local storage and an independent, short-lived cookie marker.
-Cookies and local storage must both be available. JavaScript reads this
-binding, so preventing injected scripts (cross-site scripting, or XSS)
-in your app matters. This link cannot establish which account you
-expected to sign in: check that account yourself when your app has such
-a requirement.
+token in tab-scoped session storage and an independent, short-lived
+cookie marker. Each transaction has its own marker. Cookies and session
+storage must both be available; complete login in the tab that started
+it. JavaScript reads this binding, so preventing injected scripts
+(cross-site scripting, or XSS) in your app matters. This link cannot
+establish which account you expected to sign in: check that account
+yourself when your app has such a requirement.
 
 Treat the entire hostname as a trust boundary and use a dedicated
 hostname if other services are untrusted. Cookies are shared across
-ports, even with `__Host-`, `Secure`, or `HttpOnly`. The local-storage
+ports, even with `__Host-`, `Secure`, or `HttpOnly`. The session-storage
 check prevents another port from adopting a cookie as a binding, but
-cannot prevent cookie disruption. Different paths on the same origin
-also share local storage.
+cannot prevent cookie disruption. Application callback routes
+distinguish records within a tab. Same-origin scripts can still access
+session storage.
 
 ## Troubleshooting
 

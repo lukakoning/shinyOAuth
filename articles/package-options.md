@@ -156,7 +156,8 @@ options:
 
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds)
   applied to all outbound requests (discovery, JWKS, token exchange,
-  userinfo). Increase if your provider/network is slow
+  userinfo). Increase if your provider/network is slow. Values beyond
+  curl’s supported timeout range are capped
 - `options(shinyOAuth.retry_max_tries = 3L)` – maximum attempts for
   retryable requests after network errors or HTTP 408, 429, or 5xx
   responses. Authorization-code exchange and refresh are not

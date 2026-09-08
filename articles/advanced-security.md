@@ -27,19 +27,21 @@ isolate ports. Signed or `HttpOnly` cookies still reach same-host
 services in HTTP requests. Use a dedicated hostname when those services
 are untrusted.
 
-shinyOAuth keeps the actual browser-binding token in origin-scoped local
-storage, accompanied by an independent random cookie marker. It restores
-the binding only when the cookie matches an unexpired local record.
-Reading or planting a cookie on another port cannot establish that
-record. Cookie disruption can still abort login; pages and scripts on
-the same origin can access local storage, so XSS prevention remains
-necessary. Cookies, local storage, and Web Crypto must be available, and
-pending logins from older cookie-only versions must be restarted after
-upgrading.
+shinyOAuth keeps the actual browser-binding token in origin- and
+tab-scoped session storage, accompanied by an independent random cookie
+marker. It restores the binding only when the cookie matches an
+unexpired local record. Reading or planting a cookie on another port
+cannot establish that record. Cookie disruption can still abort login;
+pages and scripts on the same origin can access session storage, so XSS
+prevention remains necessary. Cookies, session storage, and Web Crypto
+must be available, and pending logins from older cookie-only or
+local-storage versions must be restarted after upgrading.
 
-Each new authorization request gets a fresh server-selected binding.
-Private module inputs are excluded from both URL and disk bookmarks.
-Avoid copying browser tokens into custom bookmark values or logs. The
+Each new authorization request gets a fresh server-selected binding and
+a distinct marker cookie. Application callback routes and tabs have
+independent records; complete login in the tab that started it. Private
+module inputs are excluded from both URL and disk bookmarks. Avoid
+copying browser tokens into custom bookmark values or logs. The
 acknowledgment is a delivery check, not independent server verification
 of HTTP cookie possession. The standalone
 [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
