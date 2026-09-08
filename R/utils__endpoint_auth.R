@@ -20,6 +20,7 @@ endpoint_auth_config_problem <- function(config) {
     "client_assertion_private_key_kid",
     "client_assertion_alg",
     "client_assertion_audience",
+    "client_assertion_typ",
     "extra_headers",
     "mtls_client_cert_file",
     "mtls_client_key_file",
@@ -56,6 +57,17 @@ endpoint_auth_config_problem <- function(config) {
           " must be a string"
         ))
       }
+    }
+    if (
+      "client_assertion_typ" %in%
+        names(entry) &&
+        !valid_client_assertion_typ(entry$client_assertion_typ)
+    ) {
+      return(paste0(
+        "endpoint_auth$",
+        endpoint,
+        "$client_assertion_typ must be a non-empty JWT media type"
+      ))
     }
     headers <- entry$extra_headers
     if (

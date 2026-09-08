@@ -369,6 +369,7 @@ method(format, OAuthClient) <- function(x, ...) {
       client_assertion_private_key_kid = x@client_assertion_private_key_kid,
       client_assertion_alg = x@client_assertion_alg,
       client_assertion_audience = x@client_assertion_audience,
+      client_assertion_typ = x@client_assertion_typ,
       dpop_private_key = x@dpop_private_key,
       dpop_private_key_kid = x@dpop_private_key_kid,
       dpop_signing_alg = x@dpop_signing_alg,

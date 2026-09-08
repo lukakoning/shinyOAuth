@@ -58,7 +58,8 @@ OAuthClient(
   mtls_require_observed_cnf = TRUE,
   trusted_id_token_audiences = character(0),
   compare_callback_issuer = is_valid_string(provider@issuer) &&
-    (missing(enforce_callback_issuer) || isTRUE(enforce_callback_issuer))
+    (missing(enforce_callback_issuer) || isTRUE(enforce_callback_issuer)),
+  client_assertion_typ = "JWT"
 )
 }
 \arguments{
@@ -80,7 +81,7 @@ requires a non-empty secret, regardless of the client authentication method.}
 top-level client/provider authentication settings. Each entry may supply
 \code{token_auth_style}, \code{client_secret}, \code{client_assertion_private_key},
 \code{client_assertion_private_key_kid}, \code{client_assertion_alg},
-\code{client_assertion_audience}, \code{extra_headers} (named character vector),
+\code{client_assertion_audience}, \code{client_assertion_typ}, \code{extra_headers} (named character vector),
 and the \verb{mtls_client_*} certificate/key/CA fields. Introspection and
 revocation may also use a separate \code{client_id}. Unspecified credentials
 inherit the client's settings. Discovered endpoint methods and signing
@@ -522,6 +523,14 @@ check present values without requiring older providers to send \code{iss}.
 Required issuer presence always enables comparison, even when this separate
 flag is \code{FALSE}. Validated JARM supplies
 its own issuer protection without requiring a redundant outer \code{iss}.}
+
+\item{client_assertion_typ}{JWT header \code{typ} for client authentication.
+Defaults to \code{"JWT"} for existing providers. Use
+\code{"client-authentication+jwt"} with \code{client_assertion_audience} set to the
+provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.
+The explicit type is recommended; it does not replace audience validation.
+This setting does not change JAR, JARM, ID token or DPoP types, or the
+OAuth form parameter \code{client_assertion_type}.}
 }
 \description{
 An \code{OAuthClient} holds your app's registration with a provider: its client ID,

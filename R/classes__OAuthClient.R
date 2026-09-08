@@ -260,13 +260,20 @@
 #'   top-level client/provider authentication settings. Each entry may supply
 #'   `token_auth_style`, `client_secret`, `client_assertion_private_key`,
 #'   `client_assertion_private_key_kid`, `client_assertion_alg`,
-#'   `client_assertion_audience`, `extra_headers` (named character vector),
+#'   `client_assertion_audience`, `client_assertion_typ`, `extra_headers` (named character vector),
 #'   and the `mtls_client_*` certificate/key/CA fields. Introspection and
 #'   revocation may also use a separate `client_id`. Unspecified credentials
 #'   inherit the client's settings. Discovered endpoint methods and signing
 #'   algorithms are checked independently. PAR inherits token authentication.
 #'   Extra token headers apply only to token exchange and refresh; set
 #'   `extra_headers` explicitly for every other endpoint that needs them.
+#' @param client_assertion_typ JWT header `typ` for client authentication.
+#'   Defaults to `"JWT"` for existing providers. Use
+#'   `"client-authentication+jwt"` with `client_assertion_audience` set to the
+#'   provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.
+#'   The explicit type is recommended; it does not replace audience validation.
+#'   This setting does not change JAR, JARM, ID token or DPoP types, or the
+#'   OAuth form parameter `client_assertion_type`.
 #' @param mtls_client_cert_file Optional path to the PEM-encoded client
 #'   certificate (or certificate chain) used for RFC 8705 mutual TLS (mTLS) client
 #'   authentication and certificate-bound protected-resource requests. Required
@@ -691,6 +698,10 @@ OAuthClient <- S7::new_class(
         is_valid_string(provider@issuer) &&
           (missing(enforce_callback_issuer) || isTRUE(enforce_callback_issuer))
       )
+    ),
+    client_assertion_typ = S7::new_property(
+      S7::class_character,
+      default = "JWT"
     )
   ),
   validator = function(self) oauth_client_validate(self)
@@ -781,6 +792,7 @@ oauth_client <- function(
   mtls_require_observed_cnf = TRUE,
   trusted_id_token_audiences = character(0),
   compare_callback_issuer = NULL,
+  client_assertion_typ = "JWT",
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(
@@ -1080,6 +1092,7 @@ oauth_client <- function(
       NA_character_,
     client_assertion_alg = client_assertion_alg %||% NA_character_,
     client_assertion_audience = client_assertion_audience %||% NA_character_,
+    client_assertion_typ = client_assertion_typ,
     mtls_client_cert_file = mtls_client_cert_file %||% NA_character_,
     mtls_client_key_file = mtls_client_key_file %||% NA_character_,
     mtls_client_key_password = mtls_client_key_password %||% NA_character_,
@@ -1669,6 +1682,12 @@ oauth_client_validate <- function(self) {
         " bytes"
       ))
     }
+  }
+
+  if (!valid_client_assertion_typ(self@client_assertion_typ)) {
+    return(
+      "OAuthClient: client_assertion_typ must be a non-empty JWT media type without whitespace or control characters"
+    )
   }
 
   # Validate client_assertion_audience when provided

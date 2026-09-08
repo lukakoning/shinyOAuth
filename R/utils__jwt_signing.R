@@ -117,7 +117,7 @@ build_client_assertion <- function(client, aud) {
   # Header base; jose helpers set alg automatically for HS* (via size) but we
   # include explicit alg to be clear. Include kid if configured for private keys.
   header <- list(
-    typ = "JWT",
+    typ = client@client_assertion_typ,
     alg = alg
   )
   if (identical(style, "private_key_jwt")) {
@@ -143,14 +143,16 @@ build_client_assertion <- function(client, aud) {
         )
       )
     }
-    # Build a proper jwt_claim from named list via do.call
+    # Retain claim validation, then use the existing explicit-header encoder.
+    # jose::jwt_encode_hmac prepends typ=JWT and can create duplicate typ/alg
+    # members when an explicit header is supplied.
     clm <- outbound_jwt_claim(claims)
-    # jose will set alg based on size, but we also pass header to include typ
-    jwt <- jose::jwt_encode_hmac(
-      clm,
+    jwt <- encode_hmac_jwt_with_header(
+      claims = unclass(clm),
       secret = secret,
       header = header,
-      size = size
+      size = size,
+      alg = alg
     )
     return(jwt)
   }
@@ -160,7 +162,9 @@ build_client_assertion <- function(client, aud) {
     clm <- outbound_jwt_claim(claims)
     # Hard-fail impossible alg/key pairs before signing. jose::jwt_encode_sig()
     # can otherwise emit mismatched JOSE alg headers instead of rejecting them.
-    if (!private_key_can_sign_jws_alg(key, alg, typ = "JWT")) {
+    if (
+      !private_key_can_sign_jws_alg(key, alg, typ = client@client_assertion_typ)
+    ) {
       err_config(
         c(
           "x" = paste0(
@@ -220,57 +224,45 @@ build_client_assertion <- function(client, aud) {
 #' @noRd
 resolve_client_assertion_audience <- function(client, req) {
   S7::check_is_S7(client, class = OAuthClient)
+  url <- if (inherits(req, "httr2_request")) req[["url"]] else NULL
+  resolve_client_assertion_audience_url(
+    client@provider,
+    url,
+    client@client_assertion_audience
+  )
+}
 
-  override <- client@client_assertion_audience %||% NA_character_
-  # Defense-in-depth: ensure scalar before indexing.
-  if (!is.character(override) || length(override) != 1L) {
-    override <- NA_character_ # nolint
+# Pure settings resolver shared with the optional configuration assessment.
+resolve_client_assertion_audience_url <- function(
+  provider,
+  url,
+  override = NULL
+) {
+  if (is_valid_string(override)) {
+    return(override)
   }
-  override_chr <- as.character(override)
-  if (!is.na(override_chr) && nzchar(override_chr)) {
-    return(override_chr)
+  if (!is_valid_string(url)) {
+    return(provider@token_url)
   }
-
-  if (inherits(req, "httr2_request")) {
-    url0 <- req[["url"]] %||% NA_character_
-    url_chr <- as.character(url0[[1]])
-    if (!is.na(url_chr) && nzchar(url_chr)) {
-      provider_issuer <- client@provider@issuer %||% NA_character_
-      par_urls <- c(
-        client@provider@par_url %||% NA_character_,
-        client@provider@mtls_endpoint_aliases[["par_endpoint"]] %||%
-          NA_character_,
-        client@provider@mtls_endpoint_aliases[[
-          "pushed_authorization_request_endpoint"
-        ]] %||%
-          NA_character_
-      )
-      par_urls <- unique(par_urls[vapply(
-        par_urls,
-        is_valid_string,
-        logical(1)
-      )])
-
-      if (url_chr %in% par_urls) {
-        if (is_valid_string(provider_issuer)) {
-          return(provider_issuer)
-        }
-
-        return(client@provider@par_url)
-      }
-
-      if (
-        identical(url_chr, client@provider@par_url %||% NA_character_) &&
-          is_valid_string(provider_issuer)
-      ) {
-        return(provider_issuer)
-      }
-
-      return(url_chr)
+  par_urls <- c(
+    provider@par_url,
+    provider@mtls_endpoint_aliases[["par_endpoint"]],
+    provider@mtls_endpoint_aliases[["pushed_authorization_request_endpoint"]]
+  )
+  par_urls <- par_urls[vapply(par_urls, is_valid_string, logical(1))]
+  if (url %in% par_urls) {
+    if (is_valid_string(provider@issuer)) {
+      return(provider@issuer)
     }
+    return(provider@par_url)
   }
+  url
+}
 
-  client@provider@token_url
+valid_client_assertion_typ <- function(value) {
+  is_valid_string(value) &&
+    nchar(value, type = "bytes") <= 256L &&
+    grepl("^[A-Za-z0-9][A-Za-z0-9!#$&^_.+/-]*$", value)
 }
 
 ## 1.2 Signed authorization requests -------------------------------------------
