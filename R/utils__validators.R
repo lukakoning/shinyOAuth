@@ -250,7 +250,7 @@ validate_oauth_callback_shape <- function(
 oauth_callback_limits <- function() {
   max_code_bytes <- get_option_positive_number(
     "shinyOAuth.callback_max_code_bytes",
-    4096
+    8192
   )
   max_state_bytes <- get_option_positive_number(
     "shinyOAuth.callback_max_state_bytes",
@@ -295,6 +295,10 @@ oauth_callback_limits <- function() {
 
   list(
     code = max_code_bytes,
+    browser_token = get_option_positive_number(
+      "shinyOAuth.callback_max_browser_token_bytes",
+      256
+    ),
     state = max_state_bytes,
     error = max_error_bytes,
     error_description = max_error_desc_bytes,

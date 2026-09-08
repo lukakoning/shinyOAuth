@@ -1042,10 +1042,7 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
       validate_untrusted_query_param(
         "state",
         encrypted_payload,
-        max_bytes = get_option_positive_number(
-          "shinyOAuth.callback_max_state_bytes",
-          8192
-        )
+        max_bytes = oauth_callback_limits()[["state"]]
       )
       TRUE
     },
@@ -1194,35 +1191,23 @@ handle_callback <- function(
   validate_untrusted_query_param(
     "code",
     code,
-    max_bytes = get_option_positive_number(
-      "shinyOAuth.callback_max_code_bytes",
-      4096
-    )
+    max_bytes = oauth_callback_limits()[["code"]]
   )
   validate_untrusted_query_param(
     "state",
     payload,
-    max_bytes = get_option_positive_number(
-      "shinyOAuth.callback_max_state_bytes",
-      8192
-    )
+    max_bytes = oauth_callback_limits()[["state"]]
   )
   validate_untrusted_query_param(
     "browser_token",
     browser_token,
-    max_bytes = get_option_positive_number(
-      "shinyOAuth.callback_max_browser_token_bytes",
-      256
-    )
+    max_bytes = oauth_callback_limits()[["browser_token"]]
   )
   if (!is.null(iss)) {
     validate_untrusted_query_param(
       "iss",
       iss,
-      max_bytes = get_option_positive_number(
-        "shinyOAuth.callback_max_iss_bytes",
-        2048
-      )
+      max_bytes = oauth_callback_limits()[["iss"]]
     )
   }
 
@@ -1343,18 +1328,12 @@ handle_callback_internal <- function(
   validate_untrusted_query_param(
     "code",
     code,
-    max_bytes = get_option_positive_number(
-      "shinyOAuth.callback_max_code_bytes",
-      4096
-    )
+    max_bytes = oauth_callback_limits()[["code"]]
   )
   validate_untrusted_query_param(
     "state",
     payload,
-    max_bytes = get_option_positive_number(
-      "shinyOAuth.callback_max_state_bytes",
-      8192
-    )
+    max_bytes = oauth_callback_limits()[["state"]]
   )
   # Browser token is not query-derived in the module, but handle_callback() is
   # exported and may be called directly with attacker-controlled inputs.
@@ -1362,10 +1341,7 @@ handle_callback_internal <- function(
   validate_untrusted_query_param(
     "browser_token",
     browser_token,
-    max_bytes = get_option_positive_number(
-      "shinyOAuth.callback_max_browser_token_bytes",
-      256
-    )
+    max_bytes = oauth_callback_limits()[["browser_token"]]
   )
 
   # Decrypt & verify payload ---------------------------------------------------

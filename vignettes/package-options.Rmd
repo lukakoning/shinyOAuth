@@ -165,7 +165,7 @@ These prevent maliciously large state parameters from causing excessive CPU or m
 
 ### Callback query
 
-- `options(shinyOAuth.callback_max_code_bytes = 4096)` – maximum byte length of the `code` query parameter
+- `options(shinyOAuth.callback_max_code_bytes = 8192)` – maximum decoded byte length of the `code` callback parameter across direct, GET/POST bridge, module and JARM paths. Explicit lower or higher limits remain effective; values are rejected rather than truncated
 - `options(shinyOAuth.callback_max_state_bytes = 8192)` – maximum byte length of the `state` query parameter (outer token string)
 - `options(shinyOAuth.callback_max_error_bytes = 256)` – maximum byte length of the `error` query parameter
 - `options(shinyOAuth.callback_max_error_description_bytes = 4096)` – maximum byte length of the `error_description` query parameter
