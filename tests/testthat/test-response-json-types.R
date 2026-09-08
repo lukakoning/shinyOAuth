@@ -25,7 +25,7 @@ test_that("token JSON preserves singleton arrays until scalar validation", {
   }
 })
 
-test_that("OIDC UserInfo validates JSON scalars before normalizing profile arrays", {
+test_that("OIDC UserInfo validates JSON scalars and preserves profile arrays", {
   cli <- make_test_client(use_nonce = FALSE)
   cli@provider@issuer <- "https://example.com"
   cli@provider@userinfo_url <- "https://example.com/userinfo"
@@ -54,7 +54,7 @@ test_that("OIDC UserInfo validates JSON scalars before normalizing profile array
   ui <- get_userinfo(cli, "token")
   expect_identical(ui$sub, "user")
   expect_true(ui$email_verified)
-  expect_identical(ui$groups, c("staff", "reviewers"))
+  expect_identical(ui$groups, list("staff", "reviewers"))
 })
 test_that("malformed wire scopes never become verified grants", {
   cli <- make_test_client(use_nonce = FALSE)

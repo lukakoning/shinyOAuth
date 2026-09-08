@@ -84,6 +84,47 @@ make_eddsa_signed_jwt <- function(
   paste0(signing_input, ".", shinyOAuth:::base64url_encode(sig))
 }
 
+test_that("JSON and signed JWT UserInfo preserve types through claim policy", {
+  key <- openssl::rsa_keygen(2048)
+  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = FALSE)
+  jwk$kid <- "type-parity"
+  cli <- make_test_client(use_nonce = FALSE)
+  cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@issuer <- "https://example.com"
+  cli@claims_validation <- "strict"
+  body <- ""
+  content_type <- "application/json"
+  testthat::local_mocked_bindings(
+    req_with_retry = function(...) httr2::response(
+      status_code = 200L,
+      headers = list(`Content-Type` = content_type),
+      body = charToRaw(body)
+    ),
+    fetch_jwks = function(...) list(keys = list(jwk)),
+    .package = "shinyOAuth"
+  )
+  for (value in list("staff", list("staff"), list(groups = list("staff")))) {
+    claims <- list(sub = "user", iss = cli@provider@issuer,
+                   aud = cli@client_id, role = value)
+    json <- as.character(jsonlite::toJSON(claims, auto_unbox = TRUE))
+    profiles <- list()
+    for (content_type in c("application/json", "application/jwt")) {
+      body <- if (content_type == "application/json") json else
+        make_signed_userinfo_json(json, key, "type-parity")
+      ui <- get_userinfo(cli, "synthetic-token")
+      expect_identical(ui$role, value)
+      cli@claims <- list(userinfo = list(role = list(value = value)))
+      expect_no_error(shinyOAuth:::validate_essential_claims(cli, ui, "userinfo"))
+      cli@claims <- list(userinfo = list(role = list(value = "staff")))
+      if (is.list(value)) {
+        expect_error(shinyOAuth:::validate_essential_claims(cli, ui, "userinfo"))
+      }
+      profiles[[content_type]] <- ui
+    }
+    expect_identical(profiles[[1]], profiles[[2]])
+  }
+})
+
 test_that("get_userinfo rejects unsigned JWT response (alg=none) by default", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"

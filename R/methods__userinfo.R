@@ -324,8 +324,8 @@ get_userinfo <- function(
 
         if (!is_jwt_response) {
           validate_userinfo_json_claim_types(ui, oauth_client, shiny_session)
-          # Normalize permitted profile arrays only after protocol type checks.
-          ui <- jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
+          # Preserve JSON arrays as lists, as on the signed JWT path. Login and
+          # refresh still need their original types for exact claim-value checks.
         }
 
         otel_set_span_attributes(
