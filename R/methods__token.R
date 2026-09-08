@@ -1116,6 +1116,16 @@ refresh_token_impl <- function(
             async = FALSE,
             shiny_session = shiny_session
           )
+          refreshed_token <- enforce_token_introspection_policy(
+            oauth_client = oauth_client,
+            token = refreshed_token,
+            introspection_result = intro_res,
+            requested_scopes = effective_client_scopes(oauth_client),
+            phase = "refresh_token",
+            token_response_cnf = token_set[["cnf"]],
+            expires_in_missing = is.null(token_set[["expires_in"]]),
+            defer_subject_match = TRUE
+          )
           validate_token_cnf_consistency(
             access_token = refreshed_token@access_token,
             cnf = token_set[["cnf"]],
@@ -1204,14 +1214,8 @@ refresh_token_impl <- function(
         }
 
         if (isTRUE(effective_introspect)) {
-          refreshed_token <- enforce_token_introspection_policy(
-            oauth_client = oauth_client,
-            token = refreshed_token,
-            introspection_result = intro_res,
-            requested_scopes = effective_client_scopes(oauth_client),
-            phase = "refresh_token",
-            token_response_cnf = token_set[["cnf"]],
-            expires_in_missing = is.null(token_set[["expires_in"]])
+          enforce_token_introspection_subject(
+            oauth_client, refreshed_token, intro_res
           )
         }
 

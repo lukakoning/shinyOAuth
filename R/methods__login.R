@@ -1756,6 +1756,17 @@ handle_callback_internal <- function(
           async = FALSE,
           shiny_session = shiny_session
         )
+        token <- enforce_token_introspection_policy(
+          oauth_client = oauth_client,
+          token = token,
+          introspection_result = intro_res,
+          requested_scopes = payload[["scopes"]] %||%
+            effective_client_scopes(oauth_client),
+          phase = "exchange_code",
+          token_response_cnf = token_set[["cnf"]],
+          expires_in_missing = is.null(token_set[["expires_in"]]),
+          defer_subject_match = TRUE
+        )
         validate_token_cnf_consistency(
           access_token = token@access_token,
           cnf = token_set[["cnf"]],
@@ -1833,15 +1844,8 @@ handle_callback_internal <- function(
       # Optional token introspection validation -----------------------------------
 
       if (isTRUE(introspect)) {
-        token <- enforce_token_introspection_policy(
-          oauth_client = oauth_client,
-          token = token,
-          introspection_result = intro_res,
-          requested_scopes = payload[["scopes"]] %||%
-            effective_client_scopes(oauth_client),
-          phase = "exchange_code",
-          token_response_cnf = token_set[["cnf"]],
-          expires_in_missing = is.null(token_set[["expires_in"]])
+        enforce_token_introspection_subject(
+          oauth_client, token, intro_res
         )
       }
 
@@ -1972,6 +1976,7 @@ resolve_userinfo_subject <- function(oauth_client, userinfo) {
 #'   `"scope"` is listed in `client@introspect_elements`. Defaults to the
 #'   client's effective scopes.
 #' @param expires_in_missing Whether the token response omitted its lifetime.
+#' @param defer_subject_match Defer subject comparison that needs UserInfo.
 #' @return The updated [OAuthToken], with `cnf` and `token_type` augmented from
 #'   the introspection response when available.
 #' @keywords internal
@@ -1983,7 +1988,8 @@ enforce_token_introspection_policy <- function(
   requested_scopes = NULL,
   phase = NULL,
   token_response_cnf = NULL,
-  expires_in_missing = FALSE
+  expires_in_missing = FALSE,
+  defer_subject_match = FALSE
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
   S7::check_is_S7(token, class = OAuthToken)
@@ -2086,43 +2092,10 @@ enforce_token_introspection_policy <- function(
     }
   }
 
-  if ("sub" %in% introspect_elements) {
-    intro_sub <- raw[["sub"]] %||% NA_character_
-    if (!is_valid_string(intro_sub)) {
-      err_token(c(
-        "x" = "Token introspection response missing required sub",
-        "i" = "Disable this check or ensure your provider returns sub in introspection"
-      ))
-    }
-
-    expected_sub <- NA_character_
-    if (isTRUE(token@id_token_validated) && is_valid_string(token@id_token)) {
-      pl <- try(parse_jwt_payload(token@id_token), silent = TRUE)
-      if (!inherits(pl, "try-error")) {
-        expected_sub <- pl[["sub"]] %||% NA_character_
-      }
-    }
-    if (!is_valid_string(expected_sub)) {
-      ui <- token@userinfo %||% list()
-      if (is.list(ui)) {
-        expected_sub <- resolve_userinfo_subject(oauth_client, ui)
-      }
-    }
-
-    if (!is_valid_string(expected_sub)) {
-      err_token(c(
-        "x" = "Cannot validate introspection sub: no subject is available from a validated ID token or userinfo",
-        "i" = "Enable ID token validation and/or userinfo, or disable the sub requirement"
-      ))
-    }
-
-    if (!identical(as.character(intro_sub)[1], as.character(expected_sub)[1])) {
-      err_token(c(
-        "x" = "Token introspection sub does not match authenticated subject",
-        "i" = "This may indicate a provider inconsistency or a token mix-up"
-      ))
-    }
-  }
+  enforce_token_introspection_subject(
+    oauth_client, token, introspection_result,
+    defer_userinfo = defer_subject_match
+  )
 
   if ("scope" %in% introspect_elements) {
     scope_validation_mode <- oauth_client@scope_validation %||% "warn"
@@ -2191,6 +2164,61 @@ enforce_token_introspection_policy <- function(
   }
 
   token
+}
+
+
+# Compare the subject separately after UserInfo, while requiring a valid sub
+# and checking any validated ID-token baseline before resource access.
+enforce_token_introspection_subject <- function(
+  oauth_client, token, introspection_result, defer_userinfo = FALSE
+) {
+  introspect_elements <- oauth_client@introspect_elements %||% character(0)
+  raw <- introspection_result[["raw"]] %||% list()
+  if (!is.list(raw)) {
+    raw <- list()
+  }
+  if ("sub" %in% introspect_elements) {
+    intro_sub <- raw[["sub"]] %||% NA_character_
+    if (!is_valid_string(intro_sub)) {
+      err_token(c(
+        "x" = "Token introspection response missing required sub",
+        "i" = "Disable this check or ensure your provider returns sub in introspection"
+      ))
+    }
+
+    expected_sub <- NA_character_
+    if (isTRUE(token@id_token_validated) && is_valid_string(token@id_token)) {
+      pl <- try(parse_jwt_payload(token@id_token), silent = TRUE)
+      if (!inherits(pl, "try-error")) {
+        expected_sub <- pl[["sub"]] %||% NA_character_
+      }
+    }
+    if (!is_valid_string(expected_sub) && isTRUE(defer_userinfo)) {
+      return(invisible(NULL))
+    }
+    if (!is_valid_string(expected_sub)) {
+      ui <- token@userinfo %||% list()
+      if (is.list(ui)) {
+        expected_sub <- resolve_userinfo_subject(oauth_client, ui)
+      }
+    }
+
+    if (!is_valid_string(expected_sub)) {
+      err_token(c(
+        "x" = "Cannot validate introspection sub: no subject is available from a validated ID token or userinfo",
+        "i" = "Enable ID token validation and/or userinfo, or disable the sub requirement"
+      ))
+    }
+
+    if (!identical(as.character(intro_sub)[1], as.character(expected_sub)[1])) {
+      err_token(c(
+        "x" = "Token introspection sub does not match authenticated subject",
+        "i" = "This may indicate a provider inconsistency or a token mix-up"
+      ))
+    }
+  }
+
+  invisible(NULL)
 }
 
 
