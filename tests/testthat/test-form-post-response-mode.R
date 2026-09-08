@@ -596,6 +596,43 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
   expect_true("audit_callback_iss_mismatch" %in% event_types)
 })
 
+test_that("GET and POST bridges compare issuers independently of required presence", {
+  for (mode in c("query", "form_post")) {
+    cli <- make_test_client(
+      use_pkce = TRUE,
+      use_nonce = TRUE,
+      response_mode = mode
+    )
+    cli@enforce_callback_issuer <- FALSE
+    cli@compare_callback_issuer <- TRUE
+    ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = cli)
+    state <- parse_query_param(
+      prepare_call(cli, browser_token = valid_browser_token()),
+      "state"
+    )
+    request <- function(fields) {
+      req <- if (mode == "query") {
+        make_form_post_req(query = fields)
+      } else {
+        make_form_post_req(body = fields)
+      }
+      req$REQUEST_METHOD <- if (mode == "query") "GET" else "POST"
+      req
+    }
+    for (response in c("code=ok", "error=access_denied")) {
+      fields <- paste0(response, "&state=", state)
+      expect_identical(
+        ui(request(paste0(
+          fields,
+          "&iss=https%3A%2F%2Fdifferent.example"
+        )))$status,
+        400L
+      )
+      expect_identical(ui(request(fields))$status, 303L)
+    }
+  }
+})
+
 test_that("oauth_form_post_ui rejects oversized callback query before storing", {
   withr::local_options(list(shinyOAuth.callback_max_query_bytes = 64))
 

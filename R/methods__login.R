@@ -2276,7 +2276,8 @@ enforce_callback_issuer <- function(
   }
 
   if (
-    isTRUE(should_enforce_callback_issuer) &&
+    (isTRUE(should_enforce_callback_issuer) ||
+      isTRUE(oauth_client@compare_callback_issuer)) &&
       !is.null(iss) &&
       is_valid_string(expected_issuer) &&
       !identical(iss, expected_issuer)

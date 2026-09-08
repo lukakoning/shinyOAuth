@@ -57,6 +57,7 @@ oauth_client(
   endpoint_auth = list(),
   mtls_require_observed_cnf = TRUE,
   trusted_id_token_audiences = character(0),
+  compare_callback_issuer = NULL,
   ...
 )
 }
@@ -510,6 +511,17 @@ which permits only \code{client_id}. The token must always include \code{client_
 in \code{aud}; multi-audience tokens must also have \code{azp} equal to \code{client_id}.
 Values are matched exactly and case-sensitively. Configure only audiences
 trusted for this application's identity tokens, not arbitrary API audiences.}
+
+\item{compare_callback_issuer}{Logical or \code{NULL}. Compare any supplied callback
+\code{iss} exactly with \code{provider@issuer}, while allowing absence when
+\code{enforce_callback_issuer = FALSE}. \code{NULL} enables comparison when an issuer
+is configured, except when \code{enforce_callback_issuer = FALSE} was explicitly
+supplied. This preserves the existing complete opt-out. Set
+\code{compare_callback_issuer = TRUE} with \code{enforce_callback_issuer = FALSE} to
+check present values without requiring older providers to send \code{iss}.
+Required issuer presence always enables comparison, even when this separate
+flag is \code{FALSE}. Validated JARM supplies
+its own issuer protection without requiring a redundant outer \code{iss}.}
 
 \item{...}{Deprecated renamed arguments accepted temporarily for backward
 compatibility.}

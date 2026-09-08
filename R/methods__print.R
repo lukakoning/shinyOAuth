@@ -378,6 +378,7 @@ method(format, OAuthClient) <- function(x, ...) {
       mtls_require_observed_cnf = x@mtls_require_observed_cnf,
       redirect_uri = x@redirect_uri,
       enforce_callback_issuer = x@enforce_callback_issuer,
+      compare_callback_issuer = x@compare_callback_issuer,
       authorization_server_mode = x@authorization_server_mode,
       authorization_server_redirect_uris = x@authorization_server_redirect_uris,
       scopes = x@scopes,

@@ -10,7 +10,8 @@ make_iss_test_client <- function(
   authorization_response_iss_parameter_supported = FALSE,
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(0),
-  response_mode = NULL
+  response_mode = NULL,
+  compare_callback_issuer = NULL
 ) {
   prov <- oauth_provider(
     name = "oidc-iss-test",
@@ -30,6 +31,7 @@ make_iss_test_client <- function(
     client_secret = "",
     redirect_uri = "http://localhost:8100",
     enforce_callback_issuer = enforce_callback_issuer,
+    compare_callback_issuer = compare_callback_issuer,
     authorization_server_mode = authorization_server_mode,
     authorization_server_redirect_uris = authorization_server_redirect_uris,
     response_mode = response_mode,
@@ -54,6 +56,121 @@ test_that("callback issuer enforcement is configured on OAuthClient", {
   expect_false(
     "enforce_callback_issuer" %in% names(formals(shinyOAuth::handle_callback))
   )
+})
+
+test_that("present-issuer comparison is independent of legacy issuer absence", {
+  client <- make_iss_test_client()
+  expect_true(client@compare_callback_issuer)
+  expect_false(client@enforce_callback_issuer)
+  expect_silent(enforce_callback_issuer(client, NULL))
+  expect_silent(enforce_callback_issuer(client, client@provider@issuer))
+  expect_error(
+    enforce_callback_issuer(client, paste0(client@provider@issuer, "/")),
+    "does not match"
+  )
+  opted_out <- make_iss_test_client(enforce_callback_issuer = FALSE)
+  expect_false(opted_out@compare_callback_issuer)
+  expect_silent(enforce_callback_issuer(opted_out, "https://different.example"))
+  comparison <- make_iss_test_client(
+    enforce_callback_issuer = FALSE,
+    compare_callback_issuer = TRUE
+  )
+  expect_silent(enforce_callback_issuer(comparison, NULL))
+  expect_error(
+    enforce_callback_issuer(comparison, "https://different.example"),
+    "does not match"
+  )
+  expect_false(identical(
+    state_client_policy_fingerprint(comparison),
+    state_client_policy_fingerprint(opted_out)
+  ))
+  expect_true(unserialize(serialize(comparison, NULL))@compare_callback_issuer)
+})
+
+test_that("raw constructors preserve explicit opt-out and validate comparison settings", {
+  args <- list(
+    provider = make_iss_test_client()@provider,
+    client_id = "test",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = "openid",
+    state_key = strrep("a", 64)
+  )
+  expect_true(do.call(OAuthClient, args)@compare_callback_issuer)
+  args$enforce_callback_issuer <- FALSE
+  expect_false(do.call(OAuthClient, args)@compare_callback_issuer)
+  args$compare_callback_issuer <- TRUE
+  expect_true(do.call(OAuthClient, args)@compare_callback_issuer)
+  for (value in list(NA, logical(), c(TRUE, FALSE))) {
+    args$compare_callback_issuer <- value
+    expect_error(do.call(OAuthClient, args), "compare_callback_issuer")
+    expect_error(do.call(oauth_client, args), "compare_callback_issuer")
+  }
+  required <- make_iss_test_client(
+    enforce_callback_issuer = TRUE,
+    compare_callback_issuer = FALSE
+  )
+  expect_error(
+    enforce_callback_issuer(required, "https://different.example"),
+    "does not match"
+  )
+})
+
+test_that("optional issuer presence still compares before low-level exchange", {
+  client <- make_iss_test_client(
+    enforce_callback_issuer = FALSE,
+    compare_callback_issuer = TRUE
+  )
+  browser <- valid_browser_token()
+  state <- parse_query_param(
+    prepare_call(client, browser_token = browser),
+    "state"
+  )
+  testthat::local_mocked_bindings(
+    swap_code_for_token_set = function(...) stop("exchange must not run"),
+    .package = "shinyOAuth"
+  )
+  expect_error(
+    handle_callback(
+      client,
+      code = "ok",
+      payload = state,
+      browser_token = browser,
+      iss = "https://different.example"
+    ),
+    "does not match expected issuer"
+  )
+})
+
+test_that("module success and error paths compare optional present issuers", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  client <- make_iss_test_client(
+    enforce_callback_issuer = FALSE,
+    compare_callback_issuer = TRUE
+  )
+  testthat::local_mocked_bindings(
+    swap_code_for_token_set = function(...) stop("exchange must not run"),
+    .package = "shinyOAuth"
+  )
+  for (response in c("code=ok", "error=access_denied")) {
+    shiny::testServer(
+      oauth_module_server,
+      args = list(id = "auth", client = client, auto_redirect = FALSE),
+      {
+        state <- parse_query_param(values$build_auth_url(), "state")
+        values$.process_query(paste0(
+          "?",
+          response,
+          "&state=",
+          state,
+          "&iss=https%3A%2F%2Fdifferent.example"
+        ))
+        session$flushReact()
+        expect_identical(values$error, "issuer_mismatch")
+        expect_null(values$token)
+      }
+    )
+  }
 })
 
 test_that("oauth_client auto-enables callback issuer enforcement from provider metadata", {

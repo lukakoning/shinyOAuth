@@ -95,6 +95,17 @@
 #'   configured `issuer`, such as OIDC discovery providers that expose RFC 9207
 #'   support. Set `FALSE` to opt out explicitly.
 #'
+#' @param compare_callback_issuer Logical or `NULL`. Compare any supplied callback
+#'   `iss` exactly with `provider@issuer`, while allowing absence when
+#'   `enforce_callback_issuer = FALSE`. `NULL` enables comparison when an issuer
+#'   is configured, except when `enforce_callback_issuer = FALSE` was explicitly
+#'   supplied. This preserves the existing complete opt-out. Set
+#'   `compare_callback_issuer = TRUE` with `enforce_callback_issuer = FALSE` to
+#'   check present values without requiring older providers to send `iss`.
+#'   Required issuer presence always enables comparison, even when this separate
+#'   flag is `FALSE`. Validated JARM supplies
+#'   its own issuer protection without requiring a redundant outer `iss`.
+#'
 #' @param authorization_server_mode Declares whether this client is part of an
 #'   application that can interact with more than one authorization server,
 #'   and which RFC 9700 mix-up defense it uses. One of:
@@ -673,6 +684,13 @@ OAuthClient <- S7::new_class(
     trusted_id_token_audiences = S7::new_property(
       S7::class_character,
       default = character(0)
+    ),
+    compare_callback_issuer = S7::new_property(
+      S7::class_logical,
+      default = quote(
+        is_valid_string(provider@issuer) &&
+          (missing(enforce_callback_issuer) || isTRUE(enforce_callback_issuer))
+      )
     )
   ),
   validator = function(self) oauth_client_validate(self)
@@ -762,6 +780,7 @@ oauth_client <- function(
   endpoint_auth = list(),
   mtls_require_observed_cnf = TRUE,
   trusted_id_token_audiences = character(0),
+  compare_callback_issuer = NULL,
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(
@@ -870,6 +889,17 @@ oauth_client <- function(
   } else {
     isTRUE(enforce_callback_issuer)
   }
+  if (
+    !is.null(compare_callback_issuer) &&
+      !is_scalar_logical(compare_callback_issuer)
+  ) {
+    err_input(
+      "{.arg compare_callback_issuer} must be NULL or a single non-NA logical."
+    )
+  }
+  resolved_compare_callback_issuer <- compare_callback_issuer %||%
+    (is_valid_string(provider@issuer) &&
+      (auto_enforce_callback_issuer || isTRUE(enforce_callback_issuer)))
 
   if (identical(authorization_server_mode, "multi_issuer")) {
     if (isTRUE(jarm_response_mode)) {
@@ -1031,6 +1061,7 @@ oauth_client <- function(
     resource = resource,
     claims = claims,
     enforce_callback_issuer = isTRUE(resolved_enforce_callback_issuer),
+    compare_callback_issuer = resolved_compare_callback_issuer,
     authorization_server_mode = authorization_server_mode,
     authorization_server_redirect_uris = authorization_server_redirect_uris,
     scope_validation = scope_validation,
@@ -1291,6 +1322,19 @@ oauth_client_validate <- function(self) {
   ) {
     return(
       "OAuthClient: enforce_callback_issuer = TRUE requires the provider to have an issuer configured"
+    )
+  }
+  if (!is_scalar_logical(self@compare_callback_issuer)) {
+    return(
+      "OAuthClient: compare_callback_issuer must be a single non-NA logical"
+    )
+  }
+  if (
+    isTRUE(self@compare_callback_issuer) &&
+      !is_valid_string(self@provider@issuer)
+  ) {
+    return(
+      "OAuthClient: compare_callback_issuer = TRUE requires a configured issuer"
     )
   }
 

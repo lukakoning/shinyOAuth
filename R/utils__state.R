@@ -556,6 +556,7 @@ state_client_policy_fingerprint <- function(client) {
     response_mode = response_mode,
     oidc_max_age = provider_auth_max_age(client@provider) %||% NA_real_,
     enforce_callback_issuer = isTRUE(client@enforce_callback_issuer),
+    compare_callback_issuer = isTRUE(client@compare_callback_issuer),
     authorization_server_mode = client@authorization_server_mode,
     authorization_server_redirect_uris = vapply(
       lapply(client@authorization_server_redirect_uris, oauth_callback_route),
