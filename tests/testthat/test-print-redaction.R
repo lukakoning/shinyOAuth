@@ -14,6 +14,41 @@ expect_no_secret_material <- function(output, secrets) {
   }
 }
 
+test_that("all public objects hide custom credentials and URL components", {
+  prov <- oauth_provider(
+    name = "example",
+    auth_url = "https://example.com/auth?hint=synthetic-query-secret",
+    token_url = "https://example.com/token?key=synthetic-query-secret",
+    extra_auth_params = list(hint = "synthetic-param-secret"),
+    extra_token_params = list(nested = list(key = "synthetic-nested-secret")),
+    extra_token_headers = c(`X-API-Key` = "synthetic-header-secret"),
+    use_nonce = FALSE,
+    id_token_required = FALSE,
+    id_token_validation = FALSE
+  )
+  cli <- oauth_client(
+    provider = prov,
+    client_id = "example",
+    client_secret = "synthetic-client-secret",
+    redirect_uri = "http://localhost:8100/?hint=synthetic-redirect-secret"
+  )
+  tok <- OAuthToken(
+    access_token = "synthetic-token-secret", token_type = "Bearer",
+    userinfo = list(nested = prov)
+  )
+  outputs <- c(
+    unlist(lapply(list(prov, cli, tok), collect_rendered_output)),
+    paste(capture.output(print(list(prov, cli, tok))), collapse = "\n")
+  )
+  for (output in unname(outputs)) {
+      expect_no_secret_material(output, paste0("synthetic-", c(
+        "query", "param", "nested", "header", "client", "redirect", "token"
+      ), "-secret"))
+  }
+  expect_match(paste(format(prov), collapse = "\n"), "X-API-Key", fixed = TRUE)
+  expect_match(paste(format(prov), collapse = "\n"), "list [1]", fixed = TRUE)
+})
+
 test_that("OAuthToken printing redacts token material", {
   access_token <- "access-secret-1234567890"
   refresh_token <- "refresh-secret-ABCDEFGHIJ"

@@ -222,8 +222,14 @@
   rendered <- vapply(
     names(fields),
     function(name) {
+      value <- fields[[name]]
+      if (is.character(value) && grepl("(_url|_uri|issuer|audience)$", name)) {
+        value <- vapply(value, function(url) {
+          otel_http_url_full(url) %||% NA_character_
+        }, character(1), USE.NAMES = FALSE)
+      }
       .shinyoauth_format_field(
-        fields[[name]],
+        value,
         secret = name %in% secret_fields
       )
     },
@@ -264,6 +270,33 @@
 }
 
 # 2 S7 format and print methods ------------------------------------------------
+
+# Keep provider output explicit: arbitrary custom values may be credentials.
+method(format, OAuthProvider) <- function(x, ...) {
+  .shinyoauth_format_object(
+    "OAuthProvider",
+    list(
+      name = x@name,
+      auth_url = x@auth_url,
+      token_url = x@token_url,
+      issuer = x@issuer,
+      userinfo_url = x@userinfo_url,
+      jwks_uri = x@jwks_uri,
+      introspection_url = x@introspection_url,
+      revocation_url = x@revocation_url,
+      token_auth_style = x@token_auth_style,
+      use_pkce = x@use_pkce,
+      use_nonce = x@use_nonce,
+      extra_auth_params = x@extra_auth_params,
+      extra_token_params = x@extra_token_params,
+      extra_token_headers = as.list(x@extra_token_headers)
+    )
+  )
+}
+
+method(print, OAuthProvider) <- function(x, ...) {
+  .shinyoauth_print_object(x, ...)
+}
 
 ## 2.1 OAuthToken methods ------------------------------------------------------
 
