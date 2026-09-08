@@ -1,9 +1,13 @@
 # Assess an OAuth configuration against a pinned OAuth 2.1 draft
 
-Optional, read-only assessment of the package's authorization-code and
-refresh client configuration. It makes no requests, creates no login
-state, and does not warn or enforce its findings. Existing OAuth 2.0
-configurations remain available independently of this assessment.
+This function inspects a configured
+[OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+and its
+[OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
+for compliance with the OAuth 2.1 draft 16 (ruleset `1.0.0`)
+specification. It reports configuration gaps, unresolved external
+prerequisites, and recommendations without changing the configuration or
+making requests.
 
 ## Usage
 
