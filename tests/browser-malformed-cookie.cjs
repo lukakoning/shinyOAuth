@@ -6,10 +6,15 @@ const source = fs.readFileSync(process.argv[2], 'utf8');
 for (const protocol of ['http:', 'https:']) {
   for (const malformed of ['%', '%A', '%ZZ', '%C3%28', '%ED%A0%80']) {
     for (const blocked of [false, true]) {
-      const base = 'shinyOAuth_sid-auth';
+      const storageName = (protocol === 'https:' ? '__Host-' : '') + 'shinyOAuth_sid-auth';
+      const base = 'shinyOAuth_sid-auth-' + 'c'.repeat(32);
       const name = protocol === 'https:' ? '__Host-' + base : base;
       const cookies = new Map([[base, malformed], ['__Host-' + base, malformed]]);
       const writes = [], inputs = {}, handlers = {}, storage = new Map();
+      storage.set(storageName + ':binding', JSON.stringify({
+        version: 2, id: 'c'.repeat(32), token: 'd'.repeat(128),
+        cookie: 'e'.repeat(128), expiresAt: Date.now() + 60000
+      }));
       const document = {};
       Object.defineProperty(document, 'cookie', {
         get: () => Array.from(cookies, ([k, v]) => k + '=' + v).join('; '),
@@ -25,7 +30,7 @@ for (const protocol of ['http:', 'https:']) {
         setInputValue: (k, v) => inputs[k] = v};
       const window = {Shiny, location: {protocol, pathname: '/app'},
         crypto: require('node:crypto').webcrypto,
-        localStorage: {getItem: k => storage.get(k) ?? null,
+        sessionStorage: {getItem: k => storage.get(k) ?? null,
           setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k)}};
       vm.runInNewContext(source, {window, document, Shiny});
       const send = extra => handlers['shinyOAuth:setBrowserToken']({instance: 'auth',
@@ -38,8 +43,9 @@ for (const protocol of ['http:', 'https:']) {
       }
       if (!blocked) {
         assert.match(inputs.sid, /^[a-f0-9]{128}$/);
-        assert.match(cookies.get(name), /^[a-f0-9]{128}$/);
-        assert.notEqual(cookies.get(name), inputs.sid);
+        const freshName = storageName + '-' + JSON.parse(storage.get(storageName + ':binding')).id;
+        assert.match(cookies.get(freshName), /^[a-f0-9]{128}$/);
+        assert.notEqual(cookies.get(freshName), inputs.sid);
       }
       send({requestId: 'current', token: 'b'.repeat(128)});
       if (blocked) {

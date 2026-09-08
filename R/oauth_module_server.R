@@ -43,14 +43,18 @@
 #'
 #' @section Browser setup:
 #' Open the app at its registered return address in a regular browser with
-#' cookies, local storage, and Web Crypto enabled. Embedded IDE viewers may
-#' prevent login. The binding token stays in origin-scoped local storage; the
+#' cookies, session storage, and Web Crypto enabled. Embedded IDE viewers may
+#' prevent login. The binding token stays in origin- and tab-scoped session storage; the
 #' cookie contains an independent marker, which must match the stored record.
 #' The temporary browser cookie follows the state store's `max_age`, with a
 #' 300-second fallback when that lifetime is unavailable. The separate
 #' `state_payload_max_age` client setting limits the age of the login request.
-#' Each new login uses a fresh server-selected browser binding. Complete one
-#' login at a time per module; starting another replaces the pending binding.
+#' Each new login uses a fresh server-selected browser binding and its own marker
+#' cookie. Application callback routes and module namespaces identify the storage
+#' record. Separate tabs can complete logins independently; complete a login in
+#' the tab that started it. Starting another login in the same tab and module
+#' replaces that tab's pending binding. Pending logins must be restarted after
+#' upgrading from versions that used local storage.
 #' Private browser-binding inputs are excluded from Shiny bookmarks. Do not
 #' copy `auth$browser_token` into custom bookmark values, URLs, or logs.
 #' Treat the entire hostname as a trust boundary: cookies are shared across
@@ -957,7 +961,7 @@ oauth_module_server <- function(
         # description directly to end users; app authors can decide how to render).
         values$error <- "browser_cookie_error"
         values$error_description <- sprintf(
-          "Browser cookie/storage/WebCrypto error: %s. Cookies, local storage, and Web Crypto must be available; authentication cannot proceed.",
+          "Browser cookie/storage/WebCrypto error: %s. Cookies, session storage, and Web Crypto must be available; authentication cannot proceed.",
           reason %||% "unknown"
         )
 
@@ -1002,7 +1006,7 @@ oauth_module_server <- function(
       browser_ack$accept_input <- TRUE
       # Max age (sec); defaults to 300s (5 min) if state_store TTL is unavailable
       max_age_sec <- client_state_store_max_age(client)
-      instance <- build_oauth_module_browser_token_instance(session, id)
+      instance <- build_oauth_module_browser_token_instance(session, id, client@redirect_uri)
 
       send_oauth_module_set_browser_token(
         session = session,
@@ -1123,13 +1127,14 @@ oauth_module_server <- function(
       if (!is.null(reject)) {
         reject(simpleError("Browser binding cleared"))
       }
-      instance <- build_oauth_module_browser_token_instance(session, id)
+      instance <- build_oauth_module_browser_token_instance(session, id, client@redirect_uri)
 
       send_oauth_module_clear_browser_token(
         session = session,
         instance = instance,
         same_site = browser_cookie_samesite,
-        path = if (is.null(browser_cookie_path)) NULL else browser_cookie_path
+        path = if (is.null(browser_cookie_path)) NULL else browser_cookie_path,
+        token = values$browser_token
       )
       values$browser_token <- NULL
       # Reset redirect guard after a successful round-trip so future
@@ -4360,14 +4365,20 @@ exclude_oauth_module_bookmarks <- function(session) {
 #' @param session Shiny session object for the module instance.
 #' @param id Module id used as a fallback when the session namespace cannot be
 #'   read.
+#' @param redirect_uri Application callback URI, used to distinguish applications
+#'   sharing an origin and module namespace.
 #' @return A single safe instance string containing only letters, numbers,
 #'   underscores, and hyphens.
 #' @keywords internal
 #' @noRd
-build_oauth_module_browser_token_instance <- function(session, id) {
+build_oauth_module_browser_token_instance <- function(session, id, redirect_uri = NULL) {
   ns_prefix <- tryCatch(session$ns(""), error = function(...) id %||% "")
   instance <- sub("-$", "", ns_prefix)
-  ns_hash <- substr(as.character(openssl::sha256(ns_prefix)), 1, 8)
+  route <- oauth_callback_route(redirect_uri)
+  identity <- if (is.null(route)) ns_prefix else paste(
+    ns_prefix, jsonlite::toJSON(route, auto_unbox = TRUE), sep = "\n"
+  )
+  ns_hash <- substr(as.character(openssl::sha256(identity)), 1, 16)
   instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
   paste0(instance, "-", ns_hash)
 }
@@ -4421,6 +4432,8 @@ send_oauth_module_set_browser_token <- function(
 #' Used by [oauth_module_server()] when logout, successful callback handling,
 #' or browser-token repair needs to reset the session binding.
 #'
+#' @param token Optional binding to clear; a stale clear cannot remove a newer
+#'   transaction's binding.
 #' @param session Shiny session object for the module instance.
 #' @param instance Browser-token cookie instance suffix.
 #' @param same_site SameSite policy string.
@@ -4434,7 +4447,8 @@ send_oauth_module_clear_browser_token <- function(
   session,
   instance,
   same_site,
-  path
+  path,
+  token = NULL
 ) {
   session$sendCustomMessage(
     type = "shinyOAuth:clearBrowserToken",
@@ -4442,6 +4456,7 @@ send_oauth_module_clear_browser_token <- function(
       instance = instance,
       sameSite = same_site,
       path = path,
+      token = token,
       # Let the client also clear the mirrored Shiny input so a subsequent
       # cookie reissue will always propagate a changed value back to the server.
       inputId = session$ns("shinyOAuth_sid")

@@ -60,10 +60,11 @@ and works with various OAuth 2.0/OIDC providers and protocol features.
 Deploy authentication on a hostname whose services you trust, or use a dedicated
 hostname. Cookies are shared across all ports of a hostname; `__Host-`, `Secure`,
 and `HttpOnly` do not provide port isolation. shinyOAuth keeps its binding token
-in origin-scoped local storage and checks an independent cookie marker, so
+in origin- and tab-scoped session storage and checks an independent cookie marker, so
 another port cannot establish a binding by reading or replacing that cookie.
 Other services can still disrupt cookies. The browser must allow cookies,
-local storage, and Web Crypto.
+session storage, and Web Crypto. Each pending transaction has its own marker;
+complete login in the tab that started it.
 
 ## Installation
 

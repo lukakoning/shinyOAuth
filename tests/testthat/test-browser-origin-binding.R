@@ -27,3 +27,12 @@ test_that("unavailable origin storage stops login before state creation", {
     }
   )
 })
+test_that("browser binding namespaces include the application callback route", {
+  session <- list(ns = function(x) paste0("auth-", x))
+  app_a <- build_oauth_module_browser_token_instance(session, "auth", "https://example.com/a")
+  app_b <- build_oauth_module_browser_token_instance(session, "auth", "https://example.com/b")
+  expect_false(identical(app_a, app_b))
+  expect_identical(app_a, build_oauth_module_browser_token_instance(
+    session, "auth", "https://example.com:443/a?unrelated=value"
+  ))
+})

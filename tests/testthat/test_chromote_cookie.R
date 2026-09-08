@@ -211,14 +211,16 @@ make_test_app <- function(
 
 cookie_value_js <- function(name) {
   sprintf(
-    "(function(){var m=document.cookie.match('(?:^|; )'+%s+'=([^;]*)'); return m?decodeURIComponent(m[1]):null;})()",
+    "(function(){var name=%s; var binding=JSON.parse(sessionStorage.getItem(name+':binding')); if(!binding) return null; var m=document.cookie.match('(?:^|; )'+name+'-'+binding.id+'=([^;]*)'); return m?decodeURIComponent(m[1]):null;})()",
     jsonlite::toJSON(name, auto_unbox = TRUE)
   )
 }
 
 browser_cookie_instance <- function(id) {
-  ns_hash <- substr(as.character(openssl::sha256(paste0(id, "-"))), 1, 8)
-  paste0(id, "-", ns_hash)
+  shinyOAuth:::build_oauth_module_browser_token_instance(
+    list(ns = function(x) paste0(id, "-", x)), id,
+    "http://127.0.0.1:1/callback"
+  )
 }
 
 browser_cookie_name <- function(id, prefix = "shinyOAuth_sid") {
@@ -226,6 +228,13 @@ browser_cookie_name <- function(id, prefix = "shinyOAuth_sid") {
 }
 
 get_browser_cookie <- function(app, name) {
+  binding_id <- app$get_js(paste0(
+    "JSON.parse(sessionStorage.getItem(",
+    jsonlite::toJSON(paste0(name, ":binding"), auto_unbox = TRUE),
+    "))?.id || null"
+  ))
+  if (is.null(binding_id)) return(NULL)
+  name <- paste0(name, "-", binding_id)
   cookies <- app$get_chromote_session()$Network$getAllCookies()$cookies
   matches <- Filter(function(cookie) identical(cookie$name, name), cookies)
   if (length(matches) == 0) {
@@ -289,7 +298,7 @@ capture_set_cookie_writes <- function(
     "    location: { protocol: protocol, pathname: '/' },",
     "    history: { replaceState: function() {} },",
     "    crypto: window.crypto,",
-    "    localStorage: {",
+    "    sessionStorage: {",
     "      data: {},",
     "      getItem: function(k) { return this.data[k] || null; },",
     "      setItem: function(k, v) { this.data[k] = v; }",
@@ -498,7 +507,7 @@ testthat::test_that("setBrowserToken writes __Host- cookie attributes for HTTPS 
   )
 
   testthat::expect_length(writes, 1L)
-  testthat::expect_match(writes[[1]], "^__Host-shinyOAuth_sid-securetest=")
+  testthat::expect_match(writes[[1]], "^__Host-shinyOAuth_sid-securetest-[a-f0-9]{32}=")
   testthat::expect_match(writes[[1]], "; Expires=")
   testthat::expect_match(writes[[1]], "; Max-Age=60;")
   testthat::expect_match(writes[[1]], "; Path=/; SameSite=Strict; Secure$")
@@ -663,11 +672,7 @@ testthat::test_that("interactive preparation refreshes a browser cookie after id
   old_binding <- app$get_value(output = "browser_value")
   testthat::expect_false(identical(old_binding, old))
   app$wait_for_js(
-    paste0(
-      "document.cookie.indexOf(",
-      jsonlite::toJSON(name, auto_unbox = TRUE),
-      ") === -1"
-    ),
+    paste0("(", cookie_value_js(name), ") === null"),
     timeout = 7000
   )
   testthat::expect_identical(

@@ -1,7 +1,7 @@
 /* shinyOAuth.js - external client helpers to avoid inline scripts (CSP-friendly)
  * Handlers:
  *  - shinyOAuth:setBrowserToken    {instance, maxAgeMs, sameSite, path, inputId, requestId, token}
- *  - shinyOAuth:clearBrowserToken  {instance, sameSite, path}
+ *  - shinyOAuth:clearBrowserToken  {instance, sameSite, path, token}
  *  - shinyOAuth:redirect           {url}
  *  - shinyOAuth:clearQueryAndFixTitle {titleReplacement, cleanTitle}
  */
@@ -60,15 +60,16 @@
   }
 
   // Cookies share a hostname across ports. Keep the actual binding in
-  // origin-scoped storage and put only an independent random marker in the
+  // origin- and tab-scoped storage and put only an independent random marker in the
   // cookie. Neither reading nor planting that marker establishes a binding.
   function readBrowserBinding(name){
     var saved;
-    try { saved = window.localStorage.getItem(name + ':binding'); }
+    try { saved = window.sessionStorage.getItem(name + ':binding'); }
     catch(e) { throw new Error('storage_unavailable'); }
     try {
       var binding = JSON.parse(saved);
-      if (binding && binding.version === 1 &&
+      if (binding && binding.version === 2 &&
+          isValidHexToken(binding.id, 32) &&
           isValidHexToken(binding.token, 128) &&
           isValidHexToken(binding.cookie, 128) &&
           Number.isFinite(binding.expiresAt) && binding.expiresAt > Date.now()) {
@@ -78,13 +79,13 @@
     return null;
   }
 
-  function writeBrowserBinding(name, token, cookie, ageMs){
+  function writeBrowserBinding(name, id, token, cookie, ageMs){
     var key = name + ':binding';
-    var saved = JSON.stringify({version: 1, token: token, cookie: cookie,
+    var saved = JSON.stringify({version: 2, id: id, token: token, cookie: cookie,
       expiresAt: Date.now() + ageMs});
     try {
-      window.localStorage.setItem(key, saved);
-      if (window.localStorage.getItem(key) !== saved) throw new Error();
+      window.sessionStorage.setItem(key, saved);
+      if (window.sessionStorage.getItem(key) !== saved) throw new Error();
     } catch(e) { throw new Error('storage_unavailable'); }
   }
 
@@ -123,9 +124,11 @@
       if (isHttps) cookiePath = '/';
       var useHostPrefix = isHttps;
       var base = useHostPrefix ? '__Host-shinyOAuth_sid' : 'shinyOAuth_sid';
-      var name = base + (inst ? ('-' + inst) : '');
-      var marker = getCookie(name, sameSite, cookiePath);
-      var binding = readBrowserBinding(name);
+      var storageName = base + (inst ? ('-' + inst) : '');
+      var binding = readBrowserBinding(storageName);
+      var bindingId = binding ? binding.id : null;
+      var name = bindingId ? storageName + '-' + bindingId : null;
+      var marker = name ? getCookie(name, sameSite, cookiePath) : null;
       var v = binding && binding.cookie === marker ? binding.token : null;
       var expectedLen = 128; /* 64 bytes hex-encoded */
       // A new authorization must use the binding selected by this Shiny
@@ -134,12 +137,18 @@
         if (!isValidHexToken(payload.token, expectedLen)) throw new Error('invalid_browser_token');
         v = payload.token;
         marker = randomHex(64);
+        bindingId = randomHex(16);
       }
       if(!isValidHexToken(v, expectedLen)){
         v = randomHex(64);
         marker = randomHex(64);
+        bindingId = randomHex(16);
       }
-      writeBrowserBinding(name, v, marker, ageMs);
+      // Give every new transaction its own cookie as well as tab-local storage.
+      // Even a tab cloned with copied sessionStorage cannot replace another
+      // tab's pending marker by starting a new login.
+      name = storageName + '-' + bindingId;
+      writeBrowserBinding(storageName, bindingId, v, marker, ageMs);
       setCookie(name, marker, ageMs, sameSite, /*forceSecure*/ requireSecure, cookiePath);
       if (getCookie(name, sameSite, cookiePath) !== marker) throw new Error('cookie_unavailable');
       var shiny = ensureShiny();
@@ -162,16 +171,19 @@
     var cfg = (payload.path === undefined || payload.path === null || payload.path === '') ? '/' : String(payload.path);
     var cookiePath = normPath(cfg, /*defaultToRoot*/ true);
     var inst = String(payload.instance || '');
-    // When instance is empty, clear the base cookie name (no suffix).
-    // This covers module instances without a namespace suffix and
-    // sanitized IDs that collapse to empty.
-    var base = 'shinyOAuth_sid';
-    var target = inst ? (base + '-' + inst) : base;
+    // Resolve only this tab's current transaction marker, including when the
+    // module uses the base storage name without an instance suffix.
+    var base = window.location.protocol === 'https:' ? '__Host-shinyOAuth_sid' : 'shinyOAuth_sid';
+    var storageName = inst ? (base + '-' + inst) : base;
+    var binding;
     try {
-      window.localStorage.removeItem(target + ':binding');
-      window.localStorage.removeItem('__Host-' + target + ':binding');
-    } catch(e) { /* Cookie deletion still invalidates any stored binding. */ }
-    clearCookiesFor(target, sameSite, cookiePath);
+      binding = readBrowserBinding(storageName);
+      if (binding && payload.token && binding.token !== payload.token) return;
+      window.sessionStorage.removeItem(storageName + ':binding');
+    } catch(e) { /* Do not clear another tab's marker when storage is unavailable. */ }
+    if (binding) {
+      clearCookiesFor((storageName + '-' + binding.id).replace(/^__Host-/, ''), sameSite, cookiePath);
+    }
     // Also clear the mirrored Shiny input so a subsequent set with the same
     // value is not suppressed by client-side de-duplication.
     try {

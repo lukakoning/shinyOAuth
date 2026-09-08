@@ -31,26 +31,26 @@ test_that("HTTPS ports share cookie markers but cannot adopt each other's bindin
   ))
   initial <- send(first, payload)
   expect_match(initial, "^[a-f0-9]{128}$")
-  read_marker <- paste0("document.cookie.split('; ').find(v => ",
-    "v.startsWith('__Host-shinyOAuth_sid-auth='))")
+  read_marker <- paste0("(() => { const b = JSON.parse(sessionStorage.getItem(",
+    "'__Host-shinyOAuth_sid-auth:binding')); return document.cookie.split('; ').find(v => ",
+    "v.startsWith('__Host-shinyOAuth_sid-auth-' + b.id + '=')); })()")
   marker <- evaluate(first, read_marker)
-  expect_match(marker, "^__Host-shinyOAuth_sid-auth=")
+  expect_match(marker, "^__Host-shinyOAuth_sid-auth-[a-f0-9]{32}=")
   expect_false(grepl(initial, marker, fixed = TRUE))
-  expect_identical(evaluate(second, read_marker), marker)
   received <- evaluate(second, "fetch('/cookie').then(r => r.json()).then(r => r.cookie)")
   expect_true(grepl(marker, received, fixed = TRUE))
   expect_false(grepl(initial, received, fixed = TRUE))
-  expect_null(evaluate(second, "localStorage.getItem('__Host-shinyOAuth_sid-auth:binding')"))
+  expect_null(evaluate(second, "sessionStorage.getItem('__Host-shinyOAuth_sid-auth:binding')"))
 
-  # Another origin can replace the cookie with its own valid marker. Its
-  # actual binding stays local to that origin, and cannot be restored here.
+  # A second origin gets its own transaction marker without replacing the first.
   other <- send(second, payload)
   other_marker <- evaluate(second, read_marker)
   expect_false(identical(initial, other))
   expect_false(identical(marker, other_marker))
-  expect_identical(evaluate(first, read_marker), other_marker)
+  expect_identical(evaluate(first, read_marker), marker)
   restored <- send(first, payload)
-  expect_false(restored %in% c(initial, other, sub("^[^=]+=", "", other_marker)))
+  expect_identical(restored, initial)
+  expect_false(restored %in% c(other, sub("^[^=]+=", "", other_marker)))
   expect_identical(send(first, payload), restored)
   # The origin record must also survive a real navigation back from an IdP.
   first$go_to(paste0("https://127.0.0.1:", ports[[2]]))

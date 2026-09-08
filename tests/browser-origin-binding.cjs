@@ -14,7 +14,7 @@ const Shiny = {addCustomMessageHandler: (k, fn) => handlers[k] = fn,
   setInputValue: (k, v) => inputs[k] = v};
 const window = {Shiny, location: {protocol: 'https:', pathname: '/'},
   crypto: require('node:crypto').webcrypto,
-  localStorage: {
+  sessionStorage: {
     getItem(k) { if (blocked) throw new Error('blocked'); return storage.get(k) ?? null; },
     setItem(k, v) { if (blocked) throw new Error('blocked'); if (!silentlyBlocked) storage.set(k, v); },
     removeItem(k) { storage.delete(k); }
@@ -41,7 +41,7 @@ for (const saved of [null, '{broken', JSON.stringify({version: 1, token: initial
   assert.notEqual(cookie, initialCookie);
 }
 const before = inputs.sid;
-cookie = name + '=' + 'a'.repeat(128);
+cookie = name + '-' + JSON.parse(storage.get(key)).id + '=' + 'a'.repeat(128);
 send();
 assert.notEqual(inputs.sid, before);
 assert.notEqual(inputs.sid, 'a'.repeat(128));

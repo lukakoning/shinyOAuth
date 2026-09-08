@@ -17,7 +17,7 @@ Object.defineProperty(document, 'cookie', {
 const Shiny = {addCustomMessageHandler: (k, fn) => handlers[k] = fn,
   setInputValue: (k, v) => inputs[k] = v};
 const window = {Shiny, location: {protocol: 'https:', pathname: '/'},
-  localStorage: {getItem: k => storage.get(k) ?? null,
+  sessionStorage: {getItem: k => storage.get(k) ?? null,
     setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k)},
   crypto: require('node:crypto').webcrypto};
 vm.runInNewContext(source, {window, document, Shiny});

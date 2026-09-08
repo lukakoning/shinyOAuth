@@ -23,7 +23,7 @@ for (const path of ['/', '/app']) {
     setInputValue: (name, value) => { inputs[name] = value; }
   };
   const window = {Shiny, location: {protocol: 'https:', pathname: '/app'},
-    localStorage: {getItem: k => storage.get(k) ?? null,
+    sessionStorage: {getItem: k => storage.get(k) ?? null,
       setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k)},
     crypto: require('node:crypto').webcrypto};
   vm.runInNewContext(source, {window, document, Shiny, console});
@@ -31,7 +31,7 @@ for (const path of ['/', '/app']) {
     inputId: 'sid', errorInputId: 'error'});
   assert.match(inputs.sid, /^[a-f0-9]{128}$/);
   assert.notEqual(inputs.sid, planted);
-  assert.match(writes[0], /^__Host-shinyOAuth_sid-auth=/);
+  assert.match(writes[0], /^__Host-shinyOAuth_sid-auth-[a-f0-9]{32}=/);
   assert.match(writes[0], /; Path=\/;/);
   assert.match(writes[0], /; Secure$/);
   assert.ok(!writes[0].includes('Domain='));
