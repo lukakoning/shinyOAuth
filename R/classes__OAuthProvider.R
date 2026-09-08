@@ -1105,6 +1105,11 @@ oauth_provider_validate <- function(self) {
     }
   }
 
+  query_problem <- authorization_query_resolution(self@auth_url)$problem
+  if (!is.null(query_problem)) {
+    return(query_problem)
+  }
+
   # OIDC issuer identifiers must not contain query or fragment components
   if (is_valid_string(self@issuer)) {
     parsed_issuer <- try(httr2::url_parse(self@issuer), silent = TRUE)

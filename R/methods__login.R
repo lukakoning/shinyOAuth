@@ -839,6 +839,15 @@ build_auth_url <- function(
     nonce = nonce,
     requested_max_age = requested_max_age
   )
+  # Validate known inner values before signing, publishing or sending PAR.
+  # Final outer composition also validates request/request_uri once available.
+  query_problem <- authorization_query_resolution(
+    oauth_client@provider@auth_url,
+    params
+  )$problem
+  if (!is.null(query_problem)) {
+    err_config(query_problem)
+  }
   front_channel_mode <-
     oauth_client@provider@authorization_request_front_channel_mode %||% "compat"
   oidc_outer_params_required <-
@@ -939,7 +948,7 @@ build_auth_url <- function(
       )
       warn_if_request_uri_is_long(request_uri)
 
-      return(url_append_query_params(
+      return(authorization_url_append(
         oauth_client@provider@auth_url,
         c(
           front_channel_params,
@@ -962,7 +971,7 @@ build_auth_url <- function(
       }
       warn_if_request_uri_is_long(par_resp[["request_uri"]])
 
-      auth_url <- url_append_query_params(
+      auth_url <- authorization_url_append(
         oauth_client@provider@auth_url,
         c(
           front_channel_params,
@@ -973,7 +982,7 @@ build_auth_url <- function(
       return(attach_par_auth_url_metadata(auth_url, par_resp))
     }
 
-    return(url_append_query_params(
+    return(authorization_url_append(
       oauth_client@provider@auth_url,
       c(
         front_channel_params,
@@ -992,7 +1001,7 @@ build_auth_url <- function(
       err_config("build_auth_url: PAR response missing valid request_uri")
     }
 
-    auth_url <- url_append_query_params(
+    auth_url <- authorization_url_append(
       oauth_client@provider@auth_url,
       c(
         front_channel_params,
@@ -1003,7 +1012,7 @@ build_auth_url <- function(
     return(attach_par_auth_url_metadata(auth_url, par_resp))
   }
 
-  url_append_query_params(oauth_client@provider@auth_url, params)
+  authorization_url_append(oauth_client@provider@auth_url, params)
 }
 
 #' Recover callback parent tracing context

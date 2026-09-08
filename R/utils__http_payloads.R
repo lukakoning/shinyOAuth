@@ -255,9 +255,9 @@ reject_duplicate_form_encoded_members <- function(form_text, label) {
   invisible(NULL)
 }
 
-decode_form_member <- function(value, label, member) {
+decode_form_member <- function(value, label, member, fail = err_parse) {
   if (grepl("(?i)%00|%(?![0-9a-f]{2})", value, perl = TRUE)) {
-    err_parse(paste0(
+    fail(paste0(
       label,
       " contains malformed percent-encoded ",
       member
@@ -266,20 +266,49 @@ decode_form_member <- function(value, label, member) {
   tryCatch(
     utils::URLdecode(gsub("+", " ", value, fixed = TRUE)),
     warning = function(e) {
-      err_parse(paste0(
+      fail(paste0(
         label,
         " contains malformed percent-encoded ",
         member
       ))
     },
     error = function(e) {
-      err_parse(paste0(
+      fail(paste0(
         label,
         " contains malformed percent-encoded ",
         member
       ))
     }
   )
+}
+
+# Decode names and values without collapsing repeated fields. Keep raw query
+# composition separate so unrelated configured query bytes need not be rewritten.
+decode_form_pairs <- function(text, label = "Form/query") {
+  if (is.null(text) || !nzchar(text)) {
+    return(list())
+  }
+  fail <- function(message) stop(message, call. = FALSE)
+  parts <- strsplit(text, "&", fixed = TRUE)[[1]]
+  parts <- parts[nzchar(parts)]
+  keys <- values <- character(length(parts))
+  for (i in seq_along(parts)) {
+    separator <- regexpr("=", parts[[i]], fixed = TRUE)[[1]]
+    key <- if (separator < 0L) {
+      parts[[i]]
+    } else {
+      substr(parts[[i]], 1L, separator - 1L)
+    }
+    value <- if (separator < 0L) "" else substring(parts[[i]], separator + 1L)
+    keys[[i]] <- decode_form_member(key, label, "parameter name", fail = fail)
+    values[[i]] <- decode_form_member(
+      value,
+      label,
+      "parameter value",
+      fail = fail
+    )
+  }
+  stats::setNames(as.list(values), keys)
 }
 
 

@@ -13,3 +13,114 @@ test_that("prepare_call builds URL with correct params and drops NULLs", {
   url2 <- shinyOAuth:::prepare_call(cli2, browser_token = tok)
   expect_false(grepl("[?&]nonce=", url2))
 })
+
+test_that("authorization queries preserve fixed bytes and deduplicate managed values", {
+  url <- "https://example.com/auth?fixed=a%20b&CLIENT_ID=extension&client%5fid=abc&resource=one"
+  result <- shinyOAuth:::authorization_url_append(
+    url,
+    list(
+      client_id = "abc",
+      response_type = "code",
+      resource = c("two", "three")
+    )
+  )
+  expect_identical(
+    result,
+    paste0(url, "&response_type=code&resource=two&resource=three")
+  )
+  expect_error(
+    shinyOAuth:::authorization_url_append(url, list(client_id = "different")),
+    "conflicts with managed",
+    class = "shinyOAuth_config_error"
+  )
+  for (query in c("state=a&state=a", "scope=a&sc%6fpe=b", "client%00id=x")) {
+    expect_error(
+      shinyOAuth:::authorization_url_append(
+        paste0("https://example.com/auth?", query),
+        list()
+      ),
+      "Authorization",
+      class = "shinyOAuth_config_error"
+    )
+  }
+})
+
+test_that("prepare_call validates configured authorization query against generated values", {
+  client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  client@provider@auth_url <- paste0(
+    client@provider@auth_url,
+    "?response_type=code&fixed=a%2Bb"
+  )
+  url <- prepare_call(client, browser_token = valid_browser_token())
+  fields <- shinyOAuth:::decode_form_pairs(shinyOAuth:::url_raw_query(url))
+  expect_equal(sum(names(fields) == "response_type"), 1L)
+  expect_identical(fields$fixed, "a+b")
+  client@provider@auth_url <- "https://example.com/auth?response_type=unexpected"
+  expect_error(
+    prepare_call(client, browser_token = valid_browser_token()),
+    "conflicts with managed"
+  )
+  expect_error(
+    {
+      client@provider@auth_url <- "https://example.com/auth?client_id=a&client_id=b"
+    },
+    "repeated managed"
+  )
+})
+
+test_that("PAR and JAR outer requests share authorization query composition", {
+  client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  client@provider@auth_url <- paste0(
+    "https://example.com/auth?client_id=",
+    client@client_id,
+    "&fixed=keep"
+  )
+  client@provider@par_url <- "https://example.com/par"
+  pushed <- 0L
+  testthat::local_mocked_bindings(
+    push_authorization_request = function(...) {
+      pushed <<- pushed + 1L
+      list(request_uri = "urn:example:request", expires_in = 90)
+    },
+    .package = "shinyOAuth"
+  )
+  build <- function(x) {
+    shinyOAuth:::build_auth_url(
+      x,
+      payload = "state",
+      scopes = character(),
+      pkce_code_challenge = "challenge",
+      pkce_method = "S256",
+      nonce = NULL,
+      .request_object = "signed-object"
+    )
+  }
+  par_url <- build(client)
+  expect_equal(
+    sum(
+      names(shinyOAuth:::decode_form_pairs(shinyOAuth:::url_raw_query(
+        par_url
+      ))) ==
+        "client_id"
+    ),
+    1L
+  )
+  expect_match(par_url, "fixed=keep", fixed = TRUE)
+  expect_equal(pushed, 1L)
+  client@provider@auth_url <- "https://example.com/auth?client_id=conflicting"
+  expect_error(build(client), "conflicts with managed")
+  expect_equal(pushed, 1L)
+
+  client@provider@auth_url <- paste0(
+    "https://example.com/auth?client_id=",
+    client@client_id
+  )
+  client@provider@par_url <- NA_character_
+  client@client_secret <- strrep("s", 32)
+  client@request_object_audience <- "https://example.com"
+  client@request_object_mode <- "request"
+  jar_url <- build(client)
+  fields <- shinyOAuth:::decode_form_pairs(shinyOAuth:::url_raw_query(jar_url))
+  expect_equal(sum(names(fields) == "client_id"), 1L)
+  expect_identical(fields$request, "signed-object")
+})

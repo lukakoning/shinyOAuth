@@ -116,6 +116,87 @@ url_append_query_params <- function(url, params) {
 
 ## 1.3 Normalize and validate issuer or endpoint URLs --------------------------
 
+url_raw_query <- function(url) {
+  base <- sub("#.*$", "", url)
+  if (!grepl("?", base, fixed = TRUE)) {
+    return("")
+  }
+  sub("^[^?]*\\?", "", base)
+}
+
+# OAuth and OIDC authorization singleton fields; resource is repeatable under
+# RFC 8707. Parameter names are case sensitive, including percent-decoded names.
+authorization_singleton_params <- function() {
+  c(
+    "response_type",
+    "client_id",
+    "redirect_uri",
+    "scope",
+    "state",
+    "nonce",
+    "code_challenge",
+    "code_challenge_method",
+    "response_mode",
+    "request",
+    "request_uri",
+    "display",
+    "prompt",
+    "max_age",
+    "ui_locales",
+    "id_token_hint",
+    "login_hint",
+    "acr_values",
+    "claims"
+  )
+}
+
+# Pure resolver used by constructors, URL composition and configuration checks.
+# Return only a generic problem message, never a configured URL or value.
+authorization_query_resolution <- function(url, params = list()) {
+  fixed <- tryCatch(
+    decode_form_pairs(url_raw_query(url), "Authorization endpoint query"),
+    error = function(e) NULL
+  )
+  if (is.null(fixed)) {
+    return(list(
+      problem = "Authorization endpoint query contains malformed encoding"
+    ))
+  }
+  params <- compact_list(params)
+  singletons <- authorization_singleton_params()
+  for (fields in list(fixed, params)) {
+    managed <- fields[names(fields) %in% singletons]
+    if (anyDuplicated(names(managed)) || any(lengths(managed) != 1L)) {
+      return(list(
+        problem = "Authorization parameters contain repeated managed singleton fields"
+      ))
+    }
+  }
+  shared <- intersect(intersect(names(fixed), names(params)), singletons)
+  if (
+    !all(vapply(
+      shared,
+      function(key) {
+        identical(as.character(fixed[[key]]), as.character(params[[key]]))
+      },
+      logical(1)
+    ))
+  ) {
+    return(list(
+      problem = "Authorization endpoint query conflicts with managed parameters"
+    ))
+  }
+  list(problem = NULL, params = params[!names(params) %in% shared])
+}
+
+authorization_url_append <- function(url, params) {
+  resolved <- authorization_query_resolution(url, params)
+  if (!is.null(resolved$problem)) {
+    err_config(resolved$problem)
+  }
+  url_append_query_params(url, resolved$params)
+}
+
 #' Internal: Resolve issuer from discovery with issuer matching policy
 #'
 #' Requires the discovery issuer to be present and well-formed.
