@@ -15,43 +15,25 @@ random_browser_token_hex <- function(bytes = 64L) {
   )
 }
 
-read_browser_csrf_payload <- function(drv) {
-  jsonlite::fromJSON(drv$get_js(
+read_browser_csrf_payload <- function(drv, redirect_uri) {
+  payload <- jsonlite::fromJSON(drv$get_js(
     "
     JSON.stringify((function () {
       var ready = document.querySelector('#ready_state');
       var auth = document.querySelector('#auth_state');
       var authUrl = document.querySelector('#auth_url');
-      var cookie = document.cookie || '';
-      var parts = cookie ? cookie.split('; ') : [];
-      var cookiePrefixes = ['shinyOAuth_sid-auth-', '__Host-shinyOAuth_sid-auth-'];
-      var cookieName = '';
-      var cookieValue = '';
-
-      for (var i = 0; i < parts.length; i++) {
-        for (var j = 0; j < cookiePrefixes.length; j++) {
-          if (parts[i].lastIndexOf(cookiePrefixes[j], 0) === 0) {
-            var eq = parts[i].indexOf('=');
-            if (eq !== -1) {
-              cookieName = parts[i].substring(0, eq);
-              cookieValue = parts[i].substring(eq + 1);
-              break;
-            }
-          }
-        }
-        if (cookieName) { break; }
-      }
-
       return {
         ready_state: ready ? (ready.innerText || '') : '',
         auth_state: auth ? (auth.innerText || '') : '',
-        auth_url: authUrl ? (authUrl.innerText || '') : '',
-        cookie_name: cookieName,
-        cookie_value: cookieValue
+        auth_url: authUrl ? (authUrl.innerText || '') : ''
       };
     })())
   "
   ))
+  cookie <- find_browser_token_cookie(drv, "auth", redirect_uri)
+  payload$cookie_name <- cookie$name %||% ""
+  payload$cookie_value <- cookie$value %||% ""
+  payload
 }
 
 tamper_browser_token_cookie <- function(drv, cookie_name, cookie_value) {
@@ -202,7 +184,7 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
     timeout = 15000
   )
 
-  payload <- read_browser_csrf_payload(drv)
+  payload <- read_browser_csrf_payload(drv, client@redirect_uri)
   testthat::expect_true(
     grepl("browser_ready: TRUE", payload[["ready_state"]], fixed = TRUE),
     info = paste0(

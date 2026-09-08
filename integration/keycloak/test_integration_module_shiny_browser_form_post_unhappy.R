@@ -970,7 +970,7 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies p
   auth_url <- trimws(prepared$auth_url %||% "")
   enc_state <- parse_query_param(auth_url, "state")
 
-  cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_false(is.null(cookie))
   rightful_browser <- snapshot_browser_binding(drv, cookie)
 
@@ -981,7 +981,7 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies p
   ))
   .tamper_browser_token_cookie(drv, cookie$name, attacker_cookie)
 
-  tampered_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  tampered_cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_identical(tampered_cookie$value, attacker_cookie)
 
   fields <- list(
@@ -1018,7 +1018,7 @@ testthat::test_that("browser form_post callbacks with tampered browser cookies p
   )
 
   restore_browser_binding(drv, rightful_browser)
-  restored_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  restored_cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_identical(restored_cookie$value, cookie$value)
   .submit_form_post_browser_callback(
     drv,
@@ -1084,7 +1084,7 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
 
   testthat::expect_identical(fields$state, enc_state)
 
-  cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_false(is.null(cookie))
   rightful_browser <- snapshot_browser_binding(drv, cookie)
 
@@ -1095,7 +1095,7 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
   ))
   .tamper_browser_token_cookie(drv, cookie$name, attacker_cookie)
 
-  tampered_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  tampered_cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_identical(tampered_cookie$value, attacker_cookie)
 
   .submit_form_post_browser_callback(
@@ -1126,7 +1126,7 @@ testthat::test_that("browser form_post code callbacks with tampered browser cook
   )
 
   restore_browser_binding(drv, rightful_browser)
-  restored_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  restored_cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_identical(restored_cookie$value, cookie$value)
   .submit_form_post_browser_callback(
     drv,
@@ -1219,8 +1219,8 @@ testthat::test_that("swapped form_post code callbacks against the wrong app are 
 
   # AppDriver sessions share a browser cookie jar. Distinct module namespaces
   # keep the two positive controls from replacing each other's marker.
-  cookie_a <- find_browser_token_cookie(drv_a, "auth_a")
-  cookie_b <- find_browser_token_cookie(drv_b, "auth_b")
+  cookie_a <- find_browser_token_cookie(drv_a, "auth_a", client_a@redirect_uri)
+  cookie_b <- find_browser_token_cookie(drv_b, "auth_b", client_b@redirect_uri)
   testthat::expect_false(is.null(cookie_a))
   testthat::expect_false(is.null(cookie_b))
   testthat::expect_false(identical(cookie_a$name, cookie_b$name))
@@ -1515,7 +1515,7 @@ testthat::test_that("browser form_post.jwt callbacks with tampered browser cooki
   auth_url <- trimws(prepared$auth_url %||% "")
   fields <- .fetch_form_post_jarm_callback_fields(auth_url, app_url)
 
-  cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  cookie <- find_browser_token_cookie(drv, "auth", app_url)
   testthat::expect_false(is.null(cookie))
 
   attacker_cookie <- .random_browser_token_hex()
@@ -1525,7 +1525,7 @@ testthat::test_that("browser form_post.jwt callbacks with tampered browser cooki
   ))
   .tamper_browser_token_cookie(drv, cookie$name, attacker_cookie)
 
-  tampered_cookie <- find_browser_token_cookie(drv, id = "auth", timeout = 8)
+  tampered_cookie <- find_browser_token_cookie(drv, "auth", app_url)
   testthat::expect_identical(tampered_cookie$value, attacker_cookie)
 
   .submit_form_post_browser_callback(
@@ -1730,8 +1730,8 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected without consum
   .wait_for_form_post_ready(drv_a)
   .wait_for_form_post_ready(drv_b)
 
-  cookie_a <- find_browser_token_cookie(drv_a, "auth_a")
-  cookie_b <- find_browser_token_cookie(drv_b, "auth_b")
+  cookie_a <- find_browser_token_cookie(drv_a, "auth_a", app_url_a)
+  cookie_b <- find_browser_token_cookie(drv_b, "auth_b", app_url_b)
   testthat::expect_false(is.null(cookie_a))
   testthat::expect_false(is.null(cookie_b))
   testthat::expect_false(identical(cookie_a$name, cookie_b$name))

@@ -721,40 +721,12 @@ if (!exists("make_provider", mode = "function")) {
   )
 }
 
-.read_request_uri_csrf_payload <- function(drv) {
+.read_request_uri_csrf_payload <- function(drv, redirect_uri) {
   payload <- .read_request_uri_browser_state(drv)
-  cookies <- jsonlite::fromJSON(drv$get_js(
-    "
-    JSON.stringify((function () {
-      var cookie = document.cookie || '';
-      var parts = cookie ? cookie.split('; ') : [];
-      var cookiePrefixes = ['shinyOAuth_sid-auth-', '__Host-shinyOAuth_sid-auth-'];
-      var cookieName = '';
-      var cookieValue = '';
-
-      for (var i = 0; i < parts.length; i++) {
-        for (var j = 0; j < cookiePrefixes.length; j++) {
-          if (parts[i].lastIndexOf(cookiePrefixes[j], 0) === 0) {
-            var eq = parts[i].indexOf('=');
-            if (eq !== -1) {
-              cookieName = parts[i].substring(0, eq);
-              cookieValue = parts[i].substring(eq + 1);
-              break;
-            }
-          }
-        }
-        if (cookieName) { break; }
-      }
-
-      return {
-        cookie_name: cookieName,
-        cookie_value: cookieValue
-      };
-    })())
-  "
-  ))
-
-  c(payload, cookies)
+  cookie <- find_browser_token_cookie(drv, "auth", redirect_uri)
+  payload$cookie_name <- cookie$name %||% ""
+  payload$cookie_value <- cookie$value %||% ""
+  payload
 }
 
 .tamper_browser_token_cookie <- function(drv, cookie_name, cookie_value) {
@@ -1356,7 +1328,7 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
 
   drv$run_js("document.querySelector('#prepare_login_btn').click();")
   payload <- .wait_for_request_uri_auth_url(drv)
-  payload <- c(payload, .read_request_uri_csrf_payload(drv))
+  payload <- c(payload, .read_request_uri_csrf_payload(drv, app_url))
 
   testthat::expect_true(nzchar(payload[["cookie_name"]] %||% ""))
   testthat::expect_true(nzchar(payload[["cookie_value"]] %||% ""))

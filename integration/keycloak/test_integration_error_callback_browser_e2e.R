@@ -370,7 +370,7 @@ testthat::test_that("browser callback app sets the default HTTP cookie metadata"
     timeout = 15000
   )
 
-  cookie <- find_browser_token_cookie(drv, "auth")
+  cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
 
   testthat::expect_false(is.null(cookie))
   testthat::expect_match(cookie$value %||% "", "^[a-f0-9]{128}$")
@@ -435,7 +435,7 @@ testthat::test_that("browser callback app reports an unreadable custom-path cook
     timeout = 15000
   )
 
-  cookie <- find_browser_token_cookie(drv, "authpath")
+  cookie <- find_browser_token_cookie(drv, "authpath", client@redirect_uri)
 
   testthat::expect_false(is.null(cookie))
   testthat::expect_identical(cookie$path, "/foo")
@@ -716,7 +716,7 @@ testthat::test_that("browser authorization error callback fails closed when the 
 
   drv$set_inputs(prepare_login_btn = "click")
   initial_state <- wait_for_error_callback_auth_url(drv)
-  cookie <- find_browser_token_cookie(drv, "auth")
+  cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
 
   testthat::expect_false(is.null(cookie))
 

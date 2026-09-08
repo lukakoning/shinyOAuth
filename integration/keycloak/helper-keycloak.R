@@ -861,15 +861,19 @@ keycloak_get_auth_state_robust <- function(
   ""
 }
 
-browser_cookie_name <- function(id, prefix = "shinyOAuth_sid") {
-  ns_hash <- substr(as.character(openssl::sha256(paste0(id, "-"))), 1, 8)
-  paste0(prefix, "-", id, "-", ns_hash)
+browser_cookie_name <- function(id, redirect_uri, prefix = "shinyOAuth_sid") {
+  instance <- shinyOAuth:::build_oauth_module_browser_token_instance(
+    list(ns = function(x) paste0(id, "-", x)),
+    id,
+    redirect_uri
+  )
+  paste0(prefix, "-", instance)
 }
 
-browser_cookie_candidates <- function(id) {
+browser_cookie_candidates <- function(id, redirect_uri) {
   c(
-    browser_cookie_name(id),
-    browser_cookie_name(id, prefix = "__Host-shinyOAuth_sid")
+    browser_cookie_name(id, redirect_uri),
+    browser_cookie_name(id, redirect_uri, prefix = "__Host-shinyOAuth_sid")
   )
 }
 
@@ -890,12 +894,13 @@ get_browser_cookie <- function(drv, name) {
   matches[[1]]
 }
 
-# Snapshot the complete initiating browser for positive-control recovery.
-# The cookie contains only a marker; the capability is in origin storage.
+# Snapshot the initiating tab for positive-control recovery. The cookie name
+# ends in a transaction ID; sessionStorage uses the application name alone.
 snapshot_browser_binding <- function(drv, cookie) {
-  key <- paste0(cookie$name, ":binding")
+  stopifnot(!is.null(cookie))
+  key <- paste0(sub("-[a-f0-9]{32}$", "", cookie$name), ":binding")
   record <- drv$get_js(paste0(
-    "window.localStorage.getItem(",
+    "window.sessionStorage.getItem(",
     jsonlite::toJSON(key, auto_unbox = TRUE),
     ")"
   ))
@@ -916,7 +921,7 @@ restore_browser_binding <- function(drv, snapshot) {
     if (isTRUE(cookie$secure)) "; Secure" else ""
   )
   drv$run_js(paste0(
-    "window.localStorage.setItem(",
+    "window.sessionStorage.setItem(",
     jsonlite::toJSON(snapshot$key, auto_unbox = TRUE),
     ",",
     jsonlite::toJSON(snapshot$record, auto_unbox = TRUE),
@@ -951,15 +956,26 @@ wait_for_browser_cookie <- function(
 find_browser_token_cookie <- function(
   drv,
   id,
+  redirect_uri,
   timeout = 8,
   idle_ms = 200
 ) {
   deadline <- Sys.time() + timeout
-  names <- browser_cookie_candidates(id)
+  names <- browser_cookie_candidates(id, redirect_uri)
 
   repeat {
     for (name in names) {
-      cookie <- get_browser_cookie(drv, name)
+      # Older transaction cookies may still exist. Resolve the active marker
+      # from this application's record in the current tab, never by prefix.
+      binding_id <- drv$get_js(paste0(
+        "JSON.parse(window.sessionStorage.getItem(",
+        jsonlite::toJSON(paste0(name, ":binding"), auto_unbox = TRUE),
+        "))?.id || null"
+      ))
+      if (is.null(binding_id)) {
+        next
+      }
+      cookie <- get_browser_cookie(drv, paste0(name, "-", binding_id))
       if (!is.null(cookie)) {
         return(cookie)
       }
