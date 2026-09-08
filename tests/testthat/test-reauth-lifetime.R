@@ -127,6 +127,36 @@ testthat::test_that("OAuth-only reauthentication remains a local lifetime", {
   )
 })
 
+testthat::test_that("large reauthentication lifetimes format safely", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  lifetime <- as.double(.Machine$integer.max) + 1
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = cli,
+      auto_redirect = FALSE,
+      reauth_after_seconds = lifetime
+    ),
+    expr = {
+      values$auth_started_at <- as.numeric(Sys.time()) - lifetime - 10
+      values$token <- OAuthToken(
+        access_token = "old",
+        expires_at = as.numeric(Sys.time()) + 3600
+      )
+
+      testthat::expect_no_warning(session$flushReact())
+      testthat::expect_identical(values$error, "reauth_required")
+      testthat::expect_identical(
+        values$error_description,
+        "Reauthentication required after 2147483648 seconds"
+      )
+    }
+  )
+})
+
 testthat::test_that("validated auth_time starts the reauthentication lifetime", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
 

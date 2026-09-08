@@ -4193,9 +4193,14 @@ oauth_module_server <- function(
                   provider_uses_oidc(client@provider)
                 values$token <- NULL
                 values$error <- "reauth_required"
-                values$error_description <- sprintf(
-                  "Reauthentication required after %d seconds",
-                  as.integer(reauth_after_seconds)
+                values$error_description <- paste0(
+                  "Reauthentication required after ",
+                  format(
+                    reauth_after_seconds,
+                    scientific = FALSE,
+                    trim = TRUE
+                  ),
+                  " seconds"
                 )
                 try(
                   audit_event(
