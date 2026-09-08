@@ -1845,7 +1845,9 @@ handle_callback_internal <- function(
 
       if (isTRUE(introspect)) {
         enforce_token_introspection_subject(
-          oauth_client, token, intro_res
+          oauth_client,
+          token,
+          intro_res
         )
       }
 
@@ -2093,7 +2095,9 @@ enforce_token_introspection_policy <- function(
   }
 
   enforce_token_introspection_subject(
-    oauth_client, token, introspection_result,
+    oauth_client,
+    token,
+    introspection_result,
     defer_userinfo = defer_subject_match
   )
 
@@ -2170,7 +2174,10 @@ enforce_token_introspection_policy <- function(
 # Compare the subject separately after UserInfo, while requiring a valid sub
 # and checking any validated ID-token baseline before resource access.
 enforce_token_introspection_subject <- function(
-  oauth_client, token, introspection_result, defer_userinfo = FALSE
+  oauth_client,
+  token,
+  introspection_result,
+  defer_userinfo = FALSE
 ) {
   introspect_elements <- oauth_client@introspect_elements %||% character(0)
   raw <- introspection_result[["raw"]] %||% list()

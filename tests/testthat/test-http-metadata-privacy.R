@@ -1,11 +1,25 @@
 test_that("raw HTTP metadata requires an explicit logical FALSE", {
   req <- list(
-    REQUEST_METHOD = "GET", HTTP_HOST = "example.test",
-    PATH_INFO = "/private", QUERY_STRING = "sample=value",
-    HTTP_X_SAMPLE = "sample-header", REMOTE_ADDR = "192.0.2.1"
+    REQUEST_METHOD = "GET",
+    HTTP_HOST = "example.test",
+    PATH_INFO = "/private",
+    QUERY_STRING = "sample=value",
+    HTTP_X_SAMPLE = "sample-header",
+    REMOTE_ADDR = "192.0.2.1"
   )
-  for (value in list(TRUE, "TRUE", "FALSE", 1, 0, NA, NULL,
-                     logical(), character(), c(TRUE, FALSE), c(FALSE, FALSE))) {
+  for (value in list(
+    TRUE,
+    "TRUE",
+    "FALSE",
+    1,
+    0,
+    NA,
+    NULL,
+    logical(),
+    character(),
+    c(TRUE, FALSE),
+    c(FALSE, FALSE)
+  )) {
     local_options(shinyOAuth.audit_redact_http = value)
     summary <- shinyOAuth:::build_http_summary(req)
     expect_identical(summary$method, "GET")

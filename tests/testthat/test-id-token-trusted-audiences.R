@@ -25,10 +25,16 @@ test_that("RSA-signed multi-audience ID tokens allow absent azp with explicit tr
     exp = as.numeric(Sys.time()) + 60
   )
   signing_key <- openssl::rsa_keygen(2048)
-  jwks <- list(keys = list(jsonlite::fromJSON(
-    write_test_jwk(signing_key$pubkey), simplifyVector = FALSE
-  )))
-  local_mocked_bindings(fetch_jwks = function(...) jwks, .package = "shinyOAuth")
+  jwks <- list(
+    keys = list(jsonlite::fromJSON(
+      write_test_jwk(signing_key$pubkey),
+      simplifyVector = FALSE
+    ))
+  )
+  local_mocked_bindings(
+    fetch_jwks = function(...) jwks,
+    .package = "shinyOAuth"
+  )
   sign <- function(payload = claims, key = signing_key) {
     jose::jwt_encode_sig(do.call(jose::jwt_claim, payload), key = key)
   }

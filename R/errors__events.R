@@ -215,7 +215,8 @@ sanitize_event_url_fields <- function(event, field_name = NULL) {
 warn_event_sink_failure <- function(title, bullets) {
   with_event_sink_warning_policy(
     warn_pkg(
-      title, escape_diagnostic_markup(bullets),
+      title,
+      escape_diagnostic_markup(bullets),
       class = "shinyOAuth_event_sink_warning"
     )
   )

@@ -1215,7 +1215,9 @@ refresh_token_impl <- function(
 
         if (isTRUE(effective_introspect)) {
           enforce_token_introspection_subject(
-            oauth_client, refreshed_token, intro_res
+            oauth_client,
+            refreshed_token,
+            intro_res
           )
         }
 
