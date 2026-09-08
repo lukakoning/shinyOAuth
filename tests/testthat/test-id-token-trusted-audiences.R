@@ -1,14 +1,13 @@
-test_that("signed multi-audience ID tokens require explicit audience trust and correct azp", {
+test_that("RSA-signed multi-audience ID tokens allow absent azp with explicit trust", {
   withr::local_options(
-    shinyOAuth.skip_id_sig = FALSE,
-    shinyOAuth.allow_hs = TRUE
+    shinyOAuth.skip_id_sig = FALSE
   )
   provider <- oauth_provider(
     name = "audience",
     issuer = "https://example.com",
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
-    allowed_algs = "HS256",
+    allowed_algs = "RS256",
     use_nonce = FALSE
   )
   client <- oauth_client(
@@ -25,13 +24,13 @@ test_that("signed multi-audience ID tokens require explicit audience trust and c
     iat = as.numeric(Sys.time()),
     exp = as.numeric(Sys.time()) + 60
   )
-  sign <- function(payload = claims, secret = client@client_secret) {
-    encode_hmac_jwt_with_header(
-      payload,
-      secret,
-      list(alg = "HS256", typ = "JWT"),
-      256
-    )
+  signing_key <- openssl::rsa_keygen(2048)
+  jwks <- list(keys = list(jsonlite::fromJSON(
+    write_test_jwk(signing_key$pubkey), simplifyVector = FALSE
+  )))
+  local_mocked_bindings(fetch_jwks = function(...) jwks, .package = "shinyOAuth")
+  sign <- function(payload = claims, key = signing_key) {
+    jose::jwt_encode_sig(do.call(jose::jwt_claim, payload), key = key)
   }
   expect_error(
     validate_id_token(client, sign()),
@@ -56,7 +55,9 @@ test_that("signed multi-audience ID tokens require explicit audience trust and c
       class = "shinyOAuth_id_token_error"
     )
   }
-  for (azp in list(NULL, "other", c("client", "other"))) {
+  claims$azp <- NULL
+  expect_identical(validate_id_token(client, sign())$sub, "user")
+  for (azp in list("other", c("client", "other"))) {
     invalid <- claims
     invalid$azp <- azp
     expect_error(
@@ -65,8 +66,8 @@ test_that("signed multi-audience ID tokens require explicit audience trust and c
     )
   }
   expect_error(
-    validate_id_token(client, sign(secret = strrep("w", 32))),
-    "HMAC invalid"
+    validate_id_token(client, sign(key = openssl::rsa_keygen(2048))),
+    class = "shinyOAuth_id_token_error"
   )
   claims$aud <- "client"
   claims$azp <- NULL

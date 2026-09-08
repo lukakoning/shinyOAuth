@@ -187,8 +187,9 @@ ID tokens with multiple audiences remain rejected by default. If an issuer
 legitimately includes another trusted audience, configure
 `trusted_id_token_audiences = c("trusted-service")` on `oauth_client()`.
 The token must still include this client's ID in `aud`, and `azp` must equal
-this client's ID when there are multiple audiences. Other audiences, incorrect
-authorized parties, and invalid signatures are rejected.
+this client's ID when present. Trusted multiple audiences do not require an
+`azp` claim under [OIDC Core section 3.1.3.7](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
+Other audiences, incorrect authorized parties, and invalid signatures are rejected.
 
 ## Mutual TLS (mTLS)
 

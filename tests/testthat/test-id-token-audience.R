@@ -45,7 +45,7 @@ test_that("validate_id_token rejects untrusted audiences despite azp", {
   })
 })
 
-test_that("validate_id_token rejects multi-audience without azp", {
+test_that("validate_id_token rejects untrusted additional audiences without azp", {
   prov <- shinyOAuth::oauth_provider(
     name = "test",
     auth_url = "https://example.com/auth",

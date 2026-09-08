@@ -509,7 +509,7 @@ conflicting claims. This flag does not independently enable mTLS.}
 \item{trusted_id_token_audiences}{Character vector of additional ID-token
 audiences explicitly trusted by this client. Defaults to \code{character(0)},
 which permits only \code{client_id}. The token must always include \code{client_id}
-in \code{aud}; multi-audience tokens must also have \code{azp} equal to \code{client_id}.
+in \code{aud}; when \code{azp} is present it must equal \code{client_id}.
 Values are matched exactly and case-sensitively. Configure only audiences
 trusted for this application's identity tokens, not arbitrary API audiences.}
 

@@ -450,15 +450,14 @@ validate_id_token <- function(
       err_id_token("ID token nonce mismatch")
     }
   }
-  # Authorized party (azp) handling per OIDC Core §2: if azp is present, it
-  # must equal client_id. Additional audiences must independently satisfy the
+  # OIDC Core §3.1.3.7 permits extension-specific azp validation. Our policy
+  # requires client_id when azp is present, without requiring its presence.
+  # Additional audiences must independently satisfy the
   # explicit allowlist above; azp alone never grants audience trust.
   if (!is.null(payload[["azp"]])) {
     if (!identical(payload[["azp"]], client_id)) {
       err_id_token("azp claim does not match client_id")
     }
-  } else if (length(aud) > 1) {
-    err_id_token("Multiple audiences but azp claim missing")
   }
 
   # auth_time validation per OIDC Core §2 / §3.1.2.1:

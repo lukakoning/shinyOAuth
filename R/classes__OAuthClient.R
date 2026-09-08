@@ -154,7 +154,7 @@
 #' @param trusted_id_token_audiences Character vector of additional ID-token
 #'   audiences explicitly trusted by this client. Defaults to `character(0)`,
 #'   which permits only `client_id`. The token must always include `client_id`
-#'   in `aud`; multi-audience tokens must also have `azp` equal to `client_id`.
+#'   in `aud`; when `azp` is present it must equal `client_id`.
 #'   Values are matched exactly and case-sensitively. Configure only audiences
 #'   trusted for this application's identity tokens, not arbitrary API audiences.
 #' @param required_acr_values Optional character vector of acceptable login
