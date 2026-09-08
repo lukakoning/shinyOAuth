@@ -591,6 +591,9 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
     err_parse("JWKS contains excessive keys")
   }
 
+  # Deliberate whole-set policy: malformed supported public entries reject the
+  # set before candidate filtering, even when unrelated to the requested kid.
+  # See the provider key-set validation section in advanced-security.Rmd.
   # Validate each key minimally and ensure no private params leaked
   supported_seen <- 0L
   private_params <- c("d", "p", "q", "dp", "dq", "qi", "oth", "k")
