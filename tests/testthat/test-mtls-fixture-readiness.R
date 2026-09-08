@@ -52,3 +52,41 @@ test_that("TLS readiness rejects an invalid published port", {
     "TLS fixture published an invalid port: 65536"
   )
 })
+
+test_that("the loopback TLS fixture starts without reverse hostname lookups", {
+  python <- Sys.which("python3")
+  if (!nzchar(python)) {
+    python <- Sys.which("python")
+  }
+  skip_if(!nzchar(python), "Python is required for the loopback TLS fixture")
+  # Make resolver dependencies fail immediately on every platform, including
+  # runners where reverse lookups would otherwise hang during HTTPServer bind.
+  code <- paste(
+    "import runpy, socket, sys",
+    "def reject_lookup(*args, **kwargs):",
+    "    raise RuntimeError('TLS fixture must not resolve hostnames')",
+    "socket.getfqdn = reject_lookup",
+    "socket.gethostbyaddr = reject_lookup",
+    "runpy.run_path(sys.argv[1], run_name='__main__')",
+    sep = "\n"
+  )
+  server <- processx::process$new(
+    python,
+    c("-c", code, mtls_pem_fixture("roundtrip-server.py")),
+    stdout = "|",
+    stderr = "|"
+  )
+  withr::defer(server$kill())
+  port <- wait_for_mtls_server_port(server)
+  req <- httr2::request(paste0("https://127.0.0.1:", port, "/"))
+  req <- httr2::req_options(
+    req,
+    sslcert = mtls_pem_fixture("client-cert.pem"),
+    sslkey = mtls_pem_fixture("client-key.pem"),
+    cainfo = mtls_pem_fixture("server-cert.pem")
+  )
+  expect_identical(
+    httr2::resp_body_string(httr2::req_perform(req)),
+    "client certificate accepted"
+  )
+})
