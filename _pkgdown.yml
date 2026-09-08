@@ -67,6 +67,7 @@ reference:
   
 - title: Deployment helpers
 - contents:
+  - check_oauth21
   - is_ok_host
   - custom_cache
   - error_on_softened

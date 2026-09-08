@@ -176,6 +176,42 @@ endpoint_auth_policy_digest <- function(config) {
   state_policy_value_digest(values)
 }
 
+# Pure method resolver: no temporary S7 mutation, signing probe or request.
+resolve_endpoint_auth_method <- function(
+  provider,
+  endpoint,
+  override = list()
+) {
+  methods <- provider@endpoint_auth_metadata[[endpoint]]$methods
+  style <- normalize_token_auth_style(
+    override$token_auth_style %||% provider@token_auth_style
+  )
+  method <- switch(
+    style,
+    header = "client_secret_basic",
+    body = "client_secret_post",
+    public = "none",
+    style
+  )
+  if (length(methods) && !method %in% methods) {
+    if (
+      is.null(override$token_auth_style) && "client_secret_basic" %in% methods
+    ) {
+      style <- "header"
+    } else if (
+      is.null(override$token_auth_style) && "client_secret_post" %in% methods
+    ) {
+      style <- "body"
+    } else {
+      return(list(
+        style = style,
+        problem = "Configured endpoint authentication method is not advertised"
+      ))
+    }
+  }
+  list(style = style, problem = NULL)
+}
+
 endpoint_auth_client <- function(client, endpoint) {
   endpoint <- match.arg(
     endpoint,
@@ -197,37 +233,15 @@ endpoint_auth_client <- function(client, endpoint) {
     return(client)
   }
   metadata <- provider@endpoint_auth_metadata[[endpoint]]
-  methods <- metadata$methods
-  style <- normalize_token_auth_style(
-    override$token_auth_style %||% provider@token_auth_style
-  )
-  method_name <- function(style) {
-    switch(
-      style,
-      header = "client_secret_basic",
-      body = "client_secret_post",
-      public = "none",
-      style
-    )
+  method <- resolve_endpoint_auth_method(provider, endpoint, override)
+  if (!is.null(method$problem)) {
+    err_config(paste0(
+      "endpoint_auth$",
+      endpoint,
+      ": authentication method is not advertised"
+    ))
   }
-  if (length(methods) && !method_name(style) %in% methods) {
-    # Only infer shared-secret methods; JWT/mTLS credentials need explicit setup.
-    if (
-      is.null(override$token_auth_style) && "client_secret_basic" %in% methods
-    ) {
-      style <- "header"
-    } else if (
-      is.null(override$token_auth_style) && "client_secret_post" %in% methods
-    ) {
-      style <- "body"
-    } else {
-      err_config(paste0(
-        "endpoint_auth$",
-        endpoint,
-        ": authentication method is not advertised"
-      ))
-    }
-  }
+  style <- method$style
   headers <- override$extra_headers %||%
     if (endpoint == "token") {
       provider@extra_token_headers

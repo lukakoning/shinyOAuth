@@ -28,25 +28,36 @@ immutable_oauth_params <- function() {
 
 # Merge explicit overrides without creating ambiguous repeated protocol fields.
 merge_oauth_extra_params <- function(params, extra) {
+  resolved <- oauth_extra_params_resolution(params, extra)
+  if (!is.null(resolved$problem)) {
+    err_config(resolved$problem)
+  }
+  resolved$params
+}
+
+# Pure counterpart used by request construction and configuration assessment.
+oauth_extra_params_resolution <- function(params, extra) {
   if (!length(extra)) {
-    return(params)
+    return(list(params = params, problem = NULL))
   }
   keys <- tolower(trimws(names(extra)))
   if (
     length(keys) != length(extra) || !all(nzchar(keys)) || anyDuplicated(keys)
   ) {
-    err_config("Extra OAuth parameters must have unique, non-empty names")
+    return(list(
+      problem = "Extra OAuth parameters must have unique, non-empty names"
+    ))
   }
   if (any(keys %in% immutable_oauth_params())) {
-    err_config(
-      "Extra OAuth parameters cannot override transaction or credential fields"
-    )
+    return(list(
+      problem = "Extra OAuth parameters cannot override transaction or credential fields"
+    ))
   }
   singletons <- keys %in% c("redirect_uri", "scope", "response_mode")
   if (any(lengths(extra)[singletons] != 1L)) {
-    err_config(
-      "OAuth redirect_uri, scope, and response_mode overrides must have exactly one value"
-    )
+    return(list(
+      problem = "OAuth redirect_uri, scope, and response_mode overrides must have exactly one value"
+    ))
   }
   existing <- tolower(trimws(names(params)))
   for (i in seq_along(extra)) {
@@ -54,7 +65,7 @@ merge_oauth_extra_params <- function(params, extra) {
     # Keep the canonical protocol spelling of an existing field.
     if (length(matched)) names(extra)[[i]] <- names(params)[[matched[[1]]]]
   }
-  c(params[!existing %in% keys], extra)
+  list(params = c(params[!existing %in% keys], extra), problem = NULL)
 }
 
 ## 1.1 Normalize protocol parameters -------------------------------------------
