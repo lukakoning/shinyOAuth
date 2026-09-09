@@ -605,6 +605,12 @@ parse_mtls_registration_ipv6_hextets <- function(value) {
     return(integer(0))
   }
 
+  # These are explicit fields on either side of ::. strsplit() drops a
+  # trailing empty field, so reject boundary colons before splitting.
+  if (startsWith(value, ":") || endsWith(value, ":")) {
+    err_input("Invalid IPv6 SAN literal")
+  }
+
   parts <- strsplit(value, ":", fixed = TRUE)[[1]]
   if (!all(nzchar(parts))) {
     err_input("Invalid IPv6 SAN literal")

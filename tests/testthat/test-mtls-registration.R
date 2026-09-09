@@ -228,6 +228,8 @@ test_that("SAN helpers normalize IP literals for registration metadata", {
     "::1" = "::1",
     "2001:0DB8::1" = "2001:db8::1",
     "2001:0DB8::" = "2001:db8::",
+    "2001:db8:1:2:3:4:5::" = "2001:db8:1:2:3:4:5:0",
+    "::ffff:192.0.2.1" = "::ffff:c000:201",
     "::" = "::"
   )
   for (input in names(ipv6_cases)) {
@@ -237,7 +239,11 @@ test_that("SAN helpers normalize IP literals for registration metadata", {
     )
   }
 
-  for (input in c("2001::db8::1", "2001:db8:::", ":::")) {
+  for (input in c(
+    "2001::db8::1", "2001:db8:::", ":::",
+    "2001:db8:1:2:3:4:5:6:", ":2001:db8:1:2:3:4:5:6",
+    "2001:db8::1:", ":2001:db8::1", "::1:", ":1::"
+  )) {
     expect_error(
       shinyOAuth:::normalize_mtls_registration_ipv6_literal(input),
       class = "shinyOAuth_input_error",
