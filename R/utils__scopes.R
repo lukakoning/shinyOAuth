@@ -249,10 +249,10 @@ ensure_openid_scope <- function(scopes, provider) {
       "!" = paste0(
         "Provider ",
         provider_name,
-        " uses OIDC, but {.val openid} was not in the requested scopes."
+        " uses OIDC, but `openid` was not in the requested scopes."
       ),
-      "i" = "Auto-prepending {.val openid} to scopes per OIDC Core \u00a73.1.2.1.",
-      "i" = "Add {.val openid} to your {.code oauth_client(scopes = ...)} to silence this warning."
+      "i" = "Auto-prepending `openid` to scopes per OIDC Core \u00a73.1.2.1.",
+      "i" = "Add `openid` to your `oauth_client(scopes = ...)` to silence this warning."
     ),
     .frequency = "once",
     .frequency_id = "shinyOAuth_missing_openid_scope"

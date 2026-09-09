@@ -66,7 +66,7 @@ test_that("validate_id_token rejects duplicate JOSE header members", {
   withr::local_options(shinyOAuth.skip_id_sig = TRUE)
   expect_error(
     shinyOAuth:::validate_id_token(cli, jwt),
-    regexp = "duplicate member name: alg",
+    regexp = "duplicate member name",
     class = "shinyOAuth_id_token_error"
   )
 })
@@ -81,7 +81,7 @@ test_that("validate_id_token rejects duplicate claim members", {
   withr::local_options(shinyOAuth.skip_id_sig = TRUE)
   expect_error(
     shinyOAuth:::validate_id_token(cli, jwt),
-    regexp = "duplicate member name: iss",
+    regexp = "duplicate member name",
     class = "shinyOAuth_id_token_error"
   )
 })
@@ -92,7 +92,7 @@ test_that("duplicate guard rejects nested object members", {
       '{"cnf":{"jkt":"thumb-1","jkt":"thumb-2"}}',
       "JWT payload"
     ),
-    regexp = "duplicate member name: jkt"
+    regexp = "duplicate member name"
   )
 
   expect_error(
@@ -100,7 +100,7 @@ test_that("duplicate guard rejects nested object members", {
       '{"keys":[{"kid":"key-1","kid":"key-2"}]}',
       "JWKS JSON"
     ),
-    regexp = "duplicate member name: kid"
+    regexp = "duplicate member name"
   )
 })
 
@@ -121,7 +121,7 @@ test_that("duplicate guard handles long values without accumulating tokens", {
       duplicate_json,
       "JWT payload"
     ),
-    regexp = "duplicate member name: alg"
+    regexp = "duplicate member name"
   )
 
   expect_error(
@@ -129,7 +129,7 @@ test_that("duplicate guard handles long values without accumulating tokens", {
       '{"a":1,"\\u0061":2}',
       "JWT payload"
     ),
-    regexp = "duplicate member name: a"
+    regexp = "duplicate member name"
   )
 })
 

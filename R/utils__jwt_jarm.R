@@ -567,20 +567,23 @@ normalize_duplicate_jarm_iss_claim <- function(payload_text) {
     !is.na(payload_text)
   )
 
+  duplicate_iss <- FALSE
   duplicate_check <- tryCatch(
     {
-      reject_duplicate_json_object_members(payload_text, "JWT payload")
+      reject_duplicate_json_object_members(
+        payload_text,
+        "JWT payload",
+        on_duplicate = function(name) {
+          duplicate_iss <<- identical(name, "iss")
+        }
+      )
       NULL
     },
     error = identity
   )
   if (
     is.null(duplicate_check) ||
-      !grepl(
-        "duplicate member name: iss",
-        conditionMessage(duplicate_check),
-        fixed = TRUE
-      )
+      !duplicate_iss
   ) {
     return(payload_text)
   }
@@ -796,9 +799,9 @@ validate_encrypted_jarm_protected_header <- function(
     !is.null(header_fields[["crit"]]) &&
       length(header_fields[["crit"]]) > 0L
   ) {
-    err_invalid_state(paste0(
-      "Encrypted JARM contains unsupported critical header parameter(s): ",
-      paste(header_fields[["crit"]], collapse = ", ")
+    err_invalid_state(protocol_diagnostic_message(
+      "Encrypted JARM contains unsupported critical header parameter(s)",
+      header_fields[["crit"]]
     ))
   }
 
@@ -806,8 +809,8 @@ validate_encrypted_jarm_protected_header <- function(
     err_invalid_state("Encrypted JARM missing required cty header 'JWT'")
   }
   if (!identical(toupper(cty), "JWT")) {
-    err_invalid_state(paste0(
-      "Encrypted JARM cty header invalid: expected 'JWT', got ",
+    err_invalid_state(protocol_diagnostic_message(
+      "Encrypted JARM cty header invalid: expected 'JWT'",
       cty
     ))
   }
@@ -816,12 +819,13 @@ validate_encrypted_jarm_protected_header <- function(
   if (is_valid_string(configured_kid)) {
     header_kid <- header_fields[["kid"]] %||% "<missing>"
     if (!identical(header_kid, configured_kid)) {
-      err_invalid_state(paste0(
-        "Encrypted JARM kid mismatch: expected ",
-        configured_kid,
-        ", got ",
-        header_kid
-      ))
+      err_claim_validation(
+        "Encrypted JARM kid mismatch",
+        claim = "kid",
+        expected = configured_kid,
+        received = header_kid,
+        error = err_invalid_state
+      )
     }
   }
 

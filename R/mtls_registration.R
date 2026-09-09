@@ -69,7 +69,7 @@ oauth_client_mtls_registration <- function(
     !is.null(tls_client_auth_value) && !is_valid_string(tls_client_auth_value)
   ) {
     err_input(
-      "{.arg tls_client_auth_value} must be NULL or a single non-empty string."
+      "`tls_client_auth_value` must be NULL or a single non-empty string."
     )
   }
   if (!is.null(tls_client_auth_value)) {
@@ -80,7 +80,7 @@ oauth_client_mtls_registration <- function(
   }
   if (!is.null(jwks_uri) && !is_valid_string(jwks_uri)) {
     err_input(
-      "{.arg jwks_uri} must be NULL or a single non-empty string."
+      "`jwks_uri` must be NULL or a single non-empty string."
     )
   }
 
@@ -93,7 +93,7 @@ oauth_client_mtls_registration <- function(
   ) {
     err_input(
       paste(
-        "{.arg oauth_client} must use an RFC 8705 mTLS token_auth_style or",
+        "`oauth_client` must use an RFC 8705 mTLS token_auth_style or",
         "set mtls_certificate_bound_access_tokens = TRUE."
       )
     )
@@ -101,7 +101,7 @@ oauth_client_mtls_registration <- function(
   if (!client_has_mtls_certificate(oauth_client)) {
     err_input(
       paste(
-        "{.arg oauth_client} must include mtls_client_cert_file and",
+        "`oauth_client` must include mtls_client_cert_file and",
         "mtls_client_key_file to build mTLS registration metadata."
       )
     )
@@ -124,7 +124,7 @@ oauth_client_mtls_registration <- function(
     if (!is.null(tls_client_auth_value)) {
       err_input(
         paste(
-          "{.arg tls_client_auth_value} only applies when token_auth_style =",
+          "`tls_client_auth_value` only applies when token_auth_style =",
           "'tls_client_auth'."
         )
       )
@@ -145,7 +145,7 @@ oauth_client_mtls_registration <- function(
   if (!is.null(jwks_uri)) {
     err_input(
       paste(
-        "{.arg jwks_uri} only applies when token_auth_style =",
+        "`jwks_uri` only applies when token_auth_style =",
         "'self_signed_tls_client_auth'."
       )
     )
@@ -155,7 +155,7 @@ oauth_client_mtls_registration <- function(
     if (!is.null(tls_client_auth_value)) {
       err_input(
         paste(
-          "{.arg tls_client_auth_value} only applies when token_auth_style =",
+          "`tls_client_auth_value` only applies when token_auth_style =",
           "'tls_client_auth'."
         )
       )
@@ -757,14 +757,14 @@ validate_mtls_registration_jwks_uri <- function(jwks_uri) {
       !nzchar(parsed[["hostname"]] %||% "")
   ) {
     err_input(
-      "{.arg jwks_uri} must be an absolute URL (including scheme and hostname)."
+      "`jwks_uri` must be an absolute URL (including scheme and hostname)."
     )
   }
   if (nzchar(parsed[["fragment"]] %||% "")) {
-    err_input("{.arg jwks_uri} must not contain a URI fragment.")
+    err_input("`jwks_uri` must not contain a URI fragment.")
   }
   if (!identical(tolower(parsed[["scheme"]]), "https")) {
-    err_input("{.arg jwks_uri} must use HTTPS for OIDC registration.")
+    err_input("`jwks_uri` must use HTTPS for OIDC registration.")
   }
   if (!is_ok_host(jwks_uri)) {
     err_input(paste0(

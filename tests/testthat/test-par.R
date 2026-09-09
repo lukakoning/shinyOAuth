@@ -555,7 +555,7 @@ test_that("PAR response requires 201 JSON with integer expires_in", {
 
   expect_error(
     shinyOAuth:::prepare_call(cli, valid_browser_token()),
-    regexp = "duplicate member name: request_uri"
+    regexp = "duplicate member name"
   )
   expect_length(cli@state_store$keys(), 0L)
 })

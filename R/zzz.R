@@ -22,4 +22,6 @@ utils::globalVariables(c("input", "private", "public"))
   rlang::run_on_load()
 }
 
-rlang::on_load(rlang::local_use_cli(format = TRUE, inline = TRUE))
+# Conditions carry literal data, including nested conditionMessage() output.
+# Render only fixed package-owned templates explicitly at their call sites.
+rlang::on_load(rlang::local_use_cli(format = TRUE, inline = FALSE))

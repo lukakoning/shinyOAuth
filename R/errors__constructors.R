@@ -75,11 +75,11 @@ err_claim_validation <- function(msg, claim, expected, received, error) {
       bullets,
       "i" = paste0(
         "Expected: ",
-        escape_diagnostic_markup(sanitize_diagnostic_text(expected))
+        sanitize_diagnostic_text(expected)
       ),
       "i" = paste0(
         "Got: ",
-        escape_diagnostic_markup(sanitize_diagnostic_text(received))
+        sanitize_diagnostic_text(received)
       )
     )
   }
@@ -147,15 +147,15 @@ format_header <- function(short, strong = TRUE) {
   short <- as.character(short %||% "")
 
   if (isTRUE(strong)) {
-    return(paste0("[{.pkg shinyOAuth}] - {.strong ", short, "}"))
+    return(cli::format_inline("[{.pkg shinyOAuth}] - {.strong {short}}"))
   }
 
-  paste0("[{.pkg shinyOAuth}] - ", short)
+  cli::format_inline("[{.pkg shinyOAuth}] - {short}")
 }
 
 #' Build a standard shinyOAuth condition message
 #'
-#' Combines the package header, normalized bullet body, and any footer bullets
+#' Combines the package header, literal bullet body, and literal footer bullets
 #' into the character vector expected by `rlang` condition helpers.
 #'
 #' @param short Short description shown in the condition header.
@@ -671,7 +671,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
       reason <- paste0(reason, ": ", oauth_error_description)
     }
     stats::setNames(
-      paste0("OAuth error: ", escape_diagnostic_markup(reason)),
+      paste0("OAuth error: ", reason),
       "x"
     )
   } else {
@@ -705,9 +705,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
     stats::setNames(
       paste0(
         "Body: ",
-        escape_diagnostic_markup(
-          sanitize_diagnostic_text(body_snippet)
-        )
+        sanitize_diagnostic_text(body_snippet)
       ),
       "i"
     )

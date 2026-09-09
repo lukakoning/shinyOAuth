@@ -918,7 +918,7 @@ oauth_provider <- function(
       length(issuer_thus_oidc) == 1L &&
       !is.na(issuer_thus_oidc))
   ) {
-    err_input("{.arg issuer_thus_oidc} must be a single non-NA logical.")
+    err_input("`issuer_thus_oidc` must be a single non-NA logical.")
   }
 
   has_issuer <- is_valid_string(issuer)
@@ -965,10 +965,10 @@ oauth_provider <- function(
         c(
           "!" = paste0(
             "No host allowlist configured via ",
-            "{.code options(shinyOAuth.allowed_hosts = c(\".example.com\", \"api.example.com\"))}."
+            "`options(shinyOAuth.allowed_hosts = c(\".example.com\", \"api.example.com\"))`."
           ),
           "i" = "Restricting hosts hardens redirect and API endpoint validation.",
-          "i" = "See {.code ?is_ok_host} for policy details and review the 'authentication-flow' vignette"
+          "i" = "See `?is_ok_host` for policy details and review the 'authentication-flow' vignette"
         ),
         .frequency = "once",
         .frequency_id = "allowed_hosts_config_reminder"

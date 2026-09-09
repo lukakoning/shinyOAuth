@@ -247,7 +247,10 @@ reject_duplicate_form_encoded_members <- function(form_text, label) {
     key <- decode_form_member(raw_key, label, "parameter name")
     decode_form_member(raw_value, label, "parameter value")
     if (key %in% seen) {
-      err_parse(paste0(label, " contains duplicate parameter name: ", key))
+      err_parse(protocol_diagnostic_message(
+        paste0(label, " contains duplicate parameter name"),
+        key
+      ))
     }
     seen <- c(seen, key)
   }

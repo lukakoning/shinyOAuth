@@ -276,9 +276,9 @@ test_that("package condition helpers build consistent headers", {
   )
 
   expect_identical(
-    unname(msg),
+    cli::ansi_strip(unname(msg)),
     c(
-      "[{.pkg shinyOAuth}] - {.strong Browser warning}",
+      "[shinyOAuth] - Browser warning",
       "detail",
       "hint",
       "footer"

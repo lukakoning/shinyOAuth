@@ -113,7 +113,7 @@ warn_about_async_otel_workers <- function() {
     "Verify OpenTelemetry is configured in async workers",
     c(
       "!" = paste(
-        "{.code oauth_module_server(async = TRUE)} will emit telemetry from",
+        "`oauth_module_server(async = TRUE)` will emit telemetry from",
         "background worker processes as well as the main R process"
       ),
       "i" = paste(

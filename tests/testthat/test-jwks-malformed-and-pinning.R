@@ -132,7 +132,7 @@ test_that("fetch_jwks rejects duplicate discovery jwks_uri members", {
       pin_mode = "any"
     ),
     class = "shinyOAuth_parse_error",
-    regexp = "duplicate member name: jwks_uri"
+    regexp = "duplicate member name"
   )
 })
 
@@ -185,7 +185,7 @@ test_that("fetch_jwks does not fall through after malformed metadata", {
       pin_mode = "any"
     ),
     class = "shinyOAuth_parse_error",
-    regexp = "duplicate member name: jwks_uri"
+    regexp = "duplicate member name"
   )
 })
 
@@ -257,7 +257,7 @@ test_that("fetch_jwks rejects duplicate JWKS top-level members", {
       pin_mode = "any"
     ),
     class = "shinyOAuth_parse_error",
-    regexp = "duplicate member name: keys"
+    regexp = "duplicate member name"
   )
 })
 

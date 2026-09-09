@@ -556,7 +556,7 @@ testthat::test_that("discovery rejects duplicate issuer members", {
   testthat::expect_error(
     oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url())),
     class = "shinyOAuth_parse_error",
-    regexp = "duplicate member name: issuer"
+    regexp = "duplicate member name"
   )
 })
 

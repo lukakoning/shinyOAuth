@@ -214,7 +214,7 @@ fetch_authorization_server_metadata <- function(issuer) {
         stats::setNames(
           paste0(
             "Last failure: ",
-            escape_diagnostic_markup(last_error_message)
+            last_error_message
           ),
           "i"
         )

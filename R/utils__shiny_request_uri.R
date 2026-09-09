@@ -19,7 +19,7 @@
 #' @noRd
 require_https_request_uri <- function(
   request_uri,
-  subject = "The published {.code request_uri}"
+  subject = "The published `request_uri`"
 ) {
   if (!is_valid_string(request_uri)) {
     return(invisible(TRUE))
@@ -71,7 +71,7 @@ normalize_request_uri_base_url <- function(
   if (!is_valid_string(base_url)) {
     err_input(
       sprintf(
-        "{.arg %s} must be NULL or a single non-empty absolute URL.",
+        "`%s` must be NULL or a single non-empty absolute URL.",
         arg
       )
     )
@@ -79,7 +79,7 @@ normalize_request_uri_base_url <- function(
 
   if (has_uri_fragment(base_url)) {
     err_input(sprintf(
-      "{.arg %s} must not include a query string or fragment.",
+      "`%s` must not include a query string or fragment.",
       arg
     ))
   }
@@ -96,7 +96,7 @@ normalize_request_uri_base_url <- function(
   if (nzchar(query) || nzchar(fragment)) {
     err_input(
       sprintf(
-        "{.arg %s} must not include a query string or fragment.",
+        "`%s` must not include a query string or fragment.",
         arg
       )
     )
@@ -354,7 +354,9 @@ require_request_object_atomic_store <- function(store) {
 # Return NULL for ordinary app requests; all handle requests terminate here.
 shiny_request_object_http_handler <- function(req, client) {
   query_error <- oauth_http_query_guard(req)
-  if (!is.null(query_error)) return(query_error)
+  if (!is.null(query_error)) {
+    return(query_error)
+  }
   query <- req[["QUERY_STRING"]] %||% ""
   handles <- oauth_module_query_raw_values(query, shiny_request_object_param)
   if (!length(handles)) {

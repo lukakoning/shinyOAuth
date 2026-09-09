@@ -230,14 +230,14 @@ oauth_module_server <- function(
   S7::check_is_S7(client, class = OAuthClient)
 
   if (!is_valid_string(id)) {
-    err_input("{.arg id} must be a single non-empty string.")
+    err_input("`id` must be a single non-empty string.")
   }
   if (
     !(is.logical(refresh_proactively) &&
       length(refresh_proactively) == 1 &&
       !is.na(refresh_proactively))
   ) {
-    err_input("{.arg refresh_proactively} must be a single non-NA logical.")
+    err_input("`refresh_proactively` must be a single non-NA logical.")
   }
   if (
     !(is.numeric(refresh_lead_seconds) &&
@@ -246,7 +246,7 @@ oauth_module_server <- function(
       refresh_lead_seconds >= 0)
   ) {
     err_input(
-      "{.arg refresh_lead_seconds} must be a single non-negative number."
+      "`refresh_lead_seconds` must be a single non-negative number."
     )
   }
   if (
@@ -256,25 +256,25 @@ oauth_module_server <- function(
       refresh_check_interval >= 100)
   ) {
     err_input(
-      "{.arg refresh_check_interval} must be a single number >= 100."
+      "`refresh_check_interval` must be a single number >= 100."
     )
   }
   if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
-    err_input("{.arg async} must be a single non-NA logical.")
+    err_input("`async` must be a single non-NA logical.")
   }
   if (
     !(is.logical(tab_title_cleaning) &&
       length(tab_title_cleaning) == 1 &&
       !is.na(tab_title_cleaning))
   ) {
-    err_input("{.arg tab_title_cleaning} must be a single non-NA logical.")
+    err_input("`tab_title_cleaning` must be a single non-NA logical.")
   }
   if (
     !(is.null(tab_title_replacement) ||
       is_valid_string(tab_title_replacement))
   ) {
     err_input(
-      "{.arg tab_title_replacement} must be NULL or a non-empty string."
+      "`tab_title_replacement` must be NULL or a non-empty string."
     )
   }
   if (
@@ -282,7 +282,7 @@ oauth_module_server <- function(
       is_valid_string(request_uri_base_url))
   ) {
     err_input(
-      "{.arg request_uri_base_url} must be NULL or a non-empty string."
+      "`request_uri_base_url` must be NULL or a non-empty string."
     )
   }
   if (
@@ -290,7 +290,7 @@ oauth_module_server <- function(
       length(auto_redirect) == 1 &&
       !is.na(auto_redirect))
   ) {
-    err_input("{.arg auto_redirect} must be a single non-NA logical.")
+    err_input("`auto_redirect` must be a single non-NA logical.")
   }
   if (
     !(is.null(reauth_after_seconds) ||
@@ -300,7 +300,7 @@ oauth_module_server <- function(
         reauth_after_seconds > 0))
   ) {
     err_input(
-      "{.arg reauth_after_seconds} must be NULL or a single positive number."
+      "`reauth_after_seconds` must be NULL or a single positive number."
     )
   }
   if (
@@ -308,7 +308,7 @@ oauth_module_server <- function(
       length(indefinite_session) == 1 &&
       !is.na(indefinite_session))
   ) {
-    err_input("{.arg indefinite_session} must be a single non-NA logical.")
+    err_input("`indefinite_session` must be a single non-NA logical.")
   }
   if (
     !(is.null(browser_cookie_path) ||
@@ -316,7 +316,7 @@ oauth_module_server <- function(
   ) {
     err_input(
       paste(
-        "{.arg browser_cookie_path} must be NULL or a cookie path that starts",
+        "`browser_cookie_path` must be NULL or a cookie path that starts",
         "with '/' and contains no semicolons or control characters."
       )
     )
@@ -326,7 +326,7 @@ oauth_module_server <- function(
       length(revoke_on_session_end) == 1 &&
       !is.na(revoke_on_session_end))
   ) {
-    err_input("{.arg revoke_on_session_end} must be a single non-NA logical.")
+    err_input("`revoke_on_session_end` must be a single non-NA logical.")
   }
 
   request_uri_base_url <- normalize_request_uri_base_url(
@@ -376,13 +376,13 @@ oauth_module_server <- function(
     if (!is_valid_string(revocation_url)) {
       err_config(
         c(
-          "{.arg revoke_on_session_end} = {.val TRUE} requires\nthe provider to have a {.arg revocation_url} configured.",
+          "`revoke_on_session_end` = `TRUE` requires\nthe provider to have a `revocation_url` configured.",
           "x" = paste0(
             "Provider ",
             provider_name,
             " does not expose a revocation endpoint."
           ),
-          "i" = "Set {.arg revoke_on_session_end} = {.val FALSE} or\nconfigure the provider with a valid {.arg revocation_url}."
+          "i" = "Set `revoke_on_session_end` = `FALSE` or\nconfigure the provider with a valid `revocation_url`."
         )
       )
     }
@@ -392,7 +392,7 @@ oauth_module_server <- function(
     warn_pkg(
       "Open your Shiny app in a regular browser",
       c(
-        "!" = "{.code oauth_module_server()} was called; view your app in a standard web browser (e.g., Chrome, Firefox, Safari)",
+        "!" = "`oauth_module_server()` was called; view your app in a standard web browser (e.g., Chrome, Firefox, Safari)",
         "i" = "Viewers in RStudio/Positron/etc. cannot perform necessary redirects for OAuth 2.0 flows"
       ),
       .frequency = "once",
@@ -428,8 +428,8 @@ oauth_module_server <- function(
       warn_pkg(
         "Consider using `async = TRUE` for responsive UIs",
         c(
-          "!" = "{.code oauth_module_server(async = FALSE)} may block the Shiny event loop during network calls, potentially freezing the UI",
-          "i" = "Consider setting `async = TRUE` and configuring {.pkg mirai} daemons (e.g., {.code mirai::daemons(2)})"
+          "!" = "`oauth_module_server(async = FALSE)` may block the Shiny event loop during network calls, potentially freezing the UI",
+          "i" = "Consider setting `async = TRUE` and configuring mirai daemons (e.g., `mirai::daemons(2)`)"
         ),
         .frequency = "once",
         .frequency_id = "oauth_module_server_no_async"
@@ -446,9 +446,9 @@ oauth_module_server <- function(
         warn_pkg(
           "No async backend configured",
           c(
-            "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg mirai} daemons are connected",
-            "i" = "Set up daemons: {.code mirai::daemons(2)} at the top of your app",
-            "i" = "Or configure a future plan: {.code future::plan(future::multisession)}"
+            "!" = "`oauth_module_server(async = TRUE)` but no mirai daemons are connected",
+            "i" = "Set up daemons: `mirai::daemons(2)` at the top of your app",
+            "i" = "Or configure a future plan: `future::plan(future::multisession)`"
           )
         )
       } else if (
@@ -457,9 +457,9 @@ oauth_module_server <- function(
         warn_pkg(
           "No async backend configured",
           c(
-            "!" = "{.code oauth_module_server(async = TRUE)} but no {.pkg future} plan is set",
-            "i" = "Set up a future plan: {.code future::plan(future::multisession)}",
-            "i" = "Or use mirai (preferred): {.code mirai::daemons(2)}"
+            "!" = "`oauth_module_server(async = TRUE)` but no future plan is set",
+            "i" = "Set up a future plan: `future::plan(future::multisession)`",
+            "i" = "Or use mirai (preferred): `mirai::daemons(2)`"
           )
         )
       } else {
@@ -475,7 +475,7 @@ oauth_module_server <- function(
         warn_pkg(
           "Consider using multiple mirai daemons for concurrency",
           c(
-            "!" = "{.code oauth_module_server(async = TRUE)} but with a single mirai daemon",
+            "!" = "`oauth_module_server(async = TRUE)` but with a single mirai daemon",
             "i" = "Tasks are offloaded but concurrent jobs may queue. Consider using more daemons"
           )
         )
@@ -483,10 +483,10 @@ oauth_module_server <- function(
     } else if (backend == "future" && !.is_test()) {
       # future is available - inform user that mirai is preferred
       inform_pkg(
-        "Using {.pkg future} async backend",
+        "Using future async backend",
         c(
-          "i" = "Consider migrating to {.pkg mirai} for lower overhead and non-blocking dispatch",
-          "i" = "See {.url https://github.com/shikokuchuo/mirai} for migration guide"
+          "i" = "Consider migrating to mirai for lower overhead and non-blocking dispatch",
+          "i" = "See https://github.com/shikokuchuo/mirai for migration guide"
         ),
         .frequency = "once",
         .frequency_id = "oauth_module_server_future_backend"

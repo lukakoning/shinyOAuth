@@ -1018,7 +1018,7 @@ test_that("handle_callback rejects conflicting introspection cnf values", {
         active = TRUE,
         raw = list(
           token_type = "DPoP",
-          cnf = list(jkt = "intro-jkt")
+          cnf = list(jkt = "x9Suf3vXLkAS69yWbUFhYTyXHrTH7jxjLnGGltJU5Vc")
         ),
         status = "ok"
       )

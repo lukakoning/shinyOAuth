@@ -762,7 +762,7 @@ test_that("refresh rejects mismatched certificate-bound token responses", {
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
-          '{"access_token":"new-at","refresh_token":"new-rt","expires_in":3600,"token_type":"Bearer","cnf":{"x5t#S256":"wrong-thumbprint"}}'
+          '{"access_token":"new-at","refresh_token":"new-rt","expires_in":3600,"token_type":"Bearer","cnf":{"x5t#S256":"DaDnyOgS1VVpHshFDZy6OzNepqk5GFTboyokkTd-j5s"}}'
         )
       )
     },
@@ -1068,7 +1068,7 @@ test_that("refresh uses prior token cnf for the token endpoint but does not keep
     refresh_token = "old-rt",
     expires_at = as.numeric(Sys.time()) + 60,
     userinfo = list(),
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   )
 
   captured_req <- NULL
@@ -1132,7 +1132,7 @@ test_that("revoke uses token cnf to choose mTLS alias without local thumbprint v
     refresh_token = "old-rt",
     expires_at = as.numeric(Sys.time()) + 60,
     userinfo = list(),
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   )
 
   captured_req <- NULL
@@ -1199,7 +1199,7 @@ test_that("introspect uses token cnf to choose mTLS alias without local thumbpri
     refresh_token = "old-rt",
     expires_at = as.numeric(Sys.time()) + 60,
     userinfo = list(),
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   )
 
   captured_req <- NULL
@@ -1261,7 +1261,7 @@ test_that("authorization-server mTLS requests fail closed when certificate files
     access_token = "old-at",
     token_type = "Bearer",
     userinfo = list(),
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   )
 
   expect_error(
@@ -1300,7 +1300,7 @@ test_that("client bearer requests still enforce certificate thumbprint binding",
     access_token = "at",
     token_type = "Bearer",
     userinfo = list(),
-    cnf = list(`x5t#S256` = "old-thumbprint")
+    cnf = list(`x5t#S256` = "IQY7R9AQAHQ36DwDrDXM1Ganuo0jdHUHyVEqmJwXDMQ")
   )
 
   testthat::local_mocked_bindings(
@@ -1344,13 +1344,13 @@ test_that("client bearer requests honor cnf in raw JWT access tokens", {
     client_secret = ""
   )
   raw_token <- build_mtls_access_jwt(list(
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   ))
 
   testthat::local_mocked_bindings(
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
-      "thumbprint"
+      "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
     },
     .package = "shinyOAuth"
   )
@@ -1396,14 +1396,14 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
     access_token = "at",
     token_type = "Bearer",
     userinfo = list(),
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   )
 
   captured_req <- NULL
   testthat::local_mocked_bindings(
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
-      "thumbprint"
+      "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
     },
     req_with_retry = function(req, ...) {
       captured_req <<- req
@@ -1599,7 +1599,7 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
     userinfo = list()
   )
   jwt_access_token <- build_mtls_access_jwt(list(
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   ))
 
   captured_req <- NULL
@@ -1622,7 +1622,7 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
     },
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
-      "thumbprint"
+      "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
     },
     req_with_retry = function(req, ...) {
       captured_req <<- req
@@ -1642,7 +1642,10 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
   expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
   expect_identical(captured_req[["options"]][["sslkey"]], files$key_file)
   expect_identical(refreshed@userinfo[["sub"]], "user-123")
-  expect_identical(refreshed@cnf[["x5t#S256"]], "thumbprint")
+  expect_identical(
+    refreshed@cnf[["x5t#S256"]],
+    "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
+  )
 })
 
 test_that("resource_req rejects certificate-bound tokens when thumbprint mismatches", {
@@ -1669,11 +1672,13 @@ test_that("resource_req rejects certificate-bound tokens when thumbprint mismatc
     access_token = "at",
     token_type = "Bearer",
     userinfo = list(),
-    cnf = list(`x5t#S256` = "expected-thumbprint")
+    cnf = list(`x5t#S256` = "s2KBlaeAJVKDyyMaqSYPm3qVL_sQW1gKOw-7b7PwMJw")
   )
 
   testthat::local_mocked_bindings(
-    tls_client_cert_thumbprint_s256 = function(...) "different-thumbprint",
+    tls_client_cert_thumbprint_s256 = function(...) {
+      "1POTlBzjS6mGixH0v-seKQHwIp2AqnEC0DB9GstICSI"
+    },
     .package = "shinyOAuth"
   )
 
@@ -1709,14 +1714,16 @@ test_that("resource_req enforces certificate binding from JWT cnf", {
   )
   token <- OAuthToken(
     access_token = build_mtls_access_jwt(list(
-      cnf = list(`x5t#S256` = "expected-thumbprint")
+      cnf = list(`x5t#S256` = "s2KBlaeAJVKDyyMaqSYPm3qVL_sQW1gKOw-7b7PwMJw")
     )),
     token_type = "Bearer",
     userinfo = list()
   )
 
   testthat::local_mocked_bindings(
-    tls_client_cert_thumbprint_s256 = function(...) "different-thumbprint",
+    tls_client_cert_thumbprint_s256 = function(...) {
+      "1POTlBzjS6mGixH0v-seKQHwIp2AqnEC0DB9GstICSI"
+    },
     .package = "shinyOAuth"
   )
 
@@ -1763,7 +1770,7 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
     refresh_token = "rt",
     expires_at = as.numeric(Sys.time()) + 60,
     userinfo = list(),
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   )
 
   captured_urls <- character(0)
@@ -1771,7 +1778,7 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
   testthat::local_mocked_bindings(
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
       expect_identical(cert_file, files$cert_file)
-      "thumbprint"
+      "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
     },
     req_with_dpop_retry = function(...) {
       stop("DPoP retry should not run for revocation or introspection")

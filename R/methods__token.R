@@ -55,7 +55,7 @@ revoke_token <- function(
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(oauth_token, OAuthToken)
   if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
-    err_input("{.arg async} must be a single non-NA logical.")
+    err_input("`async` must be a single non-NA logical.")
   }
 
   which <- match.arg(which)
@@ -338,7 +338,7 @@ introspect_token <- function(
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(oauth_token, OAuthToken)
   if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
-    err_input("{.arg async} must be a single non-NA logical.")
+    err_input("`async` must be a single non-NA logical.")
   }
 
   which <- match.arg(which)
@@ -761,7 +761,7 @@ refresh_token <- function(
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
   if (!(is.logical(async) && length(async) == 1L && !is.na(async))) {
-    err_input("{.arg async} must be a single non-NA logical.")
+    err_input("`async` must be a single non-NA logical.")
   }
   if (
     !is.null(introspect) &&
@@ -769,7 +769,7 @@ refresh_token <- function(
         length(introspect) == 1L &&
         !is.na(introspect))
   ) {
-    err_input("{.arg introspect} must be NULL or a single non-NA logical.")
+    err_input("`introspect` must be NULL or a single non-NA logical.")
   }
   if (!is_valid_string(token@refresh_token)) {
     err_input("No refresh token available")
@@ -906,13 +906,13 @@ refresh_token_impl <- function(
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
   if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
-    err_input("{.arg async} must be a single non-NA logical.")
+    err_input("`async` must be a single non-NA logical.")
   }
   if (
     !is.null(introspect) &&
       !(is.logical(introspect) && length(introspect) == 1 && !is.na(introspect))
   ) {
-    err_input("{.arg introspect} must be NULL or a single non-NA logical.")
+    err_input("`introspect` must be NULL or a single non-NA logical.")
   }
   effective_introspect <- isTRUE(oauth_client@introspect) || isTRUE(introspect)
   auth_client <- endpoint_auth_client(oauth_client, "token")

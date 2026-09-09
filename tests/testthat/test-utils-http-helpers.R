@@ -448,7 +448,7 @@ test_that("parse_token_response rejects duplicate JSON token parameters", {
   expect_error(
     shinyOAuth:::parse_token_response(dup_resp),
     class = "shinyOAuth_parse_error",
-    regexp = "duplicate member name: access_token"
+    regexp = "duplicate member name"
   )
 })
 
@@ -463,7 +463,7 @@ test_that("parse_token_response rejects duplicate form token parameters", {
   expect_error(
     shinyOAuth:::parse_token_response(dup_resp),
     class = "shinyOAuth_parse_error",
-    regexp = "duplicate parameter name: scope"
+    regexp = "duplicate parameter name"
   )
 })
 
@@ -478,7 +478,7 @@ test_that("parse_token_response rejects duplicate text/plain form token paramete
   expect_error(
     shinyOAuth:::parse_token_response(dup_resp),
     class = "shinyOAuth_parse_error",
-    regexp = "duplicate parameter name: access_token"
+    regexp = "duplicate parameter name"
   )
 })
 

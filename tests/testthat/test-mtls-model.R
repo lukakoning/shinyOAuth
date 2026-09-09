@@ -51,39 +51,47 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
   tok <- OAuthToken(
     access_token = "at",
     userinfo = list(),
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   )
-  expect_identical(tok@cnf[["x5t#S256"]], "thumbprint")
+  expect_identical(
+    tok@cnf[["x5t#S256"]],
+    "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
+  )
 
   dpop_tok <- OAuthToken(
     access_token = "at",
     userinfo = list(),
-    cnf = list(jkt = "jkt-thumbprint")
+    cnf = list(jkt = "Zr6bZXk615zAaxVV7AuuawTrZjkIOYeOKpcixBzUnrg")
   )
-  expect_identical(dpop_tok@cnf[["jkt"]], "jkt-thumbprint")
+  expect_identical(
+    dpop_tok@cnf[["jkt"]],
+    "Zr6bZXk615zAaxVV7AuuawTrZjkIOYeOKpcixBzUnrg"
+  )
 
   expect_identical(
-    shinyOAuth:::resolve_token_cnf(cnf = list(jkt = "jkt-thumbprint")),
-    list(jkt = "jkt-thumbprint")
+    shinyOAuth:::resolve_token_cnf(
+      cnf = list(jkt = "Zr6bZXk615zAaxVV7AuuawTrZjkIOYeOKpcixBzUnrg")
+    ),
+    list(jkt = "Zr6bZXk615zAaxVV7AuuawTrZjkIOYeOKpcixBzUnrg")
   )
 
   mixed_access_token <- build_dummy_jwt(list(
     sub = "user-1",
-    cnf = list(jkt = "jwt-jkt")
+    cnf = list(jkt = "XyMLnWRv_7dbwy1uaOJ1V3VARH4YFe6oFPBEYje74Gk")
   ))
   expect_identical(
     shinyOAuth:::resolve_token_cnf(
-      cnf = list(`x5t#S256` = "explicit-thumbprint"),
+      cnf = list(`x5t#S256` = "_tO-l-k61Qj5glimNo8c3KpAWqIlH4V49GNY2SBdgg0"),
       access_token = mixed_access_token,
       introspection_result = list(
         raw = list(
-          cnf = list(jkt = "intro-jkt")
+          cnf = list(jkt = "x9Suf3vXLkAS69yWbUFhYTyXHrTH7jxjLnGGltJU5Vc")
         )
       )
     ),
     list(
-      `x5t#S256` = "explicit-thumbprint",
-      jkt = "intro-jkt"
+      `x5t#S256` = "_tO-l-k61Qj5glimNo8c3KpAWqIlH4V49GNY2SBdgg0",
+      jkt = "x9Suf3vXLkAS69yWbUFhYTyXHrTH7jxjLnGGltJU5Vc"
     )
   )
 
@@ -91,10 +99,12 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
     shinyOAuth:::validate_token_cnf_consistency(
       access_token = build_dummy_jwt(list(
         sub = "user-1",
-        cnf = list(jkt = "jwt-jkt")
+        cnf = list(jkt = "XyMLnWRv_7dbwy1uaOJ1V3VARH4YFe6oFPBEYje74Gk")
       )),
       introspection_result = list(
-        raw = list(cnf = list(jkt = "intro-jkt"))
+        raw = list(
+          cnf = list(jkt = "x9Suf3vXLkAS69yWbUFhYTyXHrTH7jxjLnGGltJU5Vc")
+        )
       )
     ),
     class = "shinyOAuth_input_error",
@@ -179,7 +189,7 @@ test_that("certificate-bound sender constraint requires token binding or explici
     access_token = "at",
     token_type = "Bearer",
     userinfo = list(),
-    cnf = list(`x5t#S256` = "thumbprint")
+    cnf = list(`x5t#S256` = "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E")
   )
 
   expect_false(
@@ -216,9 +226,11 @@ test_that("refresh cnf resolution only trusts fresh token surfaces", {
 
   expect_identical(
     shinyOAuth:::resolve_refresh_token_cnf(
-      access_token = build_dummy_jwt(list(cnf = list(jkt = "fresh-jkt")))
+      access_token = build_dummy_jwt(list(
+        cnf = list(jkt = "izoi5g-Ko8qYHhMq8lAey5Y0gojXEeTPvhozOJusl4Y")
+      ))
     ),
-    list(jkt = "fresh-jkt")
+    list(jkt = "izoi5g-Ko8qYHhMq8lAey5Y0gojXEeTPvhozOJusl4Y")
   )
 
   expect_length(
@@ -371,7 +383,7 @@ test_that("verify_token_set rejects certificate thumbprint mismatches during exc
           access_token = "at-1",
           token_type = "Bearer",
           expires_in = 60,
-          cnf = list(`x5t#S256` = "wrong-thumbprint")
+          cnf = list(`x5t#S256` = "DaDnyOgS1VVpHshFDZy6OzNepqk5GFTboyokkTd-j5s")
         ),
         nonce = NULL,
         is_refresh = is_refresh,

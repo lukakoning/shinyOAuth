@@ -889,7 +889,7 @@ oauth_client <- function(
         !is.na(enforce_callback_issuer))
   ) {
     err_input(
-      "{.arg enforce_callback_issuer} must be NULL or a single non-NA logical."
+      "`enforce_callback_issuer` must be NULL or a single non-NA logical."
     )
   }
 
@@ -907,7 +907,7 @@ oauth_client <- function(
       !is_scalar_logical(compare_callback_issuer)
   ) {
     err_input(
-      "{.arg compare_callback_issuer} must be NULL or a single non-NA logical."
+      "`compare_callback_issuer` must be NULL or a single non-NA logical."
     )
   }
   resolved_compare_callback_issuer <- compare_callback_issuer %||%
@@ -918,14 +918,14 @@ oauth_client <- function(
     if (isTRUE(jarm_response_mode)) {
       if (!is_valid_string(provider@issuer %||% NA_character_)) {
         err_config(c(
-          "{.arg authorization_server_mode} = {.val multi_issuer} requires a configured provider issuer.",
+          "`authorization_server_mode` = `multi_issuer` requires a configured provider issuer.",
           "i" = "JARM issuer identification validates the response's iss claim against that configured issuer."
         ))
       }
     } else {
       if (!isTRUE(provider@authorization_response_iss_parameter_supported)) {
         err_config(c(
-          "{.arg authorization_server_mode} = {.val multi_issuer} requires advertised RFC 9207 support for direct callbacks.",
+          "`authorization_server_mode` = `multi_issuer` requires advertised RFC 9207 support for direct callbacks.",
           "x" = paste0(
             "Provider ",
             provider@name %||% "(unnamed)",
@@ -940,7 +940,7 @@ oauth_client <- function(
       }
       if (!auto_enforce_callback_issuer && !isTRUE(enforce_callback_issuer)) {
         err_config(c(
-          "{.arg enforce_callback_issuer} cannot be disabled in {.val multi_issuer} mode.",
+          "`enforce_callback_issuer` cannot be disabled in `multi_issuer` mode.",
           "i" = "RFC 9700 requires the authorization-response issuer to be validated in this mode."
         ))
       }
@@ -957,7 +957,7 @@ oauth_client <- function(
     )
   } else if (length(authorization_server_redirect_uris) > 0L) {
     err_config(c(
-      "{.arg authorization_server_redirect_uris} is only used in {.val multi_redirect_uri} mode.",
+      "`authorization_server_redirect_uris` is only used in `multi_redirect_uri` mode.",
       "i" = "Set authorization_server_mode = 'multi_redirect_uri' or remove the redirect URI set."
     ))
   }
@@ -969,13 +969,13 @@ oauth_client <- function(
     provider_name <- provider@name %||% "(unnamed)"
     err_config(
       c(
-        "{.arg enforce_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
+        "`enforce_callback_issuer` = `TRUE` requires the provider to have a configured `issuer`.",
         "x" = paste0(
-          "Provider {.val ",
+          "Provider `",
           provider_name,
-          "} does not expose a stable issuer identifier."
+          "` does not expose a stable issuer identifier."
         ),
-        "i" = "Disable {.arg enforce_callback_issuer} or use an issuer-configured OIDC/discovery provider."
+        "i" = "Disable `enforce_callback_issuer` or use an issuer-configured OIDC/discovery provider."
       )
     )
   }
@@ -1008,7 +1008,7 @@ oauth_client <- function(
         !is.na(dpop_require_access_token))
   ) {
     err_input(
-      "{.arg dpop_require_access_token} must be NULL or a single non-NA logical."
+      "`dpop_require_access_token` must be NULL or a single non-NA logical."
     )
   }
   if (
@@ -1017,7 +1017,7 @@ oauth_client <- function(
       !is.na(dpop_require_observed_cnf))
   ) {
     err_input(
-      "{.arg dpop_require_observed_cnf} must be a single non-NA logical."
+      "`dpop_require_observed_cnf` must be a single non-NA logical."
     )
   }
   if (
@@ -1027,7 +1027,7 @@ oauth_client <- function(
   ) {
     err_input(
       paste(
-        "{.arg mtls_certificate_bound_access_tokens}",
+        "`mtls_certificate_bound_access_tokens`",
         "must be a single non-NA logical."
       )
     )
@@ -1038,7 +1038,7 @@ oauth_client <- function(
       !is.na(mtls_require_observed_cnf))
   ) {
     err_input(
-      "{.arg mtls_require_observed_cnf} must be a single non-NA logical."
+      "`mtls_require_observed_cnf` must be a single non-NA logical."
     )
   }
 
@@ -1165,7 +1165,7 @@ validate_distinct_authorization_server_redirect_uris <- function(
       !all(nzchar(trimws(uris)))
   ) {
     err_config(c(
-      "{.arg authorization_server_redirect_uris} must contain at least two non-empty absolute redirect URIs.",
+      "`authorization_server_redirect_uris` must contain at least two non-empty absolute redirect URIs.",
       "i" = "Provide the complete redirect URI set for every authorization server used by the application."
     ))
   }
@@ -1173,7 +1173,7 @@ validate_distinct_authorization_server_redirect_uris <- function(
   routes <- lapply(uris, oauth_callback_route)
   if (any(vapply(routes, is.null, logical(1)))) {
     err_config(
-      "Every {.arg authorization_server_redirect_uris} value must be an absolute URI with a scheme and authority."
+      "Every `authorization_server_redirect_uris` value must be an absolute URI with a scheme and authority."
     )
   }
   route_keys <- vapply(
@@ -1191,7 +1191,7 @@ validate_distinct_authorization_server_redirect_uris <- function(
   )
   if (anyDuplicated(route_keys)) {
     err_config(c(
-      "{.arg authorization_server_redirect_uris} must use a distinct canonical scheme, authority, and path for every authorization server.",
+      "`authorization_server_redirect_uris` must use a distinct canonical scheme, authority, and path for every authorization server.",
       "x" = "Changing only the query string does not create a distinct callback route."
     ))
   }
@@ -1210,7 +1210,7 @@ validate_distinct_authorization_server_redirect_uris <- function(
   }
   if (is.na(current_key) || !(current_key %in% route_keys)) {
     err_config(c(
-      "The client's {.arg redirect_uri} must be included in {.arg authorization_server_redirect_uris}.",
+      "The client's `redirect_uri` must be included in `authorization_server_redirect_uris`.",
       "i" = "Routes are compared by canonical scheme, authority, and path."
     ))
   }
@@ -3095,7 +3095,7 @@ warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
     bullets <- c(
       bullets,
       "x" = paste0(
-        "Because you did not supply {.code state_key}, it will be auto-generated for this session ",
+        "Because you did not supply `state_key`, it will be auto-generated for this session ",
         "and callbacks in the post-redirect session will be unable to decrypt/validate state."
       )
     )
@@ -3103,8 +3103,8 @@ warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
     bullets <- c(
       bullets,
       "i" = paste0(
-        "Construct your {.code OAuthClient} once outside server logic (e.g., in global scope) and reuse it.",
-        " If you must create clients dynamically, ensure {.code state_key} is stable across sessions and (for multi-worker deployments) shared across workers."
+        "Construct your `OAuthClient` once outside server logic (e.g., in global scope) and reuse it.",
+        " If you must create clients dynamically, ensure `state_key` is stable across sessions and (for multi-worker deployments) shared across workers."
       )
     )
   }

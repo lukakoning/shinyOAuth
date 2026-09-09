@@ -799,7 +799,7 @@ build_auth_url <- function(
       "request_uri exceeds RFC 9101 guidance",
       c(
         "!" = paste0(
-          "The published {.code request_uri} is ",
+          "The published `request_uri` is ",
           request_uri_len,
           " bytes long."
         ),
@@ -1194,7 +1194,7 @@ handle_callback <- function(
     )
   ) {
     err_config(c(
-      "{.code handle_callback()} cannot verify the received redirect URI required by {.val multi_redirect_uri} mode.",
+      "`handle_callback()` cannot verify the received redirect URI required by `multi_redirect_uri` mode.",
       "i" = "Use oauth_module_server(), which routes callbacks by the browser-visible canonical scheme, authority, and path."
     ))
   }
@@ -2263,7 +2263,7 @@ enforce_callback_issuer <- function(
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
   if (!(is.null(iss) || is_valid_string(iss))) {
-    err_input("{.arg iss} must be NULL or a non-empty string.")
+    err_input("`iss` must be NULL or a non-empty string.")
   }
 
   should_enforce_callback_issuer <- isTRUE(
@@ -2277,13 +2277,13 @@ enforce_callback_issuer <- function(
     provider_name <- oauth_client@provider@name %||% "(unnamed)"
     err_config(
       c(
-        "{.arg enforce_callback_issuer} = {.val TRUE} requires the provider to have a configured {.arg issuer}.",
+        "`enforce_callback_issuer` = `TRUE` requires the provider to have a configured `issuer`.",
         "x" = paste0(
-          "Provider {.val ",
+          "Provider `",
           provider_name,
-          "} does not expose a stable issuer identifier."
+          "` does not expose a stable issuer identifier."
         ),
-        "i" = "Disable {.arg enforce_callback_issuer} or use an issuer-configured OIDC/discovery provider."
+        "i" = "Disable `enforce_callback_issuer` or use an issuer-configured OIDC/discovery provider."
       )
     )
   }

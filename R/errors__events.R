@@ -228,7 +228,7 @@ warn_event_sink_failure <- function(title, bullets) {
   with_event_sink_warning_policy(
     warn_pkg(
       title,
-      escape_diagnostic_markup(bullets),
+      bullets,
       class = "shinyOAuth_event_sink_warning"
     )
   )

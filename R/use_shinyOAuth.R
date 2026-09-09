@@ -53,7 +53,7 @@ use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
     !(isTRUE(inject_referrer_meta) || identical(inject_referrer_meta, FALSE))
   ) {
     err_input(
-      "{.arg inject_referrer_meta} must be {.val TRUE} or {.val FALSE}."
+      "`inject_referrer_meta` must be `TRUE` or `FALSE`."
     )
   }
 
@@ -121,9 +121,9 @@ warn_about_missing_js_dependency <- function() {
   warn_pkg(
     "JavaScript dependency not called",
     c(
-      "!" = "{.code oauth_module_server()} was called, but no previous call to {.code use_shinyOAuth()} was detected",
+      "!" = "`oauth_module_server()` was called, but no previous call to `use_shinyOAuth()` was detected",
       "i" = paste0(
-        "You must add {.code use_shinyOAuth()} to your UI (e.g., inside {.code fluidPage()}) ",
+        "You must add `use_shinyOAuth()` to your UI (e.g., inside `fluidPage()`) ",
         "to ensure the module functions correctly"
       )
     ),
@@ -225,16 +225,16 @@ warn_about_missing_form_post_ui <- function(id, client) {
     "form_post UI wrapper not detected",
     c(
       "!" = paste0(
-        "{.code oauth_module_server()} was called with a client that resolves to ",
-        "{.code response_mode = \"",
+        "`oauth_module_server()` was called with a client that resolves to ",
+        "`response_mode = \"",
         response_mode,
-        "\"}, but no previous call to ",
-        "{.code oauth_form_post_ui()} was detected for this module"
+        "\"`, but no previous call to ",
+        "`oauth_form_post_ui()` was detected for this module"
       ),
       "i" = paste0(
-        "Wrap your app UI with {.code oauth_form_post_ui(..., id = ",
+        "Wrap your app UI with `oauth_form_post_ui(..., id = ",
         deparse(id),
-        ", client = client)} so POST callbacks reach shinyOAuth before the ",
+        ", client = client)` so POST callbacks reach shinyOAuth before the ",
         "Shiny session starts"
       ),
       "i" = paste0(

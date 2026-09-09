@@ -92,14 +92,14 @@ oauth_ui <- function(
   if (!is.null(id) || !is.null(client)) {
     S7::check_is_S7(client, class = OAuthClient)
     if (!is_valid_string(id)) {
-      err_input("{.arg id} must be a single non-empty string.")
+      err_input("`id` must be a single non-empty string.")
     }
   }
   if (is.null(request_uri_resolver)) {
     request_uri_resolver <- oauth_form_post_request_uri
   }
   if (!is.function(request_uri_resolver)) {
-    err_input("{.arg request_uri_resolver} must be NULL or a function.")
+    err_input("`request_uri_resolver` must be NULL or a function.")
   }
   force(base_ui)
   methods <- attr(base_ui, "http_methods_supported", exact = TRUE) %||% "GET"
@@ -124,7 +124,9 @@ oauth_ui <- function(
   )$httpHandler
   ui <- function(req) {
     query_error <- oauth_http_query_guard(req)
-    if (!is.null(query_error)) return(query_error)
+    if (!is.null(query_error)) {
+      return(query_error)
+    }
     if (!is.null(registry)) {
       response <- oauth_registry_http_handler(
         req,
@@ -238,7 +240,9 @@ oauth_http_query_guard <- function(req) {
     },
     shinyOAuth_state_error = function(...) {
       response <- oauth_get_setup_error("Invalid or oversized HTTP query.")
-      if (identical(req[["REQUEST_METHOD"]], "HEAD")) response$content <- ""
+      if (identical(req[["REQUEST_METHOD"]], "HEAD")) {
+        response$content <- ""
+      }
       response
     }
   )

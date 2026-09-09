@@ -119,3 +119,16 @@ is_oauth_error_text <- function(value) {
 escape_diagnostic_markup <- function(value) {
   gsub("}", "}}", gsub("{", "{{", value, fixed = TRUE), fixed = TRUE)
 }
+# Keep received protocol values out of ordinary conditions. Explicit exposure
+# adds bounded literal data; condition constructors never interpolate it.
+protocol_diagnostic_message <- function(message, received) {
+  if (!allow_expose_error_body()) {
+    return(message)
+  }
+  value <- as.character(jsonlite::toJSON(
+    received,
+    auto_unbox = TRUE,
+    null = "null"
+  ))
+  c("x" = message, "i" = paste0("Received: ", sanitize_diagnostic_text(value)))
+}

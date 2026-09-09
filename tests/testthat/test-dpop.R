@@ -265,7 +265,7 @@ test_that("resource_req rejects Bearer overrides for DPoP OAuthTokens", {
     access_token = "access-token",
     token_type = NA_character_,
     userinfo = list(),
-    cnf = list(jkt = "bound-thumbprint")
+    cnf = list(jkt = "LBVwwqofSNOSACCPHx6Qu25Kocfb5DvhGmw1C0BKVJ4")
   )
 
   for (token in list(dpop_token, bound_token)) {
@@ -1011,7 +1011,7 @@ test_that("opaque-token policy uses external cnf without decoding access tokens"
     validate_token_dpop_binding(
       client,
       access_token = raw,
-      cnf = list(jkt = "different-key")
+      cnf = list(jkt = "tCE2T7dpg_ygXQMeG9pku9FhiEiWLoGDZJWlxXIjo34")
     ),
     "cnf.jkt",
     fixed = TRUE
@@ -1123,7 +1123,7 @@ test_that("strict opaque DPoP login and refresh require binding from introspecti
       cnf <- switch(
         outcome,
         matching = list(jkt = jkt),
-        mismatching = list(jkt = "wrong"),
+        mismatching = list(jkt = "iBCtWB5Z8rw5KLJhcHpxMI9-E56wSCA2bcTVwY2YAiU"),
         inactive = list(jkt = jkt),
         NULL
       )

@@ -952,7 +952,7 @@ normalize_client_bearer_headers <- function(headers = NULL) {
   warn_pkg(
     "Ignoring invalid client bearer headers",
     c(
-      "!" = "The {.arg headers} argument must be a named list or named character vector."
+      "!" = "The `headers` argument must be a named list or named character vector."
     )
   )
   NULL
@@ -988,14 +988,14 @@ drop_client_bearer_auth_headers <- function(headers) {
     warn_pkg(
       "Ignoring custom authentication headers",
       c(
-        "!" = "Custom {.code Authorization} or {.code DPoP} headers were ignored because token authentication is already set."
+        "!" = "Custom `Authorization` or `DPoP` headers were ignored because token authentication is already set."
       )
     )
   } else {
     warn_pkg(
       "Ignoring custom authentication headers",
       c(
-        "!" = "Custom {.code Authorization} header was ignored because the bearer token is already set."
+        "!" = "Custom `Authorization` header was ignored because the bearer token is already set."
       )
     )
   }

@@ -609,6 +609,7 @@ jwt_validate_b64_field <- function(value, signal_error) {
 #' @param label Human-readable label used in parse errors.
 #' @param max_depth Maximum permitted object/array nesting depth.
 #' @param on_error Error function; best-effort observers use a quiet local error.
+#' @param on_duplicate Optional internal callback receiving the duplicate name.
 #' @return Invisibly returns `NULL` on success. Otherwise this function raises a
 #'   parse error.
 #' @keywords internal
@@ -617,7 +618,8 @@ reject_duplicate_json_object_members <- function(
   json_text,
   label,
   max_depth = 64L,
-  on_error = err_parse
+  on_error = err_parse,
+  on_duplicate = NULL
 ) {
   json_text <- enc2utf8(json_text)
   chars <- strsplit(json_text, "", fixed = TRUE)[[1]]
@@ -681,7 +683,13 @@ reject_duplicate_json_object_members <- function(
           base64url_encode(charToRaw(enc2utf8(key)))
         )
         if (exists(key_id, envir = seen, inherits = FALSE)) {
-          on_error(paste0(label, " contains duplicate member name: ", key))
+          if (is.function(on_duplicate)) {
+            on_duplicate(key)
+          }
+          on_error(protocol_diagnostic_message(
+            paste0(label, " contains duplicate member name"),
+            key
+          ))
         }
         assign(key_id, TRUE, envir = seen)
       }
@@ -820,9 +828,9 @@ enforce_inbound_jwt_header_policy <- function(
       if (is.function(on_typ_invalid)) {
         on_typ_invalid()
       }
-      signal_error(paste0(
-        "JWT typ header invalid: expected 'JWT' or 'application/jwt' when present, got ",
-        paste(as.character(typ), collapse = ", ")
+      signal_error(protocol_diagnostic_message(
+        "JWT typ header invalid: expected 'JWT' or 'application/jwt' when present",
+        typ
       ))
     }
   }
@@ -834,9 +842,9 @@ enforce_inbound_jwt_header_policy <- function(
       if (is.function(on_crit_invalid)) {
         on_crit_invalid()
       }
-      signal_error(paste0(
-        "JWT contains unsupported critical header parameter(s): ",
-        paste(unsupported, collapse = ", ")
+      signal_error(protocol_diagnostic_message(
+        "JWT contains unsupported critical header parameter(s)",
+        unsupported
       ))
     }
   }

@@ -67,12 +67,15 @@ mtls_thumbprint_cache_key <- function(
   key_file = NULL,
   key_password = NULL
 ) {
-  string_digest(paste(
-    mtls_thumbprint_cache_file_signature(cert_file),
-    mtls_thumbprint_cache_file_signature(key_file),
-    string_digest(key_password %||% NA_character_, key = NULL),
-    sep = "::"
-  ), key = NULL)
+  string_digest(
+    paste(
+      mtls_thumbprint_cache_file_signature(cert_file),
+      mtls_thumbprint_cache_file_signature(key_file),
+      string_digest(key_password %||% NA_character_, key = NULL),
+      sep = "::"
+    ),
+    key = NULL
+  )
 }
 
 #' Read a cached mTLS thumbprint
@@ -378,8 +381,7 @@ token_cnf_x5t_s256 <- function(token = NULL, access_token = NULL, cnf = NULL) {
   thumbprint
 }
 
-#' Normalize a cnf claim for mTLS binding
-#'
+#' Normalize observable token confirmation thumbprints
 #' @param cnf cnf-like value from a token or introspection payload.
 #' @return Normalized list.
 #' @keywords internal
@@ -392,6 +394,22 @@ normalize_token_cnf <- function(cnf) {
     return(list())
   }
 
+  # SHA-256 thumbprints contain 32 bytes in canonical unpadded base64url.
+  # Reject malformed observed bindings rather than treating them as omitted.
+  for (field in intersect(c("x5t#S256", "jkt"), names(cnf))) {
+    value <- cnf[[field]]
+    if (
+      !is_valid_string(value) ||
+        nchar(value, type = "bytes") != 43L ||
+        !grepl("^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$", value)
+    ) {
+      err_token(paste0(
+        "Invalid token cnf.",
+        field,
+        " thumbprint: expected a canonical base64url-encoded SHA-256 value"
+      ))
+    }
+  }
   thumbprint <- cnf[["x5t#S256"]] %||% NA_character_
   dpop_jkt <- cnf[["jkt"]] %||% NA_character_
 
@@ -539,7 +557,15 @@ token_cnf_conflict_summary <- function(conflicts) {
           vapply(
             names(observed),
             function(source_name) {
-              paste0(source_name, "=", observed[[source_name]])
+              if (allow_expose_error_body()) {
+                paste0(
+                  source_name,
+                  "=",
+                  sanitize_diagnostic_text(observed[[source_name]])
+                )
+              } else {
+                source_name
+              }
             },
             character(1)
           ),

@@ -105,7 +105,7 @@ oauth_form_post_ui <- function(
   S7::check_is_S7(client, class = OAuthClient)
 
   if (!is_valid_string(id)) {
-    err_input("{.arg id} must be a single non-empty string.")
+    err_input("`id` must be a single non-empty string.")
   }
 
   callback_path <- normalize_oauth_form_post_callback_path(
@@ -114,7 +114,7 @@ oauth_form_post_ui <- function(
   if (is.null(request_uri_resolver)) {
     request_uri_resolver <- oauth_form_post_request_uri
   } else if (!is.function(request_uri_resolver)) {
-    err_input("{.arg request_uri_resolver} must be NULL or a function.")
+    err_input("`request_uri_resolver` must be NULL or a function.")
   }
 
   mark_form_post_ui_called(id, client)
@@ -223,7 +223,7 @@ oauth_form_post_redirect_path <- function(client) {
 normalize_oauth_form_post_callback_path <- function(path) {
   if (!is.character(path) || length(path) != 1L || is.na(path)) {
     err_input(
-      "{.arg callback_path} must be NULL or a single non-empty path string."
+      "`callback_path` must be NULL or a single non-empty path string."
     )
   }
 
@@ -232,17 +232,17 @@ normalize_oauth_form_post_callback_path <- function(path) {
     path <- "/"
   }
   if (grepl("[?#]", path)) {
-    err_input("{.arg callback_path} must not contain query or fragment parts.")
+    err_input("`callback_path` must not contain query or fragment parts.")
   }
   if (grepl("[[:cntrl:]]", path)) {
-    err_input("{.arg callback_path} must not contain control characters.")
+    err_input("`callback_path` must not contain control characters.")
   }
   if (!startsWith(path, "/")) {
     path <- paste0("/", path)
   }
   if (startsWith(path, "//")) {
     err_input(
-      "{.arg callback_path} must not start with {.val //}."
+      "`callback_path` must not start with `//`."
     )
   }
 

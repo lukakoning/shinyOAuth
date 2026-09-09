@@ -133,7 +133,7 @@ client_state_store_max_age <- function(client, default = 300) {
         ),
         "i" = paste0(
           "To align the browser cookie with your cache TTL, ensure your state_store ",
-          "exposes {.code info()$max_age} or configure {.code cachem::cache_mem(max_age = ...)}"
+          "exposes `info()$max_age` or configure `cachem::cache_mem(max_age = ...)`"
         ),
         if (!is.null(st_class)) {
           paste0("i State store class: ", st_class)

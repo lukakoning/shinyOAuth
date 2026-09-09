@@ -244,7 +244,7 @@ warn_about_async_otel_cache_reset <- function(
     warn_pkg(
       "Async OpenTelemetry exporter changes may not take effect in reused workers",
       c(
-        "!" = escape_diagnostic_markup(detail),
+        "!" = detail,
         "i" = paste(
           "OpenTelemetry tracing and logging are disabled for the current",
           "async task so data cannot be sent through a stale provider."

@@ -63,7 +63,7 @@ test_that("mTLS opaque-token policy preserves certificate presentation without d
   req <- resource_req(token, "https://example.com/api", oauth_client = client)
   expect_identical(req$options$sslcert, client@mtls_client_cert_file)
   expect_identical(token_cnf_from_access_token(token@access_token), list())
-  token@cnf <- list(`x5t#S256` = "different-certificate")
+  token@cnf <- list(`x5t#S256` = "LmpH6Yik2-D3dSsZpdndcwKkN1PcMYHtR5S6wXbUvDQ")
   expect_error(
     validate_token_certificate_binding(
       token = token,
@@ -212,13 +212,15 @@ test_that("opaque mode permits absent confirmation but still rejects observed in
   for (is_refresh in c(FALSE, TRUE)) {
     for (surface in c("response", "jwt", "conflict")) {
       invalid <- token_set
-      invalid$cnf <- list(`x5t#S256` = "incorrect-thumbprint")
+      invalid$cnf <- list(
+        `x5t#S256` = "Jh1awHGgMhtt6QD4R1LEuvmKJQeSaFR6xPaGVuD5C88"
+      )
       if (surface %in% c("jwt", "conflict")) {
         invalid$access_token <- build_dummy_jwt(list(cnf = invalid$cnf))
         invalid$cnf <- if (surface == "jwt") {
           NULL
         } else {
-          list(`x5t#S256` = "different-thumbprint")
+          list(`x5t#S256` = "1POTlBzjS6mGixH0v-seKQHwIp2AqnEC0DB9GstICSI")
         }
       }
       expect_error(
@@ -234,7 +236,10 @@ test_that("opaque mode permits absent confirmation but still rejects observed in
   }
   expect_error(
     resource_req(
-      OAuthToken(access_token = "opaque", cnf = list(`x5t#S256` = "wrong")),
+      OAuthToken(
+        access_token = "opaque",
+        cnf = list(`x5t#S256` = "iBCtWB5Z8rw5KLJhcHpxMI9-E56wSCA2bcTVwY2YAiU")
+      ),
       "https://resource.example.com/api",
       oauth_client = client
     ),
@@ -291,7 +296,11 @@ test_that("opaque login and refresh validate any confirmation returned by intros
     .package = "shinyOAuth"
   )
   for (is_refresh in c(FALSE, TRUE)) {
-    for (observed in list(NULL, thumbprint, "incorrect-thumbprint")) {
+    for (observed in list(
+      NULL,
+      thumbprint,
+      "Jh1awHGgMhtt6QD4R1LEuvmKJQeSaFR6xPaGVuD5C88"
+    )) {
       confirmation <- observed
       run <- function() {
         if (is_refresh) {
@@ -310,7 +319,7 @@ test_that("opaque login and refresh validate any confirmation returned by intros
           )
         }
       }
-      if (identical(observed, "incorrect-thumbprint")) {
+      if (identical(observed, "Jh1awHGgMhtt6QD4R1LEuvmKJQeSaFR6xPaGVuD5C88")) {
         expect_error(run(), "does not match")
       } else {
         token <- run()
