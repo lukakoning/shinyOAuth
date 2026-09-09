@@ -19,8 +19,13 @@ MTLS_TOKEN_AUTH_STYLES <- c(
 )
 
 # Cache mTLS certificate thumbprints so repeated requests avoid rereading the
-# same certificate files.
-mtls_thumbprint_cache_env <- new.env(parent = emptyenv())
+# same certificate files. Bound rotations and changing paths in long-lived
+# workers; recently used certificates remain cached.
+mtls_thumbprint_cache <- cachem::cache_mem(
+  max_n = 128L,
+  max_size = Inf,
+  max_age = Inf
+)
 
 #' Build a file signature for the mTLS thumbprint cache
 #'
@@ -62,12 +67,12 @@ mtls_thumbprint_cache_key <- function(
   key_file = NULL,
   key_password = NULL
 ) {
-  paste(
+  string_digest(paste(
     mtls_thumbprint_cache_file_signature(cert_file),
     mtls_thumbprint_cache_file_signature(key_file),
     string_digest(key_password %||% NA_character_, key = NULL),
     sep = "::"
-  )
+  ), key = NULL)
 }
 
 #' Read a cached mTLS thumbprint
@@ -82,11 +87,7 @@ mtls_thumbprint_cache_get <- function(cache_key) {
   if (!is_valid_string(cache_key)) {
     return(NULL)
   }
-  if (!exists(cache_key, envir = mtls_thumbprint_cache_env, inherits = FALSE)) {
-    return(NULL)
-  }
-
-  get(cache_key, envir = mtls_thumbprint_cache_env, inherits = FALSE)
+  mtls_thumbprint_cache$get(cache_key, missing = NULL)
 }
 
 #' Store an mTLS thumbprint in the cache
@@ -103,7 +104,7 @@ mtls_thumbprint_cache_set <- function(cache_key, thumbprint) {
     return(invisible(thumbprint))
   }
 
-  assign(cache_key, thumbprint, envir = mtls_thumbprint_cache_env)
+  mtls_thumbprint_cache$set(cache_key, thumbprint)
   invisible(thumbprint)
 }
 
