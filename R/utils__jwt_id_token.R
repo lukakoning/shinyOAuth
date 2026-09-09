@@ -400,16 +400,17 @@ validate_id_token <- function(
   # otherwise issue an ID token valid for years.
   max_lifetime <- getOption("shinyOAuth.max_id_token_lifetime", 86400)
   if (
-    is.numeric(max_lifetime) &&
-      length(max_lifetime) == 1L &&
-      is.finite(max_lifetime)
+    !is.numeric(max_lifetime) ||
+      is.complex(max_lifetime) ||
+      length(max_lifetime) != 1L ||
+      is.na(max_lifetime) ||
+      max_lifetime <= 0
   ) {
-    if (max_lifetime <= 0) {
-      err_config(c(
-        "x" = "shinyOAuth.max_id_token_lifetime must be a positive number",
-        "i" = paste0("Got: ", max_lifetime)
-      ))
-    }
+    err_config(
+      "shinyOAuth.max_id_token_lifetime must be a single positive numeric value or Inf"
+    )
+  }
+  if (is.finite(max_lifetime)) {
     if ((exp_val - iat_val) > max_lifetime) {
       err_id_token(c(
         "x" = "ID token lifetime exceeds max_id_token_lifetime",

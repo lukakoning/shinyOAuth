@@ -1,4 +1,4 @@
-# Tests for max_id_token_lifetime enforcement (OIDC Core §3.1.3.7 rule 9)
+# Tests for the package's optional max_id_token_lifetime hardening policy.
 # Validates that ID tokens with exp - iat exceeding the configured cap are rejected.
 # Configured via options(shinyOAuth.max_id_token_lifetime = <seconds>).
 
@@ -39,6 +39,26 @@ mk_client <- function() {
 }
 
 # --- validate_id_token lifetime enforcement ----------------------------------
+
+test_that("invalid lifetime option values raise configuration errors", {
+  client <- mk_client()
+  now <- floor(as.numeric(Sys.time()))
+  jwt <- build_jwt(list(alg = "none"), list(
+    iss = client@provider@issuer, aud = client@client_id, sub = "user1",
+    iat = now - 10, exp = now + 3600
+  ))
+  for (value in list("3600", TRUE, FALSE, NA_real_, NaN, -Inf, 1 + 1i,
+                     numeric(), c(3600, 7200), list(3600))) {
+    withr::with_options(
+      list(shinyOAuth.skip_id_sig = TRUE,
+           shinyOAuth.max_id_token_lifetime = value),
+      expect_error(
+        shinyOAuth:::validate_id_token(client, jwt),
+        class = "shinyOAuth_config_error"
+      )
+    )
+  }
+})
 
 test_that("validate_id_token rejects tokens exceeding max_id_token_lifetime", {
   client <- mk_client()
