@@ -181,11 +181,16 @@ check_oauth21 <- function(
     "token",
     intersect(c("par", "userinfo", "introspection", "revocation"), operations)
   )
-  needs_jwks <- jarm ||
-    (validates_id && !all(grepl("^HS", provider@allowed_algs))) ||
-    ("userinfo" %in%
-      operations &&
-      isTRUE(provider@userinfo_signed_jwt_required))
+  key_dependencies <- resolve_oauth_key_dependencies(
+    if (has_client) client else NULL,
+    provider,
+    operations,
+    jarm,
+    validates_id
+  )
+  needs_jwks <- any(
+    key_dependencies %in% c("configured_jwks", "discovered_jwks")
+  )
   if (needs_jwks) {
     operations <- c(operations, "jwks")
   }
@@ -277,7 +282,7 @@ check_oauth21 <- function(
     add(
       "https.jwks",
       status(if (is_valid_string(jwks)) oauth21_https(jwks) else NA),
-      "Applicable signing-key retrieval needs a known HTTPS endpoint.",
+      "Applicable signing or encryption key retrieval needs a known HTTPS endpoint.",
       "Configure trusted jwks_uri or assess after obtaining trusted metadata.",
       section = "1.5"
     )

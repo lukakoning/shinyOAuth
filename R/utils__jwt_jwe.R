@@ -560,7 +560,12 @@ resolve_authorization_request_encryption_public_key <- function(
   S7::check_is_S7(client, class = OAuthClient)
 
   explicit_key <- client@provider@request_object_encryption_jwk %||% NULL
-  if (!is.null(explicit_key)) {
+  if (
+    identical(
+      resolve_request_object_encryption_key_source(client@provider),
+      "explicit_key"
+    )
+  ) {
     explicit_jwk <- normalize_jwe_recipient_jwk(explicit_key)
     explicit_kid <- explicit_jwk[["kid"]] %||% NULL
     explicit_alg <- canonicalize_jwe_alg(

@@ -525,6 +525,44 @@ test_that("JARM and validated OIDC policies are assessed when selected", {
   )
 })
 
+test_that("encrypted Request Objects assess the actual recipient key source without IO", {
+  withr::local_options(shinyOAuth.tls_min_version = "1.2")
+  key <- openssl::rsa_keygen()
+  client <- oauth21_test_client(
+    list(issuer = "https://issuer.example", issuer_thus_oidc = FALSE),
+    request_object_mode = "request",
+    client_assertion_private_key = key,
+    client_assertion_alg = "RS256",
+    request_object_encryption_alg = "RSA-OAEP",
+    request_object_encryption_enc = "A128CBC-HS256"
+  )
+  explicit <- client
+  explicit@provider@request_object_encryption_jwk <- key$pubkey
+  local_mocked_bindings(
+    fetch_jwks = function(...) stop("assessment must not retrieve keys"),
+    normalize_jwe_recipient_public_key = function(...) {
+      stop("assessment must not load keys")
+    },
+    .package = "shinyOAuth"
+  )
+  expect_identical(
+    oauth21_finding(check_oauth21(client), "https.jwks")$status,
+    "unknown"
+  )
+  client@provider@jwks_uri <- "http://localhost:8000/keys"
+  expect_identical(
+    oauth21_finding(check_oauth21(client), "https.jwks")$status,
+    "fail"
+  )
+  client@provider@jwks_uri <- "https://issuer.example/keys"
+  expect_identical(
+    oauth21_finding(check_oauth21(client), "https.jwks")$status,
+    "pass"
+  )
+  expect_false("jwks" %in% check_oauth21(explicit)$operations)
+  expect_true(check_oauth21(explicit)$configuration_compliant)
+})
+
 test_that("private-key assessment does not probe signatures or require optional extensions", {
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   client <- oauth21_test_client(

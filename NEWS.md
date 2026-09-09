@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* `check_oauth21()` now includes JWKS retrieval for encrypted Request Objects
+when no explicit recipient key is configured, including unresolved discovery.
+
 * Refresh failures now report whether the renewal credential was consumed,
 possibly consumed, rejected, or not consumed. Proactive refresh retires unsafe
 credentials even when `indefinite_session = TRUE` retains the previous session.
