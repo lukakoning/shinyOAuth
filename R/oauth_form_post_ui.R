@@ -81,13 +81,27 @@
 #' @export
 #'
 #' @example inst/examples/oauth_form_post_ui.R
+#' @param clients Optional client registry as in [oauth_ui()]. With a registry,
+#'   omit `id`, `client`, and `callback_path`; each client's redirect URI sets
+#'   its route, and both query and form-post clients are supported.
 oauth_form_post_ui <- function(
   base_ui,
-  id,
-  client,
+  id = NULL,
+  client = NULL,
   callback_path = NULL,
-  request_uri_resolver = NULL
+  request_uri_resolver = NULL,
+  clients = NULL
 ) {
+  if (!is.null(clients)) {
+    if (!is.null(id) || !is.null(client) || !is.null(callback_path)) {
+      err_input("With clients, omit id, client and callback_path.")
+    }
+    return(oauth_ui(
+      base_ui,
+      clients = clients,
+      request_uri_resolver = request_uri_resolver
+    ))
+  }
   S7::check_is_S7(client, class = OAuthClient)
 
   if (!is_valid_string(id)) {
@@ -322,7 +336,8 @@ oauth_form_post_handle_request <- function(
   req,
   id,
   client,
-  transport = "form_post"
+  transport = "form_post",
+  payload = NULL
 ) {
   tryCatch(
     with_otel_span(
@@ -336,7 +351,9 @@ oauth_form_post_handle_request <- function(
           req[["QUERY_STRING"]] %||% "",
           max_bytes = limits[["query"]]
         )
-        payload <- if (identical(transport, "query")) {
+        payload <- if (!is.null(payload)) {
+          oauth_form_post_validate_payload(payload, limits, client = client)
+        } else if (identical(transport, "query")) {
           oauth_get_parse_query(req[["QUERY_STRING"]] %||% "", limits, client)
         } else {
           body <- oauth_form_post_read_body(req, limits[["form_post_body"]])

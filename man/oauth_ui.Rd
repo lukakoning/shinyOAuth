@@ -4,7 +4,13 @@
 \alias{oauth_ui}
 \title{Set up a Shiny UI for shinyOAuth}
 \usage{
-oauth_ui(base_ui, id = NULL, client = NULL, request_uri_resolver = NULL)
+oauth_ui(
+  base_ui,
+  id = NULL,
+  client = NULL,
+  request_uri_resolver = NULL,
+  clients = NULL
+)
 }
 \arguments{
 \item{base_ui}{Your app's complete UI, such as a \code{fluidPage()} or \code{tagList()}.
@@ -16,6 +22,9 @@ Can also be a UI function, optionally accepting the Shiny request.}
 
 \item{request_uri_resolver}{Optional trusted public request URI resolver;
 see \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} for proxy requirements.}
+
+\item{clients}{Optional named list of \link{OAuthClient} objects keyed by module
+ID, mutually exclusive with \code{id} and \code{client}.}
 }
 \value{
 A UI function to use as the \code{ui} argument to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
@@ -47,6 +56,16 @@ Shiny module verifies browser binding. The storage requirements and quotas
 are the same as \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}. Register any fixed application query
 parameters in \code{client@redirect_uri}; other inbound parameters are discarded.
 For non-root callback paths use \code{uiPattern = ".*"} in \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
+
+For multiple providers, supply \code{clients = list(auth_a = client_a, auth_b = client_b)} instead of \code{id} and \code{client}. Names are the server module
+IDs. The registry accepts query and form-post callbacks on configured routes.
+Each client must select a multi-server defense. Shared routes require
+\code{authorization_server_mode = "multi_issuer"} and distinct trusted issuers.
+An RFC 9207 \code{iss} or signed JARM issuer selects the configured client; the
+complete callback is then verified before a bridge handle is stored.
+Encrypted JARM on a shared route requires an outer \code{iss} (verified against
+the decrypted response); otherwise use distinct routes. Do not nest wrappers
+to route multiple providers.
 
 Without \code{id} and \code{client}, ordinary pages still render, but raw OAuth GET
 callbacks fail closed with a setup error. Earlier \code{oauth_ui(ui)} query-flow

@@ -28,6 +28,17 @@
 #' parameters in `client@redirect_uri`; other inbound parameters are discarded.
 #' For non-root callback paths use `uiPattern = ".*"` in [shiny::shinyApp()].
 #'
+#' For multiple providers, supply `clients = list(auth_a = client_a,
+#' auth_b = client_b)` instead of `id` and `client`. Names are the server module
+#' IDs. The registry accepts query and form-post callbacks on configured routes.
+#' Each client must select a multi-server defense. Shared routes require
+#' `authorization_server_mode = "multi_issuer"` and distinct trusted issuers.
+#' An RFC 9207 `iss` or signed JARM issuer selects the configured client; the
+#' complete callback is then verified before a bridge handle is stored.
+#' Encrypted JARM on a shared route requires an outer `iss` (verified against
+#' the decrypted response); otherwise use distinct routes. Do not nest wrappers
+#' to route multiple providers.
+#'
 #' Without `id` and `client`, ordinary pages still render, but raw OAuth GET
 #' callbacks fail closed with a setup error. Earlier `oauth_ui(ui)` query-flow
 #' applications must add those arguments. When integrating [use_shinyOAuth()]
@@ -46,6 +57,8 @@
 #' @param client [OAuthClient] used by the server module, required with `id`.
 #' @param request_uri_resolver Optional trusted public request URI resolver;
 #'   see [oauth_form_post_ui()] for proxy requirements.
+#' @param clients Optional named list of [OAuthClient] objects keyed by module
+#'   ID, mutually exclusive with `id` and `client`.
 #' @return A UI function to use as the `ui` argument to [shiny::shinyApp()].
 #' @seealso [oauth_module_server()], [oauth_form_post_ui()], [use_shinyOAuth()]
 #' @export
@@ -65,8 +78,17 @@ oauth_ui <- function(
   base_ui,
   id = NULL,
   client = NULL,
-  request_uri_resolver = NULL
+  request_uri_resolver = NULL,
+  clients = NULL
 ) {
+  registry <- if (!is.null(clients)) {
+    if (!is.null(id) || !is.null(client)) {
+      err_input("Use clients or id/client, not both.")
+    }
+    oauth_callback_registry(clients)
+  } else {
+    NULL
+  }
   if (!is.null(id) || !is.null(client)) {
     S7::check_is_S7(client, class = OAuthClient)
     if (!is_valid_string(id)) {
@@ -101,12 +123,23 @@ oauth_ui <- function(
     uiPattern = ".*"
   )$httpHandler
   ui <- function(req) {
+    if (!is.null(registry)) {
+      response <- oauth_registry_http_handler(
+        req,
+        registry,
+        request_uri_resolver
+      )
+      if (!is.null(response)) {
+        return(response)
+      }
+    }
     object_response <- shiny_request_object_http_handler(req, client)
     if (!is.null(object_response)) {
       return(object_response)
     }
     if (
-      identical(req[["REQUEST_METHOD"]], "GET") &&
+      is.null(registry) &&
+        identical(req[["REQUEST_METHOD"]], "GET") &&
         oauth_get_query_is_callback(req[["QUERY_STRING"]] %||% "", client)
     ) {
       if (is.null(client)) {

@@ -6,10 +6,11 @@
 \usage{
 oauth_form_post_ui(
   base_ui,
-  id,
-  client,
+  id = NULL,
+  client = NULL,
   callback_path = NULL,
-  request_uri_resolver = NULL
+  request_uri_resolver = NULL,
+  clients = NULL
 )
 }
 \arguments{
@@ -31,6 +32,10 @@ verify the proxy trust boundary before using forwarded headers; its result is
 still required to match the configured redirect origin and \code{callback_path}.
 Registered fixed query parameters must also occur unchanged in the incoming
 request. Continuation URLs preserve only registered application parameters.}
+
+\item{clients}{Optional client registry as in \code{\link[=oauth_ui]{oauth_ui()}}. With a registry,
+omit \code{id}, \code{client}, and \code{callback_path}; each client's redirect URI sets
+its route, and both query and form-post clients are supported.}
 }
 \value{
 A Shiny UI function. Pass it to \code{\link[shiny:shinyApp]{shiny::shinyApp()}} and, for non-root

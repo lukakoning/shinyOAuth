@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* `oauth_ui()` and `oauth_form_post_ui()` now accept an optional named `clients`
+registry for multiple server modules, including distinct callback routes and
+shared routes with issuer identification. Existing single-client calls remain
+supported. Callback verification and the redirect before app rendering are
+preserved for query, JARM and form-post flows.
+
 * DPoP token-type enforcement no longer requires client-visible `cnf$jkt`
 merely because an access token has JWT structure. Binding observation remains
 controlled by `dpop_require_observed_cnf`, with missing metadata allowed to await
