@@ -11,6 +11,40 @@ spotify_dashboard_path <- function() {
   candidates[[1]]
 }
 
+spotify_dashboard_helpers <- function() {
+  path <- spotify_dashboard_path()
+  skip_if(is.na(path), "Spotify dashboard is not available")
+  env <- new.env(parent = globalenv())
+  for (expr in parse(path)) {
+    if (is.call(expr) && identical(expr[[1L]], quote(`<-`)) &&
+        is.call(expr[[3L]]) && identical(expr[[3L]][[1L]], quote(`function`))) {
+      eval(expr, env)
+    }
+  }
+  env
+}
+
+test_that("Spotify URLs preserve safe links and reject unsupported origins", {
+  helpers <- spotify_dashboard_helpers()
+  safe_url <- helpers$spotify_safe_url
+  expect_identical(
+    safe_url("https://open.spotify.com/artist/123", "open.spotify.com"),
+    "https://open.spotify.com/artist/123"
+  )
+  for (url in c(
+    "http://open.spotify.com/artist/123",
+    "https://open.spotify.com.example.test/artist/123",
+    "https://user@open.spotify.com/artist/123",
+    "https://open.spotify.com:444/artist/123"
+  )) {
+    expect_null(safe_url(url, "open.spotify.com"))
+  }
+  expect_identical(
+    helpers$spotify_safe_image_url("https://i.scdn.co/image/abc"),
+    "https://i.scdn.co/image/abc"
+  )
+})
+
 test_that("Spotify dashboard never disables table escaping", {
   path <- spotify_dashboard_path()
   skip_if(is.na(path), "Spotify dashboard is not available")
