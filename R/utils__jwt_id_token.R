@@ -463,7 +463,8 @@ validate_id_token <- function(
 
   # auth_time validation per OIDC Core §2 / §3.1.2.1:
   # When present, auth_time is a NumericDate and must therefore be a JSON
-  # number. When max_age was requested, it MUST also be present and satisfy
+  # number and cannot be beyond the allowed clock skew. When max_age was
+  # requested, it MUST also be present and satisfy
   # now - auth_time <= max_age + leeway.
   auth_time_present <- "auth_time" %in% names(payload)
   if (
@@ -471,6 +472,9 @@ validate_id_token <- function(
       !jwt_is_single_finite_number(payload[["auth_time"]])
   ) {
     err_id_token("auth_time claim must be a single finite number")
+  }
+  if (auth_time_present && payload[["auth_time"]] > (now + lwe)) {
+    err_id_token("auth_time is in the future")
   }
 
   if (!is.null(max_age)) {
@@ -489,20 +493,6 @@ validate_id_token <- function(
       )
     }
     auth_time_val <- as.numeric(payload[["auth_time"]])
-    if (auth_time_val > (now + lwe)) {
-      err_id_token(c(
-        "x" = "auth_time is in the future",
-        "i" = paste0(
-          "auth_time=",
-          auth_time_val,
-          ", now=",
-          now,
-          ", leeway=",
-          lwe,
-          "s"
-        )
-      ))
-    }
     elapsed <- now - auth_time_val
     if (elapsed > (max_age_val + lwe)) {
       err_id_token(c(

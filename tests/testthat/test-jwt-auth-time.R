@@ -303,6 +303,27 @@ test_that("validate_id_token works with max_age = 0 (equivalent to prompt=login)
 })
 
 
+test_that("optional auth_time respects the clock-skew boundary without max_age", {
+  client <- mk_client()
+  fixed_now <- as.POSIXct(1800000000, origin = "1970-01-01", tz = "UTC")
+  local_mocked_bindings(Sys.time = function() fixed_now, .package = "base")
+  local_options(shinyOAuth.skip_id_sig = TRUE)
+  now <- as.numeric(fixed_now)
+  for (offset in c(-99999, -1, 0, 5, 6, 3600)) {
+    jwt <- build_jwt(list(alg = "none"), list(
+      iss = client@provider@issuer, aud = client@client_id, sub = "user-1",
+      iat = now - 1, exp = now + 300, auth_time = now + offset
+    ))
+    if (offset <= client@provider@leeway) {
+      expect_silent(validate_id_token(client, jwt, max_age = NULL))
+    } else {
+      expect_error(validate_id_token(client, jwt, max_age = NULL),
+        "auth_time is in the future", class = "shinyOAuth_id_token_error"
+      )
+    }
+  }
+})
+
 test_that("validate_id_token validates optional auth_time without max_age", {
   client <- mk_client()
   now <- floor(as.numeric(Sys.time()))
