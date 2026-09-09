@@ -144,6 +144,12 @@ oauth_provider_github <- function(name = "github") {
 #' [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
 #' Configure the client ID & secret in your [OAuthClient].
 #'
+#' This preset uses a restricted Google OIDC profile: ID tokens must have
+#' `iss = "https://accounts.google.com"`, matching Google's discovery issuer.
+#' Google's [ID token validation guidance](https://developers.google.com/identity/openid-connect/openid-connect#validatinganidtoken)
+#' also permits `"accounts.google.com"`; this alternate issuer is not accepted
+#' by this preset. Issuer comparison remains exact, as for other OIDC providers.
+#'
 #' @examples
 #' oauth_provider_google()
 #'
