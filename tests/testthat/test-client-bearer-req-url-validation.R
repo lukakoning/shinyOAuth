@@ -175,3 +175,30 @@ test_that("resource_req rejects NULL and non-string URLs", {
     class = "shinyOAuth_input_error"
   )
 })
+test_that("resource helpers reject invalid check_url before attaching credentials", {
+  testthat::local_mocked_bindings(
+    build_client_bearer_authorized_request = function(...) {
+      stop("credentials must not be attached")
+    },
+    .package = "shinyOAuth"
+  )
+  invalid <- list(
+    NULL, logical(), NA, c(TRUE, FALSE), "TRUE", "FALSE", 0, 1,
+    list(TRUE), list(FALSE), NA_character_
+  )
+  for (helper in list(resource_req, perform_resource_req)) {
+    targets <- list("https://api.example.com/data")
+    if (identical(helper, perform_resource_req)) {
+      targets <- c(targets, list(httr2::request(targets[[1L]])))
+    }
+    for (target in targets) {
+      for (flag in invalid) {
+        expect_error(
+          helper(token = "access", url = target, check_url = flag),
+          "check_url must be a single non-missing logical value",
+          class = "shinyOAuth_input_error"
+        )
+      }
+    }
+  }
+})

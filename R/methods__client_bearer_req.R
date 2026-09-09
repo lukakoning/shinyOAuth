@@ -671,6 +671,9 @@ validate_client_bearer_url <- function(
   check_url = TRUE,
   resource_hosts = NULL
 ) {
+  if (!is.logical(check_url) || length(check_url) != 1L || is.na(check_url)) {
+    err_input("check_url must be a single non-missing logical value")
+  }
   if (
     !is.null(resource_hosts) &&
       !(is.character(resource_hosts) &&
@@ -682,7 +685,7 @@ validate_client_bearer_url <- function(
       "resource_hosts must be NULL or a non-empty character vector of host patterns"
     )
   }
-  if (!isTRUE(check_url) && is.null(resource_hosts)) {
+  if (identical(check_url, FALSE) && is.null(resource_hosts)) {
     return(invisible(TRUE))
   }
 
