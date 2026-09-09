@@ -161,6 +161,16 @@ are included when relevant and available.
 - Context: `provider`, `issuer`, `client_id_digest`, `error_class`
 - For form_post bridge query rejections, context also includes `phase`, `reason`, and `handle_digest`.
 
+### Callback routing rejected
+
+#### Event: `audit_callback_routing_rejected`
+
+- When: a multi-provider registry rejects a callback before selecting a client.
+- Context: `phase` (`callback_registry_routing`), `reason`, `status` (`error`), and sanitized HTTP metadata in `shiny_session.http`.
+- Reasons: `route_unavailable`, `route_unregistered`, `unexpected_transport`, `issuer_missing`, and `issuer_unrecognized`.
+- The `shinyOAuth.callback.route` span records the same phase and reason with error status. No provider identity is assigned from unvalidated issuer input.
+- Parser errors and later client-specific validation retain their existing diagnostics; they do not also emit this routing event.
+
 ### Callback issuer validation
 
 #### Event: `audit_callback_iss_missing`

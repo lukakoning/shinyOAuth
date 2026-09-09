@@ -19,6 +19,7 @@ audit_event_registry <- function() {
   c(
     "redirect_issued",
     "callback_query_rejected",
+    "callback_routing_rejected",
     "callback_iss_missing",
     "callback_iss_mismatch",
     "callback_iss_validation_failed",
