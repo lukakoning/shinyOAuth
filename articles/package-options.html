@@ -434,27 +434,30 @@ legitimate provider response needs more space.</p>
 <h2 id="local-debugging">Local debugging<a class="anchor" aria-label="anchor" href="#local-debugging"></a>
 </h2>
 <ul>
-<li>
-<code>options(shinyOAuth.skip_browser_token = TRUE)</code> – skip
-browser cookie binding in tests or interactive sessions</li>
-<li>
-<code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID token
-signature verification in tests or interactive sessions</li>
-<li>
-<code>options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)</code>
+<li><p><code>options(shinyOAuth.skip_browser_token = TRUE)</code> – skip
+browser cookie binding in tests or interactive sessions</p></li>
+<li><p><code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID
+token signature verification in tests or interactive sessions</p></li>
+<li><p><code>options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)</code>
 – accept unsigned (<code>alg=none</code>) UserInfo JWTs in tests or
 interactive sessions; outside those contexts ‘shinyOAuth’ errors instead
-of honoring it</li>
+of honoring it</p></li>
+<li><p><code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
+during token exchange</p></li>
 <li>
-<code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
-during token exchange</li>
-<li>
-<code>options(shinyOAuth.expose_error_body = TRUE)</code> – include
-sanitized HTTP bodies, claim values, and free-form error details in
-audit/OTel output and module diagnostics during tests or interactive
+<p><code>options(shinyOAuth.expose_error_body = TRUE)</code> –
+include sanitized HTTP bodies, claim values, and free-form error details
+in audit/OTel output and module diagnostics during tests or interactive
 debugging. Details omit URL credentials and control characters and are
 capped at 512 UTF-8 bytes per field; they may still contain sensitive
-information. Production processes keep these details disabled.</li>
+information. Production processes keep these details disabled.</p>
+<p>HTTP and transport condition contexts use the same URL and diagnostic
+policy. Transport parents retain their error classes but omit original
+request/response objects, calls, backtraces, and nested parents. Their
+messages are withheld by default; the exposure option enables only
+sanitized messages. JWKS metadata failures also withhold underlying
+diagnostics by default.</p>
+</li>
 </ul>
 <p>Don’t enable these options in production. They disable key security
 checks or alter error behavior, and are intended for local

@@ -82,7 +82,11 @@ response with <code><a href="https://httr2.r-lib.org/reference/resp_body_raw.htm
 to authorize and perform. When you pass a request object, shinyOAuth uses
 it as the base request, still applies token authentication and request
 defaults, and then layers any explicit <code>method</code>, <code>headers</code>, <code>query</code>, and
-<code>follow_redirect</code> overrides on top.</p></dd>
+<code>follow_redirect</code> overrides on top.
+Inherited httr2 authentication, caching, and retry policies, and curl
+authentication options are rejected. Authenticated response caching is
+unsupported. shinyOAuth owns retries; configure them with <code>idempotent</code>
+and the <code>shinyOAuth.retry_*</code> options.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>

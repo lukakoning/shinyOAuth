@@ -109,10 +109,10 @@ for this provider. Defaults to TRUE</p></dd>
 (client_secret_basic), "body" (client_secret_post), or "public"
 (public client; send <code>client_id</code> only). The alias <code>"none"</code> is also
 accepted for <code>"public"</code>. If NULL (default), it is inferred conservatively
-from discovery. When PKCE is enabled and the provider advertises support
-for public clients via <code>none</code>, discovery selects <code>"public"</code>. Otherwise,
-the helper prefers <code>"header"</code> (client_secret_basic) when available, then
-<code>"body"</code> (client_secret_post). JWT methods (<code>"client_secret_jwt"</code>,
+from discovery: <code>"header"</code> (client_secret_basic) is preferred, followed by
+<code>"body"</code> (client_secret_post), then <code>"public"</code> if <code>none</code> is advertised and
+PKCE is enabled. Set <code>token_auth_style = "public"</code> explicitly for a public
+client registration. JWT methods (<code>"client_secret_jwt"</code>,
 <code>"private_key_jwt"</code>) and mTLS methods (<code>"tls_client_auth"</code>,
 <code>"self_signed_tls_client_auth"</code>) must be selected explicitly. See
 <code><a href="oauth_provider.html">oauth_provider()</a></code> for the supported methods and their credentials.</p></dd>
@@ -174,9 +174,10 @@ does not itself require token introspection; set <code>introspect = TRUE</code> 
 <code><a href="oauth_client.html">oauth_client()</a></code> when login and refresh must perform that check.</p>
 <p>Discovery describes what a service supports. Your app's registration may
 require a particular <code>token_auth_style</code>, secret, or key; configure those to
-match the registration. If PKCE is enabled and public authentication (<code>none</code>)
-is advertised, automatic selection uses <code>"public"</code>. Otherwise it prefers
-<code>"header"</code>, then <code>"body"</code>. JWT and mTLS methods must be selected explicitly.</p>
+match the registration. Automatic selection prefers <code>"header"</code>, then <code>"body"</code>,
+then <code>"public"</code> when <code>none</code> is advertised and PKCE is enabled. For a public
+client registration, set <code>token_auth_style = "public"</code> explicitly. JWT and
+mTLS methods must also be selected explicitly.</p>
     </div>
     <div class="section level2">
     <h2 id="discovery-validation">Discovery validation<a class="anchor" aria-label="anchor" href="#discovery-validation"></a></h2>

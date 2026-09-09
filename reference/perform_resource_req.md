@@ -41,6 +41,10 @@ perform_resource_req(
   shinyOAuth uses it as the base request, still applies token
   authentication and request defaults, and then layers any explicit
   `method`, `headers`, `query`, and `follow_redirect` overrides on top.
+  Inherited httr2 authentication, caching, and retry policies, and curl
+  authentication options are rejected. Authenticated response caching is
+  unsupported. shinyOAuth owns retries; configure them with `idempotent`
+  and the `shinyOAuth.retry_*` options.
 
 - method:
 

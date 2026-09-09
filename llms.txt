@@ -11,10 +11,11 @@ identity provider such as Keycloak, or with an identity service such as
 Auth0 or Okta. To achieve this, your app redirects your users to the
 identity provider, they authenticate there, and are redirected back to
 your app with an authorization code. Your app then exchanges this code
-for tokens. In OAuth flows, an access token obtained to authorize API
-calls, and you may get their user profile information from the
-provider’s userinfo endpoint. In OIDC flows, a cryptographically signed
-ID token authenticates the user.
+for tokens. In OAuth flows, an access token is obtained to authorize API
+calls, and you may get the user’s profile information from the
+provider’s userinfo endpoint. In OIDC flows, a validated ID token
+authenticates the user after signature, issuer, audience, nonce, and
+freshness checks.
 
 This package streamlines this flow for Shiny applications, enabling
 developers to add OIDC authentication and OAuth authorization to their

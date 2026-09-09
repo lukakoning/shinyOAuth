@@ -70,6 +70,11 @@ sign-in. The helper configures OIDC validation and profile retrieval.</p>
     <p>You can register a new Google OAuth 2.0 app in the
 <a href="https://console.cloud.google.com/apis/credentials" class="external-link">Google Cloud Console</a>.
 Configure the client ID &amp; secret in your <a href="OAuthClient.html">OAuthClient</a>.</p>
+<p>This preset uses a restricted Google OIDC profile: ID tokens must have
+<code>iss = "https://accounts.google.com"</code>, matching Google's discovery issuer.
+Google's <a href="https://developers.google.com/identity/openid-connect/openid-connect#validatinganidtoken" class="external-link">ID token validation guidance</a>
+also permits <code>"accounts.google.com"</code>; this alternate issuer is not accepted
+by this preset. Issuer comparison remains exact, as for other OIDC providers.</p>
     </div>
 
     <div class="section level2">
