@@ -10,7 +10,13 @@ scripts.
 ## Usage
 
 ``` r
-oauth_ui(base_ui, id = NULL, client = NULL, request_uri_resolver = NULL)
+oauth_ui(
+  base_ui,
+  id = NULL,
+  client = NULL,
+  request_uri_resolver = NULL,
+  clients = NULL
+)
 ```
 
 ## Arguments
@@ -36,6 +42,12 @@ oauth_ui(base_ui, id = NULL, client = NULL, request_uri_resolver = NULL)
   Optional trusted public request URI resolver; see
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
   for proxy requirements.
+
+- clients:
+
+  Optional named list of
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  objects keyed by module ID, mutually exclusive with `id` and `client`.
 
 ## Value
 
@@ -71,6 +83,18 @@ Register any fixed application query parameters in
 `client@redirect_uri`; other inbound parameters are discarded. For
 non-root callback paths use `uiPattern = ".*"` in
 [`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html).
+
+For multiple providers, supply
+`clients = list(auth_a = client_a, auth_b = client_b)` instead of `id`
+and `client`. Names are the server module IDs. The registry accepts
+query and form-post callbacks on configured routes. Each client must
+select a multi-server defense. Shared routes require
+`authorization_server_mode = "multi_issuer"` and distinct trusted
+issuers. An RFC 9207 `iss` or signed JARM issuer selects the configured
+client; the complete callback is then verified before a bridge handle is
+stored. Encrypted JARM on a shared route requires an outer `iss`
+(verified against the decrypted response); otherwise use distinct
+routes. Do not nest wrappers to route multiple providers.
 
 Without `id` and `client`, ordinary pages still render, but raw OAuth
 GET callbacks fail closed with a setup error. Earlier `oauth_ui(ui)`

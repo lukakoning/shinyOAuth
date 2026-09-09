@@ -56,7 +56,13 @@ query callbacks before rendering any application UI or scripts.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_ui</span><span class="op">(</span><span class="va">base_ui</span>, id <span class="op">=</span> <span class="cn">NULL</span>, client <span class="op">=</span> <span class="cn">NULL</span>, request_uri_resolver <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_ui</span><span class="op">(</span></span>
+<span>  <span class="va">base_ui</span>,</span>
+<span>  id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  client <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  request_uri_resolver <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  clients <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -79,6 +85,11 @@ Can also be a UI function, optionally accepting the Shiny request.</p></dd>
 <dt id="arg-request-uri-resolver">request_uri_resolver<a class="anchor" aria-label="anchor" href="#arg-request-uri-resolver"></a></dt>
 <dd><p>Optional trusted public request URI resolver;
 see <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code> for proxy requirements.</p></dd>
+
+
+<dt id="arg-clients">clients<a class="anchor" aria-label="anchor" href="#arg-clients"></a></dt>
+<dd><p>Optional named list of <a href="OAuthClient.html">OAuthClient</a> objects keyed by module
+ID, mutually exclusive with <code>id</code> and <code>client</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -105,6 +116,15 @@ Shiny module verifies browser binding. The storage requirements and quotas
 are the same as <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Register any fixed application query
 parameters in <code>client@redirect_uri</code>; other inbound parameters are discarded.
 For non-root callback paths use <code>uiPattern = ".*"</code> in <code><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shiny::shinyApp()</a></code>.</p>
+<p>For multiple providers, supply <code>clients = list(auth_a = client_a, auth_b = client_b)</code> instead of <code>id</code> and <code>client</code>. Names are the server module
+IDs. The registry accepts query and form-post callbacks on configured routes.
+Each client must select a multi-server defense. Shared routes require
+<code>authorization_server_mode = "multi_issuer"</code> and distinct trusted issuers.
+An RFC 9207 <code>iss</code> or signed JARM issuer selects the configured client; the
+complete callback is then verified before a bridge handle is stored.
+Encrypted JARM on a shared route requires an outer <code>iss</code> (verified against
+the decrypted response); otherwise use distinct routes. Do not nest wrappers
+to route multiple providers.</p>
 <p>Without <code>id</code> and <code>client</code>, ordinary pages still render, but raw OAuth GET
 callbacks fail closed with a setup error. Earlier <code>oauth_ui(ui)</code> query-flow
 applications must add those arguments. When integrating <code><a href="use_shinyOAuth.html">use_shinyOAuth()</a></code>

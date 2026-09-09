@@ -292,6 +292,32 @@ they came from another. See
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html)
 for the exact configuration contract.
 
+Connect all providers to one HTTP callback dispatcher using a named
+registry:
+
+``` r
+clients <- list(auth_a = client_a, auth_b = client_b)
+ui <- oauth_ui(shiny::fluidPage("My app"), clients = clients)
+server <- function(input, output, session) {
+  auth_a <- oauth_module_server("auth_a", client_a)
+  auth_b <- oauth_module_server("auth_b", client_b)
+}
+shiny::shinyApp(ui, server, uiPattern = ".*")
+```
+
+The registry accepts query and form-post clients together; it is also
+available through `oauth_form_post_ui(..., clients = clients)`. Each
+client must select one of the multi-server modes above. Distinct routes
+support legacy providers without issuer response parameters. Shared
+routes require `multi_issuer` with distinct configured issuers and RFC
+9207 `iss` or a signed JARM response. For encrypted JARM on a shared
+route, supply an outer `iss` that matches the decrypted issuer, or use
+distinct routes. Issuer routing never replaces signature, transaction or
+browser-binding validation. The dispatcher redirects to a clean bridge
+URL before rendering the app. Nesting single-client wrappers does not
+provide this routing. Supply the same trusted `request_uri_resolver`
+used for single-provider deployments when running behind a proxy.
+
 ### 8. Exchange the authorization code for tokens
 
 Once callback validation succeeds, shinyOAuth sends a request to the

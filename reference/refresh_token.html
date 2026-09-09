@@ -155,6 +155,12 @@ await the existing promise instead. Separate R processes require coordination
 by the application. The input token is a value object: store the returned
 token for subsequent refreshes, and use an application generation check when
 assigning results after logout or a new login. Completed results are not cached.</p>
+<p>Refresh errors carry a non-secret <code>refresh_credential_outcome</code> field:
+<code>"not_consumed"</code>, <code>"consumed"</code>, <code>"possibly_consumed"</code>, or <code>"rejected"</code>.
+Only <code>"not_consumed"</code> permits retrying the input refresh credential. After
+any other outcome (including an unavailable worker result), discard that
+credential and require a new login. This does not accept unvalidated access
+or identity data. The module applies this rule even with indefinite sessions.</p>
     </div>
 
     <div class="section level2">

@@ -15,10 +15,11 @@ callback available to the server module. For query-string callbacks, use
 ``` r
 oauth_form_post_ui(
   base_ui,
-  id,
-  client,
+  id = NULL,
+  client = NULL,
   callback_path = NULL,
-  request_uri_resolver = NULL
+  request_uri_resolver = NULL,
+  clients = NULL
 )
 ```
 
@@ -56,6 +57,14 @@ oauth_form_post_ui(
   configured redirect origin and `callback_path`. Registered fixed query
   parameters must also occur unchanged in the incoming request.
   Continuation URLs preserve only registered application parameters.
+
+- clients:
+
+  Optional client registry as in
+  [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
+  With a registry, omit `id`, `client`, and `callback_path`; each
+  client's redirect URI sets its route, and both query and form-post
+  clients are supported.
 
 ## Value
 

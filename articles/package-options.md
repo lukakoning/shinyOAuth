@@ -19,6 +19,27 @@ arguments for settings that belong to one client or module. See
 [Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md) for
 app setup.
 
+[`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
+is an opt-in, read-only assessment pinned to OAuth 2.1 draft 16. Ruleset
+`1.1.0` reports requirement sources: OAuth core, OIDC, extensions,
+security guidance, and package or application policy. Recommendations do
+not change the mandatory configuration verdict. Existing OAuth 2.0
+authentication methods and callback choices remain available. For
+example, Basic/body client authentication can pass while receiving
+advice to consider asymmetric methods. Distinct callback routes remain
+valid when issuer identification is unavailable, and `localhost`
+callbacks remain supported with advice to prefer a loopback IP.
+
+Callback capacity advice uses local field defaults and an 8000-byte
+minimum envelope as package thresholds, not numeric OAuth 2.1
+requirements. Test the complete encoded query or form body against
+package, proxy and browser limits: include parameter names, separators,
+fixed application parameters, percent encoding, state, issuer and JARM.
+An aggregate floor cannot guarantee that all decoded fields fit
+simultaneously. Back-channel redirect blocking is package policy
+motivated by credential confidentiality; the draft’s browser redirect
+rules are a separate requirement.
+
 ## Logging
 
 - `options(shinyOAuth.audit_hook = function(event){ ... })` – receive
@@ -59,30 +80,47 @@ for more details about logs and traces via OpenTelemetry.
 
 ## Validation and URL policy
 
+- `options(shinyOAuth.access_token_cnf = "opaque")` – never decode
+  access tokens to obtain sender-binding metadata. DPoP and mTLS still
+  check `cnf` from token responses and introspection and present their
+  configured sender credentials. The compatibility default `"jwt"`
+  inspects JWT `cnf` without validating the access-token signature;
+  select it only where that representation is agreed with the provider.
+  This option is propagated to async workers. Requiring observed binding
+  remains a separate client policy (`dpop_require_observed_cnf` or
+  `mtls_require_observed_cnf`).
+
 - `options(shinyOAuth.leeway = 30)` – default clock skew leeway
   (seconds) for ID token `exp`/`iat`/`nbf` checks and state payload
   `issued_at` future check
+
 - `options(shinyOAuth.max_id_token_lifetime = 86400)` – maximum ID token
   lifetime in seconds (`exp - iat`). This is an additional package check
   beyond the OIDC expiry check. Default `86400` (24 hours). Set to `Inf`
   to disable the check
+
 - `options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))` -
   allows these hosts to use `http://` in non-OIDC URL checks; it does
   not relax OIDC discovery
+
 - `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)` –
   development-only opt-in for OIDC issuer and endpoint URLs on HTTP
   loopback origins; production OIDC metadata URLs must use HTTPS
+
 - `options(shinyOAuth.allowed_hosts = c())` – when non‑empty, restricts
   accepted hosts to this whitelist
+
 - `options(shinyOAuth.allow_hs = TRUE)` – opt‑in HMAC validation for ID
   tokens (HS256/HS384/HS512). Requires a strictly server‑side
   `client_secret`
+
 - `options(shinyOAuth.client_assertion_ttl = 120L)` – lifetime in
   seconds for JWT client assertions used with `client_secret_jwt` or
   `private_key_jwt` token endpoint authentication. Finite values below
   60 seconds are coerced to 60 seconds, finite values above 300 seconds
   are clamped to 300 seconds, and `NA` or non-finite values fall back to
   the 120-second default
+
 - `options(shinyOAuth.state_fail_delay_ms = 0)` – delay in milliseconds
   before state parsing or decryption failures. Defaults to `0` (no
   delay). A positive number sets a fixed delay; two numbers, such as

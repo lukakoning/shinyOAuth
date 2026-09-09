@@ -129,6 +129,14 @@ value object: store the returned token for subsequent refreshes, and use
 an application generation check when assigning results after logout or a
 new login. Completed results are not cached.
 
+Refresh errors carry a non-secret `refresh_credential_outcome` field:
+`"not_consumed"`, `"consumed"`, `"possibly_consumed"`, or `"rejected"`.
+Only `"not_consumed"` permits retrying the input refresh credential.
+After any other outcome (including an unavailable worker result),
+discard that credential and require a new login. This does not accept
+unvalidated access or identity data. The module applies this rule even
+with indefinite sessions.
+
 ## Examples
 
 ``` r

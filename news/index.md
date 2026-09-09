@@ -2,6 +2,52 @@
 
 ## shinyOAuth (development version)
 
+- OAuth 2.1 assessment ruleset `1.1.0` adds non-blocking advice for
+  asymmetric client authentication, issuer identification and loopback
+  IP literals. Reports identify requirement sources and separate server
+  obligations from application policy. Callback thresholds and
+  back-channel redirect restrictions are labeled as package policy.
+  Assessment remains opt-in and does not alter OAuth 2.0 flows.
+
+- HMAC-only JARM no longer creates an unused JWKS dependency in
+  [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md).
+  The checker uses the same selected signing algorithm as runtime
+  validation and still assesses key retrieval required by other enabled
+  operations.
+
+- [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
+  recognizes the UserInfo subject comparison enforced by a required
+  validated ID-token baseline, even with
+  `userinfo_id_token_match = FALSE`. Separately selected UserInfo calls
+  still need baseline context, and active signature bypasses cannot
+  establish that guarantee.
+
+- [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+  and
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  now accept an optional named `clients` registry for multiple server
+  modules, including distinct callback routes and shared routes with
+  issuer identification. Existing single-client calls remain supported.
+  Callback verification and the redirect before app rendering are
+  preserved for query, JARM and form-post flows.
+
+- DPoP token-type enforcement no longer requires client-visible
+  `cnf$jkt` merely because an access token has JWT structure. Binding
+  observation remains controlled by `dpop_require_observed_cnf`, with
+  missing metadata allowed to await required introspection.
+  `shinyOAuth.access_token_cnf = "opaque"` opts out of access-token
+  decoding for DPoP and mTLS; legacy JWT inspection remains available.
+
+- [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
+  now includes JWKS retrieval for encrypted Request Objects when no
+  explicit recipient key is configured, including unresolved discovery.
+
+- Refresh failures now report whether the renewal credential was
+  consumed, possibly consumed, rejected, or not consumed. Proactive
+  refresh retires unsafe credentials even when
+  `indefinite_session = TRUE` retains the previous session. Replacement
+  access and identity data still require successful validation.
+
 - Added
   [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
   for Shiny apps using URL-based OAuth callbacks. Wrap the app’s
@@ -16,7 +62,7 @@
   [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md),
   a new function to analyze a configured `OAuthClient` and
   `OAuthProvider` for compliance with the OAuth 2.1 draft 16 (ruleset
-  `1.0.0`) specification.
+  `1.1.0`) specification.
 
 - Browser and callback handling is more secure. Browser bindings are
   isolated by origin, tab, login, and app/module, and excluded from URLs

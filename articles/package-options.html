@@ -81,6 +81,25 @@ request:</p>
 says milliseconds. Options affect the R process; use
 <code><a href="../reference/oauth_client.html">oauth_client()</a></code> and <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>
 arguments for settings that belong to one client or module. See <a href="usage.html">Usage</a> for app setup.</p>
+<p><code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> is an opt-in, read-only assessment
+pinned to OAuth 2.1 draft 16. Ruleset <code>1.1.0</code> reports
+requirement sources: OAuth core, OIDC, extensions, security guidance,
+and package or application policy. Recommendations do not change the
+mandatory configuration verdict. Existing OAuth 2.0 authentication
+methods and callback choices remain available. For example, Basic/body
+client authentication can pass while receiving advice to consider
+asymmetric methods. Distinct callback routes remain valid when issuer
+identification is unavailable, and <code>localhost</code> callbacks
+remain supported with advice to prefer a loopback IP.</p>
+<p>Callback capacity advice uses local field defaults and an 8000-byte
+minimum envelope as package thresholds, not numeric OAuth 2.1
+requirements. Test the complete encoded query or form body against
+package, proxy and browser limits: include parameter names, separators,
+fixed application parameters, percent encoding, state, issuer and JARM.
+An aggregate floor cannot guarantee that all decoded fields fit
+simultaneously. Back-channel redirect blocking is package policy
+motivated by credential confidentiality; the draft’s browser redirect
+rules are a separate requirement.</p>
 <div class="section level2">
 <h2 id="logging">Logging<a class="anchor" aria-label="anchor" href="#logging"></a>
 </h2>
@@ -139,50 +158,51 @@ about logs and traces via OpenTelemetry.</p>
 <h2 id="validation-and-url-policy">Validation and URL policy<a class="anchor" aria-label="anchor" href="#validation-and-url-policy"></a>
 </h2>
 <ul>
-<li>
-<code>options(shinyOAuth.leeway = 30)</code> – default clock skew
+<li><p><code>options(shinyOAuth.access_token_cnf = "opaque")</code> –
+never decode access tokens to obtain sender-binding metadata. DPoP and
+mTLS still check <code>cnf</code> from token responses and introspection
+and present their configured sender credentials. The compatibility
+default <code>"jwt"</code> inspects JWT <code>cnf</code> without
+validating the access-token signature; select it only where that
+representation is agreed with the provider. This option is propagated to
+async workers. Requiring observed binding remains a separate client
+policy (<code>dpop_require_observed_cnf</code> or
+<code>mtls_require_observed_cnf</code>).</p></li>
+<li><p><code>options(shinyOAuth.leeway = 30)</code> – default clock skew
 leeway (seconds) for ID token
 <code>exp</code>/<code>iat</code>/<code>nbf</code> checks and state
-payload <code>issued_at</code> future check</li>
-<li>
-<code>options(shinyOAuth.max_id_token_lifetime = 86400)</code> –
+payload <code>issued_at</code> future check</p></li>
+<li><p><code>options(shinyOAuth.max_id_token_lifetime = 86400)</code> –
 maximum ID token lifetime in seconds (<code>exp - iat</code>). This is
 an additional package check beyond the OIDC expiry check. Default
 <code>86400</code> (24 hours). Set to <code>Inf</code> to disable the
-check</li>
-<li>
-<code>options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))</code>
+check</p></li>
+<li><p><code>options(shinyOAuth.allowed_non_https_hosts = c("localhost", "127.0.0.1", "::1", "[::1]"))</code>
 - allows these hosts to use <code>http://</code> in non-OIDC URL checks;
-it does not relax OIDC discovery</li>
-<li>
-<code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>
+it does not relax OIDC discovery</p></li>
+<li><p><code>options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)</code>
 – development-only opt-in for OIDC issuer and endpoint URLs on HTTP
-loopback origins; production OIDC metadata URLs must use HTTPS</li>
-<li>
-<code>options(shinyOAuth.allowed_hosts = c())</code> – when
-non‑empty, restricts accepted hosts to this whitelist</li>
-<li>
-<code>options(shinyOAuth.allow_hs = TRUE)</code> – opt‑in HMAC
+loopback origins; production OIDC metadata URLs must use HTTPS</p></li>
+<li><p><code>options(shinyOAuth.allowed_hosts = c())</code> – when
+non‑empty, restricts accepted hosts to this whitelist</p></li>
+<li><p><code>options(shinyOAuth.allow_hs = TRUE)</code> – opt‑in HMAC
 validation for ID tokens (HS256/HS384/HS512). Requires a strictly
-server‑side <code>client_secret</code>
-</li>
-<li>
-<code>options(shinyOAuth.client_assertion_ttl = 120L)</code> –
+server‑side <code>client_secret</code></p></li>
+<li><p><code>options(shinyOAuth.client_assertion_ttl = 120L)</code> –
 lifetime in seconds for JWT client assertions used with
 <code>client_secret_jwt</code> or <code>private_key_jwt</code> token
 endpoint authentication. Finite values below 60 seconds are coerced to
 60 seconds, finite values above 300 seconds are clamped to 300 seconds,
 and <code>NA</code> or non-finite values fall back to the 120-second
-default</li>
-<li>
-<code>options(shinyOAuth.state_fail_delay_ms = 0)</code> – delay in
-milliseconds before state parsing or decryption failures. Defaults to
+default</p></li>
+<li><p><code>options(shinyOAuth.state_fail_delay_ms = 0)</code> – delay
+in milliseconds before state parsing or decryption failures. Defaults to
 <code>0</code> (no delay). A positive number sets a fixed delay; two
 numbers, such as <code>c(10, 30)</code>, set bounds for a randomized
 delay. Positive delays sleep synchronously and block the Shiny worker,
 including initial state validation with <code>async = TRUE</code>. The
 delay adds timing noise but does not provide constant-time
-validation.</li>
+validation.</p></li>
 </ul>
 <p>Note on <code>allowed_hosts</code>: patterns support globs
 (<code>*</code>, <code>?</code>). Using a catch‑all like

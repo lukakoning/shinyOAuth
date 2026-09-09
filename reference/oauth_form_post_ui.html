@@ -64,10 +64,11 @@ available to the server module. For query-string callbacks, use <code><a href="o
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_form_post_ui</span><span class="op">(</span></span>
 <span>  <span class="va">base_ui</span>,</span>
-<span>  <span class="va">id</span>,</span>
-<span>  <span class="va">client</span>,</span>
+<span>  id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  client <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  callback_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  request_uri_resolver <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  request_uri_resolver <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  clients <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -102,6 +103,12 @@ verify the proxy trust boundary before using forwarded headers; its result is
 still required to match the configured redirect origin and <code>callback_path</code>.
 Registered fixed query parameters must also occur unchanged in the incoming
 request. Continuation URLs preserve only registered application parameters.</p></dd>
+
+
+<dt id="arg-clients">clients<a class="anchor" aria-label="anchor" href="#arg-clients"></a></dt>
+<dd><p>Optional client registry as in <code><a href="oauth_ui.html">oauth_ui()</a></code>. With a registry,
+omit <code>id</code>, <code>client</code>, and <code>callback_path</code>; each client's redirect URI sets
+its route, and both query and form-post clients are supported.</p></dd>
 
 </dl></div>
     <div class="section level2">

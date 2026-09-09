@@ -450,11 +450,9 @@ defaults must be included in that set.</p></dd>
 <dd><p>Logical or <code>NULL</code>. When <code>TRUE</code> and
 <code>dpop_private_key</code> is configured, shinyOAuth requires the authorization
 server to return <code>token_type = "DPoP"</code> for access tokens and fails fast
-otherwise. When shinyOAuth can observe token binding data from a JWT
-access token or an introspection response, this strict mode also requires
-<code>cnf$jkt</code> to be present and match the configured <code>dpop_private_key</code>.
-Opaque access tokens that expose no <code>cnf</code> data still pass this check unless
-introspection later reveals the binding. In <code>oauth_client()</code>, the default
+otherwise, independently of the access token's representation. Observed
+binding data must match the configured key; requiring its presence is a
+separate policy (<code>dpop_require_observed_cnf</code>). In <code>oauth_client()</code>, the default
 <code>NULL</code> resolves to <code>TRUE</code> when <code>dpop_private_key</code> is configured and to
 <code>FALSE</code> otherwise. Set <code>FALSE</code> explicitly only when you intentionally want
 to allow Bearer access tokens, such as deployments where DPoP is used only
@@ -464,8 +462,11 @@ to bind refresh tokens.</p></dd>
 <dt id="arg-dpop-require-observed-cnf">dpop_require_observed_cnf<a class="anchor" aria-label="anchor" href="#arg-dpop-require-observed-cnf"></a></dt>
 <dd><p>Logical. When <code>TRUE</code>, shinyOAuth rejects
 <code>token_type = "DPoP"</code> access tokens unless it can observe <code>cnf$jkt</code>
-locally, either from the access token itself or from a token
-introspection response. Use this when high-assurance DPoP deployments must
+locally, from the token response, introspection, or optional JWT access-token
+inspection. Set <code>options(shinyOAuth.access_token_cnf = "opaque")</code> to disable
+access-token decoding for both DPoP and mTLS; the compatibility default
+<code>"jwt"</code> inspects JWT <code>cnf</code> without treating it as signature validation.
+Use this when high-assurance DPoP deployments must
 fail closed on opaque access tokens that provide no observable binding.
 Default is <code>FALSE</code>.</p></dd>
 

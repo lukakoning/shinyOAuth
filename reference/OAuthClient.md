@@ -464,12 +464,10 @@ OAuthClient(
 
   Logical or `NULL`. When `TRUE` and `dpop_private_key` is configured,
   shinyOAuth requires the authorization server to return
-  `token_type = "DPoP"` for access tokens and fails fast otherwise. When
-  shinyOAuth can observe token binding data from a JWT access token or
-  an introspection response, this strict mode also requires `cnf$jkt` to
-  be present and match the configured `dpop_private_key`. Opaque access
-  tokens that expose no `cnf` data still pass this check unless
-  introspection later reveals the binding. In
+  `token_type = "DPoP"` for access tokens and fails fast otherwise,
+  independently of the access token's representation. Observed binding
+  data must match the configured key; requiring its presence is a
+  separate policy (`dpop_require_observed_cnf`). In
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
   the default `NULL` resolves to `TRUE` when `dpop_private_key` is
   configured and to `FALSE` otherwise. Set `FALSE` explicitly only when
@@ -479,10 +477,14 @@ OAuthClient(
 - dpop_require_observed_cnf:
 
   Logical. When `TRUE`, shinyOAuth rejects `token_type = "DPoP"` access
-  tokens unless it can observe `cnf$jkt` locally, either from the access
-  token itself or from a token introspection response. Use this when
-  high-assurance DPoP deployments must fail closed on opaque access
-  tokens that provide no observable binding. Default is `FALSE`.
+  tokens unless it can observe `cnf$jkt` locally, from the token
+  response, introspection, or optional JWT access-token inspection. Set
+  `options(shinyOAuth.access_token_cnf = "opaque")` to disable
+  access-token decoding for both DPoP and mTLS; the compatibility
+  default `"jwt"` inspects JWT `cnf` without treating it as signature
+  validation. Use this when high-assurance DPoP deployments must fail
+  closed on opaque access tokens that provide no observable binding.
+  Default is `FALSE`.
 
 - request_object_mode:
 
