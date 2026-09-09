@@ -430,7 +430,7 @@ validate_id_token <- function(
       ))
     }
   }
-  if (!is.null(payload[["nbf"]])) {
+  if ("nbf" %in% names(payload)) {
     if (!jwt_is_single_finite_number(payload[["nbf"]])) {
       err_id_token("nbf claim must be a single finite number when present")
     }
@@ -456,7 +456,7 @@ validate_id_token <- function(
   # requires client_id when azp is present, without requiring its presence.
   # Additional audiences must independently satisfy the
   # explicit allowlist above; azp alone never grants audience trust.
-  if (!is.null(payload[["azp"]])) {
+  if ("azp" %in% names(payload)) {
     if (!identical(payload[["azp"]], client_id)) {
       err_id_token("azp claim does not match client_id")
     }
@@ -520,12 +520,15 @@ validate_id_token <- function(
   # binding. This is a defense-in-depth measure against token substitution.
   # When id_token_at_hash_required is TRUE, the claim MUST be present.
   at_hash_required <- isTRUE(prov@id_token_at_hash_required)
-  if (at_hash_required && is.null(payload[["at_hash"]])) {
+  if (at_hash_required && !"at_hash" %in% names(payload)) {
     err_id_token(
       "ID token missing required at_hash claim (id_token_at_hash_required = TRUE)"
     )
   }
-  if (!is.null(payload[["at_hash"]])) {
+  if ("at_hash" %in% names(payload)) {
+    if (!is_valid_string(payload[["at_hash"]])) {
+      err_id_token("at_hash claim must be a single non-empty string when present")
+    }
     if (!is_valid_string(expected_access_token)) {
       err_id_token(
         "ID token contains at_hash claim but no access token was provided for validation"

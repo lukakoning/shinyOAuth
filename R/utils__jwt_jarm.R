@@ -404,7 +404,7 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   if (!is.finite(leeway) || is.na(leeway) || length(leeway) != 1L) {
     leeway <- 0
   }
-  if (!is.null(iat) && !jwt_is_single_finite_number(iat)) {
+  if ("iat" %in% names(claims) && !jwt_is_single_finite_number(iat)) {
     err_invalid_state("JARM iat claim must be a single finite number")
   }
   if (!is.null(iat) && as.numeric(iat) > exp) {
@@ -413,7 +413,7 @@ validate_jarm_claims <- function(oauth_client, claims, prechecked = NULL) {
   if (!is.null(iat) && as.numeric(iat) > (now + leeway)) {
     err_invalid_state("JARM payload issued in the future")
   }
-  if (!is.null(nbf) && !jwt_is_single_finite_number(nbf)) {
+  if ("nbf" %in% names(claims) && !jwt_is_single_finite_number(nbf)) {
     err_invalid_state("JARM nbf claim must be a single finite number")
   }
   if (!is.null(nbf) && as.numeric(nbf) > exp) {
