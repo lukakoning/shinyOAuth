@@ -79,18 +79,26 @@ workers after changing it.
 
 ### Error attributes and redaction
 
-- Successful operations have status `ok`; failures have status `error`
-  and an `exception` event containing the error class. Condition
-  messages are omitted by default and are included only with
+- Successful operations have status `ok`; failures have status `error`.
+  Revocation and introspection classify their normalized results on both
+  sync and async spans: HTTP/protocol failures carry `error.type`, while
+  missing tokens and unsupported endpoints leave status unset. An
+  inactive-token response is successful introspection
+  (`oauth.active = FALSE`). Thrown errors also produce an `exception`
+  event containing the error class. Condition messages are omitted by
+  default and are included only with
   `options(shinyOAuth.expose_error_body = TRUE)`; those messages may
   contain provider details and should be handled as sensitive data.
 - Log bodies default to the stable event type. The same exposure option
   controls free-form native audit detail, module diagnostics, and sink
-  failure warnings. URLs retain scheme and authority by default; paths
-  require an explicit `shinyOAuth.telemetry_path_scrubber` returning
-  approved route templates. Opt-in detail has URL userinfo, query
-  strings, fragments, and control characters removed and is limited to
-  512 UTF-8 bytes per field.
+  failure warnings, including classified SDK diagnostic messages emitted
+  during package span/log calls. SDK calls made directly by application
+  code are outside these wrappers. URLs retain scheme and authority by
+  default; paths require an explicit
+  `shinyOAuth.telemetry_path_scrubber` returning approved route
+  templates. Opt-in detail has URL userinfo, query strings, fragments,
+  and control characters removed and is limited to 512 UTF-8 bytes per
+  field.
 - Tokens, authorization codes, state payloads, and browser tokens are
   not included as ordinary span attributes. Digest fields support
   correlation without the raw value. Keep debugging options off for

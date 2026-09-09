@@ -5,20 +5,16 @@ implementing provider‑agnostic OpenID Connect (OIDC) authentication and
 OAuth 2.0 authorization for [Shiny](https://github.com/rstudio/shiny)
 apps. It is built with modern S7 classes and security in mind.
 
-OIDC lets users authenticate to your app using accounts they already
-have (for example Google or Microsoft), a self-hosted identity provider
-such as Keycloak, or an identity service such as Auth0 or Okta.
-Supported OAuth-only integrations such as GitHub and Spotify can
-bootstrap an application identity through their provider-specific user
-APIs; an OAuth access token is an authorization credential, not an
-identity assertion.
-
-To achieve this, your app redirects unauthenticated users to the
+OAuth 2.0 and OIDC let users log in to your app with accounts they
+already have (for example, Google or Microsoft), with a self-hosted
+identity provider such as Keycloak, or with an identity service such as
+Auth0 or Okta. To achieve this, your app redirects your users to the
 identity provider, they authenticate there, and are redirected back to
-your app with an authorization code. Your app exchanges this code for
-tokens that authorize API access. In OIDC flows, a validated ID token
-authenticates the user. Supported OAuth-only integrations instead obtain
-identity-like profile data from a provider-specific API.
+your app with an authorization code. Your app then exchanges this code
+for tokens. In OAuth flows, an access token obtained to authorize API
+calls, and you may get their user profile information from the
+provider’s userinfo endpoint. In OIDC flows, a cryptographically signed
+ID token authenticates the user.
 
 This package streamlines this flow for Shiny applications, enabling
 developers to add OIDC authentication and OAuth authorization to their

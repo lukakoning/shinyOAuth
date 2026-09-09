@@ -145,16 +145,22 @@ in each worker or recreate workers after changing it.</p>
 </h3>
 <ul>
 <li>Successful operations have status <code>ok</code>; failures have
-status <code>error</code> and an <code>exception</code> event containing
-the error class. Condition messages are omitted by default and are
-included only with
+status <code>error</code>. Revocation and introspection classify their
+normalized results on both sync and async spans: HTTP/protocol failures
+carry <code>error.type</code>, while missing tokens and unsupported
+endpoints leave status unset. An inactive-token response is successful
+introspection (<code>oauth.active = FALSE</code>). Thrown errors also
+produce an <code>exception</code> event containing the error class.
+Condition messages are omitted by default and are included only with
 <code>options(shinyOAuth.expose_error_body = TRUE)</code>; those
 messages may contain provider details and should be handled as sensitive
 data.</li>
 <li>Log bodies default to the stable event type. The same exposure
 option controls free-form native audit detail, module diagnostics, and
-sink failure warnings. URLs retain scheme and authority by default;
-paths require an explicit
+sink failure warnings, including classified SDK diagnostic messages
+emitted during package span/log calls. SDK calls made directly by
+application code are outside these wrappers. URLs retain scheme and
+authority by default; paths require an explicit
 <code>shinyOAuth.telemetry_path_scrubber</code> returning approved route
 templates. Opt-in detail has URL userinfo, query strings, fragments, and
 control characters removed and is limited to 512 UTF-8 bytes per
