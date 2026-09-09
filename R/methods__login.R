@@ -2624,7 +2624,8 @@ verify_token_set <- function(
         error_context = "token",
         phase = phase
       )
-      # Only opaque, unobserved bindings may wait for required introspection.
+      # Missing binding metadata may wait for required introspection regardless
+      # of the access token's representation.
       # Observable contradictions were checked above and must fail immediately.
       if (
         !(isTRUE(introspection_pending) &&

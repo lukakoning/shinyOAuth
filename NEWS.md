@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* DPoP token-type enforcement no longer requires client-visible `cnf$jkt`
+merely because an access token has JWT structure. Binding observation remains
+controlled by `dpop_require_observed_cnf`, with missing metadata allowed to await
+required introspection. `shinyOAuth.access_token_cnf = "opaque"` opts out of
+access-token decoding for DPoP and mTLS; legacy JWT inspection remains available.
+
 * `check_oauth21()` now includes JWKS retrieval for encrypted Request Objects
 when no explicit recipient key is configured, including unresolved discovery.
 

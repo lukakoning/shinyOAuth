@@ -184,7 +184,7 @@ test_that("resource_req rejects DPoP cnf.jkt mismatches", {
 
 test_that("resource_req rejects strict DPoP JWTs without cnf.jkt", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
-  cli <- make_dpop_test_client(prov, dpop_require_access_token = TRUE)
+  cli <- make_dpop_test_client(prov, dpop_require_observed_cnf = TRUE)
   tok <- OAuthToken(
     access_token = build_dummy_jwt(list(sub = "user-1")),
     token_type = "DPoP",
@@ -894,7 +894,7 @@ test_that("verify_token_set rejects JWT DPoP access tokens without cnf.jkt in st
 
   expect_error(
     shinyOAuth:::verify_token_set(
-      make_dpop_test_client(prov, dpop_require_access_token = TRUE),
+      make_dpop_test_client(prov, dpop_require_observed_cnf = TRUE),
       token_set = list(
         access_token = raw_token,
         token_type = "DPoP",
@@ -927,7 +927,7 @@ test_that("verify_token_set rejects JWT DPoP access tokens without cnf.jkt in st
 
 test_that("strict DPoP rejects introspection results without cnf.jkt", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
-  cli <- make_dpop_test_client(prov, dpop_require_access_token = TRUE)
+  cli <- make_dpop_test_client(prov, dpop_require_observed_cnf = TRUE)
   tok <- OAuthToken(
     access_token = "opaque-access-token",
     token_type = "DPoP",
@@ -944,6 +944,84 @@ test_that("strict DPoP rejects introspection results without cnf.jkt", {
     ),
     class = "shinyOAuth_token_error",
     regexp = "cnf\\.jkt"
+  )
+})
+
+test_that("DPoP token type is independent of access-token representation", {
+  client <- make_dpop_test_client(make_test_provider(use_nonce = FALSE))
+  expect_true(client@dpop_require_access_token)
+  for (raw in c("opaque-token", build_dummy_jwt(list(sub = "user-1")))) {
+    token_set <- list(access_token = raw, token_type = "DPoP", expires_in = 60)
+    expect_silent(verify_token_set(client, token_set, nonce = NULL))
+    expect_silent(validate_observed_dpop_cnf_required(
+      client,
+      access_token = raw,
+      token_type = "DPoP",
+      introspection_result = list(raw = list(active = TRUE))
+    ))
+    expect_s3_class(
+      resource_req(
+        OAuthToken(access_token = raw, token_type = "DPoP"),
+        "https://example.com/api",
+        oauth_client = client
+      ),
+      "httr2_request"
+    )
+    token_set$token_type <- "Bearer"
+    expect_error(verify_token_set(client, token_set, nonce = NULL), "DPoP")
+  }
+})
+
+test_that("required DPoP binding can await introspection for structured tokens", {
+  client <- make_dpop_test_client(
+    make_test_provider(use_nonce = FALSE),
+    dpop_require_observed_cnf = TRUE
+  )
+  expect_silent(verify_token_set(
+    client,
+    list(
+      access_token = build_dummy_jwt(list(sub = "user-1")),
+      token_type = "DPoP",
+      expires_in = 60
+    ),
+    nonce = NULL,
+    introspection_pending = TRUE
+  ))
+})
+
+test_that("opaque-token policy uses external cnf without decoding access tokens", {
+  local_options(shinyOAuth.access_token_cnf = "opaque")
+  client <- make_dpop_test_client(make_test_provider(use_nonce = FALSE))
+  jkt <- compute_jwk_thumbprint(dpop_public_jwk(client@dpop_private_key))
+  raw <- build_dummy_jwt(list(sub = "user-1"))
+  local_mocked_bindings(
+    parse_jwt_payload_or_null = function(...) {
+      stop("access token must stay opaque")
+    },
+    .package = "shinyOAuth"
+  )
+  token_set <- list(
+    access_token = raw,
+    token_type = "DPoP",
+    expires_in = 60,
+    cnf = list(jkt = jkt)
+  )
+  expect_silent(verify_token_set(client, token_set, nonce = NULL))
+  expect_error(
+    validate_token_dpop_binding(
+      client,
+      access_token = raw,
+      cnf = list(jkt = "different-key")
+    ),
+    "cnf.jkt",
+    fixed = TRUE
+  )
+  expect_identical(
+    resolve_token_cnf(
+      access_token = raw,
+      introspection_result = list(raw = list(cnf = list(jkt = jkt)))
+    ),
+    list(jkt = jkt)
   )
 })
 

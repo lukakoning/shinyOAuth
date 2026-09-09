@@ -295,9 +295,8 @@ token_cnf_jkt <- function(token = NULL, access_token = NULL, cnf = NULL) {
 
 #' Detect whether DPoP cnf.jkt was observable on a token surface
 #'
-#' Used by strict DPoP validation to distinguish opaque access tokens that do
-#' not expose confirmation data from JWT or introspection-based surfaces that
-#' should reveal a `cnf$jkt` binding when one exists.
+#' Used to defer a required binding observation until introspection when no
+#' actual `cnf$jkt` has been supplied by a configured token surface.
 #'
 #' @param access_token Optional raw access-token string.
 #' @param cnf Optional explicit cnf claim data.
@@ -311,34 +310,14 @@ token_dpop_cnf_observable <- function(
   cnf = NULL,
   introspection_result = NULL
 ) {
-  if (is.list(cnf) && length(cnf) > 0L) {
-    return(TRUE)
-  }
-
-  if (is_valid_string(access_token)) {
-    payload <- parse_jwt_payload_or_null(access_token)
-    if (is.list(payload)) {
-      return(TRUE)
-    }
-  }
-
-  raw <- NULL
-  if (is.list(introspection_result)) {
-    raw <- introspection_result[["raw"]] %||% NULL
-    if (is.data.frame(raw)) {
-      raw <- as.list(raw)
-    }
-  }
-
-  is.list(raw)
+  resolved <- resolve_token_cnf(cnf, access_token, introspection_result)
+  is_valid_string(resolved[["jkt"]])
 }
 
 #' Require observable DPoP cnf.jkt in strict mode
 #'
-#' Used when `dpop_require_access_token = TRUE` so JWT access tokens and token
-#' introspection results fail closed if they expose no `cnf$jkt` binding. When
-#' `dpop_require_observed_cnf = TRUE`, opaque `DPoP` access tokens that expose
-#' no local binding also fail closed.
+#' Used only when `dpop_require_observed_cnf = TRUE`. Token type enforcement
+#' is independent of the access token's internal representation.
 #'
 #' @param oauth_client Optional [OAuthClient] expected to own the DPoP key.
 #' @param token Optional [OAuthToken] object.
@@ -373,9 +352,7 @@ validate_observed_dpop_cnf_required <- function(
   }
 
   require_observed_cnf <- isTRUE(oauth_client@dpop_require_observed_cnf)
-  if (
-    !(isTRUE(oauth_client@dpop_require_access_token) || require_observed_cnf)
-  ) {
+  if (!require_observed_cnf) {
     return(invisible(TRUE))
   }
   if (
@@ -431,8 +408,8 @@ validate_observed_dpop_cnf_required <- function(
   fail(c(
     "x" = "Expected observable token cnf.jkt for a strict DPoP access token",
     "i" = paste(
-      "Strict DPoP mode rejects JWT or introspection-backed access tokens",
-      "that do not expose a local cnf.jkt binding."
+      "dpop_require_observed_cnf = TRUE requires a local cnf.jkt binding",
+      "from a configured token surface."
     )
   ))
 }

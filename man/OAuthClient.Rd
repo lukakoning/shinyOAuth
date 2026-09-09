@@ -357,11 +357,9 @@ defaults must be included in that set.}
 \item{dpop_require_access_token}{Logical or \code{NULL}. When \code{TRUE} and
 \code{dpop_private_key} is configured, shinyOAuth requires the authorization
 server to return \code{token_type = "DPoP"} for access tokens and fails fast
-otherwise. When shinyOAuth can observe token binding data from a JWT
-access token or an introspection response, this strict mode also requires
-\code{cnf$jkt} to be present and match the configured \code{dpop_private_key}.
-Opaque access tokens that expose no \code{cnf} data still pass this check unless
-introspection later reveals the binding. In \code{\link[=oauth_client]{oauth_client()}}, the default
+otherwise, independently of the access token's representation. Observed
+binding data must match the configured key; requiring its presence is a
+separate policy (\code{dpop_require_observed_cnf}). In \code{\link[=oauth_client]{oauth_client()}}, the default
 \code{NULL} resolves to \code{TRUE} when \code{dpop_private_key} is configured and to
 \code{FALSE} otherwise. Set \code{FALSE} explicitly only when you intentionally want
 to allow Bearer access tokens, such as deployments where DPoP is used only
@@ -369,8 +367,11 @@ to bind refresh tokens.}
 
 \item{dpop_require_observed_cnf}{Logical. When \code{TRUE}, shinyOAuth rejects
 \code{token_type = "DPoP"} access tokens unless it can observe \code{cnf$jkt}
-locally, either from the access token itself or from a token
-introspection response. Use this when high-assurance DPoP deployments must
+locally, from the token response, introspection, or optional JWT access-token
+inspection. Set \code{options(shinyOAuth.access_token_cnf = "opaque")} to disable
+access-token decoding for both DPoP and mTLS; the compatibility default
+\code{"jwt"} inspects JWT \code{cnf} without treating it as signature validation.
+Use this when high-assurance DPoP deployments must
 fail closed on opaque access tokens that provide no observable binding.
 Default is \code{FALSE}.}
 

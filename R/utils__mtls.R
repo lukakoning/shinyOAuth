@@ -411,6 +411,20 @@ normalize_token_cnf <- function(cnf) {
 #' @keywords internal
 #' @noRd
 token_cnf_from_access_token <- function(access_token) {
+  # Keep legacy JWT inspection available; opt into opacity for providers whose
+  # access-token representation is not part of the client agreement.
+  format <- getOption("shinyOAuth.access_token_cnf", "jwt")
+  if (
+    !is.character(format) ||
+      length(format) != 1L ||
+      is.na(format) ||
+      !format %in% c("jwt", "opaque")
+  ) {
+    err_config("shinyOAuth.access_token_cnf must be 'jwt' or 'opaque'")
+  }
+  if (identical(format, "opaque")) {
+    return(list())
+  }
   if (!is_valid_string(access_token)) {
     return(list())
   }

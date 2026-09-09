@@ -47,6 +47,32 @@ opaque_mtls_client <- function(style = "body", aliases = TRUE) {
   )
 }
 
+test_that("mTLS opaque-token policy preserves certificate presentation without decoding", {
+  local_options(shinyOAuth.access_token_cnf = "opaque")
+  client <- opaque_mtls_client()
+  local_mocked_bindings(
+    parse_jwt_payload_or_null = function(...) {
+      stop("access token must stay opaque")
+    },
+    .package = "shinyOAuth"
+  )
+  token <- OAuthToken(
+    access_token = "structured.token.value",
+    token_type = "Bearer"
+  )
+  req <- resource_req(token, "https://example.com/api", oauth_client = client)
+  expect_identical(req$options$sslcert, client@mtls_client_cert_file)
+  expect_identical(token_cnf_from_access_token(token@access_token), list())
+  token@cnf <- list(`x5t#S256` = "different-certificate")
+  expect_error(
+    validate_token_certificate_binding(
+      token = token,
+      oauth_client = client
+    ),
+    "thumbprint"
+  )
+})
+
 for (style in c("body", "public", "private_key_jwt")) {
   for (aliases in c(FALSE, TRUE)) {
     test_that(
