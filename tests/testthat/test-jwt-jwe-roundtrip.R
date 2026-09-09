@@ -65,6 +65,15 @@ test_that("compact JWE helpers reject RSA keys smaller than 2048 bits", {
 # 2. compact JWE integrity failures -------------------------------------------
 
 test_that("compact JWE helpers collapse authenticated decryption failures", {
+  comparisons <- 0L
+  compare <- shinyOAuth:::constant_time_compare
+  testthat::local_mocked_bindings(
+    constant_time_compare = function(...) {
+      comparisons <<- comparisons + 1L
+      compare(...)
+    },
+    .package = "shinyOAuth"
+  )
   rsa_key <- openssl::rsa_keygen()
   compact_jwe <- shinyOAuth:::jwe_compact_encrypt(
     plaintext = "header.payload.signature",
@@ -75,6 +84,7 @@ test_that("compact JWE helpers collapse authenticated decryption failures", {
   )
 
   for (part_index in c(2L, 4L, 5L)) {
+    comparisons <- 0L
     parts <- strsplit(compact_jwe, ".", fixed = TRUE)[[1]]
     tampered_part <- shinyOAuth:::base64url_decode_raw(parts[[part_index]])
     tampered_part[1] <- as.raw(bitwXor(as.integer(tampered_part[1]), 1L))
@@ -84,5 +94,6 @@ test_that("compact JWE helpers collapse authenticated decryption failures", {
       shinyOAuth:::jwe_compact_decrypt(paste(parts, collapse = "."), rsa_key),
       "Compact JWE decryption failed"
     )
+    expect_identical(comparisons, 1L)
   }
 })

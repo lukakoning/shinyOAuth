@@ -970,10 +970,8 @@ jwe_compact_decrypt <- function(jwe, private_key) {
     iv_raw = parts[["iv_raw"]],
     ciphertext_raw = parts[["ciphertext_raw"]]
   )
-  if (
-    isTRUE(cek_failed) ||
-      !constant_time_compare(parts[["tag_raw"]], expected_tag)
-  ) {
+  tag_matches <- constant_time_compare(parts[["tag_raw"]], expected_tag)
+  if (isTRUE(cek_failed) || !tag_matches) {
     err_parse(
       "Compact JWE decryption failed",
       context = list(compact_jwe_failure = "authenticated_decryption")
