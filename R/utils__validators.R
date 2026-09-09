@@ -330,3 +330,17 @@ oauth_callback_limits <- function() {
   }
   as.character(x[[1]])
 }
+# Resolve scalar numeric options without coercing arbitrary R objects. Invalid
+# values retain the caller's documented fallback; range rules stay at the caller.
+numeric_option_or_default <- function(name, default, integer = FALSE) {
+  value <- getOption(name, default)
+  if (!is.numeric(value) || is.complex(value) || length(value) != 1L ||
+      is.na(value) || !is.finite(value)) {
+    return(default)
+  }
+  if (integer) {
+    value <- suppressWarnings(as.integer(value))
+    if (is.na(value)) return(default)
+  }
+  value
+}

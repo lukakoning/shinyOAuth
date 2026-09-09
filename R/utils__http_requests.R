@@ -599,31 +599,32 @@ req_with_retry <- function(req, idempotent = TRUE) {
     return(resp)
   }
 
-  max_tries <- suppressWarnings(as.integer(getOption(
+  max_tries <- numeric_option_or_default(
     "shinyOAuth.retry_max_tries",
-    3L
-  )))
+    3L,
+    integer = TRUE
+  )
   if (!is.finite(max_tries) || is.na(max_tries) || max_tries < 1L) {
     max_tries <- 3L
   }
-  base <- suppressWarnings(as.numeric(getOption(
+  base <- numeric_option_or_default(
     "shinyOAuth.retry_backoff_base",
     0.5
-  )))
+  )
   if (!is.finite(base) || is.na(base) || base <= 0) {
     base <- 0.5
   }
-  cap <- suppressWarnings(as.numeric(getOption(
+  cap <- numeric_option_or_default(
     "shinyOAuth.retry_backoff_cap",
     5
-  )))
+  )
   if (!is.finite(cap) || is.na(cap) || cap <= 0) {
     cap <- 5
   }
-  retry_after_cap <- suppressWarnings(as.numeric(getOption(
+  retry_after_cap <- numeric_option_or_default(
     "shinyOAuth.retry_after_cap",
     60
-  )))
+  )
   if (
     length(retry_after_cap) != 1L ||
       !is.finite(retry_after_cap) ||

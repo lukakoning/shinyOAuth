@@ -84,10 +84,11 @@ build_client_assertion <- function(client, aud) {
     }
   }
   # TTL (seconds) for client assertion; default 2 minutes
-  ttl <- suppressWarnings(as.integer(getOption(
+  ttl <- numeric_option_or_default(
     "shinyOAuth.client_assertion_ttl",
-    120L
-  )))
+    120L,
+    integer = TRUE
+  )
   if (!is.finite(ttl) || is.na(ttl)) {
     ttl <- 120L
   } else if (ttl < 60L) {
