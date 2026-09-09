@@ -17,10 +17,16 @@ test_that("public JWK extensions do not alter RSA or EC key import", {
       expect_silent(validate_jwks(list(keys = list(jwk))))
       imported <- jwk_to_pubkey(jwk)
       expect_s3_class(imported, "pubkey")
-      expect_identical(openssl::write_der(imported), openssl::write_der(key$pubkey))
+      expect_identical(
+        openssl::write_der(imported),
+        openssl::write_der(key$pubkey)
+      )
       verified <- verify_jwt_with_jwks(jwt, list(jwk), alg)
       expect_identical(verified[["jwk"]], jwk)
-      expect_identical(compute_jwk_thumbprint(jwk), compute_jwk_thumbprint(original))
+      expect_identical(
+        compute_jwk_thumbprint(jwk),
+        compute_jwk_thumbprint(original)
+      )
     }
   }
 })

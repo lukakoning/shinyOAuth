@@ -14,8 +14,10 @@ test_that("bounded transport gives httr2 exactly one attempt", {
     },
     .package = "httr2"
   )
-  expect_s3_class(shinyOAuth:::req_with_retry(req, idempotent = FALSE),
-                  "httr2_response")
+  expect_s3_class(
+    shinyOAuth:::req_with_retry(req, idempotent = FALSE),
+    "httr2_response"
+  )
 })
 
 test_that("req_with_retry(idempotent = FALSE) does not retry on transport error", {

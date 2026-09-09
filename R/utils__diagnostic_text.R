@@ -80,7 +80,9 @@ sanitize_event_diagnostics <- function(event) {
 # Retain classification without the original condition's calls, request/response
 # fields, backtrace, or parent chain. Even opt-in messages use URL redaction.
 sanitize_condition_parent <- function(parent) {
-  if (is.null(parent)) return(NULL)
+  if (is.null(parent)) {
+    return(NULL)
+  }
   message <- if (allow_expose_error_body()) {
     sanitize_diagnostic_text(conditionMessage(parent))
   } else {

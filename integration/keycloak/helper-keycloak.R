@@ -2152,19 +2152,32 @@ perform_login_form <- function(auth_url, redirect_uri = NA_character_) {
 expect_no_authorization_code <- function(auth_url, redirect_uri) {
   result <- perform_login_form(auth_url, redirect_uri = redirect_uri)
   callback <- result[["callback_url"]]
-  if (!keycloak_nonempty_string(callback) ||
-      !identical(sub("[?#].*$", "", callback), sub("[?#].*$", "", redirect_uri))) {
-    testthat::fail("No rejection callback observed at the configured redirect URI")
+  if (
+    !keycloak_nonempty_string(callback) ||
+      !identical(sub("[?#].*$", "", callback), sub("[?#].*$", "", redirect_uri))
+  ) {
+    testthat::fail(
+      "No rejection callback observed at the configured redirect URI"
+    )
     return(invisible(FALSE))
   }
   query <- shiny::parseQueryString(sub("^[^?]*\\??", "", callback))
   expected_state <- parse_query_param(auth_url, "state", decode = TRUE)
-  if (keycloak_nonempty_string(result[["code"]]) || !is.null(query[["code"]]) ||
+  if (
+    keycloak_nonempty_string(result[["code"]]) ||
+      !is.null(query[["code"]]) ||
       !identical(query[["error"]], "invalid_request") ||
       !identical(query[["state"]], expected_state) ||
       !keycloak_nonempty_string(query[["error_description"]]) ||
-      !grepl("PKCE|code[ _]challenge", query[["error_description"]], ignore.case = TRUE)) {
-    testthat::fail("Expected a state-matched invalid_request callback identifying PKCE")
+      !grepl(
+        "PKCE|code[ _]challenge",
+        query[["error_description"]],
+        ignore.case = TRUE
+      )
+  ) {
+    testthat::fail(
+      "Expected a state-matched invalid_request callback identifying PKCE"
+    )
     return(invisible(FALSE))
   }
   testthat::succeed()

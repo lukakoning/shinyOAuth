@@ -80,7 +80,9 @@ reject_redirect_response <- function(resp, context = "request") {
     if (inherits(location, "try-error")) {
       location <- NA_character_
     }
-    location <- tryCatch(otel_http_url_full(location), error = function(...) NULL)
+    location <- tryCatch(otel_http_url_full(location), error = function(...) {
+      NULL
+    })
     err_http(
       c(
         "x" = paste0(
@@ -447,8 +449,10 @@ req_perform_bounded <- function(req) {
       current <- current[["parent"]]
     }
     if (download_exceeded) {
-      err_parse("Response body too large during encoded download",
-                context = list(reason = "body_too_large", max_bytes = max_bytes))
+      err_parse(
+        "Response body too large during encoded download",
+        context = list(reason = "body_too_large", max_bytes = max_bytes)
+      )
     }
     stop(e)
   })
@@ -458,8 +462,10 @@ req_perform_bounded <- function(req) {
     return(resp)
   }
   if (file.info(path)$size > max_bytes) {
-    err_parse("Response body too large during encoded download",
-              context = list(reason = "body_too_large", max_bytes = max_bytes))
+    err_parse(
+      "Response body too large during encoded download",
+      context = list(reason = "body_too_large", max_bytes = max_bytes)
+    )
   }
   encoding <- tolower(trimws(
     httr2::resp_header(resp, "content-encoding") %||% "identity"

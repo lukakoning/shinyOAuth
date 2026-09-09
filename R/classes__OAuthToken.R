@@ -115,7 +115,8 @@ OAuthToken <- S7::new_class(
     ),
 
     original_id_token = S7::new_property(
-      S7::class_character, default = NA_character_
+      S7::class_character,
+      default = NA_character_
     ),
 
     id_token_claims = S7::new_property(
@@ -159,7 +160,12 @@ oauth_token_validate <- function(self) {
     return("OAuthToken: access_token must be a non-empty string")
   }
 
-  for (field in c("token_type", "refresh_token", "id_token", "original_id_token")) {
+  for (field in c(
+    "token_type",
+    "refresh_token",
+    "id_token",
+    "original_id_token"
+  )) {
     value <- S7::prop(self, field)
     if (!is.character(value) || length(value) != 1L) {
       return(sprintf(

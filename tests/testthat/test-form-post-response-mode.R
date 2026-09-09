@@ -578,7 +578,8 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
     body = paste0(
       "code=ok&state=",
       enc_state,
-      "&iss=", utils::URLencode(received_issuer, reserved = TRUE)
+      "&iss=",
+      utils::URLencode(received_issuer, reserved = TRUE)
     )
   ))
 
@@ -600,9 +601,15 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
   event <- events[[which(event_types == "audit_callback_iss_mismatch")[[1]]]]
   expect_identical(event$expected_issuer, "https://issuer.example.test/")
   expect_identical(event$callback_issuer, event$expected_issuer)
-  expect_identical(event$expected_issuer_digest, string_digest(cli@provider@issuer))
+  expect_identical(
+    event$expected_issuer_digest,
+    string_digest(cli@provider@issuer)
+  )
   expect_identical(event$callback_issuer_digest, string_digest(received_issuer))
-  expect_false(identical(event$expected_issuer_digest, event$callback_issuer_digest))
+  expect_false(identical(
+    event$expected_issuer_digest,
+    event$callback_issuer_digest
+  ))
   expect_false(any(grepl("private-expected|private-received", unlist(event))))
 })
 

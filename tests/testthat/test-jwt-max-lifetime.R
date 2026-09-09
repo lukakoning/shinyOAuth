@@ -43,15 +43,33 @@ mk_client <- function() {
 test_that("invalid lifetime option values raise configuration errors", {
   client <- mk_client()
   now <- floor(as.numeric(Sys.time()))
-  jwt <- build_jwt(list(alg = "none"), list(
-    iss = client@provider@issuer, aud = client@client_id, sub = "user1",
-    iat = now - 10, exp = now + 3600
-  ))
-  for (value in list("3600", TRUE, FALSE, NA_real_, NaN, -Inf, 1 + 1i,
-                     numeric(), c(3600, 7200), list(3600))) {
+  jwt <- build_jwt(
+    list(alg = "none"),
+    list(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      sub = "user1",
+      iat = now - 10,
+      exp = now + 3600
+    )
+  )
+  for (value in list(
+    "3600",
+    TRUE,
+    FALSE,
+    NA_real_,
+    NaN,
+    -Inf,
+    1 + 1i,
+    numeric(),
+    c(3600, 7200),
+    list(3600)
+  )) {
     withr::with_options(
-      list(shinyOAuth.skip_id_sig = TRUE,
-           shinyOAuth.max_id_token_lifetime = value),
+      list(
+        shinyOAuth.skip_id_sig = TRUE,
+        shinyOAuth.max_id_token_lifetime = value
+      ),
       expect_error(
         shinyOAuth:::validate_id_token(client, jwt),
         class = "shinyOAuth_config_error"

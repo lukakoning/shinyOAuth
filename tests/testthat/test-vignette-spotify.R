@@ -16,8 +16,12 @@ spotify_dashboard_helpers <- function() {
   skip_if(is.na(path), "Spotify dashboard is not available")
   env <- new.env(parent = globalenv())
   for (expr in parse(path)) {
-    if (is.call(expr) && identical(expr[[1L]], quote(`<-`)) &&
-        is.call(expr[[3L]]) && identical(expr[[3L]][[1L]], quote(`function`))) {
+    if (
+      is.call(expr) &&
+        identical(expr[[1L]], quote(`<-`)) &&
+        is.call(expr[[3L]]) &&
+        identical(expr[[3L]][[1L]], quote(`function`))
+    ) {
       eval(expr, env)
     }
   }
@@ -56,13 +60,18 @@ test_that("Spotify dashboard never disables table escaping", {
 
 test_that("recent plays preserve UTC time and fractional seconds", {
   helpers <- spotify_dashboard_helpers()
-  helpers$spotify_get <- function(...) list(items = list(list(
-    played_at = "2026-09-09T14:23:45.678Z",
-    track = list(name = "Track", artists = list(list(name = "Artist")))
-  )))
+  helpers$spotify_get <- function(...) {
+    list(
+      items = list(list(
+        played_at = "2026-09-09T14:23:45.678Z",
+        track = list(name = "Track", artists = list(list(name = "Artist")))
+      ))
+    )
+  }
   result <- helpers$get_recently_played(NULL)$played_at
   expect_equal(
-    as.numeric(result) - as.numeric(as.POSIXct("2026-09-09 14:23:45", tz = "UTC")),
+    as.numeric(result) -
+      as.numeric(as.POSIXct("2026-09-09 14:23:45", tz = "UTC")),
     0.678,
     tolerance = 1e-6
   )
@@ -77,8 +86,13 @@ test_that("Spotify avatars render list and data frame images safely", {
     expect_identical(avatar$name, "img")
     expect_identical(avatar$attribs$src, url)
   }
-  for (images in list(NULL, list(), data.frame(), list(list()),
-                     list(list(url = "https://example.test/avatar")))) {
+  for (images in list(
+    NULL,
+    list(),
+    data.frame(),
+    list(list()),
+    list(list(url = "https://example.test/avatar"))
+  )) {
     expect_null(helpers$spotify_avatar(images))
   }
 })

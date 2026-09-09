@@ -70,7 +70,9 @@ spotify_avatar <- function(images) {
     NULL
   }
   url <- spotify_safe_image_url(url)
-  if (is.null(url)) return(NULL)
+  if (is.null(url)) {
+    return(NULL)
+  }
   htmltools::tags$img(src = url, class = "profile-avatar", alt = "User avatar")
 }
 

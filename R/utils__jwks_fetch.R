@@ -212,7 +212,11 @@ fetch_authorization_server_metadata <- function(issuer) {
       "i" = paste0("Metadata locations attempted: ", length(attempted_urls)),
       if (allow_expose_error_body() && is_valid_string(last_error_message)) {
         stats::setNames(
-          paste0("Last failure: ", escape_diagnostic_markup(last_error_message)), "i"
+          paste0(
+            "Last failure: ",
+            escape_diagnostic_markup(last_error_message)
+          ),
+          "i"
         )
       }
     ),

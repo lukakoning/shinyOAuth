@@ -3,7 +3,10 @@ test_that("claim conditions redact values and bound explicitly exposed details",
   expected <- "https://expected.example.test/private-expected?query-secret"
   received <- "https://received.example.test/private-received?query-secret"
   client_id <- "private-expected-client"
-  received_audience <- paste0("private-received-client-{literal}", strrep("é", 600))
+  received_audience <- paste0(
+    "private-received-client-{literal}",
+    strrep("é", 600)
+  )
   for (expose in c(FALSE, TRUE)) {
     local_options(shinyOAuth.expose_error_body = expose)
     for (claim in c("iss", "aud")) {
@@ -17,15 +20,26 @@ test_that("claim conditions redact values and bound explicitly exposed details",
       expect_identical(error$context$claim, claim)
       expect_match(error$context$expected_claim_digest, "^[a-f0-9]{64}$")
       expect_false(identical(
-        error$context$expected_claim_digest, error$context$received_claim_digest
+        error$context$expected_claim_digest,
+        error$context$received_claim_digest
       ))
       message <- conditionMessage(error)
-      expect_false(grepl("private-expected\\?|private-received\\?|query-secret", message))
+      expect_false(grepl(
+        "private-expected\\?|private-received\\?|query-secret",
+        message
+      ))
       expect_lt(nchar(message, type = "bytes"), 1500)
       if (expose) {
-        expect_match(message, if (claim == "iss") "received.example.test" else "{literal}", fixed = TRUE)
+        expect_match(
+          message,
+          if (claim == "iss") "received.example.test" else "{literal}",
+          fixed = TRUE
+        )
       } else {
-        expect_false(grepl("private-|expected.example|received.example", message))
+        expect_false(grepl(
+          "private-|expected.example|received.example",
+          message
+        ))
       }
     }
   }
@@ -34,12 +48,18 @@ test_that("claim conditions redact values and bound explicitly exposed details",
 test_that("required ACR conditions apply the diagnostic exposure policy", {
   client <- oauth_client(
     oauth_provider(
-      name = "acr", auth_url = "https://example.test/auth",
-      token_url = "https://example.test/token", issuer = "https://example.test",
-      use_nonce = FALSE, userinfo_required = FALSE
+      name = "acr",
+      auth_url = "https://example.test/auth",
+      token_url = "https://example.test/token",
+      issuer = "https://example.test",
+      use_nonce = FALSE,
+      userinfo_required = FALSE
     ),
-    client_id = "client", client_secret = "secret",
-    redirect_uri = "http://localhost:8100", scopes = "openid", scope_validation = "none",
+    client_id = "client",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:8100",
+    scopes = "openid",
+    scope_validation = "none",
     required_acr_values = c("private-expected-acr", "private-alternative-acr")
   )
   key <- openssl::rsa_keygen()
@@ -49,21 +69,39 @@ test_that("required ACR conditions apply the diagnostic exposure policy", {
     local_options(shinyOAuth.expose_error_body = expose)
     for (acr in list(NULL, "private-received-acr-{literal}")) {
       claims <- jose::jwt_claim(
-        iss = "https://example.test", aud = "client", sub = "user-1",
-        iat = as.numeric(Sys.time()) - 10, exp = as.numeric(Sys.time()) + 300
+        iss = "https://example.test",
+        aud = "client",
+        sub = "user-1",
+        iat = as.numeric(Sys.time()) - 10,
+        exp = as.numeric(Sys.time()) + 300
       )
       claims[["acr"]] <- acr
       jwt <- jose::jwt_encode_sig(claims, key = key)
-      error <- tryCatch(verify_token_set(client, list(
-        access_token = "test-access", token_type = "Bearer",
-        expires_in = 300, id_token = jwt
-      ), nonce = NULL), error = identity)
+      error <- tryCatch(
+        verify_token_set(
+          client,
+          list(
+            access_token = "test-access",
+            token_type = "Bearer",
+            expires_in = 300,
+            id_token = jwt
+          ),
+          nonce = NULL
+        ),
+        error = identity
+      )
       expect_s3_class(error, "shinyOAuth_id_token_error")
       expect_identical(error$context$claim, "acr")
       expect_match(error$context$expected_claim_digest, "^[a-f0-9]{64}$")
       if (expose) {
-        expect_match(conditionMessage(error), "private-expected-acr", fixed = TRUE)
-        if (!is.null(acr)) expect_match(conditionMessage(error), acr, fixed = TRUE)
+        expect_match(
+          conditionMessage(error),
+          "private-expected-acr",
+          fixed = TRUE
+        )
+        if (!is.null(acr)) {
+          expect_match(conditionMessage(error), acr, fixed = TRUE)
+        }
       } else {
         expect_false(grepl("private-", conditionMessage(error)))
       }
@@ -225,34 +263,54 @@ test_that("JWKS metadata failure redacts the producer's event and condition", {
     req_with_retry = function(...) stop(simpleError(detail)),
     .package = "shinyOAuth"
   )
-  error <- tryCatch(fetch_authorization_server_metadata(issuer), error = identity)
+  error <- tryCatch(
+    fetch_authorization_server_metadata(issuer),
+    error = identity
+  )
   expect_s3_class(error, "shinyOAuth_config_error")
   expect_length(error$context$attempted_metadata_urls, 3L)
-  expect_true(all(error$context$attempted_metadata_urls == "https://example.test/"))
+  expect_true(all(
+    error$context$attempted_metadata_urls == "https://example.test/"
+  ))
   expect_null(error$context$metadata_error)
   expect_false(any(grepl(
     "private-tenant|query-marker|diagnostic-marker",
-    c(conditionMessage(error), capture.output(print(error)), unlist(error$context),
-      unlist(seen))
+    c(
+      conditionMessage(error),
+      capture.output(print(error)),
+      unlist(error$context),
+      unlist(seen)
+    )
   )))
   local_options(shinyOAuth.expose_error_body = TRUE)
-  error <- tryCatch(fetch_authorization_server_metadata(issuer), error = identity)
+  error <- tryCatch(
+    fetch_authorization_server_metadata(issuer),
+    error = identity
+  )
   expect_match(conditionMessage(error), "diagnostic-marker", fixed = TRUE)
   expect_false(grepl("private-tenant|query-marker", conditionMessage(error)))
 })
 
 test_that("redirect conditions omit identifying Location content", {
-  local_options(shinyOAuth.allow_redirect = FALSE,
-                shinyOAuth.telemetry_path_scrubber = NULL)
+  local_options(
+    shinyOAuth.allow_redirect = FALSE,
+    shinyOAuth.telemetry_path_scrubber = NULL
+  )
   for (location in c(
     "https://example.test/private-tenant?query-marker#fragment-marker",
-    "/private-tenant?query-marker", ""
+    "/private-tenant?query-marker",
+    ""
   )) {
-    resp <- httr2::response(status_code = 302L, headers = list(location = location))
+    resp <- httr2::response(
+      status_code = 302L,
+      headers = list(location = location)
+    )
     error <- tryCatch(reject_redirect_response(resp), error = identity)
     expect_s3_class(error, "shinyOAuth_http_error")
-    expect_false(grepl("private-tenant|query-marker|fragment-marker",
-                       conditionMessage(error)))
+    expect_false(grepl(
+      "private-tenant|query-marker|fragment-marker",
+      conditionMessage(error)
+    ))
   }
 })
 
@@ -262,13 +320,19 @@ test_that("transport conditions retain classification without raw parent data", 
   req <- httr2::request(url)
   local_mocked_bindings(
     req_perform = function(...) {
-      rlang::abort(detail, class = "test_connection_error", request = req,
-                   parent = simpleError(detail))
+      rlang::abort(
+        detail,
+        class = "test_connection_error",
+        request = req,
+        parent = simpleError(detail)
+      )
     },
     .package = "httr2"
   )
-  local_options(shinyOAuth.expose_error_body = FALSE,
-                shinyOAuth.telemetry_path_scrubber = NULL)
+  local_options(
+    shinyOAuth.expose_error_body = FALSE,
+    shinyOAuth.telemetry_path_scrubber = NULL
+  )
   error <- tryCatch(req_with_retry(req, idempotent = FALSE), error = identity)
   expect_s3_class(error, "shinyOAuth_transport_error")
   expect_s3_class(error$parent, "test_connection_error")
@@ -279,7 +343,11 @@ test_that("transport conditions retain classification without raw parent data", 
   expect_identical(error$context$url, "https://example.test/")
   expect_false(any(grepl(
     "private-tenant|query-marker|diagnostic-marker",
-    c(conditionMessage(error), capture.output(print(error)), unlist(error$context),
-      unlist(error$parent))
+    c(
+      conditionMessage(error),
+      capture.output(print(error)),
+      unlist(error$context),
+      unlist(error$parent)
+    )
   )))
 })

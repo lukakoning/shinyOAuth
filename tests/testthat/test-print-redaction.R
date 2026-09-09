@@ -27,7 +27,10 @@ test_that("multi-redirect clients redact every displayed redirect URI", {
   for (output in collect_rendered_output(client)) {
     expect_match(output, "authorization_server_redirect_uris", fixed = TRUE)
     expect_match(output, "https://app.example.test/", fixed = TRUE)
-    expect_false(grepl("private-one|private-two|synthetic-first|synthetic-second", output))
+    expect_false(grepl(
+      "private-one|private-two|synthetic-first|synthetic-second",
+      output
+    ))
   }
 })
 

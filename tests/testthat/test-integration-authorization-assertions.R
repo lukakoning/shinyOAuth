@@ -8,12 +8,20 @@ integration_authorization_helpers <- function() {
 
 test_that("negative authorization assertions propagate infrastructure errors", {
   integration <- integration_authorization_helpers()
-  for (message in c("Connection unavailable", "Login form missing", "Parser failed")) {
+  for (message in c(
+    "Connection unavailable",
+    "Login form missing",
+    "Parser failed"
+  )) {
     error <- simpleError(message)
     integration$perform_login_form <- function(...) stop(error)
-    observed <- tryCatch(integration$expect_no_authorization_code(
-      "https://example.test/auth?state=test-state", "https://example.test/callback"
-    ), error = identity)
+    observed <- tryCatch(
+      integration$expect_no_authorization_code(
+        "https://example.test/auth?state=test-state",
+        "https://example.test/callback"
+      ),
+      error = identity
+    )
     expect_identical(observed, error)
   }
 })
@@ -22,13 +30,17 @@ test_that("negative authorization assertions require specific protocol evidence"
   integration <- integration_authorization_helpers()
   auth <- "https://example.test/auth?state=test-state"
   redirect <- "https://example.test/callback"
-  callback <- paste0(redirect, "?error=invalid_request&state=test-state&",
-                     "error_description=Missing%20parameter%3A%20code_challenge")
+  callback <- paste0(
+    redirect,
+    "?error=invalid_request&state=test-state&",
+    "error_description=Missing%20parameter%3A%20code_challenge"
+  )
   response <- list(code = NA_character_, callback_url = callback)
   integration$perform_login_form <- function(...) response
   expect_success(integration$expect_no_authorization_code(auth, redirect))
   response$callback_url <- paste0(
-    redirect, "?error=invalid_request&state=test-state&",
+    redirect,
+    "?error=invalid_request&state=test-state&",
     "error_description=Invalid+parameter%3A+code+challenge+method+is+not+matching+the+configured+one"
   )
   expect_success(integration$expect_no_authorization_code(auth, redirect))

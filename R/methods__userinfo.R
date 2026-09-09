@@ -900,7 +900,9 @@ validate_signed_userinfo_claims <- function(
     }
     err_claim_validation(
       "Signed UserInfo JWT 'iss' claim does not match provider issuer (OIDC Core 5.3.2)",
-      claim = "iss", expected = expected_issuer, received = iss,
+      claim = "iss",
+      expected = expected_issuer,
+      received = iss,
       error = err_userinfo
     )
   }
@@ -932,7 +934,9 @@ validate_signed_userinfo_claims <- function(
     }
     err_claim_validation(
       "Signed UserInfo JWT 'aud' claim does not include client_id (OIDC Core 5.3.2)",
-      claim = "aud", expected = expected_client_id, received = aud,
+      claim = "aud",
+      expected = expected_client_id,
+      received = aud,
       error = err_userinfo
     )
   }

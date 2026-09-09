@@ -2901,14 +2901,18 @@ verify_token_set <- function(
         if (is.null(acr_value) || !is_valid_string(acr_value)) {
           err_claim_validation(
             "ID token missing required acr claim (OIDC Core Section 2)",
-            claim = "acr", expected = racr, received = acr_value,
+            claim = "acr",
+            expected = racr,
+            received = acr_value,
             error = err_id_token
           )
         }
         if (!acr_value %in% racr) {
           err_claim_validation(
             "ID token acr claim is not in the required_acr_values allowlist",
-            claim = "acr", expected = racr, received = acr_value,
+            claim = "acr",
+            expected = racr,
+            received = acr_value,
             error = err_id_token
           )
         }

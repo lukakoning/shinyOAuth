@@ -55,13 +55,23 @@ test_that("token scope overrides are reserved even with the unblock option", {
   local_options(shinyOAuth.unblock_token_params = "scope")
   for (name in c("scope", "SCOPE", " scope ")) {
     extra <- setNames(list("profile"), name)
-    expect_error(oauth_provider(
-      name = "example", auth_url = "https://example.com/auth",
-      token_url = "https://example.com/token", extra_token_params = extra
-    ), "scope is reserved")
-    expect_error(merge_token_extra_params(
-      list(grant_type = "refresh_token"), extra
-    ), class = "shinyOAuth_config_error", regexp = "scope is reserved")
+    expect_error(
+      oauth_provider(
+        name = "example",
+        auth_url = "https://example.com/auth",
+        token_url = "https://example.com/token",
+        extra_token_params = extra
+      ),
+      "scope is reserved"
+    )
+    expect_error(
+      merge_token_extra_params(
+        list(grant_type = "refresh_token"),
+        extra
+      ),
+      class = "shinyOAuth_config_error",
+      regexp = "scope is reserved"
+    )
   }
   expect_identical(
     merge_oauth_extra_params(list(scope = "profile"), list(scope = "email")),

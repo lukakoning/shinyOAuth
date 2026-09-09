@@ -796,11 +796,20 @@ validate_resource_request_policies <- function(req) {
     )
   }
   auth_options <- c(
-    "httpauth", "userpwd", "username", "password", "oauth2_bearer",
-    "netrc", "netrc_file", "login_options", "sasl_authzid"
+    "httpauth",
+    "userpwd",
+    "username",
+    "password",
+    "oauth2_bearer",
+    "netrc",
+    "netrc_file",
+    "login_options",
+    "sasl_authzid"
   )
   if (any(names(req[["options"]]) %in% auth_options)) {
-    err_input("Prebuilt resource requests must not configure curl authentication")
+    err_input(
+      "Prebuilt resource requests must not configure curl authentication"
+    )
   }
   invisible(TRUE)
 }

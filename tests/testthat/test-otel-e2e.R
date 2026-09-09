@@ -96,7 +96,8 @@ otel_e2e("HTTP result status follows client span conventions", {
 otel_e2e("HTTP transport exceptions use condition classification", {
   record <- otelsdk::with_otel_record({
     expect_error(with_otel_span(
-      "http-transport", stop(simpleError("Connection unavailable")),
+      "http-transport",
+      stop(simpleError("Connection unavailable")),
       mark_ok = FALSE
     ))
   })

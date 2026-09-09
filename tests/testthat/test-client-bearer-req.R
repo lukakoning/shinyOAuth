@@ -458,7 +458,8 @@ test_that("prebuilt resource policy conflicts are rejected before execution", {
     for (token in c("test-user-a", "test-user-b")) {
       expect_error(
         perform_resource_req(token, req),
-        class = "shinyOAuth_input_error", regexp = "Prebuilt"
+        class = "shinyOAuth_input_error",
+        regexp = "Prebuilt"
       )
     }
   }

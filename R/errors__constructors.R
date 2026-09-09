@@ -73,15 +73,24 @@ err_claim_validation <- function(msg, claim, expected, received, error) {
   if (allow_expose_error_body()) {
     bullets <- c(
       bullets,
-      "i" = paste0("Expected: ", escape_diagnostic_markup(sanitize_diagnostic_text(expected))),
-      "i" = paste0("Got: ", escape_diagnostic_markup(sanitize_diagnostic_text(received)))
+      "i" = paste0(
+        "Expected: ",
+        escape_diagnostic_markup(sanitize_diagnostic_text(expected))
+      ),
+      "i" = paste0(
+        "Got: ",
+        escape_diagnostic_markup(sanitize_diagnostic_text(received))
+      )
     )
   }
-  error(bullets, context = list(
-    claim = claim,
-    expected_claim_digest = string_digest(expected),
-    received_claim_digest = string_digest(received)
-  ))
+  error(
+    bullets,
+    context = list(
+      claim = claim,
+      expected_claim_digest = string_digest(expected),
+      received_claim_digest = string_digest(received)
+    )
+  )
 }
 
 #' Build non-sensitive context for a parser failure

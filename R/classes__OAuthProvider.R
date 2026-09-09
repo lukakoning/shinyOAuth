@@ -1316,7 +1316,9 @@ oauth_provider_validate <- function(self) {
       )
     }
     if ("scope" %in% tolower(trimws(nms))) {
-      return("OAuthProvider: scope is reserved in extra_token_params; refresh scope narrowing is not supported")
+      return(
+        "OAuthProvider: scope is reserved in extra_token_params; refresh scope narrowing is not supported"
+      )
     }
   }
 

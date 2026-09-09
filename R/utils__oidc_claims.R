@@ -12,16 +12,21 @@ validate_oidc_standard_claim_types <- function(claims, error, source) {
     is.character(value) && length(value) == 1L && !is.na(value)
   }
   for (field in c("email_verified", "phone_number_verified", "acr", "amr")) {
-    if (!field %in% names(claims)) next
+    if (!field %in% names(claims)) {
+      next
+    }
     value <- claims[[field]]
-    valid <- switch(field,
+    valid <- switch(
+      field,
       acr = scalar_string(value),
-      amr = is.list(value) && is.null(names(value)) &&
+      amr = is.list(value) &&
+        is.null(names(value)) &&
         all(vapply(value, scalar_string, logical(1))),
       is.logical(value) && length(value) == 1L && !is.na(value)
     )
     if (!valid) {
-      shape <- switch(field,
+      shape <- switch(
+        field,
         acr = "a JSON string",
         amr = "a JSON array of strings",
         "a JSON Boolean"
