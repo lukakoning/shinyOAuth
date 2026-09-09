@@ -385,6 +385,40 @@ test_that("callback iss matching expected issuer is accepted in strict mode", {
   )
 })
 
+test_that("query issuer mismatch audits distinguish realms without revealing paths", {
+  expected <- "https://issuer.example.test/private-expected"
+  received <- "https://issuer.example.test/private-received"
+  client <- make_iss_test_client(issuer = expected)
+  events <- list()
+  local_options(
+    shinyOAuth.skip_browser_token = TRUE,
+    shinyOAuth.telemetry_path_scrubber = NULL,
+    shinyOAuth.audit_hook = function(event) {
+      events[[length(events) + 1L]] <<- event
+    }
+  )
+  shiny::testServer(oauth_module_server,
+    args = list(id = "auth", client = client, auto_redirect = FALSE), {
+      state <- parse_query_param(values$build_auth_url(), "state")
+      values$.process_query(paste0(
+        "?code=ok&state=", state, "&iss=",
+        utils::URLencode(received, reserved = TRUE)
+      ))
+      session$flushReact()
+      expect_identical(values$error, "issuer_mismatch")
+    }
+  )
+  events <- Filter(function(e) identical(e$type, "audit_callback_iss_mismatch"), events)
+  expect_length(events, 1L)
+  event <- events[[1]]
+  expect_identical(event$expected_issuer, "https://issuer.example.test/")
+  expect_identical(event$callback_issuer, event$expected_issuer)
+  expect_identical(event$expected_issuer_digest, string_digest(expected))
+  expect_identical(event$callback_issuer_digest, string_digest(received))
+  expect_false(identical(event$expected_issuer_digest, event$callback_issuer_digest))
+  expect_false(any(grepl("private-expected|private-received", unlist(event))))
+})
+
 test_that("callback iss mismatching expected issuer is rejected", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
   cli <- make_iss_test_client(

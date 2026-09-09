@@ -2576,6 +2576,8 @@ oauth_module_server <- function(
                 provider = client@provider@name %||% NA_character_,
                 expected_issuer = expected_issuer,
                 callback_issuer = iss %||% NULL,
+                expected_issuer_digest = string_digest(expected_issuer),
+                callback_issuer_digest = string_digest(iss),
                 client_id_digest = string_digest(client@client_id),
                 error_class = paste(class(e), collapse = ", ")
               ))
