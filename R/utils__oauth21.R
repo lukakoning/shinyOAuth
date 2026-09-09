@@ -143,42 +143,42 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     self_signed_tls_client_auth = cert,
     FALSE
   )
-  # Basic/post fallback and HMAC metadata compatibility can be resolved without
-  # key parsing or a signing probe. Asymmetric capabilities remain unobserved.
+  # Share algorithm normalization and key inspection with runtime construction.
+  # Unparsed keys and unknown capabilities remain unresolved without signing.
   if (style %in% c("client_secret_jwt", "private_key_jwt")) {
-    alg <- effective("client_assertion_alg")
+    alg <- canonicalize_jws_alg(effective("client_assertion_alg"))
     advertised <- if (endpoint %in% c("token", "par")) {
       provider@token_endpoint_auth_signing_alg_values_supported
     } else {
       provider@endpoint_auth_metadata[[endpoint]]$signing_algs
     }
-    if (is_valid_string(alg)) {
-      if (length(advertised) && !alg %in% advertised) {
-        credentials <- FALSE
-      }
-      if (style == "client_secret_jwt") {
-        credentials <- credentials &&
-          alg %in% c("HS256", "HS384", "HS512") &&
-          nchar(secret, type = "bytes") >= min_hmac_key_bytes(alg)
-      }
-    } else if (length(advertised) && style == "client_secret_jwt") {
-      candidates <- if (endpoint %in% c("introspection", "revocation")) {
-        intersect(advertised, c("HS256", "HS384", "HS512"))
-      } else {
-        intersect(advertised, "HS256")
-      }
-      credentials <- credentials &&
-        any(vapply(
-          candidates,
-          function(alg) {
-            nchar(secret, type = "bytes") >= min_hmac_key_bytes(alg)
-          },
-          logical(1)
-        ))
-    } else if (length(advertised) && style == "private_key_jwt") {
-      credentials <- if (credentials) NA else FALSE
+    candidates <- if (nzchar(alg)) {
+      alg
+    } else if (length(advertised) && endpoint %in% c("introspection", "revocation")) {
+      advertised
+    } else if (style == "client_secret_jwt") {
+      "HS256"
+    } else {
+      # These are the runtime defaults for RSA, EC and Ed25519 respectively.
+      c("RS256", "ES256", "ES384", "ES512", "EdDSA")
     }
+    compatible <- vapply(candidates, function(candidate) {
+      if (style == "client_secret_jwt") {
+        has_secret && candidate %in% c("HS256", "HS384", "HS512") &&
+          nchar(secret, type = "bytes") >= min_hmac_key_bytes(candidate)
+      } else {
+        private_key_jws_alg_compatibility(
+          effective("client_assertion_private_key"), candidate
+        )
+      }
+    }, logical(1))
+    if (length(advertised)) {
+      compatible <- compatible & candidates %in% advertised
+    }
+    credentials <- credentials && any(compatible)
   }
+  mtls_backend <- !mtls || mtls_pem_backend_supported()
+  credentials <- credentials && mtls_backend
   headers <- if (endpoint == "token") {
     provider@extra_token_headers
   } else {
@@ -207,6 +207,8 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     style = style,
     url = url,
     credentials = credentials,
+    mtls = mtls,
+    mtls_backend = mtls_backend,
     problem = method$problem,
     confidential = !style %in% c("public") &&
       !(style == "body" && !has_secret) &&

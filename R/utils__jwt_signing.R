@@ -442,11 +442,34 @@ min_hmac_key_bytes <- function(alg) {
 #' @keywords internal
 #' @noRd
 private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
+  compatible <- private_key_jws_alg_compatibility(key, alg)
+  if (!is.na(compatible)) {
+    return(compatible)
+  }
+  # Preserve runtime fallbacks; read-only assessment never invokes them.
+  if (inherits(key, "rsa")) {
+    return(FALSE)
+  }
+  if (inherits(key, "ecdsa")) {
+    return(canonicalize_jws_alg(alg) %in% c("ES256", "ES384", "ES512"))
+  }
+  clm <- jose::jwt_claim(jti = "compatibility-check", iat = 1L)
+  hdr <- list(typ = typ, alg = canonicalize_jws_alg(alg))
+  sig_try <- try(
+    jose::jwt_encode_sig(clm, key = key, header = hdr),
+    silent = TRUE
+  )
+  !inherits(sig_try, "try-error")
+}
+
+# Inspect known key capabilities without signing, parsing key input, or errors.
+# NA means that runtime would need a fallback or a signing probe.
+private_key_jws_alg_compatibility <- function(key, alg) {
   alg <- canonicalize_jws_alg(alg)
 
   if (inherits(key, "rsa")) {
     bits <- jwe_rsa_key_size_bits(key)
-    return(!is.na(bits) && bits >= 2048L && identical(alg, "RS256"))
+    return(bits >= 2048L && identical(alg, "RS256"))
   }
 
   if (inherits(key, "ecdsa")) {
@@ -467,7 +490,7 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
       }
     }
 
-    return(alg %in% c("ES256", "ES384", "ES512"))
+    return(if (alg %in% c("ES256", "ES384", "ES512")) NA else FALSE)
   }
 
   if (inherits(key, "ed25519")) {
@@ -477,14 +500,7 @@ private_key_can_sign_jws_alg <- function(key, alg, typ = "JWT") {
     return(FALSE)
   }
 
-  clm <- jose::jwt_claim(jti = "compatibility-check", iat = 1L)
-  hdr <- list(typ = typ, alg = alg)
-  sig_try <- try(
-    jose::jwt_encode_sig(clm, key = key, header = hdr),
-    silent = TRUE
-  )
-
-  !inherits(sig_try, "try-error")
+  NA
 }
 
 # jose does not accept OKP private keys. Encode the standard JWS signing input

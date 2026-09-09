@@ -227,6 +227,15 @@ check_oauth21 <- function(
       "Configure an HTTPS URL for the selected endpoint.",
       section = "1.5"
     )
+    if (effective$mtls) {
+      add(
+        paste0("mtls.backend.", endpoint),
+        status(effective$mtls_backend),
+        "The active curl TLS backend must support the configured PEM mTLS credentials.",
+        "Select the OpenSSL curl backend before loading curl on Windows, then restart R.",
+        reference = "https://www.rfc-editor.org/rfc/rfc8705.html#section-2"
+      )
+    }
     if (endpoint == "userinfo") {
       next
     }

@@ -287,8 +287,7 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
 validate_mtls_tls_backend <- function(
   ssl_version = curl::curl_version()$ssl_version
 ) {
-  active <- gsub("\\([^)]*\\)", "", ssl_version)
-  if (grepl("Schannel", active, ignore.case = TRUE)) {
+  if (!mtls_pem_backend_supported(ssl_version)) {
     err_config(c(
       "PEM mTLS certificate/key files require the OpenSSL curl backend on Windows",
       "i" = paste(
@@ -298,6 +297,13 @@ validate_mtls_tls_backend <- function(
     ))
   }
   invisible(TRUE)
+}
+
+mtls_pem_backend_supported <- function(
+  ssl_version = curl::curl_version()$ssl_version
+) {
+  active <- gsub("\\([^)]*\\)", "", ssl_version)
+  !grepl("Schannel", active, ignore.case = TRUE)
 }
 
 #' Attach mTLS client authentication to authorization-server requests
