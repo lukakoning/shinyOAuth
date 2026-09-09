@@ -233,6 +233,8 @@ check_oauth21 <- function(
         status(effective$mtls_backend),
         "The active curl TLS backend must support the configured PEM mTLS credentials.",
         "Select the OpenSSL curl backend before loading curl on Windows, then restart R.",
+        evidence = "runtime",
+        requirement_source = "package_policy",
         reference = "https://www.rfc-editor.org/rfc/rfc8705.html#section-2"
       )
     }

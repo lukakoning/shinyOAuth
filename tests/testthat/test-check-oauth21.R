@@ -909,6 +909,14 @@ test_that("assessment and PEM mTLS construction agree on the active backend", {
       oauth21_finding(report, "mtls.backend.token")$status,
       if (supported) "pass" else "fail"
     )
+    expect_identical(
+      oauth21_finding(report, "mtls.backend.token")$requirement_source,
+      "package_policy"
+    )
+    expect_identical(
+      oauth21_finding(report, "mtls.backend.token")$evidence_source,
+      "runtime"
+    )
     request <- httr2::request(client@provider@token_url)
     if (supported) {
       expect_silent(req_apply_mtls_client_certificate(request, client))
