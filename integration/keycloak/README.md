@@ -142,7 +142,7 @@ files listed below.
 - `test_integration_keycloak_resource_indicators.R` — RFC 8707 coverage for both stock Keycloak compatibility and the dedicated audience-mapped fixture client, including local protected-resource rejection of tokens that lack the configured audience.
 - `test_integration_keycloak_dpop_jar.R` — live compatibility coverage recording that `dpop_jkt` is emitted inside signed Request Objects, while this Keycloak fixture rejects DPoP+JAR and DPoP+JAR+PAR combinations.
 - `test_integration_attack_csrf_browser_token_e2e.R` — real browser cookie-boundary CSRF coverage: tampered browser token cookie causes callback rejection as `invalid_state` at the real callback boundary.
-- `test_integration_attack_callback_swap_browser_e2e.R` — real browser callback-swap coverage: a foreign callback is rejected in the attacked session while the rightful callbacks still authenticate their original browser sessions.
+- `test_integration_attack_callback_swap_browser_e2e.R` — real browser callback isolation across separate app deployments with different redirect URIs and state infrastructure; each app can still authenticate its own callback.
 - `test_integration_error_callback_browser_e2e.R` — real browser authorization-error callback coverage: live cookie metadata inspection, issuer mismatch before state consumption, valid provider-error surfacing after validation, replay blocking, and URL/title cleanup.
 - `test_integration_attack_login_csrf_browser_e2e.R` — real browser login-CSRF/account-substitution semantics: the browser flow authenticates the subject who actually logged in at Keycloak, and the app sees that verified subject for its own policy checks.
 - `test_integration_attack_dpop_resource.R` — DPoP protected-resource attack coverage: proof replay, wrong-key proof binding, bearer fallback rejection, and mirrored assertions against both package-backed and independent verification logic.
@@ -204,17 +204,29 @@ Test users: `alice` / `alice` and `bob` / `bob` (for cross-user attacks).
 | `test_integration_attack_code_replay.R` | **Authorization code replay** — replaying an already-exchanged code | Single-use state store; Keycloak server-side code single-use (invalid_grant) |
 | `test_integration_attack_state_replay.R` | **State replay / CSRF** — reusing a consumed state parameter or injecting state from a different session | Single-use state store; per-session state isolation; AES-256-GCM key binding |
 | `test_integration_attack_state_tamper.R` | **State parameter tampering** — bit-flip, truncation, random substitution, appending/prepending garbage, wrong encryption key | AES-256-GCM authenticated encryption (integrity tag); input validation |
-| `test_integration_attack_code_injection.R` | **Cross-user flow substitution / login CSRF semantics** — Bob completes Alice's started flow, so the callback authenticates Bob, not Alice | Verified subject/claim surfaces remain app-visible for expected-user policy checks; independent state injection, wrong-verifier exchange, and cross-client swaps still fail closed |
+| `test_integration_attack_code_injection.R` | **Cross-user flow substitution / login CSRF semantics** — Bob completes Alice's started flow, so the callback authenticates Bob, not Alice | Verified subject/claim surfaces remain app-visible for expected-user policy checks; independent state injection and wrong-verifier exchange fail closed |
 | `test_integration_attack_login_csrf_browser_e2e.R` | **Real browser login CSRF / account substitution semantics** — the browser completes the flow for the provider user who actually signs in, even if the app expected a different account | Verified subject and userinfo claims remain visible at the real browser boundary so the app can reject unexpected accounts with its own policy |
 | `test_integration_attack_nonce_mismatch.R` | **Nonce mismatch / replay** — tampered, missing, or replayed nonce in ID token validation | ID token nonce claim verification against state store |
 | `test_integration_attack_csrf_browser_token.R` | **Browser token callback validation** — mismatched, missing, or malformed browser token values passed directly into callback handling | constant_time_compare(); browser token format validation; skip-guard |
 | `test_integration_attack_csrf_browser_token_e2e.R` | **Browser token CSRF (double-submit cookie bypass)** — attacker tampers with the real app-origin browser token cookie before the callback returns | Cookie/header double-submit binding across the real browser boundary; invalid_state failure at the live callback origin |
-| `test_integration_attack_callback_swap_browser_e2e.R` | **Real browser callback swap** — one live browser session receives another session's callback before both rightful callbacks arrive | Foreign callback rejected at the real callback origin; cookie/session isolation via distinct module instances; rightful callbacks still authenticate their original sessions |
+| `test_integration_attack_callback_swap_browser_e2e.R` | **Separate app callback isolation** — two deployments receive each other's callbacks | Foreign callback rejected with distinct redirect URIs and state infrastructure; rightful callbacks still authenticate their original sessions |
 | `test_integration_attack_dpop_resource.R` | **DPoP protected-resource substitution/replay** — bearer fallback, mismatched proof key, or proof replay against a DPoP-bound access token | DPoP `cnf.jkt` binding, `ath`/`htu`/`htm` proof checks, nonce/replay defenses, and parity between package-backed and independent verifiers |
 | `test_integration_attack_expired_state.R` | **Expired state payload** — delayed callback after state max_age | issued_at freshness check in state_payload_decrypt_validate() |
-| `test_integration_attack_cross_client.R` | **Cross-client code swap** — code issued for one client_id exchanged by another | Keycloak server-side client_id binding; state payload client_id binding |
 | `test_integration_attack_redirect_uri.R` | **Redirect URI manipulation** — attacker changes redirect_uri to steal authorization code | Keycloak redirect URI allowlist; state payload redirect_uri binding |
 | `test_integration_attack_concurrent_flows.R` | **Concurrent flow isolation** — multiple simultaneous flows and cross-session callback swaps | State store entry keying; per-session isolation; multi-user independence |
+
+Negative PKCE authorization assertions require a callback at the configured URI,
+the matching state, no code, and `invalid_request` identifying PKCE. Transport
+and login-driver failures fail the test.
+
+The former cross-client exchange cases also had missing or incorrect PKCE
+verifiers; their generic rejections did not establish client-ID binding. Those
+cases and the module case with independent encryption keys have been removed
+from the evidence suite. `tests/testthat/test-login-callback.R` isolates local
+client-ID binding with a valid baseline and a specific mismatch assertion.
+Independent server-side client binding still needs a dedicated integration
+fixture. The separate-app browser fixture above does not establish session
+binding within a single deployed client configuration.
 
 For the browser `request_uri` integration test, the Shiny app listens on all
 interfaces but the browser uses `127.0.0.1` so redirect cookies stay on one

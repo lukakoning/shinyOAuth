@@ -1,8 +1,10 @@
-## Attack vector: swapped callbacks across real browser sessions
+## Callback isolation across separate app deployments
 ##
 ## Verifies that a callback minted for one live app/browser session is rejected
 ## when delivered to another, and that each app can still complete its own
 ## legitimate callback afterward.
+## The apps use different redirect URIs and state infrastructure. This fixture
+## does not isolate browser-session binding within one deployed client.
 
 if (!exists("make_provider", mode = "function")) {
   source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
@@ -174,7 +176,7 @@ wait_for_auth_state_transition <- function(
   )
 }
 
-testthat::test_that("swapped browser callbacks are rejected without consuming the rightful callbacks", {
+testthat::test_that("separate app deployments reject swapped callbacks and retain their own callbacks", {
   maybe_skip_keycloak()
   testthat::skip_if_not_installed("shinytest2")
   testthat::skip_if_not_installed("chromote")
