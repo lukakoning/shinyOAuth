@@ -443,7 +443,7 @@ audit_userinfo_event <- function(
 
 #' Validate protocol-sensitive JSON UserInfo claim types
 #'
-#' Checks the subject and verification flags before claim-policy validation.
+#' Checks the subject and standard claim types before claim-policy validation.
 #' @param claims UserInfo claims parsed without simplifying JSON arrays.
 #' @param oauth_client OAuth client associated with the response.
 #' @param shiny_session Optional Shiny session context for audit events.
@@ -466,16 +466,7 @@ validate_userinfo_json_claim_types <- function(
     )
     err_userinfo("UserInfo response has a missing or invalid 'sub' claim")
   }
-  for (field in c("email_verified", "phone_number_verified")) {
-    value <- claims[[field]]
-    if (
-      field %in%
-        names(claims) &&
-        !(is.logical(value) && length(value) == 1L && !is.na(value))
-    ) {
-      err_userinfo(paste0("UserInfo '", field, "' must be a JSON Boolean"))
-    }
-  }
+  validate_oidc_standard_claim_types(claims, err_userinfo, "UserInfo")
   invisible(TRUE)
 }
 

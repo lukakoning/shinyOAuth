@@ -355,6 +355,7 @@ validate_id_token <- function(
   if (!is_valid_oidc_sub(payload[["sub"]])) {
     err_id_token("ID token sub claim must be 1 to 255 ASCII characters")
   }
+  validate_oidc_standard_claim_types(payload, err_id_token, "ID token")
   # OIDC Core 12.2: During refresh, sub MUST match the original ID token's sub
   if (
     is_valid_string(expected_sub) &&
