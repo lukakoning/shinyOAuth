@@ -380,8 +380,9 @@ Register the signing key with your provider. To encrypt the signed request
 too, configure `request_object_encryption_alg = "RSA-OAEP"` and
 `request_object_encryption_enc` to a supported AES-CBC-HMAC value such as
 `"A128CBC-HS256"`. The provider must publish a suitable encryption key or
-you must supply `request_object_encryption_jwk`. See [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html) for
-supported algorithms and key selection.
+you must supply `request_object_encryption_jwk` to [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html).
+See [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html)
+for supported algorithms and the provider reference for encryption key selection.
 
 PAR, described below, keeps most request details out of the browser URL.
 It can also carry a signed Request Object, combining PAR with JAR.
