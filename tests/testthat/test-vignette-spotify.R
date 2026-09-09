@@ -54,6 +54,35 @@ test_that("Spotify dashboard never disables table escaping", {
   expect_gte(sum(grepl("escape\\s*=\\s*TRUE", source)), 2L)
 })
 
+test_that("recent plays preserve UTC time and fractional seconds", {
+  helpers <- spotify_dashboard_helpers()
+  helpers$spotify_get <- function(...) list(items = list(list(
+    played_at = "2026-09-09T14:23:45.678Z",
+    track = list(name = "Track", artists = list(list(name = "Artist")))
+  )))
+  result <- helpers$get_recently_played(NULL)$played_at
+  expect_equal(
+    as.numeric(result) - as.numeric(as.POSIXct("2026-09-09 14:23:45", tz = "UTC")),
+    0.678,
+    tolerance = 1e-6
+  )
+  expect_identical(attr(result, "tzone"), "UTC")
+})
+
+test_that("Spotify avatars render list and data frame images safely", {
+  helpers <- spotify_dashboard_helpers()
+  url <- "https://i.scdn.co/image/avatar"
+  for (images in list(list(list(url = url)), data.frame(url = url))) {
+    avatar <- helpers$spotify_avatar(images)
+    expect_identical(avatar$name, "img")
+    expect_identical(avatar$attribs$src, url)
+  }
+  for (images in list(NULL, list(), data.frame(), list(list()),
+                     list(list(url = "https://example.test/avatar")))) {
+    expect_null(helpers$spotify_avatar(images))
+  }
+})
+
 test_that("DT escaping covers adversarial Spotify metadata", {
   skip_if_not_installed("DT")
 

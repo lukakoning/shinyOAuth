@@ -61,6 +61,19 @@ spotify_safe_image_url <- function(url) {
   spotify_safe_url(url, c("scdn.co", "spotifycdn.com"))
 }
 
+spotify_avatar <- function(images) {
+  url <- if (is.data.frame(images) && nrow(images) > 0L) {
+    images$url[[1L]]
+  } else if (is.list(images) && length(images) && is.list(images[[1L]])) {
+    images[[1L]][["url"]]
+  } else {
+    NULL
+  }
+  url <- spotify_safe_image_url(url)
+  if (is.null(url)) return(NULL)
+  htmltools::tags$img(src = url, class = "profile-avatar", alt = "User avatar")
+}
+
 # Configure provider and client for Spotify
 
 provider <- oauth_provider_spotify()
@@ -204,6 +217,7 @@ get_recently_played <- function(token, limit = 20) {
     data.frame(
       played_at = as.POSIXct(
         item[["played_at"]] %||% NA_character_,
+        format = "%Y-%m-%dT%H:%M:%OSZ",
         tz = "UTC"
       ),
       track = track[["name"]] %||% NA_character_,
@@ -625,21 +639,7 @@ server <- function(input, output, session) {
       return(div(class = "text-muted", "No user info"))
     }
 
-    avatar <- NULL
-    if (
-      !is.null(user_info$images) &&
-        is.data.frame(user_info$images) &&
-        nrow(user_info$images) > 0
-    ) {
-      img_url <- spotify_safe_image_url(user_info$images$url[[1]])
-      if (!is.null(img_url) && nzchar(img_url)) {
-        avatar <- tags$img(
-          src = img_url,
-          class = "profile-avatar",
-          alt = "User avatar"
-        )
-      }
-    }
+    avatar <- spotify_avatar(user_info$images)
 
     display_name <- user_info$display_name %||% user_info$id %||% "<unknown>"
 
