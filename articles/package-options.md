@@ -294,7 +294,9 @@ CPU or memory usage during decoding and decryption.
 - `options(shinyOAuth.callback_max_iss_bytes = 2048)` – maximum byte
   length of the `iss` query parameter (RFC 9207 issuer identification)
 - `options(shinyOAuth.callback_max_query_bytes = <derived>)` – maximum
-  total byte length of the raw callback query string (pre-parse guard)
+  total byte length of the raw query string. HTTP UI wrappers apply this
+  budget to every request, including ordinary application queries and
+  hosted Request Object requests, before routing or parsing.
 - `options(shinyOAuth.callback_max_browser_token_bytes = 256)` – maximum
   byte length of the `browser_token` argument accepted by
   [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
