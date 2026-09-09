@@ -14,6 +14,44 @@ test_that("prepare_call builds URL with correct params and drops NULLs", {
   expect_false(grepl("[?&]nonce=", url2))
 })
 
+test_that("prepare_call checks generated state against callback and envelope limits before PAR", {
+  client <- make_test_client(
+    use_pkce = TRUE, use_nonce = FALSE,
+    scopes = paste0("https://api.example/permissions/read-", seq_len(10))
+  )
+  client@provider@token_auth_style <- "public"
+  browser <- valid_browser_token()
+  state <- parse_query_param(prepare_call(client, browser), "state", decode = TRUE)
+  expect_gt(nchar(state, type = "bytes"), 1024)
+  expect_lt(nchar(state, type = "bytes"), 8192)
+  initial_keys <- client@state_store$keys()
+  pushed <- 0L
+  local_mocked_bindings(push_authorization_request = function(...) {
+    pushed <<- pushed + 1L
+    stop("must reject state before PAR")
+  })
+  withr::local_options(shinyOAuth.callback_max_state_bytes = 1024)
+  for (par in c(FALSE, TRUE)) {
+    client@provider@par_url <- if (par) "https://example.com/par" else NA_character_
+    for (defer in c(FALSE, TRUE)) {
+      expect_error(
+        prepare_call(client, browser, .defer_build = defer),
+        "Generated state exceeds shinyOAuth.callback_max_state_bytes",
+        class = "shinyOAuth_config_error"
+      )
+      expect_setequal(client@state_store$keys(), initial_keys)
+    }
+  }
+  withr::local_options(
+    shinyOAuth.callback_max_state_bytes = 8192,
+    shinyOAuth.state_max_token_chars = 1024,
+    shinyOAuth.state_fail_delay_ms = 0
+  )
+  expect_error(prepare_call(client, browser), class = "shinyOAuth_state_error")
+  expect_identical(pushed, 0L)
+  expect_setequal(client@state_store$keys(), initial_keys)
+})
+
 test_that("authorization queries preserve fixed bytes and deduplicate managed values", {
   url <- "https://example.com/auth?fixed=a%20b&CLIENT_ID=extension&client%5fid=abc&resource=one"
   result <- shinyOAuth:::authorization_url_append(

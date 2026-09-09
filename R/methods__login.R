@@ -164,6 +164,16 @@ prepare_call <- function(
         )) |>
           state_encrypt_gcm(key = oauth_client@state_key)
 
+        # Apply both callback and envelope budgets before persisting the login
+        # or sending a PAR/Request Object. The finalizer rechecks freshness.
+        if (nchar(payload, type = "bytes") > oauth_callback_limits()$state) {
+          err_config(
+            "Generated state exceeds shinyOAuth.callback_max_state_bytes; reduce login state or increase the callback limit within the state envelope limits.",
+            context = list(phase = "prepare_call::state_size")
+          )
+        }
+        state_decrypt_gcm(payload, key = oauth_client@state_key)
+
         # Store in state store -----------------------------------------------------
 
         # We will need these values later, when we get the callback
