@@ -10,6 +10,33 @@ name: R-CMD-check.yaml
 permissions: read-all
 
 jobs:
+  minimum-testthat:
+    runs-on: ubuntu-latest
+    env:
+      NOT_CRAN: true
+      SHINYOAUTH_BROWSER_TESTS: false
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: r-lib/actions/setup-r@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        with:
+          needs: check
+          extra-packages: any::remotes
+      - name: Install declared testthat minimum
+        shell: Rscript {0}
+        run: |
+          remotes::install_version("testthat", version = "3.1.7", upgrade = "never")
+      - name: Check minimum testthat APIs and package behavior
+        shell: Rscript {0}
+        run: |
+          stopifnot(packageVersion("testthat") == "3.1.7")
+          testthat::test_local(
+            filter = "http-metadata-privacy|otel-unit|introspection-before-userinfo|example-callback-handlers",
+            stop_on_failure = TRUE
+          )
+
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 

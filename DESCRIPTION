@@ -36,7 +36,7 @@ Suggests:
     ggplot2,
     purrr,
     dplyr,
-    testthat (>= 3.0.0),
+    testthat (>= 3.1.7),
     DT,
     knitr,
     rmarkdown,
