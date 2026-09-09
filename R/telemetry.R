@@ -1316,8 +1316,12 @@ otel_record_http_result <- function(resp, span = NULL) {
   # HTTP client spans leave ordinary successes and redirects unset. OAuth
   # operation spans independently decide whether the protocol result succeeded.
   if (status_code >= 400L) {
+    otel_set_span_attributes(
+      span = span,
+      attributes = list(error.type = as.character(status_code))
+    )
     try(
-      span$set_status("error", description = paste0("HTTP ", status_code)),
+      span$set_status("error"),
       silent = TRUE
     )
   }

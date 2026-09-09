@@ -86,7 +86,24 @@ otel_e2e("HTTP result status follows client span conventions", {
       status
     )
     expect_identical(span$status, if (status >= 400L) "error" else "unset")
+    expect_identical(
+      span$attributes[["error.type"]],
+      if (status >= 400L) as.character(status) else NULL
+    )
   }
+})
+
+otel_e2e("HTTP transport exceptions use condition classification", {
+  record <- otelsdk::with_otel_record({
+    expect_error(with_otel_span(
+      "http-transport", stop(simpleError("Connection unavailable")),
+      mark_ok = FALSE
+    ))
+  })
+  span <- record$traces[["http-transport"]]
+  expect_identical(span$status, "error")
+  expect_identical(span$attributes[["error.type"]], "simpleError")
+  expect_null(span$attributes[["http.response.status_code"]])
 })
 
 otel_named_spans <- function(traces, name) {
