@@ -79,9 +79,9 @@
     return null;
   }
 
-  function writeBrowserBinding(name, id, token, cookie, ageMs){
+  function writeBrowserBinding(name, id, token, cookie, ageMs, transaction){
     var key = name + ':binding';
-    var saved = JSON.stringify({version: 2, id: id, token: token, cookie: cookie,
+    var saved = JSON.stringify({version: 2, id: id, token: token, cookie: cookie, transaction: transaction,
       expiresAt: Date.now() + ageMs});
     try {
       window.sessionStorage.setItem(key, saved);
@@ -130,6 +130,9 @@
       var name = bindingId ? storageName + '-' + bindingId : null;
       var marker = name ? getCookie(name, sameSite, cookiePath) : null;
       var v = binding && binding.cookie === marker ? binding.token : null;
+      // Records from older clients have unknown ownership; retain their markers
+      // conservatively, just like a pending transaction copied into a cloned tab.
+      var transaction = !!(binding && binding.transaction !== false);
       var expectedLen = 128; /* 64 bytes hex-encoded */
       // A new authorization must use the binding selected by this Shiny
       // session, even when an existing cookie is syntactically valid.
@@ -138,19 +141,27 @@
         v = payload.token;
         marker = randomHex(64);
         bindingId = randomHex(16);
+        transaction = true;
       }
       if(!isValidHexToken(v, expectedLen)){
         v = randomHex(64);
         marker = randomHex(64);
         bindingId = randomHex(16);
+        transaction = false;
       }
       // Give every new transaction its own cookie as well as tab-local storage.
       // Even a tab cloned with copied sessionStorage cannot replace another
       // tab's pending marker by starting a new login.
       name = storageName + '-' + bindingId;
-      writeBrowserBinding(storageName, bindingId, v, marker, ageMs);
+      writeBrowserBinding(storageName, bindingId, v, marker, ageMs, transaction);
       setCookie(name, marker, ageMs, sameSite, /*forceSecure*/ requireSecure, cookiePath);
       if (getCookie(name, sameSite, cookiePath) !== marker) throw new Error('cookie_unavailable');
+      // An idle predecessor cannot own a pending authorization. Remove it only
+      // after the replacement is usable. Live/legacy predecessors keep their TTL
+      // so a cloned tab cannot invalidate the original tab's pending login.
+      if (binding && binding.transaction === false && binding.id !== bindingId) {
+        clearCookiesFor((storageName + '-' + binding.id).replace(/^__Host-/, ''), sameSite, cookiePath);
+      }
       var shiny = ensureShiny();
       if (shiny) shiny.setInputValue(payload.inputId, v, {priority:'event'});
       if (shiny && payload.requestId) {
