@@ -1,3 +1,76 @@
+test_that("claim conditions redact values and bound explicitly exposed details", {
+  local_options(shinyOAuth.telemetry_path_scrubber = NULL)
+  expected <- "https://expected.example.test/private-expected?query-secret"
+  received <- "https://received.example.test/private-received?query-secret"
+  client_id <- "private-expected-client"
+  received_audience <- paste0("private-received-client-{literal}", strrep("é", 600))
+  for (expose in c(FALSE, TRUE)) {
+    local_options(shinyOAuth.expose_error_body = expose)
+    for (claim in c("iss", "aud")) {
+      claims <- list(sub = "user-1", iss = expected, aud = client_id)
+      claims[[claim]] <- if (claim == "iss") received else received_audience
+      error <- tryCatch(
+        validate_signed_userinfo_claims(claims, expected, client_id),
+        error = identity
+      )
+      expect_s3_class(error, "shinyOAuth_userinfo_error")
+      expect_identical(error$context$claim, claim)
+      expect_match(error$context$expected_claim_digest, "^[a-f0-9]{64}$")
+      expect_false(identical(
+        error$context$expected_claim_digest, error$context$received_claim_digest
+      ))
+      message <- conditionMessage(error)
+      expect_false(grepl("private-expected\\?|private-received\\?|query-secret", message))
+      expect_lt(nchar(message, type = "bytes"), 1500)
+      if (expose) {
+        expect_match(message, if (claim == "iss") "received.example.test" else "{literal}", fixed = TRUE)
+      } else {
+        expect_false(grepl("private-|expected.example|received.example", message))
+      }
+    }
+  }
+})
+
+test_that("required ACR conditions apply the diagnostic exposure policy", {
+  client <- oauth_client(
+    oauth_provider(
+      name = "acr", auth_url = "https://example.test/auth",
+      token_url = "https://example.test/token", issuer = "https://example.test",
+      use_nonce = FALSE, userinfo_required = FALSE
+    ),
+    client_id = "client", client_secret = "secret",
+    redirect_uri = "http://localhost:8100", scopes = "openid", scope_validation = "none",
+    required_acr_values = c("private-expected-acr", "private-alternative-acr")
+  )
+  key <- openssl::rsa_keygen()
+  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = FALSE)
+  local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)))
+  for (expose in c(FALSE, TRUE)) {
+    local_options(shinyOAuth.expose_error_body = expose)
+    for (acr in list(NULL, "private-received-acr-{literal}")) {
+      claims <- jose::jwt_claim(
+        iss = "https://example.test", aud = "client", sub = "user-1",
+        iat = as.numeric(Sys.time()) - 10, exp = as.numeric(Sys.time()) + 300
+      )
+      claims[["acr"]] <- acr
+      jwt <- jose::jwt_encode_sig(claims, key = key)
+      error <- tryCatch(verify_token_set(client, list(
+        access_token = "test-access", token_type = "Bearer",
+        expires_in = 300, id_token = jwt
+      ), nonce = NULL), error = identity)
+      expect_s3_class(error, "shinyOAuth_id_token_error")
+      expect_identical(error$context$claim, "acr")
+      expect_match(error$context$expected_claim_digest, "^[a-f0-9]{64}$")
+      if (expose) {
+        expect_match(conditionMessage(error), "private-expected-acr", fixed = TRUE)
+        if (!is.null(acr)) expect_match(conditionMessage(error), acr, fixed = TRUE)
+      } else {
+        expect_false(grepl("private-", conditionMessage(error)))
+      }
+    }
+  }
+})
+
 test_that("audit and OTel free-form details require exposure permission", {
   detail <- "private detail\r\nhttps://user:password@example.test/path?code=secret#secret"
   event <- list(

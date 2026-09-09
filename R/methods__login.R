@@ -2899,26 +2899,18 @@ verify_token_set <- function(
         }
         acr_value <- acr_payload[["acr"]]
         if (is.null(acr_value) || !is_valid_string(acr_value)) {
-          err_id_token(c(
-            "x" = "ID token missing required acr claim (OIDC Core Section 2)",
-            "i" = paste0(
-              "Required one of: ",
-              paste(racr, collapse = ", ")
-            )
-          ))
+          err_claim_validation(
+            "ID token missing required acr claim (OIDC Core Section 2)",
+            claim = "acr", expected = racr, received = acr_value,
+            error = err_id_token
+          )
         }
         if (!acr_value %in% racr) {
-          err_id_token(c(
-            "x" = paste0(
-              "ID token acr claim '",
-              acr_value,
-              "' is not in the required_acr_values allowlist"
-            ),
-            "i" = paste0(
-              "Allowed: ",
-              paste(racr, collapse = ", ")
-            )
-          ))
+          err_claim_validation(
+            "ID token acr claim is not in the required_acr_values allowlist",
+            claim = "acr", expected = racr, received = acr_value,
+            error = err_id_token
+          )
         }
       }
 

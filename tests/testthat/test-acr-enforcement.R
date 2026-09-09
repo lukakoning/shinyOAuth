@@ -408,7 +408,7 @@ test_that("verify_token_set: errors when acr claim not in allowlist", {
   )
 
   expect_s3_class(err, "shinyOAuth_id_token_error")
-  expect_match(conditionMessage(err), "bronze")
+  expect_false(grepl("bronze", conditionMessage(err), fixed = TRUE))
   expect_match(conditionMessage(err), "allowlist")
 })
 
@@ -518,7 +518,7 @@ test_that("verify_token_set: acr enforcement on refresh with new ID token", {
   )
 
   expect_s3_class(err, "shinyOAuth_id_token_error")
-  expect_match(conditionMessage(err), "bronze")
+  expect_false(grepl("bronze", conditionMessage(err), fixed = TRUE))
   expect_match(conditionMessage(err), "allowlist")
 })
 

@@ -907,11 +907,11 @@ validate_signed_userinfo_claims <- function(
         shiny_session = shiny_session
       )
     }
-    err_userinfo(c(
-      "x" = "Signed UserInfo JWT 'iss' claim does not match provider issuer (OIDC Core 5.3.2)",
-      "i" = paste0("Expected: ", expected_issuer),
-      "i" = paste0("Got: ", iss)
-    ))
+    err_claim_validation(
+      "Signed UserInfo JWT 'iss' claim does not match provider issuer (OIDC Core 5.3.2)",
+      claim = "iss", expected = expected_issuer, received = iss,
+      error = err_userinfo
+    )
   }
 
   # aud MUST be or include the RP's Client ID
@@ -939,11 +939,11 @@ validate_signed_userinfo_claims <- function(
         shiny_session = shiny_session
       )
     }
-    err_userinfo(c(
-      "x" = "Signed UserInfo JWT 'aud' claim does not include client_id (OIDC Core 5.3.2)",
-      "i" = paste0("Expected client_id: ", expected_client_id),
-      "i" = paste0("Got aud: ", paste(aud, collapse = ", "))
-    ))
+    err_claim_validation(
+      "Signed UserInfo JWT 'aud' claim does not include client_id (OIDC Core 5.3.2)",
+      claim = "aud", expected = expected_client_id, received = aud,
+      error = err_userinfo
+    )
   }
 
   required_temporal_claims <- if (!is.null(oauth_client)) {

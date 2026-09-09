@@ -52,6 +52,38 @@ err_abort <- function(
   )
 }
 
+#' Raise a claim-validation error with opt-in diagnostic values
+#'
+#' Keeps direct R conditions and event sinks on the same exposure policy.
+#' @param msg Stable classification message without claim values.
+#' @param claim Name of the claim being checked.
+#' @param expected Configured expected value or allowlist.
+#' @param received Received claim value, including `NULL` for a missing claim.
+#' @param error Typed error constructor accepting message and context.
+#' @return This function does not return; it raises a condition.
+#' @keywords internal
+#' @noRd
+err_claim_validation <- function(msg, claim, expected, received, error) {
+  encode <- function(value) {
+    as.character(jsonlite::toJSON(value, auto_unbox = TRUE, null = "null"))
+  }
+  expected <- encode(expected)
+  received <- encode(received)
+  bullets <- c("x" = msg)
+  if (allow_expose_error_body()) {
+    bullets <- c(
+      bullets,
+      "i" = paste0("Expected: ", escape_diagnostic_markup(sanitize_diagnostic_text(expected))),
+      "i" = paste0("Got: ", escape_diagnostic_markup(sanitize_diagnostic_text(received)))
+    )
+  }
+  error(bullets, context = list(
+    claim = claim,
+    expected_claim_digest = string_digest(expected),
+    received_claim_digest = string_digest(received)
+  ))
+}
+
 #' Build non-sensitive context for a parser failure
 #'
 #' Records only the parser phase, input size, keyed digest, and condition class.
