@@ -74,6 +74,67 @@ make_existing_refresh_token <- function(original_jwt) {
   )
 }
 
+test_that("successive refreshes retain login continuity after omitted claims", {
+  local_options(shinyOAuth.skip_id_sig = TRUE)
+  skip_if_not_installed("mirai")
+  skip_if_not_installed("promises")
+  mirai::daemons(sync = TRUE)
+  withr::defer(mirai::daemons(0))
+  resolve <- function(value) {
+    if (!promises::is.promise(value)) return(value)
+    done <- FALSE
+    result <- error <- NULL
+    promises::then(value, function(x) {
+      result <<- x
+      done <<- TRUE
+    }, function(e) {
+      error <<- e
+      done <<- TRUE
+    })
+    deadline <- Sys.time() + 5
+    while (!done && Sys.time() < deadline) later::run_now(0.05)
+    expect_true(done)
+    if (!is.null(error)) stop(error)
+    result
+  }
+  now <- as.numeric(Sys.time())
+  original <- list(iss = "https://issuer.example.com", sub = "user-1",
+                   aud = "abc", iat = now - 60, exp = now + 3600,
+                   nonce = "login-nonce", auth_time = now - 120)
+  original_jwt <- make_fake_jwt(original)
+  for (async in c(FALSE, TRUE)) {
+    cli <- make_refresh_client()
+    token <- make_existing_refresh_token(original_jwt)
+    refresh_with <- function(claims, token, use_async = async) {
+      claims$iat <- as.numeric(Sys.time())
+      mock_refresh_response(make_fake_jwt(claims), function() {
+        resolve(refresh_token(cli, token, async = use_async, introspect = FALSE))
+      })
+    }
+    omitted <- original
+    omitted$nonce <- omitted$auth_time <- NULL
+    first <- refresh_with(omitted, token)
+    expect_null(first@id_token_claims$nonce)
+    expect_null(first@id_token_claims$auth_time)
+    expect_identical(first@original_id_token, original_jwt)
+    # A worker/process round trip must retain the original baseline.
+    first <- unserialize(serialize(first, NULL))
+    second <- refresh_with(original, first)
+    expect_identical(second@original_id_token, original_jwt)
+    expect_identical(second@id_token_claims$nonce, "login-nonce")
+    for (claim in c("nonce", "auth_time")) {
+      changed <- original
+      changed[[claim]] <- if (claim == "nonce") "different-nonce" else now - 10
+      # Validate the baseline returned by either execution mode with typed
+      # synchronous errors, independent of the worker's error serialization.
+      expect_error(refresh_with(changed, first, use_async = FALSE),
+                   class = "shinyOAuth_id_token_error",
+                   regexp = paste0(claim, ".*does not match the original"))
+    }
+    expect_identical(first@original_id_token, original_jwt)
+  }
+})
+
 # --- iss validation (validated path: id_token_validation = TRUE) ----------
 
 test_that("refresh requires a newly issued ID token with clock tolerance", {

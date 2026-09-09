@@ -44,7 +44,9 @@ An updated \link{OAuthToken} object with refreshed credentials.
 fallback lifetime set by \code{shinyOAuth.default_expires_in} (3600 seconds by default)
 \item \code{refresh_token}: Updated if the provider rotates it; otherwise preserved
 \item \code{id_token}: Updated only if the provider returns one (and it validates);
-otherwise the original from login is preserved
+otherwise the latest stored ID token is preserved
+\item \code{original_id_token}: Retained from login for continuity checks, even if
+intermediate refresh ID tokens omit \code{nonce} or \code{auth_time}
 \item \code{userinfo}: Refreshed if \code{userinfo_required = TRUE}; otherwise preserved
 \item \code{cnf}: Updated from the token response when present, and may be
 backfilled from refresh-time introspection when enabled. When the

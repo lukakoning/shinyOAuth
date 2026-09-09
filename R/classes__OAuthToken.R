@@ -22,6 +22,10 @@
 #' @param token_type OAuth access token type (for example `Bearer` or `DPoP`)
 #' @param refresh_token Refresh token (if provided by the provider)
 #' @param id_token ID token (if provided by the provider; OpenID Connect)
+#' @param original_id_token Initial login ID token retained as the refresh
+#'   continuity baseline. Refresh never replaces it with a newer ID token.
+#'   For manually constructed tokens, the first refresh initializes this from
+#'   `id_token` if omitted. Treat this property as credential material.
 #' @param expires_at Numeric timestamp (seconds since epoch) when the access
 #'  token expires, `NA_real_` when the expiry is unknown, or `Inf` for a
 #'  non-expiring token
@@ -110,6 +114,10 @@ OAuthToken <- S7::new_class(
       default = FALSE
     ),
 
+    original_id_token = S7::new_property(
+      S7::class_character, default = NA_character_
+    ),
+
     id_token_claims = S7::new_property(
       class = S7::class_list,
       getter = function(self) {
@@ -151,7 +159,7 @@ oauth_token_validate <- function(self) {
     return("OAuthToken: access_token must be a non-empty string")
   }
 
-  for (field in c("token_type", "refresh_token", "id_token")) {
+  for (field in c("token_type", "refresh_token", "id_token", "original_id_token")) {
     value <- S7::prop(self, field)
     if (!is.character(value) || length(value) != 1L) {
       return(sprintf(

@@ -1734,6 +1734,7 @@ handle_callback_internal <- function(
           )
         },
         id_token = token_set[["id_token"]] %||% NA_character_,
+        original_id_token = token_set[["id_token"]] %||% NA_character_,
         cnf = resolve_token_cnf(
           cnf = token_set[["cnf"]],
           access_token = token_set[["access_token"]]

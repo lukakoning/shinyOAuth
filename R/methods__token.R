@@ -690,7 +690,9 @@ introspect_token <- function(
 #'     fallback lifetime set by `shinyOAuth.default_expires_in` (3600 seconds by default)
 #'   - `refresh_token`: Updated if the provider rotates it; otherwise preserved
 #'   - `id_token`: Updated only if the provider returns one (and it validates);
-#'     otherwise the original from login is preserved
+#'     otherwise the latest stored ID token is preserved
+#'   - `original_id_token`: Retained from login for continuity checks, even if
+#'     intermediate refresh ID tokens omit `nonce` or `auth_time`
 #'   - `userinfo`: Refreshed if `userinfo_required = TRUE`; otherwise preserved
 #'   - `cnf`: Updated from the token response when present, and may be
 #'     backfilled from refresh-time introspection when enabled. When the
@@ -886,6 +888,11 @@ refresh_token_impl <- function(
         # Snapshot the pre-refresh refresh token so the audit event can report
         # whether the provider rotated it (returned a new one) or preserved it.
         pre_refresh_token <- token@refresh_token
+        original_id_token <- if (is_valid_string(token@original_id_token)) {
+          token@original_id_token
+        } else {
+          token@id_token
+        }
 
         params <- list(
           grant_type = "refresh_token",
@@ -1049,7 +1056,7 @@ refresh_token_impl <- function(
           token_set = token_set,
           nonce = NULL,
           is_refresh = TRUE,
-          original_id_token = token@id_token,
+          original_id_token = original_id_token,
           refresh_request_started_at = token_request_started_at,
           prior_granted_scopes = token@granted_scopes,
           shiny_session = shiny_session,
@@ -1098,6 +1105,7 @@ refresh_token_impl <- function(
             token@refresh_token,
           expires_at = expires_at,
           id_token = refreshed_id_token %||% NA_character_,
+          original_id_token = original_id_token,
           id_token_validated = refreshed_id_token_validated,
           userinfo = token@userinfo %||% list(),
           cnf = refreshed_cnf,
@@ -1231,6 +1239,7 @@ refresh_token_impl <- function(
         token@granted_scopes <- refreshed_token@granted_scopes
         token@granted_scopes_verified <- refreshed_token@granted_scopes_verified
         token@id_token <- refreshed_token@id_token
+        token@original_id_token <- refreshed_token@original_id_token
         token@id_token_validated <- refreshed_token@id_token_validated
         token@cnf <- refreshed_token@cnf
         token@userinfo <- refreshed_token@userinfo

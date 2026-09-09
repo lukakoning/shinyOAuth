@@ -14,7 +14,8 @@ OAuthToken(
   cnf = list(),
   granted_scopes = character(0),
   granted_scopes_verified = FALSE,
-  id_token_validated = FALSE
+  id_token_validated = FALSE,
+  original_id_token = NA_character_
 )
 }
 \arguments{
@@ -55,6 +56,11 @@ For stronger proof, configure \code{introspect_elements = "scope"}.}
 \item{id_token_validated}{Logical flag indicating whether the ID token was
 cryptographically validated (signature verified and standard claims checked)
 during the OAuth flow. Defaults to \code{FALSE}.}
+
+\item{original_id_token}{Initial login ID token retained as the refresh
+continuity baseline. Refresh never replaces it with a newer ID token.
+For manually constructed tokens, the first refresh initializes this from
+\code{id_token} if omitted. Treat this property as credential material.}
 }
 \description{
 An \code{OAuthToken} holds credentials and user information returned after login.
