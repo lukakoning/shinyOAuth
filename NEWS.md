@@ -1,49 +1,16 @@
 # shinyOAuth (development version)
 
-* OAuth 2.1 assessment ruleset `1.1.0` adds non-blocking advice for asymmetric
-client authentication, issuer identification and loopback IP literals. Reports
-identify requirement sources and separate server obligations from application
-policy. Callback thresholds and back-channel redirect restrictions are labeled
-as package policy. Assessment remains opt-in and does not alter OAuth 2.0 flows.
-
-* HMAC-only JARM no longer creates an unused JWKS dependency in `check_oauth21()`.
-The checker uses the same selected signing algorithm as runtime validation and
-still assesses key retrieval required by other enabled operations.
-
-* `check_oauth21()` recognizes the UserInfo subject comparison enforced by a
-required validated ID-token baseline, even with `userinfo_id_token_match = FALSE`.
-Separately selected UserInfo calls still need baseline context, and active
-signature bypasses cannot establish that guarantee.
-
-* `oauth_ui()` and `oauth_form_post_ui()` now accept an optional named `clients`
-registry for multiple server modules, including distinct callback routes and
-shared routes with issuer identification. Existing single-client calls remain
-supported. Callback verification and the redirect before app rendering are
-preserved for query, JARM and form-post flows.
-
-* DPoP token-type enforcement no longer requires client-visible `cnf$jkt`
-merely because an access token has JWT structure. Binding observation remains
-controlled by `dpop_require_observed_cnf`, with missing metadata allowed to await
-required introspection. `shinyOAuth.access_token_cnf = "opaque"` opts out of
-access-token decoding for DPoP and mTLS; legacy JWT inspection remains available.
-
-* `check_oauth21()` now includes JWKS retrieval for encrypted Request Objects
-when no explicit recipient key is configured, including unresolved discovery.
-
-* Refresh failures now report whether the renewal credential was consumed,
-possibly consumed, rejected, or not consumed. Proactive refresh retires unsafe
-credentials even when `indefinite_session = TRUE` retains the previous session.
-Replacement access and identity data still require successful validation.
-
 * Added `oauth_ui()` for Shiny apps using URL-based OAuth callbacks. Wrap the
 app's existing UI with `oauth_ui(ui, id = "auth", client = client)` so
 shinyOAuth can handle the provider's response before the rest of the app loads.
-The `id` and `client` must match `oauth_module_server()`. Apps using form-post
-callbacks should continue to use `oauth_form_post_ui()`.
+The `id` and `client` must match `oauth_module_server()`. Both `oauth_ui()` and
+`oauth_form_post_ui()` also accept named client registries for apps with multiple
+OAuth modules or providers; existing single-client calls remain supported.
 
-* Added `check_oauth21()`, a new function to analyze 
-a configured `OAuthClient` and `OAuthProvider` for
-compliance with the OAuth 2.1 draft 16 (ruleset `1.1.0`) specification.
+* Added `check_oauth21()`, a read-only assessment of effective client and
+provider configuration against OAuth 2.1 draft 16 (ruleset `1.1.0`). It
+distinguishes configuration problems, external prerequisites, and recommendations
+without making requests or changing configuration; OAuth 2.0 remains supported.
 
 * Browser and callback handling is more secure. Browser bindings are isolated
 by origin, tab, login, and app/module, and excluded from URLs and bookmarks.
@@ -181,36 +148,34 @@ new names; callers of the low-level S7 constructors should use named arguments:
   preserve consecutive path slashes.
 
 * JWKS discovery and key handling are stricter. Malformed or insecure keys are
-rejected, configured host and pinning policies apply consistently, and signing
-key rotation is handled even when a provider reuses a key ID. Ed25519 keys and
-the `EdDSA` and `Ed25519` algorithm identifiers are supported for verification,
-client assertions, Request Objects, and DPoP; RSA signing and encryption keys
-must be at least 2048 bits. Generic OAuth discovery can fall back to OIDC
-well-known locations when needed.
+rejected while unrelated public JWK extension fields are tolerated. Configured
+host and pinning policies apply consistently, and signing key rotation is handled
+even when a provider reuses a key ID. Ed25519 keys and the `EdDSA` and `Ed25519`
+algorithm identifiers are supported for verification, client assertions,
+Request Objects, and DPoP; RSA keys must be at least 2048 bits. Generic OAuth
+discovery can fall back to OIDC well-known locations when needed.
 
 * OIDC validation is stricter. UserInfo must match the validated ID token's
-`sub`, with JSON claim types preserved during policy checks. Additional ID-token
-audiences must be explicitly trusted, and multi-audience tokens require the
-correct `azp`. Invalid, missing, or inconsistent claims and unsuccessful or
-incorrectly typed UserInfo responses are rejected.
+`sub`, and standard claim types are checked consistently across ID tokens and
+UserInfo. Additional ID-token audiences must be explicitly trusted,
+multi-audience tokens require the correct `azp`, and future `auth_time` values
+are rejected. Validation errors do not expose claim values.
 
-* Authentication lifetime and refresh handling is more predictable:
-  - `reauth_after_seconds` is a fixed session limit and is not extended by token
-  refresh. OIDC reauthentication uses the provider-confirmed login time, while
-  OAuth-only providers retain a local session limit. Token expiry is measured
-  from the start of an exchange, and introspection can only shorten it.
-  - Client-level introspection cannot be disabled per call. Concurrent
-  asynchronous refreshes are combined, stale login or refresh results cannot
-  replace the active token, and proactive refresh backs off after failures.
+* Authentication lifetime and refresh handling is more predictable. Session
+reauthentication is not extended by token refresh, and token lifetimes are
+calculated conservatively; invalid lifetime settings are rejected. Concurrent
+refreshes are combined, stale results are ignored, the login ID token remains
+the continuity baseline, and refresh credentials are retired when a failed
+attempt may have consumed them.
 
 * Long token lifetimes, future timestamps, and oversized numeric settings no
 longer overflow R's integer range. Shiny module timers safely handle multi-year
 access tokens and reauthentication periods. PAR expiry metadata preserves large
 numeric lifetimes, and DPoP timestamps remain valid beyond 2038.
 
-* DPoP-bound tokens are handled consistently by UserInfo and resource helpers.
-They cannot be downgraded to Bearer, and valid nonce challenges are retried
-safely.
+* DPoP-bound tokens, including opaque tokens, are handled consistently by
+UserInfo and resource helpers. They cannot be downgraded to Bearer, and valid
+nonce challenges are retried safely.
 
 * Authorization request, JAR, and PAR handling has been hardened:
   - Authorization URLs reject conflicting or repeated package-managed
@@ -239,12 +204,15 @@ safely.
   diagnostic instead of failing later in request setup.
 
 * Token, introspection, and HTTP handling is stricter and more consistent:
-  - Token responses and introspection results validate media types, activity,
-  and scopes before use. Form encoding is handled consistently, and OAuth
-  parameter overrides replace existing values rather than creating duplicates.
+  - Token responses and introspection results validate media types, response
+  sizes, activity, and scopes before use. Form encoding is handled consistently,
+  and OAuth parameter overrides replace existing values rather than creating
+  duplicates; unsupported token `scope` overrides are rejected.
   - Resource helpers reject competing `access_token` query or form values,
-  support call-specific `resource_hosts` allowlists, and consistently apply
-  redirect and HTTP-method policies. Retries honor bounded `Retry-After` values.
+  support call-specific `resource_hosts` allowlists, reject inherited request
+  authentication, caching, and retry policies, and consistently apply redirect
+  and HTTP-method policies. Retries honor bounded `Retry-After` values, including
+  HTTP dates.
   - `shinyOAuth.tls_min_version` can require TLS 1.2 or 1.3 across package HTTPS
   requests and async workers; leaving it unset retains the TLS backend defaults.
 
@@ -254,7 +222,8 @@ safely.
   Configured audit digest keys must be scalar and at least 32 bytes.
   - Sensitive request, callback, credential, and provider-controlled data is
   omitted, redacted, or summarized. OpenTelemetry uses an attribute allowlist;
-  span URLs follow the same privacy policy. Set
+  span URLs follow the same privacy policy, and request failures are reported
+  consistently. Set
   `shinyOAuth.otel_include_authorization_details = TRUE` to include authorization
   details.
   - Shiny test exports expose credential presence and assurance metadata rather
@@ -267,9 +236,9 @@ safely.
   start with app setup before protocol detail.
   - The Cloud Run example pins its Rocker image by digest and installs R
   dependencies from a dated Posit Package Manager snapshot. Spotify examples
-  escape remote metadata, validate remote links and images, and work across all
-  supported R versions; the full dashboard is installed as
-  `examples/spotify-dashboard.R`.
+  escape remote metadata, validate remote links and images, handle playback
+  times correctly, and work across all supported R versions; the full dashboard
+  is installed as `examples/spotify-dashboard.R`.
   - Pull-request pkgdown builds now have read-only permissions and no persisted
   checkout credentials; GitHub Pages deployment is isolated in its own
   write-enabled workflow.
