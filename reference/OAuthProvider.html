@@ -289,7 +289,10 @@ a token, for example during logout (RFC 7009).</p></dd>
 
 
 <dt id="arg-extra-token-params">extra_token_params<a class="anchor" aria-label="anchor" href="#arg-extra-token-params"></a></dt>
-<dd><p>Extra parameters for token exchange</p></dd>
+<dd><p>Extra parameters for token exchange.
+<code>scope</code> is reserved and cannot be unblocked: explicit refresh scope
+narrowing is not currently supported. Configure login scopes on
+<code><a href="oauth_client.html">oauth_client()</a></code> instead.</p></dd>
 
 
 <dt id="arg-extra-token-headers">extra_token_headers<a class="anchor" aria-label="anchor" href="#arg-extra-token-headers"></a></dt>

@@ -114,7 +114,9 @@ Normally supplied by the module; leave <code>NULL</code> when calling directly.<
 fallback lifetime set by <code>shinyOAuth.default_expires_in</code> (3600 seconds by default)</p></li>
 <li><p><code>refresh_token</code>: Updated if the provider rotates it; otherwise preserved</p></li>
 <li><p><code>id_token</code>: Updated only if the provider returns one (and it validates);
-otherwise the original from login is preserved</p></li>
+otherwise the latest stored ID token is preserved</p></li>
+<li><p><code>original_id_token</code>: Retained from login for continuity checks, even if
+intermediate refresh ID tokens omit <code>nonce</code> or <code>auth_time</code></p></li>
 <li><p><code>userinfo</code>: Refreshed if <code>userinfo_required = TRUE</code>; otherwise preserved</p></li>
 <li><p><code>cnf</code>: Updated from the token response when present, and may be
 backfilled from refresh-time introspection when enabled. When the

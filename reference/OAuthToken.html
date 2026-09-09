@@ -72,7 +72,8 @@ depend on the provider. Keep access and refresh tokens out of the UI and logs.</
 <span>  cnf <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  granted_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  granted_scopes_verified <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  id_token_validated <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  id_token_validated <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  original_id_token <span class="op">=</span> <span class="cn">NA_character_</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -136,6 +137,13 @@ For stronger proof, configure <code>introspect_elements = "scope"</code>.</p></d
 <dd><p>Logical flag indicating whether the ID token was
 cryptographically validated (signature verified and standard claims checked)
 during the OAuth flow. Defaults to <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-original-id-token">original_id_token<a class="anchor" aria-label="anchor" href="#arg-original-id-token"></a></dt>
+<dd><p>Initial login ID token retained as the refresh
+continuity baseline. Refresh never replaces it with a newer ID token.
+For manually constructed tokens, the first refresh initializes this from
+<code>id_token</code> if omitted. Treat this property as credential material.</p></dd>
 
 </dl></div>
     <div class="section level2">

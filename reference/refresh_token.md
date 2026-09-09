@@ -75,7 +75,10 @@ object with refreshed credentials.
   preserved
 
 - `id_token`: Updated only if the provider returns one (and it
-  validates); otherwise the original from login is preserved
+  validates); otherwise the latest stored ID token is preserved
+
+- `original_id_token`: Retained from login for continuity checks, even
+  if intermediate refresh ID tokens omit `nonce` or `auth_time`
 
 - `userinfo`: Refreshed if `userinfo_required = TRUE`; otherwise
   preserved

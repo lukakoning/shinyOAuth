@@ -74,8 +74,12 @@ code must require a definite confirmation.
 Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 unusable response bodies return a descriptive `status`. The provider
 must return `active` as a JSON boolean. Other types return
-`"invalid_active"`. Requests use the client's configured credentials and
-`token_auth_style`.
+`"invalid_active"`. Encoded or decoded body limits return
+`"body_too_large"`; unsupported compression returns
+`"unsupported_encoding"`. Both leave `active = NA`. Other transport
+failures and decoding errors raise conditions (or reject the
+asynchronous promise) instead of returning a status result. Requests use
+the client's configured credentials and `token_auth_style`.
 
 ## Examples
 

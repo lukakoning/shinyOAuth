@@ -263,7 +263,11 @@ OAuthProvider(
 
 - extra_token_params:
 
-  Extra parameters for token exchange
+  Extra parameters for token exchange. `scope` is reserved and cannot be
+  unblocked: explicit refresh scope narrowing is not currently
+  supported. Configure login scopes on
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  instead.
 
 - extra_token_headers:
 
