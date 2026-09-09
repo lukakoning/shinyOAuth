@@ -22,5 +22,5 @@ test_that("req_with_retry transport error includes method and url context", {
   ctx <- err$context
   expect_true(is.list(ctx))
   expect_identical(ctx$method, "POST")
-  expect_match(ctx$url, "nonexistent\\.invalid/path")
+  expect_identical(ctx$url, "https://nonexistent.invalid/")
 })

@@ -52,6 +52,7 @@ sanitize_event_diagnostics <- function(event) {
   detail_fields <- c(
     "message",
     "error_message",
+    "metadata_error",
     "transport_error",
     "oauth_error_description",
     "error_description",
@@ -74,6 +75,22 @@ sanitize_event_diagnostics <- function(event) {
     }
   }
   event
+}
+
+# Retain classification without the original condition's calls, request/response
+# fields, backtrace, or parent chain. Even opt-in messages use URL redaction.
+sanitize_condition_parent <- function(parent) {
+  if (is.null(parent)) return(NULL)
+  message <- if (allow_expose_error_body()) {
+    sanitize_diagnostic_text(conditionMessage(parent))
+  } else {
+    NULL
+  }
+  rlang::error_cnd(
+    class = setdiff(class(parent), c("error", "condition")),
+    message = message %||% "Underlying diagnostic withheld",
+    call = NULL
+  )
 }
 
 #' Check OAuth error text syntax

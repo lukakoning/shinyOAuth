@@ -187,6 +187,12 @@ sanitize_event_url_fields <- function(event, field_name = NULL) {
   } else {
     ""
   }
+  if (grepl("(^|_)(urls|uris|issuers|endpoints)$", normalized_name)) {
+    if (!is.character(event)) return(NULL)
+    return(unlist(lapply(event, function(url) {
+      tryCatch(otel_http_url_full(url), error = function(...) NULL)
+    }), use.names = FALSE))
+  }
   is_url_field <- grepl("(^|_)(url|uri|issuer)$", normalized_name) ||
     grepl("(^|_)endpoint$", normalized_name)
 

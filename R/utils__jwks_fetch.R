@@ -143,9 +143,8 @@ fetch_authorization_server_metadata <- function(issuer) {
       while (!is.null(cnd) && !is.null(cnd[["parent"]])) {
         cnd <- cnd[["parent"]]
       }
-      msg <- try(conditionMessage(cnd), silent = TRUE)
-      if (!inherits(msg, "try-error")) {
-        last_error_message <- as.character(msg)
+      if (allow_expose_error_body()) {
+        last_error_message <- sanitize_diagnostic_text(conditionMessage(cnd))
       }
       next
     }
@@ -155,9 +154,10 @@ fetch_authorization_server_metadata <- function(issuer) {
       silent = TRUE
     )
     if (inherits(redirect_check, "try-error")) {
-      msg <- try(conditionMessage(redirect_check), silent = TRUE)
-      if (!inherits(msg, "try-error")) {
-        last_error_message <- as.character(msg)
+      if (allow_expose_error_body()) {
+        last_error_message <- sanitize_diagnostic_text(
+          conditionMessage(attr(redirect_check, "condition"))
+        )
       }
       next
     }
@@ -181,7 +181,7 @@ fetch_authorization_server_metadata <- function(issuer) {
     if (is.null(disc[["jwks_uri"]])) {
       last_error_message <- paste0(
         "Authorization server metadata missing jwks_uri at ",
-        target[["url"]]
+        otel_http_url_full(target[["url"]])
       )
       next
     }
@@ -208,10 +208,12 @@ fetch_authorization_server_metadata <- function(issuer) {
   err_config(
     c(
       "x" = "Failed to fetch authorization server metadata",
-      "i" = paste0("Issuer: ", issuer),
-      "i" = paste0("Tried: ", paste(attempted_urls, collapse = ", ")),
-      if (is_valid_string(last_error_message)) {
-        stats::setNames(paste0("Last failure: ", last_error_message), "i")
+      "i" = paste0("Issuer: ", otel_http_url_full(issuer)),
+      "i" = paste0("Metadata locations attempted: ", length(attempted_urls)),
+      if (allow_expose_error_body() && is_valid_string(last_error_message)) {
+        stats::setNames(
+          paste0("Last failure: ", escape_diagnostic_markup(last_error_message)), "i"
+        )
       }
     ),
     context = list(

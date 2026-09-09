@@ -165,7 +165,7 @@ testthat::test_that("public discovery auth does not read env client_secret", {
   )
 })
 
-testthat::test_that("oidc discovery transport errors include discovery url and transport detail", {
+testthat::test_that("oidc discovery transport errors redact URLs and allow opt-in detail", {
   withr::local_options(list(shinyOAuth.expose_error_body = TRUE))
   testthat::local_mocked_bindings(
     req_with_retry = function(req) {
@@ -182,7 +182,7 @@ testthat::test_that("oidc discovery transport errors include discovery url and t
   testthat::expect_s3_class(err, "shinyOAuth_http_error")
   testthat::expect_identical(
     err$context$discovery_url,
-    "https://issuer.example.com/tenant/.well-known/openid-configuration"
+    "https://issuer.example.com/"
   )
 
   msg <- conditionMessage(err)
@@ -203,9 +203,10 @@ testthat::test_that("oidc discovery transport errors include discovery url and t
   )
   testthat::expect_match(
     msg,
-    "Issuer: https://issuer.example.com/tenant",
+    "Issuer: https://issuer.example.com/",
     fixed = TRUE
   )
+  testthat::expect_false(grepl("/tenant", msg, fixed = TRUE))
 })
 
 test_that("oidc discovery accepts advertised signing algorithm supersets", {

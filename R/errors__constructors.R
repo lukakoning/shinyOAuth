@@ -28,6 +28,7 @@ err_abort <- function(
   trace_id = NULL
 ) {
   trace_id <- resolve_trace_id(trace_id)
+  context <- sanitize_event_diagnostics(sanitize_event_url_fields(context))
   emit_trace_event(c(
     list(
       type = "error",
@@ -492,6 +493,7 @@ normalize_bullets <- function(msg, default_type = "!") {
 #' @noRd
 err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   trace_id <- resolve_trace_id(trace_id)
+  context <- sanitize_event_diagnostics(sanitize_event_url_fields(context))
   expose <- isTRUE(allow_expose_error_body())
   status <- NA_integer_
   desc <- NULL
@@ -718,6 +720,8 @@ err_transport <- function(
   trace_id = NULL
 ) {
   trace_id <- resolve_trace_id(trace_id)
+  context <- sanitize_event_diagnostics(sanitize_event_url_fields(context))
+  parent <- sanitize_condition_parent(parent)
   emit_trace_event(c(
     list(type = "transport_error", trace_id = trace_id, message = msg),
     context

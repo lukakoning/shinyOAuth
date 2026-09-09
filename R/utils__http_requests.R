@@ -80,6 +80,7 @@ reject_redirect_response <- function(resp, context = "request") {
     if (inherits(location, "try-error")) {
       location <- NA_character_
     }
+    location <- tryCatch(otel_http_url_full(location), error = function(...) NULL)
     err_http(
       c(
         "x" = paste0(
@@ -90,7 +91,7 @@ reject_redirect_response <- function(resp, context = "request") {
           ")"
         ),
         "!" = "Redirects are disabled for security; endpoint may be misconfigured",
-        "i" = if (!is.na(location)) {
+        "i" = if (is_valid_string(location)) {
           paste0("Would have redirected to: ", location)
         } else {
           NULL

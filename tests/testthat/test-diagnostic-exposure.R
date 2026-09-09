@@ -136,3 +136,77 @@ test_that("direct OTel log bodies apply diagnostic exposure policy", {
   expect_match(seen, "Detail", fixed = TRUE)
   expect_false(grepl("[\r\n]|password|secret|private", seen))
 })
+
+test_that("JWKS metadata failure redacts the producer's event and condition", {
+  issuer <- "https://example.test/private-tenant"
+  detail <- "diagnostic-marker https://example.test/private-tenant?query-marker"
+  seen <- list()
+  local_options(
+    shinyOAuth.expose_error_body = FALSE,
+    shinyOAuth.telemetry_path_scrubber = NULL,
+    shinyOAuth.audit_hook = function(event) {
+      seen[[length(seen) + 1L]] <<- event
+    }
+  )
+  local_mocked_bindings(
+    req_with_retry = function(...) stop(simpleError(detail)),
+    .package = "shinyOAuth"
+  )
+  error <- tryCatch(fetch_authorization_server_metadata(issuer), error = identity)
+  expect_s3_class(error, "shinyOAuth_config_error")
+  expect_length(error$context$attempted_metadata_urls, 3L)
+  expect_true(all(error$context$attempted_metadata_urls == "https://example.test/"))
+  expect_null(error$context$metadata_error)
+  expect_false(any(grepl(
+    "private-tenant|query-marker|diagnostic-marker",
+    c(conditionMessage(error), capture.output(print(error)), unlist(error$context),
+      unlist(seen))
+  )))
+  local_options(shinyOAuth.expose_error_body = TRUE)
+  error <- tryCatch(fetch_authorization_server_metadata(issuer), error = identity)
+  expect_match(conditionMessage(error), "diagnostic-marker", fixed = TRUE)
+  expect_false(grepl("private-tenant|query-marker", conditionMessage(error)))
+})
+
+test_that("redirect conditions omit identifying Location content", {
+  local_options(shinyOAuth.allow_redirect = FALSE,
+                shinyOAuth.telemetry_path_scrubber = NULL)
+  for (location in c(
+    "https://example.test/private-tenant?query-marker#fragment-marker",
+    "/private-tenant?query-marker", ""
+  )) {
+    resp <- httr2::response(status_code = 302L, headers = list(location = location))
+    error <- tryCatch(reject_redirect_response(resp), error = identity)
+    expect_s3_class(error, "shinyOAuth_http_error")
+    expect_false(grepl("private-tenant|query-marker|fragment-marker",
+                       conditionMessage(error)))
+  }
+})
+
+test_that("transport conditions retain classification without raw parent data", {
+  url <- "https://example.test/private-tenant?query-marker"
+  detail <- paste("diagnostic-marker", url)
+  req <- httr2::request(url)
+  local_mocked_bindings(
+    req_perform = function(...) {
+      rlang::abort(detail, class = "test_connection_error", request = req,
+                   parent = simpleError(detail))
+    },
+    .package = "httr2"
+  )
+  local_options(shinyOAuth.expose_error_body = FALSE,
+                shinyOAuth.telemetry_path_scrubber = NULL)
+  error <- tryCatch(req_with_retry(req, idempotent = FALSE), error = identity)
+  expect_s3_class(error, "shinyOAuth_transport_error")
+  expect_s3_class(error$parent, "test_connection_error")
+  expect_null(error$parent$request)
+  expect_null(error$parent$parent)
+  expect_null(error$parent$call)
+  expect_null(error$parent$trace)
+  expect_identical(error$context$url, "https://example.test/")
+  expect_false(any(grepl(
+    "private-tenant|query-marker|diagnostic-marker",
+    c(conditionMessage(error), capture.output(print(error)), unlist(error$context),
+      unlist(error$parent))
+  )))
+})
