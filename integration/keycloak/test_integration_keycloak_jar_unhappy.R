@@ -103,7 +103,33 @@ testthat::test_that("Keycloak PAR rejects request-object wrong signing key", {
   prov <- make_provider(token_auth_style = "private_key_jwt", use_par = TRUE)
   client <- make_private_key_jar_client(prov)
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
-  client@client_assertion_private_key <- openssl::rsa_keygen()
+
+  # A successful control proves this client's PAR authentication and registered
+  # Request Object signing key work against the running server.
+  control <- make_private_key_jar_client(prov)
+  control_url <- shinyOAuth::prepare_call(control, valid_browser_token())
+  testthat::expect_match(control_url, "[?&]request_uri=")
+
+  sign_request_object <- shinyOAuth:::build_authorization_request_object
+  perform <- shinyOAuth:::req_with_retry
+  wrong_key <- openssl::rsa_keygen()
+  par_error <- NULL
+  testthat::local_mocked_bindings(
+    build_authorization_request_object = function(client, params) {
+      # S7 copy-on-modify changes only the signing helper's local client. The
+      # original key still signs the independent PAR client assertion.
+      client@client_assertion_private_key <- wrong_key
+      sign_request_object(client, params)
+    },
+    req_with_retry = function(req, ...) {
+      resp <- perform(req, ...)
+      if (identical(req$url, prov@par_url)) {
+        par_error <<- httr2::resp_body_json(resp, simplifyVector = FALSE)
+      }
+      resp
+    },
+    .package = "shinyOAuth"
+  )
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -123,6 +149,9 @@ testthat::test_that("Keycloak PAR rejects request-object wrong signing key", {
         ignore.case = TRUE
       )
       testthat::expect_length(client@state_store$keys(), 0L)
+      # Keycloak reports invalid_client for failed client authentication. This
+      # code and description instead identify Request Object verification.
+      testthat::expect_identical(par_error$error, "invalid_request_object")
     }
   )
 })
