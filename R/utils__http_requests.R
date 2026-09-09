@@ -418,6 +418,8 @@ check_resp_body_size <- function(
 # decompression burst before returning to R, so it is not a decoded-size guard.
 req_perform_bounded <- function(req) {
   req <- req_apply_tls_policy(req)
+  # shinyOAuth owns retries and regenerates one-shot headers for each attempt.
+  req <- httr2::req_retry(req, max_tries = 1L)
   max_bytes <- resolve_max_body_bytes()
   path <- tempfile("shinyOAuth-response-")
   on.exit(unlink(path), add = TRUE)

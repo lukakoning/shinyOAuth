@@ -438,6 +438,32 @@ test_that("perform_resource_req accepts prebuilt httr2 requests", {
   expect_identical(seen$x_extra, "2")
 })
 
+test_that("prebuilt resource policy conflicts are rejected before execution", {
+  local_mocked_bindings(
+    req_with_retry = function(...) fail("Conflicting request was performed"),
+    .package = "shinyOAuth"
+  )
+  base <- httr2::request("https://example.com/resource")
+  cache_dir <- withr::local_tempdir()
+  signing <- base
+  signing$policies$auth_sign <- list(fun = function(...) {
+    fail("Inherited signer was invoked")
+  })
+  for (req in list(
+    signing,
+    httr2::req_cache(base, cache_dir),
+    httr2::req_retry(base, max_tries = 3),
+    httr2::req_options(base, httpauth = 1L)
+  )) {
+    for (token in c("test-user-a", "test-user-b")) {
+      expect_error(
+        perform_resource_req(token, req),
+        class = "shinyOAuth_input_error", regexp = "Prebuilt"
+      )
+    }
+  }
+})
+
 test_that("perform_resource_req preserves original request body query and options", {
   seen <- new.env(parent = emptyenv())
   seen$idempotent <- NULL

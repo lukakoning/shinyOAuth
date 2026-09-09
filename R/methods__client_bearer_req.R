@@ -184,6 +184,10 @@ client_bearer_req <- function(
 #'   it as the base request, still applies token authentication and request
 #'   defaults, and then layers any explicit `method`, `headers`, `query`, and
 #'   `follow_redirect` overrides on top.
+#'   Inherited httr2 authentication, caching, and retry policies, and curl
+#'   authentication options are rejected. Authenticated response caching is
+#'   unsupported. shinyOAuth owns retries; configure them with `idempotent`
+#'   and the `shinyOAuth.retry_*` options.
 #' @param idempotent Whether ordinary network/HTTP failures may be
 #'   retried safely. `NULL` (default) infers this from the final HTTP method:
 #'   GET, HEAD, OPTIONS, PUT, and DELETE permit retries. Set it explicitly if
@@ -749,6 +753,7 @@ build_client_bearer_authorized_request <- function(
   if (is.null(req)) {
     req <- httr2::request(url)
   }
+  validate_resource_request_policies(req)
 
   if (is_valid_string(method)) {
     req <- httr2::req_method(req, toupper(method))
@@ -780,6 +785,25 @@ build_client_bearer_authorized_request <- function(
 
 
 # 2.4 Optional headers ---------------------------------------------------------
+
+# Prebuilt requests may carry deferred behavior that runs after we attach the
+# user's token. Reject conflicting policies before constructing credentials.
+validate_resource_request_policies <- function(req) {
+  policy_names <- names(req[["policies"]])
+  if (any(grepl("^(auth|cache|retry)_", policy_names))) {
+    err_input(
+      "Prebuilt resource requests must not configure httr2 authentication, caching, or retry policies; use shinyOAuth retry options"
+    )
+  }
+  auth_options <- c(
+    "httpauth", "userpwd", "username", "password", "oauth2_bearer",
+    "netrc", "netrc_file", "login_options", "sasl_authzid"
+  )
+  if (any(names(req[["options"]]) %in% auth_options)) {
+    err_input("Prebuilt resource requests must not configure curl authentication")
+  }
+  invisible(TRUE)
+}
 
 #' Apply post-auth request shaping for an authorized API request
 #'

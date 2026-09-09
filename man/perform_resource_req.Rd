@@ -26,7 +26,11 @@ perform_resource_req(
 to authorize and perform. When you pass a request object, shinyOAuth uses
 it as the base request, still applies token authentication and request
 defaults, and then layers any explicit \code{method}, \code{headers}, \code{query}, and
-\code{follow_redirect} overrides on top.}
+\code{follow_redirect} overrides on top.
+Inherited httr2 authentication, caching, and retry policies, and curl
+authentication options are rejected. Authenticated response caching is
+unsupported. shinyOAuth owns retries; configure them with \code{idempotent}
+and the \verb{shinyOAuth.retry_*} options.}
 
 \item{method}{Optional HTTP method (character). Defaults to "GET". When
 the effective token type is \code{DPoP}, this must be the final request method

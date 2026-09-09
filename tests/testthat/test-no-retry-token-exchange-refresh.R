@@ -3,6 +3,21 @@
 
 # ---- req_with_retry(idempotent = FALSE) unit tests ----
 
+test_that("bounded transport gives httr2 exactly one attempt", {
+  req <- httr2::request("https://example.com/resource") |>
+    httr2::req_retry(max_tries = 4, retry_on_failure = TRUE)
+  local_mocked_bindings(
+    req_perform = function(req, ...) {
+      expect_identical(req$policies$retry_max_tries, 1L)
+      expect_null(req$policies$retry_max_wait)
+      httr2::response(status_code = 200L, body = charToRaw("{}"))
+    },
+    .package = "httr2"
+  )
+  expect_s3_class(shinyOAuth:::req_with_retry(req, idempotent = FALSE),
+                  "httr2_response")
+})
+
 test_that("req_with_retry(idempotent = FALSE) does not retry on transport error", {
   req <- httr2::request("https://example.com/token")
   attempts <- 0
