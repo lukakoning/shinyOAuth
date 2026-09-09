@@ -44,6 +44,7 @@ testthat::test_that("browser fixtures resolve the active transaction and restore
   initial <- drv$get_value(output = "binding")
   cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   snapshot <- snapshot_browser_binding(drv, cookie)
+  testthat::expect_false(jsonlite::fromJSON(snapshot$record)$transaction)
   testthat::expect_false(identical(cookie$value, initial))
   drv$click("clear")
   drv$click("set")
@@ -61,12 +62,32 @@ testthat::test_that("browser fixtures resolve the active transaction and restore
   current <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_false(is.null(current))
   testthat::expect_false(identical(current$name, cookie$name))
-  testthat::expect_identical(
-    get_browser_cookie(drv, cookie$name)$value,
-    cookie$value
-  )
+  # Preparing a login removes its idle predecessor once the new marker is ready.
+  testthat::expect_null(get_browser_cookie(drv, cookie$name))
   active <- jsonlite::fromJSON(snapshot_browser_binding(drv, current)$record)
+  testthat::expect_true(active$transaction)
   testthat::expect_identical(active$cookie, current$value)
+  testthat::expect_identical(active$token, drv$get_value(output = "binding"))
+
+  # A pending predecessor must survive, and the helper must select the new marker.
+  first_auth_url <- drv$get_value(output = "auth_url")
+  drv$click("prepare")
+  drv$wait_for_js(paste0(
+    "document.getElementById('auth_url').innerText !== ",
+    jsonlite::toJSON(first_auth_url, auto_unbox = TRUE)
+  ))
+  next_cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
+  testthat::expect_false(is.null(next_cookie))
+  testthat::expect_false(identical(next_cookie$name, current$name))
+  testthat::expect_identical(
+    get_browser_cookie(drv, current$name)$value,
+    current$value
+  )
+  active <- jsonlite::fromJSON(
+    snapshot_browser_binding(drv, next_cookie)$record
+  )
+  testthat::expect_true(active$transaction)
+  testthat::expect_identical(active$cookie, next_cookie$value)
   testthat::expect_identical(active$token, drv$get_value(output = "binding"))
   testthat::expect_null(find_browser_token_cookie(
     drv,
