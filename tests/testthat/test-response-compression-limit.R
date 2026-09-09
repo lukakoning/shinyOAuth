@@ -37,7 +37,7 @@ test_that("decoded gzip budgets are enforced before full accumulation", {
   expect_equal(err$context$body_bytes, 4097L)
   expect_error(
     perform_resource_req("synthetic", srv$url("/plain"), idempotent = FALSE),
-    class = "shinyOAuth_transport_error"
+    class = "shinyOAuth_parse_error"
   )
   resp <- perform_resource_req("synthetic", srv$url("/small"))
   expect_identical(httr2::resp_body_string(resp), "small response")

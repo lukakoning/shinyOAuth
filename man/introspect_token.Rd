@@ -56,6 +56,10 @@ require a definite confirmation.
 Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 unusable response bodies return a descriptive \code{status}. The provider must
 return \code{active} as a JSON boolean. Other types return \code{"invalid_active"}.
+Encoded or decoded body limits return \code{"body_too_large"}; unsupported
+compression returns \code{"unsupported_encoding"}. Both leave \code{active = NA}.
+Other transport failures and decoding errors raise conditions (or reject
+the asynchronous promise) instead of returning a status result.
 Requests use the client's configured credentials and \code{token_auth_style}.
 }
 \examples{

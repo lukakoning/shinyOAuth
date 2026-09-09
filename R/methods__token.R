@@ -296,6 +296,10 @@ revoke_token <- function(
 #' Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 #' unusable response bodies return a descriptive `status`. The provider must
 #' return `active` as a JSON boolean. Other types return `"invalid_active"`.
+#' Encoded or decoded body limits return `"body_too_large"`; unsupported
+#' compression returns `"unsupported_encoding"`. Both leave `active = NA`.
+#' Other transport failures and decoding errors raise conditions (or reject
+#' the asynchronous promise) instead of returning a status result.
 #' Requests use the client's configured credentials and `token_auth_style`.
 #'
 #' @param oauth_client [OAuthClient] object
@@ -459,7 +463,7 @@ introspect_token <- function(
         )
         req <- httr2::req_method(req, "POST")
         req <- httr2::req_error(req, is_error = function(resp) FALSE)
-        resp <- with_otel_span(
+        resp <- tryCatch(with_otel_span(
           "shinyOAuth.token.introspect.http",
           {
             resp <- req_with_retry(req)
@@ -480,7 +484,18 @@ introspect_token <- function(
           ),
           options = list(kind = "client"),
           mark_ok = FALSE
-        )
+        ), shinyOAuth_parse_error = function(e) {
+          if (!isTRUE(e$context$reason %in% c("body_too_large", "unsupported_encoding"))) {
+            stop(e)
+          }
+          e
+        })
+        if (inherits(resp, "shinyOAuth_parse_error")) {
+          result <- list(supported = TRUE, active = NA, raw = NULL,
+                         status = resp$context$reason)
+          emit_token_introspection_audit(oauth_client, which, result, shiny_session)
+          return(annotate_token_introspection_span_result(which, result))
+        }
 
         redirect_err <- try(
           reject_redirect_response(resp, context = "token_introspection"),

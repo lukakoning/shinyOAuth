@@ -406,6 +406,7 @@ check_resp_body_size <- function(
       ),
       context = list(
         phase = context,
+        reason = "body_too_large",
         body_bytes = body_len,
         max_bytes = max_bytes
       )
@@ -424,29 +425,49 @@ req_perform_bounded <- function(req) {
   max_bytes <- resolve_max_body_bytes()
   path <- tempfile("shinyOAuth-response-")
   on.exit(unlink(path), add = TRUE)
+  download_exceeded <- FALSE
   req <- httr2::req_options(
     req,
     accept_encoding = "gzip",
     http_content_decoding = FALSE,
     maxfilesize = max_bytes,
     noprogress = FALSE,
-    progressfunction = function(down, up) down[[2L]] <= max_bytes
+    progressfunction = function(down, up) {
+      download_exceeded <<- down[[2L]] > max_bytes
+      !download_exceeded
+    }
   )
-  resp <- httr2::req_perform(req, path = path)
+  resp <- tryCatch(httr2::req_perform(req, path = path), error = function(e) {
+    current <- e
+    while (!is.null(current)) {
+      if (inherits(current, "curl_error_filesize_exceeded")) {
+        download_exceeded <- TRUE
+        break
+      }
+      current <- current[["parent"]]
+    }
+    if (download_exceeded) {
+      err_parse("Response body too large during encoded download",
+                context = list(reason = "body_too_large", max_bytes = max_bytes))
+    }
+    stop(e)
+  })
   # httr2 mocks return an already buffered response.
   if (is.raw(resp[["body"]])) {
     check_resp_body_size(resp)
     return(resp)
   }
   if (file.info(path)$size > max_bytes) {
-    err_parse("Response body too large during encoded download")
+    err_parse("Response body too large during encoded download",
+              context = list(reason = "body_too_large", max_bytes = max_bytes))
   }
   encoding <- tolower(trimws(
     httr2::resp_header(resp, "content-encoding") %||% "identity"
   ))
   if (!encoding %in% c("identity", "gzip", "x-gzip")) {
     err_parse(
-      "Unsupported response Content-Encoding; expected identity or gzip"
+      "Unsupported response Content-Encoding; expected identity or gzip",
+      context = list(reason = "unsupported_encoding")
     )
   }
   conn <- if (encoding %in% c("gzip", "x-gzip")) {

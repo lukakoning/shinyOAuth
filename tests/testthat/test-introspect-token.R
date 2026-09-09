@@ -285,3 +285,48 @@ testthat::test_that("introspect_token async returns a resolved promise", {
   testthat::expect_false(isTRUE(val$.shinyOAuth_async_wrapped))
   testthat::expect_true(isTRUE(val$active))
 })
+
+test_that("introspection normalizes failures from bounded response reading", {
+  local_options(shinyOAuth.max_body_bytes = 1024L, shinyOAuth.retry_max_tries = 1L)
+  cli <- make_test_client(use_nonce = FALSE)
+  cli@provider@introspection_url <- "https://example.com/introspect"
+  token <- OAuthToken(access_token = "test-token")
+  events <- list()
+  local_options(shinyOAuth.audit_hook = function(event) {
+    events[[length(events) + 1L]] <<- event
+  })
+  # Exercise the file and gzip readers used by actual bounded downloads.
+  # Only the network write is replaced; these are small synthetic bodies.
+  for (mode in c("decoded", "encoded", "unsupported")) {
+    local_mocked_bindings(req_perform = function(req, path, ...) {
+      encoding <- "identity"
+      if (mode == "decoded") {
+        con <- gzfile(path, "wb")
+        writeBin(charToRaw(strrep("a", 1025L)), con)
+        close(con)
+        encoding <- "gzip"
+      } else if (mode == "encoded") {
+        writeBin(charToRaw(strrep("a", 1025L)), path)
+      } else {
+        writeBin(charToRaw("{}"), path)
+        encoding <- "br"
+      }
+      resp <- httr2::response(status_code = 200L,
+                             headers = list(`content-encoding` = encoding))
+      resp$body <- path
+      resp
+    }, .package = "httr2")
+    result <- introspect_token(cli, token)
+    expected <- if (mode == "unsupported") "unsupported_encoding" else "body_too_large"
+    expect_identical(result$status, expected)
+    expect_true(is.na(result$active))
+    expect_null(result$raw)
+    outcome <- tail(Filter(function(e) identical(e$type, "audit_token_introspection"),
+                           events), 1L)
+    expect_length(outcome, 1L)
+    expect_identical(outcome[[1L]]$status, expected)
+  }
+  local_mocked_bindings(req_perform = function(...) stop("Connection unavailable"),
+                        .package = "httr2")
+  expect_error(introspect_token(cli, token), class = "shinyOAuth_transport_error")
+})
