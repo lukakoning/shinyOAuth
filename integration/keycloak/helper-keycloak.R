@@ -2163,7 +2163,7 @@ expect_no_authorization_code <- function(auth_url, redirect_uri) {
       !identical(query[["error"]], "invalid_request") ||
       !identical(query[["state"]], expected_state) ||
       !keycloak_nonempty_string(query[["error_description"]]) ||
-      !grepl("PKCE|code_challenge", query[["error_description"]], ignore.case = TRUE)) {
+      !grepl("PKCE|code[ _]challenge", query[["error_description"]], ignore.case = TRUE)) {
     testthat::fail("Expected a state-matched invalid_request callback identifying PKCE")
     return(invisible(FALSE))
   }
