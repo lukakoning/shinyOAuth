@@ -715,10 +715,12 @@ req_with_retry <- function(req, idempotent = TRUE) {
 #' from `req_with_retry()` so retry-delay parsing stays testable on its own.
 #'
 #' @param resp httr2 response object.
-#' @return Retry delay in seconds, or `NA_real_` when parsing fails.
+#' @param now Current time, used as the origin for HTTP-date delays.
+#' @return Nonnegative retry delay in seconds (zero for elapsed dates), or
+#'   `NA_real_` when parsing fails.
 #' @keywords internal
 #' @noRd
-parse_retry_after_header <- function(resp) {
+parse_retry_after_header <- function(resp, now = Sys.time()) {
   ra <- try(httr2::resp_header(resp, "retry-after"), silent = TRUE)
   if (inherits(ra, "try-error") || !is_valid_string(ra)) {
     return(NA_real_)
@@ -729,6 +731,11 @@ parse_retry_after_header <- function(resp) {
     return(ifelse(is.finite(val) && !is.na(val) && val >= 0, val, NA_real_))
   }
 
+  # HTTP-date uses English day/month names regardless of the application's
+  # locale (RFC 9110 section 5.6.7). Restore LC_TIME even if parsing fails.
+  old_locale <- Sys.getlocale("LC_TIME")
+  on.exit(Sys.setlocale("LC_TIME", old_locale), add = TRUE)
+  Sys.setlocale("LC_TIME", "C")
   dt <- try(
     as.POSIXct(
       ra,
@@ -742,9 +749,9 @@ parse_retry_after_header <- function(resp) {
     silent = TRUE
   )
   if (!inherits(dt, "try-error") && !is.na(dt)) {
-    delta <- as.numeric(dt - Sys.time())
-    if (is.finite(delta) && !is.na(delta) && delta > 0) {
-      return(delta)
+    delta <- as.numeric(difftime(dt, now, units = "secs"))
+    if (is.finite(delta)) {
+      return(max(0, delta))
     }
   }
   NA_real_

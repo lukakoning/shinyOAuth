@@ -194,10 +194,11 @@ test_that("req_with_retry caps Retry-After delays by default", {
 })
 
 test_that("req_with_retry caps future-date Retry-After values", {
+  withr::local_locale(c(LC_TIME = "C"))
   req <- httr2::request("https://example.org")
   withr::local_options(list(
     shinyOAuth.retry_max_tries = 2L,
-    shinyOAuth.retry_after_cap = 7
+    shinyOAuth.retry_after_cap = 60
   ))
   sleeps <- numeric()
 
@@ -208,7 +209,9 @@ test_that("req_with_retry caps future-date Retry-After values", {
         status = 503,
         headers = list(
           "content-type" = "text/plain",
-          "retry-after" = "Thu, 31 Dec 2099 23:59:59 GMT"
+          "retry-after" = format(
+            Sys.time() + 120, "%a, %d %b %Y %H:%M:%S GMT", tz = "GMT"
+          )
         ),
         body = charToRaw("oops")
       )
@@ -225,7 +228,7 @@ test_that("req_with_retry caps future-date Retry-After values", {
 
   shinyOAuth:::req_with_retry(req)
 
-  expect_identical(sleeps, 7)
+  expect_identical(sleeps, 60)
 })
 
 test_that("parse_retry_after_header rejects numeric overflow", {
@@ -236,6 +239,61 @@ test_that("parse_retry_after_header rejects numeric overflow", {
   )
 
   expect_true(is.na(shinyOAuth:::parse_retry_after_header(response)))
+})
+
+test_that("Retry-After dates retain seconds across time-unit boundaries", {
+  withr::local_locale(c(LC_TIME = "C"))
+  now <- as.POSIXct("2026-09-09 12:00:00", tz = "GMT")
+  for (delay in c(-120, 0, 59, 60, 61, 119, 3599, 3600, 3601, 86401)) {
+    response <- httr2::response(
+      status = 503,
+      headers = list("retry-after" = format(
+        now + delay, "%a, %d %b %Y %H:%M:%S GMT", tz = "GMT"
+      ))
+    )
+    expect_equal(
+      shinyOAuth:::parse_retry_after_header(response, now = now),
+      max(0, delay)
+    )
+  }
+  response <- httr2::response(
+    status = 503,
+    headers = list("retry-after" = "Thu, 31 Dec 2099 23:59:59 GMT")
+  )
+  expect_equal(
+    shinyOAuth:::parse_retry_after_header(response, now = now),
+    as.numeric(difftime(
+      as.POSIXct("2099-12-31 23:59:59", tz = "GMT"), now, units = "secs"
+    ))
+  )
+})
+
+test_that("Retry-After HTTP-date formats ignore and preserve LC_TIME", {
+  original <- Sys.getlocale("LC_TIME")
+  withr::defer(Sys.setlocale("LC_TIME", original))
+  locales <- c("Dutch_Netherlands.1252", "nl_NL.UTF-8", "de_DE.UTF-8")
+  available <- FALSE
+  for (locale in locales) {
+    if (nzchar(suppressWarnings(Sys.setlocale("LC_TIME", locale)))) {
+      available <- TRUE
+      break
+    }
+  }
+  skip_if_not(available, "No non-English LC_TIME locale installed")
+  selected <- Sys.getlocale("LC_TIME")
+  now <- as.POSIXct("2026-09-09 12:00:00", tz = "GMT")
+  for (date in c(
+    "Wed, 09 Sep 2026 12:02:00 GMT",
+    "Wednesday, 09-Sep-26 12:02:00 GMT",
+    "Wed Sep  9 12:02:00 2026"
+  )) {
+    response <- httr2::response(status = 503, headers = list("retry-after" = date))
+    expect_equal(shinyOAuth:::parse_retry_after_header(response, now), 120)
+    expect_identical(Sys.getlocale("LC_TIME"), selected)
+  }
+  response <- httr2::response(status = 503, headers = list("retry-after" = "bad date"))
+  expect_true(is.na(shinyOAuth:::parse_retry_after_header(response, now)))
+  expect_identical(Sys.getlocale("LC_TIME"), selected)
 })
 
 test_that("parse_token_response parses json and form encoded bodies", {
