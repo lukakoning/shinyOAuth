@@ -2346,7 +2346,7 @@ swap_code_for_token_set <- function(
       }
 
       if (length(client@provider@extra_token_params) > 0) {
-        params <- merge_oauth_extra_params(
+        params <- merge_token_extra_params(
           params,
           client@provider@extra_token_params
         )

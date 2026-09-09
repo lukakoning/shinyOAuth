@@ -35,6 +35,18 @@ merge_oauth_extra_params <- function(params, extra) {
   resolved$params
 }
 
+# Token scope overrides need a dedicated model for the refresh-token grant,
+# previous access-token grant, and current request. Reject before serialization,
+# including for provider objects created by an older package version.
+merge_token_extra_params <- function(params, extra) {
+  if ("scope" %in% tolower(trimws(names(extra)))) {
+    err_config(
+      "scope is reserved in extra_token_params; refresh scope narrowing is not supported"
+    )
+  }
+  merge_oauth_extra_params(params, extra)
+}
+
 # Pure counterpart used by request construction and configuration assessment.
 oauth_extra_params_resolution <- function(params, extra) {
   if (!length(extra)) {

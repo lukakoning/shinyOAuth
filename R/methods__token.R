@@ -903,7 +903,7 @@ refresh_token_impl <- function(
         }
         # Allow provider to add custom token params (mirrors login path)
         if (length(oauth_client@provider@extra_token_params) > 0) {
-          params <- merge_oauth_extra_params(
+          params <- merge_token_extra_params(
             params,
             oauth_client@provider@extra_token_params
           )

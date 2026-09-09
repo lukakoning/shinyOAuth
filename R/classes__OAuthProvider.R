@@ -145,7 +145,10 @@
 #'   a token, for example during logout (RFC 7009).
 #'
 #' @param extra_auth_params Extra parameters for authorization URL
-#' @param extra_token_params Extra parameters for token exchange
+#' @param extra_token_params Extra parameters for token exchange.
+#'   `scope` is reserved and cannot be unblocked: explicit refresh scope
+#'   narrowing is not currently supported. Configure login scopes on
+#'   [oauth_client()] instead.
 #' @param extra_token_headers Extra headers for back-channel token-style
 #'   requests (named character vector), applied only to token exchange and
 #'   refresh. Configure `oauth_client(endpoint_auth = ...)` for headers needed
@@ -1311,6 +1314,9 @@ oauth_provider_validate <- function(self) {
       return(
         "OAuthProvider: extra_token_params must be a named list (all elements must have names)"
       )
+    }
+    if ("scope" %in% tolower(trimws(nms))) {
+      return("OAuthProvider: scope is reserved in extra_token_params; refresh scope narrowing is not supported")
     }
   }
 
