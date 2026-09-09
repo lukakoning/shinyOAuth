@@ -2531,3 +2531,47 @@ test_that("get_userinfo lets an explicit override repair missing OAuthToken toke
   expect_identical(seen$helper, "dpop")
   expect_identical(userinfo[["sub"]], "user-1")
 })
+test_that("transient DPoP response nonces update every retry and the cache", {
+  local_options(shinyOAuth.retry_max_tries = 3L)
+  client <- make_dpop_test_client(make_test_provider())
+  url <- "https://resource.example.com/data"
+  nonces <- list()
+  observed <- 0L
+  request <- httr2::request(url)
+  request[["shinyOAuth_response_observer"]] <- function(resp) {
+    observed <<- observed + 1L
+  }
+  local_mocked_bindings(
+    retry_backoff_delay = function(...) 0,
+    req_perform_bounded = function(req) {
+      expect_null(req[["shinyOAuth_response_observer"]])
+      claims <- parse_jwt_payload(req$headers[["DPoP"]])
+      nonces[length(nonces) + 1L] <<- list(claims$nonce)
+      attempt <- length(nonces)
+      httr2::response(
+        url = url,
+        status = if (attempt < 3L) 503L else 200L,
+        headers = if (attempt < 3L) {
+          list("DPoP-Nonce" = paste0("fresh-", attempt))
+        } else {
+          list()
+        }
+      )
+    },
+    .package = "shinyOAuth"
+  )
+  response <- req_with_dpop_retry(
+    request,
+    client,
+    access_token = "access",
+    nonce = "initial"
+  )
+  expect_identical(httr2::resp_status(response), 200L)
+  expect_identical(nonces, list("initial", "fresh-1", "fresh-2"))
+  expect_identical(observed, 3L)
+  expect_identical(
+    dpop_nonce_cache_get(client, url, request_kind = "resource"),
+    "fresh-2"
+  )
+  expect_null(dpop_nonce_cache_get(client, url, request_kind = "token"))
+})

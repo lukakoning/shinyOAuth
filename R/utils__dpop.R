@@ -988,8 +988,26 @@ req_with_dpop_retry <- function(
   url <- req[["url"]] %||% NA_character_
   request_kind <- if (is_valid_string(access_token)) "resource" else "token"
   prior_prepare_attempt <- req[["shinyOAuth_prepare_attempt"]] %||% NULL
+  prior_response_observer <- req[["shinyOAuth_response_observer"]] %||% NULL
+  current_nonce <- nonce
 
-  build_prepare_attempt <- function(nonce_value) {
+  # RFC 9449 permits a fresh nonce on any response, including transient errors.
+  # Observe each response before the generic loop builds the next proof.
+  req[["shinyOAuth_response_observer"]] <- function(resp) {
+    received_nonce <- resp_get_dpop_nonce(resp)
+    if (is_valid_string(received_nonce)) {
+      current_nonce <<- received_nonce
+      dpop_nonce_cache_set(
+        client,
+        url,
+        received_nonce,
+        request_kind = request_kind
+      )
+    }
+    if (is.function(prior_response_observer)) prior_response_observer(resp)
+  }
+
+  build_prepare_attempt <- function() {
     function(attempt_req, attempt) {
       if (is.function(prior_prepare_attempt)) {
         attempt_req <- prior_prepare_attempt(attempt_req, attempt)
@@ -999,7 +1017,7 @@ req_with_dpop_retry <- function(
         attempt_req,
         client,
         access_token = access_token,
-        nonce = nonce_value
+        nonce = current_nonce
       )
     }
   }
@@ -1010,7 +1028,7 @@ req_with_dpop_retry <- function(
     access_token = access_token,
     nonce = nonce
   )
-  req_with_proof[["shinyOAuth_prepare_attempt"]] <- build_prepare_attempt(nonce)
+  req_with_proof[["shinyOAuth_prepare_attempt"]] <- build_prepare_attempt()
 
   resp <- req_with_retry(
     req_with_proof,
@@ -1038,13 +1056,14 @@ req_with_dpop_retry <- function(
     return(resp)
   }
 
+  current_nonce <- nonce
   retry_req <- req_add_dpop_proof(
     req,
     client,
     access_token = access_token,
     nonce = nonce
   )
-  retry_req[["shinyOAuth_prepare_attempt"]] <- build_prepare_attempt(nonce)
+  retry_req[["shinyOAuth_prepare_attempt"]] <- build_prepare_attempt()
 
   resp <- req_with_retry(retry_req, idempotent = idempotent)
 

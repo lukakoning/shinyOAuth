@@ -554,6 +554,14 @@ req_with_retry <- function(req, idempotent = TRUE) {
   req <- httr2::req_error(req, is_error = \(resp) FALSE)
 
   prepare_attempt <- req[["shinyOAuth_prepare_attempt"]] %||% NULL
+  response_observer <- req[["shinyOAuth_response_observer"]] %||% NULL
+
+  observe_response <- function(resp) {
+    if (inherits(resp, "httr2_response") && is.function(response_observer)) {
+      response_observer(resp)
+    }
+    invisible(NULL)
+  }
 
   prepare_attempt_req <- function(attempt) {
     attempt_req <- req
@@ -562,6 +570,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
     }
     if (inherits(attempt_req, "httr2_request")) {
       attempt_req[["shinyOAuth_prepare_attempt"]] <- NULL
+      attempt_req[["shinyOAuth_response_observer"]] <- NULL
     }
     attempt_req
   }
@@ -596,6 +605,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
         parent = parent
       )
     }
+    observe_response(resp)
     return(resp)
   }
 
@@ -652,6 +662,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
         Sys.sleep(retry_backoff_delay(i, base = base, cap = cap))
       }
     } else if (inherits(resp, "httr2_response")) {
+      observe_response(resp)
       status <- try(httr2::resp_status(resp), silent = TRUE)
       status <- if (!inherits(status, "try-error")) {
         as.integer(status)
