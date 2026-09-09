@@ -353,6 +353,8 @@ require_request_object_atomic_store <- function(store) {
 
 # Return NULL for ordinary app requests; all handle requests terminate here.
 shiny_request_object_http_handler <- function(req, client) {
+  query_error <- oauth_http_query_guard(req)
+  if (!is.null(query_error)) return(query_error)
   query <- req[["QUERY_STRING"]] %||% ""
   handles <- oauth_module_query_raw_values(query, shiny_request_object_param)
   if (!length(handles)) {

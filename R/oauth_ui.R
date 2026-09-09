@@ -123,6 +123,8 @@ oauth_ui <- function(
     uiPattern = ".*"
   )$httpHandler
   ui <- function(req) {
+    query_error <- oauth_http_query_guard(req)
+    if (!is.null(query_error)) return(query_error)
     if (!is.null(registry)) {
       response <- oauth_registry_http_handler(
         req,
@@ -220,6 +222,26 @@ oauth_get_query_is_callback <- function(query, client = NULL) {
     (!is.null(client) &&
       !is.null(resolve_jarm_callback_transport(client)) &&
       length(oauth_module_query_raw_values(query, "response")) > 0L)
+}
+
+# Apply the callback query budget to every request at the HTTP boundary: route
+# detection itself parses untrusted queries, including ordinary app queries.
+# Return a response so callers reject before scanning or rendering anything.
+oauth_http_query_guard <- function(req) {
+  tryCatch(
+    {
+      validate_untrusted_query_string(
+        req[["QUERY_STRING"]] %||% "",
+        max_bytes = oauth_callback_limits()$query
+      )
+      NULL
+    },
+    shinyOAuth_state_error = function(...) {
+      response <- oauth_get_setup_error("Invalid or oversized HTTP query.")
+      if (identical(req[["REQUEST_METHOD"]], "HEAD")) response$content <- ""
+      response
+    }
+  )
 }
 
 oauth_get_setup_error <- function(message) {

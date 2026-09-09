@@ -668,7 +668,7 @@ test_that("oauth_form_post_ui rejects oversized callback query before storing", 
   expect_identical(resp[["status"]], 400L)
   expect_match(
     resp[["content"]],
-    "Callback query string exceeded maximum length",
+    "Invalid or oversized HTTP query.",
     fixed = TRUE
   )
   expect_false("Location" %in% names(resp[["headers"]]))

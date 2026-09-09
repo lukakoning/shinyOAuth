@@ -88,6 +88,8 @@ oauth_registry_rejection <- function(req, reason, message) {
 }
 
 oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
+  query_error <- oauth_http_query_guard(req)
+  if (!is.null(query_error)) return(query_error)
   # Hosted Request Objects have independent, client-bound handles. Missing
   # handles in another client's store do not consume the requested object.
   if (
@@ -116,10 +118,6 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
   }
   tryCatch(
     {
-      validate_untrusted_query_string(
-        query,
-        max_bytes = oauth_callback_limits()$query
-      )
       uri <- request_uri_resolver(req)
       if (!is_valid_string(uri)) {
         if (callback) {

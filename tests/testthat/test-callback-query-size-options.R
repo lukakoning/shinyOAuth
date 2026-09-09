@@ -178,3 +178,35 @@ test_that("callback and JARM field budgets share one resolver and honor override
     "maximum length"
   )
 })
+test_that("HTTP entrypoints reject oversized queries before any scanning", {
+  withr::local_options(shinyOAuth.callback_max_query_bytes = 64)
+  client <- make_test_client()
+  scan <- function(...) stop("query scanning must not run")
+  testthat::local_mocked_bindings(
+    oauth_module_query_raw_values = scan,
+    oauth_get_query_is_callback = scan,
+    .package = "shinyOAuth"
+  )
+  ui <- oauth_ui(function(...) stop("UI must not render"), "auth", client)
+  registry_ui <- oauth_ui(function(...) stop("UI must not render"), clients = list(auth = client))
+  entrypoints <- list(
+    shiny::shinyApp(ui, function(...) {})$httpHandler,
+    registry_ui,
+    function(req) oauth_registry_http_handler(req, list(auth = client), scan),
+    function(req) shiny_request_object_http_handler(req, client)
+  )
+  for (handler in entrypoints) {
+    for (method in c("GET", "HEAD", "POST")) {
+      for (key in c("code", "theme", shiny_request_object_param)) {
+        response <- handler(list(
+          REQUEST_METHOD = method,
+          PATH_INFO = "/",
+          QUERY_STRING = paste0(key, "=", strrep("x", 65L))
+        ))
+        expect_identical(response$status, 400L)
+        expect_identical(response$headers[["Cache-Control"]], "no-store")
+        if (method == "HEAD") expect_identical(response$content, "")
+      }
+    }
+  }
+})
