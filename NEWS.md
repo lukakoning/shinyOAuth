@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* HMAC-only JARM no longer creates an unused JWKS dependency in `check_oauth21()`.
+The checker uses the same selected signing algorithm as runtime validation and
+still assesses key retrieval required by other enabled operations.
+
 * `check_oauth21()` recognizes the UserInfo subject comparison enforced by a
 required validated ID-token baseline, even with `userinfo_id_token_match = FALSE`.
 Separately selected UserInfo calls still need baseline context, and active

@@ -30,7 +30,12 @@ resolve_oauth_key_dependencies <- function(
     is_valid_string(client@request_object_encryption_alg) &&
     is_valid_string(client@request_object_encryption_enc)
   c(
-    jarm = resolve_jwks_key_source(provider, jarm),
+    jarm = resolve_jwks_key_source(
+      provider,
+      jarm &&
+        !resolve_authorization_response_signing_alg(client) %in%
+          c("HS256", "HS384", "HS512")
+    ),
     id_token = resolve_jwks_key_source(
       provider,
       validates_id && !all(grepl("^HS", provider@allowed_algs))

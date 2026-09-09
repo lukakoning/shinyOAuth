@@ -525,6 +525,49 @@ test_that("JARM and validated OIDC policies are assessed when selected", {
   )
 })
 
+test_that("HMAC-only JARM needs no JWKS but independent key operations still do", {
+  withr::local_options(shinyOAuth.tls_min_version = "1.2")
+  client <- oauth21_test_client(
+    list(
+      issuer = "https://issuer.example",
+      issuer_thus_oidc = FALSE,
+      jarm_signing_alg_values_supported = c("HS256", "RS256")
+    ),
+    client_secret = strrep("s", 32),
+    response_mode = "query.jwt",
+    jarm_signed_response_alg = "HS256"
+  )
+  local_mocked_bindings(
+    fetch_jwks = function(...) stop("HMAC must not fetch keys"),
+    .package = "shinyOAuth"
+  )
+  signed <- jose::jwt_encode_hmac(
+    jose::jwt_claim(
+      iss = client@provider@issuer,
+      aud = client@client_id,
+      exp = as.numeric(Sys.time()) + 60
+    ),
+    client@client_secret
+  )
+  expect_silent(verify_jarm_signature(client, signed, "HS256"))
+  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_false("jwks" %in% check_oauth21(client)$operations)
+  client@provider@jwks_uri <- "http://localhost:8000/keys"
+  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_false("jwks" %in% check_oauth21(client)$operations)
+  asymmetric <- client
+  asymmetric@jarm_signed_response_alg <- "RS256"
+  expect_identical(
+    oauth21_finding(check_oauth21(asymmetric), "https.jwks")$status,
+    "fail"
+  )
+  client@provider@id_token_validation <- TRUE
+  expect_identical(
+    oauth21_finding(check_oauth21(client), "https.jwks")$status,
+    "fail"
+  )
+})
+
 test_that("UserInfo assessment follows the validated baseline and call context", {
   withr::local_options(shinyOAuth.tls_min_version = "1.2")
   client <- oauth21_test_client(
