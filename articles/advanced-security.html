@@ -452,8 +452,10 @@ request too, configure
 <code>request_object_encryption_enc</code> to a supported AES-CBC-HMAC
 value such as <code>"A128CBC-HS256"</code>. The provider must publish a
 suitable encryption key or you must supply
-<code>request_object_encryption_jwk</code>. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html"><code>oauth_client()</code></a>
-for supported algorithms and key selection.</p>
+<code>request_object_encryption_jwk</code> to <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html"><code>oauth_provider()</code></a>.
+See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html"><code>oauth_client()</code></a>
+for supported algorithms and the provider reference for encryption key
+selection.</p>
 <p>PAR, described below, keeps most request details out of the browser
 URL. It can also carry a signed Request Object, combining PAR with
 JAR.</p>
@@ -759,13 +761,13 @@ construction. Adding query parameters is allowed. Use
 </h2>
 <p>For outgoing private-key client assertions, JAR, and DPoP, signing
 supports <code>RS256</code>, <code>ES256</code>, <code>ES384</code>,
-<code>ES512</code>, and <code>EdDSA</code> with Ed25519 keys. Ed25519
-accepts an OpenSSL private key or PEM; DPoP embeds only its public OKP
-JWK. Algorithm inference and explicit choices remain constrained by
-provider metadata. Secret-based assertions and JAR support
-<code>HS256</code>, <code>HS384</code>, and <code>HS512</code>. RSA-PSS
-and Ed448 are not supported for outgoing signatures. Incoming signature
-policies are separate; see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html"><code>oauth_provider()</code></a>
+<code>ES512</code>, and both <code>EdDSA</code> and <code>Ed25519</code>
+with Ed25519 keys. Ed25519 accepts an OpenSSL private key or PEM; DPoP
+embeds only its public OKP JWK. Algorithm inference and explicit choices
+remain constrained by provider metadata. Secret-based assertions and JAR
+support <code>HS256</code>, <code>HS384</code>, and <code>HS512</code>.
+RSA-PSS and Ed448 are not supported for outgoing signatures. Incoming
+signature policies are separate; see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html"><code>oauth_provider()</code></a>
 and the <code>jarm_*</code> arguments in <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html"><code>oauth_client()</code></a>.</p>
 <p>Request Object encryption and JARM decryption support
 <code>RSA-OAEP</code> with <code>A128CBC-HS256</code>,

@@ -415,9 +415,12 @@ Register the signing key with your provider. To encrypt the signed
 request too, configure `request_object_encryption_alg = "RSA-OAEP"` and
 `request_object_encryption_enc` to a supported AES-CBC-HMAC value such
 as `"A128CBC-HS256"`. The provider must publish a suitable encryption
-key or you must supply `request_object_encryption_jwk`. See
+key or you must supply `request_object_encryption_jwk` to
+[`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html).
+See
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html)
-for supported algorithms and key selection.
+for supported algorithms and the provider reference for encryption key
+selection.
 
 PAR, described below, keeps most request details out of the browser URL.
 It can also carry a signed Request Object, combining PAR with JAR.
@@ -741,13 +744,13 @@ to manage nonce retries.
 ## Signature and encryption support
 
 For outgoing private-key client assertions, JAR, and DPoP, signing
-supports `RS256`, `ES256`, `ES384`, `ES512`, and `EdDSA` with Ed25519
-keys. Ed25519 accepts an OpenSSL private key or PEM; DPoP embeds only
-its public OKP JWK. Algorithm inference and explicit choices remain
-constrained by provider metadata. Secret-based assertions and JAR
-support `HS256`, `HS384`, and `HS512`. RSA-PSS and Ed448 are not
-supported for outgoing signatures. Incoming signature policies are
-separate; see
+supports `RS256`, `ES256`, `ES384`, `ES512`, and both `EdDSA` and
+`Ed25519` with Ed25519 keys. Ed25519 accepts an OpenSSL private key or
+PEM; DPoP embeds only its public OKP JWK. Algorithm inference and
+explicit choices remain constrained by provider metadata. Secret-based
+assertions and JAR support `HS256`, `HS384`, and `HS512`. RSA-PSS and
+Ed448 are not supported for outgoing signatures. Incoming signature
+policies are separate; see
 [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html)
 and the `jarm_*` arguments in
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html).
