@@ -42,10 +42,10 @@ for this provider. Defaults to TRUE}
 (client_secret_basic), "body" (client_secret_post), or "public"
 (public client; send \code{client_id} only). The alias \code{"none"} is also
 accepted for \code{"public"}. If NULL (default), it is inferred conservatively
-from discovery. When PKCE is enabled and the provider advertises support
-for public clients via \code{none}, discovery selects \code{"public"}. Otherwise,
-the helper prefers \code{"header"} (client_secret_basic) when available, then
-\code{"body"} (client_secret_post). JWT methods (\code{"client_secret_jwt"},
+from discovery: \code{"header"} (client_secret_basic) is preferred, followed by
+\code{"body"} (client_secret_post), then \code{"public"} if \code{none} is advertised and
+PKCE is enabled. Set \code{token_auth_style = "public"} explicitly for a public
+client registration. JWT methods (\code{"client_secret_jwt"},
 \code{"private_key_jwt"}) and mTLS methods (\code{"tls_client_auth"},
 \code{"self_signed_tls_client_auth"}) must be selected explicitly. See
 \code{\link[=oauth_provider]{oauth_provider()}} for the supported methods and their credentials.}
@@ -106,9 +106,10 @@ does not itself require token introspection; set \code{introspect = TRUE} on
 
 Discovery describes what a service supports. Your app's registration may
 require a particular \code{token_auth_style}, secret, or key; configure those to
-match the registration. If PKCE is enabled and public authentication (\code{none})
-is advertised, automatic selection uses \code{"public"}. Otherwise it prefers
-\code{"header"}, then \code{"body"}. JWT and mTLS methods must be selected explicitly.
+match the registration. Automatic selection prefers \code{"header"}, then \code{"body"},
+then \code{"public"} when \code{none} is advertised and PKCE is enabled. For a public
+client registration, set \code{token_auth_style = "public"} explicitly. JWT and
+mTLS methods must also be selected explicitly.
 }
 \section{Discovery validation}{
 

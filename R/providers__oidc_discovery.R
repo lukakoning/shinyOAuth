@@ -29,9 +29,10 @@
 #'
 #' Discovery describes what a service supports. Your app's registration may
 #' require a particular `token_auth_style`, secret, or key; configure those to
-#' match the registration. If PKCE is enabled and public authentication (`none`)
-#' is advertised, automatic selection uses `"public"`. Otherwise it prefers
-#' `"header"`, then `"body"`. JWT and mTLS methods must be selected explicitly.
+#' match the registration. Automatic selection prefers `"header"`, then `"body"`,
+#' then `"public"` when `none` is advertised and PKCE is enabled. For a public
+#' client registration, set `token_auth_style = "public"` explicitly. JWT and
+#' mTLS methods must also be selected explicitly.
 #'
 #' @section Discovery validation:
 #' The discovered issuer must match the requested identifier by default.
@@ -80,10 +81,10 @@
 #'   (client_secret_basic), "body" (client_secret_post), or "public"
 #'   (public client; send `client_id` only). The alias `"none"` is also
 #'   accepted for `"public"`. If NULL (default), it is inferred conservatively
-#'   from discovery. When PKCE is enabled and the provider advertises support
-#'   for public clients via `none`, discovery selects `"public"`. Otherwise,
-#'   the helper prefers `"header"` (client_secret_basic) when available, then
-#'   `"body"` (client_secret_post). JWT methods (`"client_secret_jwt"`,
+#'   from discovery: `"header"` (client_secret_basic) is preferred, followed by
+#'   `"body"` (client_secret_post), then `"public"` if `none` is advertised and
+#'   PKCE is enabled. Set `token_auth_style = "public"` explicitly for a public
+#'   client registration. JWT methods (`"client_secret_jwt"`,
 #'   `"private_key_jwt"`) and mTLS methods (`"tls_client_auth"`,
 #'   `"self_signed_tls_client_auth"`) must be selected explicitly. See
 #'   [oauth_provider()] for the supported methods and their credentials.
