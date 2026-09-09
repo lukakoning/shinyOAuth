@@ -103,14 +103,19 @@ prevention remains necessary. Cookies, session storage, and Web Crypto
 must be available, and pending logins from older cookie-only or
 local-storage versions must be restarted after upgrading.</p>
 <p>Each new authorization request gets a fresh server-selected binding
-and a distinct marker cookie. Application callback routes and tabs have
-independent records; complete login in the tab that started it. Private
-module inputs are excluded from both URL and disk bookmarks. Avoid
-copying browser tokens into custom bookmark values or logs. The
-acknowledgment is a delivery check, not independent server verification
-of HTTP cookie possession. The standalone <code><a href="../reference/prepare_call.html">prepare_call()</a></code>
-and <code><a href="../reference/handle_callback.html">handle_callback()</a></code> APIs still require the caller to
-establish and protect their own browser binding.</p>
+and a distinct marker cookie. Idle predecessor markers are removed when
+the new binding is ready. Predecessors associated with pending
+transactions (or older records whose transaction status is unknown)
+remain until their original TTL expires, so a cloned tab cannot
+invalidate the original tab’s pending login. Application callback routes
+and tabs have independent records; complete login in the tab that
+started it. Private module inputs are excluded from both URL and disk
+bookmarks. Avoid copying browser tokens into custom bookmark values or
+logs. The acknowledgment is a delivery check, not independent server
+verification of HTTP cookie possession. The standalone
+<code><a href="../reference/prepare_call.html">prepare_call()</a></code> and <code><a href="../reference/handle_callback.html">handle_callback()</a></code> APIs
+still require the caller to establish and protect their own browser
+binding.</p>
 </div>
 <div class="section level2">
 <h2 id="provider-metadata-and-oidc-discovery">Provider metadata and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-metadata-and-oidc-discovery"></a>
