@@ -51,6 +51,19 @@ otel_setup_error_detail <- function(error) {
   summary
 }
 
+# The SDK may report setup/exporter failures as classified messages and return
+# a no-op object. Apply the same diagnostic policy as for thrown SDK errors.
+# Scope this handler to SDK calls so application messages keep their semantics.
+otel_sdk_call <- function(code, context) {
+  withCallingHandlers(
+    force(code),
+    otel_error_message = function(condition) {
+      otel_telemetry_warning(context, condition)
+      tryInvokeRestart("muffleMessage")
+    }
+  )
+}
+
 #' Check whether tracing is enabled
 #'
 #' Reads the `shinyOAuth.otel_tracing_enabled` option before spans are started.
@@ -87,8 +100,10 @@ otel_logging_enabled <- function() {
 #' @noRd
 warn_about_async_otel_workers <- function() {
   otel_active <-
-    (otel_tracing_enabled() && isTRUE(otel::is_tracing_enabled())) ||
-    (otel_logging_enabled() && isTRUE(otel::is_logging_enabled()))
+    (otel_tracing_enabled() &&
+      isTRUE(otel_sdk_call(otel::is_tracing_enabled(), "tracing setup"))) ||
+    (otel_logging_enabled() &&
+      isTRUE(otel_sdk_call(otel::is_logging_enabled(), "logging setup")))
 
   if (!isTRUE(otel_active)) {
     return(invisible(FALSE))
@@ -1345,12 +1360,15 @@ with_otel_span <- function(
   span <- NULL
   tryCatch(
     {
-      span <- otel::start_local_active_span(
-        name = name,
-        attributes = otel_attributes(otel_with_trace_attribute(attributes)),
-        options = span_options,
-        activation_scope = environment(),
-        end_on_exit = FALSE
+      span <- otel_sdk_call(
+        otel::start_local_active_span(
+          name = name,
+          attributes = otel_attributes(otel_with_trace_attribute(attributes)),
+          options = span_options,
+          activation_scope = environment(),
+          end_on_exit = FALSE
+        ),
+        "span"
       )
       span_started <- TRUE
     },
@@ -1371,7 +1389,7 @@ with_otel_span <- function(
         }
         # End explicitly: the SDK's automatic scope finalizer marks an unset
         # status OK even when mark_ok = FALSE (including HTTP client spans).
-        try(span$end(), silent = TRUE)
+        try(otel_sdk_call(span$end(), "span completion"), silent = TRUE)
       }
     },
     add = TRUE
@@ -1406,10 +1424,13 @@ otel_with_active_span <- function(span, code) {
   }
 
   tryCatch(
-    otel::local_active_span(
-      span,
-      end_on_exit = FALSE,
-      activation_scope = environment()
+    otel_sdk_call(
+      otel::local_active_span(
+        span,
+        end_on_exit = FALSE,
+        activation_scope = environment()
+      ),
+      "span activation"
     ),
     error = function(e) {
       otel_telemetry_warning("span activation", e)
@@ -1531,10 +1552,13 @@ otel_start_async_parent <- function(
 
   span <- tryCatch(
     {
-      otel::start_span(
-        name = name,
-        attributes = otel_attributes(otel_with_trace_attribute(attributes)),
-        options = list(parent = parent)
+      otel_sdk_call(
+        otel::start_span(
+          name = name,
+          attributes = otel_attributes(otel_with_trace_attribute(attributes)),
+          options = list(parent = parent)
+        ),
+        "async parent span"
       )
     },
     error = function(e) {
@@ -1590,10 +1614,13 @@ otel_restore_parent_in_worker <- function(
 
   span <- tryCatch(
     {
-      otel::start_span(
-        name = name,
-        attributes = otel_attributes(otel_with_trace_attribute(attributes)),
-        options = list(parent = parent_ctx)
+      otel_sdk_call(
+        otel::start_span(
+          name = name,
+          attributes = otel_attributes(otel_with_trace_attribute(attributes)),
+          options = list(parent = parent_ctx)
+        ),
+        "worker span"
       )
     },
     error = function(e) {
@@ -1635,7 +1662,10 @@ otel_end_async_parent <- function(
     otel_note_error(error, span = parent[["span"]])
   }
 
-  try(otel::end_span(parent[["span"]]), silent = TRUE)
+  try(
+    otel_sdk_call(otel::end_span(parent[["span"]]), "async span completion"),
+    silent = TRUE
+  )
   invisible(NULL)
 }
 
@@ -1936,10 +1966,13 @@ otel_emit_log <- function(event) {
   msg <- otel_scalar_attribute(event[["message"]] %||% NULL) %||%
     otel_scalar_attribute(event[["type"]] %||% NULL) %||%
     "shinyOAuth"
-  otel::log(
-    msg = msg,
-    severity = severity,
-    attributes = otel_attributes(otel_event_attributes(event))
+  otel_sdk_call(
+    otel::log(
+      msg = msg,
+      severity = severity,
+      attributes = otel_attributes(otel_event_attributes(event))
+    ),
+    "logging"
   )
 
   invisible(NULL)
