@@ -802,25 +802,36 @@ test_that("assessment canonicalizes local HMAC algorithm names for every endpoin
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   client <- oauth21_test_client(
     list(
-      issuer = "https://issuer.example", issuer_thus_oidc = FALSE,
+      issuer = "https://issuer.example",
+      issuer_thus_oidc = FALSE,
       token_auth_style = "client_secret_jwt",
       token_endpoint_auth_signing_alg_values_supported = "HS256",
       introspection_url = "https://issuer.example/introspect",
       revocation_url = "https://issuer.example/revoke",
       par_url = "https://issuer.example/par",
       endpoint_auth_metadata = list(
-        introspection = list(methods = "client_secret_jwt", signing_algs = "HS256"),
+        introspection = list(
+          methods = "client_secret_jwt",
+          signing_algs = "HS256"
+        ),
         revocation = list(methods = "client_secret_jwt", signing_algs = "HS256")
       )
     ),
-    client_secret = strrep("s", 32), client_assertion_alg = "hs256",
+    client_secret = strrep("s", 32),
+    client_assertion_alg = "hs256",
     client_assertion_audience = "https://issuer.example",
     endpoint_auth = list(introspection = list(client_assertion_alg = " hs256 "))
   )
-  report <- check_oauth21(client, context = list(operations = c("introspection", "revocation")))
+  report <- check_oauth21(
+    client,
+    context = list(operations = c("introspection", "revocation"))
+  )
   expect_true(report$configuration_compliant)
   for (endpoint in c("token", "par", "introspection", "revocation")) {
-    expect_identical(oauth21_finding(report, paste0("client_auth.", endpoint))$status, "pass")
+    expect_identical(
+      oauth21_finding(report, paste0("client_auth.", endpoint))$status,
+      "pass"
+    )
     effective <- endpoint_auth_client(client, endpoint)
     jwt <- build_client_assertion(effective, client@provider@issuer)
     expect_identical(parse_jwt_header(jwt)$alg, "HS256")
@@ -832,27 +843,46 @@ test_that("assessment checks private-key endpoint overrides without signing", {
   key <- openssl::read_key(mtls_pem_fixture("client-key.pem"))
   client <- oauth21_test_client(
     list(
-      issuer = "https://issuer.example", issuer_thus_oidc = FALSE,
+      issuer = "https://issuer.example",
+      issuer_thus_oidc = FALSE,
       introspection_url = "https://issuer.example/introspect"
     ),
     introspect = TRUE,
-    endpoint_auth = list(introspection = list(
-      token_auth_style = "private_key_jwt", client_assertion_private_key = key,
-      client_assertion_alg = "ES256", client_assertion_audience = "https://issuer.example"
-    ))
+    endpoint_auth = list(
+      introspection = list(
+        token_auth_style = "private_key_jwt",
+        client_assertion_private_key = key,
+        client_assertion_alg = "ES256",
+        client_assertion_audience = "https://issuer.example"
+      )
+    )
   )
   expect_error(endpoint_auth_client(client, "introspection"), "incompatible")
   report <- check_oauth21(client)
   expect_false(report$configuration_compliant)
-  expect_identical(oauth21_finding(report, "client_auth.introspection")$status, "fail")
-  local_mocked_bindings(jwt_encode_sig = function(...) stop("must not sign"), .package = "jose")
-  local_mocked_bindings(rand_bytes = function(...) stop("must not draw randomness"), .package = "openssl")
+  expect_identical(
+    oauth21_finding(report, "client_auth.introspection")$status,
+    "fail"
+  )
+  local_mocked_bindings(
+    jwt_encode_sig = function(...) stop("must not sign"),
+    .package = "jose"
+  )
+  local_mocked_bindings(
+    rand_bytes = function(...) stop("must not draw randomness"),
+    .package = "openssl"
+  )
   client@endpoint_auth$introspection$client_assertion_alg <- "rs256"
   expect_true(check_oauth21(client)$configuration_compliant)
-  client@endpoint_auth$introspection$client_assertion_private_key <- openssl::write_pem(key)
+  client@endpoint_auth$introspection$client_assertion_private_key <- openssl::write_pem(
+    key
+  )
   report <- check_oauth21(client)
   expect_identical(report$configuration_compliant, NA)
-  expect_identical(oauth21_finding(report, "client_auth.introspection")$status, "unknown")
+  expect_identical(
+    oauth21_finding(report, "client_auth.introspection")$status,
+    "unknown"
+  )
   expect_identical(private_key_jws_alg_compatibility(list(), "RS256"), NA)
 })
 
@@ -864,17 +894,29 @@ test_that("assessment and PEM mTLS construction agree on the active backend", {
     mtls_client_key_file = mtls_pem_fixture("client-key.pem")
   )
   for (backend in c("(OpenSSL/3.5.0) Schannel", "OpenSSL/3.5.0 (Schannel)")) {
-    local_mocked_bindings(curl_version = function() list(ssl_version = backend), .package = "curl")
+    local_mocked_bindings(
+      curl_version = function() list(ssl_version = backend),
+      .package = "curl"
+    )
     supported <- startsWith(backend, "OpenSSL")
     report <- check_oauth21(client)
     expect_identical(report$configuration_compliant, supported)
-    expect_identical(oauth21_finding(report, "client_auth.token")$status, if (supported) "pass" else "fail")
-    expect_identical(oauth21_finding(report, "mtls.backend.token")$status, if (supported) "pass" else "fail")
+    expect_identical(
+      oauth21_finding(report, "client_auth.token")$status,
+      if (supported) "pass" else "fail"
+    )
+    expect_identical(
+      oauth21_finding(report, "mtls.backend.token")$status,
+      if (supported) "pass" else "fail"
+    )
     request <- httr2::request(client@provider@token_url)
     if (supported) {
       expect_silent(req_apply_mtls_client_certificate(request, client))
     } else {
-      expect_error(req_apply_mtls_client_certificate(request, client), "OpenSSL curl backend")
+      expect_error(
+        req_apply_mtls_client_certificate(request, client),
+        "OpenSSL curl backend"
+      )
     }
   }
 })

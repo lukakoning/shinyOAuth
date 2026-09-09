@@ -210,7 +210,9 @@ test_that("req_with_retry caps future-date Retry-After values", {
         headers = list(
           "content-type" = "text/plain",
           "retry-after" = format(
-            Sys.time() + 120, "%a, %d %b %Y %H:%M:%S GMT", tz = "GMT"
+            Sys.time() + 120,
+            "%a, %d %b %Y %H:%M:%S GMT",
+            tz = "GMT"
           )
         ),
         body = charToRaw("oops")
@@ -247,9 +249,13 @@ test_that("Retry-After dates retain seconds across time-unit boundaries", {
   for (delay in c(-120, 0, 59, 60, 61, 119, 3599, 3600, 3601, 86401)) {
     response <- httr2::response(
       status = 503,
-      headers = list("retry-after" = format(
-        now + delay, "%a, %d %b %Y %H:%M:%S GMT", tz = "GMT"
-      ))
+      headers = list(
+        "retry-after" = format(
+          now + delay,
+          "%a, %d %b %Y %H:%M:%S GMT",
+          tz = "GMT"
+        )
+      )
     )
     expect_equal(
       shinyOAuth:::parse_retry_after_header(response, now = now),
@@ -263,7 +269,9 @@ test_that("Retry-After dates retain seconds across time-unit boundaries", {
   expect_equal(
     shinyOAuth:::parse_retry_after_header(response, now = now),
     as.numeric(difftime(
-      as.POSIXct("2099-12-31 23:59:59", tz = "GMT"), now, units = "secs"
+      as.POSIXct("2099-12-31 23:59:59", tz = "GMT"),
+      now,
+      units = "secs"
     ))
   )
 })
@@ -287,11 +295,17 @@ test_that("Retry-After HTTP-date formats ignore and preserve LC_TIME", {
     "Wednesday, 09-Sep-26 12:02:00 GMT",
     "Wed Sep  9 12:02:00 2026"
   )) {
-    response <- httr2::response(status = 503, headers = list("retry-after" = date))
+    response <- httr2::response(
+      status = 503,
+      headers = list("retry-after" = date)
+    )
     expect_equal(shinyOAuth:::parse_retry_after_header(response, now), 120)
     expect_identical(Sys.getlocale("LC_TIME"), selected)
   }
-  response <- httr2::response(status = 503, headers = list("retry-after" = "bad date"))
+  response <- httr2::response(
+    status = 503,
+    headers = list("retry-after" = "bad date")
+  )
   expect_true(is.na(shinyOAuth:::parse_retry_after_header(response, now)))
   expect_identical(Sys.getlocale("LC_TIME"), selected)
 })

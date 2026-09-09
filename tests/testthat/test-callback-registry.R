@@ -173,7 +173,9 @@ test_that("registry early rejections emit one sanitized routing event and error 
   withr::local_options(
     shinyOAuth.otel_tracing_enabled = TRUE,
     shinyOAuth.audit_redact_http = TRUE,
-    shinyOAuth.audit_hook = function(event) events[[length(events) + 1L]] <<- event
+    shinyOAuth.audit_hook = function(event) {
+      events[[length(events) + 1L]] <<- event
+    }
   )
   clients <- registry_test_clients(shared = TRUE)
   cases <- list(
@@ -181,13 +183,17 @@ test_that("registry early rejections emit one sanitized routing event and error 
     route_unregistered = list(uri = "https://app.example/unregistered"),
     unexpected_transport = list(post = TRUE),
     issuer_missing = list(),
-    issuer_unrecognized = list(issuer = "https://unrecognized.example/ISSUER-SENTINEL")
+    issuer_unrecognized = list(
+      issuer = "https://unrecognized.example/ISSUER-SENTINEL"
+    )
   )
   for (reason in names(cases)) {
     case <- cases[[reason]]
     events <- list()
     fields <- list(code = "CODE-SENTINEL", state = "STATE-SENTINEL")
-    if (!is.null(case$issuer)) fields$iss <- case$issuer
+    if (!is.null(case$issuer)) {
+      fields$iss <- case$issuer
+    }
     request <- list(
       REQUEST_METHOD = if (isTRUE(case$post)) "POST" else "GET",
       PATH_INFO = "/callback",
@@ -197,12 +203,16 @@ test_that("registry early rejections emit one sanitized routing event and error 
     )
     record <- otelsdk::with_otel_record({
       response <- oauth_registry_http_handler(
-        request, clients,
+        request,
+        clients,
         function(req) case$uri %||% "https://app.example/callback"
       )
     })
     expect_identical(response$status, 400L)
-    routing <- Filter(function(event) event$type == "audit_callback_routing_rejected", events)
+    routing <- Filter(
+      function(event) event$type == "audit_callback_routing_rejected",
+      events
+    )
     expect_length(routing, 1L)
     expect_length(events, 1L)
     expect_identical(routing[[1L]]$reason, reason)
@@ -213,7 +223,10 @@ test_that("registry early rejections emit one sanitized routing event and error 
     span <- record$traces[["shinyOAuth.callback.route"]]
     expect_identical(span$status, "error")
     expect_identical(span$attributes[["oauth.reason"]], reason)
-    expect_identical(span$attributes[["oauth.phase"]], "callback_registry_routing")
+    expect_identical(
+      span$attributes[["oauth.phase"]],
+      "callback_registry_routing"
+    )
     expect_null(span$attributes[["oauth.provider.name"]])
     expect_false(any(grepl("SENTINEL", unlist(list(events, span$attributes)))))
   }
@@ -222,17 +235,28 @@ test_that("registry early rejections emit one sanitized routing event and error 
 test_that("registry does not duplicate parser diagnostics or report ordinary page visits", {
   clients <- registry_test_clients(shared = TRUE)
   events <- list()
-  withr::local_options(shinyOAuth.audit_hook = function(event) events[[length(events) + 1L]] <<- event)
+  withr::local_options(shinyOAuth.audit_hook = function(event) {
+    events[[length(events) + 1L]] <<- event
+  })
   resolver <- function(req) "https://app.example/callback"
   response <- oauth_registry_http_handler(
     list(REQUEST_METHOD = "GET", QUERY_STRING = "code=a&code=b&state=s"),
-    clients, resolver
+    clients,
+    resolver
   )
   expect_identical(response$status, 400L)
   expect_true(length(events) > 0L)
-  expect_false(any(vapply(events, function(event) event$type == "audit_callback_routing_rejected", logical(1))))
+  expect_false(any(vapply(
+    events,
+    function(event) event$type == "audit_callback_routing_rejected",
+    logical(1)
+  )))
   events <- list()
-  expect_null(oauth_registry_http_handler(list(REQUEST_METHOD = "GET"), clients, resolver))
+  expect_null(oauth_registry_http_handler(
+    list(REQUEST_METHOD = "GET"),
+    clients,
+    resolver
+  ))
   expect_length(events, 0L)
 })
 

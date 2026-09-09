@@ -154,7 +154,9 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     }
     candidates <- if (nzchar(alg)) {
       alg
-    } else if (length(advertised) && endpoint %in% c("introspection", "revocation")) {
+    } else if (
+      length(advertised) && endpoint %in% c("introspection", "revocation")
+    ) {
       advertised
     } else if (style == "client_secret_jwt") {
       "HS256"
@@ -162,16 +164,22 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
       # These are the runtime defaults for RSA, EC and Ed25519 respectively.
       c("RS256", "ES256", "ES384", "ES512", "EdDSA")
     }
-    compatible <- vapply(candidates, function(candidate) {
-      if (style == "client_secret_jwt") {
-        has_secret && candidate %in% c("HS256", "HS384", "HS512") &&
-          nchar(secret, type = "bytes") >= min_hmac_key_bytes(candidate)
-      } else {
-        private_key_jws_alg_compatibility(
-          effective("client_assertion_private_key"), candidate
-        )
-      }
-    }, logical(1))
+    compatible <- vapply(
+      candidates,
+      function(candidate) {
+        if (style == "client_secret_jwt") {
+          has_secret &&
+            candidate %in% c("HS256", "HS384", "HS512") &&
+            nchar(secret, type = "bytes") >= min_hmac_key_bytes(candidate)
+        } else {
+          private_key_jws_alg_compatibility(
+            effective("client_assertion_private_key"),
+            candidate
+          )
+        }
+      },
+      logical(1)
+    )
     if (length(advertised)) {
       compatible <- compatible & candidates %in% advertised
     }

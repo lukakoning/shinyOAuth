@@ -16,12 +16,17 @@ test_that("prepare_call builds URL with correct params and drops NULLs", {
 
 test_that("prepare_call checks generated state against callback and envelope limits before PAR", {
   client <- make_test_client(
-    use_pkce = TRUE, use_nonce = FALSE,
+    use_pkce = TRUE,
+    use_nonce = FALSE,
     scopes = paste0("https://api.example/permissions/read-", seq_len(10))
   )
   client@provider@token_auth_style <- "public"
   browser <- valid_browser_token()
-  state <- parse_query_param(prepare_call(client, browser), "state", decode = TRUE)
+  state <- parse_query_param(
+    prepare_call(client, browser),
+    "state",
+    decode = TRUE
+  )
   expect_gt(nchar(state, type = "bytes"), 1024)
   expect_lt(nchar(state, type = "bytes"), 8192)
   initial_keys <- client@state_store$keys()
@@ -32,7 +37,11 @@ test_that("prepare_call checks generated state against callback and envelope lim
   })
   withr::local_options(shinyOAuth.callback_max_state_bytes = 1024)
   for (par in c(FALSE, TRUE)) {
-    client@provider@par_url <- if (par) "https://example.com/par" else NA_character_
+    client@provider@par_url <- if (par) {
+      "https://example.com/par"
+    } else {
+      NA_character_
+    }
     for (defer in c(FALSE, TRUE)) {
       expect_error(
         prepare_call(client, browser, .defer_build = defer),

@@ -67,7 +67,11 @@ oauth_registry_rejection <- function(req, reason, message) {
     {
       audit_event(
         "callback_routing_rejected",
-        context = list(phase = "callback_registry_routing", reason = reason, status = "error"),
+        context = list(
+          phase = "callback_registry_routing",
+          reason = reason,
+          status = "error"
+        ),
         shiny_session = list(http = build_http_summary(req))
       )
       otel_note_error(simpleError("OAuth callback routing rejected"))
@@ -120,7 +124,9 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
       if (!is_valid_string(uri)) {
         if (callback) {
           return(oauth_registry_rejection(
-            req, "route_unavailable", "OAuth callback route is unavailable."
+            req,
+            "route_unavailable",
+            "OAuth callback route is unavailable."
           ))
         }
         return(NULL)
@@ -136,7 +142,8 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
       if (!length(candidates)) {
         if (callback) {
           return(oauth_registry_rejection(
-            req, "route_unregistered",
+            req,
+            "route_unregistered",
             "OAuth callback route is not registered."
           ))
         }
@@ -153,7 +160,8 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
       )]
       if (!length(candidates)) {
         return(oauth_registry_rejection(
-          req, "unexpected_transport",
+          req,
+          "unexpected_transport",
           "OAuth callback used an unexpected response transport."
         ))
       }
@@ -181,7 +189,8 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
         }
         if (!is_valid_string(issuer)) {
           return(oauth_registry_rejection(
-            req, "issuer_missing",
+            req,
+            "issuer_missing",
             "Shared OAuth callback route requires issuer identification."
           ))
         }
@@ -195,7 +204,8 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
       }
       if (length(candidates) != 1L) {
         return(oauth_registry_rejection(
-          req, "issuer_unrecognized",
+          req,
+          "issuer_unrecognized",
           "OAuth callback does not identify one configured provider."
         ))
       }
