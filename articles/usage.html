@@ -504,6 +504,12 @@ store. Plain <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" 
 login state because separate reads and deletes can let two requests use
 the same entry. See <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html"><code>custom_cache()</code></a>
 for the backend contract.</p>
+<p>Hosted Request Objects
+(<code>request_object_mode = "request_uri"</code>) also use this store,
+in separate records. Their JWT claims are readable when signed without
+JWE encryption; the pending-login record’s <code>state_key</code>
+sealing does not cover them. Apply the store’s access controls and
+expiry to both record types.</p>
 </div>
 <div class="section level3">
 <h3 id="security-checklist">Security checklist<a class="anchor" aria-label="anchor" href="#security-checklist"></a>

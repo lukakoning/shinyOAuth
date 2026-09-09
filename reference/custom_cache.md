@@ -142,6 +142,14 @@ boundary. Encryption does not replace backend access controls, expiry,
 or atomic `take`: a backend able to restore consumed entries can still
 violate single-use state.
 
+With `request_object_mode = "request_uri"`, hosted Request Objects are
+stored as separate records containing the signed or encrypted JWT and
+its expiry. These records do not use the pending-login
+`sealed_state_record` wrapper. A signed, unencrypted JWT has readable
+claims, including authorization request details. Configure Request
+Object JWE encryption when those claims need confidentiality, and apply
+backend access controls and expiry to these records.
+
 For a state store, returning `max_age` in seconds from `info()` also
 lets
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)

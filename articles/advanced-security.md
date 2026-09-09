@@ -494,6 +494,13 @@ old `/session/` paths. For multiple workers, use a shared state store
 with atomic `take()`; a memory store works only when publication and
 retrieval reach the same R process.
 
+The hosted JWT and its expiry occupy a separate store record, outside
+the pending-login record’s `state_key` sealing. Signing leaves JWT
+claims readable; enable Request Object JWE encryption for claim
+confidentiality. See the [`custom_cache()` shared-store
+contract](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
+for record protection and expiry requirements.
+
 Earlier versions used Shiny’s raw live session token in
 `registerDataObj()` URLs. Those URLs could disclose a capability also
 used by other session resources through browser, provider, or proxy
