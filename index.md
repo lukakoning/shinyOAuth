@@ -14,16 +14,15 @@ your app with an authorization code. Your app then exchanges this code
 for tokens. In OAuth flows, an access token is obtained to authorize API
 calls, and you may get the user’s profile information from the
 provider’s userinfo endpoint. In OIDC flows, a validated ID token
-authenticates the user after signature, issuer, audience, nonce, and
-freshness checks.
+authenticates the user.
 
 This package streamlines this flow for Shiny applications, enabling
-developers to add OIDC authentication and OAuth authorization to their
-apps with minimal code. The provided Shiny module handles redirecting
-unauthenticated users, managing state/PKCE/nonce for secure code-token
-exchange, verifying OIDC tokens, automatically fetching user info and
-performing token refresh, using asynchronous execution, and more. The
-package is highly configurable and works with various OAuth 2.0/OIDC
+developers to add OAuth 2.0 and OIDC authorization/authentication to
+their apps with minimal code. The provided Shiny module handles
+redirecting unauthenticated users, managing state/PKCE/nonce for secure
+code-token exchange, verifying OIDC tokens, automatically fetching user
+info and performing token refresh, using asynchronous execution, and
+more. The package is highly configurable and works with various
 providers and protocol features.
 
 ## Features
@@ -170,15 +169,6 @@ for audit event details, and
 for OpenTelemetry details.
 
 ## More information
-
-The package retains OAuth 2.0 provider configurations and exposes
-settings for the authorization-code/refresh client role in OAuth 2.1
-draft 16. Optional `check_oauth21(client)` reports mandatory
-configuration results, recommendations and unresolved deployment
-obligations; it does not initiate login or enforce a version policy. See
-[assessing OAuth 2.1
-configuration](https://lukakoning.github.io/shinyOAuth/articles/usage.html#assessing-oauth-21-configuration)
-for the pinned draft, supported scope and examples.
 
 ### What happens during the authentication flow?
 
