@@ -269,6 +269,7 @@ revoke_token <- function(
           )
         )
       ),
+      mark_ok = FALSE,
       parent = if (isTRUE(async_attr)) NULL else NA
     )
   })
@@ -617,6 +618,7 @@ introspect_token <- function(
           )
         )
       ),
+      mark_ok = FALSE,
       parent = if (isTRUE(async_attr)) NULL else NA
     )
   })
@@ -1342,6 +1344,7 @@ emit_token_revocation_audit <- function(
 #' @keywords internal
 #' @noRd
 annotate_token_revocation_span_result <- function(which, result) {
+  otel_record_token_operation_result(result)
   revoked <- result[["revoked"]] %||% NA
   otel_set_span_attributes(
     attributes = compact_list(list(
@@ -1451,6 +1454,7 @@ emit_token_introspection_audit <- function(
 #' @keywords internal
 #' @noRd
 annotate_token_introspection_span_result <- function(which, result) {
+  otel_record_token_operation_result(result)
   active <- result[["active"]] %||% NA
   otel_set_span_attributes(
     attributes = compact_list(list(
@@ -1574,6 +1578,8 @@ dispatch_token_async <- function(
         captured_shiny_session = captured_shiny_session
       ),
       otel_context = list(
+        token_operation_result = function_name %in%
+          c("revoke_token", "introspect_token"),
         headers = otel_parent[["headers"]],
         worker_span_name = worker_span_name,
         shiny_session = captured_shiny_session,
@@ -1598,7 +1604,15 @@ dispatch_token_async <- function(
       if (function_name %in% c("refresh_token", "refresh_token_impl")) {
         validate_token_acceptance_deadline(value)
       }
-      otel_end_async_parent(otel_parent, status = "ok")
+      otel_end_async_parent(
+        otel_parent,
+        status = "ok",
+        result = if (function_name %in% c("revoke_token", "introspect_token")) {
+          value
+        } else {
+          NULL
+        }
+      )
       value
     }) |>
     promises::catch(function(err) {

@@ -101,6 +101,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     .ns <- asNamespace("shinyOAuth")
     .otel_worker_span <- NULL
     .async_error <- NULL
+    .async_value <- NULL
     .otel_envvars <- .(captured_otel_envvars)
     .otel_option_gates <- .(captured_otel_option_gates)
     .otel_context <- .(otel_context)
@@ -162,7 +163,12 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
       .ns$otel_end_async_parent(
         list(span = .otel_worker_span),
         status = if (is.null(.async_error)) "ok" else "error",
-        error = .async_error
+        error = .async_error,
+        result = if (isTRUE(.otel_context[["token_operation_result"]])) {
+          .async_value
+        } else {
+          NULL
+        }
       ),
       add = TRUE
     )

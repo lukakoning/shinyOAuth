@@ -1150,6 +1150,47 @@ otel_mark_span_ok <- function(span = NULL) {
   invisible(NULL)
 }
 
+# Classify normalized revocation/introspection outcomes without inventing an
+# exception. Inactive is a successful introspection result; an unavailable
+# endpoint or absent token means no operation was attempted.
+otel_record_token_operation_result <- function(result, span = NULL) {
+  if (!otel_tracing_enabled()) {
+    return(invisible(NULL))
+  }
+  span <- span %||% otel::get_active_span()
+  outcome <- result[["status"]] %||% "unknown"
+  status <- if (identical(outcome, "ok")) {
+    "ok"
+  } else if (
+    outcome %in%
+      c("missing_token", "revocation_unsupported", "introspection_unsupported")
+  ) {
+    "unset"
+  } else {
+    "error"
+  }
+  otel_set_span_attributes(
+    span,
+    compact_list(list(
+      oauth.status = outcome,
+      oauth.supported = result[["supported"]],
+      oauth.active = result[["active"]],
+      oauth.revoked = result[["revoked"]],
+      error.type = if (status == "error") outcome else NULL
+    ))
+  )
+  if (status != "unset") {
+    try(
+      span$set_status(
+        status,
+        description = if (status == "error") outcome else NULL
+      ),
+      silent = TRUE
+    )
+  }
+  invisible(NULL)
+}
+
 #' Record an error on a span
 #'
 #' Used when an instrumented operation fails.
@@ -1571,20 +1612,24 @@ otel_restore_parent_in_worker <- function(
 #' @param parent Parent-span bundle returned by `otel_start_async_parent()`.
 #' @param status Outcome status to record.
 #' @param error Optional condition to record for error outcomes.
+#' @param result Optional normalized revocation or introspection result.
 #' @return Invisibly returns `NULL`.
 #' @keywords internal
 #' @noRd
 otel_end_async_parent <- function(
   parent,
   status = c("ok", "error"),
-  error = NULL
+  error = NULL,
+  result = NULL
 ) {
   if (is.null(parent) || is.null(parent[["span"]])) {
     return(invisible(NULL))
   }
 
   status <- match.arg(status)
-  if (identical(status, "ok")) {
+  if (!is.null(result) && is.null(error)) {
+    otel_record_token_operation_result(result, span = parent[["span"]])
+  } else if (identical(status, "ok")) {
     otel_mark_span_ok(parent[["span"]])
   } else {
     otel_note_error(error, span = parent[["span"]])

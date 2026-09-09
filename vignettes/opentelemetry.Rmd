@@ -77,8 +77,12 @@ run that setup in each worker or recreate workers after changing it.
 
 ### Error attributes and redaction
 
-- Successful operations have status `ok`; failures have status `error` and
-  an `exception` event containing the error class. Condition messages are
+- Successful operations have status `ok`; failures have status `error`.
+  Revocation and introspection classify their normalized results on both sync
+  and async spans: HTTP/protocol failures carry `error.type`, while missing
+  tokens and unsupported endpoints leave status unset. An inactive-token
+  response is successful introspection (`oauth.active = FALSE`). Thrown errors
+  also produce an `exception` event containing the error class. Condition messages are
   omitted by default and are included only with
   `options(shinyOAuth.expose_error_body = TRUE)`; those messages may contain
   provider details and should be handled as sensitive data.
