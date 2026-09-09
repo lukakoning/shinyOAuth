@@ -223,7 +223,7 @@
     names(fields),
     function(name) {
       value <- fields[[name]]
-      if (is.character(value) && grepl("(_url|_uri|issuer|audience)$", name)) {
+      if (is.character(value) && grepl("(_urls?|_uris?|issuers?|audiences?)$", name)) {
         value <- vapply(
           value,
           function(url) {

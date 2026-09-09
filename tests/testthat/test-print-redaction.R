@@ -5,6 +5,32 @@ collect_rendered_output <- function(x) {
   )
 }
 
+test_that("multi-redirect clients redact every displayed redirect URI", {
+  local_options(shinyOAuth.telemetry_path_scrubber = NULL)
+  redirects <- c(
+    "https://app.example.test/private-one?tenant=synthetic-first-secret",
+    "https://app.example.test/private-two?tenant=synthetic-second-secret"
+  )
+  client <- oauth_client(
+    provider = oauth_provider(
+      name = "example",
+      auth_url = "https://example.test/auth",
+      token_url = "https://example.test/token",
+      issuer = "https://example.test"
+    ),
+    client_id = "example",
+    client_secret = "secret",
+    redirect_uri = redirects[[1]],
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirects
+  )
+  for (output in collect_rendered_output(client)) {
+    expect_match(output, "authorization_server_redirect_uris", fixed = TRUE)
+    expect_match(output, "https://app.example.test/", fixed = TRUE)
+    expect_false(grepl("private-one|private-two|synthetic-first|synthetic-second", output))
+  }
+})
+
 expect_no_secret_material <- function(output, secrets) {
   for (secret in secrets) {
     testthat::expect_false(
