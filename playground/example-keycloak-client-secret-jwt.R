@@ -76,7 +76,6 @@ client <- oauth_client(
 
 # ---------- Shiny app ----------
 ui <- fluidPage(
-  use_shinyOAuth(),
   h3("Keycloak client_secret_jwt demo"),
   uiOutput("oauth_error"),
   tags$hr(),
@@ -86,6 +85,8 @@ ui <- fluidPage(
   h4("User info"),
   verbatimTextOutput("user_info")
 )
+
+ui <- oauth_ui(ui, id = "auth", client = client)
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
@@ -153,5 +154,5 @@ server <- function(input, output, session) {
   })
 }
 
-app <- shinyApp(ui, server)
+app <- shinyApp(ui, server, uiPattern = ".*")
 shiny::runApp(app, port = 8101)

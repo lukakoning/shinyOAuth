@@ -29,12 +29,15 @@ redirect_uri_is_posit_cloud_content_url <- grepl(
 )
 
 client <- if (length(missing_env) == 0) {
-  oauth_client(
-    provider = provider,
-    client_id = client_id,
-    client_secret = client_secret,
-    redirect_uri = redirect_uri,
-    scopes = character(0)
+  tryCatch(
+    oauth_client(
+      provider = provider,
+      client_id = client_id,
+      client_secret = client_secret,
+      redirect_uri = redirect_uri,
+      scopes = character(0)
+    ),
+    error = function(e) NULL
   )
 } else {
   NULL
@@ -44,7 +47,6 @@ client <- if (length(missing_env) == 0) {
 # 2 Shiny app -----------------------------------------------------------------
 
 ui <- fluidPage(
-  use_shinyOAuth(),
   titlePanel("shinyOAuth on Posit Connect Cloud"),
   p(
     paste(
@@ -76,7 +78,7 @@ ui <- fluidPage(
       class = "alert alert-warning",
       role = "alert",
       tags$p(
-        "Login is disabled until the required environment variables are set."
+        "Login is disabled until the required environment variables are set and valid."
       ),
       tags$ul(
         lapply(missing_env, function(var) tags$li(tags$code(var)))
@@ -97,12 +99,30 @@ ui <- fluidPage(
   verbatimTextOutput("user_info")
 )
 
+if (is.null(client)) {
+  ui <- oauth_ui(ui)
+} else {
+  # This deployment serves one configured public origin behind its TLS proxy.
+  # Derive the origin from trusted configuration and retain the actual route;
+  # request-supplied Host and forwarding headers do not select the public origin.
+  public_origin <- sub("^(https?://[^/?#]+).*", "\\1", client@redirect_uri)
+  public_request_uri <- function(req) {
+    paste0(public_origin, req[["PATH_INFO"]] %||% "/")
+  }
+  ui <- oauth_ui(
+    ui,
+    id = "auth",
+    client = client,
+    request_uri_resolver = public_request_uri
+  )
+}
+
 server <- function(input, output, session) {
   if (is.null(client)) {
     output$auth_print <- renderText({
       paste(
         c(
-          "Missing OAuth configuration.",
+          "Missing or invalid OAuth configuration.",
           "",
           "Required environment variables:",
           paste0("- ", missing_env),
@@ -201,4 +221,4 @@ server <- function(input, output, session) {
   })
 }
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, uiPattern = ".*")

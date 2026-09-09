@@ -21,10 +21,11 @@ client <- oauth_client(
 )
 
 ui <- fluidPage(
-  use_shinyOAuth(),
   actionButton("login", "Login with GitHub"),
   verbatimTextOutput("auth_print")
 )
+
+ui <- oauth_ui(ui, id = "auth", client = client)
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client, auto_redirect = FALSE)
@@ -63,4 +64,4 @@ server <- function(input, output, session) {
   })
 }
 
-shiny::runApp(shinyApp(ui, server), port = 8100)
+shiny::runApp(shinyApp(ui, server, uiPattern = ".*"), port = 8100)

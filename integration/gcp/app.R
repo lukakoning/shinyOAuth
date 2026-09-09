@@ -44,7 +44,6 @@ client_or_error <- tryCatch(
 
 if (inherits(client_or_error, "error")) {
   ui <- fluidPage(
-    use_shinyOAuth(),
     titlePanel("shinyOAuth on Cloud Run (GitHub)"),
     div(
       class = "alert alert-warning",
@@ -66,12 +65,11 @@ if (inherits(client_or_error, "error")) {
     )
   )
   server <- function(input, output, session) {}
-  shinyApp(ui, server)
+  shinyApp(oauth_ui(ui), server, uiPattern = ".*")
 } else {
   client <- client_or_error
 
   ui <- fluidPage(
-    use_shinyOAuth(),
     titlePanel("shinyOAuth on Cloud Run (GitHub)"),
     fluidRow(
       column(
@@ -95,6 +93,20 @@ if (inherits(client_or_error, "error")) {
         verbatimTextOutput("user_info")
       )
     )
+  )
+
+  # This deployment serves one configured public origin behind its TLS proxy.
+  # Derive the origin from trusted configuration and retain the actual route;
+  # request-supplied Host and forwarding headers do not select the public origin.
+  public_origin <- sub("^(https?://[^/?#]+).*", "\\1", client@redirect_uri)
+  public_request_uri <- function(req) {
+    paste0(public_origin, req[["PATH_INFO"]] %||% "/")
+  }
+  ui <- oauth_ui(
+    ui,
+    id = "auth",
+    client = client,
+    request_uri_resolver = public_request_uri
   )
 
   server <- function(input, output, session) {
@@ -160,5 +172,5 @@ if (inherits(client_or_error, "error")) {
     })
   }
 
-  shinyApp(ui, server)
+  shinyApp(ui, server, uiPattern = ".*")
 }

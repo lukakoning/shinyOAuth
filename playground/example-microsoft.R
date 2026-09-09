@@ -22,7 +22,6 @@ client <- oauth_client(
 
 # UI
 ui <- fluidPage(
-  use_shinyOAuth(),
   h3("OAuth demo (Microsoft Entra ID)"),
   uiOutput("oauth_error"),
   tags$hr(),
@@ -34,6 +33,8 @@ ui <- fluidPage(
 )
 
 # Server
+ui <- oauth_ui(ui, id = "auth", client = client)
+
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
 
@@ -113,4 +114,8 @@ later::later(
 )
 
 # Run app
-runApp(shinyApp(ui, server), port = 8100, launch.browser = FALSE)
+runApp(
+  shinyApp(ui, server, uiPattern = ".*"),
+  port = 8100,
+  launch.browser = FALSE
+)

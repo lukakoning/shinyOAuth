@@ -30,7 +30,6 @@ client <- oauth_client(
 
 # UI
 ui <- fluidPage(
-  use_shinyOAuth(),
   useShinyjs(),
   h3("OAuth demo (Google OIDC)"),
   uiOutput("oauth_error"),
@@ -43,6 +42,8 @@ ui <- fluidPage(
 )
 
 # Server
+ui <- oauth_ui(ui, id = "auth", client = client)
+
 server <- function(input, output, session) {
   # Start OAuth flow via module and receive results
   auth <- oauth_module_server("auth", client)
@@ -108,5 +109,5 @@ server <- function(input, output, session) {
 
 
 # Run
-app <- shinyApp(ui, server)
+app <- shinyApp(ui, server, uiPattern = ".*")
 shiny::runApp(app, port = 8100)

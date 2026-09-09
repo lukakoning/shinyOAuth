@@ -86,7 +86,6 @@ client <- oauth_client(
 )
 
 ui <- fluidPage(
-  use_shinyOAuth(),
   tags$h3("shinyOAuth + otel-tui"),
   tags$p(
     "Collector endpoint:",
@@ -103,6 +102,8 @@ ui <- fluidPage(
   verbatimTextOutput("auth_status"),
   verbatimTextOutput("userinfo")
 )
+
+ui <- oauth_ui(ui, id = "auth", client = client)
 
 server <- function(input, output, session) {
   auth <- oauth_module_server(
@@ -167,6 +168,6 @@ server <- function(input, output, session) {
 }
 
 shiny::runApp(
-  shinyApp(ui, server),
+  shinyApp(ui, server, uiPattern = ".*"),
   port = app_port
 )

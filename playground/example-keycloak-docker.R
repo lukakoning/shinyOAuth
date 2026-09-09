@@ -22,7 +22,6 @@ client <- oauth_client(
 )
 
 ui <- fluidPage(
-  use_shinyOAuth(),
   h3("shinyOAuth + Keycloak (Docker)"),
   actionButton("login_btn", "Login"),
   actionButton("logout_btn", "Logout"),
@@ -33,6 +32,8 @@ ui <- fluidPage(
   h4("User info"),
   verbatimTextOutput("user_info")
 )
+
+ui <- oauth_ui(ui, id = "auth", client = client)
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
@@ -63,5 +64,5 @@ server <- function(input, output, session) {
   })
 }
 
-app <- shinyApp(ui, server)
+app <- shinyApp(ui, server, uiPattern = ".*")
 shiny::runApp(app, port = auth_port, host = "127.0.0.1")

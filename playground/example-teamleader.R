@@ -26,7 +26,6 @@ client <- oauth_client(
 
 # UI
 ui <- fluidPage(
-  use_shinyOAuth(),
   h3("OAuth demo (Teamleader)"),
   uiOutput("oauth_error"),
   tags$hr(),
@@ -38,6 +37,8 @@ ui <- fluidPage(
 )
 
 # Server
+ui <- oauth_ui(ui, id = "auth", client = client)
+
 server <- function(input, output, session) {
   # Start OAuth flow via module and receive results
   auth <- oauth_module_server("auth", client)
@@ -106,5 +107,5 @@ server <- function(input, output, session) {
 }
 
 # Run
-app <- shinyApp(ui, server)
+app <- shinyApp(ui, server, uiPattern = ".*")
 shiny::runApp(app, port = 8100)
