@@ -13,7 +13,7 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }}, ${{ matrix.config.testthat || 'current testthat' }})
 
     strategy:
       fail-fast: false
@@ -24,6 +24,7 @@ jobs:
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'oldrel-1'}
+          - {os: ubuntu-latest,   r: 'release', testthat: 'testthat@3.2.2'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -48,8 +49,15 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: |
+            any::rcmdcheck
+            ${{ matrix.config.testthat || 'any::testthat' }}
           needs: check
+
+      - name: Verify minimum testthat version
+        if: matrix.config.testthat != ''
+        shell: Rscript {0}
+        run: stopifnot(packageVersion("testthat") == "3.2.2")
 
       - uses: r-lib/actions/check-r-package@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
         with:
