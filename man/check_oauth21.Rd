@@ -27,20 +27,20 @@ A \code{shinyOAuth_oauth21_assessment} list with \code{configuration_compliant},
 \code{assessment_scope}, and \code{operations}. \code{checks} is a data frame with stable
 \code{id}, \code{scope}, \code{status} (\code{pass}, \code{fail}, \code{unknown}, \code{not_applicable}),
 \code{requirement} (\code{MUST}, \code{SHOULD}, \code{info}), \code{message}, \code{remediation}, \code{reference},
-\code{evidence_source}, and logical \code{affects_verdict} columns. Only rows with
+\code{evidence_source}, \code{requirement_source}, and logical \code{affects_verdict} columns. Only rows with
 \code{affects_verdict = TRUE} enter aggregation; unknown external obligations
 remain visible separately.
 }
 \description{
 This function inspects a configured \link{OAuthClient} and its \link{OAuthProvider} for
-compliance with the OAuth 2.1 draft 16 (ruleset \verb{1.0.0}) specification. It
+compliance with the OAuth 2.1 draft 16 (ruleset \verb{1.1.0}) specification. It
 reports configuration gaps, unresolved external prerequisites, and recommendations
 without changing the configuration or making requests.
 }
 \details{
-Ruleset \verb{1.0.0} covers code/refresh, enabled PAR, required UserInfo and
+Ruleset \verb{1.1.0} covers code/refresh, enabled PAR, required UserInfo and
 introspection, and the additional operations selected in \code{context}. Signing
-key retrieval is included when applicable. Future resource URLs, arbitrary
+and encryption key retrieval is included when applicable. Future resource URLs, arbitrary
 request customization, browser/proxy TLS, registered redirect matching, secret
 custody, and authorization/resource server behavior require separate evidence.
 Optional DPoP, mTLS, PAR, JAR and JARM are not required as a bundle.
@@ -51,6 +51,11 @@ otherwise \code{TRUE} when a nonempty set of applicable mandatory checks passes.
 Recommendations and external unknowns do not change that verdict. In
 particular, the legacy assertion type \code{JWT} is a recommendation finding;
 the assertion audience is a separate mandatory check for JWT authentication.
+\code{requirement_source} distinguishes OAuth core, OIDC, extension specifications,
+security guidance and local package/application policy. Callback capacity
+thresholds are package recommendations, not draft-defined numeric minima;
+complete encoded requests still need deployment testing. OAuth 2.1 assessment
+is opt-in and does not change existing OAuth 2.0 configuration or requests.
 
 A positive verdict applies only to the recorded scope and ruleset, with the
 current configuration, options, runtime and declared context. It is not

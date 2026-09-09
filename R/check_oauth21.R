@@ -1,7 +1,7 @@
 #' Assess an OAuth configuration against a pinned OAuth 2.1 draft
 #'
 #' This function inspects a configured [OAuthClient] and its [OAuthProvider] for
-#' compliance with the OAuth 2.1 draft 16 (ruleset `1.0.0`) specification. It
+#' compliance with the OAuth 2.1 draft 16 (ruleset `1.1.0`) specification. It
 #' reports configuration gaps, unresolved external prerequisites, and recommendations
 #' without changing the configuration or making requests.
 #'
@@ -18,9 +18,9 @@
 #'   evidence or excuse missing local prerequisites. Prefer S256 PKCE.
 #'
 #' @details
-#' Ruleset `1.0.0` covers code/refresh, enabled PAR, required UserInfo and
+#' Ruleset `1.1.0` covers code/refresh, enabled PAR, required UserInfo and
 #' introspection, and the additional operations selected in `context`. Signing
-#' key retrieval is included when applicable. Future resource URLs, arbitrary
+#' and encryption key retrieval is included when applicable. Future resource URLs, arbitrary
 #' request customization, browser/proxy TLS, registered redirect matching, secret
 #' custody, and authorization/resource server behavior require separate evidence.
 #' Optional DPoP, mTLS, PAR, JAR and JARM are not required as a bundle.
@@ -31,6 +31,11 @@
 #' Recommendations and external unknowns do not change that verdict. In
 #' particular, the legacy assertion type `JWT` is a recommendation finding;
 #' the assertion audience is a separate mandatory check for JWT authentication.
+#' `requirement_source` distinguishes OAuth core, OIDC, extension specifications,
+#' security guidance and local package/application policy. Callback capacity
+#' thresholds are package recommendations, not draft-defined numeric minima;
+#' complete encoded requests still need deployment testing. OAuth 2.1 assessment
+#' is opt-in and does not change existing OAuth 2.0 configuration or requests.
 #'
 #' A positive verdict applies only to the recorded scope and ruleset, with the
 #' current configuration, options, runtime and declared context. It is not
@@ -44,7 +49,7 @@
 #'   `assessment_scope`, and `operations`. `checks` is a data frame with stable
 #'   `id`, `scope`, `status` (`pass`, `fail`, `unknown`, `not_applicable`),
 #'   `requirement` (`MUST`, `SHOULD`, `info`), `message`, `remediation`, `reference`,
-#'   `evidence_source`, and logical `affects_verdict` columns. Only rows with
+#'   `evidence_source`, `requirement_source`, and logical `affects_verdict` columns. Only rows with
 #'   `affects_verdict = TRUE` enter aggregation; unknown external obligations
 #'   remain visible separately.
 #' @references
@@ -100,7 +105,8 @@ check_oauth21 <- function(
     scope = "configuration",
     evidence = "configuration",
     reference = ref(section),
-    affects = requirement == "MUST" && scope == "configuration"
+    affects = requirement == "MUST" && scope == "configuration",
+    requirement_source = oauth21_requirement_source(reference)
   ) {
     checks[[length(checks) + 1L]] <<- data.frame(
       id = id,
@@ -111,6 +117,7 @@ check_oauth21 <- function(
       remediation = remediation,
       reference = reference,
       evidence_source = evidence,
+      requirement_source = requirement_source,
       affects_verdict = affects,
       stringsAsFactors = FALSE
     )
@@ -238,6 +245,29 @@ check_oauth21 <- function(
       ),
       "Check the effective method, endpoint overrides and advertised authentication metadata.",
       section = "2.4"
+    )
+    add(
+      paste0("client_auth.asymmetric.", endpoint),
+      if (effective$style == "public") {
+        "not_applicable"
+      } else if (!has_client) {
+        "unknown"
+      } else if (!isTRUE(effective$confidential)) {
+        "not_applicable"
+      } else {
+        status(
+          effective$style %in%
+            c(
+              "private_key_jwt",
+              "tls_client_auth",
+              "self_signed_tls_client_auth"
+            )
+        )
+      },
+      "Asymmetric client authentication is recommended where supported; secret-based authentication remains compatible.",
+      "Consider private_key_jwt or mTLS for this endpoint, subject to provider registration and deployment support.",
+      requirement = "SHOULD",
+      reference = "https://www.rfc-editor.org/rfc/rfc9700.html#section-2.5"
     )
     jwt <- effective$style %in% c("client_secret_jwt", "private_key_jwt")
     audience_ok <- if (!jwt) {
@@ -484,6 +514,37 @@ check_oauth21 <- function(
       "Configure authorization_server_mode and its issuer or distinct-route defense.",
       section = "2.3.4"
     )
+    add(
+      "issuer.identification_recommended",
+      if (client@authorization_server_mode == "single") {
+        "not_applicable"
+      } else {
+        status(
+          jarm ||
+            (isTRUE(client@enforce_callback_issuer) &&
+              isTRUE(provider@authorization_response_iss_parameter_supported))
+        )
+      },
+      "Issuer identification is preferred for multi-server clients; distinct registered callback routes remain a valid defense.",
+      "Prefer RFC 9207 issuer identification or JARM when supported; document legacy-provider reasons for distinct routes.",
+      section = "7.15.2",
+      requirement = "SHOULD"
+    )
+    redirect_host <- tolower(
+      oauth21_url_parts(client@redirect_uri)$hostname %||% ""
+    )
+    add(
+      "redirect.loopback_literal",
+      if (!redirect_host %in% c("localhost", "127.0.0.1", "::1", "[::1]")) {
+        "not_applicable"
+      } else {
+        status(redirect_host != "localhost")
+      },
+      "Loopback deployments should prefer an IP literal; existing localhost callbacks remain supported.",
+      "Register and use a matching 127.0.0.1 or [::1] callback where the deployment supports it.",
+      section = "8.4.2",
+      requirement = "SHOULD"
+    )
     compares <- isTRUE(client@compare_callback_issuer) ||
       isTRUE(client@enforce_callback_issuer)
     issuer_ok <- !compares ||
@@ -571,8 +632,22 @@ check_oauth21 <- function(
   )
   external(
     "refresh.server_protection",
-    "Refresh-token binding, rotation, replay detection and sender-constraint enforcement remain server obligations, even with a configured DPoP key or certificate.",
-    "4.3.3"
+    "The authorization server must maintain refresh-token binding to the issuing client.",
+    "4.3"
+  )
+  external(
+    "refresh.scope_resource_binding",
+    "Issued refresh tokens must remain bound to consented scope and resource servers.",
+    "3.2.3"
+  )
+  add(
+    "refresh.public_client_protection",
+    if (has_client && confidential) "not_applicable" else "unknown",
+    "Refresh tokens issued to public clients require server-enforced rotation or sender constraints; configuring a local key or certificate does not prove enforcement.",
+    "Obtain server evidence for refresh tokens issued to public clients, or establish that no refresh tokens are issued.",
+    section = "4.3.1",
+    scope = "external",
+    evidence = "not_observed"
   )
   add(
     "tokens.validation",
@@ -582,23 +657,51 @@ check_oauth21 <- function(
     requirement = "info",
     evidence = "package_contract"
   )
-  external(
+  add(
     "tokens.application_policy",
-    "Applications must enforce required granted scopes and account for estimated expiry; resource servers validate tokens and permissions.",
+    "unknown",
+    "The application's required scopes and authorization decisions depend on its own access policy.",
+    "Define application-specific access rules and inspect granted scopes where those rules need them.",
+    section = "1.4.1",
+    requirement = "info",
+    scope = "external",
+    evidence = "not_observed",
+    requirement_source = "application_policy"
+  )
+  external(
+    "tokens.resource_server_validation",
+    "Resource servers must validate token validity, scope and permission for each protected resource.",
     "5.2"
   )
+  external(
+    "tokens.early_invalidation",
+    "Clients must account for access tokens becoming invalid before their reported expiry; application recovery behavior was not observed.",
+    "3.2.3"
+  )
   limits <- oauth_callback_limits()
+  local_capacity_baseline <- c(
+    code = 8192,
+    state = 8192,
+    error = 256,
+    error_description = 4096,
+    error_uri = 2048,
+    iss = 2048,
+    browser_token = 256,
+    form_post_handle = 128,
+    form_post_id = 256,
+    query = 8000,
+    form_post_body = 8000
+  )
   add(
     "callback.capacity",
-    status(
-      limits[["code"]] >= 8192 &&
-        limits[["query"]] >= 8000 &&
-        limits[["form_post_body"]] >= 8000
-    ),
-    "The recommended local baseline allows 8192 decoded code bytes and an 8000-byte aggregate query/form envelope.",
-    "Review explicit callback field and aggregate limits; verify complete encoded callbacks against proxy limits.",
+    status(all(
+      unlist(limits[names(local_capacity_baseline)]) >= local_capacity_baseline
+    )),
+    "Package capacity advice compares each decoded field cap with its local default and encoded query/form envelopes with an 8000-byte floor; these are not draft-defined minima.",
+    "Review every field cap and the entire encoded callback, including percent encoding, fixed parameters, state, issuer and JARM; aggregate floors do not guarantee simultaneous field maxima.",
     section = "1.7.1",
-    requirement = "SHOULD"
+    requirement = "SHOULD",
+    requirement_source = "package_policy"
   )
   external(
     "callback.deployment_capacity",
@@ -609,10 +712,11 @@ check_oauth21 <- function(
   add(
     "transport.redirects",
     status(!isTRUE(getOption("shinyOAuth.allow_redirect", FALSE))),
-    "Sensitive back-channel requests reject redirects by default; an enabled redirect policy needs deployment review.",
+    "Package back-channel redirect hardening protects credential confidentiality; this is separate from browser redirect requirements.",
     "Review each redirect target and credential handling before enabling redirects.",
-    section = "1.6",
-    requirement = "SHOULD"
+    section = "1.4",
+    requirement = "SHOULD",
+    requirement_source = "package_policy"
   )
   add(
     "extensions.selection",
@@ -632,7 +736,7 @@ check_oauth21 <- function(
       configuration_compliant = oauth21_verdict(checks),
       checks = checks,
       draft = draft,
-      ruleset_version = "1.0.0",
+      ruleset_version = "1.1.0",
       package_version = as.character(utils::packageVersion("shinyOAuth")),
       assessed_at = Sys.time(),
       assessment_scope = if (has_client) {

@@ -43,12 +43,13 @@ test_that("a supported public client passes a bounded, deterministic assessment"
       "remediation",
       "reference",
       "evidence_source",
+      "requirement_source",
       "affects_verdict"
     )
   )
   expect_identical(report$operations, c("authorization", "code", "refresh"))
   expect_identical(report$draft, "draft-ietf-oauth-v2-1-16")
-  expect_identical(report$ruleset_version, "1.0.0")
+  expect_identical(report$ruleset_version, "1.1.0")
   expect_true(all(
     report$checks$status %in% c("pass", "fail", "unknown", "not_applicable")
   ))
@@ -414,6 +415,138 @@ test_that("active relaxations and capacity findings have appropriate applicabili
   expect_false(check_oauth21(client)$configuration_compliant)
   local_mocked_bindings(.is_test_or_interactive = function() FALSE)
   expect_true(check_oauth21(client)$configuration_compliant)
+})
+
+test_that("assessment recommendations preserve valid legacy configurations and identify owners", {
+  withr::local_options(shinyOAuth.tls_min_version = "1.2")
+  for (style in c("header", "body", "client_secret_jwt")) {
+    client <- oauth21_test_client(
+      list(
+        token_auth_style = style,
+        issuer = "https://issuer.example",
+        issuer_thus_oidc = FALSE
+      ),
+      client_secret = strrep("s", 32),
+      client_assertion_audience = "https://issuer.example"
+    )
+    report <- check_oauth21(client)
+    expect_true(report$configuration_compliant)
+    advice <- oauth21_finding(report, "client_auth.asymmetric.token")
+    expect_identical(advice$status, "fail")
+    expect_false(advice$affects_verdict)
+    expect_identical(advice$requirement_source, "oauth_security_bcp")
+    expect_identical(
+      oauth21_finding(report, "refresh.public_client_protection")$status,
+      "not_applicable"
+    )
+  }
+  client <- oauth21_test_client()
+  client@redirect_uri <- "http://localhost:8100/callback"
+  report <- check_oauth21(client)
+  expect_true(report$configuration_compliant)
+  expect_identical(
+    oauth21_finding(report, "redirect.loopback_literal")$status,
+    "fail"
+  )
+  client@redirect_uri <- "http://127.0.0.1:8100/callback"
+  expect_identical(
+    oauth21_finding(check_oauth21(client), "redirect.loopback_literal")$status,
+    "pass"
+  )
+  client <- oauth21_test_client(
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = c(
+      "https://app.example/callback",
+      "https://app.example/other"
+    )
+  )
+  report <- check_oauth21(client)
+  expect_true(report$configuration_compliant)
+  expect_identical(oauth21_finding(report, "issuer.mixup")$status, "pass")
+  expect_identical(
+    oauth21_finding(report, "issuer.identification_recommended")$status,
+    "fail"
+  )
+  expect_identical(
+    oauth21_finding(report, "refresh.public_client_protection")$status,
+    "unknown"
+  )
+  expect_match(
+    oauth21_finding(report, "refresh.public_client_protection")$reference,
+    "section-4.3.1",
+    fixed = TRUE
+  )
+  expect_identical(
+    oauth21_finding(report, "tokens.application_policy")$requirement,
+    "info"
+  )
+  expect_identical(
+    oauth21_finding(report, "tokens.application_policy")$requirement_source,
+    "application_policy"
+  )
+  for (id in c(
+    "tokens.resource_server_validation",
+    "tokens.early_invalidation"
+  )) {
+    row <- oauth21_finding(report, id)
+    expect_identical(row$requirement, "MUST")
+    expect_identical(row$scope, "external")
+    expect_false(row$affects_verdict)
+  }
+  for (id in c("callback.capacity", "transport.redirects")) {
+    expect_identical(
+      oauth21_finding(report, id)$requirement_source,
+      "package_policy"
+    )
+  }
+  oidc <- oauth21_test_client(
+    list(
+      issuer = "https://issuer.example",
+      jwks_uri = "https://issuer.example/keys",
+      userinfo_url = "https://issuer.example/userinfo"
+    ),
+    scopes = "openid"
+  )
+  expect_identical(
+    oauth21_finding(
+      check_oauth21(oidc),
+      "identity.userinfo_subject"
+    )$requirement_source,
+    "oidc"
+  )
+})
+
+test_that("capacity advice covers all callback field caps without changing verdicts", {
+  withr::local_options(shinyOAuth.tls_min_version = "1.2")
+  client <- oauth21_test_client()
+  for (field in c(
+    "code",
+    "state",
+    "error",
+    "error_description",
+    "error_uri",
+    "iss",
+    "browser_token",
+    "form_post_handle",
+    "form_post_id",
+    "query",
+    "form_post_body"
+  )) {
+    withr::with_options(
+      stats::setNames(
+        list(1),
+        paste0("shinyOAuth.callback_max_", field, "_bytes")
+      ),
+      {
+        report <- check_oauth21(client)
+        expect_true(report$configuration_compliant)
+        expect_identical(
+          oauth21_finding(report, "callback.capacity")$status,
+          "fail"
+        )
+      }
+    )
+  }
 })
 
 test_that("assessment has no protocol, random, cache, object or option side effects", {

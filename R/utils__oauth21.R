@@ -1,5 +1,21 @@
 # Pure configuration helpers. In particular, do not construct a temporary S7
 # client here: its validator can probe private-key signing and consume randomness.
+oauth21_requirement_source <- function(reference) {
+  if (grepl("openid-connect-core", reference, fixed = TRUE)) {
+    "oidc"
+  } else if (grepl("oauth-rfc7523bis", reference, fixed = TRUE)) {
+    "jwt_client_authentication"
+  } else if (grepl("rfc9207", reference, fixed = TRUE)) {
+    "issuer_identification"
+  } else if (grepl("rfc9700", reference, fixed = TRUE)) {
+    "oauth_security_bcp"
+  } else if (grepl("rfc9325", reference, fixed = TRUE)) {
+    "tls_security_bcp"
+  } else {
+    "oauth21"
+  }
+}
+
 oauth21_validate_context <- function(context) {
   if (
     !is.list(context) ||

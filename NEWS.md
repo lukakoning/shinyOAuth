@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* OAuth 2.1 assessment ruleset `1.1.0` adds non-blocking advice for asymmetric
+client authentication, issuer identification and loopback IP literals. Reports
+identify requirement sources and separate server obligations from application
+policy. Callback thresholds and back-channel redirect restrictions are labeled
+as package policy. Assessment remains opt-in and does not alter OAuth 2.0 flows.
+
 * HMAC-only JARM no longer creates an unused JWKS dependency in `check_oauth21()`.
 The checker uses the same selected signing algorithm as runtime validation and
 still assesses key retrieval required by other enabled operations.
@@ -37,7 +43,7 @@ callbacks should continue to use `oauth_form_post_ui()`.
 
 * Added `check_oauth21()`, a new function to analyze 
 a configured `OAuthClient` and `OAuthProvider` for
-compliance with the OAuth 2.1 draft 16 (ruleset `1.0.0`) specification.
+compliance with the OAuth 2.1 draft 16 (ruleset `1.1.0`) specification.
 
 * Browser and callback handling is more secure. Browser bindings are isolated
 by origin, tab, login, and app/module, and excluded from URLs and bookmarks.

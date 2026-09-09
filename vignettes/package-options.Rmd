@@ -23,6 +23,24 @@ Options affect the R process; use `oauth_client()` and
 `oauth_module_server()` arguments for settings that belong to one client or
 module. See [Usage](usage.html) for app setup.
 
+`check_oauth21()` is an opt-in, read-only assessment pinned to OAuth 2.1 draft 16.
+Ruleset `1.1.0` reports requirement sources: OAuth core, OIDC, extensions,
+security guidance, and package or application policy. Recommendations do not
+change the mandatory configuration verdict. Existing OAuth 2.0 authentication
+methods and callback choices remain available. For example, Basic/body client
+authentication can pass while receiving advice to consider asymmetric methods.
+Distinct callback routes remain valid when issuer identification is unavailable,
+and `localhost` callbacks remain supported with advice to prefer a loopback IP.
+
+Callback capacity advice uses local field defaults and an 8000-byte minimum
+envelope as package thresholds, not numeric OAuth 2.1 requirements. Test the
+complete encoded query or form body against package, proxy and browser limits:
+include parameter names, separators, fixed application parameters, percent
+encoding, state, issuer and JARM. An aggregate floor cannot guarantee that all
+decoded fields fit simultaneously. Back-channel redirect blocking is package
+policy motivated by credential confidentiality; the draft's browser redirect
+rules are a separate requirement.
+
 ## Logging
 
 - `options(shinyOAuth.audit_hook = function(event){ ... })` – receive structured audit and error events
