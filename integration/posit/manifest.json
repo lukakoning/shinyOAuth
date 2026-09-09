@@ -1029,15 +1029,15 @@
       "Repository": null,
       "description": {
         "Package": "shinyOAuth",
-        "Title": "Provider-Agnostic OAuth Authentication for 'shiny' Applications",
+        "Title": "OIDC Authentication and OAuth Authorization for 'shiny'\nApplications",
         "Version": "0.5.0.9000",
         "Authors@R": "\n    person(\"Luka\", \"Koning\", email = \"koningluka@gmail.com\", role = c(\"aut\", \"cre\", \"cph\"))",
-        "Description": "Provides a simple, configurable, provider-agnostic 'OAuth 2.0' and\n    'OpenID Connect' (OIDC) authentication framework for 'shiny' applications\n    using 'S7' classes. Defines providers, clients, and tokens, as well\n    as various supporting functions and a 'shiny' module. Features include\n    cross-site request forgery (CSRF) protection, state encryption,\n    'Proof Key for Code Exchange' (PKCE) handling, validation of OIDC identity\n    tokens (nonces, signatures, claims), automatic user info retrieval, asynchronous\n    flows, and hooks for audit logging.",
+        "Description": "Provides a simple, configurable framework for 'OpenID Connect'\n    (OIDC) authentication and 'OAuth 2.0' authorization in 'shiny' applications\n    using 'S7' classes. Defines providers, clients, and tokens, as well\n    as various supporting functions and a 'shiny' module. Features include\n    cross-site request forgery (CSRF) protection, state encryption,\n    'Proof Key for Code Exchange' (PKCE) handling, validation of OIDC identity\n    tokens (nonces, signatures, claims), automatic user info retrieval for OIDC\n    and supported provider-specific 'OAuth' integrations, asynchronous flows,\n    and hooks for audit logging.",
         "License": "MIT + file LICENSE",
         "Encoding": "UTF-8",
         "Roxygen": "list(markdown = TRUE)",
-        "Imports": "S7 (>= 0.2.0), R6 (>= 2.0), rlang (>= 1.0.0), shiny (>=\n1.7.0), jsonlite (>= 1.0), openssl (>= 2.0.0), httr2 (>=\n1.1.0), urltools (>= 1.7.3), cachem (>= 1.1.0), jose (>=\n1.2.0), lifecycle (>= 1.0.0), cli (>= 3.0.0), htmltools (>=\n0.5.0), otel (>= 0.2.0)",
-        "Suggests": "testthat (>= 3.0.0), knitr, rmarkdown, webfakes, promises,\nmirai (>= 2.0.0), future, withr, later, callr, chromote,\nsodium, shinytest2, xml2, otelsdk",
+        "Imports": "S7 (>= 0.2.0), R6 (>= 2.0), rlang (>= 1.0.0), shiny (>=\n1.7.0), jsonlite (>= 1.0), openssl (>= 2.0.0), httr2 (>=\n1.1.0), curl, urltools (>= 1.7.3), cachem (>= 1.1.0), jose (>=\n1.2.0), lifecycle (>= 1.0.0), cli (>= 3.0.0), htmltools (>=\n0.5.0), otel (>= 0.2.0)",
+        "Suggests": "bslib, ggplot2, purrr, dplyr, testthat (>= 3.1.7), DT, knitr,\nrmarkdown, webfakes, promises, mirai (>= 2.5.1), future, withr,\nlater, callr, processx, pkgload, chromote, sodium, shinytest2,\nxml2, otelsdk",
         "Depends": "R (>= 4.1.0)",
         "Config/testthat/edition": "3",
         "VignetteBuilder": "knitr",
@@ -1049,16 +1049,16 @@
         "RemoteRepo": "shinyOAuth",
         "RemoteUsername": "lukakoning",
         "RemoteRef": "master",
-        "RemoteSha": "ef3d022176256bedf4d18fda18644bb0ac40ef92",
+        "RemoteSha": "d17336f2eda625e1af63eea0934d0a5b5a87dcf8",
         "GithubRepo": "shinyOAuth",
         "GithubUsername": "lukakoning",
         "GithubRef": "master",
-        "GithubSHA1": "ef3d022176256bedf4d18fda18644bb0ac40ef92",
+        "GithubSHA1": "d17336f2eda625e1af63eea0934d0a5b5a87dcf8",
         "NeedsCompilation": "no",
-        "Packaged": "2026-05-23 13:39:19 UTC; dhrko",
+        "Packaged": "2026-09-09 17:55:35 UTC; dhrko",
         "Author": "Luka Koning [aut, cre, cph]",
         "Maintainer": "Luka Koning <koningluka@gmail.com>",
-        "Built": "R 4.5.1; ; 2026-05-23 13:39:22 UTC; windows"
+        "Built": "R 4.5.1; ; 2026-09-09 17:55:38 UTC; windows"
       }
     },
     "sourcetools": {
@@ -1266,10 +1266,10 @@
   },
   "files": {
     "app-auto-redirect.R": {
-      "checksum": "6edd6ba74e0dc47b01bdb6ee608157bd"
+      "checksum": "13057b00c31465c6b54fbd9bdf61481c"
     },
     "app.R": {
-      "checksum": "26e8932a41c0c678eed7b1d9c734cb63"
+      "checksum": "bd992e91a5b4199920f0666347d1a55a"
     }
   },
   "users": null

@@ -51,13 +51,15 @@ That default command writes `manifest.json` for `app.R`. To target the auto-redi
 SHINYOAUTH_POSIT_PRIMARY_DOC=app-auto-redirect.R Rscript integration/posit/write-manifest.R
 ```
 
-By default, the script temporarily installs `shinyOAuth` from `lukakoning/shinyOAuth@master` so `rsconnect` records it as a GitHub dependency instead of a local source package. Override that source when needed:
+By default, the script temporarily installs the latest development version of `shinyOAuth` from `lukakoning/shinyOAuth@master` so `rsconnect` records it as a GitHub dependency instead of a local source package. The generated manifest pins the resolved commit SHA: Connect Cloud installs that commit, even if `master` has moved on. Override that source when needed:
 
 ```bash
 SHINYOAUTH_GITHUB_REF=<branch-tag-or-sha> Rscript integration/posit/write-manifest.R
 ```
 
-Only one `manifest.json` can live in this folder at a time, so regenerate it for the app file you plan to publish. Also rerun it whenever app dependencies change or when you want to pin a different `shinyOAuth` GitHub revision.
+Only one `manifest.json` can live in this folder at a time, so regenerate it for the app file you plan to publish. Also rerun it whenever app dependencies change or when you want to pin a different `shinyOAuth` GitHub revision. Push the package changes to GitHub first, then regenerate, commit, and push the manifest before redeploying.
+
+If startup reports `could not find function "oauth_ui"`, check the GitHub commit in the deployment log against `packages.shinyOAuth.description.RemoteSha` in the manifest. An older GitHub development build can have the same package version (`0.5.0.9000`) while missing newer functions. Regenerate the manifest to select the current development commit.
 
 ## Deployment reference
 
