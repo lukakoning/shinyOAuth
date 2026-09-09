@@ -26,12 +26,12 @@ test_that("negative authorization assertions require specific protocol evidence"
                      "error_description=Missing%20parameter%3A%20code_challenge")
   response <- list(code = NA_character_, callback_url = callback)
   integration$perform_login_form <- function(...) response
-  expect_true(integration$expect_no_authorization_code(auth, redirect))
+  expect_success(integration$expect_no_authorization_code(auth, redirect))
   response$callback_url <- paste0(
     redirect, "?error=invalid_request&state=test-state&",
     "error_description=Invalid+parameter%3A+code+challenge+method+is+not+matching+the+configured+one"
   )
-  expect_true(integration$expect_no_authorization_code(auth, redirect))
+  expect_success(integration$expect_no_authorization_code(auth, redirect))
   for (url in c(
     redirect,
     sub("invalid_request", "server_error", callback),

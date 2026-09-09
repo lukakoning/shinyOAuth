@@ -2167,6 +2167,7 @@ expect_no_authorization_code <- function(auth_url, redirect_uri) {
     testthat::fail("Expected a state-matched invalid_request callback identifying PKCE")
     return(invisible(FALSE))
   }
+  testthat::succeed()
   invisible(TRUE)
 }
 
