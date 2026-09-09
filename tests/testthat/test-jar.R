@@ -1787,3 +1787,59 @@ test_that("providers requiring signed request objects reject parameters mode", {
     )
   )
 })
+test_that("max_age uses its canonical name across authorization transports", {
+  pushed <- NULL
+  published <- NULL
+  testthat::local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      pushed <<- shiny::parseQueryString(request_body_text(req))
+      httr2::response(
+        url = req[["url"]],
+        status = 201,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(paste0(
+          '{"request_uri":"urn:ietf:params:oauth:request_uri:test",',
+          '"expires_in":90}'
+        ))
+      )
+    },
+    .package = "shinyOAuth"
+  )
+  for (spelling in c("max_age", "MAX_AGE", " Max_Age ")) {
+    for (transport in c("query", "par", "request", "request_par", "request_uri")) {
+      uses_par <- transport %in% c("par", "request_par")
+      mode <- if (transport %in% c("query", "par")) {
+        "parameters"
+      } else if (uses_par) {
+        "request"
+      } else {
+        transport
+      }
+      client <- make_jar_test_client(
+        provider = make_jar_test_provider(
+          extra_auth_params = stats::setNames(list("300"), spelling),
+          par_url = if (uses_par) "https://example.com/par" else NA_character_
+        ),
+        request_object_mode = mode
+      )
+      url <- prepare_call(
+        client,
+        valid_browser_token(),
+        request_uri_publisher = function(request_object, ...) {
+          published <<- request_object
+          "https://client.example.com/request-object"
+        }
+      )
+      fields <- if (uses_par) pushed else shiny::parseQueryString(sub("^[^?]*[?]", "", url))
+      if (mode == "request") {
+        fields <- shinyOAuth:::parse_jwt_payload(fields[["request"]])
+      } else if (mode == "request_uri") {
+        fields <- shinyOAuth:::parse_jwt_payload(published)
+      }
+      expect_identical(names(fields)[tolower(trimws(names(fields))) == "max_age"], "max_age")
+      expect_equal(as.numeric(fields[["max_age"]]), 300)
+      state <- shinyOAuth:::state_decrypt_gcm(fields[["state"]], key = client@state_key)
+      expect_equal(state[["max_age"]], 300)
+    }
+  }
+})

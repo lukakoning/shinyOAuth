@@ -437,6 +437,7 @@ build_authorization_params <- function(
     err_config(max_age_info[["error"]])
   }
   if (length(max_age_info[["index"]]) == 1L) {
+    names(extra)[[max_age_info[["index"]]]] <- "max_age"
     extra[[max_age_info[["index"]]]] <- max_age_info[["value"]]
   }
   if (!is.null(requested_max_age)) {
