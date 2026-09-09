@@ -301,8 +301,16 @@ jwk_to_pubkey <- function(jwk) {
     }
     return(openssl::read_ed25519_pubkey(public_bytes))
   }
-  # jose::read_jwk takes a JSON string or file path
-  jwk_json <- jsonlite::toJSON(jwk, auto_unbox = TRUE, null = "null")
+  # RFC 7517 requires ignoring unrecognized members. Give jose only exact
+  # public parameters: its partial $d lookup can mistake extensions such as
+  # "description" for private key material. Keep the original JWK for selection
+  # metadata and pinning in the caller.
+  public_jwk <- if (identical(kty, "RSA")) {
+    list(kty = kty, n = jwk[["n"]], e = jwk[["e"]])
+  } else {
+    list(kty = kty, crv = jwk[["crv"]], x = jwk[["x"]], y = jwk[["y"]])
+  }
+  jwk_json <- jsonlite::toJSON(public_jwk, auto_unbox = TRUE, null = "null")
   key <- try(jose::read_jwk(jwk_json), silent = TRUE)
   if (inherits(key, "try-error")) {
     err_parse("Failed to parse JWK")
