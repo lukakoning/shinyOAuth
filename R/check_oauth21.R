@@ -401,12 +401,25 @@ check_oauth21 <- function(
     evidence = "configuration_and_package_contract"
   )
   if ("userinfo" %in% operations && oidc) {
+    # Login requires an ID token whenever validates_id is effective. Runtime
+    # always compares UserInfo with that validated baseline, even with the
+    # explicit matching flag disabled. Standalone UserInfo needs caller context.
+    userinfo_subject_ok <- isTRUE(provider@userinfo_id_token_match) ||
+      (isTRUE(provider@userinfo_required) && validates_id && !skip_signature)
+    if (
+      !isTRUE(provider@userinfo_id_token_match) &&
+        "userinfo" %in% context$operations &&
+        !isFALSE(validates_id && !skip_signature)
+    ) {
+      userinfo_subject_ok <- NA
+    }
     add(
       "identity.userinfo_subject",
-      status(isTRUE(provider@userinfo_id_token_match)),
-      "OIDC UserInfo must be bound to the validated ID token subject.",
-      "Enable userinfo_id_token_match with ID token validation.",
-      reference = "https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse"
+      status(userinfo_subject_ok),
+      "OIDC UserInfo is compared with every available validated ID token; required validated login baselines or explicit matching enforce subject binding.",
+      "Require validated ID tokens for managed UserInfo; for separately selected UserInfo calls supply a validated token baseline or enable userinfo_id_token_match.",
+      reference = "https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse",
+      evidence = "configuration_and_package_contract"
     )
     add(
       "identity.userinfo_signature",

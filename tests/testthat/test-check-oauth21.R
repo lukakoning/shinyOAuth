@@ -516,13 +516,43 @@ test_that("JARM and validated OIDC policies are assessed when selected", {
   )
   expect_true(check_oauth21(client)$configuration_compliant)
   client@provider@userinfo_id_token_match <- FALSE
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)$configuration_compliant)
   withr::local_options(list(shinyOAuth.unblock_auth_params = "scope"))
   client@provider@extra_auth_params <- list(scope = "profile")
   expect_identical(
     oauth21_finding(check_oauth21(client), "parameters.authorization")$status,
     "fail"
   )
+})
+
+test_that("UserInfo assessment follows the validated baseline and call context", {
+  withr::local_options(shinyOAuth.tls_min_version = "1.2")
+  client <- oauth21_test_client(
+    list(
+      issuer = "https://issuer.example",
+      jwks_uri = "https://issuer.example/keys",
+      userinfo_url = "https://issuer.example/userinfo",
+      userinfo_id_token_match = FALSE
+    ),
+    scopes = "openid"
+  )
+  finding <- function(context = list()) {
+    oauth21_finding(
+      check_oauth21(client, context = context),
+      "identity.userinfo_subject"
+    )$status
+  }
+  expect_identical(finding(), "pass")
+  expect_identical(finding(list(operations = "userinfo")), "unknown")
+  withr::local_options(shinyOAuth.skip_id_sig = TRUE)
+  expect_identical(finding(), "fail")
+  withr::local_options(shinyOAuth.skip_id_sig = FALSE)
+  client@provider@use_nonce <- FALSE
+  client@provider@id_token_validation <- FALSE
+  expect_identical(finding(), "fail")
+  client@provider@id_token_validation <- TRUE
+  client@provider@userinfo_id_token_match <- TRUE
+  expect_identical(finding(list(operations = "userinfo")), "pass")
 })
 
 test_that("encrypted Request Objects assess the actual recipient key source without IO", {

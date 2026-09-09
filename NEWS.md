@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* `check_oauth21()` recognizes the UserInfo subject comparison enforced by a
+required validated ID-token baseline, even with `userinfo_id_token_match = FALSE`.
+Separately selected UserInfo calls still need baseline context, and active
+signature bypasses cannot establish that guarantee.
+
 * `oauth_ui()` and `oauth_form_post_ui()` now accept an optional named `clients`
 registry for multiple server modules, including distinct callback routes and
 shared routes with issuer identification. Existing single-client calls remain
