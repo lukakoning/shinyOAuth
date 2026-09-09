@@ -74,6 +74,7 @@ test_that("OIDC discovery rejects scalar optional multi-valued metadata", {
     "scopes_supported",
     "response_modes_supported",
     "token_endpoint_auth_methods_supported",
+    "code_challenge_methods_supported",
     "request_object_signing_alg_values_supported",
     "dpop_signing_alg_values_supported",
     "claims_supported"
@@ -81,14 +82,16 @@ test_that("OIDC discovery rejects scalar optional multi-valued metadata", {
 
   for (field in optional_arrays) {
     metadata <- strict_oidc_metadata()
-    metadata[[field]] <- "value"
-
-    expect_error(
-      shinyOAuth:::.discover_validate_required_metadata(metadata),
-      class = "shinyOAuth_parse_error",
-      regexp = field,
-      fixed = TRUE
-    )
+    expect_no_error(shinyOAuth:::.discover_validate_required_metadata(metadata))
+    for (value in list(NULL, list(), "value", list(" "))) {
+      metadata[field] <- list(value)
+      expect_error(
+        shinyOAuth:::.discover_validate_required_metadata(metadata),
+        class = "shinyOAuth_parse_error",
+        regexp = field,
+        fixed = TRUE
+      )
+    }
 
     metadata[[field]] <- list("value")
     expect_no_error(

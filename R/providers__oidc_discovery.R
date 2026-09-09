@@ -818,21 +818,24 @@ oauth_provider_oidc_discover <- function(
 #' @keywords internal
 #' @noRd
 .discover_validate_optional_string_array <- function(disc, field) {
-  if (is.null(disc[[field]])) {
+  if (!field %in% names(disc)) {
     return(character())
   }
 
   value <- disc[[field]]
   valid <- is.list(value) &&
+    length(value) > 0L &&
     is.null(names(value)) &&
-    all(vapply(value, is_valid_string, logical(1)))
+    all(vapply(value, function(item) {
+      is_valid_string(item) && nzchar(trimws(item))
+    }, logical(1)))
 
   if (!valid) {
     err_parse(
       paste0(
         "Discovery ",
         field,
-        " must be a JSON array of non-empty strings"
+        " must be a non-empty JSON array of non-empty strings"
       ),
       context = stats::setNames(list(value), field)
     )
