@@ -312,6 +312,16 @@ These limits reject oversized callback URLs and POST bodies before they
 cause excessive processing or logging. Keep the defaults unless a
 legitimate provider response needs more space.
 
+Generated login state must fit both
+`shinyOAuth.callback_max_state_bytes` and the state envelope limits
+above. Their outer-token defaults both allow 8192 bytes (base64url state
+is ASCII). Lowering either limit can restrict ordinary logins with many
+scopes or other state metadata.
+[`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
+checks both budgets before storing pending login state, publishing a
+Request Object, or sending PAR. Increasing only one limit does not
+override the other.
+
 ## Local debugging
 
 - `options(shinyOAuth.skip_browser_token = TRUE)` – skip browser cookie

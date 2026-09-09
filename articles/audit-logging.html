@@ -268,6 +268,30 @@ large)</li>
 </div>
 </div>
 <div class="section level3">
+<h3 id="callback-routing-rejected">Callback routing rejected<a class="anchor" aria-label="anchor" href="#callback-routing-rejected"></a>
+</h3>
+<div class="section level4">
+<h4 id="event-audit_callback_routing_rejected">Event: <code>audit_callback_routing_rejected</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_routing_rejected"></a>
+</h4>
+<ul>
+<li>When: a multi-provider registry rejects a callback before selecting
+a client.</li>
+<li>Context: <code>phase</code>
+(<code>callback_registry_routing</code>), <code>reason</code>,
+<code>status</code> (<code>error</code>), and sanitized HTTP metadata in
+<code>shiny_session.http</code>.</li>
+<li>Reasons: <code>route_unavailable</code>,
+<code>route_unregistered</code>, <code>unexpected_transport</code>,
+<code>issuer_missing</code>, and <code>issuer_unrecognized</code>.</li>
+<li>The <code>shinyOAuth.callback.route</code> span records the same
+phase and reason with error status. No provider identity is assigned
+from unvalidated issuer input.</li>
+<li>Parser errors and later client-specific validation retain their
+existing diagnostics; they do not also emit this routing event.</li>
+</ul>
+</div>
+</div>
+<div class="section level3">
 <h3 id="callback-issuer-validation">Callback issuer validation<a class="anchor" aria-label="anchor" href="#callback-issuer-validation"></a>
 </h3>
 <div class="section level4">

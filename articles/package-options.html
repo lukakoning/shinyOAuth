@@ -448,6 +448,14 @@ handle query parameter</li>
 <p>These limits reject oversized callback URLs and POST bodies before
 they cause excessive processing or logging. Keep the defaults unless a
 legitimate provider response needs more space.</p>
+<p>Generated login state must fit both
+<code>shinyOAuth.callback_max_state_bytes</code> and the state envelope
+limits above. Their outer-token defaults both allow 8192 bytes
+(base64url state is ASCII). Lowering either limit can restrict ordinary
+logins with many scopes or other state metadata.
+<code><a href="../reference/prepare_call.html">prepare_call()</a></code> checks both budgets before storing pending
+login state, publishing a Request Object, or sending PAR. Increasing
+only one limit does not override the other.</p>
 </div>
 </div>
 <div class="section level2">
