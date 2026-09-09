@@ -546,7 +546,8 @@ check_oauth21 <- function(
   add(
     "refresh.replacement",
     "pass",
-    "Refresh handling replaces a newly issued refresh token and retains the prior token only when no replacement is issued.",
+    "Successful refreshes replace rotated credentials. Errors report credential consumption; the module retires consumed, rejected or uncertain credentials even when retaining the session.",
+    "Direct callers must store successful replacements and discard the old refresh credential after consumed, rejected or uncertain outcomes; coordinate separate processes.",
     section = "4.3.2",
     evidence = "package_contract"
   )

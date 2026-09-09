@@ -141,7 +141,9 @@ for (async in c(FALSE, TRUE)) {
               }
             }
             expect_identical(values$error, "token_refresh_error")
-            expect_identical(values$token, if (keep) previous else NULL)
+            retained <- previous
+            retained@refresh_token <- NA_character_
+            expect_identical(values$token, if (keep) retained else NULL)
             expect_identical(values$token_stale, keep)
             expect_false(values$refresh_in_progress)
             expect_identical(values$refresh_failure_count, 1L)

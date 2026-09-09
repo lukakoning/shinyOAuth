@@ -1320,6 +1320,14 @@ oauth_module_server <- function(
       values$token,
       {
         tok <- values$token
+        # Retiring renewal alone does not make a failed refresh fresh again.
+        if (
+          !is.null(tok) &&
+            identical(tok, auth_operations$retired_refresh_snapshot)
+        ) {
+          return(invisible(NULL))
+        }
+        auth_operations$retired_refresh_snapshot <- NULL
         if (is.null(tok)) {
           values$token_stale <- FALSE
         } else {
@@ -3886,6 +3894,14 @@ oauth_module_server <- function(
           )
         } else {
           values$refresh_failure_count <- values$refresh_failure_count + 1L
+          if (
+            !refresh_credential_retryable(condition) && !is.null(values$token)
+          ) {
+            retained <- values$token
+            retained@refresh_token <- NA_character_
+            auth_operations$retired_refresh_snapshot <- retained
+            values$token <- retained
+          }
           delay <- proactive_refresh_failure_delay(
             values$refresh_failure_count,
             refresh_condition_retry_after(condition)
@@ -3982,7 +3998,7 @@ oauth_module_server <- function(
                             )
                             return(invisible(NULL))
                           }
-                          validate_token_acceptance_deadline(res_resolved)
+                          validate_refresh_delivery(res_resolved, tok)
                           values$token <- res_resolved
                           values$error <- NULL
                           values$error_description <- NULL
@@ -4105,7 +4121,7 @@ oauth_module_server <- function(
                         .revoke_stale_credentials(new_tok)
                         return(invisible(NULL))
                       }
-                      validate_token_acceptance_deadline(new_tok)
+                      validate_refresh_delivery(new_tok, tok)
                       values$token <- new_tok
                       values$error <- NULL
                       values$error_description <- NULL

@@ -190,6 +190,11 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
       ),
       error = function(e) {
         .async_error <<- e
+        # mirai may reduce thrown conditions to text. Return refresh lifecycle
+        # errors as data so the main process can retire the old credential.
+        if (!is.null(e[["refresh_credential_outcome"]])) {
+          return(list(.shinyOAuth_async_error = e))
+        }
         stop(e)
       }
     )
@@ -276,7 +281,13 @@ replay_async_conditions <- function(result) {
         }
       }
     }
-    return(result[["value"]])
+    value <- result[["value"]]
+    if (
+      is.list(value) && inherits(value[[".shinyOAuth_async_error"]], "error")
+    ) {
+      stop(value[[".shinyOAuth_async_error"]])
+    }
+    return(value)
   }
   result
 }

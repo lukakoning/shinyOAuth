@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Refresh failures now report whether the renewal credential was consumed,
+possibly consumed, rejected, or not consumed. Proactive refresh retires unsafe
+credentials even when `indefinite_session = TRUE` retains the previous session.
+Replacement access and identity data still require successful validation.
+
 * Added `oauth_ui()` for Shiny apps using URL-based OAuth callbacks. Wrap the
 app's existing UI with `oauth_ui(ui, id = "auth", client = client)` so
 shinyOAuth can handle the provider's response before the rest of the app loads.
