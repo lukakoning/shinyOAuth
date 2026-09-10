@@ -1,4 +1,4 @@
-"""Local test AS: independent RS256 JAR, ES256 DPoP, mTLS and signed JARM.
+"""Local test AS: independent RS256/RS384 JAR, ES256 DPoP, mTLS and signed JARM.
 
 Only the explicitly tested profile is implemented. This is a test fixture,
 not an authorization server for deployment or a certification suite.
@@ -39,7 +39,13 @@ def require(condition, reason):
 
 
 root = Path(sys.argv[1])
+jws_alg = sys.argv[2] if len(sys.argv) > 2 else 'RS256'
+# Pin the registration independently of the untrusted JOSE header. RFC 7518
+# section 3.3 requires PKCS#1 v1.5 with the corresponding SHA-2 digest.
+jws_hash = {'RS256': hashes.SHA256, 'RS384': hashes.SHA384}[jws_alg]
 registered_key = serialization.load_pem_public_key((root / 'registered.pem').read_bytes())
+require(isinstance(registered_key, rsa.RSAPublicKey) and registered_key.key_size >= 2048,
+        'registered_rsa_key')
 ca_key = rsa.generate_private_key(65537, 2048)
 server_key = rsa.generate_private_key(65537, 2048)
 client_key = rsa.generate_private_key(65537, 2048)
@@ -84,10 +90,10 @@ def verify_client_assertion(params, path, profile, authorization):
             'urn:ietf:params:oauth:client-assertion-type:jwt-bearer', 'assertion_type')
     h, p, s = params['client_assertion'].split('.')
     header, claims = json.loads(unb64(h)), json.loads(unb64(p))
-    require(header.get('alg') == 'RS256', 'assertion_algorithm')
+    require(header.get('alg') == jws_alg, 'assertion_algorithm')
     expected_type = 'client-authentication+jwt' if profile == 'oauth21' else 'JWT'
     require(header.get('typ') == expected_type, 'assertion_header_type')
-    registered_key.verify(unb64(s), (h + '.' + p).encode(), padding.PKCS1v15(), hashes.SHA256())
+    registered_key.verify(unb64(s), (h + '.' + p).encode(), padding.PKCS1v15(), jws_hash())
     require(claims.get('iss') == 'client' and claims.get('sub') == 'client', 'assertion_client')
     expected_audience = issuer if profile == 'oauth21' or path == '/par' else issuer + path
     require(claims.get('aud') == expected_audience, 'assertion_audience')
@@ -124,8 +130,8 @@ def verify_jar(token):
     require(bool(token), 'signed_request_required')
     h, p, s = token.split('.')
     header, claims = json.loads(unb64(h)), json.loads(unb64(p))
-    require(header.get('alg') == 'RS256', 'jar_algorithm')
-    registered_key.verify(unb64(s), (h + '.' + p).encode(), padding.PKCS1v15(), hashes.SHA256())
+    require(header.get('alg') == jws_alg, 'jar_algorithm')
+    registered_key.verify(unb64(s), (h + '.' + p).encode(), padding.PKCS1v15(), jws_hash())
     require(claims.get('iss') == 'client' and claims.get('client_id') == 'client', 'jar_issuer')
     require(claims.get('aud') == issuer, 'jar_audience')
     now = time.time()
@@ -195,7 +201,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/jwks':
                 n = server_key.public_key().public_numbers()
                 return self.respond(200, {'keys': [{'kty': 'RSA', 'kid': 'as', 'use': 'sig',
-                    'alg': 'RS256', 'n': b64(n.n.to_bytes(256, 'big')), 'e': b64(n.e.to_bytes(3, 'big'))}]})
+                    'alg': jws_alg, 'n': b64(n.n.to_bytes(256, 'big')), 'e': b64(n.e.to_bytes(3, 'big'))}]})
             if path in ('/authorize', '/par'):
                 if 'request_uri' in params:
                     require(params['request_uri'] in pushed, 'par_replay')
@@ -215,8 +221,8 @@ class Handler(BaseHTTPRequestHandler):
                 response = {'code': code, 'state': claims['state'], 'iss': issuer}
                 if claims.get('response_mode') == 'query.jwt':
                     payload = dict(response, aud='client', iat=int(time.time()), exp=int(time.time()) + 60)
-                    signing = b64(encode({'alg': 'RS256', 'typ': 'oauth-authz-resp+jwt', 'kid': 'as'})) + '.' + b64(encode(payload))
-                    response = {'response': signing + '.' + b64(server_key.sign(signing.encode(), padding.PKCS1v15(), hashes.SHA256()))}
+                    signing = b64(encode({'alg': jws_alg, 'typ': 'oauth-authz-resp+jwt', 'kid': 'as'})) + '.' + b64(encode(payload))
+                    response = {'response': signing + '.' + b64(server_key.sign(signing.encode(), padding.PKCS1v15(), jws_hash()))}
                 return self.respond(302, {}, claims['redirect_uri'] + '?' + urlencode(response))
             if path == '/token':
                 if params.get('grant_type') == 'refresh_token':
