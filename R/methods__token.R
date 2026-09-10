@@ -587,7 +587,9 @@ introspect_token <- function(
             )
             value <- jsonlite::fromJSON(body_txt, simplifyVector = FALSE)
             if ("scope" %in% names(value)) {
-              validate_response_scope(value[["scope"]])
+              validate_response_scope(value[["scope"]],
+                allow_empty = client_uses_smart_scopes(oauth_client)
+              )
             }
             value
           },
@@ -1090,7 +1092,9 @@ refresh_token_impl <- function(
             )
           }
 
-          tok <- parse_token_response(resp)
+          tok <- parse_token_response(resp,
+            allow_empty_scope = client_uses_smart_scopes(oauth_client)
+          )
           extra_fields <- token_response_extra_fields(tok)
           outcome$value <- if (
             is_valid_string(tok[["refresh_token"]]) &&

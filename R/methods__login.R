@@ -200,9 +200,11 @@ prepare_call <- function(
                   browser_token = browser_token,
                   pkce_code_verifier = pkce_code_verifier,
                   nonce = nonce
-                ), if (!is.null(transaction_context)) list(
-                  transaction_context = transaction_context
-                )),
+                ), if (!is.null(transaction_context)) {
+                  list(
+                    transaction_context = transaction_context
+                  )
+                }),
                 oauth_client,
                 state
               )
@@ -2145,7 +2147,18 @@ enforce_token_introspection_policy <- function(
     )
     intro_scope_raw <- raw[["scope"]] %||% NULL
     if ("scope" %in% names(raw)) {
-      validate_response_scope(intro_scope_raw, err_token)
+      validate_response_scope(intro_scope_raw, err_token,
+        allow_empty = client_uses_smart_scopes(oauth_client)
+      )
+    }
+    if (client_uses_smart_scopes(oauth_client)) {
+      if (is.null(intro_scope_raw)) {
+        err_token("SMART introspection scope check requires an explicit scope string")
+      }
+      smart_verify_scope_grant(
+        oauth_client,
+        normalize_scope_tokens(intro_scope_raw), TRUE, token@granted_scopes
+      )
     }
 
     if (!is.null(intro_scope_raw)) {
@@ -2154,7 +2167,8 @@ enforce_token_introspection_policy <- function(
     }
 
     if (
-      !identical(scope_validation_mode, "none") && length(requested_scopes) > 0
+      !client_uses_smart_scopes(oauth_client) &&
+        !identical(scope_validation_mode, "none") && length(requested_scopes) > 0
     ) {
       if (is.null(intro_scope_raw)) {
         msg <- "Token introspection response missing scope; cannot validate requested scopes"
@@ -2465,7 +2479,9 @@ swap_code_for_token_set <- function(
         )
       }
 
-      token_set <- parse_token_response(resp)
+      token_set <- parse_token_response(resp,
+        allow_empty_scope = client_uses_smart_scopes(client)
+      )
 
       # Some providers return expires_in as a character string (e.g., form-encoded
       # responses or JSON where the value is quoted). Convert digit-only strings to
@@ -2597,7 +2613,8 @@ verify_token_set <- function(
     token_scope = token_set[["scope"]],
     requested_scopes = requested_scopes,
     is_refresh = is_refresh,
-    previous_granted_scopes = prior_granted_scopes
+    previous_granted_scopes = prior_granted_scopes,
+    smart = client_uses_smart_scopes(client)
   )
   granted_scopes <- granted_scope_state[["granted_scopes"]] %||%
     character(0)
@@ -2702,7 +2719,12 @@ verify_token_set <- function(
       # Skip explicit scope reconciliation when provider omits scope. Per RFC
       # 6749 Sections 5.1 and 6, omission means unchanged from the requested
       # scope. Explicit empty scope values are rejected by the wire validator.
-      if (
+      if (client_uses_smart_scopes(client)) {
+        smart_verify_scope_grant(
+          client, granted_scopes, is_refresh,
+          prior_granted_scopes
+        )
+      } else if (
         !identical(scope_validation_mode, "none") &&
           length(requested_scopes) > 0 &&
           !scope_is_omitted

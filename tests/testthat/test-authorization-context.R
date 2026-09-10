@@ -222,7 +222,7 @@ test_that("literal scope evaluator is versioned and does not infer SMART semanti
     "patient/Patient.rs"
   )
   expect_error(
-    shinyOAuth:::evaluate_scope_coverage("read", "read", profile = "smart"),
+    shinyOAuth:::evaluate_scope_coverage("read", "read", profile = "unknown"),
     "Unsupported"
   )
   expect_error(

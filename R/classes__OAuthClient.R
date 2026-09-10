@@ -144,6 +144,11 @@
 #'     error.
 #'   - `"none"`: Skips scope validation entirely.
 #'
+#' @param scope_policy Internal versioned scope policy. Leave the default for
+#'   ordinary OAuth clients. SMART adapters install their own policy, including
+#'   required permissions; these checks cannot be disabled by `scope_validation`.
+#'   This parameter is not an argument to [oauth_client()].
+#'
 #' @param claims_validation What to do if requested claims are missing or have
 #'   unexpected values: `"warn"` continues with a warning, `"strict"` stops
 #'   login, and `"none"` skips the check. When omitted, [oauth_client()] uses
@@ -521,6 +526,15 @@ OAuthClient <- S7::new_class(
     scope_validation = S7::new_property(
       S7::class_character,
       default = "warn"
+    ),
+    # Internal, versioned policy selected by SMART targets. A generic client
+    # retains literal scopes and RFC 6749 omission behavior.
+    scope_policy = S7::new_property(
+      S7::class_list,
+      default = list(
+        profile = "oauth", version = 1L, allow_v1 = FALSE,
+        required_scopes = character()
+      )
     ),
     claims_validation = S7::new_property(
       S7::class_character,
@@ -2898,6 +2912,10 @@ oauth_client_validate <- function(self) {
   }
 
   # Validate scope_validation
+  scope_policy_error <- validate_client_scope_policy(self@scope_policy)
+  if (!is.null(scope_policy_error)) {
+    return(scope_policy_error)
+  }
   if (
     !is_valid_string(self@scope_validation) ||
       !self@scope_validation %in% c("strict", "warn", "none")

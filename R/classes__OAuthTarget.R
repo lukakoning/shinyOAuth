@@ -126,7 +126,8 @@ OAuthTarget <- R6::R6Class(
       validate_scopes(required_scopes)
       required_scopes <- normalize_scope_tokens(required_scopes)
       if (
-        evaluate_scope_coverage(
+        client_scope_coverage(
+          client,
           required_scopes,
           effective_client_scopes(client)
         )$status !=
@@ -151,7 +152,11 @@ OAuthTarget <- R6::R6Class(
       private$.label <- label
       private$.fingerprint <- state_policy_digest(list(
         version = 1L,
-        profile = list(id = "oauth", version = 1L),
+        profile = if (client_uses_smart_scopes(client)) {
+          client@scope_policy
+        } else {
+          list(id = "oauth", version = 1L)
+        },
         client_id = client@client_id,
         redirect_uri = client@redirect_uri,
         provider = provider_fingerprint(client@provider),

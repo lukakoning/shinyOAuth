@@ -18,6 +18,8 @@ OAuthClient(
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(0),
   scope_validation = "warn",
+  scope_policy = list(profile = "oauth", version = 1L, allow_v1 = FALSE, required_scopes
+    = character(0)),
   claims_validation = "none",
   required_acr_values = character(0),
   userinfo_jwt_required_time_claims = character(0),
@@ -182,6 +184,11 @@ granted scopes. Omitted \code{scope} is treated as unchanged, not as an
 error.
 \item \code{"none"}: Skips scope validation entirely.
 }}
+
+\item{scope_policy}{Internal versioned scope policy. Leave the default for
+ordinary OAuth clients. SMART adapters install their own policy, including
+required permissions; these checks cannot be disabled by \code{scope_validation}.
+This parameter is not an argument to \code{\link[=oauth_client]{oauth_client()}}.}
 
 \item{claims_validation}{What to do if requested claims are missing or have
 unexpected values: \code{"warn"} continues with a warning, \code{"strict"} stops

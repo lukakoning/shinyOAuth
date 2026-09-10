@@ -662,6 +662,9 @@ state_client_policy_fingerprint <- function(client) {
     mtls_cert_thumbprint = state_policy_mtls_cert_thumbprint(client)
   )
 
+  if (client_uses_smart_scopes(client)) {
+    components$scope_policy <- client@scope_policy
+  }
   state_policy_digest(components)
 }
 

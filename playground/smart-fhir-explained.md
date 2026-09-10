@@ -400,7 +400,7 @@ the independent verification.
 | Encrypted store, owner policies and connection manager | Built for one R process, including refresh/disconnect coordination. |
 | Real-browser A-to-B retention | Tested with generic OAuth fixtures, including ordinary query and form POST callbacks and synchronous/async operation. |
 | `smart_discover()` | Built; the pinned external sandbox exposes a compatibility failure described below. |
-| SMART scope interpretation | Next: P4b. |
+| SMART scope interpretation | P4b engine and token/connection checks built; public SMART target setup is next. See [scope examples](smart-scopes.md). |
 | `smart_target()` and SMART registration/request rules | Planned: P4c. |
 | Interpreted patient/context handling and Patient/`fhirUser` helpers | Planned: P4d. |
 | Complete standalone SMART app, browser scenarios and two-hospital sandbox repeat | Planned: P4e. |

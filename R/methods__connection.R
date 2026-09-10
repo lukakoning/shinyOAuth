@@ -110,6 +110,10 @@ connection_record_status <- function(record) {
   if (is.null(token)) {
     return("disconnected")
   }
+  if (client_uses_smart_scopes(record$target$client) &&
+    !isTRUE(token@granted_scopes_verified)) {
+    return("insufficient_scope")
+  }
   expires <- token@expires_at
   if (is.na(expires)) {
     return("expiry_unknown")
@@ -118,7 +122,8 @@ connection_record_status <- function(record) {
     return("expired")
   }
   if (
-    evaluate_scope_coverage(
+    client_scope_coverage(
+      record$target$client,
       record$target$required_scopes,
       token@granted_scopes
     )$status !=
@@ -127,7 +132,8 @@ connection_record_status <- function(record) {
     return("insufficient_scope")
   }
   if (
-    evaluate_scope_coverage(
+    client_scope_coverage(
+      record$target$client,
       effective_client_scopes(record$target$client),
       token@granted_scopes
     )$status !=
@@ -162,7 +168,8 @@ connection_record_request <- function(
   validate_scopes(required_scopes)
   required_scopes <- normalize_scope_tokens(required_scopes)
   if (
-    evaluate_scope_coverage(
+    client_scope_coverage(
+      record$target$client,
       required_scopes,
       effective_client_scopes(record$target$client)
     )$status !=
@@ -173,7 +180,8 @@ connection_record_request <- function(
     )
   }
   if (
-    evaluate_scope_coverage(
+    client_scope_coverage(
+      record$target$client,
       required_scopes,
       record$token@granted_scopes
     )$status !=

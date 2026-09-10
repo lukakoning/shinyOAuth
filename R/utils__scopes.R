@@ -8,13 +8,16 @@
 
 # A versioned profile seam for coverage decisions. It neither rewrites wire
 # scopes nor infers a profile from their spelling. Unknown profiles fail closed;
-# future evaluators can report indeterminate coverage for unsupported syntax.
+# SMART reports indeterminate coverage for unsupported syntax or implication.
 evaluate_scope_coverage <- function(
-  requested,
-  granted,
-  profile = "oauth",
-  version = 1L
-) {
+    requested,
+    granted,
+    profile = "oauth",
+    version = 1L,
+    allow_v1 = FALSE) {
+  if (identical(profile, "smart") && identical(version, 1L)) {
+    return(smart_scope_coverage(requested, granted, allow_v1))
+  }
   if (!identical(profile, "oauth") || !identical(version, 1L)) {
     err_config("Unsupported scope evaluation profile or version")
   }
@@ -31,13 +34,15 @@ evaluate_scope_coverage <- function(
 ## 1.1 Normalize and validate scopes -------------------------------------------
 
 # Validate wire values before the permissive local-input normalizer sees them.
-# An omitted scope is allowed by callers; an explicit empty string is not.
-validate_response_scope <- function(scope, signal_error = err_parse) {
+# An omitted scope is handled by callers; only SMART accepts an explicit empty
+# grant (SMART 2.2 scopes-and-launch-context, wildcard grant examples).
+validate_response_scope <- function(
+    scope, signal_error = err_parse, allow_empty = FALSE) {
   if (
     !is.character(scope) ||
       length(scope) != 1L ||
       is.na(scope) ||
-      !nzchar(scope) ||
+      (!isTRUE(allow_empty) && !nzchar(scope)) ||
       !grepl("^(?:[!#-\\[\\]-~]+(?: [!#-\\[\\]-~]+)*)?$", scope, perl = TRUE)
   ) {
     signal_error(
@@ -173,23 +178,28 @@ normalize_scope_tokens <- function(scopes) {
 #' @param is_refresh Whether the current response came from a refresh flow.
 #' @param previous_granted_scopes Previously stored granted scopes to carry
 #'   forward when a refresh response omits `scope`.
+#' @param smart Enforce explicit SMART scope evidence; an empty string is an
+#'   explicit grant of no permissions, while absence is an error.
 #' @return A list containing normalized `granted_scopes`, logical
 #'   `granted_scopes_verified`, and booleans `scope_is_omitted` /
 #'   `scope_is_empty`.
 #' @keywords internal
 #' @noRd
 resolve_granted_scope_state <- function(
-  token_scope,
-  requested_scopes,
-  is_refresh = FALSE,
-  previous_granted_scopes = NULL
-) {
+    token_scope,
+    requested_scopes,
+    is_refresh = FALSE,
+    previous_granted_scopes = NULL,
+    smart = FALSE) {
   requested_scopes <- normalize_scope_tokens(requested_scopes)
   previous_granted_scopes <- normalize_scope_tokens(previous_granted_scopes)
 
   scope_is_omitted <- is.null(token_scope)
+  if (isTRUE(smart) && scope_is_omitted) {
+    err_token("SMART token responses must include an explicit scope string")
+  }
   if (!scope_is_omitted) {
-    validate_response_scope(token_scope, err_token)
+    validate_response_scope(token_scope, err_token, allow_empty = smart)
   }
   scope_is_empty <- !scope_is_omitted &&
     length(token_scope) == 1L &&
