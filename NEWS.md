@@ -1,7 +1,7 @@
 # shinyOAuth (development version)
 
 * `OAuthToken` now exposes additional token endpoint response parameters in
-`extra_fields`, including SMART on FHIR patient launch context (#16).
+`extra_fields` (#16).
 `initial_extra_fields` preserves the initial code-exchange parameters across
 refreshes; `extra_fields` reflects only the latest successful response. Both
 lists are redacted when tokens are printed.

@@ -51,8 +51,7 @@
 #'  cryptographically validated (signature verified and standard claims checked)
 #'  during the OAuth flow. Defaults to `FALSE`.
 #' @param extra_fields List of additional parameters from the latest successful
-#'   token endpoint response, such as SMART on FHIR `patient`, `encounter`, or
-#'   `fhirContext`. Excludes `access_token`, `token_type`, `refresh_token`,
+#'   token endpoint response. Excludes `access_token`, `token_type`, `refresh_token`,
 #'   `id_token`, `expires_in`, `scope`, and `cnf`, which have dedicated token
 #'   properties. Defaults to an empty list. Successful refresh replaces this
 #'   list, including when the response contains no extra fields.
@@ -76,10 +75,10 @@
 #'
 #' Additional response parameters retain their parsed names and values,
 #' including nested lists and explicit JSON `null` values (R `NULL`). Use
-#' `"patient" %in% names(token@extra_fields)` to distinguish an absent field
+#' `"custom_field" %in% names(token@extra_fields)` to distinguish an absent field
 #' from a field explicitly returned as `null`. These parameters are not ID
 #' token claims and are not covered by `id_token_validated`. The initial
-#' snapshot records historical launch context, not current access permissions.
+#' snapshot records the initial response data, not current access permissions.
 #' No automatic merging, resource fetching, or interpretation is performed.
 #' Both lists can contain sensitive data; keep them out of the UI and logs.
 #'
@@ -89,8 +88,8 @@
 #' # auth$token@expires_at
 #' # auth$token@id_token_validated
 #' # auth$token@id_token_claims$sub
-#' # auth$token@extra_fields$patient
-#' # auth$token@initial_extra_fields$patient
+#' # auth$token@extra_fields$custom_field
+#' # auth$token@initial_extra_fields$custom_field
 #'
 #' @export
 OAuthToken <- S7::new_class(

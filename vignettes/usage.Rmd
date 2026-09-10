@@ -186,15 +186,11 @@ to build an `httr2` request without sending it, or pass a prepared `httr2`
 request to `perform_resource_req()`. See the
 [Spotify example](example-spotify.html) for another complete app.
 
-### Additional token response fields and SMART on FHIR
+### Additional token response fields
 
 Some providers return extra parameters alongside the access and ID tokens.
-Read these through `auth$token@extra_fields`. For example, SMART on FHIR
-returns the patient in context as a string such as `"patient": "123"` in
-the token response. This is distinct from the logged-in user's `fhirUser`
-claim inside the ID token, which might identify a practitioner.
-The patient name and other demographics are fetched separately from the
-FHIR `Patient/123` resource with the access token.
+Read these through `auth$token@extra_fields`, using the field names documented
+by your provider.
 
 `extra_fields` contains only the additional parameters from the latest
 successful token response. A successful refresh replaces the entire list,
@@ -203,67 +199,29 @@ even if the provider returns no extra parameters. The separate
 response's extra parameters across refreshes. A new login starts a new
 snapshot; clearing the session removes both lists with the token.
 
-SMART permits refresh responses to omit patient context. An app can fall back
-to its initial launch context when `patient` is absent, while handling an
-explicitly returned value, including `null`, separately. This example pins the
-app to the initial launch's patient and requires a new launch if refresh
-explicitly changes that patient. It assumes a configured SMART client, a
-single FHIR server, and permission to read the patient's demographics (such
-as a granted `patient/Patient.r` scope):
+For a provider that returns a parameter named `custom_field`:
 
 ```{r, eval = FALSE}
-# The FHIR base URL used as aud in this app's authorization request.
-fhir_base <- "https://ehr.example.org/fhir"
+# Inside reactive server code, after a successful login:
+token <- auth$token
+token@extra_fields$custom_field
+token@initial_extra_fields$custom_field
 
-patient <- reactive({
-  req(auth$authenticated, auth$token)
-  validate(need(!auth$token_stale, "Please sign in again before loading data."))
-  token <- auth$token
-
-  patient_id <- if ("patient" %in% names(token@extra_fields)) {
-    token@extra_fields[["patient"]]
-  } else {
-    token@initial_extra_fields[["patient"]]
-  }
-
-  # An explicit null or invalid value must not fall back to another patient.
-  valid_id <- is.character(patient_id) && length(patient_id) == 1L &&
-    !is.na(patient_id) && grepl("^[A-Za-z0-9.-]{1,64}$", patient_id)
-  validate(need(valid_id, "No patient context is available."))
-  validate(need(
-    identical(patient_id, token@initial_extra_fields[["patient"]]),
-    "Patient context changed. Please launch the app again."
-  ))
-
-  response <- perform_resource_req(
-    token,
-    paste0(fhir_base, "/Patient/", patient_id),
-    oauth_client = client
-  )
-  httr2::resp_check_status(response)
-  httr2::resp_body_json(response, simplifyVector = FALSE)
-})
+# Distinguish an absent field from one explicitly returned as null.
+"custom_field" %in% names(token@extra_fields)
 ```
 
-The initial context is historical data, not proof of current access. Check
-granted scopes and handle API authorization failures. If a later response
-explicitly changes the patient, update or clear patient-specific cached data
-before displaying it. SMART App Launch does not automatically synchronize an
-open app with subsequent chart changes in the EHR. Apps using experimental
-multi-server `authorization_details` must also resolve context for the
-specific FHIR server; the single-server example above does not do so.
+The package preserves additional parameters without merging or interpreting
+them, or fetching resources automatically. Nested JSON objects, arrays, and
+explicit `null` entries remain available; form-encoded values remain strings.
+Use your provider's documentation to decide how to handle omitted or changed
+fields after refresh. The initial snapshot is historical response data, not
+proof of current access permissions.
 
-The package preserves additional parameters without interpreting them or
-fetching FHIR resources automatically. Nested JSON objects, arrays, and explicit
-`null` entries remain available; form-encoded values remain strings. The
-`id_token_validated` flag applies to the ID token, not these response fields.
-Keep the complete lists out of logs and UI output because they can contain
-sensitive data. Normal `print()` and `format()` output redacts both lists.
-
-See the SMART documentation for
-[launch context](https://hl7.org/fhir/smart-app-launch/scopes-and-launch-context.html#launch-context-arrives-with-your-access_token),
-[FHIR API access](https://hl7.org/fhir/smart-app-launch/app-launch.html#access-fhir-api),
-and [token refresh](https://hl7.org/fhir/smart-app-launch/app-launch.html#refresh-access-token).
+These parameters are separate from ID token claims. The `id_token_validated`
+flag applies to the ID token, not these response fields. Keep the complete
+lists out of logs and UI output because they can contain sensitive data.
+Normal `print()` and `format()` output redacts both lists.
 
 ## Provider configuration and OIDC discovery
 

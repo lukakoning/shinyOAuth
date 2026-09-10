@@ -65,8 +65,7 @@ For manually constructed tokens, the first refresh initializes this from
 \code{id_token} if omitted. Treat this property as credential material.}
 
 \item{extra_fields}{List of additional parameters from the latest successful
-token endpoint response, such as SMART on FHIR \code{patient}, \code{encounter}, or
-\code{fhirContext}. Excludes \code{access_token}, \code{token_type}, \code{refresh_token},
+token endpoint response. Excludes \code{access_token}, \code{token_type}, \code{refresh_token},
 \code{id_token}, \code{expires_in}, \code{scope}, and \code{cnf}, which have dedicated token
 properties. Defaults to an empty list. Successful refresh replaces this
 list, including when the response contains no extra fields.}
@@ -100,10 +99,10 @@ were cryptographically validated.
 
 Additional response parameters retain their parsed names and values,
 including nested lists and explicit JSON \code{null} values (R \code{NULL}). Use
-\code{"patient" \%in\% names(token@extra_fields)} to distinguish an absent field
+\code{"custom_field" \%in\% names(token@extra_fields)} to distinguish an absent field
 from a field explicitly returned as \code{null}. These parameters are not ID
 token claims and are not covered by \code{id_token_validated}. The initial
-snapshot records historical launch context, not current access permissions.
+snapshot records the initial response data, not current access permissions.
 No automatic merging, resource fetching, or interpretation is performed.
 Both lists can contain sensitive data; keep them out of the UI and logs.
 }
@@ -113,7 +112,7 @@ Both lists can contain sensitive data; keep them out of the UI and logs.
 # auth$token@expires_at
 # auth$token@id_token_validated
 # auth$token@id_token_claims$sub
-# auth$token@extra_fields$patient
-# auth$token@initial_extra_fields$patient
+# auth$token@extra_fields$custom_field
+# auth$token@initial_extra_fields$custom_field
 
 }
