@@ -178,7 +178,10 @@ object. If you assign it to `auth`, its main fields are:
 - `auth$token`: an
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md),
   or `NULL` before login or after clearing the session. Read properties
-  with `@`, for example `auth$token@userinfo`.
+  with `@`, for example `auth$token@userinfo`. Additional token response
+  parameters are available in `auth$token@extra_fields`;
+  `auth$token@initial_extra_fields` preserves the parameters from the
+  initial code exchange across refreshes.
 
 - `auth$error`, `auth$error_description`: the error code and available
   diagnostic detail. Use your own user-facing message; these fields can

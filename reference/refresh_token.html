@@ -118,6 +118,11 @@ otherwise the latest stored ID token is preserved</p></li>
 <li><p><code>original_id_token</code>: Retained from login for continuity checks, even if
 intermediate refresh ID tokens omit <code>nonce</code> or <code>auth_time</code></p></li>
 <li><p><code>userinfo</code>: Refreshed if <code>userinfo_required = TRUE</code>; otherwise preserved</p></li>
+<li><p><code>extra_fields</code>: Replaced by the additional parameters in the refresh
+response, or an empty list if none are returned. Not merged with earlier
+responses; explicit JSON <code>null</code> values remain named <code>NULL</code> entries.</p></li>
+<li><p><code>initial_extra_fields</code>: Preserved from the initial code exchange. This
+historical snapshot does not establish current access permissions.</p></li>
 <li><p><code>cnf</code>: Updated from the token response when present, and may be
 backfilled from refresh-time introspection when enabled. When the
 refresh response omits new observable <code>cnf</code>, shinyOAuth does not carry

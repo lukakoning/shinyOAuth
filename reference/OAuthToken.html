@@ -73,7 +73,9 @@ depend on the provider. Keep access and refresh tokens out of the UI and logs.</
 <span>  granted_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  granted_scopes_verified <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  id_token_validated <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  original_id_token <span class="op">=</span> <span class="cn">NA_character_</span></span>
+<span>  original_id_token <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  extra_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  initial_extra_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -145,6 +147,21 @@ continuity baseline. Refresh never replaces it with a newer ID token.
 For manually constructed tokens, the first refresh initializes this from
 <code>id_token</code> if omitted. Treat this property as credential material.</p></dd>
 
+
+<dt id="arg-extra-fields">extra_fields<a class="anchor" aria-label="anchor" href="#arg-extra-fields"></a></dt>
+<dd><p>List of additional parameters from the latest successful
+token endpoint response. Excludes <code>access_token</code>, <code>token_type</code>, <code>refresh_token</code>,
+<code>id_token</code>, <code>expires_in</code>, <code>scope</code>, and <code>cnf</code>, which have dedicated token
+properties. Defaults to an empty list. Successful refresh replaces this
+list, including when the response contains no extra fields.</p></dd>
+
+
+<dt id="arg-initial-extra-fields">initial_extra_fields<a class="anchor" aria-label="anchor" href="#arg-initial-extra-fields"></a></dt>
+<dd><p>List of additional parameters from the initial
+successful authorization-code exchange. Preserved across refreshes and
+replaced on a new login. Defaults to an empty list for manually constructed
+tokens; refresh does not infer an initial response from <code>extra_fields</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -158,6 +175,14 @@ cannot be decoded.</p>
 of whether the ID token's signature was verified.
 Check the <code>id_token_validated</code> property to determine whether the claims
 were cryptographically validated.</p>
+<p>Additional response parameters retain their parsed names and values,
+including nested lists and explicit JSON <code>null</code> values (R <code>NULL</code>). Use
+<code>"custom_field" %in% names(token@extra_fields)</code> to distinguish an absent field
+from a field explicitly returned as <code>null</code>. These parameters are not ID
+token claims and are not covered by <code>id_token_validated</code>. The initial
+snapshot records the initial response data, not current access permissions.
+No automatic merging, resource fetching, or interpretation is performed.
+Both lists can contain sensitive data; keep them out of the UI and logs.</p>
     </div>
 
     <div class="section level2">
@@ -167,6 +192,8 @@ were cryptographically validated.</p>
 <span class="r-in"><span><span class="co"># auth$token@expires_at</span></span></span>
 <span class="r-in"><span><span class="co"># auth$token@id_token_validated</span></span></span>
 <span class="r-in"><span><span class="co"># auth$token@id_token_claims$sub</span></span></span>
+<span class="r-in"><span><span class="co"># auth$token@extra_fields$custom_field</span></span></span>
+<span class="r-in"><span><span class="co"># auth$token@initial_extra_fields$custom_field</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

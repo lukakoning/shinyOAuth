@@ -265,6 +265,42 @@ Use <code><a href="../reference/resource_req.html">resource_req()</a></code> to 
 without sending it, or pass a prepared <code>httr2</code> request to
 <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code>. See the <a href="example-spotify.html">Spotify example</a> for another complete
 app.</p>
+<div class="section level3">
+<h3 id="additional-token-response-fields">Additional token response fields<a class="anchor" aria-label="anchor" href="#additional-token-response-fields"></a>
+</h3>
+<p>Some providers return extra parameters alongside the access and ID
+tokens. Read these through <code>auth$token@extra_fields</code>, using
+the field names documented by your provider.</p>
+<p><code>extra_fields</code> contains only the additional parameters
+from the latest successful token response. A successful refresh replaces
+the entire list, even if the provider returns no extra parameters. The
+separate <code>initial_extra_fields</code> list preserves the initial
+successful code-exchange response’s extra parameters across refreshes. A
+new login starts a new snapshot; clearing the session removes both lists
+with the token.</p>
+<p>For a provider that returns a parameter named
+<code>custom_field</code>:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Inside reactive server code, after a successful login:</span></span>
+<span><span class="va">token</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span></span>
+<span><span class="va">token</span><span class="op">@</span><span class="va">extra_fields</span><span class="op">$</span><span class="va">custom_field</span></span>
+<span><span class="va">token</span><span class="op">@</span><span class="va">initial_extra_fields</span><span class="op">$</span><span class="va">custom_field</span></span>
+<span></span>
+<span><span class="co"># Distinguish an absent field from one explicitly returned as null.</span></span>
+<span><span class="st">"custom_field"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">token</span><span class="op">@</span><span class="va">extra_fields</span><span class="op">)</span></span></code></pre></div>
+<p>The package preserves additional parameters without merging or
+interpreting them, or fetching resources automatically. Nested JSON
+objects, arrays, and explicit <code>null</code> entries remain
+available; form-encoded values remain strings. Use your provider’s
+documentation to decide how to handle omitted or changed fields after
+refresh. The initial snapshot is historical response data, not proof of
+current access permissions.</p>
+<p>These parameters are separate from ID token claims. The
+<code>id_token_validated</code> flag applies to the ID token, not these
+response fields. Keep the complete lists out of logs and UI output
+because they can contain sensitive data. Normal <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and
+<code><a href="https://rdrr.io/r/base/format.html" class="external-link">format()</a></code> output redacts both lists.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="provider-configuration-and-oidc-discovery">Provider configuration and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-configuration-and-oidc-discovery"></a>
@@ -275,7 +311,7 @@ app.</p>
 <code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code>. Each helper’s help page
 describes its setup. For an OpenID Connect service with a discovery URL,
 you can let shinyOAuth look up the service’s settings:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://login.example.com"</span></span>
 <span><span class="op">)</span></span>
@@ -304,7 +340,7 @@ alone is not proof of identity. The <a href="authentication-flow.html">authentic
 more.</p>
 <p>For a local Keycloak server using HTTP, opt in before creating the
 provider:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.allow_insecure_oidc_loopback <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span></span>
 <span>  base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>, realm <span class="op">=</span> <span class="st">"shinyoauth"</span></span>
@@ -326,7 +362,7 @@ enforcement. Existing provider examples and applications remain
 usable.</p>
 <p>This example constructs an OAuth-only public client with S256 PKCE
 and HTTPS:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.tls_min_version <span class="op">=</span> <span class="st">"1.2"</span><span class="op">)</span> <span class="co"># Set before discovery or login.</span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"Example authorization server"</span>,</span>
@@ -386,7 +422,7 @@ source, remediation, reference and <code>affects_verdict</code> flag.
 Unmet recommendations do not turn the verdict into <code>FALSE</code>.
 Code and refresh, enabled PAR, required UserInfo and enabled
 introspection are included. Include optional operations explicitly:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>operations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"introspection"</span>, <span class="st">"revocation"</span><span class="op">)</span><span class="op">)</span></span>
@@ -401,7 +437,7 @@ options, objects or the runtime.</p>
 <p>Applications choose how to use the result. For example, a deployment
 script may decide to block a known failure and separately flag
 unresolved prerequisites:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span>, <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Resolve the mandatory configuration findings before deployment."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
@@ -427,7 +463,7 @@ can make other sessions on that process wait too. To run the module’s
 network work in background R processes, install <code>mirai</code> and
 <code>promises</code>, then configure workers before
 <code>server()</code>:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -443,7 +479,7 @@ and does not avoid blocking.</p>
 <p>For an app using future instead of mirai, configure its worker plan
 before starting the server and release the workers when the app
 stops:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">sequential</a></span><span class="op">)</span><span class="op">)</span></span>
 <span></span>

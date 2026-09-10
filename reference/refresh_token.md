@@ -83,6 +83,14 @@ object with refreshed credentials.
 - `userinfo`: Refreshed if `userinfo_required = TRUE`; otherwise
   preserved
 
+- `extra_fields`: Replaced by the additional parameters in the refresh
+  response, or an empty list if none are returned. Not merged with
+  earlier responses; explicit JSON `null` values remain named `NULL`
+  entries.
+
+- `initial_extra_fields`: Preserved from the initial code exchange. This
+  historical snapshot does not establish current access permissions.
+
 - `cnf`: Updated from the token response when present, and may be
   backfilled from refresh-time introspection when enabled. When the
   refresh response omits new observable `cnf`, shinyOAuth does not carry

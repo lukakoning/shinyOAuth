@@ -26,7 +26,9 @@ OAuthToken(
   granted_scopes = character(0),
   granted_scopes_verified = FALSE,
   id_token_validated = FALSE,
-  original_id_token = NA_character_
+  original_id_token = NA_character_,
+  extra_fields = list(),
+  initial_extra_fields = list()
 )
 ```
 
@@ -98,6 +100,23 @@ OAuthToken(
   constructed tokens, the first refresh initializes this from `id_token`
   if omitted. Treat this property as credential material.
 
+- extra_fields:
+
+  List of additional parameters from the latest successful token
+  endpoint response. Excludes `access_token`, `token_type`,
+  `refresh_token`, `id_token`, `expires_in`, `scope`, and `cnf`, which
+  have dedicated token properties. Defaults to an empty list. Successful
+  refresh replaces this list, including when the response contains no
+  extra fields.
+
+- initial_extra_fields:
+
+  List of additional parameters from the initial successful
+  authorization-code exchange. Preserved across refreshes and replaced
+  on a new login. Defaults to an empty list for manually constructed
+  tokens; refresh does not infer an initial response from
+  `extra_fields`.
+
 ## Details
 
 The `id_token_claims` property is a read-only computed property that
@@ -112,6 +131,16 @@ whether the ID token's signature was verified. Check the
 `id_token_validated` property to determine whether the claims were
 cryptographically validated.
 
+Additional response parameters retain their parsed names and values,
+including nested lists and explicit JSON `null` values (R `NULL`). Use
+`"custom_field" %in% names(token@extra_fields)` to distinguish an absent
+field from a field explicitly returned as `null`. These parameters are
+not ID token claims and are not covered by `id_token_validated`. The
+initial snapshot records the initial response data, not current access
+permissions. No automatic merging, resource fetching, or interpretation
+is performed. Both lists can contain sensitive data; keep them out of
+the UI and logs.
+
 ## Examples
 
 ``` r
@@ -120,4 +149,6 @@ cryptographically validated.
 # auth$token@expires_at
 # auth$token@id_token_validated
 # auth$token@id_token_claims$sub
+# auth$token@extra_fields$custom_field
+# auth$token@initial_extra_fields$custom_field
 ```

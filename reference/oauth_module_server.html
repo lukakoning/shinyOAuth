@@ -217,7 +217,10 @@ its main fields are:</p><ul><li><p><code>auth$authenticated</code>: <code>TRUE</
 checks have passed, otherwise <code>FALSE</code>. With <code>indefinite_session = TRUE</code>,
 the flag stays true while a token is kept, including after refresh errors.</p></li>
 <li><p><code>auth$token</code>: an <a href="OAuthToken.html">OAuthToken</a>, or <code>NULL</code> before login or after clearing
-the session. Read properties with <code>@</code>, for example <code>auth$token@userinfo</code>.</p></li>
+the session. Read properties with <code>@</code>, for example <code>auth$token@userinfo</code>.
+Additional token response parameters are available in
+<code>auth$token@extra_fields</code>; <code>auth$token@initial_extra_fields</code> preserves
+the parameters from the initial code exchange across refreshes.</p></li>
 <li><p><code>auth$error</code>, <code>auth$error_description</code>: the error code and available
 diagnostic detail. Use your own user-facing message; these fields can
 include sensitive provider information.</p></li>
