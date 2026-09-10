@@ -33,6 +33,8 @@
 #'   the Shiny module for forced reauthentication.
 #' @param .defer_build Internal flag returning prepared local state for async
 #'   authorization work instead of completing the authorization URL.
+#' @param .transaction_context Internal bounded manager context. Ordinary callers
+#'   leave this `NULL`; managed state requires manager-aware consumption.
 #'
 #' @return A length-1 string containing the authorization URL to send the user
 #'   to. When PAR is used, the returned string also carries
@@ -48,12 +50,14 @@ prepare_call <- function(
   browser_token,
   request_uri_publisher = NULL,
   .requested_max_age = NULL,
-  .defer_build = FALSE
+  .defer_build = FALSE,
+  .transaction_context = NULL
 ) {
   # Verify input  --------------------------------------------------------------
 
   # Verify oauth_client
   S7::check_is_S7(oauth_client, OAuthClient)
+  transaction_context <- authorization_context_json(.transaction_context)
 
   # Verify browser_token
   if (is.null(browser_token) && isTRUE(allow_skip_browser_token())) {
@@ -158,6 +162,7 @@ prepare_call <- function(
           max_age = requested_max_age,
           provider = oauth_client@provider |> provider_fingerprint(),
           client_policy = state_client_policy_fingerprint(oauth_client),
+          transaction_context_digest = authorization_context_digest(transaction_context),
           issued_at = as.numeric(Sys.time()),
           trace_id = flow_trace_id,
           otel_login_span_headers = login_span_headers
@@ -191,11 +196,13 @@ prepare_call <- function(
             oauth_client@state_store$set(
               key = state_cache_key(state),
               value = state_store_seal(
-                list(
+                c(list(
                   browser_token = browser_token,
                   pkce_code_verifier = pkce_code_verifier,
                   nonce = nonce
-                ),
+                ), if (!is.null(transaction_context)) list(
+                  transaction_context = transaction_context
+                )),
                 oauth_client,
                 state
               )
@@ -1303,6 +1310,8 @@ handle_callback <- function(
 #' @param trace_id_seeded Whether the surrounding callback span already started
 #'   with the recovered shinyOAuth trace id.
 #' @param shiny_session Optional Shiny session context.
+#' @param .transaction_context Internal context already checked by the manager
+#'   against the intended owner and session generation.
 #' @return An [OAuthToken] object on success. Otherwise this function raises a
 #'   typed error.
 #' @keywords internal
@@ -1315,7 +1324,8 @@ handle_callback_internal <- function(
   decrypted_payload = NULL,
   state_store_values = NULL,
   trace_id_seeded = FALSE,
-  shiny_session = NULL
+  shiny_session = NULL,
+  .transaction_context = NULL
 ) {
   # Type checks ----------------------------------------------------------------
 
@@ -1451,6 +1461,13 @@ handle_callback_internal <- function(
         )
       }
 
+      state_record_verify_authorization_context(
+        state_store_values, payload[["transaction_context_digest"]]
+      )
+      if (!identical(state_store_values[["transaction_context"]], .transaction_context)) {
+        err_invalid_state("Managed authorization requires its verified transaction context")
+      }
+
       # Verify browser token -------------------------------------------------------
 
       # Verify browser_token matches
@@ -1524,7 +1541,9 @@ handle_callback_internal <- function(
               oauth_client,
               payload[["state"]],
               expected_record = state_store_values,
-              shiny_session = shiny_session
+              shiny_session = shiny_session,
+              .transaction_context = .transaction_context,
+              .transaction_context_digest = payload[["transaction_context_digest"]]
             )
           },
           attributes = otel_client_attributes(
@@ -2158,7 +2177,7 @@ enforce_token_introspection_policy <- function(
       } else {
         intro_scopes <- normalize_scope_tokens(intro_scope_raw)
 
-        missing <- setdiff(requested_scopes, intro_scopes)
+        missing <- evaluate_scope_coverage(requested_scopes, intro_scopes)$missing
         if (length(missing) > 0) {
           msg <- paste0(
             "Introspected scopes missing requested entries: ",
@@ -2688,7 +2707,7 @@ verify_token_set <- function(
           length(requested_scopes) > 0 &&
           !scope_is_omitted
       ) {
-        missing <- setdiff(requested_scopes, granted_scopes)
+        missing <- evaluate_scope_coverage(requested_scopes, granted_scopes)$missing
         if (length(missing) > 0) {
           msg <- paste0(
             "Granted scopes missing requested entries: ",

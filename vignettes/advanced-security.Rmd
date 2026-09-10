@@ -691,10 +691,14 @@ parameters is allowed. Use `perform_resource_req()` to manage nonce retries.
 ## Signature and encryption support
 
 For outgoing private-key client assertions, JAR, and DPoP, signing supports
-`RS256`, `ES256`, `ES384`, `ES512`, and both `EdDSA` and `Ed25519` with Ed25519 keys. Ed25519
+`RS256`, `RS384`, `ES256`, `ES384`, `ES512`, and both `EdDSA` and `Ed25519` with Ed25519 keys. Ed25519
 accepts an OpenSSL private key or PEM; DPoP embeds only its public OKP JWK.
 Algorithm inference and explicit choices remain constrained by provider metadata.
 Secret-based assertions and JAR support `HS256`, `HS384`, and `HS512`.
+RSA continues to default to RS256; choose `client_assertion_alg = "RS384"`
+explicitly for a registration requiring it. RS384 uses SHA-384 with
+RSASSA-PKCS1-v1_5 and requires an RSA key of at least 2048 bits, as specified in
+[RFC 7518 section 3.3](https://www.rfc-editor.org/rfc/rfc7518.html#section-3.3).
 RSA-PSS and Ed448 are not supported for outgoing signatures.
 Incoming signature policies are separate; see [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html)
 and the `jarm_*` arguments in [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html).

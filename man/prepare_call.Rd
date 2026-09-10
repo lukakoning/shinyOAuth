@@ -9,7 +9,8 @@ prepare_call(
   browser_token,
   request_uri_publisher = NULL,
   .requested_max_age = NULL,
-  .defer_build = FALSE
+  .defer_build = FALSE,
+  .transaction_context = NULL
 )
 }
 \arguments{
@@ -29,6 +30,9 @@ the Shiny module for forced reauthentication.}
 
 \item{.defer_build}{Internal flag returning prepared local state for async
 authorization work instead of completing the authorization URL.}
+
+\item{.transaction_context}{Internal bounded manager context. Ordinary callers
+leave this \code{NULL}; managed state requires manager-aware consumption.}
 }
 \value{
 A length-1 string containing the authorization URL to send the user

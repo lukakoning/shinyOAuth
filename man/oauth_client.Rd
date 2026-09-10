@@ -249,8 +249,8 @@ at the token endpoint. Can be an \code{openssl::key} or a PEM string containing 
 private key. Required when the provider's \code{token_auth_style = 'private_key_jwt'}.
 Also used to sign JAR Request Objects, regardless of the token auth style.
 Current outbound private-key JWT signing
-supports RSA, EC, and Ed25519 private keys. For RSA keys, outbound signing is currently
-limited to \code{RS256}; \code{RS384}, \code{RS512}, and RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512})
+supports RSA, EC, and Ed25519 private keys. RSA keys support \code{RS256} and
+explicitly selected \code{RS384}; \code{RS512} and RSA-PSS (\code{PS256}, \code{PS384}, \code{PS512})
 are not supported. Ed25519 keys support \code{Ed25519} (RFC 9864) and legacy
 \code{EdDSA} (the default for compatibility); Ed448 is not supported.}
 
@@ -267,8 +267,8 @@ error. When the provider advertises
 \code{token_endpoint_auth_signing_alg_values_supported}, both explicit values and
 inferred defaults must be included in that set.
 Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_jwt and asymmetric algorithms
-supported for outbound signing (\code{RS256}, \code{ES256}, \code{ES384}, \code{ES512}, and
-\code{Ed25519} or legacy \code{EdDSA} with Ed25519 keys) for private keys. \code{RS384}, \code{RS512}, \code{PS256}, \code{PS384}, and \code{PS512}
+supported for outbound signing (\code{RS256}, \code{RS384}, \code{ES256}, \code{ES384}, \code{ES512}, and
+\code{Ed25519} or legacy \code{EdDSA} with Ed25519 keys) for private keys. \code{RS512}, \code{PS256}, \code{PS384}, and \code{PS512}
 are not currently supported for outbound client assertions.}
 
 \item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
@@ -323,7 +323,7 @@ using Demonstrating Proof of Possession (DPoP). Only needed when your
 provider/API supports DPoP. Accepts an
 \code{openssl::key} or PEM private-key string, using RSA, EC, or Ed25519.
 \code{\link[=oauth_client]{oauth_client()}} then defaults \code{dpop_require_access_token} to \code{TRUE}.
-Supported signing algorithms are \code{RS256}, \code{ES256}, \code{ES384}, \code{ES512}, and
+Supported signing algorithms are \code{RS256}, \code{RS384}, \code{ES256}, \code{ES384}, \code{ES512}, and
 \code{Ed25519} or legacy \code{EdDSA} with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
 outgoing proofs. See \code{dpop_signing_alg} and the \href{https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html}{advanced security vignette}.}
 
@@ -334,7 +334,7 @@ server expects a stable key identifier alongside the embedded public JWK.}
 \item{dpop_signing_alg}{Optional JWT signing algorithm to use for DPoP
 proofs. When omitted, a compatible asymmetric default is selected based on
 the private key type/curve (for example \code{RS256}, \code{ES256}, \code{ES384}, or
-\code{ES512}, or \code{EdDSA} for Ed25519). \code{RS384}, \code{RS512}, \code{PS256}, \code{PS384}, and \code{PS512} are
+\code{ES512}, or \code{EdDSA} for Ed25519). \code{RS512}, \code{PS256}, \code{PS384}, and \code{PS512} are
 not currently supported for outbound DPoP proofs. If an explicit value is
 provided but incompatible with the key, validation fails early with a
 configuration error. When the provider advertises
@@ -400,7 +400,7 @@ signed authorization requests when \code{request_object_mode} uses a
 Request Object (\code{"request"} or \code{"request_uri"}).
 When omitted, shinyOAuth chooses \code{HS256} for HMAC-based signing or a
 compatible asymmetric default based on \code{client_assertion_private_key} (for example
-\code{RS256}, \code{ES256}, \code{ES384}, \code{ES512}, or \code{EdDSA} for Ed25519). \code{RS384}, \code{RS512}, \code{PS256},
+\code{RS256}, \code{RS384}, \code{ES256}, \code{ES384}, \code{ES512}, or \code{EdDSA} for Ed25519). \code{RS512}, \code{PS256},
 \code{PS384}, and \code{PS512} are not currently supported for outbound
 signed authorization requests.}
 

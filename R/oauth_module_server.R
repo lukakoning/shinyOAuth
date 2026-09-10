@@ -3471,7 +3471,8 @@ oauth_module_server <- function(
                                   client,
                                   pre_payload[["state"]],
                                   expected_record = pre_state,
-                                  shiny_session = captured_shiny_session
+                                  shiny_session = captured_shiny_session,
+                                  .transaction_context_digest = pre_payload[["transaction_context_digest"]]
                                 )
                               },
                               attributes = otel_client_attributes(

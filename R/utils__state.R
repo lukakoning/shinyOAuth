@@ -49,6 +49,7 @@ state_payload_decrypt_validate <- function(
       # Verify freshness and client/provider binding
       payload_verify_issued_at(client, pld)
       payload_verify_client_binding(client, pld)
+      payload_verify_authorization_context(client, pld)
       payload_requested_max_age(pld)
 
       if (isTRUE(audit_success)) {
@@ -118,6 +119,7 @@ state_payload_revalidate <- function(
 
       payload_verify_issued_at(client, payload)
       payload_verify_client_binding(client, payload)
+      payload_verify_authorization_context(client, payload)
       payload_requested_max_age(payload)
 
       if (isTRUE(audit_success)) {
@@ -1412,6 +1414,9 @@ state_store_unseal <- function(record, client, state) {
 # harmless backend field reordering or omission of unused NULLs is tolerated.
 state_store_record_digest <- function(record, client) {
   fields <- c("browser_token", "pkce_code_verifier", "nonce")
+  if (!is.null(record[["transaction_context"]])) {
+    fields <- c(fields, "transaction_context")
+  }
   canonical <- stats::setNames(
     lapply(fields, function(nm) record[[nm]]),
     fields
@@ -1431,8 +1436,16 @@ state_store_consume_checked <- function(
   client,
   state,
   expected_record,
-  shiny_session = NULL
+  shiny_session = NULL,
+  .transaction_context = NULL,
+  .transaction_context_digest = NULL
 ) {
+  state_record_verify_authorization_context(expected_record, .transaction_context_digest)
+  # The future manager supplies the exact context only after validating its
+  # intended owner and generation. Legacy callbacks cannot consume managed state.
+  if (!identical(expected_record[["transaction_context"]], .transaction_context)) {
+    err_invalid_state("Managed authorization requires its verified transaction context")
+  }
   expected_digest <- state_store_record_digest(expected_record, client)
   consumed <- state_store_get_remove(
     client,

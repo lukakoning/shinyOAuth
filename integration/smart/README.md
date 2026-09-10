@@ -30,6 +30,17 @@ Sources checked online:
 - [SMART scopes and context](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html)
 - [Asymmetric client authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html)
 - [OAuth mix-up defenses](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2)
+- [JWA RSA signatures](https://www.rfc-editor.org/rfc/rfc7518.html#section-3.3)
+- [OAuth scope semantics](https://www.rfc-editor.org/rfc/rfc6749.html#section-3.3)
+- [jose signing implementation](https://github.com/r-lib/jose/blob/main/R/jwt.R)
+
+P1 adds RS384 using jose's explicit `size = 384`, verified independently with
+OpenSSL for assertions, JAR and DPoP. RSA defaults stay RS256. Its internal
+structured preparation exposes exact outgoing state even with PAR, and binds
+data-only manager context to the pending transaction. Legacy callbacks cannot
+consume managed context; owner/session lifecycle is still a P3 requirement.
+The scope evaluator defaults to versioned literal OAuth coverage; SMART
+semantics remain P4.
 
 The roadmap is in `playground/smart-fhir-roadmap.md`. Do not claim a completed
 SMART or retained multi-site workflow until the corresponding integration gates

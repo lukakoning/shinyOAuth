@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Added explicitly selected RS384 signing for client assertions, Request Objects
+and DPoP proofs, with RSA key compatibility checks. RSA signing still defaults
+to RS256; inbound algorithm defaults are unchanged.
+
 * `OAuthToken` now exposes additional token endpoint response parameters in
 `extra_fields` (#16).
 `initial_extra_fields` preserves the initial code-exchange parameters across

@@ -227,8 +227,8 @@
 #'   private key. Required when the provider's `token_auth_style = 'private_key_jwt'`.
 #'   Also used to sign JAR Request Objects, regardless of the token auth style.
 #'   Current outbound private-key JWT signing
-#'   supports RSA, EC, and Ed25519 private keys. For RSA keys, outbound signing is currently
-#'   limited to `RS256`; `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`)
+#'   supports RSA, EC, and Ed25519 private keys. RSA keys support `RS256` and
+#'   explicitly selected `RS384`; `RS512` and RSA-PSS (`PS256`, `PS384`, `PS512`)
 #'   are not supported. Ed25519 keys support `Ed25519` (RFC 9864) and legacy
 #'   `EdDSA` (the default for compatibility); Ed448 is not supported.
 #'
@@ -245,8 +245,8 @@
 #'   `token_endpoint_auth_signing_alg_values_supported`, both explicit values and
 #'   inferred defaults must be included in that set.
 #'   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt and asymmetric algorithms
-#'   supported for outbound signing (`RS256`, `ES256`, `ES384`, `ES512`, and
-#'   `Ed25519` or legacy `EdDSA` with Ed25519 keys) for private keys. `RS384`, `RS512`, `PS256`, `PS384`, and `PS512`
+#'   supported for outbound signing (`RS256`, `RS384`, `ES256`, `ES384`, `ES512`, and
+#'   `Ed25519` or legacy `EdDSA` with Ed25519 keys) for private keys. `RS512`, `PS256`, `PS384`, and `PS512`
 #'   are not currently supported for outbound client assertions.
 #'
 #' @param client_assertion_audience Optional override for the `aud` claim used when building
@@ -324,7 +324,7 @@
 #'   provider/API supports DPoP. Accepts an
 #'   `openssl::key` or PEM private-key string, using RSA, EC, or Ed25519.
 #'   [oauth_client()] then defaults `dpop_require_access_token` to `TRUE`.
-#'   Supported signing algorithms are `RS256`, `ES256`, `ES384`, `ES512`, and
+#'   Supported signing algorithms are `RS256`, `RS384`, `ES256`, `ES384`, `ES512`, and
 #'   `Ed25519` or legacy `EdDSA` with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
 #'   outgoing proofs. See `dpop_signing_alg` and the [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html).
 #'
@@ -335,7 +335,7 @@
 #' @param dpop_signing_alg Optional JWT signing algorithm to use for DPoP
 #'   proofs. When omitted, a compatible asymmetric default is selected based on
 #'   the private key type/curve (for example `RS256`, `ES256`, `ES384`, or
-#'   `ES512`, or `EdDSA` for Ed25519). `RS384`, `RS512`, `PS256`, `PS384`, and `PS512` are
+#'   `ES512`, or `EdDSA` for Ed25519). `RS512`, `PS256`, `PS384`, and `PS512` are
 #'   not currently supported for outbound DPoP proofs. If an explicit value is
 #'   provided but incompatible with the key, validation fails early with a
 #'   configuration error. When the provider advertises
@@ -399,7 +399,7 @@
 #'   Request Object (`"request"` or `"request_uri"`).
 #'   When omitted, shinyOAuth chooses `HS256` for HMAC-based signing or a
 #'   compatible asymmetric default based on `client_assertion_private_key` (for example
-#'   `RS256`, `ES256`, `ES384`, `ES512`, or `EdDSA` for Ed25519). `RS384`, `RS512`, `PS256`,
+#'   `RS256`, `RS384`, `ES256`, `ES384`, `ES512`, or `EdDSA` for Ed25519). `RS512`, `PS256`,
 #'   `PS384`, and `PS512` are not currently supported for outbound
 #'   signed authorization requests.
 #'
@@ -1531,6 +1531,7 @@ oauth_client_validate <- function(self) {
       allowed_hmac <- c("HS256", "HS384", "HS512")
       allowed_asym <- c(
         "RS256",
+        "RS384",
         "ES256",
         "ES384",
         "ES512",
@@ -2231,6 +2232,7 @@ oauth_client_validate <- function(self) {
     allowed_hmac <- c("HS256", "HS384", "HS512")
     allowed_asym <- c(
       "RS256",
+      "RS384",
       "ES256",
       "ES384",
       "ES512",
@@ -2517,6 +2519,7 @@ oauth_client_validate <- function(self) {
     resolved_dpop_alg <- dpop_alg
     allowed_dpop_algs <- c(
       "RS256",
+      "RS384",
       "ES256",
       "ES384",
       "ES512",

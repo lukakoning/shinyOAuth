@@ -6,6 +6,28 @@
 
 # 1 Scope helpers --------------------------------------------------------------
 
+# A versioned profile seam for coverage decisions. It neither rewrites wire
+# scopes nor infers a profile from their spelling. Unknown profiles fail closed;
+# future evaluators can report indeterminate coverage for unsupported syntax.
+evaluate_scope_coverage <- function(
+  requested,
+  granted,
+  profile = "oauth",
+  version = 1L
+) {
+  if (!identical(profile, "oauth") || !identical(version, 1L)) {
+    err_config("Unsupported scope evaluation profile or version")
+  }
+  requested <- normalize_scope_tokens(requested)
+  granted <- normalize_scope_tokens(granted)
+  missing <- setdiff(requested, granted)
+  list(
+    status = if (length(missing)) "insufficient" else "covered",
+    missing = missing,
+    indeterminate = character()
+  )
+}
+
 ## 1.1 Normalize and validate scopes -------------------------------------------
 
 # Validate wire values before the permissive local-input normalizer sees them.
