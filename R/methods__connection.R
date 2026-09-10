@@ -31,7 +31,8 @@
 #' included in the target's requested scopes and covered by the current grant.
 #' The package cannot infer arbitrary API permissions from an HTTP method/path.
 #' The legacy module continues to own refresh and logout. Retained connection
-#' storage and its independent lifecycle will be supplied by the connection manager.
+#' storage and its independent lifecycle are available through
+#' [oauth_connections()] and [oauth_connections_server()].
 #'
 #' @examples
 #' \dontrun{
@@ -102,6 +103,9 @@ connection_session_root <- function(session) {
 }
 
 connection_record_status <- function(record) {
+  if (!is.null(record$status) && !identical(record$status, "active")) {
+    return(record$status)
+  }
   token <- record$token
   if (is.null(token)) {
     return("disconnected")

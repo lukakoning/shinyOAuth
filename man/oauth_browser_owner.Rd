@@ -58,10 +58,10 @@ use the trusted local-session resolver described below.
 }
 \description{
 Choose who may use saved OAuth connections: the browser that created them,
-or an account already authenticated by your application. These policies and
-their internal session helpers are foundations for the planned connection
-manager. The manager is not yet available; these factories do not set cookies,
-authenticate users or enable retention on \code{\link[=oauth_module_server]{oauth_module_server()}} calls.
+or an account already authenticated by your application. Supply the policy to
+\code{\link[=oauth_connections]{oauth_connections()}} with the matching retention mode. These factories do not
+set cookies, authenticate users or enable retention on \code{\link[=oauth_module_server]{oauth_module_server()}}
+calls by themselves.
 }
 \details{
 Browser retention identifies an authorized browser session, not a verified
@@ -72,9 +72,9 @@ owner without a matching live server record for this application origin.
 
 Cookie rotation invalidates the previous session generation immediately and
 preserves the original absolute lifetime. Local logout removes the live owner
-session. The planned manager must check that generation before code exchange
-and credential commit, with no grace period for pending authorization, and
-handle credential cleanup after logout. An external provider login cannot
+session. The manager checks that generation before code exchange and credential
+commit, with no grace period for pending authorization, and handles credential
+cleanup after logout. An external provider login cannot
 establish a local owner or implicitly link browser connections to an account.
 
 Account retention requires finite idle, absolute and local reauthentication

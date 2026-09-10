@@ -43,7 +43,8 @@ Use request-level \code{required_scopes} for optional operations. They must be
 included in the target's requested scopes and covered by the current grant.
 The package cannot infer arbitrary API permissions from an HTTP method/path.
 The legacy module continues to own refresh and logout. Retained connection
-storage and its independent lifecycle will be supplied by the connection manager.
+storage and its independent lifecycle are available through
+\code{\link[=oauth_connections]{oauth_connections()}} and \code{\link[=oauth_connections_server]{oauth_connections_server()}}.
 }
 \examples{
 \dontrun{

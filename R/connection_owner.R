@@ -1,10 +1,10 @@
 #' Configure ownership of retained OAuth connections
 #'
 #' Choose who may use saved OAuth connections: the browser that created them,
-#' or an account already authenticated by your application. These policies and
-#' their internal session helpers are foundations for the planned connection
-#' manager. The manager is not yet available; these factories do not set cookies,
-#' authenticate users or enable retention on [oauth_module_server()] calls.
+#' or an account already authenticated by your application. Supply the policy to
+#' [oauth_connections()] with the matching retention mode. These factories do not
+#' set cookies, authenticate users or enable retention on [oauth_module_server()]
+#' calls by themselves.
 #'
 #' @param idle_timeout Maximum owner inactivity in seconds.
 #' @param absolute_timeout Maximum owner lifetime in seconds, independent of
@@ -26,9 +26,9 @@
 #'
 #' Cookie rotation invalidates the previous session generation immediately and
 #' preserves the original absolute lifetime. Local logout removes the live owner
-#' session. The planned manager must check that generation before code exchange
-#' and credential commit, with no grace period for pending authorization, and
-#' handle credential cleanup after logout. An external provider login cannot
+#' session. The manager checks that generation before code exchange and credential
+#' commit, with no grace period for pending authorization, and handles credential
+#' cleanup after logout. An external provider login cannot
 #' establish a local owner or implicitly link browser connections to an account.
 #'
 #' @seealso [oauth_connection_store_memory()]
@@ -452,12 +452,12 @@ connection_account_identity <- function(
     return(NULL)
   }
   make_id <- function(values) {
-    as.character(openssl::sha256(
+    unclass(as.character(openssl::sha256(
       charToRaw(as.character(
         jsonlite::toJSON(values, auto_unbox = TRUE, digits = NA)
       )),
       key = key
-    ))
+    )))
   }
   list(
     id = make_id(list(

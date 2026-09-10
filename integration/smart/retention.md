@@ -1,20 +1,21 @@
 # Retained connection implementation checkpoints
 
-P3 is being delivered in independently reviewable steps. The retained manager
-is not yet available; `oauth_connection()` remains Shiny-session scoped.
+P3 is being delivered in independently reviewable steps. The optional manager is
+implemented; the real-browser acceptance gate remains outstanding.
+`oauth_connection()` continues to follow a single module's session-scoped token.
 
 | Step | Deliverable | Status |
 | --- | --- | --- |
 | P3a | Versioned encrypted credential schema and atomic memory connection store | Implemented; focused credential and lifecycle tests. |
-| P3b | Owner sessions, generation/expiry checks, browser cookie and account resolver contracts | Implemented; focused browser/account lifecycle tests. HTTP and callback integration follows in P3c. |
-| P3c | Manager UI/server, guarded callback commit, restoration, coordinated refresh and disconnect | In progress: internal managed-module hooks implemented; manager integration follows separately. |
+| P3b | Owner sessions, generation/expiry checks, browser cookie and account resolver contracts | Implemented; focused browser/account lifecycle tests. |
+| P3c | Manager UI/server, guarded callback commit, restoration, coordinated refresh and disconnect | Implemented in P3c1 (module hooks) and P3c2 (manager API), with HTTP/Shiny lifecycle regression tests. |
 | P3d | Two-site real-browser retention, owner isolation and lifecycle integration evidence | Required before marking P3 complete. |
 
 The memory store is constructed outside `server()` with
 `oauth_connection_store_memory()`. Its low-level methods accept only sealed
 credential envelopes; callers must already have verified the owner. The factory
 does not establish a browser session or enable retention on existing modules.
-Only the future manager will connect those operations to browser authentication.
+`oauth_connections()` connects these operations to verified local ownership.
 
 The credential codec uses the package's AES-GCM envelope with a separate
 HMAC-derived purpose key from a deployment-controlled 32-byte root. The root is
@@ -77,13 +78,12 @@ cannot re-enroll it. A fresh authenticated session can use the same account ID.
 Account expiry and capacity are explicit; these registries also remain local to
 one R process and do not survive a restart.
 
-P3c must wire these helpers to the HTTP and Shiny boundaries. In particular, it
-must establish the browser cookie before Shiny starts, validate the request
-origin, and bind pending authorization to the owner generation. Recheck that
-generation before code exchange and before committing credentials. A cross-site
-POST without the owner cookie must first use the existing clean callback
-continuation. The helper tests do not yet demonstrate those HTTP, callback or
-late-completion properties.
+`oauth_connections_ui()` establishes the browser cookie on an ordinary HTTP page
+request before Shiny starts. Both HTTP and Shiny setup check the configured
+application origin. Raw callbacks never create replacement owners. A cross-site
+POST without the owner cookie first uses the existing clean callback continuation;
+that continuation requires the still-valid owner. Invalid cookies on ordinary
+pages are cleared by an HTTP response and a same-origin redirect.
 
 The first P3c commit adds internal module hooks for transaction preparation,
 owner validation, credential acceptance, cancellation and cleanup. Managed code
@@ -94,15 +94,54 @@ Accepted managed tokens never enter the legacy module's token slot. The module's
 public arguments and ordinary lifecycle remain unchanged. The hook regression
 run passes 809 assertions, including 57 managed-hook assertions, with no skips;
 two warnings reflect locally installed Shiny/future packages built under newer
-R patch versions. This still does not establish HTTP or browser retention.
+R patch versions. This does not establish real-browser retention.
+
+The P3c2 API comprises `oauth_connections()`, `oauth_connections_ui()` and
+`oauth_connections_server()`. Create one manager outside `server()` and share its
+namespace and origin across the wrappers. Multiple targets require distinct
+registered callbacks and clients configured with `multi_redirect_uri` plus the
+complete callback list. Browser/account retention requires explicit owner policy,
+memory store and deployment-held credential/owner keys. The default `shiny` mode
+discards old grants when the Shiny session ends; pending authorization still uses
+the existing browser/state proofs to complete in a new session.
+
+Each successful authorization creates a new connection ID, including repeated
+authorizations at one target. The server returns `connect()`, `connections()`,
+`connection()`, `disconnect()`, `disconnect_all()`, `logout()` and `errors()`.
+References remain bound to their Shiny session and resolve current owner-scoped
+credentials for every request. Summaries exclude token and patient/context data.
+The manager owns refresh, including shared automatic retry cooldowns, exclusive
+claims, original authentication/retention times and uncertain-outcome handling.
+Polling and automatic refresh do not extend local-owner idle limits.
+
+Local disconnect installs all applicable tombstones before remote cleanup. Logout
+invalidates the owner generation first. Remote revocation has a ten-second batch
+HTTP budget, with two seconds and one attempt per credential; failure never
+restores local usability. Account logout also requires a fresh trusted local
+login before reenrollment. A failed late refresh is discarded and cannot replace
+a disconnected grant.
+
+The manager's focused tests cover HTTP cookie setup/clearing, Origin rejection,
+restoration across mock Shiny sessions, browser/account isolation, login generation
+changes, owner idle expiry, repeated grants, refresh rotation/failure outcomes,
+late completion versus disconnect/expiry, and the public reference API. These
+tests exercise synthetic credentials; they are not external conformance evidence.
+
+P3c2 validation on 2026-09-10: the affected callback, connection and lifecycle
+regression run passed 1,320 assertions with no failures. One worker-version skip
+was resolved by installing this checkout into an isolated library; rerunning the
+async module file passed all 42 assertions without skips. The only test warnings
+were the local Shiny/future R patch-version build notices. R CMD check (without
+tests, manual or vignette rebuilding; focused tests run separately) reported zero
+errors, warnings and notes. Roxygen help rendered and Jarl checks passed.
 
 Protocol references reviewed for P3:
 
 - [OAuth refresh-token protection](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14): rotating credentials require coordinated lifecycle handling.
 - [Token revocation](https://www.rfc-editor.org/rfc/rfc7009.html#section-2.2): local disconnect and remote revocation are separate outcomes.
-- [Cookie attributes and host prefixes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie): P3b's header and parsing helpers implement the cookie contract; P3c will connect them to HTTP responses.
+- [Cookie attributes and host prefixes](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie): the manager connects the owner cookie contract to HTTP responses.
 - [Cookie port isolation limits](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5): an origin-specific cookie name does not isolate applications on different ports of the same host.
-- [Shiny session request](https://shiny.posit.co/r/reference/shiny/latest/session.html): P3c will validate cookies and origin from the server request, never client-supplied Shiny inputs.
+- [Shiny session request](https://shiny.posit.co/r/reference/shiny/latest/session.html): the manager validates cookies and origin from the server request, never client-supplied Shiny inputs.
 
 The acceptance test remains actual browser navigation: connect A, navigate away
 to authorize B, return in a new Shiny session with both connections, refresh each
