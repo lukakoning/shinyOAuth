@@ -451,6 +451,8 @@ P7a-P7e are separately selectable extensions, not one combined feature switch. T
 
 **SMART sandbox integration checkpoints.** Use [integration/smart/sandbox.md](../integration/smart/sandbox.md) as the executable environment and evidence contract. Its current runner owns an isolated Docker project, tests discovery/FHIR/picker readiness with zero skips, records exact image identities and public metadata, and cleans up its own containers and volume. The following application suites are additions required within their phases, not placeholders that may skip indefinitely:
 
+P3 is split into reviewable implementation items: **P3a** encrypted credential schema and atomic memory store; **P3b** owner sessions and generation/expiry enforcement; **P3c** manager UI/server, callback commit, restoration and lifecycle integration; **P3d** real-browser two-site retention evidence. P3a is implemented; P3b-P3d remain required. The [retention checkpoint notes](../integration/smart/retention.md) describe the store contract and limits. P3 remains incomplete until the complete A-to-B browser and owner/lifecycle gates pass; storage tests do not establish retention.
+
 | Phase | Sandbox work within the phase | Release gate |
 | --- | --- | --- |
 | P3 | Add two isolated launcher/R4 sites with separate data volumes and a real-browser generic manager fixture (`test-browser-retention.R`). | Actual A-to-B navigation and new Shiny sessions retain both owner-bound grants; independent refresh/disconnect and existing store/concurrency tests pass. Repeat the same browser scenario with SMART targets during P4. |
