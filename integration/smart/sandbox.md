@@ -2,10 +2,12 @@
 
 This is an R4-only setup using the official
 [SMART Dev Sandbox](https://github.com/smart-on-fhir/smart-dev-sandbox)
-components: SMART Launcher, HAPI FHIR with Synthea sample data, and the patient
-browser. It provides an external implementation for the SMART roadmap's
+components: HAPI FHIR with Synthea sample data and the patient browser, with the
+official [SMART Launcher v2](https://github.com/smart-on-fhir/smart-launcher-v2).
+It provides an external implementation for the SMART roadmap's
 integration tests. The current tests establish discovery, FHIR connectivity,
-sample data and launcher configuration. Application authorization, retention,
+sample data, required SMART 2.2 discovery fields, public signing keys and launcher
+configuration. Application authorization, retention,
 and EHR launch remain the P3-P5 gates below.
 
 ## Run the smoke suite
@@ -50,7 +52,11 @@ running, and preserves its data. Open the launcher after readiness succeeds:
 Use the **SMART FHIR base** in the future app target, not the direct HAPI URL.
 FHIR traffic inside Docker goes from the launcher to `r4:8080`; browser URLs
 remain on `localhost`. The patient picker uses only the local Synthea dataset.
-R2/R3 and backend-service UI are disabled in this initial profile.
+R2/R3 are disabled with empty upstream URLs. Launcher v2 uses `PORT` and binds
+to `0.0.0.0` inside its container; Docker publishes it only on host loopback.
+The picker opens with `config=r4`, so the local configuration is mounted at
+`/config/r4.json5`. Backend-service controls remain available in v2, but their
+flows are not exercised by this smoke suite.
 
 Stop the manual stack with:
 
@@ -73,17 +79,21 @@ marks application flows as untested at this checkpoint.
 
 The image pins were resolved on 2026-09-10. The reviewed upstream revisions are
 `smart-dev-sandbox@081def5427765661d49ec85aec1849f444f58618` and
-`smart-launcher@688c7e2e0527c16e8d4fc63ad3e294029e1d6480`. Those source revisions
+`smart-launcher-v2@64374254347fdfa9625f9112c77813aa75fa9f3e`. Those source revisions
 are review references; the deployed binary identities are the Compose digests.
-The launcher reports package version 2.0.0 and HAPI reports 5.0.2 with FHIR 4.0.1.
+The launcher image is `smartonfhir/smart-launcher-2`, pinned by digest in Compose;
+it reports package version 2.0.1. HAPI reports 5.0.2 with FHIR 4.0.1.
 
-The observed SMART metadata advertises standalone/EHR launch, public and
-symmetric clients, patient/encounter context, and offline access. It omits
-`grant_types_supported` and `code_challenge_methods_supported`, both required
-by [SMART 2.2 discovery](https://hl7.org/fhir/smart-app-launch/STU2.2/conformance.html).
-It does not advertise `sso-openid-connect`, `permission-v2`, or asymmetric
-client authentication. Listing `openid`/`fhirUser` scopes is not proof of an
-SSO capability. Record actual behavior separately from advertised features.
+The observed v2 metadata includes `grant_types_supported` with
+`authorization_code` and `client_credentials`, and
+`code_challenge_methods_supported: ["S256"]`, as required by
+[SMART 2.2 discovery](https://hl7.org/fhir/smart-app-launch/STU2.2/conformance.html).
+The smoke suite requires authorization-code support and S256 without `plain`.
+It also checks the advertised `sso-openid-connect`, `permission-v2` and
+`client-confidential-asymmetric` capabilities, `private_key_jwt`, the local
+issuer/JWKS URLs, and a nonempty public RSA JWKS. These checks establish
+discovery and key availability; they do not verify ID tokens or RS384 client
+assertion exchanges. The `/env.js` simulator UI token is never saved in evidence.
 
 This simulator permits uncredentialed FHIR reads. The smoke read checks data
 and proxy connectivity; authorization enforcement requires the strict fixture
@@ -91,9 +101,10 @@ and suitable external server evidence. The stack uses loopback HTTP and
 synthetic records; production TLS and real-browser ownership remain separate
 release gates. Sandbox success is not SMART certification.
 
-Before claiming SMART 2.2 interoperability, P4 must resolve the metadata gaps
-through an upgraded upstream build or another conforming reference server.
-Preserve a test of the strict adapter's rejection of this older metadata.
+The previous `smartonfhir/smart-launcher` image (package 2.0.0) omitted the two
+mandatory discovery fields; upgrading to `smart-launcher-2` resolves that gap.
+P4 must still test the adapter against live v2 discovery and synthetic negative
+fixtures that omit mandatory fields, plus actual authorization and refresh flows.
 Do not inject missing capabilities or disable PKCE, signature, issuer, or
 browser checks to make a full-flow test pass. Any supported legacy profile
 needs its own explicit policy and evidence.
@@ -104,10 +115,10 @@ The future filenames below describe planned tests, not currently skipped tests.
 
 | Checkpoint | Tests / extension | Required evidence |
 | --- | --- | --- |
-| P0 supplement, now | `test-sandbox-smoke.R` and `run-tests.R` | Pinned services start; local discovery, R4 metadata, sample Patient data, proxy and picker work; image/capability report saved. |
-| P1 signing | Existing `../conformance/test-rs384-interop.R` and strict AS matrix | Independent RS384 verification stays required; this sandbox's metadata does not establish asymmetric client authentication support. |
+| P0 supplement, now | `test-sandbox-smoke.R` and `run-tests.R` | Pinned v2 launcher and services start; required discovery fields, local public keys, R4 metadata, sample Patient data, proxy and picker work; image/capability report saved. |
+| P1 signing | Existing `../conformance/test-rs384-interop.R` and strict AS matrix | Independent RS384 verification stays required; advertised asymmetric authentication alone does not establish successful RS384 exchanges. |
 | P3 retained connections | Add a two-site Compose profile and `test-browser-retention.R` | Two isolated launcher/FHIR datasets; generic manager A-to-B navigation creates new Shiny sessions, retains both grants, refreshes each, and disconnects B only. Repeat using SMART targets after P4. |
-| P4 discovery | Add `test-smart-discovery.R` | Discover at the full FHIR base; record capabilities; reject missing mandatory SMART 2.2 metadata; resolve fixture gaps before a positive 2.2 release gate. |
+| P4 discovery | Add `test-smart-discovery.R` | Exercise the adapter against live Launcher v2 metadata at the full FHIR base; reject missing mandatory SMART 2.2 fields in negative fixtures. |
 | P4 standalone | Add a real app fixture and `test-browser-standalone.R` | Browser consent/selection, S256 and FHIR `aud`, matching Patient retrieval, supported scopes, refresh/context continuity; identity and clinician tests require advertised SSO support. |
 | P5 EHR launch | Add `test-browser-ehr-launch.R` | Launch from the real launcher with `iss` and `launch`; clean continuation, selected patient/encounter, concurrent launch isolation, and mixed callback rejection. |
 | P6 and P7c | Extend site topology and browser matrix | Same-issuer resource binding and iframe/navigation/cookie behavior, with separate evidence per supported mode. |

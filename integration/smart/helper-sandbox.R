@@ -18,3 +18,14 @@ smart_sandbox_get <- function(url) {
 smart_sandbox_json <- function(url) {
   httr2::resp_body_json(smart_sandbox_get(url), simplifyVector = FALSE)
 }
+
+smart_sandbox_environment <- function() {
+  body <- httr2::resp_body_string(smart_sandbox_get(paste0(
+    smart_sandbox_urls()$launcher,
+    "/env.js"
+  )))
+  # Parse the JSON assignment without executing JavaScript. This also contains
+  # a simulator UI token: inspect only public configuration fields in tests.
+  json <- sub("^var ENV\\s*=\\s*", "", body)
+  jsonlite::fromJSON(sub(";\\s*$", "", json), simplifyVector = FALSE)
+}

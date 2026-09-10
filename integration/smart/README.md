@@ -1,8 +1,8 @@
 # SMART integration baseline
 
-The [local Docker sandbox setup](sandbox.md) uses the official SMART Dev Sandbox
-components. Run `Rscript integration/smart/run-tests.R` from the repository root
-for the current infrastructure smoke tests. It also maps the planned browser
+The [local Docker sandbox setup](sandbox.md) uses official SMART Dev Sandbox
+components with SMART Launcher v2. Run `Rscript integration/smart/run-tests.R`
+from the repository root for the current infrastructure smoke tests. It also maps the planned browser
 and application-flow suites to P3-P5; those phases are not implemented yet.
 
 Protocol baseline: SMART App Launch STU 2.2 (2.2.0), checked 2026-09-10.

@@ -1,5 +1,5 @@
-# R4-only subset of smart-on-fhir/smart-dev-sandbox. Image digests resolved
-# 2026-09-10; see sandbox.md for provenance and the upgrade procedure.
+# R4-only SMART Dev Sandbox components with the official SMART Launcher v2.
+# Digests resolved 2026-09-10; see sandbox.md for provenance and upgrades.
 services:
   r4:
     image: smartonfhir/hapi-5:r4-synthea@sha256:5ba5f4a10df4610f53fac05fbdc34b37d733ba1315e39fa6ef4685dc6dfeec95
@@ -22,30 +22,20 @@ services:
         exec catalina.sh run
 
   launcher:
-    image: smartonfhir/smart-launcher@sha256:6205aa295f1849598182bb97f7ddb982e23e78a212cfb1e33acd9b07e64fb538
+    image: smartonfhir/smart-launcher-2@sha256:72bd3e3c682ce4c74e6dddb605d89acad7c8aae446ae38079e8dfe8455b84793
     depends_on:
       - r4
       - patient-browser
     environment:
       NODE_ENV: production
-      HOST: localhost
-      LAUNCHER_PORT: "80"
-      BASE_URL: http://localhost:18413
-      LAUNCHER_BASE_URL: http://localhost:18413
+      HOST: 0.0.0.0
+      PORT: "80"
       FHIR_SERVER_R4: http://localhost:18404/hapi-fhir-jpaserver/fhir
       FHIR_SERVER_R4_INTERNAL: http://r4:8080/hapi-fhir-jpaserver/fhir
-      # The launcher requires these settings even for disabled releases.
-      FHIR_SERVER_R2: http://127.0.0.1:9/disabled-r2
-      FHIR_SERVER_R3: http://127.0.0.1:9/disabled-r3
-      PICKER_CONFIG_R2: disabled
-      PICKER_CONFIG_R3: disabled
-      PICKER_CONFIG_R4: r4-local
+      # Empty upstreams disable these releases in Launcher v2.
+      FHIR_SERVER_R2: ""
+      FHIR_SERVER_R3: ""
       PICKER_ORIGIN: http://localhost:18412
-      STU2_ENABLED: "0"
-      STU3_ENABLED: "0"
-      STU4_ENABLED: "1"
-      DISABLE_SANDBOXES: "1"
-      DISABLE_BACKEND_SERVICES: "1"
     ports:
       - "127.0.0.1:18413:80"
 
@@ -55,7 +45,8 @@ services:
     ports:
       - "127.0.0.1:18412:80"
     volumes:
-      - ./patient-browser/r4-local.json5:/usr/share/nginx/html/config/r4-local.json5:ro
+      # Launcher v2 opens the picker with config=r4.
+      - ./patient-browser/r4-local.json5:/usr/share/nginx/html/config/r4.json5:ro
 
 volumes:
   r4-data:
