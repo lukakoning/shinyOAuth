@@ -7,7 +7,7 @@ is not yet available; `oauth_connection()` remains Shiny-session scoped.
 | --- | --- | --- |
 | P3a | Versioned encrypted credential schema and atomic memory connection store | Implemented; focused credential and lifecycle tests. |
 | P3b | Owner sessions, generation/expiry checks, browser cookie and account resolver contracts | Implemented; focused browser/account lifecycle tests. HTTP and callback integration follows in P3c. |
-| P3c | Manager UI/server, guarded callback commit, restoration, coordinated refresh and disconnect | Planned. |
+| P3c | Manager UI/server, guarded callback commit, restoration, coordinated refresh and disconnect | In progress: internal managed-module hooks implemented; manager integration follows separately. |
 | P3d | Two-site real-browser retention, owner isolation and lifecycle integration evidence | Required before marking P3 complete. |
 
 The memory store is constructed outside `server()` with
@@ -84,6 +84,17 @@ generation before code exchange and before committing credentials. A cross-site
 POST without the owner cookie must first use the existing clean callback
 continuation. The helper tests do not yet demonstrate those HTTP, callback or
 late-completion properties.
+
+The first P3c commit adds internal module hooks for transaction preparation,
+owner validation, credential acceptance, cancellation and cleanup. Managed code
+and error callbacks verify the existing browser proof and the authenticated
+transaction context before consuming logical state. Async dispatch carries only
+the original context JSON, and accepted results recheck the owner before commit.
+Accepted managed tokens never enter the legacy module's token slot. The module's
+public arguments and ordinary lifecycle remain unchanged. The hook regression
+run passes 809 assertions, including 57 managed-hook assertions, with no skips;
+two warnings reflect locally installed Shiny/future packages built under newer
+R patch versions. This still does not establish HTTP or browser retention.
 
 Protocol references reviewed for P3:
 

@@ -226,6 +226,55 @@ oauth_module_server <- function(
   browser_cookie_path = NULL,
   browser_cookie_samesite = c("Strict", "Lax", "None")
 ) {
+  oauth_module_server_impl(
+    id = id,
+    client = client,
+    auto_redirect = auto_redirect,
+    async = async,
+    indefinite_session = indefinite_session,
+    reauth_after_seconds = reauth_after_seconds,
+    refresh_proactively = refresh_proactively,
+    refresh_lead_seconds = refresh_lead_seconds,
+    refresh_check_interval = refresh_check_interval,
+    revoke_on_session_end = revoke_on_session_end,
+    tab_title_cleaning = tab_title_cleaning,
+    tab_title_replacement = tab_title_replacement,
+    request_uri_base_url = request_uri_base_url,
+    browser_cookie_path = browser_cookie_path,
+    browser_cookie_samesite = browser_cookie_samesite
+  )
+}
+
+# Internal manager integration; the exported module keeps its existing defaults.
+oauth_module_server_impl <- function(
+  id,
+  client,
+  auto_redirect = TRUE,
+  async = FALSE,
+  indefinite_session = FALSE,
+  reauth_after_seconds = NULL,
+  refresh_proactively = FALSE,
+  refresh_lead_seconds = 60,
+  refresh_check_interval = 10000,
+  revoke_on_session_end = FALSE,
+  tab_title_cleaning = TRUE,
+  tab_title_replacement = NULL,
+  request_uri_base_url = NULL,
+  browser_cookie_path = NULL,
+  browser_cookie_samesite = c("Strict", "Lax", "None"),
+  .managed = NULL
+) {
+  oauth_module_validate_managed_hooks(.managed)
+  if (
+    !is.null(.managed) &&
+      (isTRUE(auto_redirect) ||
+        isTRUE(indefinite_session) ||
+        isTRUE(refresh_proactively) ||
+        isTRUE(revoke_on_session_end) ||
+        !is.null(reauth_after_seconds))
+  ) {
+    err_config("Managed connections own login, refresh and retention policy")
+  }
   # 1 Module setup -------------------------------------------------------------
 
   ## 1.1 Parameter validation --------------------------------------------------
@@ -606,6 +655,11 @@ oauth_module_server <- function(
         return(invisible(NULL))
       }
 
+      if (!is.null(.managed)) {
+        try(.managed$discard(tok), silent = TRUE)
+        return(invisible(NULL))
+      }
+
       use_async_revocation <- isTRUE(async)
       try(
         revoke_token(
@@ -646,6 +700,36 @@ oauth_module_server <- function(
         return(now)
       }
       min(auth_time, now)
+    }
+
+    .accept_login_token <- function(tok, context) {
+      if (is.null(.managed)) {
+        validate_token_acceptance_deadline(tok)
+        values$token <- tok
+        values$auth_started_at <- .interactive_auth_started_at(tok)
+      } else {
+        tryCatch(
+          {
+            validate_token_acceptance_deadline(tok)
+            if (!isTRUE(.managed$validate(context$data))) {
+              err_invalid_state("Managed authorization owner is unavailable")
+            }
+            .managed$accept(
+              tok,
+              context$data,
+              .interactive_auth_started_at(tok)
+            )
+          },
+          error = function(e) {
+            .revoke_stale_credentials(tok)
+            stop(e)
+          }
+        )
+        # The existing module must never refresh or revoke a retained grant.
+        values$token <- NULL
+        values$auth_started_at <- NULL
+      }
+      invisible(NULL)
     }
 
     form_post_module_registry <- tryCatch(
@@ -1425,13 +1509,24 @@ oauth_module_server <- function(
       }
       provider_work <- is_valid_string(client@provider@par_url) ||
         !identical(client@request_object_mode, "parameters")
+      managed_context <- tryCatch(
+        if (!is.null(.managed)) .managed$prepare() else NULL,
+        error = function(e) {
+          .set_error("auth_url_error", e, phase = "build_auth_url")
+          NA
+        }
+      )
+      if (identical(managed_context, NA)) {
+        return(NA_character_)
+      }
       if (!isTRUE(async) || !provider_work) {
         return(tryCatch(
           prepare_call(
             client,
             values$browser_token,
             publisher,
-            requested_max_age
+            requested_max_age,
+            .transaction_context = managed_context
           ),
           error = function(e) {
             .set_error("auth_url_error", e, phase = "build_auth_url")
@@ -1466,7 +1561,8 @@ oauth_module_server <- function(
             client,
             browser,
             .requested_max_age = requested_max_age,
-            .defer_build = TRUE
+            .defer_build = TRUE,
+            .transaction_context = managed_context
           )
           worker <- prepare_client_for_worker(client)
           if (is.null(worker)) {
@@ -1505,7 +1601,9 @@ oauth_module_server <- function(
             promises::then(function(raw) {
               if (
                 !.auth_operation_can_apply(operation, "authorization") ||
-                  !identical(values$browser_token, browser)
+                  !identical(values$browser_token, browser) ||
+                  (!is.null(.managed) &&
+                    !isTRUE(.managed$validate(managed_context)))
               ) {
                 cleanup()
                 return(NA_character_)
@@ -2922,13 +3020,25 @@ oauth_module_server <- function(
             )
           }
           .validate_error_response_browser_token(consumed_state)
+          managed_context <- oauth_module_managed_context(
+            .managed,
+            client,
+            state,
+            values$browser_token,
+            consumed_state$payload,
+            consumed_state$state_store_values
+          )
           if (!isTRUE(state_was_preconsumed)) {
             consumed_state <- .consume_error_state(
               state,
               strict = TRUE,
               decrypted_payload = consumed_state[["payload"]],
-              consume = TRUE
+              consume = TRUE,
+              managed_context = managed_context
             )
+          }
+          if (!is.null(.managed)) {
+            .managed$cancel(managed_context$data)
           }
           TRUE
         },
@@ -2975,7 +3085,8 @@ oauth_module_server <- function(
       state,
       strict = FALSE,
       decrypted_payload = NULL,
-      consume = TRUE
+      consume = TRUE,
+      managed_context = NULL
     ) {
       payload <- NULL
       state_store_values <- NULL
@@ -3000,10 +3111,20 @@ oauth_module_server <- function(
             {
               if (isTRUE(consume)) {
                 # Consume the state store entry (single-use enforcement)
-                state_store_values <- state_store_get_remove(
-                  client,
-                  payload[["state"]]
-                )
+                state_store_values <- if (is.null(.managed)) {
+                  state_store_get_remove(client, payload[["state"]])
+                } else {
+                  state_store_consume_checked(
+                    client,
+                    payload[["state"]],
+                    expected_record = state_store_get(
+                      client,
+                      payload[["state"]]
+                    ),
+                    .transaction_context = managed_context$json,
+                    .transaction_context_digest = payload$transaction_context_digest
+                  )
+                }
 
                 # Audit success using the logical state digest for correlation.
                 try(
@@ -3218,6 +3339,14 @@ oauth_module_server <- function(
 
       tryCatch(
         {
+          managed_context <- oauth_module_managed_context(
+            .managed,
+            client,
+            state,
+            values$browser_token,
+            decrypted_payload,
+            state_store_values
+          )
           with_trace_id(
             callback_hint[["trace_id"]] %||% NULL,
             {
@@ -3472,7 +3601,10 @@ oauth_module_server <- function(
                                   pre_payload[["state"]],
                                   expected_record = pre_state,
                                   shiny_session = captured_shiny_session,
-                                  .transaction_context_digest = pre_payload[["transaction_context_digest"]]
+                                  .transaction_context = managed_context$json,
+                                  .transaction_context_digest = pre_payload[[
+                                    "transaction_context_digest"
+                                  ]]
                                 )
                               },
                               attributes = otel_client_attributes(
@@ -3526,7 +3658,8 @@ oauth_module_server <- function(
                             browser_token = captured_browser_token,
                             decrypted_payload = pre_payload,
                             state_store_values = pre_state,
-                            shiny_session = captured_shiny_session
+                            shiny_session = captured_shiny_session,
+                            .transaction_context = managed_context$json
                           )
                         } else {
                           # Use namespace-qualified calls to avoid passing function closures to mirai
@@ -3548,7 +3681,8 @@ oauth_module_server <- function(
                                         browser_token = captured_browser_token,
                                         decrypted_payload = pre_payload,
                                         state_store_values = pre_state,
-                                        shiny_session = captured_shiny_session
+                                        shiny_session = captured_shiny_session,
+                                        .transaction_context = captured_managed_context
                                       )
                                     }
                                   )
@@ -3563,6 +3697,7 @@ oauth_module_server <- function(
                               code = code,
                               state = state,
                               captured_browser_token = captured_browser_token,
+                              captured_managed_context = managed_context$json,
                               pre_payload = pre_payload,
                               pre_state = pre_state
                             ),
@@ -3586,7 +3721,8 @@ oauth_module_server <- function(
                 )
               } else {
                 if (
-                  isTRUE(callback_validated) ||
+                  !is.null(.managed) ||
+                    isTRUE(callback_validated) ||
                     identical(
                       client@authorization_server_mode,
                       "multi_redirect_uri"
@@ -3600,7 +3736,8 @@ oauth_module_server <- function(
                     payload = state,
                     browser_token = values$browser_token,
                     decrypted_payload = decrypted_payload,
-                    state_store_values = state_store_values
+                    state_store_values = state_store_values,
+                    .transaction_context = managed_context$json
                   )
                 } else {
                   handle_callback(
@@ -3637,12 +3774,10 @@ oauth_module_server <- function(
                       }
                       return(invisible(NULL))
                     }
-                    validate_token_acceptance_deadline(tok)
-                    values$token <- tok
+                    .accept_login_token(tok, managed_context)
                     values$error <- NULL
                     values$error_description <- NULL
                     values$error_uri <- NULL
-                    values$auth_started_at <- .interactive_auth_started_at(tok)
                     values$token_stale <- FALSE
                     .clear_browser_token()
                     # Immediately re-issue a fresh browser token so that
@@ -3715,12 +3850,10 @@ oauth_module_server <- function(
                   .revoke_stale_credentials(res)
                   return(invisible(NULL))
                 }
-                validate_token_acceptance_deadline(res)
-                values$token <- res
+                .accept_login_token(res, managed_context)
                 values$error <- NULL
                 values$error_description <- NULL
                 values$error_uri <- NULL
-                values$auth_started_at <- .interactive_auth_started_at(res)
                 values$token_stale <- FALSE
                 .clear_browser_token()
                 # Immediately re-issue a fresh browser token so that
