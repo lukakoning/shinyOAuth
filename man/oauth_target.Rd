@@ -25,7 +25,7 @@ use literal OAuth comparison and do not infer SMART semantics.}
 \item{label}{Short application-defined display label; defaults to provider name.}
 }
 \value{
-An \code{OAuthTarget} with read-only \verb{$client}, \verb{$resource_bases},
+An \link{OAuthTarget} with read-only \verb{$client}, \verb{$resource_bases},
 \verb{$required_scopes}, \verb{$label} and \verb{$fingerprint} properties. Printing redacts
 configuration. Supply it to \code{\link[=oauth_connection]{oauth_connection()}} for per-session requests.
 }

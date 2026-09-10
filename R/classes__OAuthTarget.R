@@ -1,5 +1,45 @@
-# Configuration is immutable through the public interface. S7 client/provider
-# copies preserve configuration without serializing caches or private keys.
+#' OAuthTarget R6 class
+#'
+#' @description
+#' An `OAuthTarget` binds an [OAuthClient] to named, approved resource bases and
+#' the scopes required for a usable connection. Create it with [oauth_target()]
+#' outside the Shiny `server()` function, then pass it to [oauth_connection()].
+#'
+#' @details
+#' Read configuration with `$`, for example `target$resource_bases`. All active
+#' bindings are read-only, and cloning is disabled. Create a new target to change
+#' its configuration. The class generator is internal; [oauth_target()] is the
+#' application constructor and supplies defaults and resource URL documentation.
+#'
+#' Resource bases constrain requests to an exact scheme, hostname, effective
+#' port and base path. This is local request policy, not evidence of a token's
+#' audience. Scope comparison uses literal OAuth scope tokens; a target does not
+#' enable SMART launch or scope semantics. Printing shows only the number of
+#' approved resources, while `$client` exposes the original client configuration,
+#' including any credentials and shared caches.
+#'
+#' @seealso [oauth_target()], [OAuthConnectionRef], [oauth_connection()]
+#' @examples
+#' provider <- oauth_provider(
+#'   name = "Example",
+#'   auth_url = "https://auth.example/authorize",
+#'   token_url = "https://auth.example/token",
+#'   token_auth_style = "public"
+#' )
+#' client <- oauth_client(
+#'   provider,
+#'   client_id = "example-app",
+#'   redirect_uri = "https://app.example/callback",
+#'   scopes = c("read", "write")
+#' )
+#' target <- oauth_target(
+#'   client,
+#'   resource_bases = c(api = "https://api.example/v1"),
+#'   required_scopes = "read"
+#' )
+#' target$resource_bases
+#' target$required_scopes
+#' print(target)
 OAuthTarget <- R6::R6Class(
   "OAuthTarget",
   cloneable = FALSE,
@@ -12,30 +52,44 @@ OAuthTarget <- R6::R6Class(
     .fingerprint = NULL
   ),
   active = list(
+    #' @field client Read-only [OAuthClient] configuration supplied at creation.
+    #'   Use this client for the Shiny module that supplies a connection's token.
     client = function(value) {
       if (!missing(value)) {
         err_config("OAuthTarget configuration is read-only")
       }
       private$.client
     },
+    #' @field resource_bases Read-only named character vector of normalized,
+    #'   approved base URLs. Names are the resource IDs accepted by a connection's
+    #'   `$request()` method.
     resource_bases = function(value) {
       if (!missing(value)) {
         err_config("OAuthTarget configuration is read-only")
       }
       private$.bases
     },
+    #' @field required_scopes Read-only character vector of normalized scope
+    #'   tokens required for every usable connection. These are a subset of the
+    #'   client's requested scopes; `character()` imposes no required scopes.
     required_scopes = function(value) {
       if (!missing(value)) {
         err_config("OAuthTarget configuration is read-only")
       }
       private$.required
     },
+    #' @field label Read-only application-defined display label, returned by a
+    #'   connection's `$summary()`. It is a non-empty string of at most 128 bytes
+    #'   without control characters.
     label = function(value) {
       if (!missing(value)) {
         err_config("OAuthTarget configuration is read-only")
       }
       private$.label
     },
+    #' @field fingerprint Read-only character string containing an opaque digest
+    #'   of the client, provider, scope and resource policy. The display label is
+    #'   excluded. This identifies configuration, not a user or an access token.
     fingerprint = function(value) {
       if (!missing(value)) {
         err_config("OAuthTarget configuration is read-only")
@@ -44,6 +98,17 @@ OAuthTarget <- R6::R6Class(
     }
   ),
   public = list(
+    #' @description
+    #' Initialize a target. Applications should use [oauth_target()] to create
+    #' instances. Calling this method again on an initialized target is an error.
+    #' @param client An [OAuthClient] configured outside `server()`.
+    #' @param resource_bases Named character vector of approved absolute base
+    #'   URLs. See [oauth_target()] for resource ID and URL validation rules.
+    #' @param required_scopes Character vector of requested scopes that every
+    #'   usable connection needs. Use `character()` for no required scopes.
+    #' @param label Non-empty display label of at most 128 bytes without control
+    #'   characters.
+    #' @return A new `OAuthTarget` instance.
     initialize = function(client, resource_bases, required_scopes, label) {
       if (!is.null(private$.client)) {
         err_config("OAuthTarget configuration is read-only")
@@ -88,6 +153,11 @@ OAuthTarget <- R6::R6Class(
       ))
       invisible(self)
     },
+    #' @description
+    #' Print the class name and number of approved resources, with configuration
+    #' and credentials redacted.
+    #' @param ... Unused; accepted for compatibility with [base::print()].
+    #' @return This target, invisibly.
     print = function(...) {
       cat(
         "<OAuthTarget: ",
@@ -115,7 +185,7 @@ OAuthTarget <- R6::R6Class(
 #'   Other requested scopes may be absent from a limited grant. Generic targets
 #'   use literal OAuth comparison and do not infer SMART semantics.
 #' @param label Short application-defined display label; defaults to provider name.
-#' @return An `OAuthTarget` with read-only `$client`, `$resource_bases`,
+#' @return An [OAuthTarget] with read-only `$client`, `$resource_bases`,
 #'   `$required_scopes`, `$label` and `$fingerprint` properties. Printing redacts
 #'   configuration. Supply it to [oauth_connection()] for per-session requests.
 #' @details

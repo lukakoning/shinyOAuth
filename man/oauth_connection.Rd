@@ -17,7 +17,7 @@ application wiring; a resource policy cannot prove an opaque token's audience.}
 \item{session}{The owning Shiny session; defaults to the current session.}
 }
 \value{
-An \code{OAuthConnectionRef} with \verb{$id}, \verb{$is_usable()}, \verb{$summary()} and
+An \link{OAuthConnectionRef} with \verb{$id}, \verb{$is_usable()}, \verb{$summary()} and
 \verb{$request(resource_id, path = "", query = NULL, method = "GET", required_scopes = character())}. Requests return \link[httr2:httr2]{httr2} responses.
 }
 \description{

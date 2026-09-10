@@ -11,7 +11,7 @@
 #'   module using `target$client`. Supplying that association is trusted server
 #'   application wiring; a resource policy cannot prove an opaque token's audience.
 #' @param session The owning Shiny session; defaults to the current session.
-#' @return An `OAuthConnectionRef` with `$id`, `$is_usable()`, `$summary()` and
+#' @return An [OAuthConnectionRef] with `$id`, `$is_usable()`, `$summary()` and
 #'   `$request(resource_id, path = "", query = NULL, method = "GET",
 #'   required_scopes = character())`. Requests return [httr2] responses.
 #' @details

@@ -30,6 +30,8 @@ reference:
   - OAuthProvider
   - OAuthClient
   - OAuthToken
+  - OAuthTarget
+  - OAuthConnectionRef
   
 - title: Provider configuration
 - subtitle: Generic
