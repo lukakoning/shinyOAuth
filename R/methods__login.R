@@ -57,6 +57,9 @@ prepare_call <- function(
 
   # Verify oauth_client
   S7::check_is_S7(oauth_client, OAuthClient)
+  if (client_uses_smart(oauth_client) && identical(oauth_client@smart$launch, "ehr")) {
+    err_config("SMART EHR targets require a fresh registered launch transaction")
+  }
   transaction_context <- authorization_context_json(.transaction_context)
 
   # Verify browser_token
@@ -2604,6 +2607,7 @@ verify_token_set <- function(
   if (!is.list(token_set) || length(token_set) == 0) {
     err_token("Invalid token set: must be a non-empty list")
   }
+  smart_verify_token_response(client, token_set)
 
   scope_validation_mode <- client@scope_validation %||% "warn"
   requested_scopes <- normalize_scope_tokens(
@@ -2986,6 +2990,7 @@ verify_token_set <- function(
       # and fail closed when policy explicitly requires that baseline.
 
       token_set[[".id_token_validated"]] <- id_token_validated
+      smart_verify_identity(client, token_set, is_refresh)
 
       if (isTRUE(is_refresh)) {
         userinfo_present <- is.list(token_set[["userinfo"]]) &&

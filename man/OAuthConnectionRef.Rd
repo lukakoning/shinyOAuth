@@ -179,7 +179,9 @@ are absent from the grant.
 }
 
 Scope checks use the token's current \code{granted_scopes}, which may be
-assumed or carried forward when a provider omits scope information.
+assumed or carried forward when an ordinary OAuth provider omits scope
+information. SMART targets require explicit evidence and use semantic
+coverage for both connection and operation permissions.
 See \link{OAuthToken} for the distinction from verified scope evidence.
   }
   \subsection{Returns}{

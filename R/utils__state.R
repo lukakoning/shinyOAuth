@@ -665,6 +665,7 @@ state_client_policy_fingerprint <- function(client) {
   if (client_uses_smart_scopes(client)) {
     components$scope_policy <- client@scope_policy
   }
+  if (client_uses_smart(client)) components$smart <- client@smart
   state_policy_digest(components)
 }
 

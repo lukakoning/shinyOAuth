@@ -25,8 +25,8 @@ application constructor and supplies defaults and resource URL documentation.
 
 Resource bases constrain requests to an exact scheme, hostname, effective
 port and base path. This is local request policy, not evidence of a token's
-audience. Scope comparison uses literal OAuth scope tokens; a target does not
-enable SMART launch or scope semantics. Printing shows only the number of
+audience. Ordinary targets compare literal OAuth scopes. \code{\link[=smart_target]{smart_target()}}
+explicitly selects SMART scope and launch policy. Printing shows only the number of
 approved resources, while \verb{$client} exposes the original client configuration,
 including any credentials and shared caches.
 }
@@ -72,6 +72,11 @@ client's requested scopes; \code{character()} imposes no required scopes.}
     \item{\code{label}}{Read-only application-defined display label, returned by a
 connection's \verb{$summary()}. It is a non-empty string of at most 128 bytes
 without control characters.}
+
+    \item{\code{smart}}{Read-only list describing the SMART profile selected by
+\code{\link[=smart_target]{smart_target()}}: exact \code{fhir_base}, \code{launch} mode, \code{identity} policy,
+version, HTTP loopback exception and discovery digest. Empty for ordinary
+targets. It contains no launch handle, patient context or credentials.}
 
     \item{\code{fingerprint}}{Read-only character string containing an opaque digest
 of the client, provider, scope and resource policy. The display label is

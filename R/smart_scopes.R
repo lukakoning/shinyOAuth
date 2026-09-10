@@ -110,6 +110,7 @@ client_uses_smart_scopes <- function(client) {
 
 client_scope_coverage <- function(client, requested, granted) {
   policy <- client@scope_policy
+  if (!length(policy)) return(evaluate_scope_coverage(requested, granted))
   evaluate_scope_coverage(requested, granted,
     profile = policy$profile,
     version = policy$version, allow_v1 = policy$allow_v1
@@ -119,6 +120,7 @@ client_scope_coverage <- function(client, requested, granted) {
 # This internal policy is installed by the SMART target constructor, not by
 # recognizing scope spelling. Keep generic client construction and wire defaults.
 validate_client_scope_policy <- function(policy) {
+  if (identical(policy, list())) return(NULL)
   if (
     !is.list(policy) ||
       !identical(

@@ -149,6 +149,10 @@
 #'   required permissions; these checks cannot be disabled by `scope_validation`.
 #'   This parameter is not an argument to [oauth_client()].
 #'
+#' @param smart Internal SMART configuration installed by [smart_target()].
+#'   Leave the empty default for ordinary clients. This is not an argument to
+#'   [oauth_client()].
+#'
 #' @param claims_validation What to do if requested claims are missing or have
 #'   unexpected values: `"warn"` continues with a warning, `"strict"` stops
 #'   login, and `"none"` skips the check. When omitted, [oauth_client()] uses
@@ -531,11 +535,9 @@ OAuthClient <- S7::new_class(
     # retains literal scopes and RFC 6749 omission behavior.
     scope_policy = S7::new_property(
       S7::class_list,
-      default = list(
-        profile = "oauth", version = 1L, allow_v1 = FALSE,
-        required_scopes = character()
-      )
+      default = list()
     ),
+    smart = S7::new_property(S7::class_list, default = list()),
     claims_validation = S7::new_property(
       S7::class_character,
       default = "none"
@@ -2916,6 +2918,8 @@ oauth_client_validate <- function(self) {
   if (!is.null(scope_policy_error)) {
     return(scope_policy_error)
   }
+  smart_error <- smart_validate_client(self)
+  if (!is.null(smart_error)) return(smart_error)
   if (
     !is_valid_string(self@scope_validation) ||
       !self@scope_validation %in% c("strict", "warn", "none")

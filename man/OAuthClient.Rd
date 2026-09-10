@@ -18,8 +18,8 @@ OAuthClient(
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(0),
   scope_validation = "warn",
-  scope_policy = list(profile = "oauth", version = 1L, allow_v1 = FALSE, required_scopes
-    = character(0)),
+  scope_policy = list(),
+  smart = list(),
   claims_validation = "none",
   required_acr_values = character(0),
   userinfo_jwt_required_time_claims = character(0),
@@ -189,6 +189,10 @@ error.
 ordinary OAuth clients. SMART adapters install their own policy, including
 required permissions; these checks cannot be disabled by \code{scope_validation}.
 This parameter is not an argument to \code{\link[=oauth_client]{oauth_client()}}.}
+
+\item{smart}{Internal SMART configuration installed by \code{\link[=smart_target]{smart_target()}}.
+Leave the empty default for ordinary clients. This is not an argument to
+\code{\link[=oauth_client]{oauth_client()}}.}
 
 \item{claims_validation}{What to do if requested claims are missing or have
 unexpected values: \code{"warn"} continues with a warning, \code{"strict"} stops

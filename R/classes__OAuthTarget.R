@@ -22,8 +22,8 @@
 #'
 #' Resource bases constrain requests to an exact scheme, hostname, effective
 #' port and base path. This is local request policy, not evidence of a token's
-#' audience. Scope comparison uses literal OAuth scope tokens; a target does not
-#' enable SMART launch or scope semantics. Printing shows only the number of
+#' audience. Ordinary targets compare literal OAuth scopes. [smart_target()]
+#' explicitly selects SMART scope and launch policy. Printing shows only the number of
 #' approved resources, while `$client` exposes the original client configuration,
 #' including any credentials and shared caches.
 #'
@@ -96,6 +96,14 @@ OAuthTarget <- R6::R6Class(
       }
       private$.label
     },
+    #' @field smart Read-only list describing the SMART profile selected by
+    #'   [smart_target()]: exact `fhir_base`, `launch` mode, `identity` policy,
+    #'   version, HTTP loopback exception and discovery digest. Empty for ordinary
+    #'   targets. It contains no launch handle, patient context or credentials.
+    smart = function(value) {
+      if (!missing(value)) err_config("OAuthTarget configuration is read-only")
+      private$.client@smart
+    },
     #' @field fingerprint Read-only character string containing an opaque digest
     #'   of the client, provider, scope and resource policy. The display label is
     #'   excluded. This identifies configuration, not a user or an access token.
@@ -148,6 +156,11 @@ OAuthTarget <- R6::R6Class(
       }
       private$.client <- client
       private$.bases <- normalize_resource_bases(resource_bases)
+      if (client_uses_smart(client) &&
+          (!identical(private$.bases, normalize_resource_bases(c(fhir = client@smart$fhir_base))) ||
+            !identical(required_scopes, normalize_scope_tokens(client@scope_policy$required_scopes)))) {
+        err_config("SMART target must retain its configured FHIR base and required scopes")
+      }
       private$.required <- required_scopes
       private$.label <- label
       private$.fingerprint <- state_policy_digest(list(

@@ -169,7 +169,9 @@ OAuthConnectionRef <- R6::R6Class(
     #' * `active`: all requested scopes are covered.
     #'
     #' Scope checks use the token's current `granted_scopes`, which may be
-    #' assumed or carried forward when a provider omits scope information.
+    #' assumed or carried forward when an ordinary OAuth provider omits scope
+    #' information. SMART targets require explicit evidence and use semantic
+    #' coverage for both connection and operation permissions.
     #' See [OAuthToken] for the distinction from verified scope evidence.
     summary = function() {
       record <- private$record()
