@@ -74,6 +74,8 @@ The ID is never an access token and does not authorize access by itself.}
     \item \href{#method-OAuthConnectionRef-refresh}{\code{OAuthConnectionRef$refresh()}}
     \item \href{#method-OAuthConnectionRef-summary}{\code{OAuthConnectionRef$summary()}}
     \item \href{#method-OAuthConnectionRef-request}{\code{OAuthConnectionRef$request()}}
+    \item \href{#method-OAuthConnectionRef-smart_context}{\code{OAuthConnectionRef$smart_context()}}
+    \item \href{#method-OAuthConnectionRef-smart_resource}{\code{OAuthConnectionRef$smart_resource()}}
     \item \href{#method-OAuthConnectionRef-print}{\code{OAuthConnectionRef$print()}}
   }
 }
@@ -245,6 +247,46 @@ be inferred from an arbitrary API's HTTP method and path.
   \subsection{Returns}{
     An \link[httr2:httr2]{httr2} response object. Invalid resources, unusable connections,
 insufficient scopes and transport failures raise errors.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-OAuthConnectionRef-smart_context"></a>}}
+\if{latex}{\out{\hypertarget{method-OAuthConnectionRef-smart_context}{}}}
+\subsection{\code{OAuthConnectionRef$smart_context()}}{
+  Read interpreted context for a usable SMART connection in this session.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{OAuthConnectionRef$smart_context()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    The sensitive context list documented in \code{\link[=smart_context]{smart_context()}}.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-OAuthConnectionRef-smart_resource"></a>}}
+\if{latex}{\out{\hypertarget{method-OAuthConnectionRef-smart_resource}{}}}
+\subsection{\code{OAuthConnectionRef$smart_resource()}}{
+  Fetch the contextual Patient or validated fhirUser through the approved
+FHIR base, using current read permissions. Prefer \code{\link[=smart_patient]{smart_patient()}} and
+\code{\link[=smart_fhir_user]{smart_fhir_user()}} in application code.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{OAuthConnectionRef$smart_resource(kind)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{kind}}{Either \code{"patient"} or \code{"fhirUser"}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    An \link[httr2:httr2]{httr2} response. Missing context, scope or resource binding
+raises an error before an authenticated request is sent.
   }
 }
 

@@ -402,7 +402,7 @@ the independent verification.
 | `smart_discover()` | Built; the pinned external sandbox exposes a compatibility failure described below. |
 | SMART scope interpretation | P4b engine and token/connection checks built; smart_target() selects them explicitly. See [scope examples](smart-scopes.md). |
 | `smart_target()` and SMART registration/request rules | P4c1 built for direct query/form_post authorization; optional transport combinations remain P4c2. |
-| Interpreted patient/context handling and Patient/`fhirUser` helpers | Planned: P4d. |
+| Interpreted patient/context handling and Patient/`fhirUser` helpers | P4d1 built; refresh preserves omitted context and marks context changes with a revision. Experimental context remains raw data. |
 | Complete standalone SMART app, browser scenarios and two-hospital sandbox repeat | Planned: P4e. |
 | Inferno standalone client conformance runs | Planned: P4f. |
 | EHR launch entry routes | Planned: P5. |

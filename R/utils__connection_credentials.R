@@ -13,7 +13,8 @@ connection_token_fields <- c(
   "granted_scopes_verified",
   "id_token_validated",
   "extra_fields",
-  "initial_extra_fields"
+  "initial_extra_fields",
+  "smart_context"
 )
 
 connection_credential_key <- function(key) {

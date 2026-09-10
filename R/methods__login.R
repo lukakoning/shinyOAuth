@@ -1894,6 +1894,7 @@ handle_callback_internal <- function(
       }
 
       # Audit: login success with redacted identifiers
+      token <- smart_update_token_context(oauth_client, token)
       validate_token_acceptance_deadline(token)
       try(
         {

@@ -232,6 +232,21 @@ OAuthConnectionRef <- R6::R6Class(
       )
     },
     #' @description
+    #' Read interpreted context for a usable SMART connection in this session.
+    #' @return The sensitive context list documented in [smart_context()].
+    smart_context = function() smart_record_context(private$record()),
+    #' @description
+    #' Fetch the contextual Patient or validated fhirUser through the approved
+    #' FHIR base, using current read permissions. Prefer [smart_patient()] and
+    #' [smart_fhir_user()] in application code.
+    #' @param kind Either `"patient"` or `"fhirUser"`.
+    #' @return An [httr2] response. Missing context, scope or resource binding
+    #'   raises an error before an authenticated request is sent.
+    smart_resource = function(kind) {
+      if (is.function(private$.touch)) private$.touch()
+      smart_record_resource(private$record(), kind)
+    },
+    #' @description
     #' Print the class name and session-binding description, with credentials
     #' redacted. This does not resolve the current token.
     #' @param ... Unused; accepted for compatibility with [base::print()].

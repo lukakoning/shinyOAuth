@@ -59,6 +59,9 @@
 #'   successful authorization-code exchange. Preserved across refreshes and
 #'   replaced on a new login. Defaults to an empty list for manually constructed
 #'   tokens; refresh does not infer an initial response from `extra_fields`.
+#' @param smart_context Internal interpreted SMART context. Empty for ordinary
+#'   tokens; populated only by SMART token processing. Use [smart_context()] on
+#'   a connection to read it. Includes sensitive patient and identity references.
 #'
 #' @details
 #' The `id_token_claims` property is a read-only computed property that returns
@@ -161,6 +164,10 @@ OAuthToken <- S7::new_class(
     ),
 
     initial_extra_fields = S7::new_property(
+      S7::class_list,
+      default = list()
+    ),
+    smart_context = S7::new_property(
       S7::class_list,
       default = list()
     )

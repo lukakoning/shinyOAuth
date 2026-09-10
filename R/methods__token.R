@@ -1351,6 +1351,7 @@ refresh_token_impl <- function(
             )
           }
 
+          refreshed_token <- smart_update_token_context(oauth_client, refreshed_token, token)
           validate_token_acceptance_deadline(refreshed_token)
           token@access_token <- refreshed_token@access_token
           token@refresh_token <- refreshed_token@refresh_token
@@ -1365,6 +1366,7 @@ refresh_token_impl <- function(
           token@userinfo <- refreshed_token@userinfo
           token@extra_fields <- refreshed_token@extra_fields
           token@initial_extra_fields <- refreshed_token@initial_extra_fields
+          token@smart_context <- refreshed_token@smart_context
 
           audit_event(
             "token_refresh",
