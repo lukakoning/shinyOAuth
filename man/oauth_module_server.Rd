@@ -124,6 +124,9 @@ checks have passed, otherwise \code{FALSE}. With \code{indefinite_session = TRUE
 the flag stays true while a token is kept, including after refresh errors.
 \item \code{auth$token}: an \link{OAuthToken}, or \code{NULL} before login or after clearing
 the session. Read properties with \code{@}, for example \code{auth$token@userinfo}.
+Additional token response parameters are available in
+\code{auth$token@extra_fields}; \code{auth$token@initial_extra_fields} preserves
+the parameters from the initial code exchange across refreshes.
 \item \code{auth$error}, \code{auth$error_description}: the error code and available
 diagnostic detail. Use your own user-facing message; these fields can
 include sensitive provider information.

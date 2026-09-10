@@ -733,6 +733,11 @@ introspect_token <- function(
 #'   - `original_id_token`: Retained from login for continuity checks, even if
 #'     intermediate refresh ID tokens omit `nonce` or `auth_time`
 #'   - `userinfo`: Refreshed if `userinfo_required = TRUE`; otherwise preserved
+#'   - `extra_fields`: Replaced by the additional parameters in the refresh
+#'     response, or an empty list if none are returned. Not merged with earlier
+#'     responses; explicit JSON `null` values remain named `NULL` entries.
+#'   - `initial_extra_fields`: Preserved from the initial code exchange. This
+#'     historical snapshot does not establish current access permissions.
 #'   - `cnf`: Updated from the token response when present, and may be
 #'     backfilled from refresh-time introspection when enabled. When the
 #'     refresh response omits new observable `cnf`, shinyOAuth does not carry
@@ -1086,6 +1091,7 @@ refresh_token_impl <- function(
           }
 
           tok <- parse_token_response(resp)
+          extra_fields <- token_response_extra_fields(tok)
           outcome$value <- if (
             is_valid_string(tok[["refresh_token"]]) &&
               !identical(tok[["refresh_token"]], pre_refresh_token)
@@ -1221,7 +1227,9 @@ refresh_token_impl <- function(
               character(0),
             granted_scopes_verified = isTRUE(
               token_set[["granted_scopes_verified"]]
-            )
+            ),
+            extra_fields = extra_fields,
+            initial_extra_fields = token@initial_extra_fields
           )
 
           intro_res <- NULL
@@ -1351,6 +1359,8 @@ refresh_token_impl <- function(
           token@id_token_validated <- refreshed_token@id_token_validated
           token@cnf <- refreshed_token@cnf
           token@userinfo <- refreshed_token@userinfo
+          token@extra_fields <- refreshed_token@extra_fields
+          token@initial_extra_fields <- refreshed_token@initial_extra_fields
 
           audit_event(
             "token_refresh",

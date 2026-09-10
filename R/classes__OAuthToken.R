@@ -50,6 +50,16 @@
 #' @param id_token_validated Logical flag indicating whether the ID token was
 #'  cryptographically validated (signature verified and standard claims checked)
 #'  during the OAuth flow. Defaults to `FALSE`.
+#' @param extra_fields List of additional parameters from the latest successful
+#'   token endpoint response, such as SMART on FHIR `patient`, `encounter`, or
+#'   `fhirContext`. Excludes `access_token`, `token_type`, `refresh_token`,
+#'   `id_token`, `expires_in`, `scope`, and `cnf`, which have dedicated token
+#'   properties. Defaults to an empty list. Successful refresh replaces this
+#'   list, including when the response contains no extra fields.
+#' @param initial_extra_fields List of additional parameters from the initial
+#'   successful authorization-code exchange. Preserved across refreshes and
+#'   replaced on a new login. Defaults to an empty list for manually constructed
+#'   tokens; refresh does not infer an initial response from `extra_fields`.
 #'
 #' @details
 #' The `id_token_claims` property is a read-only computed property that returns
@@ -64,12 +74,23 @@
 #' Check the `id_token_validated` property to determine whether the claims
 #' were cryptographically validated.
 #'
+#' Additional response parameters retain their parsed names and values,
+#' including nested lists and explicit JSON `null` values (R `NULL`). Use
+#' `"patient" %in% names(token@extra_fields)` to distinguish an absent field
+#' from a field explicitly returned as `null`. These parameters are not ID
+#' token claims and are not covered by `id_token_validated`. The initial
+#' snapshot records historical launch context, not current access permissions.
+#' No automatic merging, resource fetching, or interpretation is performed.
+#' Both lists can contain sensitive data; keep them out of the UI and logs.
+#'
 #' @examples
 #' # Inside reactive server code, after a successful login:
 #' # auth$token@userinfo
 #' # auth$token@expires_at
 #' # auth$token@id_token_validated
 #' # auth$token@id_token_claims$sub
+#' # auth$token@extra_fields$patient
+#' # auth$token@initial_extra_fields$patient
 #'
 #' @export
 OAuthToken <- S7::new_class(
@@ -133,6 +154,16 @@ OAuthToken <- S7::new_class(
           error = function(e) list()
         )
       }
+    ),
+
+    extra_fields = S7::new_property(
+      S7::class_list,
+      default = list()
+    ),
+
+    initial_extra_fields = S7::new_property(
+      S7::class_list,
+      default = list()
     )
   ),
   validator = function(self) oauth_token_validate(self)

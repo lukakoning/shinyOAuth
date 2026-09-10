@@ -15,7 +15,9 @@ OAuthToken(
   granted_scopes = character(0),
   granted_scopes_verified = FALSE,
   id_token_validated = FALSE,
-  original_id_token = NA_character_
+  original_id_token = NA_character_,
+  extra_fields = list(),
+  initial_extra_fields = list()
 )
 }
 \arguments{
@@ -61,6 +63,18 @@ during the OAuth flow. Defaults to \code{FALSE}.}
 continuity baseline. Refresh never replaces it with a newer ID token.
 For manually constructed tokens, the first refresh initializes this from
 \code{id_token} if omitted. Treat this property as credential material.}
+
+\item{extra_fields}{List of additional parameters from the latest successful
+token endpoint response, such as SMART on FHIR \code{patient}, \code{encounter}, or
+\code{fhirContext}. Excludes \code{access_token}, \code{token_type}, \code{refresh_token},
+\code{id_token}, \code{expires_in}, \code{scope}, and \code{cnf}, which have dedicated token
+properties. Defaults to an empty list. Successful refresh replaces this
+list, including when the response contains no extra fields.}
+
+\item{initial_extra_fields}{List of additional parameters from the initial
+successful authorization-code exchange. Preserved across refreshes and
+replaced on a new login. Defaults to an empty list for manually constructed
+tokens; refresh does not infer an initial response from \code{extra_fields}.}
 }
 \description{
 An \code{OAuthToken} holds credentials and user information returned after login.
@@ -83,6 +97,15 @@ Note: \code{id_token_claims} always decodes the JWT payload regardless
 of whether the ID token's signature was verified.
 Check the \code{id_token_validated} property to determine whether the claims
 were cryptographically validated.
+
+Additional response parameters retain their parsed names and values,
+including nested lists and explicit JSON \code{null} values (R \code{NULL}). Use
+\code{"patient" \%in\% names(token@extra_fields)} to distinguish an absent field
+from a field explicitly returned as \code{null}. These parameters are not ID
+token claims and are not covered by \code{id_token_validated}. The initial
+snapshot records historical launch context, not current access permissions.
+No automatic merging, resource fetching, or interpretation is performed.
+Both lists can contain sensitive data; keep them out of the UI and logs.
 }
 \examples{
 # Inside reactive server code, after a successful login:
@@ -90,5 +113,7 @@ were cryptographically validated.
 # auth$token@expires_at
 # auth$token@id_token_validated
 # auth$token@id_token_claims$sub
+# auth$token@extra_fields$patient
+# auth$token@initial_extra_fields$patient
 
 }

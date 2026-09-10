@@ -1646,6 +1646,10 @@ handle_callback_internal <- function(
       # - id_token
       # - ... plus any extra fields returned by the provider
 
+      # Capture provider parameters before verify_token_set() adds internal
+      # metadata. Only the accepted token is returned to the caller below.
+      extra_fields <- token_response_extra_fields(token_set)
+
       # Validate token_type immediately after token exchange, before any userinfo
       # call. This prevents sending an inappropriate Bearer token to the provider
       # when a non-Bearer token_type (e.g., DPoP) is returned.
@@ -1755,7 +1759,9 @@ handle_callback_internal <- function(
         granted_scopes_verified = isTRUE(
           token_set[["granted_scopes_verified"]]
         ),
-        id_token_validated = isTRUE(token_set[[".id_token_validated"]])
+        id_token_validated = isTRUE(token_set[[".id_token_validated"]]),
+        extra_fields = extra_fields,
+        initial_extra_fields = extra_fields
       )
 
       intro_res <- NULL

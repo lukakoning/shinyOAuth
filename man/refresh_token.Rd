@@ -48,6 +48,11 @@ otherwise the latest stored ID token is preserved
 \item \code{original_id_token}: Retained from login for continuity checks, even if
 intermediate refresh ID tokens omit \code{nonce} or \code{auth_time}
 \item \code{userinfo}: Refreshed if \code{userinfo_required = TRUE}; otherwise preserved
+\item \code{extra_fields}: Replaced by the additional parameters in the refresh
+response, or an empty list if none are returned. Not merged with earlier
+responses; explicit JSON \code{null} values remain named \code{NULL} entries.
+\item \code{initial_extra_fields}: Preserved from the initial code exchange. This
+historical snapshot does not establish current access permissions.
 \item \code{cnf}: Updated from the token response when present, and may be
 backfilled from refresh-time introspection when enabled. When the
 refresh response omits new observable \code{cnf}, shinyOAuth does not carry

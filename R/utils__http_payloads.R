@@ -65,6 +65,29 @@ parse_token_response <- function(resp) {
 }
 
 
+#' Extract additional token endpoint response parameters
+#'
+#' Call before adding internal validation metadata to the parsed response.
+#' Keep provider values separate from normalized token properties, preserving
+#' nested values and named NULL entries without merging responses.
+#'
+#' @param token_response Parsed token endpoint response list.
+#' @return List of parameters without dedicated OAuthToken properties.
+#' @keywords internal
+#' @noRd
+token_response_extra_fields <- function(token_response) {
+  represented_fields <- c(
+    "access_token", "token_type", "refresh_token", "id_token",
+    "expires_in", "scope", "cnf"
+  )
+  extra_fields <- token_response[!names(token_response) %in% represented_fields]
+  if (!length(extra_fields)) {
+    return(list())
+  }
+  extra_fields
+}
+
+
 # 1.2 Response body parsers ----------------------------------------------------
 
 #' Parse a token response as strict JSON
