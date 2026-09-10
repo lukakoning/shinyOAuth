@@ -237,7 +237,7 @@ connection_credentials_seal <- function(
   ) {
     err_input("Connection authentication time must be a finite timestamp")
   }
-  values <- setNames(
+  values <- stats::setNames(
     lapply(connection_token_fields, function(field) S7::prop(token, field)),
     connection_token_fields
   )

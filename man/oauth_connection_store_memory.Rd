@@ -39,8 +39,9 @@ process. It is a connection-manager building block, not an authentication API.
 }
 \details{
 Methods are trusted server-side operations. The manager must validate the
-owner session before calling them. An owner is an opaque, generation-specific
-identifier; knowledge of an owner or connection ID does not authenticate a user.
+current owner session and generation before calling them. The opaque owner
+identifier scopes records and can survive session rotation; knowledge of an
+owner or connection ID does not authenticate a user.
 Records contain ciphertext only. Encryption keys stay with the manager, outside
 this adapter. Never expose these methods or credential imports as HTTP routes.
 \itemize{
