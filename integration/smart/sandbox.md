@@ -7,18 +7,37 @@ official [SMART Launcher v2](https://github.com/smart-on-fhir/smart-launcher-v2)
 It provides an external implementation for the SMART roadmap's
 integration tests. The current tests establish discovery, FHIR connectivity,
 sample data, required SMART 2.2 discovery fields, public signing keys and launcher
-configuration. The generic [P3 browser-retention gate](../connections/README.md)
+configuration. P4a adds `smart_discover()` tests against the unmodified live
+metadata and real HTTP fixtures. It identified a missing algorithm advertisement:
+the pinned launcher currently fails strict discovery, as detailed below.
+The generic [P3 browser-retention gate](../connections/README.md)
 now passes with synthetic OAuth providers. SMART application authorization,
 the two-site sandbox repeat, and EHR launch remain the P4/P5 gates below.
 
-## Run the smoke suite
+## Run the smoke and discovery suites
 
 From the repository root, with Docker Engine running in Linux-container mode,
-Compose v2, and the package's R development dependencies installed:
+Compose v2, and the package's R development dependencies installed. Install the
+current checkout first so the runner tests the new exported discovery API:
 
 ```sh
+R CMD INSTALL .
 Rscript integration/smart/run-tests.R
 ```
+
+This command runs the diagnostic suite, including correct rejection of the
+known incomplete launcher metadata. It does not mean the sandbox is compatible.
+The required positive discovery gate is a separate, stricter invocation:
+
+```sh
+Rscript integration/smart/run-tests.R --require-compatible-discovery
+```
+
+That gate currently exits unsuccessfully with the pinned image. The evidence
+records `sandbox_discovery_accepted: false` and
+`discovery_release_gate: "not_met"` even when diagnostic assertions pass. A
+compatible upstream deployment and a passing positive gate remain required
+before using this stack for the SMART app release scenarios.
 
 The runner starts a uniquely named Compose project, waits up to five minutes
 for readiness, checks the running images against their pins, runs the tests
@@ -29,8 +48,10 @@ amd64 images; ARM hosts require Docker's amd64 emulation.
 
 Only one copy can use the fixed loopback ports at a time. Stop a manually
 started copy before using the automatic runner. No existing Keycloak stack is
-changed. The dedicated `SMART sandbox smoke tests` workflow runs on changes to
-this directory and can also be dispatched manually.
+changed. The dedicated `SMART sandbox discovery tests` workflow installs the
+current package and runs on changes to R APIs, package metadata, discovery tests
+and this directory. Its manual `require_compatible_discovery` input enforces
+the positive gate; ordinary CI runs are diagnostic until that gate is met.
 
 ## Explore the sandbox manually
 
@@ -68,15 +89,31 @@ docker compose -f integration/smart/docker-compose.yml -p shinyoauth-smart-dev d
 Add `--volumes` only to discard that manual stack's synthetic data changes.
 The launcher runs independently of a Shiny app. P4 will supply a runnable app
 with distinct registered callback routes, followed by the P5 EHR launch route;
-there is no `smart_target()` example to run against the current P0-P2 package.
+there is no `smart_target()` authorization example yet. Discovery is available:
+
+```r
+# Currently raises a parse error for missing asymmetric algorithm metadata:
+shinyOAuth::smart_discover(
+  "http://localhost:18413/v/r4/fhir",
+  allow_http_loopback = TRUE
+)
+```
+
+With complete metadata, discovery returns a plain list. It does not choose a
+registration, create credentials, or contact the advertised endpoints. The HTTP exception is for
+this loopback sandbox only. Deployment setup should use an approved HTTPS FHIR
+base and explicit `endpoint_hosts` when its authorization service uses another
+hostname. Each discovery call returns a fresh snapshot; there is no shared cache
+and no automatic update to a pending flow or retained connection.
 
 ## Evidence and current compatibility limits
 
 Each ready test run writes `integration/smart/.artifacts/<project>/evidence.json`:
-image references and actual IDs, time, R/Docker/launcher/HAPI versions, exact SMART
+image references and actual IDs, time, R/package/Docker/launcher/HAPI versions, exact SMART
 metadata, and test counts. CI uploads this file. It contains no token responses,
 authorization codes, launch handles or patient resources. The report explicitly
-marks application flows as untested at this checkpoint.
+marks application flows as untested and discovery as tested at this checkpoint.
+Diagnostic test status and the positive discovery release gate are separate fields.
 
 The image pins were resolved on 2026-09-10. The reviewed upstream revisions are
 `smart-dev-sandbox@081def5427765661d49ec85aec1849f444f58618` and
@@ -96,6 +133,19 @@ issuer/JWKS URLs, and a nonempty public RSA JWKS. These checks establish
 discovery and key availability; they do not verify ID tokens or RS384 client
 assertion exchanges. The `/env.js` simulator UI token is never saved in evidence.
 
+**P4a finding, 2026-09-10:** the same image advertises
+`client-confidential-asymmetric` and `private_key_jwt` but omits
+`token_endpoint_auth_signing_alg_values_supported`. The
+[asymmetric profile](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html)
+requires an algorithm advertisement including RS384 or ES384. The omission is
+also present in the current
+[upstream discovery handler](https://github.com/smart-on-fhir/smart-launcher-v2/blob/64374254347fdfa9625f9112c77813aa75fa9f3e/backend/routes/fhir/.well-known/smart-configuration.ts).
+`smart_discover()` rejects this response without patching it. The discovery test
+records that rejection as a known incompatibility, not successful interoperability.
+Keep the positive gate open until an upstream fix or another independently
+verified deployment supplies complete metadata. Source-supported algorithms
+inside the server cannot substitute for its missing discovery advertisement.
+
 This simulator permits uncredentialed FHIR reads. The smoke read checks data
 and proxy connectivity; authorization enforcement requires the strict fixture
 and suitable external server evidence. The stack uses loopback HTTP and
@@ -104,22 +154,23 @@ release gates. Sandbox success is not SMART certification.
 
 The previous `smartonfhir/smart-launcher` image (package 2.0.0) omitted the two
 mandatory discovery fields; upgrading to `smart-launcher-2` resolves that gap.
-P4 must still test the adapter against live v2 discovery and synthetic negative
-fixtures that omit mandatory fields, plus actual authorization and refresh flows.
+P4a now tests the reader against live v2 discovery and synthetic HTTP positive
+and negative fixtures. Actual authorization and refresh flows
+remain later P4 items.
 Do not inject missing capabilities or disable PKCE, signature, issuer, or
 browser checks to make a full-flow test pass. Any supported legacy profile
 needs its own explicit policy and evidence.
 
 ## Where the roadmap uses this stack
 
-The future filenames below describe planned tests, not currently skipped tests.
+Rows marked planned describe future tests, not currently skipped tests.
 
 | Checkpoint | Tests / extension | Required evidence |
 | --- | --- | --- |
 | P0 supplement, now | `test-sandbox-smoke.R` and `run-tests.R` | Pinned v2 launcher and services start; required discovery fields, local public keys, R4 metadata, sample Patient data, proxy and picker work; image/capability report saved. |
 | P1 signing | Existing `../conformance/test-rs384-interop.R` and strict AS matrix | Independent RS384 verification stays required; advertised asymmetric authentication alone does not establish successful RS384 exchanges. |
 | P3 generic retention / P4 sandbox repeat | P3 implemented in `integration/connections/`; add a two-site Compose profile with P4's SMART targets | The generic Chrome gate passes query/form_post and sync/mirai. P4 adds two isolated launcher/FHIR datasets and repeats A-to-B navigation, independent refresh and disconnect with SMART registration, scopes and context. |
-| P4 discovery | Add `test-smart-discovery.R` | Exercise the adapter against live Launcher v2 metadata at the full FHIR base; reject missing mandatory SMART 2.2 fields in negative fixtures. |
+| P4a reader implemented; positive sandbox gate open | `test-smart-discovery.R` and `--require-compatible-discovery` | The reader detects missing asymmetric algorithm metadata in the pinned launcher. Positive/negative HTTP fixtures verify the reader, but the release gate requires acceptance by an unmodified compatible external server. |
 | P4 standalone | Add a real app fixture and `test-browser-standalone.R` | Browser consent/selection, S256 and FHIR `aud`, matching Patient retrieval, supported scopes, refresh/context continuity; identity and clinician tests require advertised SSO support. |
 | P5 EHR launch | Add `test-browser-ehr-launch.R` | Launch from the real launcher with `iss` and `launch`; clean continuation, selected patient/encounter, concurrent launch isolation, and mixed callback rejection. |
 | P4/P5 independent conformance | Add the [Inferno STU2.2 Client gate](inferno.md) and real-app driver | Separate public, symmetric and RS384 asymmetric runs, followed by EHR runs; require Inferno's request-verification results as well as browser/resource evidence. |

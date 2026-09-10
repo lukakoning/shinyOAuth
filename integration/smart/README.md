@@ -2,7 +2,8 @@
 
 The [local Docker sandbox setup](sandbox.md) uses official SMART Dev Sandbox
 components with SMART Launcher v2. Run `Rscript integration/smart/run-tests.R`
-from the repository root for the current infrastructure smoke tests. It also maps
+from the repository root after installing this checkout for infrastructure smoke
+tests and P4a's SMART discovery tests. It also maps
 the browser and application-flow suites to P3-P5. The generic P3
 [retention browser gate](../connections/README.md) now passes; SMART application
 flows remain P4/P5. The [Inferno client conformance gate](inferno.md) specifies the
@@ -21,6 +22,7 @@ independent interoperability evidence.
 | New legacy sessions start without credentials | `test-smart-contracts.R`; this is not a browser retention test |
 | EHR launch requires an explicit adapter | Legacy wrapper rejects `iss`/`launch`; P5 adds registered routes |
 | Standalone metadata without SSO | `standalone-metadata.json` deliberately omits OIDC issuer/JWKS |
+| SMART discovery API | P4a `smart_discover()` implemented; live Launcher v2 rejected because its asymmetric algorithm advertisement is missing. Positive external gate remains open. Unit and HTTP fixtures validate the reader; registration selection remains P4c. |
 | A-to-B navigation retains both connections | P3 implemented: real Chrome navigation, new Shiny sessions, independent refresh, owner isolation and disconnect. Query/form_post, sync/mirai; 104 assertions. |
 | Independent SMART compatibility | P4/P5: record sandbox/tool version, registration, capabilities, transport and outcome |
 
@@ -49,6 +51,39 @@ data-only manager context to the pending transaction. Legacy callbacks cannot
 consume managed context; owner/session lifecycle is still a P3 requirement.
 The scope evaluator defaults to versioned literal OAuth coverage; SMART
 semantics remain P4.
+
+P4a adds `smart_discover()` with a plain list result containing the exact FHIR
+base, discovery URL, validated metadata, version baseline and host policy. It
+does not add a new R6 configuration object. Required metadata and conditional
+SSO/asymmetric fields are checked separately from OIDC discovery. Server
+capabilities never choose the client's registration, and extension URLs never
+expand resource trust. The implementation reuses the package HTTP bounds and
+TLS policy; redirects remain disabled even under the generic redirect option.
+No automatic cache means a later call cannot mutate an earlier snapshot.
+
+The live Docker run exposed a missing asymmetric signing-algorithm advertisement
+in Launcher v2. `run-tests.R` records diagnostic assertions separately from
+`sandbox_discovery_accepted` and `discovery_release_gate`; add
+`--require-compatible-discovery` to require a successful live discovery result.
+That gate currently fails with the pinned image. See [sandbox.md](sandbox.md)
+for the upstream source evidence and required follow-up. Synthetic positive
+tests do not satisfy that external interoperability gate.
+
+P4a validation on Windows / R 4.5.1 (2026-09-10): 816 affected regression
+assertions passed, including 260 new discovery assertions, with no failures or
+skips and one installed-Shiny build-version warning. The Docker run passed all
+46 diagnostic assertions; `--require-compatible-discovery` then exited with
+failure because live discovery was rejected, as required. The report records
+`sandbox_discovery_accepted: false` and `discovery_release_gate: "not_met"`.
+Roxygen help rendering/example parsing, formatting/lint checks, source
+installation, and `R CMD check --no-tests --no-manual --ignore-vignettes` passed;
+the package check reported zero errors, warnings and notes. The runner removed
+its isolated containers and data volume on exit.
+
+P4a protocol sources rechecked on 2026-09-10: the SMART 2.2 conformance page and
+asymmetric authentication profile linked above. The remaining P4 items cover
+scope semantics, the standalone target and its registration policy, interpreted
+context/resource helpers, sandbox browser flows, and the Inferno client matrix.
 
 P2 adds immutable generic targets and per-session references that read the
 module's current reactive token. Resource IDs enforce exact origin and base

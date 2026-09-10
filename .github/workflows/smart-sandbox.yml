@@ -1,14 +1,27 @@
-name: SMART sandbox smoke tests
+name: SMART sandbox discovery tests
 
 on:
   workflow_dispatch:
+    inputs:
+      require_compatible_discovery:
+        description: Require the positive external discovery gate (currently unmet by the pinned launcher)
+        type: boolean
+        default: false
   pull_request:
     paths:
+      - R/**
+      - DESCRIPTION
+      - NAMESPACE
+      - tests/testthat/test-smart-discovery.R
       - integration/smart/**
       - .github/workflows/smart-sandbox.yml
   push:
     branches: [main, master]
     paths:
+      - R/**
+      - DESCRIPTION
+      - NAMESPACE
+      - tests/testthat/test-smart-discovery.R
       - integration/smart/**
       - .github/workflows/smart-sandbox.yml
 
@@ -30,9 +43,13 @@ jobs:
             local::.
             any::testthat
             any::processx
-          cache-version: 1
-      - name: Start sandbox, run smoke tests, and clean up
-        run: Rscript integration/smart/run-tests.R
+            any::webfakes
+            any::withr
+          cache-version: 2
+      - name: Install current package
+        run: R CMD INSTALL .
+      - name: Start sandbox, run smoke and adapter discovery tests, and clean up
+        run: Rscript integration/smart/run-tests.R ${{ inputs.require_compatible_discovery && '--require-compatible-discovery' || '' }}
       - name: Upload sandbox versions, capabilities, and results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

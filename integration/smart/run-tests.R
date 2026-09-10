@@ -1,8 +1,18 @@
 # Run from the repository root. --existing uses the documented manual project;
 # otherwise the runner owns a unique, disposable Compose project and volume.
 run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
-  if (!all(args %in% "--existing")) {
-    stop("Usage: Rscript integration/smart/run-tests.R [--existing]")
+  if (!all(args %in% c("--existing", "--require-compatible-discovery"))) {
+    stop(
+      "Usage: Rscript integration/smart/run-tests.R [--existing] [--require-compatible-discovery]"
+    )
+  }
+  if (
+    !requireNamespace("shinyOAuth", quietly = TRUE) ||
+      !"smart_discover" %in% getNamespaceExports("shinyOAuth")
+  ) {
+    stop(
+      "Install this checkout of shinyOAuth before running the SMART discovery suite"
+    )
   }
   compose_file <- normalizePath(
     "integration/smart/docker-compose.yml",
@@ -121,6 +131,11 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
     urls$fhir,
     "/.well-known/smart-configuration"
   ))
+  discovery_probe <- tryCatch(
+    shinyOAuth::smart_discover(urls$fhir, allow_http_loopback = TRUE),
+    error = identity
+  )
+  discovery_accepted <- !inherits(discovery_probe, "error")
   fhir <- smart_sandbox_json(paste0(urls$raw_fhir, "/metadata"))
   launcher_version <- jsonlite::fromJSON(
     compose(c("exec", "-T", "launcher", "cat", "package.json"))$stdout
@@ -128,10 +143,19 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
   artifact_dir <- file.path("integration/smart/.artifacts", project)
   dir.create(artifact_dir, recursive = TRUE, showWarnings = FALSE)
   evidence <- list(
-    checkpoint = "sandbox-smoke",
+    checkpoint = "sandbox-smoke-and-smart-discovery",
+    smart_discovery_tested = TRUE,
+    sandbox_discovery_accepted = discovery_accepted,
+    discovery_error_class = if (!discovery_accepted) {
+      class(discovery_probe)[[1L]]
+    } else {
+      NULL
+    },
+    discovery_release_gate = "not_met",
     application_flow_tested = FALSE,
     checked_at_utc = format(Sys.time(), tz = "UTC", usetz = TRUE),
     r_version = R.version.string,
+    shinyOAuth_version = as.character(utils::packageVersion("shinyOAuth")),
     docker_version = docker_version,
     launcher_version = launcher_version,
     transport = "HTTP on loopback; production TLS is a separate gate",
@@ -166,6 +190,11 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
   passed <- all(totals[c("failed", "error", "skipped")] == 0) &&
     totals[["passed"]] > 0
   evidence$status <- if (passed) "passed" else "failed"
+  evidence$discovery_release_gate <- if (passed && discovery_accepted) {
+    "passed"
+  } else {
+    "not_met"
+  }
   evidence$tests <- as.list(totals)
   jsonlite::write_json(
     evidence,
@@ -177,6 +206,16 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
   message("Sandbox evidence: ", report)
   if (!passed) {
     stop("SMART sandbox tests require zero failures, errors and skips")
+  }
+  if (!discovery_accepted) {
+    message(
+      "Sandbox discovery acceptance gate is NOT MET; see sandbox.md and evidence.json"
+    )
+    if ("--require-compatible-discovery" %in% args) {
+      stop(
+        "The pinned sandbox does not pass strict SMART discovery; release acceptance is required"
+      )
+    }
   }
   invisible(results)
 }

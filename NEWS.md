@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Added `smart_discover()` to read SMART STU 2.2 metadata at the full FHIR
+base, with explicit endpoint-host policy, conditional SSO/asymmetric checks,
+S256 enforcement, and an opt-in loopback HTTP exception. Returns a plain
+metadata snapshot; client registration and authorization are separate steps.
+The Docker sandbox suite now tests the reader against official Launcher v2.
+
 * Added the optional `oauth_connections()` manager with matching UI/server
 wrappers, separate grants per authorization, encrypted process-local retention,
 browser/account owner validation, coordinated refresh and local disconnect before

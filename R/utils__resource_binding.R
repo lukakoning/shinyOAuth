@@ -45,7 +45,11 @@ resource_binding_path <- function(path) {
   path
 }
 
-resource_binding_components <- function(url, base = FALSE) {
+resource_binding_components <- function(
+  url,
+  base = FALSE,
+  canonicalize = TRUE
+) {
   if (
     !is_valid_string(url) ||
       nchar(url, type = "bytes") > 8192L ||
@@ -108,7 +112,9 @@ resource_binding_components <- function(url, base = FALSE) {
     host = host,
     port = port,
     path = path,
-    url = httr2::url_build(parsed)
+    # Discovery validates identifiers without rewriting them. Avoiding a URL
+    # rebuild also accommodates curl backends that cannot rebuild IPv6 hosts.
+    url = if (canonicalize) httr2::url_build(parsed) else url
   )
 }
 

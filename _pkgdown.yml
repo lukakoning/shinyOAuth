@@ -52,6 +52,10 @@ reference:
   - starts_with("oauth_provider_")
   - -oauth_provider_oidc
   - -oauth_provider_oidc_discover
+
+- title: SMART on FHIR
+- contents:
+  - smart_discover
   
 - title: Provider-specific client settings
 - contents:
