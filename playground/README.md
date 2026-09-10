@@ -5,6 +5,10 @@ during package development. For a first app, use the
 [getting-started guide](../vignettes/usage.Rmd); for a complete Spotify dashboard,
 see [the installed example](../inst/examples/spotify-dashboard.R).
 
+For the connection manager and ongoing healthcare integration work, start with
+[SMART/FHIR and the new components, in plain language](smart-fhir-explained.md).
+The [implementation roadmap](smart-fhir-roadmap.md) tracks delivery and test gates.
+
 Read a script's setup comments and replace its credentials, URLs, and key paths
 with your own before running it. Open the app at the exact configured
 `redirect_uri` in a regular browser. Keep real secrets out of Git.

@@ -1,5 +1,8 @@
 **Proposed implementation: SMART on FHIR and multiple retained OAuth connections**
 
+Start with the [plain-language explanation](smart-fhir-explained.md) for what
+SMART/FHIR means, why the new components exist, and which pieces are built today.
+
 Prepared 2026-09-10 against shinyOAuth 0.5.0.9000, commit `04127c9d`. This is a design proposal: new interfaces below are sketches, not exported or implemented APIs. It combines the attached multiple-authorization-server assessment with the SMART review and a further inspection of the current callback, state, refresh, and resource-request implementations.
 
 The recommended direction is an optional connection-management layer over the existing OAuth/OIDC implementation, with an explicit SMART adapter. Ordinary `oauth_client()`, `oauth_ui()`, `oauth_module_server()`, and token helpers retain their defaults and protocol behavior. Persistent credentials, SMART metadata, SMART launch routing, and SMART scope semantics require selecting the new interfaces.
