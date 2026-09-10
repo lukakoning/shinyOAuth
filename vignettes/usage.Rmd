@@ -358,6 +358,65 @@ Missing local prerequisites fail; unestablished server assurance is unresolved.
 assurance after it has been established. It cannot supply missing local settings
 and is never treated as observed server evidence. S256 remains recommended.
 
+## Multiple authorization servers
+
+Create one client and module for each registration. Give each authorization
+server a distinct registered callback path and list the same clients in the UI
+wrapper. Module IDs alone do not distinguish browser callback routes.
+
+```{r, eval = FALSE}
+redirects <- c("https://app.example/oauth/a", "https://app.example/oauth/b")
+# provider_a and provider_b are independently configured OAuth/OIDC providers.
+clients <- list(
+  auth_a = oauth_client(
+    provider_a, client_id = Sys.getenv("SITE_A_CLIENT_ID"),
+    client_secret = Sys.getenv("SITE_A_CLIENT_SECRET"),
+    redirect_uri = redirects[[1]], scopes = c("read"),
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirects
+  ),
+  auth_b = oauth_client(
+    provider_b, client_id = Sys.getenv("SITE_B_CLIENT_ID"),
+    client_secret = Sys.getenv("SITE_B_CLIENT_SECRET"),
+    redirect_uri = redirects[[2]], scopes = c("read"),
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirects
+  )
+)
+ui <- oauth_ui(fluidPage(
+  actionButton("connect_a", "Connect A"),
+  actionButton("connect_b", "Connect B")
+), clients = clients)
+server <- function(input, output, session) {
+  a <- oauth_module_server("auth_a", clients$auth_a, auto_redirect = FALSE)
+  b <- oauth_module_server("auth_b", clients$auth_b, auto_redirect = FALSE)
+  observeEvent(input$connect_a, a$request_login())
+  observeEvent(input$connect_b, b$request_login())
+}
+shinyApp(ui, server, uiPattern = ".*")
+```
+
+Register those exact redirect URIs with the respective services and configure
+the web host to serve the app at both paths. Shared routes require independent
+authorization-server identification (`multi_issuer`, using RFC 9207 or JARM);
+the static registry rejects multiple clients with the same issuer on one route.
+See [OAuth Security BCP section 4.4.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2).
+
+This pattern routes multiple modules; it does not retain their credentials
+across navigation. Following the authorization redirect for B can end the Shiny
+session holding A. A new session starts with empty module credentials even if
+the clients share a pending-state store. Retained connections need a separate
+owner and connection lifecycle, which is planned in the SMART roadmap.
+
+Additional token fields are already available server-side. For example,
+`a$token@initial_extra_fields$patient` reads an initial SMART patient value,
+while `a$token@extra_fields` contains only the latest successful response's
+extras. Refresh may omit `patient`. Neither list is validated identity data or
+evidence of permission to read a resource. Ordinary clients do not infer SMART
+discovery, launch handling, scope equivalence, or a FHIR destination from these
+fields. Keep the matching client, token and approved resource together when
+making requests, and keep raw context out of logs and session summaries.
+
 ## Asynchronous execution
 
 By default, network work runs in the app's R process. A slow provider can make

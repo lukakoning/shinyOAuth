@@ -1,0 +1,10 @@
+{
+  "authorization_endpoint": "https://login.site-a.example/authorize",
+  "token_endpoint": "https://login.site-a.example/token",
+  "grant_types_supported": ["authorization_code"],
+  "token_endpoint_auth_methods_supported": ["client_secret_basic", "private_key_jwt"],
+  "token_endpoint_auth_signing_alg_values_supported": ["RS384", "ES384"],
+  "code_challenge_methods_supported": ["S256"],
+  "scopes_supported": ["launch/patient", "patient/Patient.rs"],
+  "capabilities": ["launch-standalone", "client-public", "client-confidential-symmetric", "client-confidential-asymmetric", "context-standalone-patient", "permission-patient", "permission-v2"]
+}
