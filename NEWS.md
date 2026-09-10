@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Added `oauth_target()` and session-bound `oauth_connection()` references.
+Requests resolve current credentials, enforce exact approved resource bases,
+retain DPoP/mTLS transport, and reject cross-session access. This initial
+adapter follows a module's reactive token and does not persist across redirects.
+
 * Added explicitly selected RS384 signing for client assertions, Request Objects
 and DPoP proofs, with RSA key compatibility checks. RSA signing still defaults
 to RS256; inbound algorithm defaults are unchanged.

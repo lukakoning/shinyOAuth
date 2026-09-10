@@ -42,6 +42,25 @@ consume managed context; owner/session lifecycle is still a P3 requirement.
 The scope evaluator defaults to versioned literal OAuth coverage; SMART
 semantics remain P4.
 
+P2 adds immutable generic targets and per-session references that read the
+module's current reactive token. Resource IDs enforce exact origin and base
+paths before attaching credentials; two APIs on one host remain separate.
+Absolute references use the same policy. Generic applications declare their
+operation scopes explicitly. There is no inferred opaque-token audience or
+SMART permission mapping. Session end releases the reference's token source.
+`test-oauth-connections.R` and `test-resource-binding.R` cover these contracts.
+Retention, store coordination and a manager-owned callback lifecycle remain P3.
+
+Validation for P0-P2 on Windows / R 4.5.1 (2026-09-10): the complete unit suite
+passed 11,031 assertions, with 26 browser/platform skips and three installed
+dependency build-version warnings. After formatting, 189 focused assertions
+passed again. Source build and installation passed. `R CMD check --no-tests
+--no-manual --ignore-vignettes` reported zero errors, zero warnings and one note
+from curl announcing the selected OpenSSL backend. The unit suite was run
+separately with the current checkout installed for async workers. Local check
+processes used the `C` locale and OpenSSL curl backend; no package defaults were
+changed for those environment settings.
+
 The roadmap is in `playground/smart-fhir-roadmap.md`. Do not claim a completed
 SMART or retained multi-site workflow until the corresponding integration gates
 pass. Top-level Shiny deployment is the initial target; embedding, account

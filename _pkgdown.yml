@@ -56,6 +56,8 @@ reference:
   
 - title: Tokens and API requests
 - contents:
+  - oauth_target
+  - oauth_connection
   - get_userinfo
   - refresh_token
   - revoke_token

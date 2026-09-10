@@ -417,6 +417,51 @@ discovery, launch handling, scope equivalence, or a FHIR destination from these
 fields. Keep the matching client, token and approved resource together when
 making requests, and keep raw context out of logs and session summaries.
 
+### Requests bound to a client and resource
+
+Use `oauth_target()` to configure named API bases, then create one connection
+reference for that target's module inside `server()`:
+
+```{r, eval = FALSE}
+target <- oauth_target(
+  client,
+  resource_bases = c(records = "https://api.example/v1"),
+  required_scopes = "read" # Must already be requested by client.
+)
+server <- function(input, output, session) {
+  auth <- oauth_module_server("auth", target$client)
+  connection <- oauth_connection(target, reactive(auth$token))
+  records <- reactive({
+    req(connection$is_usable())
+    connection$request("records", "records", query = list(limit = 20)) |>
+      httr2::resp_body_json()
+  })
+}
+```
+
+The reference reads the latest token after refresh and becomes unusable after
+logout, token expiry, or session end. A reference from another Shiny session
+cannot read its summary or make requests. This adapter still uses the legacy
+module's lifecycle and does not retain credentials across navigation.
+
+`resource_bases` restricts the token's destinations; it does not request an
+audience or prove an opaque token's audience. Wire the token expression to the
+module using `target$client`. Resource indicators remain an explicit client
+setting ([RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html)).
+
+Each request selects a resource ID and resolves a path against its full base.
+An absolute pagination or resource reference must stay within that base too.
+For example, `/v1-other` is outside `/v1`, even on the same hostname. Ambiguous
+path syntax is rejected before URL normalization, and redirects are disabled.
+General URL options cannot relax this policy. These comparisons use URI origin
+and path rules from [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986.html).
+
+Optional permissions can produce a limited connection. Declare an operation's
+extra permissions with `$request(..., required_scopes = "write")`; the current
+grant must cover them. No generic mapping from API paths to OAuth scopes is
+assumed. `$summary()` contains the opaque connection ID, target label, local
+status, expiry, and resource IDs. It excludes credentials and raw context.
+
 ## Asynchronous execution
 
 By default, network work runs in the app's R process. A slow provider can make
