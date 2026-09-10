@@ -109,16 +109,6 @@ is_oauth_error_text <- function(value) {
     isTRUE(grepl("^[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]*$", value, perl = TRUE))
 }
 
-#' Escape diagnostic text for CLI formatting
-#'
-#' Keeps untrusted braces literal when a diagnostic becomes a condition bullet.
-#' @param value Sanitized text.
-#' @return Text with literal braces escaped.
-#' @keywords internal
-#' @noRd
-escape_diagnostic_markup <- function(value) {
-  gsub("}", "}}", gsub("{", "{{", value, fixed = TRUE), fixed = TRUE)
-}
 # Keep received protocol values out of ordinary conditions. Explicit exposure
 # adds bounded literal data; condition constructors never interpolate it.
 protocol_diagnostic_message <- function(message, received) {

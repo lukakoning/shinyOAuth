@@ -107,7 +107,10 @@ testthat::test_that("Keycloak PAR rejects request-object wrong signing key", {
   # A successful control proves this client's PAR authentication and registered
   # Request Object signing key work against the running server.
   control <- make_private_key_jar_client(prov)
-  control_url <- shinyOAuth::prepare_call(control, valid_browser_token())
+  control_url <- shinyOAuth::prepare_call(
+    control,
+    browser_token = paste(rep("ab", 64), collapse = "")
+  )
   testthat::expect_match(control_url, "[?&]request_uri=")
 
   sign_request_object <- shinyOAuth:::build_authorization_request_object

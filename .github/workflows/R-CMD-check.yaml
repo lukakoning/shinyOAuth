@@ -24,7 +24,10 @@ jobs:
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'oldrel-1'}
-          - {os: ubuntu-latest,   r: 'release', testthat: 'testthat@3.2.2'}
+          # testthat 3.2.2 uses R internals removed in R 4.6, and
+          # shinytest2 >= 0.5.0 requires testthat >= 3.3.1. Keep this
+          # minimum-testthat job on compatible R and shinytest2 versions.
+          - {os: ubuntu-latest,   r: '4.5', testthat: 'testthat@3.2.2', shinytest2: 'shinytest2@0.4.1'}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -52,12 +55,17 @@ jobs:
           extra-packages: |
             any::rcmdcheck
             ${{ matrix.config.testthat || 'any::testthat' }}
+            ${{ matrix.config.shinytest2 || 'any::shinytest2' }}
           needs: check
 
-      - name: Verify minimum testthat version
+      - name: Verify minimum testthat dependency versions
         if: matrix.config.testthat != ''
         shell: Rscript {0}
-        run: stopifnot(packageVersion("testthat") == "3.2.2")
+        run: |
+          stopifnot(
+            packageVersion("testthat") == "3.2.2",
+            packageVersion("shinytest2") == "0.4.1"
+          )
 
       - uses: r-lib/actions/check-r-package@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
         with:
