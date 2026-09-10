@@ -1,9 +1,11 @@
-#' Reference a Shiny session's current token through an approved target
+#' Make API requests with a Shiny session's current OAuth credentials
 #'
-#' Creates a server-side connection reference for one module's credentials.
-#' Every request resolves the reactive token again, including after refresh or
-#' logout, and selects its client's matching approved resource. The reference
-#' expires with its Shiny session; it does not retain credentials across redirects.
+#' Combine one module's reactive token with its client and approved API addresses
+#' from [oauth_target()]. Call `$request()` on the returned connection instead of
+#' assembling a token, client and URL for each request. It reads the reactive token
+#' again after refresh or logout and restricts requests to the configured APIs.
+#' This optional wrapper expires with its Shiny session; it does not implement
+#' refresh itself or retain credentials across redirects.
 #'
 #' @param target Configuration created by [oauth_target()].
 #' @param token A Shiny reactive expression returning the current [OAuthToken]

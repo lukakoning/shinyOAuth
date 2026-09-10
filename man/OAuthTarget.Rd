@@ -4,11 +4,20 @@
 \alias{OAuthTarget}
 \title{OAuthTarget R6 class}
 \description{
-An \code{OAuthTarget} binds an \link{OAuthClient} to named, approved resource bases and
-the scopes required for a usable connection. Create it with \code{\link[=oauth_target]{oauth_target()}}
-outside the Shiny \code{server()} function, then pass it to \code{\link[=oauth_connection]{oauth_connection()}}.
+Configuration for an OAuth client and the APIs its connections may call. For
+example, a hospital target groups that hospital's app registration with its
+FHIR base URL. It contains no user's access token. Create it outside Shiny's
+\code{server()} with \code{\link[=oauth_target]{oauth_target()}}, then use \code{\link[=oauth_connection]{oauth_connection()}} inside
+\code{server()} to access that session's current credentials.
 }
 \details{
+This is an optional shinyOAuth API, not an object defined or required by OAuth
+or SMART on FHIR. \link{OAuthClient} already describes the app registration and
+authorization settings; a target adds approved API addresses and the minimum
+scopes needed to use a connection. Several users can share this configuration
+while keeping separate credentials. The approved addresses prevent a request
+through the connection from sending its token to a different API.
+
 Read configuration with \code{$}, for example \code{target$resource_bases}. All active
 bindings are read-only, and cloning is disabled. Create a new target to change
 its configuration. The class generator is internal; \code{\link[=oauth_target]{oauth_target()}} is the

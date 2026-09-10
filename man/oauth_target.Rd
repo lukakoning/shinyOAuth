@@ -2,7 +2,7 @@
 % Please edit documentation in R/classes__OAuthTarget.R
 \name{oauth_target}
 \alias{oauth_target}
-\title{Bind an OAuth client to approved resource bases}
+\title{Configure an OAuth client and the APIs its connections may call}
 \usage{
 oauth_target(
   client,
@@ -30,12 +30,21 @@ An \link{OAuthTarget} with read-only \verb{$client}, \verb{$resource_bases},
 configuration. Supply it to \code{\link[=oauth_connection]{oauth_connection()}} for per-session requests.
 }
 \description{
-Creates immutable configuration for connection-bound requests. Resource IDs
-select exact scheme, hostname, effective port and base-path boundaries.
-Configuration is local policy; it does not prove an opaque token's audience
-or add OAuth \code{resource} parameters. Configure those on \code{\link[=oauth_client]{oauth_client()}}.
+Group an existing \link{OAuthClient} with named API base URLs and required scopes.
+For example, one target can describe Hospital A's app registration and FHIR
+endpoint. This is shared application configuration, not a user's login or
+token. Use \code{\link[=oauth_connection]{oauth_connection()}} inside \code{server()} to make requests using a
+session's current credentials and this configuration.
 }
 \details{
+Resource IDs select exact scheme, hostname, effective port and base-path boundaries.
+Configuration is local policy; it does not prove an opaque token's audience
+or add OAuth \code{resource} parameters. Configure those on \code{\link[=oauth_client]{oauth_client()}}.
+
+Targets are optional shinyOAuth configuration objects; OAuth and SMART on FHIR
+do not prescribe this class. The existing client, module and token APIs can be
+used without it. See \link{OAuthTarget} for the configuration/credential distinction.
+
 Base URLs exclude user information, query strings and fragments. Dot segments,
 repeated slashes, semicolon path parameters and encoded ASCII reserved/control
 characters are rejected. An encoded unreserved character is normalized before

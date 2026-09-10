@@ -419,8 +419,24 @@ making requests, and keep raw context out of logs and session summaries.
 
 ### Requests bound to a client and resource
 
-Use `oauth_target()` to configure named API bases, then create one connection
-reference for that target's module inside `server()`:
+These optional helpers group the client, API address and current credentials
+used for a request. They are package API choices; OAuth and SMART on FHIR do not
+require these classes.
+
+| Object | What it represents | Example |
+| --- | --- | --- |
+| `OAuthClient` | App registration and OAuth settings | Hospital A's client ID, authorization server and requested scopes |
+| `OAuthTarget` | A client plus the API addresses its connections may call | Hospital A's client and `https://a.example/fhir` |
+| `OAuthConnectionRef` | Access to one Shiny session's current credentials through that configuration | This session's authorized requests to Hospital A |
+
+The target holds shared configuration, with no user's token. A connection reads
+the current token for each request. "Ref" means it refers to credentials that
+can change instead of keeping a token copy. The existing reactive token already
+updates on refresh; the connection adds client selection, API-address restrictions
+and session checks. It does not implement refresh or retention by itself.
+
+Use `oauth_target()` outside `server()` to configure named API bases, then create
+a connection for that target's module inside `server()`:
 
 ```{r, eval = FALSE}
 target <- oauth_target(

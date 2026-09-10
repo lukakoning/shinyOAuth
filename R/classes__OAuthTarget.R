@@ -1,11 +1,20 @@
 #' OAuthTarget R6 class
 #'
 #' @description
-#' An `OAuthTarget` binds an [OAuthClient] to named, approved resource bases and
-#' the scopes required for a usable connection. Create it with [oauth_target()]
-#' outside the Shiny `server()` function, then pass it to [oauth_connection()].
+#' Configuration for an OAuth client and the APIs its connections may call. For
+#' example, a hospital target groups that hospital's app registration with its
+#' FHIR base URL. It contains no user's access token. Create it outside Shiny's
+#' `server()` with [oauth_target()], then use [oauth_connection()] inside
+#' `server()` to access that session's current credentials.
 #'
 #' @details
+#' This is an optional shinyOAuth API, not an object defined or required by OAuth
+#' or SMART on FHIR. [OAuthClient] already describes the app registration and
+#' authorization settings; a target adds approved API addresses and the minimum
+#' scopes needed to use a connection. Several users can share this configuration
+#' while keeping separate credentials. The approved addresses prevent a request
+#' through the connection from sending its token to a different API.
+#'
 #' Read configuration with `$`, for example `target$resource_bases`. All active
 #' bindings are read-only, and cloning is disabled. Create a new target to change
 #' its configuration. The class generator is internal; [oauth_target()] is the
@@ -170,10 +179,15 @@ OAuthTarget <- R6::R6Class(
   )
 )
 
-#' Bind an OAuth client to approved resource bases
+#' Configure an OAuth client and the APIs its connections may call
 #'
-#' Creates immutable configuration for connection-bound requests. Resource IDs
-#' select exact scheme, hostname, effective port and base-path boundaries.
+#' Group an existing [OAuthClient] with named API base URLs and required scopes.
+#' For example, one target can describe Hospital A's app registration and FHIR
+#' endpoint. This is shared application configuration, not a user's login or
+#' token. Use [oauth_connection()] inside `server()` to make requests using a
+#' session's current credentials and this configuration.
+#'
+#' Resource IDs select exact scheme, hostname, effective port and base-path boundaries.
 #' Configuration is local policy; it does not prove an opaque token's audience
 #' or add OAuth `resource` parameters. Configure those on [oauth_client()].
 #'
@@ -189,6 +203,10 @@ OAuthTarget <- R6::R6Class(
 #'   `$required_scopes`, `$label` and `$fingerprint` properties. Printing redacts
 #'   configuration. Supply it to [oauth_connection()] for per-session requests.
 #' @details
+#' Targets are optional shinyOAuth configuration objects; OAuth and SMART on FHIR
+#' do not prescribe this class. The existing client, module and token APIs can be
+#' used without it. See [OAuthTarget] for the configuration/credential distinction.
+#'
 #' Base URLs exclude user information, query strings and fragments. Dot segments,
 #' repeated slashes, semicolon path parameters and encoded ASCII reserved/control
 #' characters are rejected. An encoded unreserved character is normalized before

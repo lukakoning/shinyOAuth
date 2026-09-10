@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods__connection.R
 \name{oauth_connection}
 \alias{oauth_connection}
-\title{Reference a Shiny session's current token through an approved target}
+\title{Make API requests with a Shiny session's current OAuth credentials}
 \usage{
 oauth_connection(target, token, session = shiny::getDefaultReactiveDomain())
 }
@@ -21,10 +21,12 @@ An \link{OAuthConnectionRef} with \verb{$id}, \verb{$is_usable()}, \verb{$summar
 \verb{$request(resource_id, path = "", query = NULL, method = "GET", required_scopes = character())}. Requests return \link[httr2:httr2]{httr2} responses.
 }
 \description{
-Creates a server-side connection reference for one module's credentials.
-Every request resolves the reactive token again, including after refresh or
-logout, and selects its client's matching approved resource. The reference
-expires with its Shiny session; it does not retain credentials across redirects.
+Combine one module's reactive token with its client and approved API addresses
+from \code{\link[=oauth_target]{oauth_target()}}. Call \verb{$request()} on the returned connection instead of
+assembling a token, client and URL for each request. It reads the reactive token
+again after refresh or logout and restricts requests to the configured APIs.
+This optional wrapper expires with its Shiny session; it does not implement
+refresh itself or retain credentials across redirects.
 }
 \details{
 Create the reference once inside \code{server()}. Access it only in that session's

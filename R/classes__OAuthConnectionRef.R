@@ -1,13 +1,20 @@
 #' OAuthConnectionRef R6 class
 #'
 #' @description
-#' An `OAuthConnectionRef` provides access to a Shiny session's current OAuth
-#' credentials through an approved [OAuthTarget]. Create it once inside
-#' `server()` with [oauth_connection()]. Use `$is_usable()` to check local
-#' availability, `$summary()` for status information and `$request()` to call
-#' an approved resource.
+#' Make API requests using a Shiny session's current OAuth credentials and the
+#' client/API configuration supplied by an [OAuthTarget]. For example, a hospital
+#' connection selects that hospital's API address and reads the session's current
+#' token for each request. Create it once inside `server()` with
+#' [oauth_connection()]. Use `$request()` to call an approved API, `$is_usable()`
+#' to check local availability and `$summary()` for status without credentials.
 #'
 #' @details
+#' "Ref" means a reference to credentials that can change, rather than a copy of
+#' a token. The existing reactive token already updates on refresh; this object
+#' combines that lookup with client selection, API-address restrictions and
+#' session checks. The application must supply the matching module's token source.
+#' These are optional shinyOAuth conveniences, not SMART on FHIR protocol objects.
+#'
 #' Each operation resolves the current reactive token, so refresh and logout
 #' are reflected without replacing the reference. Token lifecycle remains owned
 #' by [oauth_module_server()]. The reference expires when its owning session
