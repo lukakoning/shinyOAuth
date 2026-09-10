@@ -722,3 +722,116 @@ test_that("Shiny setup rejects missing or cross-origin request headers", {
     )
   }
 })
+
+test_that("HTTP continuations route to the manager's nested module namespace", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  f <- manager_test_fixture()
+  cookie <- manager_test_cookie(f)
+  local_mocked_bindings(swap_code_for_token_set = function(...) {
+    list(
+      access_token = "bridge-access",
+      token_type = "Bearer",
+      expires_in = 3600,
+      scope = "read write"
+    )
+  })
+  shiny::testServer(
+    oauth_connections_server,
+    args = list(id = "health", manager = f$manager),
+    session = manager_test_session(cookie),
+    {
+      health <- session$getReturned()
+      for (site in c("a", "b")) {
+        state <- parse_query_param(modules[[site]]$build_auth_url(), "state")
+        response <- f$ui(manager_test_request(
+          cookie,
+          path = paste0("/callback/", site),
+          query = paste0("code=ok&state=", state)
+        ))
+        expect_identical(response$status, 303L)
+        query <- response$headers$Location
+        expect_match(query, paste0("health-", site), fixed = TRUE)
+        for (module in modules) {
+          module$.process_query(
+            query,
+            current_uri = paste0(
+              f$manager$targets[[site]]$client@redirect_uri,
+              query
+            )
+          )
+        }
+        session$flushReact()
+        expect_length(health$errors(), 0L)
+      }
+      expect_length(health$connections(), 2L)
+      expect_null(modules$a$token)
+      expect_null(modules$b$token)
+    }
+  )
+})
+
+test_that("nested callback documents load dependencies from the public app directory", {
+  f <- manager_test_fixture()
+  response <- f$ui(manager_test_request(path = "/callback/a"))
+  expect_match(
+    response$content,
+    '<head><base href="https://app.example/">',
+    fixed = TRUE
+  )
+  expect_lt(
+    regexpr("<base ", response$content)[[1L]],
+    regexpr("<script", response$content)[[1L]]
+  )
+  ui <- oauth_connections_ui(
+    shiny::fluidPage("App"),
+    "health",
+    f$manager,
+    app_base_path = "/callback/"
+  )
+  response <- ui(manager_test_request(path = "/callback/a"))
+  expect_match(
+    response$content,
+    '<base href="https://app.example/callback/">',
+    fixed = TRUE
+  )
+  expect_error(
+    oauth_connections_ui(
+      shiny::fluidPage(),
+      "health",
+      f$manager,
+      app_base_path = "/other/"
+    ),
+    "inside app_base_path"
+  )
+  expect_error(
+    oauth_connections_ui(
+      shiny::fluidPage(),
+      "health",
+      f$manager,
+      app_base_path = "/callback"
+    ),
+    "directory path"
+  )
+})
+
+test_that("document base insertion invalidates old HTML length and validators", {
+  response <- shiny::httpResponse(
+    content = "<html><head></head><body>App</body></html>",
+    headers = list(
+      "Content-Length" = "41",
+      ETag = "old",
+      "Content-MD5" = "old",
+      "X-Frame-Options" = "DENY"
+    )
+  )
+  updated <- connection_manager_document_base(response, "https://app.example/")
+  expect_null(updated$headers[["Content-Length"]])
+  expect_null(updated$headers$ETag)
+  expect_null(updated$headers[["Content-MD5"]])
+  expect_identical(updated$headers[["X-Frame-Options"]], "DENY")
+  expect_match(
+    updated$content,
+    '<base href="https://app.example/">',
+    fixed = TRUE
+  )
+})

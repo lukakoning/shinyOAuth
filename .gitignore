@@ -16,6 +16,7 @@ docs
 /revdep
 /integration/keycloak/_problems
 /integration/smart/.artifacts/
+/integration/connections/.artifacts/
 
 # Environment files (secrets)
 .env

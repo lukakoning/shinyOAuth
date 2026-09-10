@@ -1,7 +1,7 @@
 # Retained connection implementation checkpoints
 
-P3 is being delivered in independently reviewable steps. The optional manager is
-implemented; the real-browser acceptance gate remains outstanding.
+P3 is delivered in independently reviewable steps. The optional manager and the
+generic browser-retention gate are implemented for a single R process.
 `oauth_connection()` continues to follow a single module's session-scoped token.
 
 | Step | Deliverable | Status |
@@ -9,7 +9,7 @@ implemented; the real-browser acceptance gate remains outstanding.
 | P3a | Versioned encrypted credential schema and atomic memory connection store | Implemented; focused credential and lifecycle tests. |
 | P3b | Owner sessions, generation/expiry checks, browser cookie and account resolver contracts | Implemented; focused browser/account lifecycle tests. |
 | P3c | Manager UI/server, guarded callback commit, restoration, coordinated refresh and disconnect | Implemented in P3c1 (module hooks) and P3c2 (manager API), with HTTP/Shiny lifecycle regression tests. |
-| P3d | Two-site real-browser retention, owner isolation and lifecycle integration evidence | Required before marking P3 complete. |
+| P3d | Two-site real-browser retention, owner isolation and lifecycle integration evidence | Implemented: 104 Chrome assertions across query/form_post and sync/mirai, no skips. HTTP loopback development deployment; SMART repeats follow in P4/P5. |
 
 The memory store is constructed outside `server()` with
 `oauth_connection_store_memory()`. Its low-level methods accept only sealed
@@ -143,8 +143,27 @@ Protocol references reviewed for P3:
 - [Cookie port isolation limits](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5): an origin-specific cookie name does not isolate applications on different ports of the same host.
 - [Shiny session request](https://shiny.posit.co/r/reference/shiny/latest/session.html): the manager validates cookies and origin from the server request, never client-supplied Shiny inputs.
 
-The acceptance test remains actual browser navigation: connect A, navigate away
-to authorize B, return in a new Shiny session with both connections, refresh each
-independently, then disconnect B while A remains usable. Storage unit tests do not
-satisfy that gate. See the [sandbox](sandbox.md) and [Inferno](inferno.md) plans for
-the later SMART-specific repeats in P4/P5.
+The [P3d browser suite](../connections/README.md) exercises actual navigation:
+connect A, navigate away to authorize B, return in a new Shiny session with both
+connections, refresh each independently, then disconnect B while A remains usable.
+It also checks browser isolation, HttpOnly ownership, cross-site POST callbacks
+without the owner cookie, and logout through a new empty owner. Four scenarios
+cover query/form_post and synchronous/mirai transport. The run on 2026-09-10 passed
+104 assertions with no skips (Chrome 152.0.7977.83, R 4.5.1, Shiny 1.13.0, mirai
+2.7.1). Sanitized run evidence is saved by the runner and uploaded by its CI job.
+
+This gate found and fixed two integration defects: nested manager modules now use
+their full namespace when resolving HTTP continuations, and callback documents
+declare the public application base before Shiny dependencies. Callback URLs
+remain on their registered routes. `app_base_path` configures a mounted directory;
+the browser fixture exercises the default root deployment. Rewritten documents
+discard stale length/cache validators while retaining unrelated response headers.
+
+The affected callback/connection/lifecycle regression run passed 1,339 assertions
+without skips. R CMD check reported zero errors, warnings and notes. The final
+HTML-header adjustment was additionally covered by the focused manager suite
+(136 assertions, no failures or skips).
+The fixtures use explicit HTTP loopback and invented credentials. They do not
+establish TLS deployment, embedding or independent protocol conformance. See the
+[sandbox](sandbox.md) and [Inferno](inferno.md) plans for SMART-specific repeats in
+P4/P5, including real FHIR scope/context and standalone/EHR launch behavior.

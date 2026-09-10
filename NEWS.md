@@ -5,7 +5,8 @@ wrappers, separate grants per authorization, encrypted process-local retention,
 browser/account owner validation, coordinated refresh and local disconnect before
 bounded remote revocation. Managed references support `$refresh()` and resolve
 the latest stored credentials. The default remains Shiny-session retention.
-Real-browser two-site retention and SMART interoperability gates remain pending.
+Real-browser query/form_post retention tests cover both synchronous and mirai
+transport. SMART interoperability remains a separate roadmap gate.
 
 * Added `oauth_target()` and session-bound `oauth_connection()` references.
 Requests resolve current credentials, enforce exact approved resource bases,

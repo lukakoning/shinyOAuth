@@ -12,6 +12,10 @@
 #'   its public absolute URI. Required when a trusted reverse proxy changes the
 #'   apparent scheme/host. Do not trust arbitrary forwarded headers. The resolved
 #'   origin must match the manager's configured origin.
+#' @param app_base_path Public path at which the Shiny application is hosted,
+#'   default `"/"`. Must begin and end with `/`. The wrapper inserts a document
+#'   base before scripts so Shiny dependencies load from the app root even on
+#'   nested callback pages. Do not supply a separate HTML `base` element.
 #' @return A request UI function for `shinyApp(..., uiPattern = ".*")`.
 #' @details
 #' Raw GET and form POST callbacks never create or rotate an owner. A POST may
@@ -29,20 +33,51 @@ oauth_connections_ui <- function(
   base_ui,
   id,
   manager,
-  request_uri_resolver = NULL
+  request_uri_resolver = NULL,
+  app_base_path = "/"
 ) {
   connection_manager_bind(manager, id)
+  if (
+    !is_valid_string(app_base_path) ||
+      !startsWith(app_base_path, "/") ||
+      !endsWith(app_base_path, "/") ||
+      grepl("[?#]", app_base_path)
+  ) {
+    err_config("app_base_path must be an absolute application directory path")
+  }
+  app_base <- resource_binding_components(
+    paste0(manager$app_origin, app_base_path),
+    base = TRUE
+  )$url
+  app_base <- paste0(sub("/$", "", app_base), "/")
+  if (
+    !all(vapply(
+      manager$targets,
+      function(target) {
+        startsWith(
+          resource_binding_components(target$client@redirect_uri)$path,
+          app_base_path
+        )
+      },
+      logical(1)
+    ))
+  ) {
+    err_config("All managed callbacks must be inside app_base_path")
+  }
   resolver <- request_uri_resolver %||% oauth_form_post_request_uri
   if (!is.function(resolver)) {
     err_config("A request URI resolver must be a function")
   }
   clients <- lapply(manager$targets, function(target) target$client)
   names(clients) <- shiny::NS(id)(names(clients))
-  handler <- oauth_ui(
+  callback_handler <- oauth_ui(
     base_ui,
     clients = clients,
     request_uri_resolver = resolver
   )
+  handler <- function(req) {
+    connection_manager_document_base(callback_handler(req), app_base)
+  }
   state <- manager$state
   state$ui_bound <- TRUE
   ui <- function(req) {
@@ -138,6 +173,46 @@ oauth_connections_ui <- function(
       }
     )
   }
-  attr(ui, "http_methods_supported") <- attr(handler, "http_methods_supported")
+  attr(ui, "http_methods_supported") <- attr(
+    callback_handler,
+    "http_methods_supported"
+  )
   ui
+}
+
+connection_manager_document_base <- function(response, app_base) {
+  if (
+    is.null(response) ||
+      !isTRUE(response$status == 200L) ||
+      !grepl("^text/html", response$content_type, ignore.case = TRUE)
+  ) {
+    return(response)
+  }
+  html <- response$content
+  if (
+    !is.character(html) ||
+      length(html) != 1L ||
+      !grepl("<head\\b[^>]*>", html, perl = TRUE, ignore.case = TRUE) ||
+      grepl("<base\\b", html, perl = TRUE, ignore.case = TRUE)
+  ) {
+    err_config("Managed HTML must have a head and no separate base element")
+  }
+  response$content <- sub(
+    "(<head\\b[^>]*>)",
+    paste0(
+      "\\1<base href=\"",
+      htmltools::htmlEscape(app_base, attribute = TRUE),
+      "\">"
+    ),
+    html,
+    perl = TRUE,
+    ignore.case = TRUE
+  )
+  # A request-dependent UI can supply response headers. Body metadata from the
+  # original HTML no longer describes the document after adding the base tag.
+  response$headers <- response$headers[
+    !tolower(names(response$headers)) %in%
+      c("content-length", "etag", "content-md5")
+  ]
+  response
 }

@@ -553,6 +553,13 @@ oauth_module_server_impl <- function(
   # 2 Shiny module -------------------------------------------------------------
 
   shiny::moduleServer(id, function(input, output, session) {
+    # Managed modules are nested under their manager; the HTTP registry uses
+    # their full Shiny namespace. Preserve the legacy module's ID contract.
+    callback_module_id <- if (is.null(.managed)) {
+      id
+    } else {
+      sub("-$", "", session$ns(""))
+    }
     exclude_oauth_module_bookmarks(session)
     ## 2.1 Reactive values -----------------------------------------------------
 
@@ -741,7 +748,7 @@ oauth_module_server_impl <- function(
       session$userData$shinyOAuth_form_post_module_registry <-
         form_post_module_registry
     }
-    assign(id, TRUE, envir = form_post_module_registry)
+    assign(callback_module_id, TRUE, envir = form_post_module_registry)
 
     .form_post_module_registered <- function(module_id) {
       if (!is_valid_string(module_id)) {
@@ -1933,7 +1940,7 @@ oauth_module_server_impl <- function(
       }
 
       form_post_id <- parsed[[oauth_form_post_id_param]] %||% NULL
-      if (identical(form_post_id, id)) {
+      if (identical(form_post_id, callback_module_id)) {
         return(TRUE)
       }
       if (!is_valid_string(form_post_id)) {
@@ -2239,7 +2246,7 @@ oauth_module_server_impl <- function(
           )
           return(invisible(NULL))
         }
-        if (!identical(form_post_id, id)) {
+        if (!identical(form_post_id, callback_module_id)) {
           if (
             !isTRUE(.form_post_module_registered(form_post_id)) &&
               isTRUE(.mark_unclaimed_form_post_query(query_string))
@@ -2325,7 +2332,11 @@ oauth_module_server_impl <- function(
           with_otel_span(
             "shinyOAuth.form_post.bridge",
             {
-              oauth_form_post_store_take(client, id, form_post_handle)
+              oauth_form_post_store_take(
+                client,
+                callback_module_id,
+                form_post_handle
+              )
             },
             attributes = otel_client_attributes(
               client = client,

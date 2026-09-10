@@ -3,8 +3,9 @@
 The [local Docker sandbox setup](sandbox.md) uses official SMART Dev Sandbox
 components with SMART Launcher v2. Run `Rscript integration/smart/run-tests.R`
 from the repository root for the current infrastructure smoke tests. It also maps
-the planned browser and application-flow suites to P3-P5; those phases are not
-implemented yet. The [Inferno client conformance gate](inferno.md) specifies the
+the browser and application-flow suites to P3-P5. The generic P3
+[retention browser gate](../connections/README.md) now passes; SMART application
+flows remain P4/P5. The [Inferno client conformance gate](inferno.md) specifies the
 independent STU2.2 Client suite, profile matrix and required P4/P5 evidence.
 
 Protocol baseline: SMART App Launch STU 2.2 (2.2.0), checked 2026-09-10.
@@ -20,7 +21,7 @@ independent interoperability evidence.
 | New legacy sessions start without credentials | `test-smart-contracts.R`; this is not a browser retention test |
 | EHR launch requires an explicit adapter | Legacy wrapper rejects `iss`/`launch`; P5 adds registered routes |
 | Standalone metadata without SSO | `standalone-metadata.json` deliberately omits OIDC issuer/JWKS |
-| A-to-B navigation retains both connections | P3: real browser, new Shiny session, refresh each, disconnect B |
+| A-to-B navigation retains both connections | P3 implemented: real Chrome navigation, new Shiny sessions, independent refresh, owner isolation and disconnect. Query/form_post, sync/mirai; 104 assertions. |
 | Independent SMART compatibility | P4/P5: record sandbox/tool version, registration, capabilities, transport and outcome |
 
 Fixtures use `https://api.site-a.example/fhir/R4` as the approved FHIR base.
@@ -56,7 +57,8 @@ Absolute references use the same policy. Generic applications declare their
 operation scopes explicitly. There is no inferred opaque-token audience or
 SMART permission mapping. Session end releases the reference's token source.
 `test-oauth-connections.R` and `test-resource-binding.R` cover these contracts.
-Retention, store coordination and a manager-owned callback lifecycle remain P3.
+P3 now supplies the optional manager, encrypted memory store, owner validation,
+coordinated refresh and [real-browser retention evidence](retention.md).
 
 Validation for P0-P2 on Windows / R 4.5.1 (2026-09-10): the complete unit suite
 passed 11,031 assertions, with 26 browser/platform skips and three installed

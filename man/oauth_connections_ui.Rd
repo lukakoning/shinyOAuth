@@ -4,7 +4,13 @@
 \alias{oauth_connections_ui}
 \title{Handle callbacks and establish the connection owner's browser session}
 \usage{
-oauth_connections_ui(base_ui, id, manager, request_uri_resolver = NULL)
+oauth_connections_ui(
+  base_ui,
+  id,
+  manager,
+  request_uri_resolver = NULL,
+  app_base_path = "/"
+)
 }
 \arguments{
 \item{base_ui}{A Shiny UI object or request-dependent UI function.}
@@ -17,6 +23,11 @@ oauth_connections_ui(base_ui, id, manager, request_uri_resolver = NULL)
 its public absolute URI. Required when a trusted reverse proxy changes the
 apparent scheme/host. Do not trust arbitrary forwarded headers. The resolved
 origin must match the manager's configured origin.}
+
+\item{app_base_path}{Public path at which the Shiny application is hosted,
+default \code{"/"}. Must begin and end with \code{/}. The wrapper inserts a document
+base before scripts so Shiny dependencies load from the app root even on
+nested callback pages. Do not supply a separate HTML \code{base} element.}
 }
 \value{
 A request UI function for \code{shinyApp(..., uiPattern = ".*")}.

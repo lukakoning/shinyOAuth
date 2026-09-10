@@ -7,8 +7,9 @@ official [SMART Launcher v2](https://github.com/smart-on-fhir/smart-launcher-v2)
 It provides an external implementation for the SMART roadmap's
 integration tests. The current tests establish discovery, FHIR connectivity,
 sample data, required SMART 2.2 discovery fields, public signing keys and launcher
-configuration. Application authorization, retention,
-and EHR launch remain the P3-P5 gates below.
+configuration. The generic [P3 browser-retention gate](../connections/README.md)
+now passes with synthetic OAuth providers. SMART application authorization,
+the two-site sandbox repeat, and EHR launch remain the P4/P5 gates below.
 
 ## Run the smoke suite
 
@@ -117,14 +118,18 @@ The future filenames below describe planned tests, not currently skipped tests.
 | --- | --- | --- |
 | P0 supplement, now | `test-sandbox-smoke.R` and `run-tests.R` | Pinned v2 launcher and services start; required discovery fields, local public keys, R4 metadata, sample Patient data, proxy and picker work; image/capability report saved. |
 | P1 signing | Existing `../conformance/test-rs384-interop.R` and strict AS matrix | Independent RS384 verification stays required; advertised asymmetric authentication alone does not establish successful RS384 exchanges. |
-| P3 retained connections | Add a two-site Compose profile and `test-browser-retention.R` | Two isolated launcher/FHIR datasets; generic manager A-to-B navigation creates new Shiny sessions, retains both grants, refreshes each, and disconnects B only. Repeat using SMART targets after P4. |
+| P3 generic retention / P4 sandbox repeat | P3 implemented in `integration/connections/`; add a two-site Compose profile with P4's SMART targets | The generic Chrome gate passes query/form_post and sync/mirai. P4 adds two isolated launcher/FHIR datasets and repeats A-to-B navigation, independent refresh and disconnect with SMART registration, scopes and context. |
 | P4 discovery | Add `test-smart-discovery.R` | Exercise the adapter against live Launcher v2 metadata at the full FHIR base; reject missing mandatory SMART 2.2 fields in negative fixtures. |
 | P4 standalone | Add a real app fixture and `test-browser-standalone.R` | Browser consent/selection, S256 and FHIR `aud`, matching Patient retrieval, supported scopes, refresh/context continuity; identity and clinician tests require advertised SSO support. |
 | P5 EHR launch | Add `test-browser-ehr-launch.R` | Launch from the real launcher with `iss` and `launch`; clean continuation, selected patient/encounter, concurrent launch isolation, and mixed callback rejection. |
 | P4/P5 independent conformance | Add the [Inferno STU2.2 Client gate](inferno.md) and real-app driver | Separate public, symmetric and RS384 asymmetric runs, followed by EHR runs; require Inferno's request-verification results as well as browser/resource evidence. |
 | P6 and P7c | Extend site topology and browser matrix | Same-issuer resource binding and iframe/navigation/cookie behavior, with separate evidence per supported mode. |
 
-At P3-P5, expand CI path triggers to the implemented R APIs and app fixtures,
+The generic P3 gate has its own `connection-retention.yml` workflow watching R
+APIs and browser fixtures. Its fixtures make no SMART conformance claim. The
+two-site sandbox repeat is scheduled with P4 so it tests the actual SMART adapter
+and its launch parameters, rather than treating generic retention as SMART support.
+At P4/P5, expand the sandbox CI path triggers to the implemented R APIs and app fixtures,
 install the browser dependencies, and make the relevant browser suites required.
 Do not replace the existing unit, strict conformance, or Keycloak suites.
 Inferno's client suite provides independent request checks; its planned setup,

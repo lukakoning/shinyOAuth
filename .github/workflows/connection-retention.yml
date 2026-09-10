@@ -1,0 +1,58 @@
+name: Retained OAuth browser tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - R/**
+      - inst/www/**
+      - DESCRIPTION
+      - NAMESPACE
+      - integration/connections/**
+      - .github/workflows/connection-retention.yml
+  push:
+    branches: [main, master]
+    paths:
+      - R/**
+      - inst/www/**
+      - DESCRIPTION
+      - NAMESPACE
+      - integration/connections/**
+      - .github/workflows/connection-retention.yml
+
+permissions:
+  contents: read
+
+jobs:
+  retention:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NOT_CRAN: "true"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: r-lib/actions/setup-r@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        with:
+          extra-packages: |
+            local::.
+            any::testthat
+            any::webfakes
+            any::chromote
+            any::callr
+            any::withr
+            any::promises
+            any::future
+            any::mirai
+      - name: Test cross-site authorization and retained connections
+        run: Rscript integration/connections/run-tests.R
+      - name: Upload sanitized browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: connection-retention-evidence
+          path: integration/connections/.artifacts/**/evidence.json
+          include-hidden-files: true
+          if-no-files-found: ignore
