@@ -55,3 +55,8 @@ third-party server enforces these policies. The live AS fixture omits user login
 tokens, consent, discovery and resource endpoints. Keycloak's separate tests
 record its actual capabilities and known claim-validation gaps. Its rejection
 canaries must not be counted as successful combination interoperability.
+
+For SMART App Launch P4/P5, the [Inferno STU2.2 Client gate](../smart/inferno.md)
+adds external client-request verification, including an RS384 asymmetric profile.
+That gate is planned and has not run yet; it complements these cryptographic
+tests and the [Launcher v2 sandbox](../smart/sandbox.md).

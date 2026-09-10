@@ -121,11 +121,14 @@ The future filenames below describe planned tests, not currently skipped tests.
 | P4 discovery | Add `test-smart-discovery.R` | Exercise the adapter against live Launcher v2 metadata at the full FHIR base; reject missing mandatory SMART 2.2 fields in negative fixtures. |
 | P4 standalone | Add a real app fixture and `test-browser-standalone.R` | Browser consent/selection, S256 and FHIR `aud`, matching Patient retrieval, supported scopes, refresh/context continuity; identity and clinician tests require advertised SSO support. |
 | P5 EHR launch | Add `test-browser-ehr-launch.R` | Launch from the real launcher with `iss` and `launch`; clean continuation, selected patient/encounter, concurrent launch isolation, and mixed callback rejection. |
+| P4/P5 independent conformance | Add the [Inferno STU2.2 Client gate](inferno.md) and real-app driver | Separate public, symmetric and RS384 asymmetric runs, followed by EHR runs; require Inferno's request-verification results as well as browser/resource evidence. |
 | P6 and P7c | Extend site topology and browser matrix | Same-issuer resource binding and iframe/navigation/cookie behavior, with separate evidence per supported mode. |
 
 At P3-P5, expand CI path triggers to the implemented R APIs and app fixtures,
 install the browser dependencies, and make the relevant browser suites required.
 Do not replace the existing unit, strict conformance, or Keycloak suites.
+Inferno's client suite provides independent request checks; its planned setup,
+version reference, registration procedure and coverage gaps are in [inferno.md](inferno.md).
 Simulation controls and absent features are recorded as limitations, not
 alternative passing outcomes for a required feature.
 

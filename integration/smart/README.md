@@ -2,8 +2,10 @@
 
 The [local Docker sandbox setup](sandbox.md) uses official SMART Dev Sandbox
 components with SMART Launcher v2. Run `Rscript integration/smart/run-tests.R`
-from the repository root for the current infrastructure smoke tests. It also maps the planned browser
-and application-flow suites to P3-P5; those phases are not implemented yet.
+from the repository root for the current infrastructure smoke tests. It also maps
+the planned browser and application-flow suites to P3-P5; those phases are not
+implemented yet. The [Inferno client conformance gate](inferno.md) specifies the
+independent STU2.2 Client suite, profile matrix and required P4/P5 evidence.
 
 Protocol baseline: SMART App Launch STU 2.2 (2.2.0), checked 2026-09-10.
 The synthetic response files live in `tests/testthat/fixtures/smart/` so package
