@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* `OAuthToken` now exposes additional token endpoint response parameters in
+`extra_fields` (#16).
+`initial_extra_fields` preserves the initial code-exchange parameters across
+refreshes; `extra_fields` reflects only the latest successful response. Both
+lists are redacted when tokens are printed.
+
 * Added `oauth_ui()` for Shiny apps using URL-based OAuth callbacks. Wrap the
 app's existing UI with `oauth_ui(ui, id = "auth", client = client)` so
 shinyOAuth can handle the provider's response before the rest of the app loads.

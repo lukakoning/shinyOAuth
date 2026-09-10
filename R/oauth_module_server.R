@@ -159,6 +159,9 @@
 #'     the flag stays true while a token is kept, including after refresh errors.
 #'   - `auth$token`: an [OAuthToken], or `NULL` before login or after clearing
 #'     the session. Read properties with `@`, for example `auth$token@userinfo`.
+#'     Additional token response parameters are available in
+#'     `auth$token@extra_fields`; `auth$token@initial_extra_fields` preserves
+#'     the parameters from the initial code exchange across refreshes.
 #'   - `auth$error`, `auth$error_description`: the error code and available
 #'     diagnostic detail. Use your own user-facing message; these fields can
 #'     include sensitive provider information.

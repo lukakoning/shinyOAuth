@@ -82,7 +82,7 @@ testthat::test_that("refresh_token async resolves to OAuthToken directly", {
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
-          '{"access_token":"async_new_at","token_type":"Bearer","refresh_token":"async_new_rt","expires_in":60}'
+          '{"access_token":"async_new_at","token_type":"Bearer","refresh_token":"async_new_rt","expires_in":60,"encounter":null}'
         )
       )
     },
@@ -96,7 +96,9 @@ testthat::test_that("refresh_token async resolves to OAuthToken directly", {
     access_token = "old_at",
     refresh_token = "old_rt",
     expires_at = as.numeric(Sys.time()) + 10,
-    id_token = NA_character_
+    id_token = NA_character_,
+    extra_fields = list(patient = "initial-patient"),
+    initial_extra_fields = list(patient = "initial-patient")
   )
 
   p <- refresh_token(cli, token, async = TRUE, introspect = FALSE)
@@ -117,6 +119,11 @@ testthat::test_that("refresh_token async resolves to OAuthToken directly", {
   testthat::expect_true(S7::S7_inherits(val, OAuthToken))
   testthat::expect_identical(val@access_token, "async_new_at")
   testthat::expect_identical(val@refresh_token, "async_new_rt")
+  testthat::expect_identical(val@extra_fields, list(encounter = NULL))
+  testthat::expect_identical(
+    val@initial_extra_fields,
+    list(patient = "initial-patient")
+  )
 })
 
 testthat::test_that("refresh_token can fetch userinfo and optionally introspect", {

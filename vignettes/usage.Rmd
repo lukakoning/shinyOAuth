@@ -186,6 +186,43 @@ to build an `httr2` request without sending it, or pass a prepared `httr2`
 request to `perform_resource_req()`. See the
 [Spotify example](example-spotify.html) for another complete app.
 
+### Additional token response fields
+
+Some providers return extra parameters alongside the access and ID tokens.
+Read these through `auth$token@extra_fields`, using the field names documented
+by your provider.
+
+`extra_fields` contains only the additional parameters from the latest
+successful token response. A successful refresh replaces the entire list,
+even if the provider returns no extra parameters. The separate
+`initial_extra_fields` list preserves the initial successful code-exchange
+response's extra parameters across refreshes. A new login starts a new
+snapshot; clearing the session removes both lists with the token.
+
+For a provider that returns a parameter named `custom_field`:
+
+```{r, eval = FALSE}
+# Inside reactive server code, after a successful login:
+token <- auth$token
+token@extra_fields$custom_field
+token@initial_extra_fields$custom_field
+
+# Distinguish an absent field from one explicitly returned as null.
+"custom_field" %in% names(token@extra_fields)
+```
+
+The package preserves additional parameters without merging or interpreting
+them, or fetching resources automatically. Nested JSON objects, arrays, and
+explicit `null` entries remain available; form-encoded values remain strings.
+Use your provider's documentation to decide how to handle omitted or changed
+fields after refresh. The initial snapshot is historical response data, not
+proof of current access permissions.
+
+These parameters are separate from ID token claims. The `id_token_validated`
+flag applies to the ID token, not these response fields. Keep the complete
+lists out of logs and UI output because they can contain sensitive data.
+Normal `print()` and `format()` output redacts both lists.
+
 ## Provider configuration and OIDC discovery
 
 Use a built-in helper when available, such as `oauth_provider_google()`,
