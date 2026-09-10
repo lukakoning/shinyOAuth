@@ -1,0 +1,43 @@
+name: SMART sandbox smoke tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - integration/smart/**
+      - .github/workflows/smart-sandbox.yml
+  push:
+    branches: [main, master]
+    paths:
+      - integration/smart/**
+      - .github/workflows/smart-sandbox.yml
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: r-lib/actions/setup-r@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        with:
+          extra-packages: |
+            local::.
+            any::testthat
+            any::processx
+          cache-version: 1
+      - name: Start sandbox, run smoke tests, and clean up
+        run: Rscript integration/smart/run-tests.R
+      - name: Upload sandbox versions, capabilities, and results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: smart-sandbox-evidence
+          path: integration/smart/.artifacts/**/evidence.json
+          include-hidden-files: true
+          if-no-files-found: ignore

@@ -15,6 +15,7 @@ coverage.xml
 docs
 /revdep
 /integration/keycloak/_problems
+/integration/smart/.artifacts/
 
 # Environment files (secrets)
 .env
