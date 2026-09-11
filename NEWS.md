@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* SMART public registrations now rely on the advertised `client-public`
+capability without requiring `none` in the list of confidential authentication
+methods. Confidential registrations still require their advertised method.
+
 * Managed connections now support `$refresh(scopes = ...)` to request fewer
 permissions while retaining required scopes. Successful narrowing is remembered
 in encrypted storage and applied to later refreshes, including after navigation.

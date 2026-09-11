@@ -32,7 +32,9 @@
 #'   always required when identity is enabled. Unsupported comparisons fail closed.
 #' @param token_auth_style Registration type: `"public"`, `"header"` for a
 #'   symmetric secret using HTTP Basic, or `"private_key_jwt"`. Selection must
-#'   agree with advertised capabilities and authentication metadata.
+#'   agree with advertised capabilities. Confidential methods must also agree
+#'   with authentication metadata; public clients do not authenticate and need
+#'   no `"none"` entry in that metadata.
 #' @param client_secret Secret for a symmetric registration; otherwise omit.
 #' @param client_assertion_private_key,client_assertion_private_key_kid Private
 #'   signing key and registered key ID for asymmetric authentication; see
@@ -105,7 +107,9 @@ smart_target <- function(
   methods <- smart_discovery_array(metadata, "token_endpoint_auth_methods_supported")
   method <- c(public = "none", header = "client_secret_basic",
     private_key_jwt = "private_key_jwt")[[token_auth_style]]
-  if (length(methods) && !method %in% methods) {
+  # SMART lists confidential authentication methods here. Public-client support
+  # comes from client-public; the SMART metadata contract does not require none.
+  if (!identical(token_auth_style, "public") && length(methods) && !method %in% methods) {
     err_config("SMART registration authentication method is not advertised")
   }
   require_capability(if (allow_v1) "permission-v1" else "permission-v2")

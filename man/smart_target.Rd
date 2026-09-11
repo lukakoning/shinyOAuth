@@ -45,7 +45,9 @@ always required when identity is enabled. Unsupported comparisons fail closed.}
 
 \item{token_auth_style}{Registration type: \code{"public"}, \code{"header"} for a
 symmetric secret using HTTP Basic, or \code{"private_key_jwt"}. Selection must
-agree with advertised capabilities and authentication metadata.}
+agree with advertised capabilities. Confidential methods must also agree
+with authentication metadata; public clients do not authenticate and need
+no \code{"none"} entry in that metadata.}
 
 \item{client_secret}{Secret for a symmetric registration; otherwise omit.}
 

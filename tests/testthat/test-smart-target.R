@@ -34,7 +34,8 @@ test_that("SMART capability and registration selection fails before network", {
   }
   bad <- site
   bad$metadata$token_endpoint_auth_methods_supported <- list("private_key_jwt")
-  expect_error(create(bad), "method is not advertised")
+  expect_no_error(create(bad))
+  expect_error(create(bad, token_auth_style = "header", client_secret = "synthetic-secret"), "method is not advertised")
   bad <- site
   bad$metadata$token_endpoint <- "https://other.example/token"
   expect_error(create(bad), "endpoint_hosts")
@@ -44,6 +45,21 @@ test_that("SMART capability and registration selection fails before network", {
   expect_error(create(site, identity = "fhirUser"), "sso-openid-connect")
   expect_error(create(site, response_mode = "query.jwt"), "currently supports")
   expect_error(create(site, request_object_mode = "request"), "unused argument")
+})
+
+test_that("SMART public registration needs capability but no none authentication advertisement", {
+  site <- smart_target_fixture()
+  site$metadata$capabilities <- as.list(setdiff(unlist(site$metadata$capabilities), "client-confidential-asymmetric"))
+  for (methods in list(NULL, list("client_secret_basic"), list("private_key_jwt"))) {
+    site$metadata$token_endpoint_auth_methods_supported <- methods
+    target <- smart_target(site, "public-client", "https://app.example/callback",
+      scopes = c("launch/patient", "patient/Patient.r"))
+    expect_identical(target$client@provider@token_auth_style, "public")
+    expect_length(target$client@client_secret, 0L)
+  }
+  site$metadata$capabilities <- as.list(setdiff(unlist(site$metadata$capabilities), "client-public"))
+  expect_error(smart_target(site, "public-client", "https://app.example/callback",
+    scopes = c("launch/patient", "patient/Patient.r")), "capability required")
 })
 
 test_that("SMART scope and identity policies cannot be inferred or weakened", {
