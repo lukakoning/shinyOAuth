@@ -28,6 +28,11 @@ Requests select the optional TLS 1.2 minimum and use a local custom CA.
 Each algorithm runs the full flow matrix with a separately pinned server
 registration. JARM responses and the server's public JWKS use the selected
 algorithm too, exercising Python signing followed by shinyOAuth verification.
+Every successful combination runs with both GET and explicitly selected POST
+authorization. POST uses `prepare_authorization_request()` and real form-encoded
+HTTP over TLS; the independent server reports the received method and verifies
+the same signatures and transaction claims. Browser form submission itself is
+covered by the [SMART and ordinary OAuth browser gates](../smart/authorization-post.md).
 
 `test-rs384-interop.R` adds cross-language cryptographic checks using a separate
 Python process and temporary 2048- and 3072-bit RSA keys:

@@ -24,7 +24,8 @@ smart_target(
   state_store = cachem::cache_mem(max_age = 300),
   state_key = random_urlsafe(128),
   state_payload_max_age = 300,
-  label = "FHIR server"
+  label = "FHIR server",
+  authorization_method = "GET"
 )
 }
 \arguments{
@@ -76,6 +77,10 @@ modes, when present, must allow the selection.}
 \item{state_store, state_key, state_payload_max_age}{See \code{\link[=oauth_client]{oauth_client()}}.}
 
 \item{label}{Display label, default \code{"FHIR server"}; no credentials or context.}
+
+\item{authorization_method}{\code{"GET"} (default) or \code{"POST"} for the outgoing
+browser request. POST requires the discovered \code{authorize-post} capability
+and uses the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}.}
 }
 \value{
 An immutable \link{OAuthTarget}. \verb{$client} is its configured \link{OAuthClient},

@@ -20,6 +20,8 @@
 #' The helper records one-time state and creates any required PKCE and nonce
 #' values. Custom callers must preserve the browser binding and process the
 #' returning callback themselves.
+#' For an explicitly configured POST client, use [prepare_authorization_request()]
+#' instead. This URL-only helper rejects POST before storing a transaction.
 #'
 #' @param oauth_client An [OAuthClient] object.
 #' @param browser_token Browser-bound token used to tie the login attempt to the
@@ -37,6 +39,8 @@
 #'   leave this `NULL`; managed state requires manager-aware consumption.
 #' @param .smart_launch Internal per-transaction EHR launch handle supplied by
 #'   the manager. Bound to the approved target and sealed transaction context.
+#' @param .authorization_request Internal flag permitting a structured POST
+#'   result for the module and [prepare_authorization_request()].
 #'
 #' @return A length-1 string containing the authorization URL to send the user
 #'   to. When PAR is used, the returned string also carries
@@ -54,12 +58,17 @@ prepare_call <- function(
   .requested_max_age = NULL,
   .defer_build = FALSE,
   .transaction_context = NULL,
-  .smart_launch = NULL
+  .smart_launch = NULL,
+  .authorization_request = FALSE
 ) {
   # Verify input  --------------------------------------------------------------
 
   # Verify oauth_client
   S7::check_is_S7(oauth_client, OAuthClient)
+  if (!isTRUE(.defer_build) && !isTRUE(.authorization_request) &&
+      identical(oauth_client@authorization_method, "POST")) {
+    err_config("POST authorization requires prepare_authorization_request() or request_login(); prepare_call() returns a URL only")
+  }
   smart_prepare_launch(oauth_client, .transaction_context, .smart_launch)
   if (client_uses_smart(oauth_client) && !is.null(.requested_max_age)) {
     err_config("SMART remote freshness overrides are not supported")
@@ -729,7 +738,7 @@ attach_par_auth_url_metadata <- function(
   par_resp,
   issued_at = as.numeric(Sys.time())
 ) {
-  if (!is_valid_string(auth_url) || !is.list(par_resp)) {
+  if ((!is_valid_string(auth_url) && !is.list(auth_url)) || !is.list(par_resp)) {
     return(auth_url)
   }
 
@@ -808,6 +817,11 @@ build_auth_url <- function(
   .defer_publication = FALSE,
   .smart_launch = NULL
 ) {
+  # Keep request composition (PAR/JAR included) identical for both browser
+  # methods. Only the final serialization changes.
+  authorization_url_append <- function(url, params) {
+    authorization_front_channel(oauth_client, url, params)
+  }
   warn_if_request_uri_is_long <- function(request_uri) {
     request_uri_len <- nchar(enc2utf8(request_uri), type = "bytes")
 

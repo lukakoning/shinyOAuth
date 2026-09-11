@@ -1,6 +1,7 @@
 # Browser app using exported APIs for both SMART launch modes and all supported
 # registration types. Synthetic identity/context never enters general summaries.
-smart_profile_app <- function(origin, providers, async = FALSE, response_mode = "query", registration, launch) {
+smart_profile_app <- function(origin, providers, async = FALSE, response_mode = "query", registration, launch,
+  authorization_method = "GET", extra_scopes = character()) {
   if (async) {
     mirai::daemons(2L)
     on.exit(mirai::daemons(0L), add = TRUE)
@@ -9,10 +10,10 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
   targets <- lapply(c("a", "b"), function(site) {
     discovery <- shinyOAuth::smart_discover(paste0(providers[[site]], "/fhir"), allow_http_loopback = TRUE)
     args <- list(discovery = discovery, client_id = site, redirect_uri = paste0(origin, "/callback/", site),
-      scopes = c(if (launch == "standalone") "launch/patient", "patient/Patient.rs", "user/Practitioner.r", "offline_access"),
+      scopes = c(if (launch == "standalone") "launch/patient", "patient/Patient.rs", "user/Practitioner.r", "offline_access", extra_scopes),
       required_scopes = c("patient/Patient.r", "user/Practitioner.r"),
       launch = launch, identity = "fhirUser", label = paste("Site", site),
-      token_auth_style = registration$style, response_mode = response_mode,
+      token_auth_style = registration$style, response_mode = response_mode, authorization_method = authorization_method,
       authorization_server_mode = "multi_redirect_uri", authorization_server_redirect_uris = callbacks)
     if (registration$style == "header") args$client_secret <- registration$secret
     if (registration$style == "private_key_jwt") {

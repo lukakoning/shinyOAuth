@@ -6,7 +6,8 @@ retention_fixture_app <- function(
   idle_timeout = 600,
   response_mode = "query",
   shared_issuer = FALSE,
-  scope_narrowing = FALSE
+  scope_narrowing = FALSE,
+  authorization_method = "GET"
 ) {
   if (async) {
     mirai::daemons(2L)
@@ -34,6 +35,7 @@ retention_fixture_app <- function(
       redirect_uri = paste0(origin, "/callback/", if (shared_issuer) "shared" else site),
       state_key = openssl::rand_bytes(32),
       response_mode = response_mode,
+      authorization_method = authorization_method,
       authorization_server_mode = if (shared_issuer) "multi_issuer" else "multi_redirect_uri",
       authorization_server_redirect_uris = if (shared_issuer) character() else callbacks
     )

@@ -8,8 +8,8 @@ Rscript integration/smart/run-coverage.R
 ```
 
 This runs the complete package suite with browser tests enabled, independent
-Python conformance checks, the three retained-connection browser gates, the
-SMART registration/launch matrix, concurrent EHR launches, and the pinned Docker
+Python conformance checks, the retained-connection browser gates, GET and POST
+SMART registration/launch matrices, concurrent EHR launches, and the pinned Docker
 sandbox. Suites run in fresh R processes, and browser suites run sequentially.
 The runner continues after a failed suite to collect the remaining results, then
 fails if any suite failed. `--integration-only` omits the package suite when it
@@ -36,11 +36,13 @@ The Shiny parent and mirai workers must load the current installed checkout.
 | EHR launch entry, owner-bound continuation | `test-smart-launch.R` | Both the profile matrix and dedicated concurrent two-tab/two-site EHR suite exercise registered launch routes. |
 | P6 shared callback routing | `test-connection-router.R` and callback tests | One issuer, two registrations/resource paths, concurrent tabs and query/form POST, with sync/mirai. This is generic OAuth evidence. |
 | P7a refresh scope narrowing | `test-refresh-scope-narrowing.R` | Generic scope gate plus SMART semantic `.rs` to `.r` narrowing; retained limit, required permissions, refresh rotation and another unaffected connection. |
+| P7b authorization POST | `test-authorization-post.R`, Node form handler | SMART matrix with long granular scopes and fixed endpoint query; ordinary OAuth browser retention; independent Python RS256/RS384 protected combinations over TLS. See [commands and limits](authorization-post.md). |
 
 ## SMART profile browser matrix
 
 ```sh
 Rscript integration/smart/run-profiles.R
+Rscript integration/smart/run-profiles.R --post
 ```
 
 This requires **24 successful scenarios**: three registration types, two launch
@@ -62,6 +64,10 @@ development and records `complete_matrix: false`. It does not satisfy the full
 matrix. Missing prerequisites, errors, failed assertions or skipped tests fail
 the full runner. Sanitized scenario choices, versions and counts are written to
 `.artifacts/profiles-<run>/evidence.json` and uploaded by `smart-ehr.yml`.
+The POST run repeats all 24 cases with long granular scopes and verifies actual
+method and form length at the provider. Outgoing method and callback transport
+are independent. Ordinary OAuth POST is also exercised by
+`Rscript integration/connections/run-tests.R --post`.
 
 ## What the Docker sandbox can currently establish
 
@@ -93,6 +99,7 @@ status of implemented suites. A diagnostic pass cannot turn that field green.
 | Standalone, Patient/Practitioner and retained two-site connections | Not run against an external SMART server | Registered app/browser driver, two isolated datasets and accepted discovery. |
 | EHR entry for public/symmetric/RS384 registrations | Local browser coverage; external gate open | External launcher initiation plus independent request verification for each registration. |
 | SMART refresh narrowing | Local browser coverage; external gate open | Provider-supported narrowing with explicit returned scope and continuity assertions. |
+| Long authorization POST | Local SMART/OAuth browser and Python coverage; external SMART gate open | Accepted discovery advertising `authorize-post`, followed by both external launch modes and the retained two-site repeat. |
 | P6 shared issuer/resource topology | Generic strict fixture coverage | Separately configured external registrations and resource destinations. |
 | Inferno STU2.2 client suite | Not run; source metadata concern remains | Pinned deployment, compatible discovery and actual verification results, not merely issued tokens. |
 
@@ -112,7 +119,23 @@ Public clients select `client-public`; SMART's confidential authentication-metho
 list does not require a `none` entry. The public registration regression and the
 profile fixture test that distinction without weakening confidential checks.
 
-## Recorded validation, 2026-09-11
+## Recorded P7b validation, 2026-09-11
+
+| Gate | Result |
+| --- | --- |
+| Package regressions and opt-in browser checks | 12,473 assertions passed, zero failures/errors. Full package results were combined with final-source reruns of complete async/browser test files, replacing earlier results rather than double-counting them. Only the known Windows filesystem-concurrency test remains skipped. |
+| SMART outgoing POST | 24 scenarios / 480 assertions passed, zero skips; every authorization body exceeded 8 KiB. |
+| SMART GET default | 24 scenarios / 432 assertions passed, zero skips. |
+| Ordinary OAuth outgoing POST | Four browser scenarios / 120 assertions passed, zero skips, against the final installed source. |
+| Independent Python cryptographic/strict-AS suite | 379 assertions passed, zero skips, including both outgoing methods and the protected combinations. |
+| Unmodified Docker sandbox | 46 diagnostic assertions passed. Strict discovery remains unaccepted; no external SMART app-flow result is claimed. Owned containers were cleaned up. |
+| Package build/check | `R CMD check --no-tests --no-manual --ignore-vignettes`: zero errors, warnings or notes. Roxygen help, Markdown links/examples and CI YAML were also checked. |
+
+Combined package evidence is in `.artifacts/p7b-<run>/evidence.json`; browser
+matrix evidence records its outgoing method. Dependency build-version warnings
+and normal Chromote teardown EOF messages are recorded separately from failures.
+
+## Coverage follow-up baseline, 2026-09-11 (before P7b)
 
 The combined integration run used R 4.5.1, Chrome 152.0.7977.83, Node 22.16.0,
 Shiny 1.13.0, mirai 2.7.1 and Docker Engine 28.5.1. Results:

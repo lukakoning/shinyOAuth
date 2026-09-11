@@ -6,10 +6,12 @@ for (index in seq_len(nrow(cases))) {
       public_pem = openssl::write_pem(key$pubkey), private_pem = openssl::write_pem(key))
     provider_registration <- registration
     provider_registration$private_pem <- NULL
-    provider_factory <- function(site, callback) smart_profile_provider(site, callback, provider_registration, row$launch)
+    provider_factory <- function(site, callback) smart_profile_provider(site, callback, provider_registration, row$launch,
+      authorization_method, extra_scopes)
     f <- retention_browser_setup(row$async, row$response_mode, provider_factory = provider_factory,
       app_script = "integration/smart/fixture-profile-app.R", app_function = "smart_profile_app",
-      app_args = list(registration = registration, launch = row$launch))
+      app_args = list(registration = registration, launch = row$launch,
+        authorization_method = authorization_method, extra_scopes = extra_scopes))
     retention_evidence_env$chrome <- f$chrome$Browser$getVersion()$product
     browser <- f$browser
     metrics <- function(site) httr2::request(paste0(f$bases[[site]], "/metrics")) |>
@@ -69,6 +71,9 @@ for (index in seq_len(nrow(cases))) {
     for (site in c("a", "b")) {
       value <- metrics(site)
       testthat::expect_identical(value$exchanges, 1L)
+      testthat::expect_identical(value$authorization_posts, if (authorization_method == "POST") 1L else 0L)
+      testthat::expect_identical(value$authorization_gets, if (authorization_method == "GET") 1L else 0L)
+      if (authorization_method == "POST") testthat::expect_gt(value$authorization_body_bytes, 8192L)
       testthat::expect_identical(value$assertions, if (row$registration == "private_key_jwt") 1L + value$refreshes else 0L)
     }
     retention_browser_click(browser, "disconnect_b")

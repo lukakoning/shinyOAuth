@@ -210,6 +210,41 @@
     window.location.assign(String(payload.url));
   }
 
+  function handleAuthorizePost(payload){
+    if (!payload || payload.method !== 'POST' || typeof payload.url !== 'string' ||
+        !Array.isArray(payload.fields) || payload.fields.length > 256) return;
+    var endpoint;
+    try { endpoint = new URL(payload.url); } catch(e) { return; }
+    if (!/^https?:$/.test(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.hash) return;
+    var fields = payload.fields;
+    var encoded = new URLSearchParams();
+    for (var i = 0; i < fields.length; i++) {
+      var field = fields[i];
+      if (!field || typeof field.name !== 'string' || !field.name || field.name === '_charset_' ||
+          typeof field.value !== 'string' || /[\r\n]/.test(field.name + field.value)) return;
+      encoded.append(field.name, field.value);
+    }
+    if (encoded.toString().length > 131072) return;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = payload.url;
+    form.enctype = 'application/x-www-form-urlencoded';
+    form.acceptCharset = 'UTF-8';
+    form.target = '_self';
+    form.hidden = true;
+    for (var j = 0; j < fields.length; j++) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = fields[j].name;
+      input.value = fields[j].value;
+      form.appendChild(input);
+    }
+    document.body.appendChild(form);
+    // A provider extension named "submit" must not shadow the DOM method.
+    HTMLFormElement.prototype.submit.call(form);
+    form.remove();
+  }
+
   function shouldDropCallbackParam(key, value, drop, dropResponse){
     if(key === 'response') return !!dropResponse;
     return drop.indexOf(key) !== -1;
@@ -291,6 +326,7 @@
     Shiny.addCustomMessageHandler('shinyOAuth:setBrowserToken', handleSetBrowserToken);
     Shiny.addCustomMessageHandler('shinyOAuth:clearBrowserToken', handleClearBrowserToken);
     Shiny.addCustomMessageHandler('shinyOAuth:redirect', handleRedirect);
+    Shiny.addCustomMessageHandler('shinyOAuth:authorizePost', handleAuthorizePost);
     Shiny.addCustomMessageHandler('shinyOAuth:clearQueryAndFixTitle', handleClearQueryAndFixTitle);
   }
 

@@ -1,10 +1,12 @@
 # Synthetic protocol fixture for supported SMART registrations and launch modes.
 # Keys and registrations are temporary. This does not replace external testing.
-smart_profile_provider <- function(site, callback, registration, launch) {
+smart_profile_provider <- function(site, callback, registration, launch,
+  authorization_method = "GET", extra_scopes = character()) {
   state <- new.env(parent = emptyenv())
   for (name in c("launches", "codes", "access", "refresh", "assertions")) state[[name]] <- new.env(parent = emptyenv())
   state$metrics <- list(exchanges = 0L, refreshes = 0L, assertions = 0L,
-    scoped_refreshes = 0L, reads = 0L, users = 0L, searches = 0L)
+    scoped_refreshes = 0L, reads = 0L, users = 0L, searches = 0L,
+    authorization_posts = 0L, authorization_gets = 0L, authorization_body_bytes = 0L)
   decode <- function(value) openssl::base64_decode(paste0(chartr("-_", "+/", value),
     strrep("=", (4L - nchar(value) %% 4L) %% 4L)))
   signing_pem <- openssl::write_pem(openssl::rsa_keygen(2048))
@@ -19,7 +21,7 @@ smart_profile_provider <- function(site, callback, registration, launch) {
   public$alg <- "RS256"
   public$use <- "sig"
   initial_scopes <- c(if (launch == "ehr") "launch" else "launch/patient",
-    "patient/Patient.rs", "user/Practitioner.r", "offline_access", "openid", "fhirUser")
+    "patient/Patient.rs", "user/Practitioner.r", "offline_access", "openid", "fhirUser", extra_scopes)
   random <- function() unclass(as.character(openssl::sha256(openssl::rand_bytes(32))))
   base <- function(req) paste0("http://", req$get_header("Host"))
   app <- webfakes::new_app()
@@ -32,11 +34,13 @@ smart_profile_provider <- function(site, callback, registration, launch) {
   app$get("/fhir/.well-known/smart-configuration", function(req, res) {
     origin <- base(req)
     res$send_json(list(issuer = paste0(origin, "/fhir"), jwks_uri = paste0(origin, "/keys"),
-      authorization_endpoint = paste0(origin, "/authorize"), token_endpoint = paste0(origin, "/token"),
+      authorization_endpoint = paste0(origin, "/authorize",
+        if (authorization_method == "POST") "?tenant=fixture%2Bvalue%26kept" else ""),
+      token_endpoint = paste0(origin, "/token"),
       capabilities = as.list(c("launch-ehr", "launch-standalone", "client-public",
         "client-confidential-symmetric", "client-confidential-asymmetric", "sso-openid-connect",
         "permission-v2", "permission-patient", "permission-user", "permission-offline",
-        "context-ehr-patient", "context-standalone-patient")),
+        "context-ehr-patient", "context-standalone-patient", "authorize-post")),
       grant_types_supported = list("authorization_code", "refresh_token"),
       scopes_supported = as.list(initial_scopes),
       code_challenge_methods_supported = list("S256"), response_modes_supported = list("query", "form_post"),
@@ -51,8 +55,14 @@ smart_profile_provider <- function(site, callback, registration, launch) {
     res$set_status(302L)$set_header("Location", paste0(app_origin, "/launch?iss=",
       utils::URLencode(paste0(base(req), "/fhir"), reserved = TRUE), "&launch=", id))$send("")
   })
-  app$get("/authorize", function(req, res) {
-    query <- req$query
+  authorize <- function(req, res) {
+    if (!identical(toupper(req$method), authorization_method)) return(res$set_status(405L)$send("Wrong authorization method"))
+    post <- identical(toupper(req$method), "POST")
+    if (post && (!identical(req$query, list(tenant = "fixture+value&kept")) ||
+        !startsWith(req$get_header("Content-Type"), "application/x-www-form-urlencoded"))) {
+      return(res$set_status(400L)$send("Invalid authorization form transport"))
+    }
+    query <- if (post) req$form else req$query
     scopes <- if (is.character(query$scope)) strsplit(query$scope, " ", fixed = TRUE)[[1L]] else character()
     valid_launch <- if (launch == "ehr") {
       is.character(query$launch) && isTRUE(state$launches[[query$launch]])
@@ -65,11 +75,16 @@ smart_profile_provider <- function(site, callback, registration, launch) {
       return(res$set_status(400L)$send("Invalid SMART profile request"))
     }
     if (launch == "ehr") rm(list = query$launch, envir = state$launches)
+    metric <- if (post) "authorization_posts" else "authorization_gets"
+    state$metrics[[metric]] <- state$metrics[[metric]] + 1L
+    if (post) state$metrics$authorization_body_bytes <- as.integer(req$get_header("Content-Length"))
     id <- random()
     state$codes[[id]] <- list(query = query, expires = as.numeric(Sys.time()) + 120)
     res$set_type("text/html")$send(paste0('<!doctype html><html><body><h1 id="provider">Site ', site,
       '</h1><a id="approve" href="/approve?ticket=', id, '">Approve synthetic access</a></body></html>'))
-  })
+  }
+  app$get("/authorize", authorize)
+  app$post("/authorize", authorize)
   app$get("/approve", function(req, res) {
     record <- state$codes[[req$query$ticket]]
     if (is.null(record)) return(res$set_status(400L)$send("Unavailable"))

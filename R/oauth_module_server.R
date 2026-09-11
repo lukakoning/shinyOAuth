@@ -176,10 +176,13 @@
 #'   The object also supplies:
 #'
 #'   - `auth$request_login()`: start login. Waits for browser setup when needed
-#'     and does nothing if the session is already authenticated.
+#'     and does nothing if the session is already authenticated. Uses a browser
+#'     form when the client selects `authorization_method = "POST"`; the app's
+#'     Content Security Policy `form-action` must permit the provider endpoint.
 #'   - `auth$logout()`: clear the local login and attempt to revoke tokens when
 #'     supported, following `async`. It does not sign out of the provider account.
 #'   - `auth$build_auth_url()`: advanced helper for a custom login link.
+#'     Rejects POST clients; use `request_login()` for their form submission.
 #'     Creates pending login state as well as the URL, so retain the result for
 #'     the link instead of rebuilding it on every UI update.
 #'     Rotates and checks the browser binding before creating state. Returns a
@@ -1469,7 +1472,10 @@ oauth_module_server_impl <- function(
     # `values$build_auth_url()` helper.
     # @return Authorization URL string, or `NA_character_` after recording a
     #   module error.
-    .build_auth_url <- function() {
+    .build_auth_url <- function(.authorization_request = FALSE) {
+      if (!isTRUE(.authorization_request) && identical(client@authorization_method, "POST")) {
+        err_config("POST authorization requires request_login(); build_auth_url() returns a URL only")
+      }
       if (.is_authenticated_now()) {
         .warn_about_authenticated_login_request("build_auth_url")
         return(NA_character_)
@@ -1564,7 +1570,8 @@ oauth_module_server_impl <- function(
                 client, prepared, publisher)
             } else {
               prepare_call(client, values$browser_token, publisher, requested_max_age,
-                .transaction_context = managed_context, .smart_launch = managed_launch)
+                .transaction_context = managed_context, .smart_launch = managed_launch,
+                .authorization_request = .authorization_request)
             }
           },
           error = function(e) {
@@ -1666,7 +1673,7 @@ oauth_module_server_impl <- function(
     # @return Invisibly returns `TRUE` when a redirect was sent, otherwise
     #   `FALSE`.
     .redirect_to <- function(url) {
-      if (is.na(url)) {
+      if (identical(url, NA_character_)) {
         return(invisible(FALSE))
       }
       send_oauth_module_redirect(session, url)
@@ -1682,7 +1689,7 @@ oauth_module_server_impl <- function(
         return(.with_fresh_browser_token(function() .initiate_login(TRUE)))
       }
       values$pending_login <- FALSE
-      url <- .build_auth_url()
+      url <- .build_auth_url(.authorization_request = TRUE)
       epoch <- auth_operations$epoch
       redirect <- function(url) {
         if (
@@ -4702,6 +4709,10 @@ send_oauth_module_clear_browser_token <- function(
 #' @keywords internal
 #' @noRd
 send_oauth_module_redirect <- function(session, url) {
+  if (is.list(url) && identical(url$method, "POST")) {
+    session$sendCustomMessage(type = "shinyOAuth:authorizePost", message = url)
+    return(invisible(NULL))
+  }
   session$sendCustomMessage(
     type = "shinyOAuth:redirect",
     message = list(url = url)

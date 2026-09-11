@@ -662,6 +662,10 @@ state_client_policy_fingerprint <- function(client) {
     mtls_cert_thumbprint = state_policy_mtls_cert_thumbprint(client)
   )
 
+  # Preserve the fingerprint of existing GET transactions.
+  if (!identical(client@authorization_method, "GET")) {
+    components$authorization_method <- client@authorization_method
+  }
   if (client_uses_smart_scopes(client)) {
     components$scope_policy <- client@scope_policy
   }

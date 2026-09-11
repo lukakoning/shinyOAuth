@@ -28,7 +28,7 @@ permissions:
 jobs:
   ehr-browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       NOT_CRAN: "true"
     steps:
@@ -47,10 +47,15 @@ jobs:
             any::withr
             any::mirai
             any::promises
+            any::future
       - name: Test public SMART EHR launch, context and retention
         run: Rscript integration/smart/run-ehr-browser.R
       - name: Test all SMART registrations, launch modes, identity and refresh scopes
         run: Rscript integration/smart/run-profiles.R
+      - name: Test long authorization POST across the SMART browser matrix
+        run: Rscript integration/smart/run-profiles.R --post
+      - name: Test ordinary OAuth authorization POST and retained connections
+        run: Rscript integration/connections/run-tests.R --post
       - name: Upload sanitized fixture evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -59,5 +64,6 @@ jobs:
           path: |
             integration/smart/.artifacts/ehr-*/evidence.json
             integration/smart/.artifacts/profiles-*/evidence.json
+            integration/connections/.artifacts/*/evidence.json
           include-hidden-files: true
           if-no-files-found: ignore

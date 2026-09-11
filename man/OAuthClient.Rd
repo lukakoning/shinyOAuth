@@ -11,6 +11,7 @@ OAuthClient(
   endpoint_auth = list(),
   redirect_uri = character(0),
   scopes = character(0),
+  authorization_method = "GET",
   response_mode = NA_character_,
   resource = character(0),
   claims = NULL,
@@ -99,6 +100,13 @@ and path. Use HTTPS in production.}
 the available names. For OIDC (\code{issuer} set and \code{issuer_thus_oidc = TRUE}),
 shinyOAuth adds \code{"openid"} automatically if absent. The resulting set is
 used in the request and subsequent scope checks.}
+
+\item{authorization_method}{Browser method for sending the authorization
+request: \code{"GET"} (default) or \code{"POST"}. Select POST only after confirming
+provider support. It submits form fields instead of a long URL query.
+Use the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}; URL-only
+helpers reject POST. This does not select the callback \code{response_mode} or
+replace a provider's PAR or signed Request Object requirements.}
 
 \item{response_mode}{How the provider returns the login result. Leave \code{NULL}
 (default) for a normal callback with parameters in the URL; no

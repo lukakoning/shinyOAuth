@@ -47,6 +47,9 @@
 #'   relative to this target's FHIR base, such as `"Practitioner/example"`.
 #' @param allow_v1 Explicit compatibility flag enabling `.read`, `.write` and
 #'   `.*`; requires the advertised `permission-v1` capability. Default `FALSE`.
+#' @param authorization_method `"GET"` (default) or `"POST"` for the outgoing
+#'   browser request. POST requires the discovered `authorize-post` capability
+#'   and uses the module's `request_login()` or [prepare_authorization_request()].
 #' @param response_mode `NULL`, `"query"`, or `"form_post"`. Advertised response
 #'   modes, when present, must allow the selection.
 #' @param authorization_server_mode,authorization_server_redirect_uris See
@@ -79,7 +82,7 @@ smart_target <- function(
   authorization_server_redirect_uris = character(),
   state_store = cachem::cache_mem(max_age = 300),
   state_key = random_urlsafe(128), state_payload_max_age = 300,
-  label = "FHIR server"
+  label = "FHIR server", authorization_method = "GET"
 ) {
   token_auth_style <- match.arg(token_auth_style)
   launch <- match.arg(launch)
@@ -102,6 +105,7 @@ smart_target <- function(
     if (!value %in% capabilities) err_config(paste("SMART capability required:", value))
   }
   require_capability(paste0("launch-", launch))
+  if (identical(authorization_method, "POST")) require_capability("authorize-post")
   require_capability(c(public = "client-public", header = "client-confidential-symmetric",
     private_key_jwt = "client-confidential-asymmetric")[[token_auth_style]])
   methods <- smart_discovery_array(metadata, "token_endpoint_auth_methods_supported")
@@ -197,6 +201,7 @@ smart_target <- function(
   )
   client <- oauth_client(provider, client_id = client_id, client_secret = client_secret,
     redirect_uri = redirect_uri, scopes = scopes, response_mode = response_mode,
+    authorization_method = authorization_method,
     authorization_server_mode = authorization_server_mode,
     authorization_server_redirect_uris = authorization_server_redirect_uris,
     client_assertion_private_key = client_assertion_private_key,
@@ -208,9 +213,11 @@ smart_target <- function(
     state_payload_max_age = state_payload_max_age)
   client@scope_policy <- list(profile = "smart", version = 1L, allow_v1 = allow_v1,
     required_scopes = required_scopes)
-  client@smart <- list(version = "2.2.0", fhir_base = discovery$fhir_base,
+  smart_policy <- list(version = "2.2.0", fhir_base = discovery$fhir_base,
     launch = launch, identity = identity, allow_http_loopback = discovery$allow_http_loopback,
     discovery_digest = state_policy_digest(discovery))
+  if (identical(authorization_method, "POST")) smart_policy$authorization_method <- "POST"
+  client@smart <- smart_policy
   oauth_target(client, c(fhir = discovery$fhir_base), required_scopes, label)
 }
 
@@ -219,8 +226,9 @@ client_uses_smart <- function(client) length(client@smart) > 0L
 smart_validate_client <- function(client) {
   if (!client_uses_smart(client)) return(NULL)
   policy <- client@smart
-  if (!identical(sort(names(policy)), sort(c("version", "fhir_base", "launch",
+  if (!identical(sort(setdiff(names(policy), "authorization_method")), sort(c("version", "fhir_base", "launch",
       "identity", "allow_http_loopback", "discovery_digest"))) ||
+      !identical(policy$authorization_method %||% "GET", client@authorization_method) ||
       !identical(policy$version, "2.2.0") ||
       !is_valid_string(policy$fhir_base) ||
       !is_valid_string(policy$launch) || !policy$launch %in% c("standalone", "ehr") ||

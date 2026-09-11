@@ -1,6 +1,9 @@
 # Run from the repository root after installing this checkout.
 run_smart_profiles <- function(args = commandArgs(trailingOnly = TRUE)) {
-  if (!all(args %in% "--quick")) stop("Usage: Rscript integration/smart/run-profiles.R [--quick]")
+  if (!all(args %in% c("--quick", "--post"))) stop("Usage: Rscript integration/smart/run-profiles.R [--quick] [--post]")
+  authorization_method <- if ("--post" %in% args) "POST" else "GET"
+  extra_scopes <- if (authorization_method == "POST") paste0(
+    "patient/Observation.rs?code=https://example.test/synthetic-codes|observation-", seq_len(32)) else character()
   packages <- c("shinyOAuth", "shiny", "webfakes", "httpuv", "chromote", "callr",
     "testthat", "httr2", "jsonlite", "curl", "withr", "mirai", "promises", "jose", "openssl")
   for (package in packages) if (!requireNamespace(package, quietly = TRUE)) stop("Missing package: ", package)
@@ -15,7 +18,8 @@ run_smart_profiles <- function(args = commandArgs(trailingOnly = TRUE)) {
   output <- file.path("integration/smart/.artifacts", paste0("profiles-", format(Sys.time(), "%Y%m%d-%H%M%S")))
   dir.create(output, recursive = TRUE)
   evidence <- list(gate = "SMART profile browser matrix", status = "failed", external_conformance = FALSE,
-    complete_matrix = !length(args), scenarios = cases, server = "strict synthetic SMART fixture",
+    complete_matrix = !"--quick" %in% args, scenarios = cases, server = "strict synthetic SMART fixture",
+    authorization_method = authorization_method, extra_scope_count = length(extra_scopes),
     transport = "HTTP loopback development exception", identity = "validated fhirUser distinct from Patient",
     versions = setNames(lapply(packages, function(p) as.character(utils::packageVersion(p))), packages))
   on.exit({

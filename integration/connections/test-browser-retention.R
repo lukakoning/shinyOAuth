@@ -9,7 +9,10 @@ for (index in seq_len(nrow(cases))) {
   testthat::test_that(
     paste("two-site browser retention", response_mode, "async =", async),
     {
-      f <- retention_browser_setup(async, response_mode)
+      f <- retention_browser_setup(async, response_mode,
+        provider_factory = function(site, callback) retention_fixture_provider(site, callback,
+          authorization_method = authorization_method),
+        app_args = list(authorization_method = authorization_method))
       retention_evidence_env$chrome <- f$chrome$Browser$getVersion()$product
       browser <- f$browser
       initial <- retention_browser_snapshot(browser)
@@ -139,6 +142,8 @@ for (index in seq_len(nrow(cases))) {
       })
       for (site in c("a", "b")) {
         testthat::expect_identical(metrics[[site]]$exchanges, 1L)
+        testthat::expect_identical(metrics[[site]]$authorization_posts, if (authorization_method == "POST") 1L else 0L)
+        testthat::expect_identical(metrics[[site]]$authorization_gets, if (authorization_method == "GET") 1L else 0L)
         testthat::expect_identical(metrics[[site]]$refreshes, 1L)
         testthat::expect_gte(metrics[[site]]$requests, 2L)
       }

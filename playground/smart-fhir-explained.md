@@ -516,6 +516,21 @@ none of the current results establishes complete SMART support. Also, this
 sandbox allows uncredentialed FHIR reads, so successfully fetching a test Patient
 alone would not prove that authorization was enforced.
 
+**Long permission requests can now travel in a browser form.**
+
+Usually the app opens a provider URL containing the requested permissions.
+SMART can have long lists of precise permissions, which can make that URL too
+large. Selecting `authorization_method = "POST"` puts the outgoing parameters
+in a form body. The provider still shows its login/consent screen, and the same
+state and PKCE checks still protect the returning result. SMART requires the
+server to advertise `authorize-post` before we enable this setting.
+
+The connection manager's normal connect action handles this for you. There is
+no new connection object to manage. `response_mode = "form_post"` means something
+different: it controls the return trip from the provider. You can choose either
+callback format with the new outgoing POST setting. The default remains GET.
+See [examples and tests](../integration/smart/authorization-post.md).
+
 **For application code, the benefit is fewer pieces to pair manually.**
 
 Here is a small illustration using existing APIs, not a complete runnable app.

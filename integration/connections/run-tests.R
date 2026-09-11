@@ -1,5 +1,7 @@
 # Run from the repository root after installing the current package checkout.
-run_retention_browser_tests <- function() {
+run_retention_browser_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
+  if (!all(args %in% "--post")) stop("Usage: Rscript integration/connections/run-tests.R [--post]")
+  authorization_method <- if ("--post" %in% args) "POST" else "GET"
   required <- c(
     "shinyOAuth",
     "shiny",
@@ -34,6 +36,7 @@ run_retention_browser_tests <- function() {
   dir.create(artifacts, recursive = TRUE)
   evidence <- list(
     gate = "P3d",
+    authorization_method = authorization_method,
     status = "failed",
     transport = "HTTP loopback development exception",
     provider = "synthetic PKCE and rotating-refresh fixture; not independent conformance",

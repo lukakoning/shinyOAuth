@@ -176,6 +176,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
+        if urlsplit(self.path).path == '/authorize':
+            self.send_header('X-Fixture-Authorization-Method', self.command)
         if location:
             self.send_header('Location', location)
         self.end_headers()
@@ -192,6 +194,8 @@ class Handler(BaseHTTPRequestHandler):
             path = urlsplit(self.path).path
             query = urlsplit(self.path).query
             if self.command == 'POST':
+                require(self.headers.get('Content-Type', '').split(';', 1)[0].lower() ==
+                        'application/x-www-form-urlencoded', 'form_content_type')
                 size = int(self.headers.get('Content-Length', '0'))
                 require(0 < size < 65536, 'body_size')
                 query = self.rfile.read(size).decode()

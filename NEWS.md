@@ -1,5 +1,12 @@
 # shinyOAuth (development version)
 
+* Added explicit `authorization_method = "POST"` for long browser authorization
+requests. SMART targets require advertised `authorize-post`; GET remains the
+default. Shiny submits a form automatically, while custom callers can use
+`prepare_authorization_request()`. Transaction binding and configured PAR/JAR
+requirements are preserved. Tests cover the SMART/OAuth browser matrices and
+independent Python verification of protected POST combinations over TLS.
+
 * Added a 24-scenario SMART browser matrix covering standalone/EHR launch,
 public/HTTP Basic/RS384 registrations, query/form POST, synchronous/mirai
 transport, signed identity and retained scope narrowing. A combined coverage

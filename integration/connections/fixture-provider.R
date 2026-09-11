@@ -1,6 +1,7 @@
 # Synthetic OAuth provider for the browser-retention gate, bound to loopback.
 # This verifies real HTTP, PKCE and credential rotation; it is not conformance tooling.
-retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, scope_narrowing = FALSE) {
+retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, scope_narrowing = FALSE,
+  authorization_method = "GET") {
   registrations <- if (shared_issuer) c("a", "b") else site
   original_scopes <- if (scope_narrowing) c("read", "write") else "read"
   state <- new.env(parent = emptyenv())
@@ -14,7 +15,9 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, sc
     revocations = 0L,
     scoped_refreshes = 0L,
     omitted_refreshes = 0L,
-    writes = 0L
+    writes = 0L,
+    authorization_posts = 0L,
+    authorization_gets = 0L
   )
   random <- function() {
     unclass(as.character(openssl::sha256(openssl::rand_bytes(32))))
@@ -40,8 +43,14 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, sc
     res$set_header("Referrer-Policy", "no-referrer")
     "next"
   })
-  app$get("/authorize", function(req, res) {
-    query <- req$query
+  authorize <- function(req, res) {
+    if (!identical(toupper(req$method), authorization_method)) return(res$set_status(405L)$send("Wrong authorization method"))
+    post <- identical(toupper(req$method), "POST")
+    if (post && (length(req$query) ||
+        !startsWith(req$get_header("Content-Type"), "application/x-www-form-urlencoded"))) {
+      return(res$set_status(400L)$send("Invalid authorization form transport"))
+    }
+    query <- if (post) req$form else req$query
     if (
       !query$client_id %in% registrations ||
         !identical(query$redirect_uri, callback) ||
@@ -55,6 +64,8 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, sc
       return(res$set_status(400L)$send("Invalid fixture authorization"))
     }
     code <- random()
+    metric <- if (post) "authorization_posts" else "authorization_gets"
+    state$metrics[[metric]] <- state$metrics[[metric]] + 1L
     state$codes[[code]] <- list(
       query = query,
       expires = as.numeric(Sys.time()) + 120
@@ -66,7 +77,9 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, sc
       code,
       '">Approve synthetic access</a></body></html>'
     ))
-  })
+  }
+  app$get("/authorize", authorize)
+  app$post("/authorize", authorize)
   app$get("/approve", function(req, res) {
     ticket <- req$query$ticket
     record <- state$codes[[ticket]]

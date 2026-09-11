@@ -19,9 +19,11 @@ run_smart_coverage <- function(args = commandArgs(trailingOnly = TRUE)) {
   suites <- list(
     conformance = c("integration/conformance/run-tests.R"),
     retention = c("integration/connections/run-tests.R"),
+    oauth_authorization_post = c("integration/connections/run-tests.R", "--post"),
     shared_callbacks = c("integration/connections/run-shared-router.R"),
     refresh_scopes = c("integration/connections/run-scope-narrowing.R"),
     smart_profiles = c("integration/smart/run-profiles.R"),
+    smart_authorization_post = c("integration/smart/run-profiles.R", "--post"),
     ehr_concurrency = c("integration/smart/run-ehr-browser.R"),
     sandbox = c("integration/smart/run-tests.R", if ("--require-external" %in% args) "--require-compatible-discovery")
   )

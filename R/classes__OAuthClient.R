@@ -50,6 +50,12 @@
 #'   shinyOAuth adds `"openid"` automatically if absent. The resulting set is
 #'   used in the request and subsequent scope checks.
 #'
+#' @param authorization_method Browser method for sending the authorization
+#'   request: `"GET"` (default) or `"POST"`. Select POST only after confirming
+#'   provider support. It submits form fields instead of a long URL query.
+#'   Use the module's `request_login()` or [prepare_authorization_request()]; URL-only
+#'   helpers reject POST. This does not select the callback `response_mode` or
+#'   replace a provider's PAR or signed Request Object requirements.
 #' @param response_mode How the provider returns the login result. Leave `NULL`
 #'   (default) for a normal callback with parameters in the URL; no
 #'   `response_mode` parameter is then sent. Use `"query"` to request that
@@ -497,6 +503,7 @@ OAuthClient <- S7::new_class(
     endpoint_auth = S7::new_property(S7::class_list, default = list()),
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
+    authorization_method = S7::new_property(S7::class_character, default = "GET"),
     # Authorization response mode for authorization-code callbacks.
     response_mode = S7::new_property(
       S7::class_character,
@@ -810,6 +817,7 @@ oauth_client <- function(
   trusted_id_token_audiences = character(0),
   compare_callback_issuer = NULL,
   client_assertion_typ = "JWT",
+  authorization_method = "GET",
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(
@@ -1087,6 +1095,7 @@ oauth_client <- function(
     redirect_uri = redirect_uri,
     scopes = scopes,
     response_mode = response_mode,
+    authorization_method = authorization_method,
     resource = resource,
     claims = claims,
     enforce_callback_issuer = isTRUE(resolved_enforce_callback_issuer),
@@ -1381,6 +1390,10 @@ oauth_client_validate <- function(self) {
       "OAuthClient: authorization_server_mode must be one of ",
       paste(sQuote(authorization_server_modes), collapse = ", ")
     ))
+  }
+  if (!is_valid_string(self@authorization_method) ||
+      !self@authorization_method %in% c("GET", "POST")) {
+    return("OAuthClient: authorization_method must be GET or POST")
   }
   response_mode_info <- resolve_auth_response_mode(
     self@response_mode,

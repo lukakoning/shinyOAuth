@@ -63,7 +63,13 @@ run_strict_as <- function(alg) {
   )
   browser <- strrep("ab", 64)
   get <- function(url) {
-    httr2::request(url) |>
+    if (is.list(url)) {
+      fields <- stats::setNames(lapply(url$fields, `[[`, "value"),
+        vapply(url$fields, `[[`, "", "name"))
+      testthat::expect_identical(url$method, "POST")
+      request <- do.call(httr2::req_body_form, c(list(httr2::request(url$url)), fields))
+    } else request <- httr2::request(url)
+    request |>
       httr2::req_options(
         cainfo = file.path(root, "ca.pem"),
         followlocation = FALSE
@@ -124,7 +130,7 @@ run_strict_as <- function(alg) {
   replay <- get(url)
   testthat::expect_identical(httr2::resp_body_json(replay)$reason, "jar_replay")
 
-  for (mode in c(
+  for (authorization_method in c("GET", "POST")) for (mode in c(
     "dpop",
     "dpop-par",
     "mtls",
@@ -193,9 +199,13 @@ run_strict_as <- function(alg) {
         profile == "oauth21"
       )
     }
-    url <- shinyOAuth::prepare_call(configured, browser_token = browser)
+    configured@authorization_method <- authorization_method
+    url <- if (authorization_method == "POST") {
+      shinyOAuth::prepare_authorization_request(configured, browser_token = browser)
+    } else shinyOAuth::prepare_call(configured, browser_token = browser)
     response <- get(url)
     testthat::expect_identical(httr2::resp_status(response), 302L, info = mode)
+    testthat::expect_identical(httr2::resp_header(response, "x-fixture-authorization-method"), authorization_method)
     callback <- query(httr2::resp_header(response, "location"))
     if (mode != "jarm" && !jwt_profile) {
       state <- shinyOAuth:::state_payload_decrypt_validate(

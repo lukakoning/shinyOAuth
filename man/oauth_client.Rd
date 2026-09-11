@@ -59,6 +59,7 @@ oauth_client(
   trusted_id_token_audiences = character(0),
   compare_callback_issuer = NULL,
   client_assertion_typ = "JWT",
+  authorization_method = "GET",
   ...
 )
 }
@@ -532,6 +533,13 @@ provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.
 The explicit type is recommended; it does not replace audience validation.
 This setting does not change JAR, JARM, ID token or DPoP types, or the
 OAuth form parameter \code{client_assertion_type}.}
+
+\item{authorization_method}{Browser method for sending the authorization
+request: \code{"GET"} (default) or \code{"POST"}. Select POST only after confirming
+provider support. It submits form fields instead of a long URL query.
+Use the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}; URL-only
+helpers reject POST. This does not select the callback \code{response_mode} or
+replace a provider's PAR or signed Request Object requirements.}
 
 \item{...}{Deprecated renamed arguments accepted temporarily for backward
 compatibility.}
