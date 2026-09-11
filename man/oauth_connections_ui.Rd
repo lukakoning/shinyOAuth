@@ -9,7 +9,8 @@ oauth_connections_ui(
   id,
   manager,
   request_uri_resolver = NULL,
-  app_base_path = "/"
+  app_base_path = "/",
+  launch_routes = list()
 )
 }
 \arguments{
@@ -28,6 +29,9 @@ origin must match the manager's configured origin.}
 default \code{"/"}. Must begin and end with \code{/}. The wrapper inserts a document
 base before scripts so Shiny dependencies load from the app root even on
 nested callback pages. Do not supply a separate HTML \code{base} element.}
+
+\item{launch_routes}{List of \code{\link[=smart_launch_route]{smart_launch_route()}} configurations, empty by
+default. EHR entry requires browser retention and top-level navigation.}
 }
 \value{
 A request UI function for \code{shinyApp(..., uiPattern = ".*")}.

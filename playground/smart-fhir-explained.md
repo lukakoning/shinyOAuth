@@ -1,7 +1,8 @@
 **SMART/FHIR and the new shinyOAuth components, in plain language**
 
-This explains the implementation on `smart_fhir` through P4a (`cfc681a0`), as of
-2026-09-10. Examples use invented hospitals and people. The detailed
+This explains the implementation on `smart_fhir` through P5a, as of
+2026-09-11. Some P4 and P5 release tests remain open, as listed below.
+Examples use invented hospitals and people. The detailed
 [roadmap](smart-fhir-roadmap.md) contains the implementation plan; this document
 explains the ideas behind it.
 
@@ -9,7 +10,8 @@ explains the ideas behind it.
 authorizations and, when configured to do so, remember them across navigation.**
 We are also adding SMART rules so those authorizations can be used consistently
 with healthcare systems. The general connection manager is built. SMART
-discovery is built. The complete SMART app workflow is still being implemented.
+discovery, permission checks and context helpers are built. EHR launch now works
+in our browser test app; independent SMART compatibility tests remain open.
 
 There are two related jobs here: remembering permissions safely, and
 understanding the healthcare-specific meaning of those permissions. Much of the
@@ -74,8 +76,10 @@ A **scope** is a named permission requested by the app. A SMART scope such as
 `patient/Observation.rs` requests read and search access to Observations in the
 patient context. SMART gives those parts a meaning: `.r` is read and `.s` is
 search. It also defines equivalent ways to express permissions. Our generic
-OAuth code currently compares scope strings literally; implementing SMART's
-meaning-aware comparisons is the next item, P4b.
+OAuth code compares scope strings literally. A `smart_target()` now selects
+SMART's permission rules: for example, separate `.r` and `.s` grants together
+cover `.rs`. Required permissions must be granted; a refresh cannot silently
+gain permissions that the preceding token did not have.
 [SMART scopes](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html)
 
 There are also two ways an interactive SMART app can start:
@@ -85,8 +89,9 @@ There are also two ways an interactive SMART app can start:
   record system, perhaps while viewing a patient's chart. The EHR supplies
   launch information so authorization can establish the relevant context.
 
-Both use OAuth. Our remaining P4 work covers standalone support; P5 adds EHR
-launch. These names describe how the app starts, not where its R code runs.
+Both use OAuth. P4 supplies the SMART target, scopes and context rules. P5a adds
+EHR entry and browser tests; external conformance runs remain scheduled in P4/P5.
+These names describe how the app starts, not where its R code runs.
 [SMART launch modes](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html)
 
 **The problem we set out to solve is easiest to see with two hospitals.**
@@ -340,7 +345,7 @@ This is why the design keeps local ownership, external identity, target and
 patient context separate. Automatically treating a returned patient ID as the
 local user would give it a meaning it does not have.
 
-**We already preserve extra token fields; interpreting them is separate work.**
+**Raw token fields and the current patient context serve different purposes.**
 
 At the start of this roadmap, `OAuthToken` already exposed
 `initial_extra_fields`, the original additional response fields, and
@@ -348,11 +353,18 @@ At the start of this roadmap, `OAuthToken` already exposed
 code inspect a returned `patient` value. It does not make that value an OIDC
 identity claim or automatically associate it with another hospital.
 
-P3's encrypted storage preserves those fields. The remaining SMART context work
-will add a separate interpreted view: for example, retaining established patient
-context when a refresh omits it, while treating an explicit context change
-differently. Reading a raw field today does not mean those future context rules
-are already implemented.
+P3's encrypted storage preserves those fields. P4d1 now adds an interpreted view,
+returned by `smart_context(connection)`. It keeps the established patient when
+a refresh omits that field. An explicit change updates the context revision.
+The app should associate displayed patient data with both the connection ID and
+that revision, so old results do not remain on screen under a new patient.
+
+`smart_patient(connection)` reads the selected Patient from that connection's
+approved FHIR base after checking read permission. `smart_fhir_user(connection)`
+reads the authenticated user's resource when validated identity and suitable
+permission are available. These helpers do not equate the patient with the user.
+This is token-response context handling; it does not automatically follow the
+clinician switching charts in the EHR.
 
 **SMART discovery is the first healthcare-specific API we have added.**
 
@@ -366,8 +378,14 @@ conditional on the server's advertised SSO support.
 Discovery is like reading the service's configuration sheet. It does not
 register our app, obtain a token, select a patient or prove that every advertised
 feature works. Our registration with the hospital still supplies client-specific
-settings. The future `smart_target()` adapter will connect the validated
-configuration and SMART rules to the existing authorization engine.
+settings. `smart_target()` now connects that configuration and SMART rules to the
+existing authorization engine. It builds the same `OAuthTarget` used by the
+manager, with explicit healthcare-specific settings; it is not another class.
+
+For example, the target supplies the FHIR base as OAuth's SMART `aud` parameter,
+requires S256 PKCE, and chooses the hospital's registered client authentication
+method. Asking for `identity = "fhirUser"` also enables validated OIDC identity.
+The app must configure a compatible registration; discovery cannot invent one.
 
 The reader checks approved endpoint hosts, refuses redirects and malformed
 metadata, and requires the specified PKCE and conditional metadata fields.
@@ -381,11 +399,32 @@ keeps its private key, and the service uses a registered public key to check
 the proof. This identifies the app; the person's login is a separate step.
 RS384 is a particular digital-signature algorithm used for that
 proof. We implemented and independently tested it in the generic signing code.
-Existing RSA signing defaults remain unchanged. The future SMART adapter must
-still select a compatible key and algorithm using the registration and server
-metadata. Signing support alone does not establish a working SMART integration.
+Existing RSA signing defaults remain unchanged. The SMART target checks the
+configured key and algorithm against the registration and server metadata.
+Signing support alone does not establish a working SMART integration.
 The existing [cryptographic tests](../integration/conformance/README.md) describe
 the independent verification.
+
+**An EHR launch is an invitation to start authorization, not a patient record.**
+
+Imagine Sam clicks our app while viewing Alex's chart. The EHR opens our registered
+`/launch` URL with its FHIR address (`iss`) and a temporary opaque handle (`launch`).
+The handle means something to that hospital; our app cannot read a patient identity
+from it. `smart_launch_route()` lists which configured hospitals that URL accepts.
+It returns a small configuration list, not a new R6 object.
+
+The manager matches the approved hospital, briefly stores the handle encrypted,
+and gives this browser a one-use continuation ticket. Shiny then starts ordinary
+OAuth authorization, sending the hospital its handle along with fresh state and
+PKCE. The accepted token response supplies the resulting patient context.
+The new grant becomes another connection. Launching a second hospital in another
+tab keeps each handle, permission grant and patient context separate.
+
+The continuation ticket is internal shinyOAuth plumbing needed to carry the
+launch across HTTP navigation into a Shiny session. SMART defines `iss` and
+`launch`; it does not define our ticket or connection objects. Once consumed,
+the handle cannot start another authorization: the person launches again from
+the EHR. See the [EHR setup and tests](../integration/smart/ehr-launch.md).
 
 **What is built, and what remains.**
 
@@ -405,7 +444,7 @@ the independent verification.
 | Interpreted patient/context handling and Patient/`fhirUser` helpers | P4d1 built; refresh preserves omitted context and marks context changes with a revision. Experimental context remains raw data. |
 | Complete standalone SMART app, browser scenarios and two-hospital sandbox repeat | Planned: P4e. |
 | Inferno standalone client conformance runs | Planned: P4f. |
-| EHR launch entry routes | Planned: P5. |
+| EHR launch entry routes | P5a built and browser-tested for public registrations, query/form_post and sync/mirai. Browser retention, top-level navigation and one R process are required. P5b external/profile gates remain open. |
 | Shared callback conveniences, optional extensions and deployment/store adapters | Later roadmap items. |
 
 **The Docker tests have already found a useful compatibility problem.**
@@ -463,7 +502,7 @@ Here `fhir` is the app's local name for an approved API base. `Patient/123` is
 an illustrative explicit resource path, not automatically selected patient
 context. The request uses the chosen connection's matching client, current token
 and base URL. The server still enforces actual access; the app must declare any
-required operation scopes. The future SMART helpers will supply the additional
+required operation scopes. The SMART helpers supply the additional
 healthcare-specific interpretation.
 
 For actual manager setup, including retained owner/store/key configuration and

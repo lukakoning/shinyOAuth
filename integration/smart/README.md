@@ -5,11 +5,12 @@ components with SMART Launcher v2. Run `Rscript integration/smart/run-tests.R`
 from the repository root after installing this checkout for infrastructure smoke
 tests and P4a's SMART discovery tests. It also maps
 the browser and application-flow suites to P3-P5. The generic P3
-[retention browser gate](../connections/README.md) now passes; SMART application
-flows remain P4/P5. The [Inferno client conformance gate](inferno.md) specifies the
+[retention browser gate](../connections/README.md) now passes. P5a adds a
+[SMART EHR browser app and tests](ehr-launch.md), using strict synthetic servers.
+The [Inferno client conformance gate](inferno.md) specifies the
 independent STU2.2 Client suite, profile matrix and required P4/P5 evidence.
 
-Protocol baseline: SMART App Launch STU 2.2 (2.2.0), checked 2026-09-10.
+Protocol baseline: SMART App Launch STU 2.2 (2.2.0), checked 2026-09-11.
 The synthetic response files live in `tests/testthat/fixtures/smart/` so package
 tests can also consume them. They contain invented credentials and context.
 They characterize generic OAuth behavior; they are not a SMART server or
@@ -20,9 +21,11 @@ independent interoperability evidence.
 | Token extension snapshots and literal OAuth scopes | `test-smart-contracts.R`, `test-token-extra-fields.R` |
 | Distinct routes; issuer-identified shared routes | `test-callback-registry.R`, `test-callback-iss-validation.R` |
 | New legacy sessions start without credentials | `test-smart-contracts.R`; this is not a browser retention test |
-| EHR launch requires an explicit adapter | Legacy wrapper rejects `iss`/`launch`; P5 adds registered routes |
+| EHR launch requires an explicit adapter | Legacy wrapper rejects `iss`/`launch`; P5a adds `smart_launch_route()` to the manager wrapper |
 | Standalone metadata without SSO | `standalone-metadata.json` deliberately omits OIDC issuer/JWKS |
-| SMART discovery API | P4a `smart_discover()` implemented; live Launcher v2 rejected because its asymmetric algorithm advertisement is missing. Positive external gate remains open. Unit and HTTP fixtures validate the reader; registration selection remains P4c. |
+| SMART discovery API | P4a `smart_discover()` implemented; live Launcher v2 rejected because its asymmetric algorithm advertisement is missing. Positive external gate remains open. Unit and HTTP fixtures validate the reader. |
+| SMART registration, scopes and context | P4b/P4c1/P4d1 implemented; `smart_target()` opts into explicit SMART checks and interpreted refresh context |
+| EHR entry and retained Patient reads | P5a `run-ehr-browser.R`: concurrent two-site launch, query/form_post, sync/mirai, Patient binding, refresh, owner isolation and logout; fixture evidence only |
 | A-to-B navigation retains both connections | P3 implemented: real Chrome navigation, new Shiny sessions, independent refresh, owner isolation and disconnect. Query/form_post, sync/mirai; 104 assertions. |
 | Independent SMART compatibility | P4/P5: record sandbox/tool version, registration, capabilities, transport and outcome |
 
@@ -31,7 +34,8 @@ Discovery belongs at its `/.well-known/smart-configuration` suffix. A second
 base on the same host must remain a separate resource binding. SMART `.rs` is
 semantically equivalent to separate `.r` and `.s` grants; generic OAuth clients
 continue comparing the literal tokens. A refresh without context must preserve
-raw initial extras while replacing latest extras. Interpreted context is P4.
+raw initial extras while replacing latest extras. P4d1 separately preserves
+interpreted context when omitted and exposes changes through its revision.
 
 Sources checked online:
 
@@ -48,9 +52,9 @@ P1 adds RS384 using jose's explicit `size = 384`, verified independently with
 OpenSSL for assertions, JAR and DPoP. RSA defaults stay RS256. Its internal
 structured preparation exposes exact outgoing state even with PAR, and binds
 data-only manager context to the pending transaction. Legacy callbacks cannot
-consume managed context; owner/session lifecycle is still a P3 requirement.
+consume managed context; P3 supplies owner/session lifecycle checks.
 The scope evaluator defaults to versioned literal OAuth coverage; SMART
-semantics remain P4.
+semantics are selected explicitly by `smart_target()` in P4b/P4c1.
 
 P4a adds `smart_discover()` with a plain list result containing the exact FHIR
 base, discovery URL, validated metadata, version baseline and host policy. It
@@ -81,9 +85,11 @@ the package check reported zero errors, warnings and notes. The runner removed
 its isolated containers and data volume on exit.
 
 P4a protocol sources rechecked on 2026-09-10: the SMART 2.2 conformance page and
-asymmetric authentication profile linked above. The remaining P4 items cover
-scope semantics, the standalone target and its registration policy, interpreted
-context/resource helpers, sandbox browser flows, and the Inferno client matrix.
+asymmetric authentication profile linked above. P4b, P4c1 and P4d1 subsequently
+added scopes, the target and baseline context/resource helpers. Remaining P4
+items cover optional transport combinations, richer context, standalone browser
+flows and the Inferno client matrix. P5a's local EHR test does not satisfy those
+external gates.
 
 P2 adds immutable generic targets and per-session references that read the
 module's current reactive token. Resource IDs enforce exact origin and base

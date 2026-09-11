@@ -1526,6 +1526,16 @@ oauth_module_server_impl <- function(
       if (identical(managed_context, NA)) {
         return(NA_character_)
       }
+      managed_launch <- tryCatch(
+        if (!is.null(.managed) && is.function(.managed$parameters)) {
+          .managed$parameters(managed_context)$launch
+        } else NULL,
+        error = function(e) {
+          .set_error("auth_url_error", e, phase = "build_auth_url")
+          NA
+        }
+      )
+      if (identical(managed_launch, NA)) return(NA_character_)
       if (!isTRUE(async) || !provider_work) {
         return(tryCatch(
           prepare_call(
@@ -1533,7 +1543,8 @@ oauth_module_server_impl <- function(
             values$browser_token,
             publisher,
             requested_max_age,
-            .transaction_context = managed_context
+            .transaction_context = managed_context,
+            .smart_launch = managed_launch
           ),
           error = function(e) {
             .set_error("auth_url_error", e, phase = "build_auth_url")
@@ -1569,7 +1580,8 @@ oauth_module_server_impl <- function(
             browser,
             .requested_max_age = requested_max_age,
             .defer_build = TRUE,
-            .transaction_context = managed_context
+            .transaction_context = managed_context,
+            .smart_launch = managed_launch
           )
           worker <- prepare_client_for_worker(client)
           if (is.null(worker)) {

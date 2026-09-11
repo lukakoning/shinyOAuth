@@ -22,6 +22,16 @@ describes registration, test execution, and limitations. Pin the kit and its
 Docker dependencies when building the local CI fixture; record the deployed
 version separately for hosted runs.
 
+Source review on 2026-09-11 found a preflight concern in the pinned
+[mock server metadata](https://github.com/inferno-framework/smart-app-launch-test-kit/blob/980e54e4ed632b28267d797013399a8588772174/lib/smart_app_launch/endpoints/mock_smart_server.rb):
+its SMART document includes `issuer` but omits `sso-openid-connect` and `jwks_uri`;
+key information is in a separate OIDC document. Our strict SMART reader rejects
+that combination. This is a source-based compatibility concern, not a failed live
+Inferno run. Check the deployed metadata before attempting the matrix; resolve
+upstream compatibility without patching the advertised document or weakening
+client validation. P5a's [local EHR fixture](ehr-launch.md) is executable now but
+does not supply independent Inferno evidence.
+
 ## Required roadmap runs
 
 | Phase | Client profile and scenario | Evidence required |

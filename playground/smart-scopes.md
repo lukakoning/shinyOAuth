@@ -1,8 +1,8 @@
 # How SMART permission checks work
 
 This is the P4b implementation note. The evaluator and its login, refresh,
-introspection and connection checks are implemented. Public SMART target
-construction belongs to P4c; an ordinary `oauth_client()` or `oauth_target()`
+introspection and connection checks are implemented. `smart_target()` (P4c1)
+selects these rules explicitly; an ordinary `oauth_client()` or `oauth_target()`
 still uses ordinary OAuth rules.
 
 A scope is a permission requested from the server. In ordinary OAuth, it is a

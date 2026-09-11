@@ -10,7 +10,8 @@ prepare_call(
   request_uri_publisher = NULL,
   .requested_max_age = NULL,
   .defer_build = FALSE,
-  .transaction_context = NULL
+  .transaction_context = NULL,
+  .smart_launch = NULL
 )
 }
 \arguments{
@@ -33,6 +34,9 @@ authorization work instead of completing the authorization URL.}
 
 \item{.transaction_context}{Internal bounded manager context. Ordinary callers
 leave this \code{NULL}; managed state requires manager-aware consumption.}
+
+\item{.smart_launch}{Internal per-transaction EHR launch handle supplied by
+the manager. Bound to the approved target and sealed transaction context.}
 }
 \value{
 A length-1 string containing the authorization URL to send the user

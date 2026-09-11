@@ -154,6 +154,7 @@ oauth_connections <- function(
   state$ui_bound <- FALSE
   state$owners <- NULL
   state$pending <- new.env(parent = emptyenv())
+  state$launches <- new.env(parent = emptyenv())
   state$next_refresh <- new.env(parent = emptyenv())
   state$signal <- shiny::reactiveVal(0)
   manager <- new.env(parent = emptyenv())
@@ -395,6 +396,23 @@ connection_manager_controller <- function(manager, session) {
       }
     }
   }
+  launch_queue <- new.env(parent = emptyenv())
+  resume_launch <- function(id) {
+    verified <- guard(touch = TRUE)
+    if (!is_valid_string(id) || !grepl("^[A-Za-z0-9_-]{32}$", id)) {
+      err_input("Invalid SMART continuation")
+    }
+    smart_launch_prune(manager)
+    entry <- state$launches[[id]]
+    if (is.null(entry)) err_token("SMART launch is unavailable")
+    launch <- smart_launch_open(manager, entry, verified, id)
+    if (!is.null(launch_queue[[launch$target]])) err_token("A SMART launch is already pending")
+    # Atomic process-local take after owner and target checks. Another browser
+    # or failed lookup cannot consume a valid launch belonging to its owner.
+    rm(list = id, envir = state$launches)
+    launch_queue[[launch$target]] <- entry
+    launch$target
+  }
   prepare <- function(target_id) {
     verified <- guard(touch = TRUE)
     target <- target_for(target_id)
@@ -420,9 +438,20 @@ connection_manager_controller <- function(manager, session) {
         as.numeric(Sys.time()) + target$client@state_payload_max_age
       )
     )
+    launch_entry <- NULL
+    if (identical(target$smart$launch, "ehr")) {
+      launch_entry <- launch_queue[[target_id]]
+      if (is.null(launch_entry)) err_token("Start a fresh EHR launch to reconnect")
+      launch <- smart_launch_open(manager, launch_entry, verified)
+      rm(list = target_id, envir = launch_queue)
+      context$smart <- list(launch_id = launch$id, fhir_base = launch$fhir_base,
+        launch_digest = state_policy_value_digest(launch$launch))
+      context$expires_at <- min(context$expires_at, launch$expires_at)
+    }
     state$pending[[context$transaction]] <- list(
       context = context,
-      initiating_owner = owner$id
+      initiating_owner = owner$id,
+      launch_entry = launch_entry
     )
     context
   }
@@ -677,6 +706,12 @@ connection_manager_controller <- function(manager, session) {
     cleanup_records(list(changed$previous), revoke)[[1L]]
   }
   cancel_owner_pending <- function() {
+    for (id in ls(state$launches, all.names = TRUE)) {
+      if (identical(state$launches[[id]]$owner, owner$id)) {
+        rm(list = id, envir = state$launches)
+      }
+    }
+    rm(list = ls(launch_queue, all.names = TRUE), envir = launch_queue)
     for (id in ls(state$pending, all.names = TRUE)) {
       pending <- state$pending[[id]]
       if (identical(pending$initiating_owner, owner$id)) {
@@ -706,6 +741,7 @@ connection_manager_controller <- function(manager, session) {
   }
   end <- function() {
     active <<- FALSE
+    rm(list = ls(launch_queue, all.names = TRUE), envir = launch_queue)
     if (manager$retention == "shiny") {
       store$disconnect_owner(owner$id)
       signal()
@@ -716,6 +752,16 @@ connection_manager_controller <- function(manager, session) {
     target_for(target_id)
     list(
       prepare = function() prepare(target_id),
+      parameters = function(context) {
+        if (!identical(target_for(target_id)$smart$launch, "ehr")) return(list())
+        if (!validate(context)) err_token("SMART launch owner is unavailable")
+        pending <- state$pending[[context$transaction]]
+        if (is.null(pending$launch_entry)) err_token("Start a fresh EHR launch to reconnect")
+        launch <- smart_launch_open(manager, pending$launch_entry, guard(), context$smart$launch_id)
+        pending$launch_entry <- NULL
+        state$pending[[context$transaction]] <- pending
+        list(launch = launch$launch)
+      },
       validate = function(context) {
         is.list(context) &&
           identical(context$target, target_id) &&
@@ -731,6 +777,7 @@ connection_manager_controller <- function(manager, session) {
     read = read,
     records = records,
     hooks = hooks,
+    resume_launch = resume_launch,
     refresh = refresh,
     disconnect = disconnect,
     disconnect_all = disconnect_all,

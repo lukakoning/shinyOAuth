@@ -35,6 +35,8 @@ an uncertain refresh requires reconnecting.}
 A server-side list with:
 \itemize{
 \item \code{connect(target_id)}: request a new authorization without discarding others.
+EHR-only targets report \code{fresh_ehr_launch_required} and return \code{FALSE};
+use their registered \code{\link[=smart_launch_route]{smart_launch_route()}} to start authorization.
 \item \code{connections()}: reactive list of redacted connection summaries.
 \item \code{connection(connection_id)}: an \link{OAuthConnectionRef} for requests and refresh.
 \item \code{disconnect(connection_id, revoke = TRUE)}: remove local usability first,

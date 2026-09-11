@@ -35,6 +35,8 @@
 #'   authorization work instead of completing the authorization URL.
 #' @param .transaction_context Internal bounded manager context. Ordinary callers
 #'   leave this `NULL`; managed state requires manager-aware consumption.
+#' @param .smart_launch Internal per-transaction EHR launch handle supplied by
+#'   the manager. Bound to the approved target and sealed transaction context.
 #'
 #' @return A length-1 string containing the authorization URL to send the user
 #'   to. When PAR is used, the returned string also carries
@@ -51,14 +53,16 @@ prepare_call <- function(
   request_uri_publisher = NULL,
   .requested_max_age = NULL,
   .defer_build = FALSE,
-  .transaction_context = NULL
+  .transaction_context = NULL,
+  .smart_launch = NULL
 ) {
   # Verify input  --------------------------------------------------------------
 
   # Verify oauth_client
   S7::check_is_S7(oauth_client, OAuthClient)
-  if (client_uses_smart(oauth_client) && identical(oauth_client@smart$launch, "ehr")) {
-    err_config("SMART EHR targets require a fresh registered launch transaction")
+  smart_prepare_launch(oauth_client, .transaction_context, .smart_launch)
+  if (client_uses_smart(oauth_client) && !is.null(.requested_max_age)) {
+    err_config("SMART remote freshness overrides are not supported")
   }
   transaction_context <- authorization_context_json(.transaction_context)
 
@@ -253,6 +257,7 @@ prepare_call <- function(
             redirect_uri = oauth_client@redirect_uri %||% NA_character_
           )
         )
+        if (!is.null(.smart_launch)) prepared$build_args$.smart_launch <- .smart_launch
         if (isTRUE(.defer_build)) {
           prepared
         } else {
@@ -336,7 +341,8 @@ build_authorization_params <- function(
   pkce_code_challenge,
   pkce_method,
   nonce,
-  requested_max_age = provider_auth_max_age(oauth_client@provider)
+  requested_max_age = provider_auth_max_age(oauth_client@provider),
+  .smart_launch = NULL
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
@@ -519,6 +525,7 @@ build_authorization_params <- function(
   }
 
   # Drop NULLs before building query strings or form bodies.
+  if (!is.null(.smart_launch)) params$launch <- .smart_launch
   compact_list(params)
 }
 
@@ -798,7 +805,8 @@ build_auth_url <- function(
   request_handle_id = NULL,
   .request_object = NULL,
   .request_object_expires_at = NULL,
-  .defer_publication = FALSE
+  .defer_publication = FALSE,
+  .smart_launch = NULL
 ) {
   warn_if_request_uri_is_long <- function(request_uri) {
     request_uri_len <- nchar(enc2utf8(request_uri), type = "bytes")
@@ -860,7 +868,8 @@ build_auth_url <- function(
     pkce_code_challenge = pkce_code_challenge,
     pkce_method = pkce_method,
     nonce = nonce,
-    requested_max_age = requested_max_age
+    requested_max_age = requested_max_age,
+    .smart_launch = .smart_launch
   )
   # Validate known inner values before signing, publishing or sending PAR.
   # Final outer composition also validates request/request_uri once available.

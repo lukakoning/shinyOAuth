@@ -18,6 +18,8 @@
 #'   an uncertain refresh requires reconnecting.
 #' @return A server-side list with:
 #'   * `connect(target_id)`: request a new authorization without discarding others.
+#'     EHR-only targets report `fresh_ehr_launch_required` and return `FALSE`;
+#'     use their registered [smart_launch_route()] to start authorization.
 #'   * `connections()`: reactive list of redacted connection summaries.
 #'   * `connection(connection_id)`: an [OAuthConnectionRef] for requests and refresh.
 #'   * `disconnect(connection_id, revoke = TRUE)`: remove local usability first,
@@ -113,6 +115,14 @@ oauth_connections_server <- function(
       )
     })
     names(modules) <- names(manager$targets)
+    launch_error <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(input$smart_launch, {
+      tryCatch({
+        target_id <- controller$resume_launch(input$smart_launch)
+        launch_error(NULL)
+        modules[[target_id]]$request_login()
+      }, error = function(...) launch_error("fresh_ehr_launch_required"))
+    }, ignoreInit = FALSE)
     connection <- function(connection_id) {
       record <- controller$read(connection_id)
       OAuthConnectionRef$new(
@@ -149,7 +159,8 @@ oauth_connections_server <- function(
       if (!available) {
         return(list(owner = "owner_unavailable"))
       }
-      Filter(Negate(is.null), lapply(modules, function(module) module$error))
+      Filter(Negate(is.null), c(lapply(modules, function(module) module$error),
+        list(smart_launch = launch_error())))
     })
     shiny::observe({
       manager$state$signal()
@@ -182,6 +193,10 @@ oauth_connections_server <- function(
         controller$guard(touch = TRUE)
         if (!is_valid_string(target_id) || !target_id %in% names(modules)) {
           err_input("Unknown connection target")
+        }
+        if (identical(manager$targets[[target_id]]$smart$launch, "ehr")) {
+          launch_error("fresh_ehr_launch_required")
+          return(invisible(FALSE))
         }
         modules[[target_id]]$request_login()
       },

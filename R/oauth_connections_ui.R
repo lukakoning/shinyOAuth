@@ -16,6 +16,8 @@
 #'   default `"/"`. Must begin and end with `/`. The wrapper inserts a document
 #'   base before scripts so Shiny dependencies load from the app root even on
 #'   nested callback pages. Do not supply a separate HTML `base` element.
+#' @param launch_routes List of [smart_launch_route()] configurations, empty by
+#'   default. EHR entry requires browser retention and top-level navigation.
 #' @return A request UI function for `shinyApp(..., uiPattern = ".*")`.
 #' @details
 #' Raw GET and form POST callbacks never create or rotate an owner. A POST may
@@ -34,7 +36,8 @@ oauth_connections_ui <- function(
   id,
   manager,
   request_uri_resolver = NULL,
-  app_base_path = "/"
+  app_base_path = "/",
+  launch_routes = list()
 ) {
   connection_manager_bind(manager, id)
   if (
@@ -79,19 +82,20 @@ oauth_connections_ui <- function(
     connection_manager_document_base(callback_handler(req), app_base)
   }
   state <- manager$state
+  smart_launch_routes_validate(launch_routes, manager, app_base_path)
   state$ui_bound <- TRUE
   ui <- function(req) {
     connection_manager_check(manager)
-    rejected <- oauth_http_query_guard(req)
-    if (!is.null(rejected)) {
-      return(rejected)
-    }
     uri <- tryCatch(resolver(req), error = function(...) NULL)
     if (!connection_manager_same_origin(uri, manager$app_origin)) {
       return(oauth_get_setup_error(
         "Request does not match the configured application origin."
       ))
     }
+    launch_response <- smart_launch_http(req, uri, manager, launch_routes, app_base, handler)
+    if (!is.null(launch_response)) return(launch_response)
+    rejected <- oauth_http_query_guard(req)
+    if (!is.null(rejected)) return(rejected)
     query <- req[["QUERY_STRING"]] %||% ""
     raw_callback <- oauth_get_query_is_callback(query)
     if (
