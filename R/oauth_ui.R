@@ -81,11 +81,24 @@ oauth_ui <- function(
   request_uri_resolver = NULL,
   clients = NULL
 ) {
+  oauth_ui_impl(base_ui, id, client, request_uri_resolver, clients)
+}
+
+# Private extension point: only the manager can supply a pending-state router.
+oauth_ui_impl <- function(
+  base_ui,
+  id = NULL,
+  client = NULL,
+  request_uri_resolver = NULL,
+  clients = NULL,
+  allow_shared_issuer = FALSE,
+  select_client = NULL
+) {
   registry <- if (!is.null(clients)) {
     if (!is.null(id) || !is.null(client)) {
       err_input("Use clients or id/client, not both.")
     }
-    oauth_callback_registry(clients)
+    oauth_callback_registry(clients, allow_shared_issuer = allow_shared_issuer)
   } else {
     NULL
   }
@@ -131,7 +144,8 @@ oauth_ui <- function(
       response <- oauth_registry_http_handler(
         req,
         registry,
-        request_uri_resolver
+        request_uri_resolver,
+        select_client = select_client
       )
       if (!is.null(response)) {
         return(response)

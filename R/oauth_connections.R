@@ -12,10 +12,16 @@
 #' @param app_origin Public application origin, including a non-default port.
 #'   HTTPS is required for retained owners, except an explicit browser-owner
 #'   HTTP loopback exception. Session-only development also permits loopback HTTP.
-#' @param callback_policy Currently `"distinct_routes"`. Give each target its own
+#' @param callback_policy `"distinct_routes"` (default) gives each target its own
 #'   registered callback route. With several targets, configure every client with
 #'   `authorization_server_mode = "multi_redirect_uri"` and the complete set of
 #'   routes in `authorization_server_redirect_uris`.
+#'   `"issuer"` allows shared routes for distinct authorization-server issuers.
+#'   `"shared_routes"` additionally supports several targets or registrations at
+#'   one issuer through a protected pending-state index. Both opt-in policies
+#'   require explicit `authorization_server_mode = "multi_issuer"` clients, with
+#'   RFC 9207 issuer responses or JARM. Same-issuer encrypted JARM still requires
+#'   distinct routes. Routing never substitutes for callback authentication.
 #' @param retention `"shiny"` (default) discards connections at Shiny session end.
 #'   `"browser"` restores the browser owner's connections after navigation;
 #'   `"account"` uses a trusted local application login. Retention does not request
@@ -45,8 +51,8 @@
 #' authorization to the initiating local owner and its session generation.
 #'
 #' These are optional package interfaces, not SMART protocol objects. This manager
-#' uses generic OAuth scope comparison. SMART discovery, launch context and scope
-#' interpretation are separate roadmap items.
+#' supports generic OAuth targets and the SMART discovery, scope and launch
+#' policies configured by [smart_target()].
 #' @seealso [oauth_connections_ui()], [oauth_connections_server()]
 #' @export
 oauth_connections <- function(
@@ -60,9 +66,10 @@ oauth_connections <- function(
   retention_seconds = 28800
 ) {
   retention <- match.arg(retention)
-  if (!identical(callback_policy, "distinct_routes")) {
+  if (!is_valid_string(callback_policy) ||
+      !callback_policy %in% c("distinct_routes", "issuer", "shared_routes")) {
     err_config(
-      "The connection manager currently requires distinct callback routes"
+      "callback_policy must be distinct_routes, issuer or shared_routes"
     )
   }
   if (
@@ -128,10 +135,14 @@ oauth_connections <- function(
     connection_current_target_fingerprint(target)
     client <- target$client
     if (
-      length(targets) > 1L &&
+      identical(callback_policy, "distinct_routes") && length(targets) > 1L &&
         !identical(client@authorization_server_mode, "multi_redirect_uri")
     ) {
       err_config("Multiple targets require multi_redirect_uri clients")
+    }
+    if (callback_policy != "distinct_routes" &&
+        !identical(client@authorization_server_mode, "multi_issuer")) {
+      err_config("Issuer-based callback policies require explicit multi_issuer clients")
     }
     if (!connection_manager_same_origin(client@redirect_uri, app_origin)) {
       err_config("Every callback must use the configured application origin")
@@ -139,7 +150,7 @@ oauth_connections <- function(
     oauth_callback_route(client@redirect_uri)
   })
   if (
-    anyDuplicated(vapply(
+    identical(callback_policy, "distinct_routes") && anyDuplicated(vapply(
       routes,
       function(route) {
         as.character(jsonlite::toJSON(route, auto_unbox = TRUE))
@@ -149,11 +160,16 @@ oauth_connections <- function(
   ) {
     err_config("Each target requires a distinct callback route")
   }
+  if (callback_policy != "distinct_routes") {
+    oauth_callback_registry(lapply(targets, function(target) target$client),
+      allow_shared_issuer = identical(callback_policy, "shared_routes"), mark_ui = FALSE)
+  }
   state <- new.env(parent = emptyenv())
   state$id <- NULL
   state$ui_bound <- FALSE
   state$owners <- NULL
   state$pending <- new.env(parent = emptyenv())
+  state$routes <- new.env(parent = emptyenv())
   state$launches <- new.env(parent = emptyenv())
   state$next_refresh <- new.env(parent = emptyenv())
   state$signal <- shiny::reactiveVal(0)
@@ -161,6 +177,7 @@ oauth_connections <- function(
   for (name in c(
     "targets",
     "app_origin",
+    "callback_policy",
     "retention",
     "store",
     "owner",
@@ -392,7 +409,7 @@ connection_manager_controller <- function(manager, session) {
     now <- as.numeric(Sys.time())
     for (id in ls(state$pending, all.names = TRUE)) {
       if (state$pending[[id]]$context$expires_at <= now) {
-        rm(list = id, envir = state$pending)
+        connection_router_cancel(manager, id)
       }
     }
   }
@@ -492,7 +509,7 @@ connection_manager_controller <- function(manager, session) {
         is_valid_string(context$transaction) &&
         exists(context$transaction, state$pending, inherits = FALSE)
     ) {
-      rm(list = context$transaction, envir = state$pending)
+      connection_router_cancel(manager, context$transaction)
     }
     invisible(NULL)
   }
@@ -715,7 +732,7 @@ connection_manager_controller <- function(manager, session) {
     for (id in ls(state$pending, all.names = TRUE)) {
       pending <- state$pending[[id]]
       if (identical(pending$initiating_owner, owner$id)) {
-        rm(list = id, envir = state$pending)
+        connection_router_cancel(manager, id)
       }
     }
   }
@@ -752,6 +769,14 @@ connection_manager_controller <- function(manager, session) {
     target_for(target_id)
     list(
       prepare = function() prepare(target_id),
+      prepared = if (identical(manager$callback_policy, "shared_routes")) {
+        function(prepared, context) {
+          if (!validate(context) || !identical(context$target, target_id)) {
+            err_token("Managed authorization owner is unavailable")
+          }
+          connection_router_register(manager, target_id, context, prepared)
+        }
+      } else NULL,
       parameters = function(context) {
         if (!identical(target_for(target_id)$smart$launch, "ehr")) return(list())
         if (!validate(context)) err_token("SMART launch owner is unavailable")

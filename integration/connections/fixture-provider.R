@@ -1,6 +1,7 @@
 # Synthetic OAuth provider for the browser-retention gate, bound to loopback.
 # This verifies real HTTP, PKCE and credential rotation; it is not conformance tooling.
-retention_fixture_provider <- function(site, callback) {
+retention_fixture_provider <- function(site, callback, shared_issuer = FALSE) {
+  registrations <- if (shared_issuer) c("a", "b") else site
   state <- new.env(parent = emptyenv())
   state$codes <- new.env(parent = emptyenv())
   state$access <- new.env(parent = emptyenv())
@@ -14,11 +15,11 @@ retention_fixture_provider <- function(site, callback) {
   random <- function() {
     unclass(as.character(openssl::sha256(openssl::rand_bytes(32))))
   }
-  issue <- function(revision) {
+  issue <- function(revision, registration) {
     access <- random()
     refresh <- random()
-    state$access[[access]] <- revision
-    state$refresh[[refresh]] <- revision
+    state$access[[access]] <- list(revision = revision, site = registration)
+    state$refresh[[refresh]] <- list(revision = revision, site = registration)
     list(
       access_token = access,
       refresh_token = refresh,
@@ -37,7 +38,7 @@ retention_fixture_provider <- function(site, callback) {
   app$get("/authorize", function(req, res) {
     query <- req$query
     if (
-      !identical(query$client_id, site) ||
+      !query$client_id %in% registrations ||
         !identical(query$redirect_uri, callback) ||
         !identical(query$response_type, "code") ||
         !identical(query$code_challenge_method, "S256") ||
@@ -55,7 +56,7 @@ retention_fixture_provider <- function(site, callback) {
     )
     res$set_type("text/html")$send(paste0(
       '<!doctype html><html><body><h1 id="provider">Site ',
-      site,
+      query$client_id,
       '</h1><a id="approve" href="/approve?ticket=',
       code,
       '">Approve synthetic access</a></body></html>'
@@ -67,6 +68,7 @@ retention_fixture_provider <- function(site, callback) {
     if (is.null(record) || record$expires <= as.numeric(Sys.time())) {
       return(res$set_status(400L)$send("Expired fixture authorization"))
     }
+    issuer <- if (shared_issuer) paste0("http://", req$get_header("Host")) else NULL
     if (identical(record$query$response_mode, "form_post")) {
       escape <- function(value) htmltools::htmlEscape(value, attribute = TRUE)
       return(res$set_type("text/html")$send(paste0(
@@ -76,7 +78,9 @@ retention_fixture_provider <- function(site, callback) {
         escape(ticket),
         '"><input name="state" type="hidden" value="',
         escape(record$query$state),
-        '"></form><script>document.forms[0].submit()</script></body></html>'
+        '">',
+        if (shared_issuer) paste0('<input name="iss" type="hidden" value="', escape(issuer), '">'),
+        '</form><script>document.forms[0].submit()</script></body></html>'
       )))
     }
     location <- paste0(
@@ -84,13 +88,14 @@ retention_fixture_provider <- function(site, callback) {
       "?code=",
       ticket,
       "&state=",
-      utils::URLencode(record$query$state, reserved = TRUE)
+      utils::URLencode(record$query$state, reserved = TRUE),
+      if (shared_issuer) paste0("&iss=", utils::URLencode(issuer, reserved = TRUE))
     )
     res$set_status(302L)$set_header("Location", location)$send("")
   })
   app$post("/token", function(req, res) {
     body <- req$form
-    if (!identical(body$client_id, site)) {
+    if (!body$client_id %in% registrations) {
       return(res$set_status(400L)$send_json(
         list(error = "invalid_client"),
         auto_unbox = TRUE
@@ -116,6 +121,7 @@ retention_fixture_provider <- function(site, callback) {
       if (
         is.null(record) ||
           record$expires <= as.numeric(Sys.time()) ||
+          !identical(body$client_id, record$query$client_id) ||
           !identical(body$redirect_uri, callback) ||
           !identical(challenge, record$query$code_challenge)
       ) {
@@ -126,10 +132,10 @@ retention_fixture_provider <- function(site, callback) {
       }
       rm(list = body$code, envir = state$codes)
       state$metrics$exchanges <- state$metrics$exchanges + 1L
-      token <- issue(1L)
+      token <- issue(1L, body$client_id)
     } else if (identical(body$grant_type, "refresh_token")) {
-      revision <- state$refresh[[body$refresh_token]]
-      if (is.null(revision)) {
+      record <- state$refresh[[body$refresh_token]]
+      if (is.null(record) || !identical(body$client_id, record$site)) {
         return(res$set_status(400L)$send_json(
           list(error = "invalid_grant"),
           auto_unbox = TRUE
@@ -137,7 +143,7 @@ retention_fixture_provider <- function(site, callback) {
       }
       rm(list = body$refresh_token, envir = state$refresh)
       state$metrics$refreshes <- state$metrics$refreshes + 1L
-      token <- issue(revision + 1L)
+      token <- issue(record$revision + 1L, body$client_id)
     } else {
       return(res$set_status(400L)$send_json(
         list(error = "unsupported_grant_type"),
@@ -146,19 +152,21 @@ retention_fixture_provider <- function(site, callback) {
     }
     res$send_json(token, auto_unbox = TRUE)
   })
-  app$get("/api/records", function(req, res) {
+  resource <- function(req, res) {
     bearer <- sub("^Bearer ", "", req$get_header("Authorization"))
-    revision <- if (is.character(bearer) && length(bearer) == 1L) {
+    record <- if (is.character(bearer) && length(bearer) == 1L) {
       state$access[[bearer]]
     } else {
       NULL
     }
-    if (is.null(revision)) {
+    resource_site <- if (shared_issuer) req$params$site else site
+    if (is.null(record) || !identical(record$site, resource_site)) {
       return(res$set_status(401L)$send("Unauthorized"))
     }
     state$metrics$requests <- state$metrics$requests + 1L
-    res$send_json(list(site = site, revision = revision), auto_unbox = TRUE)
-  })
+    res$send_json(list(site = record$site, revision = record$revision), auto_unbox = TRUE)
+  }
+  app$get(if (shared_issuer) "/api/:site/records" else "/api/records", resource)
   app$post("/revoke", function(req, res) {
     token <- req$form$token
     for (store in list(state$refresh, state$access)) {

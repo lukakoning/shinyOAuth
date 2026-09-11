@@ -1,10 +1,11 @@
-# Retained-connection browser gate (P3d)
+# Retained-connection browser gates (P3d and P6)
 
 From the repository root, install the current checkout and run:
 
 ```sh
 R CMD INSTALL .
 Rscript integration/connections/run-tests.R
+Rscript integration/connections/run-shared-router.R
 ```
 
 Requires Chrome/Chromium, the package's dependencies, and `testthat`, `webfakes`,
@@ -12,9 +13,14 @@ Requires Chrome/Chromium, the package's dependencies, and `testthat`, `webfakes`
 can be selected using `R_LIBS`. The app and mirai workers must load the same
 installed checkout. Missing prerequisites, failures and skips fail this gate.
 
-The runner creates two loopback OAuth providers, a Shiny process and isolated
+The original runner creates two loopback OAuth providers, a Shiny process and isolated
 Chrome browser contexts, then cleans up the processes it owns. It uses invented
 credentials only. No Docker service or external account is required.
+
+The [P6 shared-callback gate](shared-callbacks.md) uses one authorization server,
+two registrations and two resource paths on the same origin. It checks pending
+logins in separate tabs through the same callback URL, resource isolation and
+the same query/form POST and sync/mirai matrix.
 
 The matrix covers `query` and `form_post`, each with synchronous transport and
 actual mirai workers. It verifies:

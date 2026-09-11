@@ -73,10 +73,14 @@ oauth_connections_ui <- function(
   }
   clients <- lapply(manager$targets, function(target) target$client)
   names(clients) <- shiny::NS(id)(names(clients))
-  callback_handler <- oauth_ui(
+  callback_handler <- oauth_ui_impl(
     base_ui,
     clients = clients,
-    request_uri_resolver = resolver
+    request_uri_resolver = resolver,
+    allow_shared_issuer = identical(manager$callback_policy, "shared_routes"),
+    select_client = if (identical(manager$callback_policy, "shared_routes")) {
+      function(candidates, payload) connection_router_select(manager, candidates, payload)
+    } else NULL
   )
   handler <- function(req) {
     connection_manager_document_base(callback_handler(req), app_base)

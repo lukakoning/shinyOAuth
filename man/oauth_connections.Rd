@@ -27,10 +27,16 @@ with a maximum of 64 characters.}
 HTTPS is required for retained owners, except an explicit browser-owner
 HTTP loopback exception. Session-only development also permits loopback HTTP.}
 
-\item{callback_policy}{Currently \code{"distinct_routes"}. Give each target its own
+\item{callback_policy}{\code{"distinct_routes"} (default) gives each target its own
 registered callback route. With several targets, configure every client with
 \code{authorization_server_mode = "multi_redirect_uri"} and the complete set of
-routes in \code{authorization_server_redirect_uris}.}
+routes in \code{authorization_server_redirect_uris}.
+\code{"issuer"} allows shared routes for distinct authorization-server issuers.
+\code{"shared_routes"} additionally supports several targets or registrations at
+one issuer through a protected pending-state index. Both opt-in policies
+require explicit \code{authorization_server_mode = "multi_issuer"} clients, with
+RFC 9207 issuer responses or JARM. Same-issuer encrypted JARM still requires
+distinct routes. Routing never substitutes for callback authentication.}
 
 \item{retention}{\code{"shiny"} (default) discards connections at Shiny session end.
 \code{"browser"} restores the browser owner's connections after navigation;
@@ -79,8 +85,8 @@ discarded with the old Shiny session. Browser/account mode additionally binds
 authorization to the initiating local owner and its session generation.
 
 These are optional package interfaces, not SMART protocol objects. This manager
-uses generic OAuth scope comparison. SMART discovery, launch context and scope
-interpretation are separate roadmap items.
+supports generic OAuth targets and the SMART discovery, scope and launch
+policies configured by \code{\link[=smart_target]{smart_target()}}.
 }
 \seealso{
 \code{\link[=oauth_connections_ui]{oauth_connections_ui()}}, \code{\link[=oauth_connections_server]{oauth_connections_server()}}

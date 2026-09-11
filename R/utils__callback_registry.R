@@ -1,7 +1,7 @@
 # A registry selects only preconfigured clients. Issuer values are routing
 # hints; the selected bridge still verifies issuer, state and JARM, and the
 # module still verifies the browser binding before consuming logical state.
-oauth_callback_registry <- function(clients) {
+oauth_callback_registry <- function(clients, allow_shared_issuer = FALSE, mark_ui = TRUE) {
   if (
     !is.list(clients) ||
       !length(clients) ||
@@ -38,17 +38,25 @@ oauth_callback_registry <- function(clients) {
           if (
             !identical(first@authorization_server_mode, "multi_issuer") ||
               !identical(second@authorization_server_mode, "multi_issuer") ||
-              identical(first@provider@issuer, second@provider@issuer)
+              (!allow_shared_issuer &&
+                identical(first@provider@issuer, second@provider@issuer))
           ) {
             err_input(
               "Shared callback routes require multi_issuer clients with distinct issuers."
             )
           }
+          if (
+            identical(first@provider@issuer, second@provider@issuer) &&
+              (!is.null(resolve_authorization_response_encryption_config(first)) ||
+                !is.null(resolve_authorization_response_encryption_config(second)))
+          ) {
+            err_config("Same-issuer encrypted JARM requires distinct callback routes")
+          }
         }
       }
     }
   }
-  for (id in names(clients)) {
+  for (id in if (mark_ui) names(clients) else character()) {
     if (
       resolve_oauth_client_response_mode(clients[[id]])$mode %in%
         c("form_post", "form_post.jwt")
@@ -87,7 +95,7 @@ oauth_registry_rejection <- function(req, reason, message) {
   )
 }
 
-oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
+oauth_registry_http_handler <- function(req, clients, request_uri_resolver, select_client = NULL) {
   query_error <- oauth_http_query_guard(req)
   if (!is.null(query_error)) return(query_error)
   # Hosted Request Objects have independent, client-bound handles. Missing
@@ -199,6 +207,9 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver) {
           },
           logical(1)
         )]
+      }
+      if (length(candidates) > 1L && is.function(select_client)) {
+        candidates <- select_client(candidates, payload)
       }
       if (length(candidates) != 1L) {
         return(oauth_registry_rejection(

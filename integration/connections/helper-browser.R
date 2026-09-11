@@ -102,19 +102,24 @@ retention_browser_setup <- function(
   provider_factory = retention_fixture_provider,
   app_script = "integration/connections/fixture-app.R",
   app_function = "retention_fixture_app",
+  shared_issuer = FALSE,
   .env = parent.frame()
 ) {
   port <- httpuv::randomPort()
   origin <- paste0("http://127.0.0.1:", port)
-  providers <- lapply(c("a", "b"), function(site) {
-    provider <- provider_factory(
-      site,
-      paste0(origin, "/callback/", site)
-    )
+  providers <- lapply(if (shared_issuer) "shared" else c("a", "b"), function(site) {
+    if (shared_issuer) {
+      provider <- provider_factory(site, paste0(origin, "/callback/shared"), shared_issuer = TRUE)
+    } else {
+      provider <- provider_factory(
+        site,
+        paste0(origin, "/callback/", site)
+      )
+    }
     withr::defer(provider$stop(), envir = .env)
     provider
   })
-  names(providers) <- c("a", "b")
+  names(providers) <- if (shared_issuer) "shared" else c("a", "b")
   # Different hosts force real cross-site navigation; both hosts remain loopback.
   bases <- lapply(providers, function(provider) {
     sub(
@@ -124,15 +129,21 @@ retention_browser_setup <- function(
       fixed = TRUE
     )
   })
+  if (shared_issuer) bases <- list(a = bases[[1L]], b = bases[[1L]])
   app_file <- normalizePath(file.path(
     retention_root,
     app_script
   ))
   process <- callr::r_bg(
-    function(app_file, origin, bases, async, response_mode, app_function) {
+    function(app_file, origin, bases, async, response_mode, app_function, shared_issuer) {
       Sys.setenv(CURL_SSL_BACKEND = "openssl")
+      # mirai starts fresh R processes: carry the selected callr library paths
+      # into those processes as well as the Shiny parent.
+      Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
       source(app_file, local = TRUE)
-      get(app_function)(origin, bases, async, response_mode = response_mode)
+      args <- list(origin, bases, async, response_mode = response_mode)
+      if (shared_issuer) args$shared_issuer <- TRUE
+      do.call(get(app_function), args)
     },
     args = list(
       app_file = app_file,
@@ -140,7 +151,8 @@ retention_browser_setup <- function(
       bases = bases,
       async = async,
       response_mode = response_mode,
-      app_function = app_function
+      app_function = app_function,
+      shared_issuer = shared_issuer
     ),
     libpath = .libPaths(),
     supervise = TRUE,

@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Added opt-in `callback_policy = "issuer"` and `"shared_routes"` to the
+connection manager. A protected pending-state index supports multiple targets
+at one issuer and callback URL while preserving issuer/JARM, state, owner and
+browser validation. Distinct routes remain the default; ambiguous encrypted
+JARM still requires them. Browser tests cover same-issuer resource isolation.
+
 * Added `smart_discover()` to read SMART STU 2.2 metadata at the full FHIR
 base, with explicit endpoint-host policy, conditional SSO/asymmetric checks,
 S256 enforcement, and an opt-in loopback HTTP exception. Returns a plain

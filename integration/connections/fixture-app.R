@@ -4,7 +4,8 @@ retention_fixture_app <- function(
   providers,
   async = FALSE,
   idle_timeout = 600,
-  response_mode = "query"
+  response_mode = "query",
+  shared_issuer = FALSE
 ) {
   if (async) {
     mirai::daemons(2L)
@@ -15,6 +16,8 @@ retention_fixture_app <- function(
     base <- providers[[site]]
     provider <- shinyOAuth::oauth_provider(
       name = site,
+      issuer = if (shared_issuer) base else NA_character_,
+      authorization_response_iss_parameter_supported = shared_issuer,
       auth_url = paste0(base, "/authorize"),
       token_url = paste0(base, "/token"),
       revocation_url = paste0(base, "/revoke"),
@@ -27,15 +30,15 @@ retention_fixture_app <- function(
       client_id = site,
       client_secret = "",
       scopes = "read",
-      redirect_uri = paste0(origin, "/callback/", site),
+      redirect_uri = paste0(origin, "/callback/", if (shared_issuer) "shared" else site),
       state_key = openssl::rand_bytes(32),
       response_mode = response_mode,
-      authorization_server_mode = "multi_redirect_uri",
-      authorization_server_redirect_uris = callbacks
+      authorization_server_mode = if (shared_issuer) "multi_issuer" else "multi_redirect_uri",
+      authorization_server_redirect_uris = if (shared_issuer) character() else callbacks
     )
     shinyOAuth::oauth_target(
       client,
-      c(api = paste0(base, "/api")),
+      c(api = paste0(base, "/api", if (shared_issuer) paste0("/", site))),
       "read",
       paste("Site", site)
     )
@@ -44,6 +47,7 @@ retention_fixture_app <- function(
   manager <- shinyOAuth::oauth_connections(
     targets,
     origin,
+    callback_policy = if (shared_issuer) "shared_routes" else "distinct_routes",
     retention = "browser",
     owner = shinyOAuth::oauth_browser_owner(
       idle_timeout = idle_timeout,
@@ -62,6 +66,7 @@ retention_fixture_app <- function(
     shiny::actionButton("connect_b", "Connect B"),
     shiny::actionButton("read_a", "Read A"),
     shiny::actionButton("read_b", "Read B"),
+    shiny::actionButton("cross_resource", "Try B path with A connection"),
     shiny::actionButton("refresh_a", "Refresh A"),
     shiny::actionButton("refresh_b", "Refresh B"),
     shiny::actionButton("disconnect_b", "Disconnect B"),
@@ -145,6 +150,10 @@ retention_fixture_app <- function(
       })
     )
     shiny::observeEvent(input$logout, health$logout())
+    shiny::observeEvent(input$cross_resource, perform(function() {
+      health$connection(id_for("a"))$request("api", "../b/records")
+      "unexpected access"
+    }))
     shiny::observeEvent(
       input$probe,
       perform(function() {

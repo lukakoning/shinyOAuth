@@ -1535,18 +1535,40 @@ oauth_module_server_impl <- function(
           NA
         }
       )
-      if (identical(managed_launch, NA)) return(NA_character_)
+      if (identical(managed_launch, NA)) {
+        if (!is.null(.managed)) .managed$cancel(managed_context)
+        return(NA_character_)
+      }
+      register_prepared <- function(prepared) {
+        if (!is.null(.managed) && is.function(.managed$prepared)) {
+          .managed$prepared(prepared, managed_context)
+        }
+        invisible(NULL)
+      }
+      prepared <- NULL
+      cleanup <- function() {
+        if (!is.null(prepared)) {
+          try(client@state_store$remove(prepared$state_key), silent = TRUE)
+        }
+        if (!is.null(.managed)) .managed$cancel(managed_context)
+      }
       if (!isTRUE(async) || !provider_work) {
         return(tryCatch(
-          prepare_call(
-            client,
-            values$browser_token,
-            publisher,
-            requested_max_age,
-            .transaction_context = managed_context,
-            .smart_launch = managed_launch
-          ),
+          {
+            if (!is.null(.managed) && is.function(.managed$prepared)) {
+              prepared <- prepare_call(client, values$browser_token,
+                .requested_max_age = requested_max_age, .defer_build = TRUE,
+                .transaction_context = managed_context, .smart_launch = managed_launch)
+              register_prepared(prepared)
+              finish_prepared_authorization(build_prepared_authorization(client, prepared),
+                client, prepared, publisher)
+            } else {
+              prepare_call(client, values$browser_token, publisher, requested_max_age,
+                .transaction_context = managed_context, .smart_launch = managed_launch)
+            }
+          },
           error = function(e) {
+            cleanup()
             .set_error("auth_url_error", e, phase = "build_auth_url")
             NA_character_
           }
@@ -1559,12 +1581,6 @@ oauth_module_server_impl <- function(
         new_epoch = TRUE
       )
       browser <- values$browser_token
-      prepared <- NULL
-      cleanup <- function() {
-        if (!is.null(prepared)) {
-          try(client@state_store$remove(prepared$state_key), silent = TRUE)
-        }
-      }
       fail <- function(e) {
         cleanup()
         if (.auth_operation_can_apply(operation, "authorization")) {
@@ -1583,6 +1599,7 @@ oauth_module_server_impl <- function(
             .transaction_context = managed_context,
             .smart_launch = managed_launch
           )
+          register_prepared(prepared)
           worker <- prepare_client_for_worker(client)
           if (is.null(worker)) {
             err_config(

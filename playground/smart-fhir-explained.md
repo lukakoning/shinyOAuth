@@ -1,6 +1,6 @@
 **SMART/FHIR and the new shinyOAuth components, in plain language**
 
-This explains the implementation on `smart_fhir` through P5a, as of
+This explains the implementation on `smart_fhir` through P6, as of
 2026-09-11. Some P4 and P5 release tests remain open, as listed below.
 Examples use invented hospitals and people. The detailed
 [roadmap](smart-fhir-roadmap.md) contains the implementation plan; this document
@@ -236,8 +236,24 @@ connections. Its public interfaces are:
 The app still supplies its own buttons and connection-selection interface.
 The server API offers `connect(target_id)`, `connections()`, `connection(id)`,
 `disconnect(id)` and `logout()`. It manages the behavior behind those controls.
-The current manager requires a distinct registered callback route for each
-target, so the return from A is distinguishable from the return from B.
+By default, each target has a distinct registered callback route, so the return
+from A is distinguishable from the return from B. P6 adds an optional way to
+share that URL when the authorization server supports issuer identification.
+
+Imagine two hospital APIs using the same login service. Their login results
+both say they came from that service, which alone does not tell us which API
+the user chose. With `callback_policy = "shared_routes"`, the manager remembers
+the chosen target when login starts. When the browser returns, it uses the
+login's existing `state` value to find that original choice. It then performs
+all the normal login checks. It does not use whichever hospital button was
+clicked most recently, so pending logins in different tabs stay separate.
+
+That memory is a short-lived encrypted lookup inside the existing manager.
+There is no new object for app code to manage and no change to the OAuth wire
+format. `callback_policy = "issuer"` also exposes shared URLs when the login
+services have different issuers. Both options need explicitly configured
+`multi_issuer` clients. Some encrypted responses still need distinct routes.
+See [shared callback setup and tests](../integration/connections/shared-callbacks.md).
 
 The **owner** answers “Whose saved connections may this request use?” This is
 the package's local ownership concept. It is different from OAuth's term
@@ -445,7 +461,8 @@ the EHR. See the [EHR setup and tests](../integration/smart/ehr-launch.md).
 | Complete standalone SMART app, browser scenarios and two-hospital sandbox repeat | Planned: P4e. |
 | Inferno standalone client conformance runs | Planned: P4f. |
 | EHR launch entry routes | P5a built and browser-tested for public registrations, query/form_post and sync/mirai. Browser retention, top-level navigation and one R process are required. P5b external/profile gates remain open. |
-| Shared callback conveniences, optional extensions and deployment/store adapters | Later roadmap items. |
+| Shared callback conveniences | P6 built: opt-in issuer routing and a pending-state index for several targets at one issuer. The default remains distinct routes. |
+| Optional extensions and deployment/store adapters | Later roadmap items. |
 
 **The Docker tests have already found a useful compatibility problem.**
 

@@ -48,6 +48,8 @@ jobs:
             any::mirai
       - name: Test cross-site authorization and retained connections
         run: Rscript integration/connections/run-tests.R
+      - name: Test shared-issuer callbacks and resource isolation
+        run: Rscript integration/connections/run-shared-router.R
       - name: Upload sanitized browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
