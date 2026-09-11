@@ -578,6 +578,7 @@ connection_manager_controller <- function(manager, session) {
     } else {
       result$token <- value$token
       result$authenticated_at <- value$authenticated_at
+      result$refresh_scope_narrowed <- value$refresh_scope_narrowed
     }
     result
   }
@@ -602,7 +603,7 @@ connection_manager_controller <- function(manager, session) {
     )
     invisible(NULL)
   }
-  refresh <- function(id, async = FALSE, touch = TRUE) {
+  refresh <- function(id, async = FALSE, touch = TRUE, scopes = NULL) {
     for (key in ls(next_refresh, all.names = TRUE)) {
       if (next_refresh[[key]] <= as.numeric(Sys.time())) {
         rm(list = key, envir = next_refresh)
@@ -615,6 +616,12 @@ connection_manager_controller <- function(manager, session) {
     if (!is_valid_string(record$token@refresh_token)) {
       err_token("Connection has no refresh credential")
     }
+    # Validate before taking the refresh claim or sending any credentials.
+    # After explicit narrowing, automatic calls retain the accepted grant.
+    if (is.null(scopes) && isTRUE(record$refresh_scope_narrowed)) scopes <- record$token@granted_scopes
+    scope_request <- if (!is.null(scopes)) {
+      refresh_scope_request(record$target$client, record$token, scopes, record$target$required_scopes)
+    } else NULL
     claim <- store$begin_refresh(owner$id, id, record$stored$revision)
     if (is.null(claim)) {
       err_token("Connection refresh is already in progress or unavailable")
@@ -646,6 +653,7 @@ connection_manager_controller <- function(manager, session) {
       tryCatch(
         {
           validate_token_acceptance_deadline(token)
+          validate_refresh_scope_grant(record$target$client, token@granted_scopes, scope_request)
           if (is.null(verify_owner(require_session = FALSE))) {
             err_token("Connection owner is unavailable")
           }
@@ -655,7 +663,8 @@ connection_manager_controller <- function(manager, session) {
             id,
             record$target,
             manager$keys$credentials,
-            record$authenticated_at
+            record$authenticated_at,
+            refresh_scope_narrowed = !is.null(scope_request)
           )
           if (is.null(verify_owner(require_session = FALSE))) {
             err_token("Connection owner is unavailable")
@@ -678,7 +687,11 @@ connection_manager_controller <- function(manager, session) {
       )
     }
     result <- tryCatch(
-      refresh_token(record$target$client, record$token, async = async),
+      if (is.null(scope_request)) {
+        refresh_token(record$target$client, record$token, async = async)
+      } else {
+        refresh_token_dispatch(record$target$client, record$token, async = async, scope_request = scope_request)
+      },
       error = fail
     )
     if (inherits(result, "promise")) {

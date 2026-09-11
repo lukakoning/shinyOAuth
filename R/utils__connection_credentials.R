@@ -227,9 +227,11 @@ connection_credentials_seal <- function(
   id,
   target,
   key,
-  authenticated_at
+  authenticated_at,
+  refresh_scope_narrowed = FALSE
 ) {
   S7::check_is_S7(token, OAuthToken)
+  connection_manager_flag(refresh_scope_narrowed, "refresh_scope_narrowed")
   if (
     !is.numeric(authenticated_at) ||
       length(authenticated_at) != 1L ||
@@ -247,6 +249,9 @@ connection_credentials_seal <- function(
     authenticated_at = authenticated_at,
     credentials = connection_data_encode(values)
   )
+  # Omitted for existing records. This local policy flag does not claim that
+  # the authorization server reduced the refresh token's original grant.
+  if (refresh_scope_narrowed) payload$refresh_scope_narrowed <- TRUE
   json <- jsonlite::toJSON(
     payload,
     auto_unbox = TRUE,
@@ -275,10 +280,9 @@ connection_credentials_open <- function(sealed, owner, id, target, key) {
         )
       )
       if (
-        !identical(
-          names(payload),
-          c("binding", "authenticated_at", "credentials")
-        ) ||
+        !(identical(names(payload), c("binding", "authenticated_at", "credentials")) ||
+          (identical(names(payload), c("binding", "authenticated_at", "credentials", "refresh_scope_narrowed")) &&
+            identical(payload$refresh_scope_narrowed, TRUE))) ||
           !identical(payload$binding, binding) ||
           !is.numeric(payload$authenticated_at) ||
           length(payload$authenticated_at) != 1L ||
@@ -295,7 +299,8 @@ connection_credentials_open <- function(sealed, owner, id, target, key) {
       }
       list(
         token = do.call(OAuthToken, fields),
-        authenticated_at = payload$authenticated_at
+        authenticated_at = payload$authenticated_at,
+        refresh_scope_narrowed = isTRUE(payload$refresh_scope_narrowed)
       )
     },
     error = function(...) {

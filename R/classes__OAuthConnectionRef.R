@@ -133,14 +133,26 @@ OAuthConnectionRef <- R6::R6Class(
     #' record before installing replacement credentials. References created with
     #' [oauth_connection()] use their existing module's refresh lifecycle and
     #' cannot invoke this method.
+    #' @param scopes Optional non-empty character vector requesting fewer
+    #'   permissions for this connection, or `NULL` (default). Scopes must be
+    #'   covered by the current grant and target configuration, and retain the
+    #'   target's required scopes. SMART targets use semantic coverage.
+    #' @details
+    #' After explicit narrowing succeeds, subsequent refreshes (including
+    #' automatic refreshes and refreshes in another retained Shiny session)
+    #' request the accepted scope limit. Widening requires a new authorization.
+    #' This is a local connection policy: OAuth refresh-token scope itself is
+    #' not reduced by requesting a narrower access token. Existing connections
+    #' that have never selected narrowing continue to omit request scope.
+    #' Providers may reject requested scopes; there is no retry without them.
     #' @return `TRUE` after a successful commit, or a promise resolving to `TRUE`
     #'   when the manager uses async transport. Failure raises a redacted error.
-    refresh = function() {
+    refresh = function(scopes = NULL) {
       private$record()
       if (!is.function(private$.refresh)) {
         err_config("This connection uses oauth_module_server() for refresh")
       }
-      private$.refresh()
+      if (is.null(scopes)) private$.refresh() else private$.refresh(scopes = scopes)
     },
     #' @description
     #' Resolve the current connection and return status information without

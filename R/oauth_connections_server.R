@@ -132,7 +132,9 @@ oauth_connections_server <- function(
           manager$state$signal()
           controller$read(connection_id)
         },
-        refresh = function() controller$refresh(connection_id, async = async),
+        refresh = function(scopes = NULL) {
+          controller$refresh(connection_id, async = async, scopes = scopes)
+        },
         touch = function() controller$guard(touch = TRUE)
       )
     }

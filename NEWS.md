@@ -1,5 +1,13 @@
 # shinyOAuth (development version)
 
+* Managed connections now support `$refresh(scopes = ...)` to request fewer
+permissions while retaining required scopes. Successful narrowing is remembered
+in encrypted storage and applied to later refreshes, including after navigation.
+It does not revoke the authorization server's original refresh-token grant;
+widening through the manager requires a new authorization. Existing refresh
+calls keep their behavior until narrowing is selected. Unit and real-browser
+tests cover grant checks, rotation, retention and synchronous/mirai transport.
+
 * Added opt-in `callback_policy = "issuer"` and `"shared_routes"` to the
 connection manager. A protected pending-state index supports multiple targets
 at one issuer and callback URL while preserving issuer/JARM, state, owner and

@@ -103,6 +103,7 @@ retention_browser_setup <- function(
   app_script = "integration/connections/fixture-app.R",
   app_function = "retention_fixture_app",
   shared_issuer = FALSE,
+  scope_narrowing = FALSE,
   .env = parent.frame()
 ) {
   port <- httpuv::randomPort()
@@ -110,6 +111,8 @@ retention_browser_setup <- function(
   providers <- lapply(if (shared_issuer) "shared" else c("a", "b"), function(site) {
     if (shared_issuer) {
       provider <- provider_factory(site, paste0(origin, "/callback/shared"), shared_issuer = TRUE)
+    } else if (scope_narrowing) {
+      provider <- provider_factory(site, paste0(origin, "/callback/", site), scope_narrowing = TRUE)
     } else {
       provider <- provider_factory(
         site,
@@ -135,7 +138,7 @@ retention_browser_setup <- function(
     app_script
   ))
   process <- callr::r_bg(
-    function(app_file, origin, bases, async, response_mode, app_function, shared_issuer) {
+    function(app_file, origin, bases, async, response_mode, app_function, shared_issuer, scope_narrowing) {
       Sys.setenv(CURL_SSL_BACKEND = "openssl")
       # mirai starts fresh R processes: carry the selected callr library paths
       # into those processes as well as the Shiny parent.
@@ -143,6 +146,7 @@ retention_browser_setup <- function(
       source(app_file, local = TRUE)
       args <- list(origin, bases, async, response_mode = response_mode)
       if (shared_issuer) args$shared_issuer <- TRUE
+      if (scope_narrowing) args$scope_narrowing <- TRUE
       do.call(get(app_function), args)
     },
     args = list(
@@ -152,7 +156,8 @@ retention_browser_setup <- function(
       async = async,
       response_mode = response_mode,
       app_function = app_function,
-      shared_issuer = shared_issuer
+      shared_issuer = shared_issuer,
+      scope_narrowing = scope_narrowing
     ),
     libpath = .libPaths(),
     supervise = TRUE,

@@ -1,6 +1,6 @@
 **SMART/FHIR and the new shinyOAuth components, in plain language**
 
-This explains the implementation on `smart_fhir` through P6, as of
+This explains the implementation on `smart_fhir` through P7a, as of
 2026-09-11. Some P4 and P5 release tests remain open, as listed below.
 Examples use invented hospitals and people. The detailed
 [roadmap](smart-fhir-roadmap.md) contains the implementation plan; this document
@@ -341,6 +341,29 @@ Remembering a token also does not extend its permission or force a fresh hospita
 login. Stored records and owners have expiry limits, and the external API still
 decides whether each request is allowed.
 
+**P7a lets one connection give up permissions it no longer needs.**
+
+Suppose a connection can read and write records, but the app now only needs to
+read. Calling `connection$refresh(scopes = "read")` asks for a replacement access
+token with just read permission. The manager checks that read was already
+allowed and that the connection keeps the permissions its target requires.
+For SMART, use the relevant SMART scope, such as `patient/Observation.r`, rather
+than the illustrative `read` name.
+
+After success, the manager remembers that limit with the stored credentials.
+It keeps asking for read-only access when refreshing later, including after
+leaving and returning to the app. Another connection can still have read/write
+access. To regain broader permissions through this manager, authorize again.
+
+Why remember the limit? OAuth narrowing does not cancel the refresh credential's
+original read/write permission at the hospital. Forgetting to ask for less on
+the next refresh could bring write access back. This feature controls what our
+connection requests and accepts; it does not claim to revoke the hospital's
+original authorization. [OAuth refresh rules](https://www.rfc-editor.org/rfc/rfc6749.html#section-6).
+The [P7a guide](../integration/connections/refresh-scopes.md) has the API details
+and tests. Ordinary connections keep their existing refresh behavior until the
+app explicitly chooses narrowing.
+
 **The patient, the signed-in user and the local owner can be different.**
 
 Suppose clinician Sam uses our app to work with patient Alex:
@@ -462,7 +485,8 @@ the EHR. See the [EHR setup and tests](../integration/smart/ehr-launch.md).
 | Inferno standalone client conformance runs | Planned: P4f. |
 | EHR launch entry routes | P5a built and browser-tested for public registrations, query/form_post and sync/mirai. Browser retention, top-level navigation and one R process are required. P5b external/profile gates remain open. |
 | Shared callback conveniences | P6 built: opt-in issuer routing and a pending-state index for several targets at one issuer. The default remains distinct routes. |
-| Optional extensions and deployment/store adapters | Later roadmap items. |
+| Refresh scope narrowing | P7a built: request fewer permissions on one managed connection and retain that limit across refresh and navigation. |
+| Authorization POST, embedding, multi-resource authorization details and deployment/store adapters | P7b-P7e remain later roadmap items. |
 
 **The Docker tests have already found a useful compatibility problem.**
 

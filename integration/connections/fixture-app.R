@@ -5,7 +5,8 @@ retention_fixture_app <- function(
   async = FALSE,
   idle_timeout = 600,
   response_mode = "query",
-  shared_issuer = FALSE
+  shared_issuer = FALSE,
+  scope_narrowing = FALSE
 ) {
   if (async) {
     mirai::daemons(2L)
@@ -29,7 +30,7 @@ retention_fixture_app <- function(
       provider,
       client_id = site,
       client_secret = "",
-      scopes = "read",
+      scopes = if (scope_narrowing) c("read", "write") else "read",
       redirect_uri = paste0(origin, "/callback/", if (shared_issuer) "shared" else site),
       state_key = openssl::rand_bytes(32),
       response_mode = response_mode,
@@ -69,6 +70,13 @@ retention_fixture_app <- function(
     shiny::actionButton("cross_resource", "Try B path with A connection"),
     shiny::actionButton("refresh_a", "Refresh A"),
     shiny::actionButton("refresh_b", "Refresh B"),
+    if (scope_narrowing) shiny::tagList(
+      shiny::actionButton("narrow_a", "Narrow A to read"),
+      shiny::actionButton("widen_a", "Try to restore write"),
+      shiny::actionButton("drop_required", "Try to drop required read"),
+      shiny::actionButton("write_a", "Write A"),
+      shiny::actionButton("write_b", "Write B")
+    ),
     shiny::actionButton("disconnect_b", "Disconnect B"),
     shiny::actionButton("logout", "Log out"),
     shiny::textInput("probe_id", "Connection ID for isolation check"),
@@ -140,8 +148,21 @@ retention_fixture_app <- function(
             if (inherits(value, "promise")) value else "refreshed"
           })
         )
+        shiny::observeEvent(input[[paste0("write_", selected)]], perform(function() {
+          response <- health$connection(id_for(selected))$request("api", "records",
+            method = "POST", required_scopes = "write")
+          paste0(httr2::resp_body_json(response)$site, ":written")
+        }))
       })
     }
+    for (action in c("narrow_a", "widen_a", "drop_required")) local({
+      selected_action <- action
+      scopes <- switch(selected_action, narrow_a = "read", widen_a = c("read", "write"), drop_required = "write")
+      shiny::observeEvent(input[[selected_action]], perform(function() {
+        value <- health$connection(id_for("a"))$refresh(scopes = scopes)
+        if (inherits(value, "promise")) value else "refreshed"
+      }))
+    })
     shiny::observeEvent(
       input$disconnect_b,
       perform(function() {

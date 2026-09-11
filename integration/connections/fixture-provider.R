@@ -1,7 +1,8 @@
 # Synthetic OAuth provider for the browser-retention gate, bound to loopback.
 # This verifies real HTTP, PKCE and credential rotation; it is not conformance tooling.
-retention_fixture_provider <- function(site, callback, shared_issuer = FALSE) {
+retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, scope_narrowing = FALSE) {
   registrations <- if (shared_issuer) c("a", "b") else site
+  original_scopes <- if (scope_narrowing) c("read", "write") else "read"
   state <- new.env(parent = emptyenv())
   state$codes <- new.env(parent = emptyenv())
   state$access <- new.env(parent = emptyenv())
@@ -10,22 +11,26 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE) {
     exchanges = 0L,
     refreshes = 0L,
     requests = 0L,
-    revocations = 0L
+    revocations = 0L,
+    scoped_refreshes = 0L,
+    omitted_refreshes = 0L,
+    writes = 0L
   )
   random <- function() {
     unclass(as.character(openssl::sha256(openssl::rand_bytes(32))))
   }
-  issue <- function(revision, registration) {
+  issue <- function(revision, registration, scopes = original_scopes) {
     access <- random()
     refresh <- random()
-    state$access[[access]] <- list(revision = revision, site = registration)
+    state$access[[access]] <- list(revision = revision, site = registration, scopes = scopes)
+    # RFC 6749: narrowing the access token does not reduce refresh-token scope.
     state$refresh[[refresh]] <- list(revision = revision, site = registration)
     list(
       access_token = access,
       refresh_token = refresh,
       token_type = "Bearer",
       expires_in = 3600,
-      scope = "read"
+      scope = paste(scopes, collapse = " ")
     )
   }
   app <- webfakes::new_app()
@@ -141,9 +146,15 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE) {
           auto_unbox = TRUE
         ))
       }
+      scopes <- if (is.null(body$scope)) original_scopes else strsplit(body$scope, " ", fixed = TRUE)[[1L]]
+      if (!length(scopes) || !all(scopes %in% original_scopes)) {
+        return(res$set_status(400L)$send_json(list(error = "invalid_scope"), auto_unbox = TRUE))
+      }
+      metric <- if (is.null(body$scope)) "omitted_refreshes" else "scoped_refreshes"
+      state$metrics[[metric]] <- state$metrics[[metric]] + 1L
       rm(list = body$refresh_token, envir = state$refresh)
       state$metrics$refreshes <- state$metrics$refreshes + 1L
-      token <- issue(record$revision + 1L, body$client_id)
+      token <- issue(record$revision + 1L, body$client_id, scopes)
     } else {
       return(res$set_status(400L)$send_json(
         list(error = "unsupported_grant_type"),
@@ -160,13 +171,23 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE) {
       NULL
     }
     resource_site <- if (shared_issuer) req$params$site else site
-    if (is.null(record) || !identical(record$site, resource_site)) {
+    if (is.null(record) || !identical(record$site, resource_site) || !"read" %in% record$scopes) {
       return(res$set_status(401L)$send("Unauthorized"))
     }
     state$metrics$requests <- state$metrics$requests + 1L
     res$send_json(list(site = record$site, revision = record$revision), auto_unbox = TRUE)
   }
   app$get(if (shared_issuer) "/api/:site/records" else "/api/records", resource)
+  app$post(if (shared_issuer) "/api/:site/records" else "/api/records", function(req, res) {
+    bearer <- sub("^Bearer ", "", req$get_header("Authorization"))
+    record <- if (is.character(bearer) && length(bearer) == 1L) state$access[[bearer]] else NULL
+    resource_site <- if (shared_issuer) req$params$site else site
+    if (is.null(record) || !identical(record$site, resource_site) || !"write" %in% record$scopes) {
+      return(res$set_status(403L)$send("Forbidden"))
+    }
+    state$metrics$writes <- state$metrics$writes + 1L
+    res$send_json(list(site = record$site), auto_unbox = TRUE)
+  })
   app$post("/revoke", function(req, res) {
     token <- req$form$token
     for (store in list(state$refresh, state$access)) {

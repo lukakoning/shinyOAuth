@@ -1,4 +1,4 @@
-# Retained-connection browser gates (P3d and P6)
+# Retained-connection browser gates (P3d, P6 and P7a)
 
 From the repository root, install the current checkout and run:
 
@@ -6,6 +6,7 @@ From the repository root, install the current checkout and run:
 R CMD INSTALL .
 Rscript integration/connections/run-tests.R
 Rscript integration/connections/run-shared-router.R
+Rscript integration/connections/run-scope-narrowing.R
 ```
 
 Requires Chrome/Chromium, the package's dependencies, and `testthat`, `webfakes`,
@@ -21,6 +22,11 @@ The [P6 shared-callback gate](shared-callbacks.md) uses one authorization server
 two registrations and two resource paths on the same origin. It checks pending
 logins in separate tabs through the same callback URL, resource isolation and
 the same query/form POST and sync/mirai matrix.
+
+The [P7a refresh-scope gate](refresh-scopes.md) narrows one connection from read
+and write to read, then verifies the limit survives a new Shiny session and
+later refresh. Another connection retains its original permissions. It runs
+the same four transport combinations and checks actual resource access.
 
 The matrix covers `query` and `form_post`, each with synchronous transport and
 actual mirai workers. It verifies:

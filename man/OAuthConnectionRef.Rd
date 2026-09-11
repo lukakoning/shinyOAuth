@@ -143,8 +143,27 @@ record before installing replacement credentials. References created with
 cannot invoke this method.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{OAuthConnectionRef$refresh()}
+    \preformatted{OAuthConnectionRef$refresh(scopes = NULL)}
     \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{scopes}}{Optional non-empty character vector requesting fewer
+permissions for this connection, or \code{NULL} (default). Scopes must be
+covered by the current grant and target configuration, and retain the
+target's required scopes. SMART targets use semantic coverage.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Details}{
+    After explicit narrowing succeeds, subsequent refreshes (including
+automatic refreshes and refreshes in another retained Shiny session)
+request the accepted scope limit. Widening requires a new authorization.
+This is a local connection policy: OAuth refresh-token scope itself is
+not reduced by requesting a narrower access token. Existing connections
+that have never selected narrowing continue to omit request scope.
+Providers may reject requested scopes; there is no retry without them.
   }
   \subsection{Returns}{
     \code{TRUE} after a successful commit, or a promise resolving to \code{TRUE}

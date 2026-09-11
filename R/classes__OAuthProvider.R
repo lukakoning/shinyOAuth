@@ -146,9 +146,9 @@
 #'
 #' @param extra_auth_params Extra parameters for authorization URL
 #' @param extra_token_params Extra parameters for token exchange.
-#'   `scope` is reserved and cannot be unblocked: explicit refresh scope
-#'   narrowing is not currently supported. Configure login scopes on
-#'   [oauth_client()] instead.
+#'   `scope` is reserved and cannot be unblocked. For explicit refresh scope
+#'   narrowing use a managed connection's `$refresh(scopes = ...)`. Configure
+#'   login scopes on [oauth_client()] instead.
 #' @param extra_token_headers Extra headers for back-channel token-style
 #'   requests (named character vector), applied only to token exchange and
 #'   refresh. Configure `oauth_client(endpoint_auth = ...)` for headers needed
@@ -1317,7 +1317,7 @@ oauth_provider_validate <- function(self) {
     }
     if ("scope" %in% tolower(trimws(nms))) {
       return(
-        "OAuthProvider: scope is reserved in extra_token_params; refresh scope narrowing is not supported"
+        "OAuthProvider: scope is reserved in extra_token_params; use a managed connection's refresh(scopes = ...)"
       )
     }
   }
