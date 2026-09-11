@@ -481,7 +481,7 @@ the EHR. See the [EHR setup and tests](../integration/smart/ehr-launch.md).
 | SMART scope interpretation | P4b engine and token/connection checks built; smart_target() selects them explicitly. See [scope examples](smart-scopes.md). |
 | `smart_target()` and SMART registration/request rules | P4c1 built for direct query/form_post authorization; optional transport combinations remain P4c2. |
 | Interpreted patient/context handling and Patient/`fhirUser` helpers | P4d1 built; refresh preserves omitted context and marks context changes with a revision. Experimental context remains raw data. |
-| Complete standalone SMART app, browser scenarios and two-hospital sandbox repeat | Planned: P4e. |
+| Standalone SMART app and browser scenarios | Runnable fixture and public/secret/RS384 matrix built, including identity and narrowing. P4e's external two-hospital sandbox repeat and vignette remain open. |
 | Inferno standalone client conformance runs | Planned: P4f. |
 | EHR launch entry routes | P5a built and browser-tested for public registrations, query/form_post and sync/mirai. Browser retention, top-level navigation and one R process are required. P5b external/profile gates remain open. |
 | Shared callback conveniences | P6 built: opt-in issuer routing and a pending-state index for several targets at one issuer. The default remains distinct routes. |
@@ -489,6 +489,13 @@ the EHR. See the [EHR setup and tests](../integration/smart/ehr-launch.md).
 | Authorization POST, embedding, multi-resource authorization details and deployment/store adapters | P7b-P7e remain later roadmap items. |
 
 **The Docker tests have already found a useful compatibility problem.**
+
+The [coverage guide](../integration/smart/coverage.md) shows how to run all the
+implemented checks together. The expanded browser matrix uses both launch modes
+and all three registration types. It reads a Patient and a separate signed-in
+Practitioner, then confirms they still match after refresh and navigation.
+Those are tests against our own strict simulated server. The Docker sandbox
+provides a separate external check, with the limitation below.
 
 The Docker setup runs official SMART Dev Sandbox components with Launcher v2
 and synthetic patient data. It is an external simulator for integration testing.

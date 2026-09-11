@@ -1,5 +1,9 @@
 # SMART integration baseline
 
+See [the implemented-roadmap coverage map](coverage.md) for the combined runner,
+the 24-scenario SMART registration/launch/identity/refresh browser matrix, and
+the distinction between local test results and the blocked external sandbox gate.
+
 The [local Docker sandbox setup](sandbox.md) uses official SMART Dev Sandbox
 components with SMART Launcher v2. Run `Rscript integration/smart/run-tests.R`
 from the repository root after installing this checkout for infrastructure smoke
@@ -26,6 +30,7 @@ independent interoperability evidence.
 | SMART discovery API | P4a `smart_discover()` implemented; live Launcher v2 rejected because its asymmetric algorithm advertisement is missing. Positive external gate remains open. Unit and HTTP fixtures validate the reader. |
 | SMART registration, scopes and context | P4b/P4c1/P4d1 implemented; `smart_target()` opts into explicit SMART checks and interpreted refresh context |
 | EHR entry and retained Patient reads | P5a `run-ehr-browser.R`: concurrent two-site launch, query/form_post, sync/mirai, Patient binding, refresh, owner isolation and logout; fixture evidence only |
+| Supported registrations, both launch modes, signed identity and narrowing | `run-profiles.R`: public/HTTP Basic/RS384 across standalone/EHR, query/form_post and sync/mirai; Patient and distinct validated Practitioner, retained narrowed scopes and independent grants; strict local fixture evidence. |
 | A-to-B navigation retains both connections | P3 implemented: real Chrome navigation, new Shiny sessions, independent refresh, owner isolation and disconnect. Query/form_post, sync/mirai; 104 assertions. |
 | Independent SMART compatibility | P4/P5: record sandbox/tool version, registration, capabilities, transport and outcome |
 

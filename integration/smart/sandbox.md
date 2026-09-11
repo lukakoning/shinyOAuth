@@ -1,5 +1,9 @@
 # Local SMART Dev Sandbox
 
+The [coverage map](coverage.md) connects this external diagnostic suite to the
+implemented package, cryptographic and browser tests. Its combined runner can
+require external acceptance and reports the current blockers explicitly.
+
 This is an R4-only setup using the official
 [SMART Dev Sandbox](https://github.com/smart-on-fhir/smart-dev-sandbox)
 components: HAPI FHIR with Synthea sample data and the patient browser, with the
@@ -87,9 +91,10 @@ docker compose -f integration/smart/docker-compose.yml -p shinyoauth-smart-dev d
 ```
 
 Add `--volumes` only to discard that manual stack's synthetic data changes.
-The launcher runs independently of a Shiny app. P4 will supply a runnable app
-with distinct registered callback routes, followed by the P5 EHR launch route;
-there is no `smart_target()` authorization example yet. Discovery is available:
+The launcher runs independently of a Shiny app. Runnable apps now exercise
+`smart_target()` and both launch modes against strict local fixtures, including
+all three supported registration types. The external launcher repeat remains
+blocked by its metadata. Discovery is available:
 
 ```r
 # Currently raises a parse error for missing asymmetric algorithm metadata:
@@ -173,6 +178,8 @@ Rows marked planned describe future tests, not currently skipped tests.
 | P4a reader implemented; positive sandbox gate open | `test-smart-discovery.R` and `--require-compatible-discovery` | The reader detects missing asymmetric algorithm metadata in the pinned launcher. Positive/negative HTTP fixtures verify the reader, but the release gate requires acceptance by an unmodified compatible external server. |
 | P4 standalone | Add a real app fixture and `test-browser-standalone.R` | Browser consent/selection, S256 and FHIR `aud`, matching Patient retrieval, supported scopes, refresh/context continuity; identity and clinician tests require advertised SSO support. |
 | P5 EHR launch | Add `test-browser-ehr-launch.R` | Launch from the real launcher with `iss` and `launch`; clean continuation, selected patient/encounter, concurrent launch isolation, and mixed callback rejection. |
+| Local app coverage, now | `run-profiles.R` and `run-ehr-browser.R` | Twenty-four strict fixture scenarios cover the supported registration types and both launch modes; the separate EHR suite covers concurrent launches. These do not satisfy the external launcher rows. |
+| P7a external refresh narrowing | Repeat `run-profiles.R` semantics against an independently compatible provider | Accepted narrower SMART scope, preserved required permissions/context, and the limit retained through later refresh/navigation. Current local coverage cannot establish external support. |
 | P4/P5 independent conformance | Add the [Inferno STU2.2 Client gate](inferno.md) and real-app driver | Separate public, symmetric and RS384 asymmetric runs, followed by EHR runs; require Inferno's request-verification results as well as browser/resource evidence. |
 | P6 and P7c | Extend site topology and browser matrix | Same-issuer resource binding and iframe/navigation/cookie behavior, with separate evidence per supported mode. |
 

@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Added a 24-scenario SMART browser matrix covering standalone/EHR launch,
+public/HTTP Basic/RS384 registrations, query/form POST, synchronous/mirai
+transport, signed identity and retained scope narrowing. A combined coverage
+runner includes package/browser, conformance, retention and live Docker checks;
+external SMART interoperability remains separately gated.
+
 * SMART public registrations now rely on the advertised `client-public`
 capability without requiring `none` in the list of confidential authentication
 methods. Confidential registrations still require their advertised method.

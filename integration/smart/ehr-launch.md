@@ -1,5 +1,10 @@
 # EHR launch implementation and browser tests
 
+The [coverage map](coverage.md) adds a 24-scenario matrix for public, HTTP Basic
+and RS384 registrations in standalone and EHR modes, including signed identity
+and retained refresh narrowing. The concurrent-launch suite below remains a
+separate required check. Both use local fixtures; external SMART gates remain open.
+
 P5a adds top-level EHR launch to the browser-retained manager. A registered
 launch route accepts the EHR's `iss` and opaque `launch` parameters. It matches
 the exact FHIR base to an approved EHR target **before any network request**.

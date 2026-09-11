@@ -1,4 +1,4 @@
-name: SMART EHR browser integration
+name: SMART profile and EHR browser integration
 
 on:
   workflow_dispatch:
@@ -28,7 +28,7 @@ permissions:
 jobs:
   ehr-browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       NOT_CRAN: "true"
     steps:
@@ -49,11 +49,15 @@ jobs:
             any::promises
       - name: Test public SMART EHR launch, context and retention
         run: Rscript integration/smart/run-ehr-browser.R
+      - name: Test all SMART registrations, launch modes, identity and refresh scopes
+        run: Rscript integration/smart/run-profiles.R
       - name: Upload sanitized fixture evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: smart-ehr-browser-evidence
-          path: integration/smart/.artifacts/ehr-*/evidence.json
+          path: |
+            integration/smart/.artifacts/ehr-*/evidence.json
+            integration/smart/.artifacts/profiles-*/evidence.json
           include-hidden-files: true
           if-no-files-found: ignore

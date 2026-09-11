@@ -1,0 +1,136 @@
+# Coverage of the implemented SMART and connection roadmap
+
+Install the current checkout, then run the full coverage entry point from the
+repository root:
+
+```sh
+Rscript integration/smart/run-coverage.R
+```
+
+This runs the complete package suite with browser tests enabled, independent
+Python conformance checks, the three retained-connection browser gates, the
+SMART registration/launch matrix, concurrent EHR launches, and the pinned Docker
+sandbox. Suites run in fresh R processes, and browser suites run sequentially.
+The runner continues after a failed suite to collect the remaining results, then
+fails if any suite failed. `--integration-only` omits the package suite when it
+has already been run for the same checkout.
+
+Prerequisites: Chrome/Chromium, Node.js for the browser fixture servers, Docker
+Engine with Linux containers and Compose v2, the R dependencies listed by the
+individual runners, and Python with
+`integration/conformance/requirements.txt` installed. Set `R_LIBS` to select an
+isolated package library and `SHINYOAUTH_TEST_PYTHON` when Python is not on PATH.
+The Shiny parent and mirai workers must load the current installed checkout.
+
+## Which implementation each suite verifies
+
+| Implemented component | Package tests | Integration evidence |
+| --- | --- | --- |
+| Initial/latest token extension snapshots | `test-token-extra-fields.R`, `test-smart-contracts.R` | SMART profile matrix preserves Patient and validated user context when refresh omits context/ID token. |
+| RS384 client assertions, JAR and DPoP signing | `test-rs384.R` and signing/claim tests | `integration/conformance/run-tests.R` independently verifies signatures and protocol exchanges in Python. The SMART profile matrix also exercises RS384 client authentication during code exchange and refresh. |
+| Targets, references and approved resource bases | `test-oauth-connections.R`, `test-resource-binding.R` | Retention/shared-callback suites and two-site SMART Patient/user requests. |
+| Encrypted retention, ownership and atomic lifecycle | Connection credentials/store/owner/manager tests | Retention suite covers browser isolation, navigation and independent grants; EHR concurrency tests cover overlapping launches. |
+| SMART discovery and endpoint policy | `test-smart-discovery.R` | Real HTTP positive/negative fixtures plus unmodified Docker metadata; the live positive gate is currently blocked. |
+| Registration, S256, FHIR audience and scopes | `test-smart-target.R`, `test-smart-scopes.R` | Profile matrix validates the actual authorization and token requests for public, HTTP Basic and RS384 registrations. |
+| SMART context and validated `fhirUser` | `test-smart-context.R`, SMART identity tests | Profile matrix obtains a signed ID token over HTTP, fetches live fixture JWKS, reads the contextual Patient and a distinct Practitioner, and repeats after refresh/navigation. |
+| EHR launch entry, owner-bound continuation | `test-smart-launch.R` | Both the profile matrix and dedicated concurrent two-tab/two-site EHR suite exercise registered launch routes. |
+| P6 shared callback routing | `test-connection-router.R` and callback tests | One issuer, two registrations/resource paths, concurrent tabs and query/form POST, with sync/mirai. This is generic OAuth evidence. |
+| P7a refresh scope narrowing | `test-refresh-scope-narrowing.R` | Generic scope gate plus SMART semantic `.rs` to `.r` narrowing; retained limit, required permissions, refresh rotation and another unaffected connection. |
+
+## SMART profile browser matrix
+
+```sh
+Rscript integration/smart/run-profiles.R
+```
+
+This requires **24 successful scenarios**: three registration types, two launch
+modes (standalone/EHR), two callback transports (query/form POST), and synchronous
+or real mirai transport. Every scenario authorizes two sites, fetches Patient and
+validated Practitioner identity, narrows one grant, verifies loss of search
+permission, retains that limit after navigation, refreshes both grants independently,
+rejects widening, disconnects one connection and logs out.
+
+The server deliberately retains the original refresh credential's grant, so a
+later refresh that omits the narrowed scope would restore search permission and
+fail the test. The app uses exported SMART and manager APIs. No scope evaluator,
+token exchange, signature verification, context parser or resource helper is
+mocked. The server is still our synthetic fixture; this is not independent SMART
+conformance. The Python suite remains the independent cryptographic check.
+
+`--quick` runs just the three synchronous standalone/query scenarios for fixture
+development and records `complete_matrix: false`. It does not satisfy the full
+matrix. Missing prerequisites, errors, failed assertions or skipped tests fail
+the full runner. Sanitized scenario choices, versions and counts are written to
+`.artifacts/profiles-<run>/evidence.json` and uploaded by `smart-ehr.yml`.
+
+## What the Docker sandbox can currently establish
+
+The official SMART Dev Sandbox uses an unmodified, digest-pinned Launcher v2.
+Its discovery still advertises asymmetric authentication without the required
+algorithm list. Strict `smart_discover()` rejects it before constructing a
+target or sending app credentials. Its FHIR proxy also permits uncredentialed
+reads. Therefore its 46 diagnostic checks establish metadata rejection,
+connectivity and synthetic data availability; they establish neither a complete
+SMART app flow nor resource authorization enforcement.
+
+The external requirement is deliberately separate:
+
+```sh
+Rscript integration/smart/run-coverage.R --require-external
+```
+
+This requires the sandbox's positive discovery gate in addition to the other
+suites and currently fails. It also fails while the external app gate is
+unimplemented. Even after discovery is accepted, independent app
+interoperability remains unestablished until the two-site sandbox browser runs
+and [Inferno client verification matrix](inferno.md) are implemented and pass.
+The coverage report always distinguishes `external_interoperability` from the
+status of implemented suites. A diagnostic pass cannot turn that field green.
+
+| External scenario | Current status | What is still needed |
+| --- | --- | --- |
+| SMART discovery | Blocked by missing launcher algorithm advertisement | Compatible unmodified deployment and positive strict discovery. |
+| Standalone, Patient/Practitioner and retained two-site connections | Not run against an external SMART server | Registered app/browser driver, two isolated datasets and accepted discovery. |
+| EHR entry for public/symmetric/RS384 registrations | Local browser coverage; external gate open | External launcher initiation plus independent request verification for each registration. |
+| SMART refresh narrowing | Local browser coverage; external gate open | Provider-supported narrowing with explicit returned scope and continuity assertions. |
+| P6 shared issuer/resource topology | Generic strict fixture coverage | Separately configured external registrations and resource destinations. |
+| Inferno STU2.2 client suite | Not run; source metadata concern remains | Pinned deployment, compatible discovery and actual verification results, not merely issued tokens. |
+
+The runner selects sandbox test files explicitly. Adding a browser test to this
+directory no longer makes the smoke suite execute it without its browser setup.
+The package test runner permits only the known Windows filesystem-concurrency
+skip; missing browser prerequisites are failures. Linux CI remains responsible
+for that filesystem test. Generic Keycloak integration remains in its separate
+workflow and does not substitute for the external SMART rows above.
+
+Protocol checks used during this audit:
+[SMART discovery/capabilities](https://hl7.org/fhir/smart-app-launch/STU2.2/conformance.html),
+[SMART asymmetric authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html),
+[OAuth refresh scope rules](https://www.rfc-editor.org/rfc/rfc6749.html#section-6),
+and the [upstream launcher metadata handler](https://github.com/smart-on-fhir/smart-launcher-v2/blob/64374254347fdfa9625f9112c77813aa75fa9f3e/backend/routes/fhir/.well-known/smart-configuration.ts).
+Public clients select `client-public`; SMART's confidential authentication-method
+list does not require a `none` entry. The public registration regression and the
+profile fixture test that distinction without weakening confidential checks.
+
+## Recorded validation, 2026-09-11
+
+The combined integration run used R 4.5.1, Chrome 152.0.7977.83, Node 22.16.0,
+Shiny 1.13.0, mirai 2.7.1 and Docker Engine 28.5.1. Results:
+
+| Suite | Result |
+| --- | --- |
+| Complete package suite, browser tests enabled | 12,391 assertions passed; zero failures/errors. Only the known Windows filesystem-concurrency test skipped. All 25 browser tests skipped by the earlier browser-disabled run executed successfully. |
+| Independent Python cryptographic/strict-AS suite | 195 assertions passed, zero skips. |
+| Generic retained connections | 104 browser assertions passed, zero skips. |
+| Shared callback routing | 68 browser assertions passed, zero skips. |
+| Generic refresh narrowing | 64 browser assertions passed, zero skips. |
+| SMART registrations, identity, launch and narrowing | All 24 scenarios / 336 assertions passed, zero skips. |
+| Concurrent EHR launches | 88 browser assertions passed, zero skips. |
+| Unmodified Docker sandbox | 46 diagnostic assertions passed; positive discovery failed and external app flows remain untested. Owned containers/data volume were cleaned up. |
+| Package build/check | `R CMD check --no-tests --no-manual --ignore-vignettes`: zero errors, warnings or notes; tests ran separately. |
+
+`run-coverage.R --integration-only --require-external` returned failure and
+recorded only `sandbox` and `external_app_interoperability` as unmet gates.
+Those results must remain visible when evaluating readiness for a SMART release.
+Unit/conformance runs can report installed-dependency build-version warnings;
+Chromote can report websocket EOF during normal browser teardown.

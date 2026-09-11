@@ -176,6 +176,9 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
   )
   results <- testthat::test_dir(
     "integration/smart",
+    # Browser suites have their own process setup and runners. Do not discover
+    # them implicitly when adding another test file to this directory.
+    filter = "^(sandbox-smoke|smart-discovery)$",
     reporter = "summary",
     stop_on_failure = FALSE,
     stop_on_warning = FALSE
