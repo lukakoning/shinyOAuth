@@ -11,6 +11,9 @@ OAuthClient(
   endpoint_auth = list(),
   redirect_uri = character(0),
   scopes = character(0),
+  resource_bases = character(0),
+  required_scopes = character(0),
+  label = provider@name,
   authorization_method = "GET",
   response_mode = NA_character_,
   resource = character(0),
@@ -100,6 +103,28 @@ and path. Use HTTPS in production.}
 the available names. For OIDC (\code{issuer} set and \code{issuer_thus_oidc = TRUE}),
 shinyOAuth adds \code{"openid"} automatically if absent. The resulting set is
 used in the request and subsequent scope checks.}
+
+\item{resource_bases}{Optional named character vector of approved API base
+URLs for \code{\link[=oauth_connection]{oauth_connection()}} and \code{\link[=oauth_connections]{oauth_connections()}}. The default
+\code{character()} leaves the existing token/request APIs unchanged. Each resource
+ID starts with a letter and contains letters, digits, \verb{_} or \code{-} (at most
+64 bytes). Up to 64 bases are supported. HTTPS is required except for
+loopback development URLs. Requests through a connection stay within the
+exact scheme, host, effective port and base path; redirects are disabled.
+Bases exclude user information, query strings, fragments, dot segments,
+repeated slashes, semicolon parameters and ambiguous encoded characters.
+This is local request policy, not evidence of token audience, and does not
+add the OAuth \code{resource} authorization parameter.}
+
+\item{required_scopes}{Optional requested scopes that every usable connection
+needs, default \code{character()}. Other requested scopes may be absent from a
+limited grant. Ordinary OAuth clients compare literal scopes; \code{\link[=smart_client]{smart_client()}}
+selects SMART semantic comparison and also enforces these permissions when
+validating token responses. Explicit refresh narrowing retains these scopes.}
+
+\item{label}{Optional display label used in connection summaries; defaults to
+the provider name. Must be a non-empty string of at most 128 bytes without
+control characters. Labels contain no credentials or patient context.}
 
 \item{authorization_method}{Browser method for sending the authorization
 request: \code{"GET"} (default) or \code{"POST"}. Select POST only after confirming
@@ -198,7 +223,7 @@ ordinary OAuth clients. SMART adapters install their own policy, including
 required permissions; these checks cannot be disabled by \code{scope_validation}.
 This parameter is not an argument to \code{\link[=oauth_client]{oauth_client()}}.}
 
-\item{smart}{Internal SMART configuration installed by \code{\link[=smart_target]{smart_target()}}.
+\item{smart}{Internal SMART configuration installed by \code{\link[=smart_client]{smart_client()}}.
 Leave the empty default for ordinary clients. This is not an argument to
 \code{\link[=oauth_client]{oauth_client()}}.}
 

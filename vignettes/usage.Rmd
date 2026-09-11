@@ -425,28 +425,28 @@ require these classes.
 
 | Object | What it represents | Example |
 | --- | --- | --- |
-| `OAuthClient` | App registration and OAuth settings | Hospital A's client ID, authorization server and requested scopes |
-| `OAuthTarget` | A client plus the API addresses its connections may call | Hospital A's client and `https://a.example/fhir` |
-| `OAuthConnectionRef` | Access to one Shiny session's current credentials through that configuration | This session's authorized requests to Hospital A |
+| `OAuthClient` | Registration settings and optional approved API addresses | Hospital A's client ID, scopes and `https://a.example/fhir` |
+| `OAuthConnection` | Access to one Shiny session's current credentials through that configuration | This session's authorized requests to Hospital A |
 
-The target holds shared configuration, with no user's token. A connection reads
-the current token for each request. "Ref" means it refers to credentials that
+The client holds shared configuration, with no user's token. A connection reads
+the current token for each request. The object refers to credentials that
 can change instead of keeping a token copy. The existing reactive token already
 updates on refresh; the connection adds client selection, API-address restrictions
 and session checks. It does not implement refresh or retention by itself.
 
-Use `oauth_target()` outside `server()` to configure named API bases, then create
-a connection for that target's module inside `server()`:
+Set `resource_bases` on `oauth_client()` outside `server()`, then create
+a connection for that client's module inside `server()`:
 
 ```{r, eval = FALSE}
-target <- oauth_target(
-  client,
+client <- oauth_client(
+  provider, client_id = "registered-app",
+  redirect_uri = "https://app.example/callback", scopes = "read",
   resource_bases = c(records = "https://api.example/v1"),
-  required_scopes = "read" # Must already be requested by client.
+  required_scopes = "read" # A subset of the requested scopes.
 )
 server <- function(input, output, session) {
-  auth <- oauth_module_server("auth", target$client)
-  connection <- oauth_connection(target, reactive(auth$token))
+  auth <- oauth_module_server("auth", client)
+  connection <- oauth_connection(client, reactive(auth$token))
   records <- reactive({
     req(connection$is_usable())
     connection$request("records", "records", query = list(limit = 20)) |>
@@ -462,7 +462,7 @@ module's lifecycle and does not retain credentials across navigation.
 
 `resource_bases` restricts the token's destinations; it does not request an
 audience or prove an opaque token's audience. Wire the token expression to the
-module using `target$client`. Resource indicators remain an explicit client
+module using `client`. Resource indicators remain an explicit client
 setting ([RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html)).
 
 Each request selects a resource ID and resolves a path against its full base.
@@ -475,7 +475,7 @@ and path rules from [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986.html).
 Optional permissions can produce a limited connection. Declare an operation's
 extra permissions with `$request(..., required_scopes = "write")`; the current
 grant must cover them. No generic mapping from API paths to OAuth scopes is
-assumed. `$summary()` contains the opaque connection ID, target label, local
+assumed. `$summary()` contains the opaque connection ID, client label, local
 status, expiry, and resource IDs. It excludes credentials and raw context.
 
 ## Asynchronous execution

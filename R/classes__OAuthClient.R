@@ -155,9 +155,29 @@
 #'   required permissions; these checks cannot be disabled by `scope_validation`.
 #'   This parameter is not an argument to [oauth_client()].
 #'
-#' @param smart Internal SMART configuration installed by [smart_target()].
+#' @param smart Internal SMART configuration installed by [smart_client()].
 #'   Leave the empty default for ordinary clients. This is not an argument to
 #'   [oauth_client()].
+#'
+#' @param resource_bases Optional named character vector of approved API base
+#'   URLs for [oauth_connection()] and [oauth_connections()]. The default
+#'   `character()` leaves the existing token/request APIs unchanged. Each resource
+#'   ID starts with a letter and contains letters, digits, `_` or `-` (at most
+#'   64 bytes). Up to 64 bases are supported. HTTPS is required except for
+#'   loopback development URLs. Requests through a connection stay within the
+#'   exact scheme, host, effective port and base path; redirects are disabled.
+#'   Bases exclude user information, query strings, fragments, dot segments,
+#'   repeated slashes, semicolon parameters and ambiguous encoded characters.
+#'   This is local request policy, not evidence of token audience, and does not
+#'   add the OAuth `resource` authorization parameter.
+#' @param required_scopes Optional requested scopes that every usable connection
+#'   needs, default `character()`. Other requested scopes may be absent from a
+#'   limited grant. Ordinary OAuth clients compare literal scopes; [smart_client()]
+#'   selects SMART semantic comparison and also enforces these permissions when
+#'   validating token responses. Explicit refresh narrowing retains these scopes.
+#' @param label Optional display label used in connection summaries; defaults to
+#'   the provider name. Must be a non-empty string of at most 128 bytes without
+#'   control characters. Labels contain no credentials or patient context.
 #'
 #' @param claims_validation What to do if requested claims are missing or have
 #'   unexpected values: `"warn"` continues with a warning, `"strict"` stops
@@ -503,6 +523,9 @@ OAuthClient <- S7::new_class(
     endpoint_auth = S7::new_property(S7::class_list, default = list()),
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
+    resource_bases = S7::new_property(S7::class_character, default = character()),
+    required_scopes = S7::new_property(S7::class_character, default = character()),
+    label = S7::new_property(S7::class_character, default = quote(provider@name)),
     authorization_method = S7::new_property(S7::class_character, default = "GET"),
     # Authorization response mode for authorization-code callbacks.
     response_mode = S7::new_property(
@@ -538,7 +561,7 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = "warn"
     ),
-    # Internal, versioned policy selected by SMART targets. A generic client
+    # Internal, versioned policy selected by SMART clients. A generic client
     # retains literal scopes and RFC 6749 omission behavior.
     scope_policy = S7::new_property(
       S7::class_list,
@@ -818,6 +841,9 @@ oauth_client <- function(
   compare_callback_issuer = NULL,
   client_assertion_typ = "JWT",
   authorization_method = "GET",
+  resource_bases = character(),
+  required_scopes = character(),
+  label = provider@name,
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(
@@ -1087,6 +1113,7 @@ oauth_client <- function(
     dpop_require_access_token <- !is.null(dpop_private_key)
   }
 
+  validate_scopes(required_scopes)
   client <- OAuthClient(
     provider = provider,
     client_id = client_id,
@@ -1094,6 +1121,9 @@ oauth_client <- function(
     endpoint_auth = endpoint_auth,
     redirect_uri = redirect_uri,
     scopes = scopes,
+    resource_bases = if (length(resource_bases)) normalize_resource_bases(resource_bases) else resource_bases,
+    required_scopes = normalize_scope_tokens(required_scopes),
+    label = label,
     response_mode = response_mode,
     authorization_method = authorization_method,
     resource = resource,
@@ -2931,6 +2961,8 @@ oauth_client_validate <- function(self) {
   if (!is.null(scope_policy_error)) {
     return(scope_policy_error)
   }
+  connection_error <- validate_client_resources(self)
+  if (!is.null(connection_error)) return(connection_error)
   smart_error <- smart_validate_client(self)
   if (!is.null(smart_error)) return(smart_error)
   if (

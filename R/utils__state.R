@@ -670,6 +670,13 @@ state_client_policy_fingerprint <- function(client) {
     components$scope_policy <- client@scope_policy
   }
   if (client_uses_smart(client)) components$smart <- client@smart
+  if (length(client@resource_bases)) {
+    bases <- normalize_resource_bases(client@resource_bases)
+    components$resource_bases <- as.list(bases[sort(names(bases))])
+  }
+  if (length(client@required_scopes)) {
+    components$required_scopes <- normalize_scope_tokens(client@required_scopes)
+  }
   state_policy_digest(components)
 }
 

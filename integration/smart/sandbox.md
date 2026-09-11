@@ -75,7 +75,7 @@ running, and preserves its data. Open the launcher after readiness succeeds:
 | Patient browser | `http://localhost:18412` |
 | Direct HAPI R4 base, for fixture data and diagnostics | `http://localhost:18404/hapi-fhir-jpaserver/fhir` |
 
-Use the **SMART FHIR base** in the future app target, not the direct HAPI URL.
+Use the **SMART FHIR base** in the future app client, not the direct HAPI URL.
 FHIR traffic inside Docker goes from the launcher to `r4:8080`; browser URLs
 remain on `localhost`. The patient picker uses only the local Synthea dataset.
 R2/R3 are disabled with empty upstream URLs. Launcher v2 uses `PORT` and binds
@@ -92,7 +92,7 @@ docker compose -f integration/smart/docker-compose.yml -p shinyoauth-smart-dev d
 
 Add `--volumes` only to discard that manual stack's synthetic data changes.
 The launcher runs independently of a Shiny app. Runnable apps now exercise
-`smart_target()` and both launch modes against strict local fixtures, including
+`smart_client()` and both launch modes against strict local fixtures, including
 all three supported registration types. The external launcher repeat remains
 blocked by its metadata. Discovery is available:
 
@@ -174,7 +174,7 @@ Rows marked planned describe future tests, not currently skipped tests.
 | --- | --- | --- |
 | P0 supplement, now | `test-sandbox-smoke.R` and `run-tests.R` | Pinned v2 launcher and services start; required discovery fields, local public keys, R4 metadata, sample Patient data, proxy and picker work; image/capability report saved. |
 | P1 signing | Existing `../conformance/test-rs384-interop.R` and strict AS matrix | Independent RS384 verification stays required; advertised asymmetric authentication alone does not establish successful RS384 exchanges. |
-| P3 generic retention / P4 sandbox repeat | P3 implemented in `integration/connections/`; add a two-site Compose profile with P4's SMART targets | The generic Chrome gate passes query/form_post and sync/mirai. P4 adds two isolated launcher/FHIR datasets and repeats A-to-B navigation, independent refresh and disconnect with SMART registration, scopes and context. |
+| P3 generic retention / P4 sandbox repeat | P3 implemented in `integration/connections/`; add a two-site Compose profile with P4's SMART clients | The generic Chrome gate passes query/form_post and sync/mirai. P4 adds two isolated launcher/FHIR datasets and repeats A-to-B navigation, independent refresh and disconnect with SMART registration, scopes and context. |
 | P4a reader implemented; positive sandbox gate open | `test-smart-discovery.R` and `--require-compatible-discovery` | The reader detects missing asymmetric algorithm metadata in the pinned launcher. Positive/negative HTTP fixtures verify the reader, but the release gate requires acceptance by an unmodified compatible external server. |
 | P4 standalone | Add a real app fixture and `test-browser-standalone.R` | Browser consent/selection, S256 and FHIR `aud`, matching Patient retrieval, supported scopes, refresh/context continuity; identity and clinician tests require advertised SSO support. |
 | P5 EHR launch | Add `test-browser-ehr-launch.R` | Launch from the real launcher with `iss` and `launch`; clean continuation, selected patient/encounter, concurrent launch isolation, and mixed callback rejection. |

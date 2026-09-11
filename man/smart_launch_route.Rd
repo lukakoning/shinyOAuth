@@ -4,15 +4,16 @@
 \alias{smart_launch_route}
 \title{Register a SMART EHR launch entry route}
 \usage{
-smart_launch_route(path, targets, max_age = 120)
+smart_launch_route(path, clients, max_age = 120)
 }
 \arguments{
 \item{path}{Absolute application path, such as \code{"/smart/launch"}. Register
 \code{paste0(manager$app_origin, path)} with the EHR. It must be inside the UI's
 \code{app_base_path} and distinct from every callback and other launch route.}
 
-\item{targets}{Character vector of target IDs in the manager. Each must be an
-EHR-mode \code{\link[=smart_target]{smart_target()}}. A route cannot contain two registrations for the
+\item{clients}{Character vector of names from the manager's \code{clients} list,
+not OAuth \code{client_id} values. Each must select an EHR-mode \code{\link[=smart_client]{smart_client()}}.
+A route cannot contain two registrations for the
 same exact FHIR base; give those registrations separate launch routes.}
 
 \item{max_age}{Launch handoff lifetime in seconds, 30 to 300, default 120.
@@ -22,16 +23,16 @@ Owner expiry and OAuth state expiry can shorten this lifetime.}
 A plain route configuration list, with no credentials or live state.
 }
 \description{
-Declare which approved SMART targets an EHR launch URL may select. Pass the
+Declare which approved SMART clients an EHR launch URL may select. Pass the
 result in \code{launch_routes} to \code{\link[=oauth_connections_ui]{oauth_connections_ui()}}. The route is separate
 from OAuth callbacks: \code{iss} means the FHIR base only here. Both \code{iss} and
 \code{launch} are required, and callback parameters are rejected on this route.
 }
 \details{
-Initial entry is untrusted. It selects an already configured target by exact
+Initial entry is untrusted. It selects an already configured client by exact
 FHIR base, performs no discovery, and establishes no healthcare identity.
 A short-lived encrypted record binds the opaque launch handle to the browser
-owner and target. A clean continuation proves that owner before a fresh OAuth
+owner and client. A clean continuation proves that owner before a fresh OAuth
 state/PKCE transaction can begin. Consumed handles cannot be reused to reconnect.
 
 The initial implementation supports top-level GET entry with browser retention
@@ -49,7 +50,7 @@ Normal callback issuer checks and single-use browser/state checks still apply.
 }
 \examples{
 \dontrun{
-# hospital is an EHR-mode SMART target; manager uses browser retention.
+# hospital is an EHR-mode SMART client; manager uses browser retention.
 ui <- oauth_connections_ui(app_ui, "health", manager,
   launch_routes = list(smart_launch_route("/smart/launch", "hospital")))
 }
@@ -58,5 +59,5 @@ ui <- oauth_connections_ui(app_ui, "health", manager,
 \href{https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#launch-app-ehr-launch}{SMART EHR launch}
 }
 \seealso{
-\code{\link[=smart_target]{smart_target()}}, \code{\link[=oauth_connections_ui]{oauth_connections_ui()}}
+\code{\link[=smart_client]{smart_client()}}, \code{\link[=oauth_connections_ui]{oauth_connections_ui()}}
 }

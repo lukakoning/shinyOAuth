@@ -1,7 +1,16 @@
 # shinyOAuth (development version)
 
+* Simplified the unreleased connection API: optional `resource_bases`,
+`required_scopes` and `label` settings now live on `OAuthClient`.
+`smart_client()` returns that same type, and the separate manager accepts
+`oauth_connections(clients = list(hospital_a = client_a, hospital_b = client_b), ...)`.
+The convenient R6 object is now `OAuthConnection`, with `client_label` in its
+summary. Removed the target wrapper and its constructors before release.
+Connections still resolve live credentials and reuse `perform_resource_req()`;
+ownership, resource boundaries and configuration-change checks remain enforced.
+
 * Added explicit `authorization_method = "POST"` for long browser authorization
-requests. SMART targets require advertised `authorize-post`; GET remains the
+requests. SMART clients require advertised `authorize-post`; GET remains the
 default. Shiny submits a form automatically, while custom callers can use
 `prepare_authorization_request()`. Transaction binding and configured PAR/JAR
 requirements are preserved. Tests cover the SMART/OAuth browser matrices and
@@ -26,7 +35,7 @@ calls keep their behavior until narrowing is selected. Unit and real-browser
 tests cover grant checks, rotation, retention and synchronous/mirai transport.
 
 * Added opt-in `callback_policy = "issuer"` and `"shared_routes"` to the
-connection manager. A protected pending-state index supports multiple targets
+connection manager. A protected pending-state index supports multiple clients
 at one issuer and callback URL while preserving issuer/JARM, state, owner and
 browser validation. Distinct routes remain the default; ambiguous encrypted
 JARM still requires them. Browser tests cover same-issuer resource isolation.
@@ -45,7 +54,7 @@ the latest stored credentials. The default remains Shiny-session retention.
 Real-browser query/form_post retention tests cover both synchronous and mirai
 transport. SMART interoperability remains a separate roadmap gate.
 
-* Added `oauth_target()` and session-bound `oauth_connection()` references.
+* Added session-bound `oauth_connection()` objects using optional client settings.
 Requests resolve current credentials, enforce exact approved resource bases,
 retain DPoP/mTLS transport, and reject cross-session access. This initial
 adapter follows a module's reactive token and does not persist across redirects.

@@ -20,7 +20,7 @@ does not establish a browser session or enable retention on existing modules.
 The credential codec uses the package's AES-GCM envelope with a separate
 HMAC-derived purpose key from a deployment-controlled 32-byte root. The root is
 not held in the store. The authenticated payload binds the opaque owner ID,
-connection ID, target configuration fingerprint and schema version. The owner ID
+connection ID, client configuration fingerprint and schema version. The owner ID
 is stable across session rotation; current session/generation checks remain a
 separate prerequisite for reading or changing its records.
 It stores an explicit token-property allowlist and the original authentication
@@ -31,7 +31,7 @@ validation; it cannot create a fresh login or reset authentication age.
 Data uses a bounded tagged JSON schema, preserving missing values, empty vectors,
 nulls and numeric precision without R deserialization. It excludes clients,
 functions, environments, caches and private keys. Sender-constraint keys and
-certificates remain deployment configuration; restoration recomputes the target
+certificates remain deployment configuration; restoration recomputes the client
 fingerprint, including its material policy and key/certificate references.
 
 The store enforces owner-scoped access and compare-and-swap revisions. Refresh
@@ -98,7 +98,7 @@ R patch versions. This does not establish real-browser retention.
 
 The P3c2 API comprises `oauth_connections()`, `oauth_connections_ui()` and
 `oauth_connections_server()`. Create one manager outside `server()` and share its
-namespace and origin across the wrappers. Multiple targets require distinct
+namespace and origin across the wrappers. Multiple clients require distinct
 registered callbacks and clients configured with `multi_redirect_uri` plus the
 complete callback list. Browser/account retention requires explicit owner policy,
 memory store and deployment-held credential/owner keys. The default `shiny` mode
@@ -106,7 +106,7 @@ discards old grants when the Shiny session ends; pending authorization still use
 the existing browser/state proofs to complete in a new session.
 
 Each successful authorization creates a new connection ID, including repeated
-authorizations at one target. The server returns `connect()`, `connections()`,
+authorizations at one client. The server returns `connect()`, `connections()`,
 `connection()`, `disconnect()`, `disconnect_all()`, `logout()` and `errors()`.
 References remain bound to their Shiny session and resolve current owner-scoped
 credentials for every request. Summaries exclude token and patient/context data.

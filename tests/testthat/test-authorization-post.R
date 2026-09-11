@@ -50,16 +50,16 @@ test_that("GET remains a URL and URL-only helpers reject POST before storing sta
 })
 
 test_that("SMART POST requires advertised support and binds its selected method", {
-  site <- smart_target_fixture()
-  create <- function(site) smart_target(site, "example", "https://app.example/callback",
+  site <- smart_client_fixture()
+  create <- function(site) smart_client(site, "example", "https://app.example/callback",
     scopes = c("launch/patient", "patient/Patient.r"), authorization_method = "POST")
   expect_error(create(site), "authorize-post")
   site$metadata$capabilities <- c(site$metadata$capabilities, list("authorize-post"))
-  target <- create(site)
-  expect_identical(target$client@authorization_method, "POST")
-  request <- prepare_authorization_request(target$client, valid_browser_token())
+  client <- create(site)
+  expect_identical(client@authorization_method, "POST")
+  request <- prepare_authorization_request(client, valid_browser_token())
   expect_identical(post_fields(request)$aud, site$fhir_base)
-  client <- target$client
+  client <- client
   expect_error(client@authorization_method <- "GET", "SMART policy")
 })
 

@@ -22,7 +22,7 @@ for (index in seq_len(nrow(cases))) {
     }
     begin(a, "a")
     begin(b, "b")
-    # The most recently selected target is B; A's pending callback must still
+    # The most recently selected client is B; A's pending callback must still
     # import A. Both tabs use the same browser owner and one callback URL.
     finish <- function(browser, count) {
       retention_browser_click(browser, "approve")
@@ -36,21 +36,18 @@ for (index in seq_len(nrow(cases))) {
       value
     }
     first <- finish(a, 1L)
-    testthat::expect_identical(first$connections[[1L]]$target_label, "Site a")
+    testthat::expect_identical(first$connections[[1L]]$client_label, "Site a")
     both <- finish(b, 2L)
-    testthat::expect_setequal(vapply(both$connections, function(row) row$target_label, character(1)),
+    testthat::expect_setequal(vapply(both$connections, function(row) row$client_label, character(1)),
       c("Site a", "Site b"))
     if (response_mode == "form_post") {
       testthat::expect_length(both$post_owner_cookies, 2L)
       testthat::expect_false(any(unlist(both$post_owner_cookies)))
     }
     for (site in c("a", "b")) {
-      retention_browser_click(b, paste0("read_", site))
-      retention_browser_result(b, paste0(site, ":1"))
-      retention_browser_click(b, paste0("refresh_", site))
-      retention_browser_result(b, "refreshed")
-      retention_browser_click(b, paste0("read_", site))
-      retention_browser_result(b, paste0(site, ":2"))
+      retention_browser_action(b, paste0("read_", site), paste0(site, ":1"))
+      retention_browser_action(b, paste0("refresh_", site), "refreshed")
+      retention_browser_action(b, paste0("read_", site), paste0(site, ":2"))
     }
     metrics <- function() httr2::request(f$providers$shared$url("/metrics")) |>
       httr2::req_timeout(5) |> httr2::req_perform() |> httr2::resp_body_json()
@@ -58,8 +55,7 @@ for (index in seq_len(nrow(cases))) {
     testthat::expect_identical(before$exchanges, 2L)
     testthat::expect_identical(before$refreshes, 2L)
     testthat::expect_identical(before$requests, 4L)
-    retention_browser_click(b, "cross_resource")
-    retention_browser_result(b, "unavailable")
+    retention_browser_action(b, "cross_resource", "unavailable")
     testthat::expect_identical(metrics()$requests, before$requests)
     # Separate browser process gives a separate owner while both original tabs
     # remain live. Connection IDs convey no authority to that other owner.
@@ -69,8 +65,7 @@ for (index in seq_len(nrow(cases))) {
     testthat::expect_length(retention_browser_snapshot(foreign)$connections, 0L)
     retention_browser_value(foreign, paste0("Shiny.setInputValue('probe_id',",
       jsonlite::toJSON(first$connections[[1L]]$connection_id, auto_unbox = TRUE), ",{priority:'event'})"))
-    retention_browser_click(foreign, "probe")
-    retention_browser_result(foreign, "unavailable")
+    retention_browser_action(foreign, "probe", "unavailable")
     retention_browser_click(b, "logout")
     retention_browser_wait(a, function() {
       snapshot <- retention_browser_snapshot(a)

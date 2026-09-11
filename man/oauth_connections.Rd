@@ -6,7 +6,7 @@
 \title{Configure several independently managed OAuth connections}
 \usage{
 oauth_connections(
-  targets,
+  clients,
   app_origin,
   callback_policy = "distinct_routes",
   retention = c("shiny", "browser", "account"),
@@ -19,20 +19,21 @@ oauth_connections(
 \method{print}{OAuthConnections}(x, ...)
 }
 \arguments{
-\item{targets}{Non-empty named list of \link{OAuthTarget} objects, at most 64.
-Names are local target IDs: a letter followed by letters, digits, \verb{_} or \code{-},
-with a maximum of 64 characters.}
+\item{clients}{Non-empty named list of \link{OAuthClient} objects, at most 64.
+Each client must configure non-empty \code{resource_bases}. Names select local
+configurations (for example \code{hospital_a}), independently of OAuth \code{client_id}:
+a letter followed by letters, digits, \verb{_} or \code{-}, at most 64 characters.}
 
 \item{app_origin}{Public application origin, including a non-default port.
 HTTPS is required for retained owners, except an explicit browser-owner
 HTTP loopback exception. Session-only development also permits loopback HTTP.}
 
-\item{callback_policy}{\code{"distinct_routes"} (default) gives each target its own
-registered callback route. With several targets, configure every client with
+\item{callback_policy}{\code{"distinct_routes"} (default) gives each client its own
+registered callback route. With several clients, configure every client with
 \code{authorization_server_mode = "multi_redirect_uri"} and the complete set of
 routes in \code{authorization_server_redirect_uris}.
 \code{"issuer"} allows shared routes for distinct authorization-server issuers.
-\code{"shared_routes"} additionally supports several targets or registrations at
+\code{"shared_routes"} additionally supports several clients or registrations at
 one issuer through a protected pending-state index. Both opt-in policies
 require explicit \code{authorization_server_mode = "multi_issuer"} clients, with
 RFC 9207 issuer responses or JARM. Same-issuer encrypted JARM still requires
@@ -64,15 +65,15 @@ resets it. Browser retention is also capped by the owner's absolute expiry.}
 }
 \value{
 An \code{OAuthConnections} server-side configuration object. Printing shows
-only the retention mode and target count. It contains client configuration
+only the retention mode and client count. It contains client configuration
 and deployment keys and must never be sent to the browser.
 }
 \description{
 Create one manager outside \code{server()} for a named set of client/API
-configurations from \code{\link[=oauth_target]{oauth_target()}}. Use \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} to handle
+configurations from \code{\link[=oauth_client]{oauth_client()}} or \code{\link[=smart_client]{smart_client()}}. Use \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} to handle
 callbacks and \code{\link[=oauth_connections_server]{oauth_connections_server()}} for each Shiny session. Each
 successful authorization creates a separate connection, including repeated
-authorizations at the same target.
+authorizations at the same client.
 }
 \details{
 A manager is bound to one UI/server module ID and one public origin. Create
@@ -85,8 +86,8 @@ discarded with the old Shiny session. Browser/account mode additionally binds
 authorization to the initiating local owner and its session generation.
 
 These are optional package interfaces, not SMART protocol objects. This manager
-supports generic OAuth targets and the SMART discovery, scope and launch
-policies configured by \code{\link[=smart_target]{smart_target()}}.
+supports generic OAuth clients and the SMART discovery, scope and launch
+policies configured by \code{\link[=smart_client]{smart_client()}}.
 }
 \seealso{
 \code{\link[=oauth_connections_ui]{oauth_connections_ui()}}, \code{\link[=oauth_connections_server]{oauth_connections_server()}}

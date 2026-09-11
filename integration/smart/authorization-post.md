@@ -5,9 +5,9 @@ GET puts that request's parameters in the address. POST puts them in an HTML
 form body submitted by the browser. Long SMART scope lists can otherwise run
 into URL limits before the provider sees them.
 
-Select `authorization_method = "POST"` in `oauth_client()` or `smart_target()`.
+Select `authorization_method = "POST"` in `oauth_client()` or `smart_client()`.
 The default remains `"GET"`. For SMART, the discovery snapshot must advertise
-`authorize-post`; the factory checks this before creating a target. For ordinary
+`authorize-post`; the factory checks this before creating a client. For ordinary
 OAuth, selecting POST means the application has confirmed provider support.
 There is no automatic switch based on URL length and no retry using GET.
 
@@ -15,7 +15,7 @@ This fragment illustrates the setting; `discovery` is an approved snapshot and
 the callback/client ID must already be registered with that server:
 
 ```r
-target <- shinyOAuth::smart_target(
+client <- shinyOAuth::smart_client(
   discovery,
   client_id = "registered-app",
   redirect_uri = "https://app.example/callback",
@@ -24,7 +24,7 @@ target <- shinyOAuth::smart_target(
 )
 ```
 
-Add the target to the existing connection manager and call its normal
+Add the client to the existing connection manager and call its normal
 `connect()` method. In a single-module app, call `auth$request_login()`.
 Both paths submit the browser form automatically. Allow the provider's
 authorization endpoint in the application's CSP `form-action` directive.
@@ -49,9 +49,9 @@ URL-only helpers and reject a POST client before creating login state.
 
 The common builder still creates state, PKCE and an OIDC nonce where required.
 The selected method enters the client policy fingerprint; changing it cannot
-reuse an earlier transaction. Managed owner, target, generation, callback and
+reuse an earlier transaction. Managed owner, client, generation, callback and
 one-use EHR launch checks use the existing preparation and acceptance paths.
-The SMART method also belongs to the target's checked discovery policy.
+The SMART method also belongs to the client's checked discovery policy.
 
 POST changes the final browser serialization. It preserves fixed endpoint query
 bytes and the existing singleton-conflict checks. Ordinary OAuth/OIDC PAR,

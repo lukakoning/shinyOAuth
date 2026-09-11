@@ -1,23 +1,24 @@
 #' Configure several independently managed OAuth connections
 #'
 #' Create one manager outside `server()` for a named set of client/API
-#' configurations from [oauth_target()]. Use [oauth_connections_ui()] to handle
+#' configurations from [oauth_client()] or [smart_client()]. Use [oauth_connections_ui()] to handle
 #' callbacks and [oauth_connections_server()] for each Shiny session. Each
 #' successful authorization creates a separate connection, including repeated
-#' authorizations at the same target.
+#' authorizations at the same client.
 #'
-#' @param targets Non-empty named list of [OAuthTarget] objects, at most 64.
-#'   Names are local target IDs: a letter followed by letters, digits, `_` or `-`,
-#'   with a maximum of 64 characters.
+#' @param clients Non-empty named list of [OAuthClient] objects, at most 64.
+#'   Each client must configure non-empty `resource_bases`. Names select local
+#'   configurations (for example `hospital_a`), independently of OAuth `client_id`:
+#'   a letter followed by letters, digits, `_` or `-`, at most 64 characters.
 #' @param app_origin Public application origin, including a non-default port.
 #'   HTTPS is required for retained owners, except an explicit browser-owner
 #'   HTTP loopback exception. Session-only development also permits loopback HTTP.
-#' @param callback_policy `"distinct_routes"` (default) gives each target its own
-#'   registered callback route. With several targets, configure every client with
+#' @param callback_policy `"distinct_routes"` (default) gives each client its own
+#'   registered callback route. With several clients, configure every client with
 #'   `authorization_server_mode = "multi_redirect_uri"` and the complete set of
 #'   routes in `authorization_server_redirect_uris`.
 #'   `"issuer"` allows shared routes for distinct authorization-server issuers.
-#'   `"shared_routes"` additionally supports several targets or registrations at
+#'   `"shared_routes"` additionally supports several clients or registrations at
 #'   one issuer through a protected pending-state index. Both opt-in policies
 #'   require explicit `authorization_server_mode = "multi_issuer"` clients, with
 #'   RFC 9207 issuer responses or JARM. Same-issuer encrypted JARM still requires
@@ -38,7 +39,7 @@
 #'   Positive and finite, no larger than the store's `max_age`. Refresh never
 #'   resets it. Browser retention is also capped by the owner's absolute expiry.
 #' @return An `OAuthConnections` server-side configuration object. Printing shows
-#'   only the retention mode and target count. It contains client configuration
+#'   only the retention mode and client count. It contains client configuration
 #'   and deployment keys and must never be sent to the browser.
 #' @details
 #' A manager is bound to one UI/server module ID and one public origin. Create
@@ -51,12 +52,12 @@
 #' authorization to the initiating local owner and its session generation.
 #'
 #' These are optional package interfaces, not SMART protocol objects. This manager
-#' supports generic OAuth targets and the SMART discovery, scope and launch
-#' policies configured by [smart_target()].
+#' supports generic OAuth clients and the SMART discovery, scope and launch
+#' policies configured by [smart_client()].
 #' @seealso [oauth_connections_ui()], [oauth_connections_server()]
 #' @export
 oauth_connections <- function(
-  targets,
+  clients,
   app_origin,
   callback_policy = "distinct_routes",
   retention = c("shiny", "browser", "account"),
@@ -73,16 +74,16 @@ oauth_connections <- function(
     )
   }
   if (
-    !is.list(targets) ||
-      !length(targets) ||
-      length(targets) > 64L ||
-      is.null(names(targets)) ||
-      anyNA(names(targets)) ||
-      anyDuplicated(names(targets)) ||
-      !all(grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", names(targets))) ||
-      !all(vapply(targets, inherits, logical(1), "OAuthTarget"))
+    !is.list(clients) ||
+      !length(clients) ||
+      length(clients) > 64L ||
+      is.null(names(clients)) ||
+      anyNA(names(clients)) ||
+      anyDuplicated(names(clients)) ||
+      !all(grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", names(clients))) ||
+      !all(vapply(clients, S7::S7_inherits, logical(1), OAuthClient))
   ) {
-    err_config("targets must be a named list of approved OAuth targets")
+    err_config("clients must be a named list of OAuthClient configurations")
   }
   if (retention == "shiny") {
     if (!is.null(owner)) {
@@ -131,14 +132,13 @@ oauth_connections <- function(
       "Connection keys must contain 32-byte credentials and owner keys"
     )
   }
-  routes <- lapply(targets, function(target) {
-    connection_current_target_fingerprint(target)
-    client <- target$client
+  fingerprints <- vapply(clients, connection_client_fingerprint, character(1))
+  routes <- lapply(clients, function(client) {
     if (
-      identical(callback_policy, "distinct_routes") && length(targets) > 1L &&
+      identical(callback_policy, "distinct_routes") && length(clients) > 1L &&
         !identical(client@authorization_server_mode, "multi_redirect_uri")
     ) {
-      err_config("Multiple targets require multi_redirect_uri clients")
+      err_config("Multiple clients require multi_redirect_uri clients")
     }
     if (callback_policy != "distinct_routes" &&
         !identical(client@authorization_server_mode, "multi_issuer")) {
@@ -158,10 +158,10 @@ oauth_connections <- function(
       character(1)
     ))
   ) {
-    err_config("Each target requires a distinct callback route")
+    err_config("Each client requires a distinct callback route")
   }
   if (callback_policy != "distinct_routes") {
-    oauth_callback_registry(lapply(targets, function(target) target$client),
+    oauth_callback_registry(clients,
       allow_shared_issuer = identical(callback_policy, "shared_routes"), mark_ui = FALSE)
   }
   state <- new.env(parent = emptyenv())
@@ -175,7 +175,7 @@ oauth_connections <- function(
   state$signal <- shiny::reactiveVal(0)
   manager <- new.env(parent = emptyenv())
   for (name in c(
-    "targets",
+    "clients",
     "app_origin",
     "callback_policy",
     "retention",
@@ -187,6 +187,7 @@ oauth_connections <- function(
     manager[[name]] <- get(name)
   }
   manager$process <- Sys.getpid()
+  manager$fingerprints <- fingerprints
   manager$state <- state
   class(manager) <- "OAuthConnections"
   lockEnvironment(manager, bindings = TRUE)
@@ -200,8 +201,8 @@ oauth_connections <- function(
 print.OAuthConnections <- function(x, ...) {
   cat(
     "<OAuthConnections: ",
-    length(x$targets),
-    " target(s); ",
+    length(x$clients),
+    " client(s); ",
     x$retention,
     " retention; credentials redacted>\n",
     sep = ""
@@ -272,13 +273,17 @@ connection_manager_signal <- function(manager) {
 # At most ten seconds for a batch, with a single attempt per credential. Report
 # remote acceptance separately: a successful revocation response does not prove
 # that the provider previously recognized the token (RFC 7009 section 2.2).
-connection_manager_revoke <- function(manager, target, token, deadline) {
+connection_manager_revoke <- function(manager, client, token, deadline) {
   if (is.null(token)) {
     return(list(refresh = "not_attempted", access = "not_attempted"))
   }
   unchanged <- tryCatch(
     {
-      connection_current_target_fingerprint(target)
+      index <- which(vapply(manager$clients, identical, logical(1), client))
+      if (!length(index) || !identical(connection_client_fingerprint(client),
+          unname(manager$fingerprints[[index[[1L]]]]))) {
+        err_token("Connection client configuration changed")
+      }
       TRUE
     },
     error = function(...) FALSE
@@ -298,7 +303,7 @@ connection_manager_revoke <- function(manager, target, token, deadline) {
       with_async_options(
         settings,
         {
-          response <- revoke_token(target$client, token, which = which)
+          response <- revoke_token(client, token, which = which)
           if (isTRUE(response$revoked)) {
             "accepted"
           } else if (identical(response$supported, FALSE)) {
@@ -399,11 +404,15 @@ connection_manager_controller <- function(manager, session) {
     }
     verified
   }
-  target_for <- function(id) {
-    if (!is_valid_string(id) || !id %in% names(manager$targets)) {
-      err_input("Unknown connection target")
+  client_for <- function(id, check = TRUE) {
+    if (!is_valid_string(id) || !id %in% names(manager$clients)) {
+      err_input("Unknown connection client")
     }
-    manager$targets[[id]]
+    client <- manager$clients[[id]]
+    if (check && !identical(connection_client_fingerprint(client), manager$fingerprints[[id]])) {
+      err_token("Connection client configuration changed; reconnect with a new manager")
+    }
+    client
   }
   prune_pending <- function() {
     now <- as.numeric(Sys.time())
@@ -423,16 +432,16 @@ connection_manager_controller <- function(manager, session) {
     entry <- state$launches[[id]]
     if (is.null(entry)) err_token("SMART launch is unavailable")
     launch <- smart_launch_open(manager, entry, verified, id)
-    if (!is.null(launch_queue[[launch$target]])) err_token("A SMART launch is already pending")
-    # Atomic process-local take after owner and target checks. Another browser
+    if (!is.null(launch_queue[[launch$client]])) err_token("A SMART launch is already pending")
+    # Atomic process-local take after owner and client checks. Another browser
     # or failed lookup cannot consume a valid launch belonging to its owner.
     rm(list = id, envir = state$launches)
-    launch_queue[[launch$target]] <- entry
-    launch$target
+    launch_queue[[launch$client]] <- entry
+    launch$client
   }
-  prepare <- function(target_id) {
+  prepare <- function(client_name) {
     verified <- guard(touch = TRUE)
-    target <- target_for(target_id)
+    client <- client_for(client_name)
     prune_pending()
     if (length(state$pending) >= 1000L) {
       err_token("Pending connection capacity reached")
@@ -441,8 +450,8 @@ connection_manager_controller <- function(manager, session) {
       version = 1L,
       manager = state$id,
       transaction = random_urlsafe(32L),
-      target = target_id,
-      fingerprint = connection_current_target_fingerprint(target),
+      client = client_name,
+      fingerprint = connection_client_fingerprint(client),
       retention = manager$retention,
       owner = if (manager$retention == "shiny") "shiny" else verified$id,
       generation = if (manager$retention == "shiny") {
@@ -452,15 +461,15 @@ connection_manager_controller <- function(manager, session) {
       },
       expires_at = min(
         verified$expires_at,
-        as.numeric(Sys.time()) + target$client@state_payload_max_age
+        as.numeric(Sys.time()) + client@state_payload_max_age
       )
     )
     launch_entry <- NULL
-    if (identical(target$smart$launch, "ehr")) {
-      launch_entry <- launch_queue[[target_id]]
+    if (identical(client@smart$launch, "ehr")) {
+      launch_entry <- launch_queue[[client_name]]
       if (is.null(launch_entry)) err_token("Start a fresh EHR launch to reconnect")
       launch <- smart_launch_open(manager, launch_entry, verified)
-      rm(list = target_id, envir = launch_queue)
+      rm(list = client_name, envir = launch_queue)
       context$smart <- list(launch_id = launch$id, fhir_base = launch$fhir_base,
         launch_digest = state_policy_value_digest(launch$launch))
       context$expires_at <- min(context$expires_at, launch$expires_at)
@@ -500,7 +509,7 @@ connection_manager_controller <- function(manager, session) {
     }
     identical(
       context$fingerprint,
-      connection_current_target_fingerprint(target_for(context$target))
+      connection_client_fingerprint(client_for(context$client))
     )
   }
   cancel <- function(context) {
@@ -517,13 +526,13 @@ connection_manager_controller <- function(manager, session) {
     if (!validate(context)) {
       err_token("Managed authorization owner is unavailable")
     }
-    target <- target_for(context$target)
+    client <- client_for(context$client)
     id <- random_urlsafe(32L)
     sealed <- connection_credentials_seal(
       token,
       owner$id,
       id,
-      target,
+      client,
       manager$keys$credentials,
       authenticated_at
     )
@@ -541,7 +550,7 @@ connection_manager_controller <- function(manager, session) {
       owner$id,
       id,
       context$transaction,
-      context$target,
+      context$client,
       context$fingerprint,
       sealed,
       expiry
@@ -553,9 +562,9 @@ connection_manager_controller <- function(manager, session) {
     invisible(TRUE)
   }
   decode <- function(record) {
-    target <- target_for(record$target)
+    client <- client_for(record$client, check = FALSE)
     result <- list(
-      target = target,
+      client = client,
       token = NULL,
       status = record$status,
       stored = record
@@ -564,13 +573,16 @@ connection_manager_controller <- function(manager, session) {
       return(result)
     }
     value <- tryCatch(
-      connection_credentials_open(
-        record$sealed,
-        owner$id,
-        record$id,
-        target,
-        manager$keys$credentials
-      ),
+      {
+        connection_credentials_open(
+          record$sealed,
+          owner$id,
+          record$id,
+          client,
+          manager$keys$credentials,
+          expected_fingerprint = manager$fingerprints[[record$client]]
+        )
+      },
       error = function(...) NULL
     )
     if (is.null(value)) {
@@ -594,10 +606,10 @@ connection_manager_controller <- function(manager, session) {
     guard()
     lapply(store$list(owner$id), function(row) read(row$id))
   }
-  discard <- function(target_id, token) {
+  discard <- function(client_name, token) {
     connection_manager_revoke(
       manager,
-      target_for(target_id),
+      client_for(client_name, check = FALSE),
       token,
       as.numeric(Sys.time()) + 10
     )
@@ -620,7 +632,7 @@ connection_manager_controller <- function(manager, session) {
     # After explicit narrowing, automatic calls retain the accepted grant.
     if (is.null(scopes) && isTRUE(record$refresh_scope_narrowed)) scopes <- record$token@granted_scopes
     scope_request <- if (!is.null(scopes)) {
-      refresh_scope_request(record$target$client, record$token, scopes, record$target$required_scopes)
+      refresh_scope_request(record$client, record$token, scopes, record$client@required_scopes)
     } else NULL
     claim <- store$begin_refresh(owner$id, id, record$stored$revision)
     if (is.null(claim)) {
@@ -649,19 +661,21 @@ connection_manager_controller <- function(manager, session) {
     }
     succeed <- function(token) {
       committed <- FALSE
-      on.exit(if (!committed) discard(claim$target, token), add = TRUE)
+      on.exit(if (!committed) discard(claim$client, token), add = TRUE)
       tryCatch(
         {
           validate_token_acceptance_deadline(token)
-          validate_refresh_scope_grant(record$target$client, token@granted_scopes, scope_request)
+          validate_refresh_scope_grant(record$client, token@granted_scopes, scope_request)
           if (is.null(verify_owner(require_session = FALSE))) {
             err_token("Connection owner is unavailable")
           }
+          # A key file or process policy may have changed while HTTP was pending.
+          client_for(claim$client)
           sealed <- connection_credentials_seal(
             token,
             owner$id,
             id,
-            record$target,
+            record$client,
             manager$keys$credentials,
             record$authenticated_at,
             refresh_scope_narrowed = !is.null(scope_request)
@@ -688,9 +702,9 @@ connection_manager_controller <- function(manager, session) {
     }
     result <- tryCatch(
       if (is.null(scope_request)) {
-        refresh_token(record$target$client, record$token, async = async)
+        refresh_token(record$client, record$token, async = async)
       } else {
-        refresh_token_dispatch(record$target$client, record$token, async = async, scope_request = scope_request)
+        refresh_token_dispatch(record$client, record$token, async = async, scope_request = scope_request)
       },
       error = fail
     )
@@ -710,14 +724,14 @@ connection_manager_controller <- function(manager, session) {
             record$sealed,
             owner$id,
             record$id,
-            target_for(record$target),
+            client_for(record$client),
             manager$keys$credentials
           ),
           error = function(...) NULL
         )
         remote <- connection_manager_revoke(
           manager,
-          target_for(record$target),
+          client_for(record$client, check = FALSE),
           opened$token,
           deadline
         )
@@ -778,20 +792,20 @@ connection_manager_controller <- function(manager, session) {
     }
     invisible(NULL)
   }
-  hooks <- function(target_id) {
-    target_for(target_id)
+  hooks <- function(client_name) {
+    client_for(client_name)
     list(
-      prepare = function() prepare(target_id),
+      prepare = function() prepare(client_name),
       prepared = if (identical(manager$callback_policy, "shared_routes")) {
         function(prepared, context) {
-          if (!validate(context) || !identical(context$target, target_id)) {
+          if (!validate(context) || !identical(context$client, client_name)) {
             err_token("Managed authorization owner is unavailable")
           }
-          connection_router_register(manager, target_id, context, prepared)
+          connection_router_register(manager, client_name, context, prepared)
         }
       } else NULL,
       parameters = function(context) {
-        if (!identical(target_for(target_id)$smart$launch, "ehr")) return(list())
+        if (!identical(client_for(client_name)@smart$launch, "ehr")) return(list())
         if (!validate(context)) err_token("SMART launch owner is unavailable")
         pending <- state$pending[[context$transaction]]
         if (is.null(pending$launch_entry)) err_token("Start a fresh EHR launch to reconnect")
@@ -802,12 +816,12 @@ connection_manager_controller <- function(manager, session) {
       },
       validate = function(context) {
         is.list(context) &&
-          identical(context$target, target_id) &&
+          identical(context$client, client_name) &&
           validate(context)
       },
       accept = accept,
       cancel = cancel,
-      discard = function(token) discard(target_id, token)
+      discard = function(token) discard(client_name, token)
     )
   }
   list(

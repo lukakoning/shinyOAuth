@@ -1,11 +1,11 @@
 smart_context_fixture <- function(patient = "example-patient", scopes = "patient/Patient.r") {
-  target <- smart_target(smart_target_fixture(), "example", "https://app.example/callback",
+  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
     scopes = c("launch/patient", scopes), required_scopes = scopes)
   token <- OAuthToken(access_token = "example-access", refresh_token = "example-refresh",
     token_type = "Bearer", expires_at = as.numeric(Sys.time()) + 300,
     granted_scopes = scopes, granted_scopes_verified = TRUE,
     extra_fields = list(patient = patient, encounter = "example-encounter", need_patient_banner = TRUE))
-  list(target = target, token = smart_update_token_context(target$client, token))
+  list(client = client, token = smart_update_token_context(client, token))
 }
 
 test_that("SMART context requires actual patient evidence and validates scalar types", {
@@ -16,12 +16,12 @@ test_that("SMART context requires actual patient evidence and validates scalar t
   for (bad in list(NULL, "", 42, "Patient/example", "../example", strrep("x", 65))) {
     token <- record$token
     token@extra_fields <- list(patient = bad)
-    expect_error(smart_update_token_context(record$target$client, token),
+    expect_error(smart_update_token_context(record$client, token),
       "patient context|resource ID")
   }
   token <- record$token
   token@extra_fields <- list(patient = "example", need_patient_banner = "false")
-  expect_error(smart_update_token_context(record$target$client, token), "boolean")
+  expect_error(smart_update_token_context(record$client, token), "boolean")
   expect_no_error(smart_context_fixture(patient = "001.abc-123"))
 })
 
@@ -30,20 +30,20 @@ test_that("refresh carries omitted context but distinguishes clear and change", 
   previous <- record$token
   token <- previous
   token@extra_fields <- list()
-  next_token <- smart_update_token_context(record$target$client, token, previous)
+  next_token <- smart_update_token_context(record$client, token, previous)
   expect_identical(next_token@smart_context, previous@smart_context)
   token@extra_fields <- list(patient = "second-patient", encounter = NULL, need_patient_banner = FALSE)
-  changed <- smart_update_token_context(record$target$client, token, previous)
+  changed <- smart_update_token_context(record$client, token, previous)
   expect_identical(changed@smart_context$patient, "second-patient")
   expect_null(changed@smart_context$encounter)
   expect_false(changed@smart_context$need_patient_banner)
   expect_identical(changed@smart_context$revision, 2L)
   expect_true(changed@smart_context$changed)
   token@extra_fields <- list(patient = NULL)
-  expect_error(smart_update_token_context(record$target$client, token, previous), "patient context")
+  expect_error(smart_update_token_context(record$client, token, previous), "patient context")
   expect_identical(previous@smart_context$patient, "example-patient")
   previous@smart_context <- list()
-  expect_error(smart_update_token_context(record$target$client, token, previous), "original interpreted")
+  expect_error(smart_update_token_context(record$client, token, previous), "original interpreted")
 })
 
 test_that("SMART context and rotating credentials are accepted together", {
@@ -55,21 +55,21 @@ test_that("SMART context and rotating credentials are accepted together", {
       headers = list("content-type" = "application/json"),
       body = charToRaw(jsonlite::toJSON(body, auto_unbox = TRUE, null = "null")))
   }, .package = "shinyOAuth")
-  token <- refresh_token(record$target$client, record$token)
+  token <- refresh_token(record$client, record$token)
   expect_identical(token@smart_context$patient, "example-patient")
   expect_identical(token@refresh_token, "next-refresh")
   body$patient <- "second-patient"
-  changed <- refresh_token(record$target$client, token)
+  changed <- refresh_token(record$client, token)
   expect_identical(changed@smart_context$revision, 2L)
   expect_identical(changed@smart_context$patient, "second-patient")
   body$patient <- 42
-  expect_error(refresh_token(record$target$client, changed), "resource ID")
+  expect_error(refresh_token(record$client, changed), "resource ID")
   expect_identical(changed@smart_context$patient, "second-patient")
 })
 
 test_that("SMART helpers restrict requests and redact general summaries", {
   record <- smart_context_fixture()
-  ref <- OAuthConnectionRef$new("example-reference", record$target, function() record)
+  ref <- OAuthConnection$new("example-reference", record$client, function() record)
   expect_identical(smart_context(ref)$patient, "example-patient")
   expect_false(any(grepl("example-patient|example-encounter", unlist(ref$summary()))))
   called <- FALSE
@@ -88,7 +88,7 @@ test_that("SMART helpers restrict requests and redact general summaries", {
   record$token@id_token <- jose::jwt_encode_sig(jose::jwt_claim(sub = "example-user"),
     openssl::rsa_keygen(2048))
   record$token@id_token_validated <- TRUE
-  foreign <- OAuthConnectionRef$new("another-reference", record$target, function() record)
+  foreign <- OAuthConnection$new("another-reference", record$client, function() record)
   expect_error(smart_fhir_user(foreign), "outside")
   expect_false(called)
   record$token@smart_context$fhirUser <- "https://ehr.example/fhir/R4/Practitioner/example"
@@ -102,8 +102,8 @@ test_that("retained credentials preserve interpreted context without plaintext",
   key <- openssl::rand_bytes(32)
   owner <- strrep("a", 32)
   id <- strrep("b", 32)
-  sealed <- connection_credentials_seal(record$token, owner, id, record$target, key, 1000)
+  sealed <- connection_credentials_seal(record$token, owner, id, record$client, key, 1000)
   expect_false(grepl("example-patient|example-encounter", sealed))
-  opened <- connection_credentials_open(sealed, owner, id, record$target, key)
+  opened <- connection_credentials_open(sealed, owner, id, record$client, key)
   expect_identical(opened$token@smart_context, record$token@smart_context)
 })

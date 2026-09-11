@@ -254,12 +254,14 @@ provider_uses_oidc <- function(provider) {
 #'
 #' @param scopes Character vector of scope tokens.
 #' @param provider An [OAuthProvider] object.
+#' @param warn Whether to report an omitted `openid` scope. Internal validators
+#'   use `FALSE` so checking configuration does not consume the login warning.
 #'
 #' @return Character vector of scope tokens, possibly with `"openid"` prepended.
 #'
 #' @keywords internal
 #' @noRd
-ensure_openid_scope <- function(scopes, provider) {
+ensure_openid_scope <- function(scopes, provider, warn = TRUE) {
   if (!provider_uses_oidc(provider)) {
     return(scopes)
   }
@@ -275,7 +277,7 @@ ensure_openid_scope <- function(scopes, provider) {
 
   provider_name <- provider@name %||% "(unnamed)"
 
-  warn_pkg(
+  if (warn) warn_pkg(
     "Missing `openid` scope for OIDC provider",
     c(
       "!" = paste0(
@@ -299,13 +301,14 @@ ensure_openid_scope <- function(scopes, provider) {
 #' caller omitted it.
 #'
 #' @param client An [OAuthClient] object.
+#' @param warn Whether to report an omitted `openid` scope.
 #'
 #' @return Character vector of scope tokens used in the authorization request.
 #'
 #' @keywords internal
 #' @noRd
-effective_client_scopes <- function(client) {
+effective_client_scopes <- function(client, warn = TRUE) {
   S7::check_is_S7(client, class = OAuthClient)
 
-  ensure_openid_scope(client@scopes, client@provider)
+  ensure_openid_scope(client@scopes, client@provider, warn = warn)
 }

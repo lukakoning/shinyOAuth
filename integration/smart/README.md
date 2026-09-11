@@ -28,7 +28,7 @@ independent interoperability evidence.
 | EHR launch requires an explicit adapter | Legacy wrapper rejects `iss`/`launch`; P5a adds `smart_launch_route()` to the manager wrapper |
 | Standalone metadata without SSO | `standalone-metadata.json` deliberately omits OIDC issuer/JWKS |
 | SMART discovery API | P4a `smart_discover()` implemented; live Launcher v2 rejected because its asymmetric algorithm advertisement is missing. Positive external gate remains open. Unit and HTTP fixtures validate the reader. |
-| SMART registration, scopes and context | P4b/P4c1/P4d1 implemented; `smart_target()` opts into explicit SMART checks and interpreted refresh context |
+| SMART registration, scopes and context | P4b/P4c1/P4d1 implemented; `smart_client()` opts into explicit SMART checks and interpreted refresh context |
 | EHR entry and retained Patient reads | P5a `run-ehr-browser.R`: concurrent two-site launch, query/form_post, sync/mirai, Patient binding, refresh, owner isolation and logout; fixture evidence only |
 | Supported registrations, both launch modes, signed identity and narrowing | `run-profiles.R`: public/HTTP Basic/RS384 across standalone/EHR, query/form_post and sync/mirai; Patient and distinct validated Practitioner, retained narrowed scopes and independent grants; strict local fixture evidence. |
 | A-to-B navigation retains both connections | P3 implemented: real Chrome navigation, new Shiny sessions, independent refresh, owner isolation and disconnect. Query/form_post, sync/mirai; 104 assertions. |
@@ -59,7 +59,7 @@ structured preparation exposes exact outgoing state even with PAR, and binds
 data-only manager context to the pending transaction. Legacy callbacks cannot
 consume managed context; P3 supplies owner/session lifecycle checks.
 The scope evaluator defaults to versioned literal OAuth coverage; SMART
-semantics are selected explicitly by `smart_target()` in P4b/P4c1.
+semantics are selected explicitly by `smart_client()` in P4b/P4c1.
 
 P4a adds `smart_discover()` with a plain list result containing the exact FHIR
 base, discovery URL, validated metadata, version baseline and host policy. It
@@ -91,13 +91,14 @@ its isolated containers and data volume on exit.
 
 P4a protocol sources rechecked on 2026-09-10: the SMART 2.2 conformance page and
 asymmetric authentication profile linked above. P4b, P4c1 and P4d1 subsequently
-added scopes, the target and baseline context/resource helpers. Remaining P4
+added scopes, the client and baseline context/resource helpers. Remaining P4
 items cover optional transport combinations, richer context, standalone browser
 flows and the Inferno client matrix. P5a's local EHR test does not satisfy those
 external gates.
 
-P2 adds immutable generic targets and per-session references that read the
-module's current reactive token. Resource IDs enforce exact origin and base
+P2 adds optional resource policy to the existing client and per-session
+`OAuthConnection` handles that read the module's current reactive token.
+Resource IDs enforce exact origin and base
 paths before attaching credentials; two APIs on one host remain separate.
 Absolute references use the same policy. Generic applications declare their
 operation scopes explicitly. There is no inferred opaque-token audience or
@@ -118,5 +119,5 @@ changed for those environment settings.
 
 The roadmap is in `playground/smart-fhir-roadmap.md`. Do not claim a completed
 SMART or retained multi-site workflow until the corresponding integration gates
-pass. Top-level Shiny deployment is the initial target; embedding, account
+pass. Top-level Shiny deployment is the initial scope; embedding, account
 stores, and shared-worker coordination need their own evidence.

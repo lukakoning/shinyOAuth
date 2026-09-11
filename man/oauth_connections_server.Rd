@@ -34,11 +34,11 @@ an uncertain refresh requires reconnecting.}
 \value{
 A server-side list with:
 \itemize{
-\item \code{connect(target_id)}: request a new authorization without discarding others.
-EHR-only targets report \code{fresh_ehr_launch_required} and return \code{FALSE};
+\item \code{connect(client_name)}: request a new authorization without discarding others.
+EHR-only clients report \code{fresh_ehr_launch_required} and return \code{FALSE};
 use their registered \code{\link[=smart_launch_route]{smart_launch_route()}} to start authorization.
 \item \code{connections()}: reactive list of redacted connection summaries.
-\item \code{connection(connection_id)}: an \link{OAuthConnectionRef} for requests and refresh.
+\item \code{connection(connection_id)}: an \link{OAuthConnection} for requests and refresh.
 \item \code{disconnect(connection_id, revoke = TRUE)}: remove local usability first,
 then return separate \code{local} and \code{remote} revocation results.
 \item \code{disconnect_all(revoke = TRUE)}: cancel pending authorizations and disconnect
@@ -47,7 +47,7 @@ this owner's stored connections; return a list of results.
 generation first, disconnect its connections, and normally reload the UI.
 This does not log the user out of the external OAuth provider or the app's
 own account authentication system.
-\item \code{errors()}: reactive list of per-target module error codes, with no raw
+\item \code{errors()}: reactive list of per-client module error codes, with no raw
 provider text. An ended owner is reported as \code{owner_unavailable}.
 }
 }
@@ -78,20 +78,17 @@ roadmap checkpoint; mocked Shiny tests do not establish that evidence.
 }
 \examples{
 \dontrun{
-# Outside server(), using two separately registered OAuth clients:
-targets <- list(
-  hospital_a = oauth_target(client_a, c(fhir = "https://a.example/fhir")),
-  hospital_b = oauth_target(client_b, c(fhir = "https://b.example/fhir"))
-)
+# Outside server(), using clients with resource_bases already configured:
+clients <- list(hospital_a = client_a, hospital_b = client_b)
 manager <- oauth_connections(
-  targets, app_origin = "https://app.example", retention = "browser",
+  clients, app_origin = "https://app.example", retention = "browser",
   store = oauth_connection_store_memory(), owner = oauth_browser_owner(),
   keys = deployment_keys
 )
 ui <- oauth_connections_ui(app_ui, "health", manager)
 server <- function(input, output, session) {
   health <- oauth_connections_server("health", manager)
-  shiny::observeEvent(input$connect, health$connect(input$target_id))
+  shiny::observeEvent(input$connect, health$connect(input$client_name))
   data <- shiny::reactive({
     connection <- health$connection(input$connection_id)
     shiny::req(connection$is_usable())

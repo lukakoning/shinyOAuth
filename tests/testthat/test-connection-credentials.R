@@ -1,5 +1,5 @@
 test_that("encrypted credential schemas retain token continuity without live objects", {
-  target <- oauth_target(make_test_client(), c(api = "https://api.example/v1"))
+  client <- connection_test_client(make_test_client(), c(api = "https://api.example/v1"))
   signing_key <- openssl::rsa_keygen()
   initial_id <- jose::jwt_encode_sig(
     jose::jwt_claim(sub = "synthetic-subject", iat = 1000),
@@ -30,23 +30,26 @@ test_that("encrypted credential schemas retain token continuity without live obj
   owner <- strrep("a", 32)
   id <- strrep("b", 32)
   key <- openssl::rand_bytes(32L)
-  sealed <- connection_credentials_seal(token, owner, id, target, key, 1000)
+  sealed <- connection_credentials_seal(token, owner, id, client, key, 1000)
   expect_false(grepl("synthetic", sealed, fixed = TRUE))
-  restored <- connection_credentials_open(sealed, owner, id, target, key)
+  restored <- connection_credentials_open(sealed, owner, id, client, key)
+  expect_identical(connection_credentials_open(sealed, owner, id, client, key,
+    expected_fingerprint = connection_client_fingerprint(client))$token@access_token,
+    token@access_token)
   expect_identical(restored$authenticated_at, 1000L)
   for (field in connection_token_fields) {
     expect_identical(S7::prop(restored$token, field), S7::prop(token, field))
   }
   expect_false(identical(
     sealed,
-    connection_credentials_seal(token, owner, id, target, key, 1000)
+    connection_credentials_seal(token, owner, id, client, key, 1000)
   ))
   expect_error(
-    connection_credentials_open(sealed, strrep("c", 32), id, target, key),
+    connection_credentials_open(sealed, strrep("c", 32), id, client, key),
     "unavailable or incompatible"
   )
   expect_error(
-    connection_credentials_open(sealed, owner, strrep("c", 32), target, key),
+    connection_credentials_open(sealed, owner, strrep("c", 32), client, key),
     "unavailable or incompatible"
   )
   expect_error(
@@ -54,22 +57,25 @@ test_that("encrypted credential schemas retain token continuity without live obj
       sealed,
       owner,
       id,
-      target,
+      client,
       openssl::rand_bytes(32L)
     ),
     "unavailable or incompatible"
   )
-  changed <- oauth_target(target$client, c(api = "https://api.example/v2"))
+  changed <- connection_test_client(client, c(api = "https://api.example/v2"))
+  expect_error(connection_credentials_open(sealed, owner, id, client, key,
+    expected_fingerprint = connection_client_fingerprint(changed)),
+    "unavailable or incompatible")
   expect_error(
     connection_credentials_open(sealed, owner, id, changed, key),
     "unavailable or incompatible"
   )
   expect_error(
-    connection_credentials_open(paste0("x", sealed), owner, id, target, key),
+    connection_credentials_open(paste0("x", sealed), owner, id, client, key),
     "unavailable or incompatible"
   )
   expect_error(
-    connection_credentials_seal(token, owner, id, target, "password", 1000),
+    connection_credentials_seal(token, owner, id, client, "password", 1000),
     "32-byte raw key"
   )
 })
@@ -123,7 +129,7 @@ test_that("restoration rejects changed transport policy and sender keys", {
   local_options(shinyOAuth.tls_min_version = NULL)
   client <- make_test_client()
   client@dpop_private_key <- openssl::rsa_keygen()
-  target <- oauth_target(client, c(api = "https://api.example/v1"))
+  client <- connection_test_client(client, c(api = "https://api.example/v1"))
   owner <- strrep("a", 32)
   id <- strrep("b", 32)
   key <- openssl::rand_bytes(32L)
@@ -133,16 +139,16 @@ test_that("restoration rejects changed transport policy and sender keys", {
     expires_at = Inf,
     cnf = list(jkt = state_policy_dpop_key_thumbprint(client))
   )
-  sealed <- connection_credentials_seal(token, owner, id, target, key, 1000)
+  sealed <- connection_credentials_seal(token, owner, id, client, key, 1000)
   client@dpop_private_key <- openssl::rsa_keygen()
-  replacement <- oauth_target(client, c(api = "https://api.example/v1"))
+  replacement <- connection_test_client(client, c(api = "https://api.example/v1"))
   expect_error(
     connection_credentials_open(sealed, owner, id, replacement, key),
     "unavailable or incompatible"
   )
   local_options(shinyOAuth.tls_min_version = "1.2")
   expect_error(
-    connection_credentials_open(sealed, owner, id, target, key),
-    "configuration changed"
+    connection_credentials_open(sealed, owner, id, client, key),
+    "unavailable or incompatible"
   )
 })

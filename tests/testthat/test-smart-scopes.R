@@ -2,10 +2,9 @@ smart_scope_test_client <- function(
     required = "patient/Patient.r", scopes = c(required, "patient/Observation.rs"),
     allow_v1 = FALSE) {
   client <- make_test_client(scopes = scopes)
-  client@scope_policy <- list(
-    profile = "smart", version = 1L,
-    allow_v1 = allow_v1, required_scopes = required
-  )
+  S7::props(client) <- list(scope_policy = list(
+    profile = "smart", version = 1L, allow_v1 = allow_v1
+  ), required_scopes = required)
   client
 }
 
@@ -179,20 +178,20 @@ test_that("SMART policy binds transactions and connection permissions", {
   changed <- client
   changed@scope_policy <- list(
     profile = "smart", version = 1L,
-    allow_v1 = TRUE, required_scopes = "patient/Patient.r"
+    allow_v1 = TRUE
   )
   expect_false(identical(
     state_client_policy_fingerprint(client),
     state_client_policy_fingerprint(changed)
   ))
-  target <- oauth_target(client, c(fhir = "https://example.com/fhir"),
+  client <- connection_test_client(client, c(fhir = "https://example.com/fhir"),
     required_scopes = "patient/Patient.r"
   )
   token <- OAuthToken(
     access_token = "example", expires_at = as.numeric(Sys.time()) + 60,
     granted_scopes = "patient/Patient.rs", granted_scopes_verified = TRUE
   )
-  record <- list(target = target, token = token)
+  record <- list(client = client, token = token)
   expect_identical(connection_record_status(record), "limited")
   record$token@granted_scopes <- c("patient/Patient.r", "patient/Observation.r", "patient/Observation.s")
   expect_identical(connection_record_status(record), "active")

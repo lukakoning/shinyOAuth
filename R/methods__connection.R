@@ -1,19 +1,20 @@
 #' Make API requests with a Shiny session's current OAuth credentials
 #'
 #' Combine one module's reactive token with its client and approved API addresses
-#' from [oauth_target()]. Call `$request()` on the returned connection instead of
+#' configured on [oauth_client()]. Call `$request()` on the returned connection instead of
 #' assembling a token, client and URL for each request. It reads the reactive token
 #' again after refresh or logout and restricts requests to the configured APIs.
 #' This optional wrapper expires with its Shiny session; it does not implement
 #' refresh itself or retain credentials across redirects.
 #'
-#' @param target Configuration created by [oauth_target()].
+#' @param client An [OAuthClient] with non-empty `resource_bases`, created by
+#'   [oauth_client()] or [smart_client()].
 #' @param token A Shiny reactive expression returning the current [OAuthToken]
 #'   or `NULL`, usually `shiny::reactive(auth$token)`. It must come from the
-#'   module using `target$client`. Supplying that association is trusted server
+#'   module using `client`. Supplying that association is trusted server
 #'   application wiring; a resource policy cannot prove an opaque token's audience.
 #' @param session The owning Shiny session; defaults to the current session.
-#' @return An [OAuthConnectionRef] with `$id`, `$is_usable()`, `$summary()` and
+#' @return An [OAuthConnection] with `$id`, `$is_usable()`, `$summary()` and
 #'   `$request(resource_id, path = "", query = NULL, method = "GET",
 #'   required_scopes = character())`. Requests return [httr2] responses.
 #' @details
@@ -25,10 +26,10 @@
 #' Paths are relative to the selected base directory. Absolute and root-relative
 #' references (including pagination links) must stay within that same base.
 #' Dot segments and ambiguous encodings are rejected; redirects are never followed.
-#' Bearer, DPoP and mTLS use the existing transport and the target's client.
+#' Bearer, DPoP and mTLS use the existing transport and the configured client.
 #'
 #' Use request-level `required_scopes` for optional operations. They must be
-#' included in the target's requested scopes and covered by the current grant.
+#' included in the client's requested scopes and covered by the current grant.
 #' The package cannot infer arbitrary API permissions from an HTTP method/path.
 #' The legacy module continues to own refresh and logout. Retained connection
 #' storage and its independent lifecycle are available through
@@ -37,10 +38,12 @@
 #' @examples
 #' \dontrun{
 #' # Configure outside server():
-#' target <- oauth_target(client, c(api = "https://api.example/v1"))
+#' client <- oauth_client(provider, "registered-app",
+#'   redirect_uri = "https://app.example/callback", scopes = "read",
+#'   resource_bases = c(api = "https://api.example/v1"))
 #' # Inside server():
-#' auth <- oauth_module_server("auth", target$client)
-#' connection <- oauth_connection(target, shiny::reactive(auth$token))
+#' auth <- oauth_module_server("auth", client)
+#' connection <- oauth_connection(client, shiny::reactive(auth$token))
 #' data <- shiny::reactive({
 #'   shiny::req(connection$is_usable())
 #'   connection$request("api", "records", required_scopes = "read")
@@ -48,13 +51,12 @@
 #' }
 #' @export
 oauth_connection <- function(
-  target,
+  client,
   token,
   session = shiny::getDefaultReactiveDomain()
 ) {
-  if (!inherits(target, "OAuthTarget")) {
-    err_input("target must be an OAuthTarget")
-  }
+  S7::check_is_S7(client, OAuthClient)
+  connection_client_fingerprint(client)
   if (!shiny::is.reactive(token)) {
     err_input("token must be a Shiny reactive expression")
   }
@@ -90,9 +92,9 @@ oauth_connection <- function(
     ) {
       err_token("Connection is unavailable")
     }
-    list(target = target, token = binding$source())
+    list(client = client, token = binding$source())
   }
-  OAuthConnectionRef$new(random_urlsafe(32), target, resolver)
+  OAuthConnection$new(random_urlsafe(32), client, resolver)
 }
 
 connection_session_root <- function(session) {
@@ -100,6 +102,16 @@ connection_session_root <- function(session) {
     return(NULL)
   }
   session$rootScope()
+}
+
+connection_record_summary <- function(record, id) {
+  list(
+    connection_id = id,
+    client_label = record$client@label,
+    status = connection_record_status(record),
+    expires_at = if (is.null(record$token)) NA_real_ else record$token@expires_at,
+    resource_ids = names(record$client@resource_bases)
+  )
 }
 
 connection_record_status <- function(record) {
@@ -110,7 +122,7 @@ connection_record_status <- function(record) {
   if (is.null(token)) {
     return("disconnected")
   }
-  if (client_uses_smart_scopes(record$target$client) &&
+  if (client_uses_smart_scopes(record$client) &&
     !isTRUE(token@granted_scopes_verified)) {
     return("insufficient_scope")
   }
@@ -123,8 +135,8 @@ connection_record_status <- function(record) {
   }
   if (
     client_scope_coverage(
-      record$target$client,
-      record$target$required_scopes,
+      record$client,
+      record$client@required_scopes,
       token@granted_scopes
     )$status !=
       "covered"
@@ -133,8 +145,8 @@ connection_record_status <- function(record) {
   }
   if (
     client_scope_coverage(
-      record$target$client,
-      effective_client_scopes(record$target$client),
+      record$client,
+      effective_client_scopes(record$client),
       token@granted_scopes
     )$status !=
       "covered"
@@ -154,12 +166,12 @@ connection_record_request <- function(
 ) {
   if (
     !is_valid_string(resource_id) ||
-      !resource_id %in% names(record$target$resource_bases)
+      !resource_id %in% names(record$client@resource_bases)
   ) {
     err_input("Unknown resource ID for this connection")
   }
   url <- resolve_bound_resource(
-    record$target$resource_bases[[resource_id]],
+    record$client@resource_bases[[resource_id]],
     path
   )
   if (!connection_record_status(record) %in% c("active", "limited")) {
@@ -169,19 +181,19 @@ connection_record_request <- function(
   required_scopes <- normalize_scope_tokens(required_scopes)
   if (
     client_scope_coverage(
-      record$target$client,
+      record$client,
       required_scopes,
-      effective_client_scopes(record$target$client)
+      effective_client_scopes(record$client)
     )$status !=
       "covered"
   ) {
     err_input(
-      "Operation scopes must be included in the target's requested scopes"
+      "Operation scopes must be included in the client's requested scopes"
     )
   }
   if (
     client_scope_coverage(
-      record$target$client,
+      record$client,
       required_scopes,
       record$token@granted_scopes
     )$status !=
@@ -195,7 +207,7 @@ connection_record_request <- function(
       url,
       method = method,
       query = query,
-      oauth_client = record$target$client,
+      oauth_client = record$client,
       check_url = TRUE,
       follow_redirect = FALSE
     ),

@@ -10,9 +10,9 @@ connection <- connections$connection(connection_id)
 connection$refresh(scopes = "read")
 ```
 
-Use scope names from your approved target. For example, `read` can replace
-`c("read", "write")` for a generic OAuth target. A SMART target might reduce
-`patient/Observation.rs` to `patient/Observation.r` if the target's required
+Use scope names from your approved client. For example, `read` can replace
+`c("read", "write")` for a generic OAuth client. A SMART client might reduce
+`patient/Observation.rs` to `patient/Observation.r` if the client's required
 permissions allow it. The server must support the requested scopes. With async
 transport, the method returns a promise and narrowing takes effect after its
 successful commit.
@@ -20,16 +20,16 @@ successful commit.
 ## Scope and lifecycle rules
 
 - Supply a non-empty character vector. The manager bounds its size, validates
-  its syntax and requires coverage by both the current grant and target
-  configuration. Generic scopes use literal comparison; SMART targets use the
+  its syntax and requires coverage by both the current grant and client
+  configuration. Generic scopes use literal comparison; SMART clients use the
   existing semantic evaluator. An indeterminate comparison is rejected.
-- Keep the target's required scopes. Widening or dropping required permissions
+- Keep the client's required scopes. Widening or dropping required permissions
   fails before taking the store's refresh claim or sending credentials.
 - After success, the encrypted connection record remembers that narrowing was
   selected. Later `$refresh()` calls, automatic refreshes and restored sessions
   explicitly request the current accepted scopes. If the server grants an even
   smaller acceptable set, that becomes the next limit. Other connections and
-  the target's shared configuration retain their settings.
+  the client's shared configuration retain their settings.
 - Connections that have never selected narrowing still omit request `scope`.
   The existing standalone `refresh_token()` interface keeps its behavior.
   `extra_token_params$scope` remains reserved; use the managed method.

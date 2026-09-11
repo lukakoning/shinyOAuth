@@ -1,8 +1,8 @@
 # How SMART permission checks work
 
 This is the P4b implementation note. The evaluator and its login, refresh,
-introspection and connection checks are implemented. `smart_target()` (P4c1)
-selects these rules explicitly; an ordinary `oauth_client()` or `oauth_target()`
+introspection and connection checks are implemented. `smart_client()` (P4c1)
+selects these rules explicitly; an ordinary `oauth_client()`
 still uses ordinary OAuth rules.
 
 A scope is a permission requested from the server. In ordinary OAuth, it is a
@@ -57,7 +57,7 @@ An enabled introspection scope check follows the same rule and can narrow the
 effective grant. Rejected results do not update the previous token. SMART
 connections require explicit grant evidence before becoming usable.
 
-The policy is included in SMART client and target fingerprints, binding it to
+The policy is included in SMART client and client fingerprints, binding it to
 pending authorization and retained credentials. The default generic fingerprint
 format is unchanged. Tests in
 [test-smart-scopes.R](../tests/testthat/test-smart-scopes.R) exercise comparisons,

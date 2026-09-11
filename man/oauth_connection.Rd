@@ -4,25 +4,26 @@
 \alias{oauth_connection}
 \title{Make API requests with a Shiny session's current OAuth credentials}
 \usage{
-oauth_connection(target, token, session = shiny::getDefaultReactiveDomain())
+oauth_connection(client, token, session = shiny::getDefaultReactiveDomain())
 }
 \arguments{
-\item{target}{Configuration created by \code{\link[=oauth_target]{oauth_target()}}.}
+\item{client}{An \link{OAuthClient} with non-empty \code{resource_bases}, created by
+\code{\link[=oauth_client]{oauth_client()}} or \code{\link[=smart_client]{smart_client()}}.}
 
 \item{token}{A Shiny reactive expression returning the current \link{OAuthToken}
 or \code{NULL}, usually \code{shiny::reactive(auth$token)}. It must come from the
-module using \code{target$client}. Supplying that association is trusted server
+module using \code{client}. Supplying that association is trusted server
 application wiring; a resource policy cannot prove an opaque token's audience.}
 
 \item{session}{The owning Shiny session; defaults to the current session.}
 }
 \value{
-An \link{OAuthConnectionRef} with \verb{$id}, \verb{$is_usable()}, \verb{$summary()} and
+An \link{OAuthConnection} with \verb{$id}, \verb{$is_usable()}, \verb{$summary()} and
 \verb{$request(resource_id, path = "", query = NULL, method = "GET", required_scopes = character())}. Requests return \link[httr2:httr2]{httr2} responses.
 }
 \description{
 Combine one module's reactive token with its client and approved API addresses
-from \code{\link[=oauth_target]{oauth_target()}}. Call \verb{$request()} on the returned connection instead of
+configured on \code{\link[=oauth_client]{oauth_client()}}. Call \verb{$request()} on the returned connection instead of
 assembling a token, client and URL for each request. It reads the reactive token
 again after refresh or logout and restricts requests to the configured APIs.
 This optional wrapper expires with its Shiny session; it does not implement
@@ -37,10 +38,10 @@ it cannot guarantee remote authorization. Unknown token expiry is unusable.
 Paths are relative to the selected base directory. Absolute and root-relative
 references (including pagination links) must stay within that same base.
 Dot segments and ambiguous encodings are rejected; redirects are never followed.
-Bearer, DPoP and mTLS use the existing transport and the target's client.
+Bearer, DPoP and mTLS use the existing transport and the configured client.
 
 Use request-level \code{required_scopes} for optional operations. They must be
-included in the target's requested scopes and covered by the current grant.
+included in the client's requested scopes and covered by the current grant.
 The package cannot infer arbitrary API permissions from an HTTP method/path.
 The legacy module continues to own refresh and logout. Retained connection
 storage and its independent lifecycle are available through
@@ -49,10 +50,12 @@ storage and its independent lifecycle are available through
 \examples{
 \dontrun{
 # Configure outside server():
-target <- oauth_target(client, c(api = "https://api.example/v1"))
+client <- oauth_client(provider, "registered-app",
+  redirect_uri = "https://app.example/callback", scopes = "read",
+  resource_bases = c(api = "https://api.example/v1"))
 # Inside server():
-auth <- oauth_module_server("auth", target$client)
-connection <- oauth_connection(target, shiny::reactive(auth$token))
+auth <- oauth_module_server("auth", client)
+connection <- oauth_connection(client, shiny::reactive(auth$token))
 data <- shiny::reactive({
   shiny::req(connection$is_usable())
   connection$request("api", "records", required_scopes = "read")

@@ -30,8 +30,7 @@ reference:
   - OAuthProvider
   - OAuthClient
   - OAuthToken
-  - OAuthTarget
-  - OAuthConnectionRef
+  - OAuthConnection
 
 - title: Multiple retained connections
 - contents:
@@ -56,6 +55,9 @@ reference:
 - title: SMART on FHIR
 - contents:
   - smart_discover
+  - smart_client
+  - smart_launch_route
+  - smart_context
   
 - title: Provider-specific client settings
 - contents:
@@ -66,11 +68,11 @@ reference:
 - subtitle: Advanced helpers for managing login without the Shiny module
 - contents:
   - prepare_call
+  - prepare_authorization_request
   - handle_callback
   
 - title: Tokens and API requests
 - contents:
-  - oauth_target
   - oauth_connection
   - get_userinfo
   - refresh_token

@@ -98,5 +98,5 @@ site$metadata$capabilities
 and \href{https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html}{asymmetric client metadata}.
 }
 \seealso{
-\code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}, \code{\link[=oauth_target]{oauth_target()}}
+\code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}, \code{\link[=smart_client]{smart_client()}}
 }

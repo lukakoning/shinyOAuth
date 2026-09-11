@@ -15,7 +15,7 @@
 #'
 #' The client selects `authorization_method = "POST"` explicitly. Ordinary
 #' OAuth providers may not support POST; confirm their documentation first.
-#' [smart_target()] additionally requires the `authorize-post` capability.
+#' [smart_client()] additionally requires the `authorize-post` capability.
 #' The outgoing method is independent of the callback `response_mode`.
 #' Configured PAR and Request Object requirements still apply. Each result
 #' belongs to one login attempt; do not cache it or reuse it after logout.

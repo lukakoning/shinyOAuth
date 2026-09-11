@@ -1,21 +1,22 @@
 #' Register a SMART EHR launch entry route
 #'
-#' Declare which approved SMART targets an EHR launch URL may select. Pass the
+#' Declare which approved SMART clients an EHR launch URL may select. Pass the
 #' result in `launch_routes` to [oauth_connections_ui()]. The route is separate
 #' from OAuth callbacks: `iss` means the FHIR base only here. Both `iss` and
 #' `launch` are required, and callback parameters are rejected on this route.
 #'
-#' Initial entry is untrusted. It selects an already configured target by exact
+#' Initial entry is untrusted. It selects an already configured client by exact
 #' FHIR base, performs no discovery, and establishes no healthcare identity.
 #' A short-lived encrypted record binds the opaque launch handle to the browser
-#' owner and target. A clean continuation proves that owner before a fresh OAuth
+#' owner and client. A clean continuation proves that owner before a fresh OAuth
 #' state/PKCE transaction can begin. Consumed handles cannot be reused to reconnect.
 #'
 #' @param path Absolute application path, such as `"/smart/launch"`. Register
 #'   `paste0(manager$app_origin, path)` with the EHR. It must be inside the UI's
 #'   `app_base_path` and distinct from every callback and other launch route.
-#' @param targets Character vector of target IDs in the manager. Each must be an
-#'   EHR-mode [smart_target()]. A route cannot contain two registrations for the
+#' @param clients Character vector of names from the manager's `clients` list,
+#'   not OAuth `client_id` values. Each must select an EHR-mode [smart_client()].
+#'   A route cannot contain two registrations for the
 #'   same exact FHIR base; give those registrations separate launch routes.
 #' @param max_age Launch handoff lifetime in seconds, 30 to 300, default 120.
 #'   Owner expiry and OAuth state expiry can shorten this lifetime.
@@ -33,28 +34,28 @@
 #' history before Shiny connects. The ticket alone cannot authorize a connection.
 #' Application access logs must also avoid recording raw launch query strings.
 #' Normal callback issuer checks and single-use browser/state checks still apply.
-#' @seealso [smart_target()], [oauth_connections_ui()]
+#' @seealso [smart_client()], [oauth_connections_ui()]
 #' @references
 #' [SMART EHR launch](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#launch-app-ehr-launch)
 #' @examples
 #' \dontrun{
-#' # hospital is an EHR-mode SMART target; manager uses browser retention.
+#' # hospital is an EHR-mode SMART client; manager uses browser retention.
 #' ui <- oauth_connections_ui(app_ui, "health", manager,
 #'   launch_routes = list(smart_launch_route("/smart/launch", "hospital")))
 #' }
 #' @export
-smart_launch_route <- function(path, targets, max_age = 120) {
+smart_launch_route <- function(path, clients, max_age = 120) {
   if (!is_valid_string(path) || !startsWith(path, "/") ||
       grepl("[?#]", path) ||
-      !is.character(targets) || !length(targets) || length(targets) > 64L ||
-      anyNA(targets) || anyDuplicated(targets) ||
-      any(!grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", targets)) ||
+      !is.character(clients) || !length(clients) || length(clients) > 64L ||
+      anyNA(clients) || anyDuplicated(clients) ||
+      any(!grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", clients)) ||
       !is.numeric(max_age) || length(max_age) != 1L ||
       !is.finite(max_age) || max_age < 30 || max_age > 300) {
     err_config("Invalid SMART launch route configuration")
   }
   resource_binding_components(paste0("https://app.example", path))
-  list(path = path, targets = targets, max_age = max_age)
+  list(path = path, clients = clients, max_age = max_age)
 }
 
 smart_launch_parameter <- "shinyOAuth_smart_launch"
@@ -69,11 +70,11 @@ smart_launch_routes_validate <- function(routes, manager, app_base_path) {
     err_config("SMART top-level launch requires a Lax browser owner cookie")
   }
   paths <- character()
-  callbacks <- vapply(manager$targets, function(target) {
-    resource_binding_components(target$client@redirect_uri)$path
+  callbacks <- vapply(manager$clients, function(client) {
+    resource_binding_components(client@redirect_uri)$path
   }, character(1))
   for (route in routes) {
-    if (!is.list(route) || !setequal(names(route), c("path", "targets", "max_age"))) {
+    if (!is.list(route) || !setequal(names(route), c("path", "clients", "max_age"))) {
       err_config("Use smart_launch_route() to configure EHR entry")
     }
     do.call(smart_launch_route, route)
@@ -81,12 +82,12 @@ smart_launch_routes_validate <- function(routes, manager, app_base_path) {
       err_config("SMART launch paths must be distinct from callbacks and inside the app")
     }
     paths <- c(paths, route$path)
-    bases <- vapply(route$targets, function(id) {
-      target <- manager$targets[[id]]
-      if (is.null(target) || !identical(target$smart$launch, "ehr")) {
-        err_config("SMART launch routes require configured EHR targets")
+    bases <- vapply(route$clients, function(id) {
+      client <- manager$clients[[id]]
+      if (is.null(client) || !identical(client@smart$launch, "ehr")) {
+        err_config("SMART launch routes require configured EHR clients")
       }
-      target$smart$fhir_base
+      client@smart$fhir_base
     }, character(1))
     if (anyDuplicated(bases)) err_config("SMART launch route has ambiguous FHIR-base registrations")
   }
@@ -141,11 +142,11 @@ smart_launch_open <- function(manager, entry, owner, expected_id = NULL) {
       record$expires_at <= as.numeric(Sys.time())) {
     err_token("SMART launch is unavailable")
   }
-  target <- manager$targets[[record$target]]
-  if (is.null(target) || !identical(target$smart$launch, "ehr") ||
-      !identical(record$fhir_base, target$smart$fhir_base) ||
-      !identical(record$fingerprint, connection_current_target_fingerprint(target))) {
-    err_token("SMART launch target changed")
+  client <- manager$clients[[record$client]]
+  if (is.null(client) || !identical(client@smart$launch, "ehr") ||
+      !identical(record$fhir_base, client@smart$fhir_base) ||
+      !identical(record$fingerprint, connection_client_fingerprint(client))) {
+    err_token("SMART launch client changed")
   }
   record
 }
@@ -170,8 +171,8 @@ smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
     if (length(matches)) {
       fields <- smart_launch_query(query)
       route <- matches[[1L]]
-      ids <- Filter(function(id) identical(manager$targets[[id]]$smart$fhir_base, fields$iss),
-        route$targets)
+      ids <- Filter(function(id) identical(manager$clients[[id]]@smart$fhir_base, fields$iss),
+        route$clients)
       if (length(ids) != 1L) err_input("SMART launch FHIR base is not approved")
       if (length(manager$state$launches) >= 1000L) err_token("SMART launch capacity reached")
       headers <- list("Cache-Control" = "no-store", "Referrer-Policy" = "no-referrer")
@@ -182,11 +183,11 @@ smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
           created$cookie, manager$app_origin, manager$owner)
       }
       id <- random_urlsafe(32)
-      target <- manager$targets[[ids[[1L]]]]
+      client <- manager$clients[[ids[[1L]]]]
       expires <- min(owner$expires_at, as.numeric(Sys.time()) + route$max_age)
       record <- list(purpose = "smart-launch-v1", id = id, owner = owner$id,
-        generation = owner$generation, target = ids[[1L]], fhir_base = fields$iss,
-        launch = fields$launch, fingerprint = connection_current_target_fingerprint(target),
+        generation = owner$generation, client = ids[[1L]], fhir_base = fields$iss,
+        launch = fields$launch, fingerprint = connection_client_fingerprint(client),
         expires_at = expires)
       entries <- manager$state$launches
       entries[[id]] <- list(expires_at = expires, owner = owner$id,
@@ -233,16 +234,16 @@ smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
 
 smart_prepare_launch <- function(client, context, launch) {
   if (!client_uses_smart(client)) {
-    if (!is.null(launch)) err_config("Launch parameters require a SMART target")
+    if (!is.null(launch)) err_config("Launch parameters require a SMART client")
     return(invisible(NULL))
   }
   if (identical(client@smart$launch, "standalone")) {
-    if (!is.null(launch)) err_config("Standalone SMART targets cannot reuse EHR launch handles")
+    if (!is.null(launch)) err_config("Standalone SMART clients cannot reuse EHR launch handles")
   } else if (!is_valid_string(launch) || nchar(launch, type = "bytes") > 2048L ||
       !grepl("^[!-~]+$", launch) ||
       !identical(context$smart$fhir_base, client@smart$fhir_base) ||
       !identical(context$smart$launch_digest, state_policy_value_digest(launch))) {
-    err_config("SMART EHR targets require a fresh registered launch transaction")
+    err_config("SMART EHR clients require a fresh registered launch transaction")
   }
   invisible(NULL)
 }

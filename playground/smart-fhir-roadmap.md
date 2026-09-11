@@ -9,17 +9,31 @@ The recommended direction is an optional connection-management layer over the ex
 
 The first complete user outcome is: connect to healthcare site A, navigate to site B to authorize, return with both connections available, and retrieve each site's selected patient using the correct credentials and FHIR base. Reading `extra_fields$patient` already works; retaining and correctly associating all these connections is the larger feature.
 
-**Implementation update, 2026-09-11.** P0-P2 are implemented, including RS384, the generic target/reference objects, their R6 documentation, and independent Python cryptographic/conformance tests. P3 is implemented for a single R process: encrypted storage (P3a), browser/account owner sessions (P3b), manager UI/server and lifecycle integration (P3c), and the generic browser-retention gate (P3d). That browser matrix passes 104 assertions across query/form_post and sync/mirai using the explicit HTTP loopback exception; it does not establish SMART conformance.
+**API simplification, 2026-09-11.** Resource bases, required scopes and the
+display label now belong to `OAuthClient` as optional fields. `smart_client()`
+returns that same type. `oauth_connections(clients = list(hospital_a = client_a,
+hospital_b = client_b), ...)` takes a named list directly. The convenient R6
+request object is named `OAuthConnection`; its methods reuse the existing request
+helpers. The separate manager module retains responsibility for ownership,
+storage, refresh and disconnect. The earlier `OAuthTarget`, `oauth_target()` and
+`smart_target()` APIs have been removed before release. The former
+`OAuthConnectionRef` name is now `OAuthConnection`, and summary labels use
+`client_label`. Local list names are distinct from OAuth registration client IDs.
+Resource/scope validation and configuration binding remain required. Updated
+package and browser fixtures must pass through this API; the external sandbox
+and Inferno release gates below remain open until their independent evidence exists.
 
-P4a adds `smart_discover()`, a plain metadata snapshot, documentation, metadata/endpoint policy tests and live Launcher v2 discovery diagnostics. P4b's scope evaluator and token/connection integration are implemented. P4c1 adds `smart_target()` for explicit registrations, S256, FHIR `aud`, identity policy and direct query/form_post authorization. P4d1 adds interpreted patient/encounter/banner context, context revisions across refresh, validated `fhirUser` continuity and bound resource helpers. These foundations have separate commits.
+**Implementation update, 2026-09-11.** P0-P2 are implemented, including RS384, optional client resource settings and OAuthConnection, their documentation, and independent Python cryptographic/conformance tests. P3 is implemented for a single R process: encrypted storage (P3a), browser/account owner sessions (P3b), manager UI/server and lifecycle integration (P3c), and the generic browser-retention gate (P3d). That browser matrix passes 104 assertions across query/form_post and sync/mirai using the explicit HTTP loopback exception; it does not establish SMART conformance.
+
+P4a adds `smart_discover()`, a plain metadata snapshot, documentation, metadata/endpoint policy tests and live Launcher v2 discovery diagnostics. P4b's scope evaluator and token/connection integration are implemented. P4c1 adds `smart_client()` for explicit registrations, S256, FHIR `aud`, identity policy and direct query/form_post authorization. P4d1 adds interpreted patient/encounter/banner context, context revisions across refresh, validated `fhirUser` continuity and bound resource helpers. These foundations have separate commits.
 
 **P5a EHR entry is implemented** with `smart_launch_route()`, encrypted owner-bound handoffs, clean continuation, one-use per-flow launch parameters, and a real-browser two-site fixture/CI job. See [setup, tests and supported deployment](../integration/smart/ehr-launch.md). It requires top-level navigation, browser retention and one R process. P5b retains external EHR compatibility and the complete registration matrix as release gates. P4c2 transport composition, broader P4d context policy, P4e-P4f and P7c-P7e remain planned. Implementing early EHR entry does not close those P4 gates.
 
-**P6 shared callbacks are implemented** through opt-in `callback_policy = "issuer"` and `"shared_routes"`. The latter uses an encrypted, expiring index of exact outgoing state digests to recover the original target before independent callback authentication. Clients must explicitly select `multi_issuer`; same-issuer encrypted JARM still requires distinct routes. See [configuration and browser gate](../integration/connections/shared-callbacks.md). This is generic OAuth/OIDC convenience and does not close the outstanding SMART composition or external conformance gates.
+**P6 shared callbacks are implemented** through opt-in `callback_policy = "issuer"` and `"shared_routes"`. The latter uses an encrypted, expiring index of exact outgoing state digests to recover the original client before independent callback authentication. Clients must explicitly select `multi_issuer`; same-issuer encrypted JARM still requires distinct routes. See [configuration and browser gate](../integration/connections/shared-callbacks.md). This is generic OAuth/OIDC convenience and does not close the outstanding SMART composition or external conformance gates.
 
-**P7a refresh scope narrowing is implemented** as managed `$refresh(scopes = ...)`, with current-grant/configuration coverage, required-scope checks and encrypted retention of the accepted limit for subsequent refreshes. Generic OAuth uses literal scopes; SMART targets use semantic coverage. This limits the connection locally: the server's original refresh-token grant is unchanged by OAuth narrowing, so later refreshes must keep sending the limit. See [usage, protocol references and browser gate](../integration/connections/refresh-scopes.md). External provider/SMART compatibility still needs its own evidence.
+**P7a refresh scope narrowing is implemented** as managed `$refresh(scopes = ...)`, with current-grant/configuration coverage, required-scope checks and encrypted retention of the accepted limit for subsequent refreshes. Generic OAuth uses literal scopes; SMART clients use semantic coverage. This limits the connection locally: the server's original refresh-token grant is unchanged by OAuth narrowing, so later refreshes must keep sending the limit. See [usage, protocol references and browser gate](../integration/connections/refresh-scopes.md). External provider/SMART compatibility still needs its own evidence.
 
-**P7b authorization POST is implemented** through explicit `authorization_method = "POST"`, automatic Shiny browser form submission and `prepare_authorization_request()` for custom callers. SMART requires advertised `authorize-post`. GET remains the default; the choice is bound to the target/transaction and preserves configured PAR/JAR requirements. [The POST guide](../integration/smart/authorization-post.md) documents size limits, protocol sources, the 24-scenario long-scope SMART matrix, ordinary OAuth browser coverage and independent Python checks over TLS. External P4e/P5b/P4f gates must repeat both outgoing methods once compatible discovery is available. P7c-P7e remain separate planned extensions.
+**P7b authorization POST is implemented** through explicit `authorization_method = "POST"`, automatic Shiny browser form submission and `prepare_authorization_request()` for custom callers. SMART requires advertised `authorize-post`. GET remains the default; the choice is bound to the client/transaction and preserves configured PAR/JAR requirements. [The POST guide](../integration/smart/authorization-post.md) documents size limits, protocol sources, the 24-scenario long-scope SMART matrix, ordinary OAuth browser coverage and independent Python checks over TLS. External P4e/P5b/P4f gates must repeat both outgoing methods once compatible discovery is available. P7c-P7e remain separate planned extensions.
 
 **Coverage follow-up.** [The combined coverage runner](../integration/smart/coverage.md) links each implemented component to its unit, cryptographic and browser evidence. A new 24-scenario strict SMART browser matrix covers public, HTTP Basic and RS384 registrations across standalone/EHR, query/form POST and sync/mirai, including signed `fhirUser`, Patient/Practitioner reads and P7a narrowing across navigation. Public registration now uses `client-public` without requiring a `none` entry in confidential authentication metadata. The unmodified Docker launcher's missing algorithm advertisement still blocks strict discovery; local matrix coverage does not close the external P4/P5/P7 gates.
 
@@ -47,7 +61,7 @@ This catalogue includes the smaller features within each phase, so a mixed phase
 | RS384 client-assertion signing and key checks | General OAuth/OIDC | Supports registrations requiring RS384 beyond healthcare; existing signing defaults remain unchanged. | P1 |
 | Internal scope evaluator interface | General OAuth/OIDC | Separates generic scope reconciliation from an explicitly selected profile's rules. | P1 |
 | Structured authorization preparation and immutable per-transaction context | General OAuth/OIDC | Lets a manager bind routing, resource and owner data without URL scraping or global client mutation. | P1 |
-| Target registry, connection references and connection-selection UI/server API | General OAuth/OIDC | Keeps each account/grant associated with its client and resource, including several accounts at one provider. | P2-P3 |
+| Client registry, connection references and connection-selection UI/server API | General OAuth/OIDC | Keeps each account/grant associated with its client and resource, including several accounts at one provider. | P2-P3 |
 | Exact resource-base binding and safe request/reference resolution | General OAuth/OIDC | Prevents credentials crossing API origins or base paths; useful for ordinary multi-tenant APIs too. | P2 |
 | Connection retention across redirects and Shiny sessions | General OAuth/OIDC | Connecting service B need not discard service A. | P3 |
 | Browser ownership and trusted local-account ownership | General OAuth/OIDC | Controls who can restore or mutate connections, independently of an external provider's identity. | P3 |
@@ -86,7 +100,7 @@ Deferred features are classified separately after the roadmap. Reuse of generic 
 | Requests to resource servers | General OAuth/OIDC | Client, token, and destination are separate arguments; host restrictions are available. | Add connection-bound requests with exact origin and base-path restrictions. |
 | Shared callback, same issuer | General OAuth/OIDC | The registry rejects this configuration. | Use distinct routes initially; add an opt-in manager router later. |
 | EHR launch | SMART/FHIR | The UI wrapper classifies launch `iss` as callback data and rejects normal launch requests. | Add a registered SMART launch handler before callback classification, only in the new wrapper. |
-| SMART discovery | SMART/FHIR | The existing helper implements OIDC discovery. | Add a separate metadata reader and target factory. |
+| SMART discovery | SMART/FHIR | The existing helper implements OIDC discovery. | Add a separate metadata reader and client factory. |
 | SMART scopes | Shared + SMART | Syntax passes through, but equivalent grants are compared as different strings. | Extract a generic evaluation interface; select SMART semantics only for managed SMART flows. |
 | Client assertions | General OAuth/OIDC | ES384 signing works; RS384 signing is unsupported. | Add and test RS384 as an explicitly selected algorithm; retain existing defaults. |
 | Refresh coordination | General OAuth/OIDC | The existing in-flight registry is process-local. | Add store-level coordination for retained connections used by multiple sessions/workers. |
@@ -100,9 +114,9 @@ The protocol baseline is [SMART App Launch STU 2.2](https://hl7.org/fhir/smart-a
 ```mermaid
 flowchart TD
     App[Application UI and server] --> Manager[Optional connection manager]
-    Manager --> Target[Immutable target registry]
-    Target --> OAuth[Ordinary OAuth or OIDC target]
-    Target --> SMART[Explicit SMART target adapter]
+    Manager --> Client[Named list of OAuthClient configurations]
+    Client --> OAuth[Ordinary OAuth or OIDC client]
+    Client --> SMART[Explicit SMART client adapter]
     SMART --> Discovery[Approved SMART discovery metadata]
     SMART --> Launch[Registered EHR launch route]
     Manager --> Core[Existing authorization and validation engine]
@@ -117,14 +131,14 @@ Use separate concepts instead of treating issuer, site, registration, and connec
 
 | Proposed object | Applicability | Responsibility | Lifetime |
 | --- | --- | --- | --- |
-| `SmartServerMetadata` | SMART/FHIR | FHIR base, discovered endpoints, optional OIDC metadata, capabilities, metadata version and trust policy. | Cached configuration; refreshed outside pending transactions. |
-| `OAuthTarget` | General OAuth/OIDC | One configured authorization destination: client registration, requested resource policy, protocol profile, callback policy, and configuration version. | Application configuration. Several targets can use one issuer. |
+| Plain discovery snapshot | SMART/FHIR | FHIR base, discovered endpoints, optional OIDC metadata, capabilities, metadata version and trust policy. | Reviewed configuration from `smart_discover()`; no extra class or automatic cache. |
+| `OAuthClient` | General OAuth/OIDC | One configured authorization destination: client registration, requested resource policy, protocol profile, callback policy, and configuration version. | Application configuration. Several clients can use one issuer. |
 | `OAuthOwner` | General OAuth/OIDC | A verified local principal or server-issued browser session that may access stored connections. | Explicit owner/session lifetime. |
-| Internal authorization transaction | General OAuth/OIDC; optional profile data | Target/version, intended owner, browser binding, scopes, resource, optional profile context, and existing OAuth state. SMART launch data is supplied by the adapter. | Short-lived and single-use. |
-| Internal connection record | General OAuth/OIDC; optional profile data | One accepted grant plus originating target/client, token bundle, resource policy, optional profile context, revision, and lifecycle status. | One owner-scoped connection. |
-| `OAuthConnectionRef` | General OAuth/OIDC | Server-side reference used for requests and lifecycle operations; resolves the latest record for that owner. | A handle, not a copied credential snapshot. |
+| Internal authorization transaction | General OAuth/OIDC; optional profile data | Client/version, intended owner, browser binding, scopes, resource, optional profile context, and existing OAuth state. SMART launch data is supplied by the adapter. | Short-lived and single-use. |
+| Internal connection record | General OAuth/OIDC; optional profile data | One accepted grant plus originating client, token bundle, resource policy, optional profile context, revision, and lifecycle status. | One owner-scoped connection. |
+| `OAuthConnection` | General OAuth/OIDC | Server-side reference used for requests and lifecycle operations; resolves the latest record for that owner. | A handle, not a copied credential snapshot. |
 
-The registry key is a local target ID. Each successful connection has a separate opaque connection ID. Neither is a user identity. One target may have multiple connections, for example accounts or different patient launches; these never overwrite each other implicitly. Reconnection of a particular connection must name that connection and verify its owner and expected identity policy.
+The registry key is a local client ID. Each successful connection has a separate opaque connection ID. Neither is a user identity. One client may have multiple connections, for example accounts or different patient launches; these never overwrite each other implicitly. Reconnection of a particular connection must name that connection and verify its owner and expected identity policy.
 
 An OIDC identity is keyed by the validated issuer and subject. Patient provenance includes the FHIR base and patient ID. Equal email addresses, subjects from different issuers, or patient IDs from different FHIR servers do not automatically link people. [OIDC claim stability](https://openid.net/specs/openid-connect-core-1_0.html#ClaimStability)
 
@@ -132,7 +146,7 @@ An OIDC identity is keyed by the validated issuer and subject. Patient provenanc
 
 | Behavior | Applicability | How the application opts in | Effect on existing interfaces |
 | --- | --- | --- | --- |
-| SMART discovery, context, scope evaluation and `aud` | SMART/FHIR | Construct a target using `smart_target()`. | No automatic detection by hostname, scope spelling, issuer, or returned `patient` field. |
+| SMART discovery, context, scope evaluation and `aud` | SMART/FHIR | Construct a client using `smart_client()`. | No automatic detection by hostname, scope spelling, issuer, or returned `patient` field. |
 | Launch requests containing `iss` and `launch` | SMART/FHIR | Register `smart_launch_route()` with `oauth_connections_ui()`. | Existing `oauth_ui()` continues to classify and validate callbacks as it does today. |
 | Credentials survive a Shiny session | General OAuth/OIDC | Choose `retention = "browser"` or `"account"` and provide owner/store configuration. | Existing session-end and logout behavior remains unchanged. |
 | Exact resource-base enforcement | General OAuth/OIDC | Use a managed connection and its request methods. | Existing generic request helpers remain available with their documented policies. |
@@ -143,13 +157,13 @@ An OIDC identity is keyed by the validated issuer and subject. Patient provenanc
 
 Opt-in enables additional functionality; it does not permit disabling required protections within that functionality. The manager must reject an unsupported callback policy, untrusted resource destination, unsafe store contract, or incompatible feature combination. It must not recover by disabling issuer checks, signature validation, PKCE, or certificate/key binding.
 
-Do not introduce global options such as `shinyOAuth.smart_mode`. Profile selection and every profile-related validation setting belong to an immutable target and its authorization transaction. Configuration fingerprints include the profile identifier/version and relevant policies. Existing transactions created by existing interfaces keep their existing format and validation path.
+Do not introduce global options such as `shinyOAuth.smart_mode`. Profile selection and every profile-related validation setting belong to an captured client configuration and its authorization transaction. Configuration fingerprints include the profile identifier/version and relevant policies. Existing transactions created by existing interfaces keep their existing format and validation path.
 
 **4. Proposed application-facing interfaces.**
 
 Keep advanced lifecycle details inside the manager while exposing explicit configuration. This example shows the intended final API after the corresponding roadmap phases; it cannot run against today's package.
 
-Interface ownership follows the same split: `oauth_target()`, `oauth_connections()`, its UI/server wrappers, owner factories and store adapters are **General OAuth/OIDC**. `smart_discover()`, `smart_target()`, `smart_launch_route()` and the `smart_*` context/resource helpers are **SMART/FHIR**. Supplying SMART targets to a generic manager does not apply SMART rules to its ordinary OAuth/OIDC targets.
+Interface ownership follows the same split: `oauth_client()`, `oauth_connections()`, its UI/server wrappers, owner factories and store adapters are **General OAuth/OIDC**. `smart_discover()`, `smart_client()`, `smart_launch_route()` and the `smart_*` context/resource helpers are **SMART/FHIR**. Supplying SMART clients to a generic manager does not apply SMART rules to its ordinary OAuth/OIDC clients.
 
 ```r
 # Proposed API. The URLs and credentials represent separate app registrations.
@@ -162,8 +176,8 @@ server_b <- smart_discover(
   allowed_endpoint_hosts = c("api.site-b.example", "login.site-b.example")
 )
 
-targets <- list(
-  site_a = smart_target(
+clients <- list(
+  site_a = smart_client(
     server_a,
     client_id = Sys.getenv("SITE_A_CLIENT_ID"),
     client_secret = Sys.getenv("SITE_A_CLIENT_SECRET"),
@@ -173,7 +187,7 @@ targets <- list(
     identity = "fhirUser",
     scopes = c("launch/patient", "patient/Patient.r")
   ),
-  site_b = smart_target(
+  site_b = smart_client(
     server_b,
     client_id = Sys.getenv("SITE_B_CLIENT_ID"),
     client_secret = Sys.getenv("SITE_B_CLIENT_SECRET"),
@@ -188,7 +202,7 @@ targets <- list(
 # deployment_keys is supplied by the application from protected key storage.
 # Memory storage supports one R process and survives Shiny sessions, not restarts.
 manager <- oauth_connections(
-  targets = targets,
+  clients = clients,
   app_origin = "https://app.example",
   callback_policy = "distinct_routes",
   retention = "browser",
@@ -207,7 +221,7 @@ server <- function(input, output, session) {
   health <- oauth_connections_server("health", manager)
 
   observeEvent(input$connect, {
-    health$connect(target_id = input$site)
+    health$connect(client_name = input$site)
   })
 
   # input$connection_id comes from health$connections(), a redacted summary.
@@ -235,19 +249,20 @@ Retention does not request a refresh token. An application that needs refresh ex
 An existing OAuth client can enter the same manager without SMART behavior:
 
 ```r
-# Proposed API. The client's existing scopes and resource parameters are retained.
-generic_target <- oauth_target(
-  client = existing_oidc_client,
+# Configure registration and optional API policy together.
+generic_client <- oauth_client(
+  provider = existing_provider, client_id = "registered-app",
+  redirect_uri = "https://app.example/callback", scopes = "read",
   resource_bases = c(profile_api = "https://api.example/v1")
 )
 ```
 
-For generic targets, `resource_bases` restricts where the application will send a token; it does not assert that an opaque token contains a particular audience or silently add an OAuth `resource` parameter. Applications continue to configure requested resource indicators on their clients. [OAuth resource indicators](https://www.rfc-editor.org/rfc/rfc8707.html)
+For generic clients, `resource_bases` restricts where the application will send a token; it does not assert that an opaque token contains a particular audience or silently add an OAuth `resource` parameter. Applications continue to configure requested resource indicators on their clients. [OAuth resource indicators](https://www.rfc-editor.org/rfc/rfc8707.html)
 
 | Manager/reference method | Applicability | Proposed contract |
 | --- | --- | --- |
-| `health$connect(target_id)` | General OAuth/OIDC | Start a new transaction for an approved target; does not discard existing connections. |
-| `health$connections()` | General OAuth/OIDC | Reactive summaries: connection ID, target label, status, expiry, and available resource labels. Tokens and raw identity/context lists are excluded. |
+| `health$connect(client_name)` | General OAuth/OIDC | Start a new transaction for an approved client; does not discard existing connections. |
+| `health$connections()` | General OAuth/OIDC | Reactive summaries: connection ID, client label, status, expiry, and available resource labels. Tokens and raw identity/context lists are excluded. |
 | `health$connection(connection_id)` | General OAuth/OIDC | Return an owner-checked reference. Unknown or foreign IDs fail without revealing another owner's record. |
 | `connection$is_usable()` | General OAuth/OIDC | Check local availability, expiry and operation status. It is not a guarantee the remote server will authorize an operation. |
 | `connection$request(resource_id, path, query, method)` | General OAuth/OIDC | Resolve current credentials and the selected approved resource, then use existing transport helpers. |
@@ -293,7 +308,7 @@ sequenceDiagram
     participant AS as Site B authorization server
     B->>M: Connect site B in owner session O
     M->>C: Verify owner O; retain existing connection A
-    M->>P: Save B transaction with target, owner and browser binding
+    M->>P: Save B transaction with client, owner and browser binding
     M-->>B: Authorization redirect
     B->>AS: Authenticate and authorize
     Note over M: Original Shiny session can end
@@ -311,7 +326,7 @@ sequenceDiagram
     M-->>B: New Shiny session lists connections A and B
 ```
 
-Restoration reads only the current owner's records and rechecks expiry, lifecycle generation, target configuration, and sender-constraint key/certificate references. A persisted `id_token_validated` flag records a prior validation; it does not create a fresh interactive login or reset `auth_time`/local authentication age. Changed issuer, client registration, resource policy, or material validation policy requires reauthorization. Do not quietly reinterpret stored grants under new discovery metadata.
+Restoration reads only the current owner's records and rechecks expiry, lifecycle generation, client configuration, and sender-constraint key/certificate references. A persisted `id_token_validated` flag records a prior validation; it does not create a fresh interactive login or reset `auth_time`/local authentication age. Changed issuer, client registration, resource policy, or material validation policy requires reauthorization. Do not quietly reinterpret stored grants under new discovery metadata.
 
 Store an explicit, versioned credential schema rather than serializing live `OAuthClient` objects, functions, caches, or private keys. Include the full token properties needed by existing continuity checks, including `original_id_token`, granted-scope evidence and both extra-field snapshots. External records are authenticated and encrypted using the package's reviewed cryptographic primitives with separate purpose-bound keys. Decode and validate a bounded data schema after authentication. Key references resolve from deployment-controlled key management; credential encryption keys do not reside next to ciphertext in the same backend.
 
@@ -356,13 +371,13 @@ An explicit `revoke_on_session_end = TRUE` setting is incompatible with browser/
 
 Applicability: **General OAuth/OIDC**. Several healthcare sites are one use case; multiple registrations, tenants or API resources at an ordinary provider benefit equally.
 
-Use the existing `multi_redirect_uri` defense as the first documented multi-site configuration. The application registers distinct callback routes with the authorization services. A Shiny module ID or query-only target selector is not a substitute for those routes. Existing shared-route support for distinct issuers can be exposed using an explicit `callback_policy = "issuer"` when the server capabilities and response transports support it. Require exact issuer comparison for both success and error callbacks. [RFC 9207 issuer validation](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4)
+Use the existing `multi_redirect_uri` defense as the first documented multi-site configuration. The application registers distinct callback routes with the authorization services. A Shiny module ID or query-only client selector is not a substitute for those routes. Existing shared-route support for distinct issuers can be exposed using an explicit `callback_policy = "issuer"` when the server capabilities and response transports support it. Require exact issuer comparison for both success and error callbacks. [RFC 9207 issuer validation](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4)
 
-The manager may configure the corresponding core mode on its own immutable client copies. It must reject conflicts with an explicitly configured client policy, not silently downgrade it. An issuer being known through OIDC does not establish that the server sends RFC 9207 responses.
+The manager may configure the corresponding core mode on its own captured client configuration copies. It must reject conflicts with an explicitly configured client policy, not silently downgrade it. An issuer being known through OIDC does not establish that the server sends RFC 9207 responses.
 
-P6's opt-in `callback_policy = "shared_routes"` distinguishes several targets/registrations using the same issuer through the pending transaction:
+P6's opt-in `callback_policy = "shared_routes"` distinguishes several clients/registrations using the same issuer through the pending transaction:
 
-1. At authorization preparation, record a protected, expiring routing index keyed by a digest of the exact outgoing OAuth state. Its value identifies the approved target, registration/configuration version, and manager transaction.
+1. At authorization preparation, record a protected, expiring routing index keyed by a digest of the exact outgoing OAuth state. Its value identifies the approved client, registration/configuration version, and manager transaction.
 2. At callback, bound parsing and route validation run before that index lookup. Lookup is read-only and cannot consume state.
 3. The index selects a candidate configuration. It does not authenticate a response, authorize an owner, or choose arbitrary endpoints.
 4. Independently perform the configured issuer/JARM validation, full existing state/client checks, owner/browser checks, and atomic state consumption before code exchange.
@@ -371,7 +386,7 @@ This can avoid changing the wire state format: the manager registers the existin
 
 For signed JARM, an unverified state claim may be used only as a bounded routing hint, followed by full verification using the selected approved client. If encrypted JARM cannot be routed without guessing among configurations, require distinct callback routes. Do not introduce trial decryption across an unbounded registry or an unvalidated outer selector as a workaround.
 
-The index identifies a target, which in turn binds the resource base. Changing the visible site selection while a callback is in flight cannot change that callback's destination, client, owner, or patient context.
+The index identifies a client, which in turn binds the resource base. Changing the visible site selection while a callback is in flight cannot change that callback's destination, client, owner, or patient context.
 
 **8. SMART adapter and resource/context behavior.**
 
@@ -381,7 +396,7 @@ SMART discovery appends `/.well-known/smart-configuration` to the full FHIR base
 
 `smart_discover()` accepts a trusted configured FHIR base and explicit endpoint-host policy. Requests retain existing TLS, response-size and JSON parsing protections and refuse redirects even under the generic redirect option. Metadata requests carry no access token. P4a deliberately has no automatic cache: each call returns a new plain metadata snapshot. Any future cache must key entries by the complete FHIR base and trust policy, not just a hostname or issuer. Missing required profile metadata produces a targeted configuration error. Advertised scopes are informative rather than an exhaustive permission allowlist. Registration and endpoint changes require explicit configuration review; metadata refresh cannot reroute an in-flight authorization or stored grant.
 
-For EHR-supplied bases, first match an exact approved target/base mapping before any discovery or network request. The initial release has no arbitrary-server URL textbox or dynamic client registration. Future user-enrolled servers would require a separately designed enrollment and network trust policy.
+For EHR-supplied bases, first match an exact approved client/base mapping before any discovery or network request. The initial release has no arbitrary-server URL textbox or dynamic client registration. Future user-enrolled servers would require a separately designed enrollment and network trust policy.
 
 The adapter owns request construction for SMART `aud` and the per-launch handle. It requires S256 PKCE, explicitly models identity requirements, and leaves UserInfo optional. It retains the standard state, nonce and ID-token validation implementation. `identity = "fhirUser"` checks that the validated ID token provides a usable `fhirUser`; it does not treat token-response extras as signed claims.
 
@@ -390,7 +405,7 @@ The authorization `aud` is the FHIR base. The OIDC issuer is the authorization s
 A proposed EHR route configuration is:
 
 ```r
-# Proposed API. ehr_targets is a registry of smart_target(..., launch = "ehr").
+# Proposed API. ehr_targets is a registry of smart_client(..., launch = "ehr").
 ui <- oauth_connections_ui(
   app_ui,
   id = "health",
@@ -398,17 +413,17 @@ ui <- oauth_connections_ui(
   launches = list(
     smart_launch_route(
       path = "/smart/launch",
-      targets = c("site_a", "site_b")
+      clients = c("site_a", "site_b")
     )
   )
 )
 ```
 
-Only that configured route interprets `iss` as a FHIR base. It accepts a well-formed launch request with both launch parameters and rejects mixed launch/callback messages and ambiguous target mappings. It validates lengths and scalar shapes, stores the handle in a short-lived owner/browser-associated launch record, and redirects to a clean application URL before ordinary UI rendering. This initial request is untrusted context and cannot establish authenticated identity. Starting authorization binds the launch record to fresh OAuth state.
+Only that configured route interprets `iss` as a FHIR base. It accepts a well-formed launch request with both launch parameters and rejects mixed launch/callback messages and ambiguous client mappings. It validates lengths and scalar shapes, stores the handle in a short-lived owner/browser-associated launch record, and redirects to a clean application URL before ordinary UI rendering. This initial request is untrusted context and cannot establish authenticated identity. Starting authorization binds the launch record to fresh OAuth state.
 
-Launch handles do not mutate the global provider's `extra_auth_params`. Keep them in the transaction, with the exact target and FHIR base. Once completed, reauthorization must not automatically replay an old EHR launch handle; request a fresh launch or use an explicitly supported standalone flow. Cleanup removes consumed launch records and prevents reusing their continuation handles.
+Launch handles do not mutate the global provider's `extra_auth_params`. Keep them in the transaction, with the exact client and FHIR base. Once completed, reauthorization must not automatically replay an old EHR launch handle; request a fresh launch or use an explicitly supported standalone flow. Cleanup removes consumed launch records and prevents reusing their continuation handles.
 
-For scopes, factor out the narrow scope-reconciliation decision from `verify_token_set()` into a versioned internal evaluator. Existing callers retain literal OAuth semantics. A SMART target selects an evaluator that can compare interaction unions, v1/v2 mappings, and supported resource wildcards. Keep normalization separate from rewriting wire requests. Unsupported constraints return an explicit indeterminate result; strict semantic checks reject indeterminate comparisons, and the adapter never interprets them as broader permission. SMART defines `.rs` as equivalent to `.r` plus `.s`. [SMART scope equivalence](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html#scope-equivalence)
+For scopes, factor out the narrow scope-reconciliation decision from `verify_token_set()` into a versioned internal evaluator. Existing callers retain literal OAuth semantics. A SMART client selects an evaluator that can compare interaction unions, v1/v2 mappings, and supported resource wildcards. Keep normalization separate from rewriting wire requests. Unsupported constraints return an explicit indeterminate result; strict semantic checks reject indeterminate comparisons, and the adapter never interprets them as broader permission. SMART defines `.rs` as equivalent to `.r` plus `.s`. [SMART scope equivalence](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html#scope-equivalence)
 
 Preserve the distinction between optional requested permissions and permissions the app requires. A reduced grant can create a limited connection; only operations covered by the current grant may be offered. Initial grant data is not evidence of current permissions. SMART-specific response checks can require an explicit returned scope, while ordinary OAuth's scope-omission behavior remains unchanged. Required identity/context omissions produce clear, profile-specific errors.
 
@@ -435,13 +450,13 @@ All connection-bound requests enforce exact scheme, host, effective port and nor
 
 **9. Feature combinations and generic protocol compatibility.**
 
-**Signing — Shared + SMART.** RS384 work should add a verified outbound signing implementation and matching key compatibility checks, not just amend an allowed-algorithm list. That implementation is general OAuth/OIDC functionality. Preserve every existing default. A SMART asymmetric target requires a registered key identifier and negotiates a supported algorithm from the registration, key and server metadata. This policy is SMART-specific; it must not silently substitute RS256 when RS384/ES384 is required. [SMART asymmetric client authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html)
+**Signing — Shared + SMART.** RS384 work should add a verified outbound signing implementation and matching key compatibility checks, not just amend an allowed-algorithm list. That implementation is general OAuth/OIDC functionality. Preserve every existing default. A SMART asymmetric client requires a registered key identifier and negotiates a supported algorithm from the registration, key and server metadata. This policy is SMART-specific; it must not silently substitute RS256 when RS384/ES384 is required. [SMART asymmetric client authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html)
 
 **JAR composition — Shared + SMART.** There is an additional composition issue to address explicitly: the current [Request Object builder](../R/utils__jwt_signing.R) removes an ordinary `aud` parameter and replaces it with the JWT's authorization-server audience. SMART uses an authorization parameter of that name for the FHIR base. This is a code-inspection finding, not a newly executed interoperability test. The initial SMART adapter should reject JAR `request`/`request_uri` modes until a standards-grounded mapping has been designed and tested. Do not repurpose the JAR audience or assume `resource` is universally accepted. Ordinary JAR behavior is unchanged. [JAR Request Object requirements](https://www.rfc-editor.org/rfc/rfc9101.html#section-4)
 
 **PAR/JARM composition — Shared + SMART.** These are generic OAuth mechanisms. PAR without JAR may carry ordinary SMART parameters, but support requires targeted transport tests and explicit server capability. JARM response validation is a separate feature from JAR requests; retain its existing rules. A provider requiring an unsupported combination receives a configuration error, not an automatic fallback to a weaker transport.
 
-**Lifetime and authentication freshness — Shared + SMART.** Separating local expiry from remote authentication guarantees is useful for generic providers too. For SMART servers without support for `max_age`, a local connection age limit can expire access and require a new authorization, but must not claim to force fresh remote authentication. Add a SMART target policy distinguishing local lifetime from server-enforced reauthentication. Reject requests for a freshness guarantee the server cannot provide instead of silently weakening the promise. [SMART OIDC requirements](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html#scopes-for-requesting-identity-data)
+**Lifetime and authentication freshness — Shared + SMART.** Separating local expiry from remote authentication guarantees is useful for generic providers too. For SMART servers without support for `max_age`, a local connection age limit can expire access and require a new authorization, but must not claim to force fresh remote authentication. Add a SMART client policy distinguishing local lifetime from server-enforced reauthentication. Reject requests for a freshness guarantee the server cannot provide instead of silently weakening the promise. [SMART OIDC requirements](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html#scopes-for-requesting-identity-data)
 
 **Embedded deployment — Shared + SMART.** The initial documented deployment is top-level server-hosted Shiny. Generic embedded applications share the browser/session constraints; EHR launch navigation supplies the SMART-specific part. Embedded EHR launches need browser tests for third-party cookie restrictions, storage partitioning, authorization navigation and return to the right frame. `SameSite=None` alone is not a complete iframe solution. Add an explicit embedded mode only after its flow is verified; do not silently remove browser binding when cookies are unavailable. Native mobile redirect schemes and device OS integrations are general OAuth/OIDC deployment concerns outside this server-hosted Shiny release.
 
@@ -455,18 +470,18 @@ Use independently reviewable changes with these dependencies. The phases describ
 | --- | --- | --- | --- | --- |
 | P0: Baseline and contracts | Shared + SMART: generic multi-server baseline plus SMART fixtures | Document current multiple-module pattern and redirect limitation; commit synthetic fixtures and compatibility expectations; add pinned SMART Dev Sandbox R4/launcher/picker infrastructure and smoke CI. | `vignettes/usage.Rmd`, `tests/testthat/test-smart-contracts.R`, `integration/smart/`, `.github/workflows/smart-sandbox.yml` | Existing behavior characterized; external sandbox starts and serves local metadata/data with recorded image pins and capabilities. No claimed application interoperability or persistence from smoke/same-session tests. |
 | P1: Additive signing and profile seam | General OAuth/OIDC | Implement RS384 signing; extract scope evaluation and structured authorization preparation without changing defaults. Add internal managed-transaction context hooks. | `R/utils__jwt_signing.R`, `R/classes__OAuthClient.R`, `R/methods__login.R`, `R/utils__state.R` | Existing OAuth/OIDC wire semantics and validations pass unchanged; independent verification of RS384 signatures. |
-| P2: Bound target/connection objects | General OAuth/OIDC | Introduce target/resource policy and connection reference; support per-session managed requests using existing transport. | New `R/classes__OAuthTarget.R`, `R/classes__OAuthConnectionRef.R`, `R/methods__connection.R`, `R/utils__resource_binding.R` | Selecting a connection always selects its matching client, token and full resource base. |
+| P2: Bound client/connection objects | General OAuth/OIDC | Extend the existing client with optional resource policy and add a connection handle; support per-session managed requests using existing transport. | Extend `R/classes__OAuthClient.R`; add `R/classes__OAuthConnection.R`, `R/methods__connection.R`, `R/utils__resource_binding.R` | Selecting a connection always selects its matching client, token and full resource base. |
 | P3: Retained multi-site connections | General OAuth/OIDC | Implement owner sessions, versioned connection store, atomic lifecycle operations, UI/server manager and restoration. Use existing callback defenses; distinct routes are the documented baseline. | New `R/connection_store.R`, `R/utils__connection_owner.R`, `R/oauth_connections.R`, `R/oauth_connections_ui.R`, `R/oauth_connections_server.R`; narrow hooks in current lifecycle code | Real browser A-to-B navigation retains both; owner isolation, uncertain refresh outcomes and disconnect races verified. Single-process scope explicit; shared-worker claims require an external adapter and tests. |
-| P4: SMART standalone | SMART/FHIR adapter over P1-P3 | Add discovery, SMART target factory, semantic scope evaluation, typed context and Patient/user helpers, including SMART-specific signing/freshness policies and transport-combination checks. Add real-app Inferno client runs. | New `R/smart_discovery.R`, `R/smart_target.R`, `R/smart_context.R`, `R/smart_scopes.R`, `R/methods__smart_resource.R`; `vignettes/smart-fhir.Rmd`; Inferno fixture/driver in `integration/smart/` | Standalone patient and clinician apps work, including clinician identity distinct from patient and refresh without repeated context. Sandbox browser runs and the Inferno public/symmetric/RS384 asymmetric client matrix pass. Multi-site standalone release candidate. |
-| P5: SMART EHR launch | SMART/FHIR; reuses generic transaction infrastructure | Add explicit launch routes, approved-target resolution, sealed launch transaction, clean continuation, per-flow parameters and fresh-launch reauthorization behavior. Extend Inferno client runs to EHR launch. | New `R/smart_launch.R`; targeted changes to the new manager wrapper/router; Inferno driver in `integration/smart/` | Normal `iss`/`launch` entry succeeds; ordinary and mixed callbacks retain existing validation; concurrent launches remain separate. Each supported client profile passes a distinct Inferno EHR scenario with browser evidence. Top-level EHR release candidate. |
-| P6: Shared-issuer convenience (implemented) | General OAuth/OIDC | Opt-in issuer routing and a protected pending-state index for targets/registrations at one issuer; bounded read-only selection before independent validation. | `R/utils__connection_router.R`; private adapter around `R/utils__callback_registry.R`; [setup and gate](../integration/connections/shared-callbacks.md) | Same-issuer resource isolation through query/form POST and sync/mirai; signed-JARM success/error and rejection unit tests. Ambiguous encrypted responses require distinct routes. |
+| P4: SMART standalone | SMART/FHIR adapter over P1-P3 | Add discovery, SMART client factory, semantic scope evaluation, typed context and Patient/user helpers, including SMART-specific signing/freshness policies and transport-combination checks. Add real-app Inferno client runs. | New `R/smart_discovery.R`, `R/smart_client.R`, `R/smart_context.R`, `R/smart_scopes.R`, `R/methods__smart_resource.R`; `vignettes/smart-fhir.Rmd`; Inferno fixture/driver in `integration/smart/` | Standalone patient and clinician apps work, including clinician identity distinct from patient and refresh without repeated context. Sandbox browser runs and the Inferno public/symmetric/RS384 asymmetric client matrix pass. Multi-site standalone release candidate. |
+| P5: SMART EHR launch | SMART/FHIR; reuses generic transaction infrastructure | Add explicit launch routes, approved-client resolution, sealed launch transaction, clean continuation, per-flow parameters and fresh-launch reauthorization behavior. Extend Inferno client runs to EHR launch. | New `R/smart_launch.R`; targeted changes to the new manager wrapper/router; Inferno driver in `integration/smart/` | Normal `iss`/`launch` entry succeeds; ordinary and mixed callbacks retain existing validation; concurrent launches remain separate. Each supported client profile passes a distinct Inferno EHR scenario with browser evidence. Top-level EHR release candidate. |
+| P6: Shared-issuer convenience (implemented) | General OAuth/OIDC | Opt-in issuer routing and a protected pending-state index for clients/registrations at one issuer; bounded read-only selection before independent validation. | `R/utils__connection_router.R`; private adapter around `R/utils__callback_registry.R`; [setup and gate](../integration/connections/shared-callbacks.md) | Same-issuer resource isolation through query/form POST and sync/mirai; signed-JARM success/error and rejection unit tests. Ambiguous encrypted responses require distinct routes. |
 | P7a: Refresh scope narrowing (implemented) | General OAuth/OIDC | Explicit managed refresh scopes, grant/required-scope checks and encrypted retention of the accepted limit. | Managed refresh methods, scope evaluator and [browser gate](../integration/connections/refresh-scopes.md) | Query/form POST and sync/mirai preserve narrowing across navigation and later refresh without affecting another connection. The original server-side refresh grant is not revoked. External provider support remains separately verified. |
 | P7b: Long authorization requests (implemented) | General OAuth/OIDC | Explicit GET/POST client selection, SMART capability check, structured preparation and browser form submission. | `R/prepare_authorization_request.R`, module/JS transport and [guide](../integration/smart/authorization-post.md) | Long scopes, fixed/repeated/literal fields, policy/state/PKCE binding, retained SMART/OAuth browser flows and independent protected POST exchanges. External SMART deployment acceptance remains a separate gate. |
 | P7c: Embedded mode | Shared + SMART: generic browser flow plus EHR navigation | Implement verified iframe navigation, session handling and EHR return behavior. | Manager wrapper, SMART launch adapter and browser integration suite | Supported browsers complete the flow without weakening owner/browser binding; unsupported modes fail clearly. |
 | P7d: Multi-resource authorization details | Shared + SMART: generic resource contract plus SMART interpretation | Bind accepted, application-approved resource locations; interpret SMART detail types and context in the adapter. | Resource binding, profile detail parser and SMART context adapter | Each request uses its own approved location/context; returned details never automatically expand trust. |
 | P7e: Account-persistent deployment adapters | General OAuth/OIDC | Supply production store/owner integration examples and adapters against P3's contract. | Store adapters, deployment examples and integration tests | Multi-worker/restart, expiry and ownership behavior has integration evidence for each supported backend. |
 
-P7a-P7e are separately selectable extensions, not one combined feature switch. The generic portions can also ship for ordinary OAuth/OIDC targets; each still needs its own supported-provider and deployment evidence.
+P7a-P7e are separately selectable extensions, not one combined feature switch. The generic portions can also ship for ordinary OAuth/OIDC clients; each still needs its own supported-provider and deployment evidence.
 
 **SMART sandbox integration checkpoints.** Use [integration/smart/sandbox.md](../integration/smart/sandbox.md) as the executable environment and evidence contract. Its current runner owns an isolated Docker project, tests discovery/FHIR/picker readiness with zero skips, records exact image identities and public metadata, and cleans up its own containers and volume. The following application suites are additions required within their phases, not placeholders that may skip indefinitely:
 
@@ -477,8 +492,8 @@ P4 is split into separate commit-sized items, preserving the phase's original re
 | Item | Work | Status |
 | --- | --- | --- |
 | P4a | Discovery API, strict SMART metadata/endpoint policy, roxygen2 help, live sandbox discovery and HTTP fixtures | Reader implemented; positive external acceptance gate open due to missing launcher algorithm metadata. Registration selection remains P4c |
-| P4b | SMART semantic scope evaluator, required/optional grants and explicit returned-scope evidence | Implemented; [scope policy and limits](smart-scopes.md). Selected by smart_target() (P4c1). |
-| P4c1 / P4c2 | smart_target(), registration/capability, S256/aud, identity and transport policy | P4c1 implemented for direct query/form_post, public, symmetric Basic and RS384/ES384 registrations. P4c2 PAR/JARM composition and remote freshness policy remain planned; JAR is rejected. |
+| P4b | SMART semantic scope evaluator, required/optional grants and explicit returned-scope evidence | Implemented; [scope policy and limits](smart-scopes.md). Selected by smart_client() (P4c1). |
+| P4c1 / P4c2 | smart_client(), registration/capability, S256/aud, identity and transport policy | P4c1 implemented for direct query/form_post, public, symmetric Basic and RS384/ES384 registrations. P4c2 PAR/JARM composition and remote freshness policy remain planned; JAR is rejected. |
 | P4d1 / P4d2 | Interpreted context, refresh continuity, Patient and validated fhirUser helpers | P4d1 implemented for patient/encounter/banner and identity references, with context revision and encrypted retention. P4d2 richer/experimental context requirements remain planned. |
 | P4e | Runnable app/vignette, standalone sandbox browser scenarios, two-site SMART retention repeat | Runnable strict fixture app and registration/identity/retention matrix added in the coverage follow-up. Vignette and external two-site sandbox repeat remain planned/blocked by discovery. |
 | P4f | Pinned Inferno deployment and real-app standalone public/symmetric/RS384 matrix, CI and sanitized conformance evidence | Planned |
@@ -489,7 +504,7 @@ P5 is split into an implementation checkpoint and the remaining release evidence
 
 | Item | Scope | Status |
 | --- | --- | --- |
-| P5a | Registered EHR entry, exact approved FHIR-base selection, encrypted owner/target handoff, clean continuation, per-transaction launch parameters and fresh-launch reconnect | Implemented with roxygen help and unit/browser tests. `integration/smart/run-ehr-browser.R` tests public registrations across query/form_post and sync/mirai using two strict local fixtures; CI runs the same matrix. |
+| P5a | Registered EHR entry, exact approved FHIR-base selection, encrypted owner/client handoff, clean continuation, per-transaction launch parameters and fresh-launch reconnect | Implemented with roxygen help and unit/browser tests. `integration/smart/run-ehr-browser.R` tests public registrations across query/form_post and sync/mirai using two strict local fixtures; CI runs the same matrix. |
 | P5b | External EHR scenarios and complete supported registration matrix | Public, symmetric and RS384 local browser matrix added. External gate remains open: drive the app through the official sandbox and pinned Inferno client suite; each registration requires browser and request-verification evidence. Resolve metadata compatibility first. Account/session-only EHR entry and optional transports need separate implementation/tests before support is claimed. |
 
 The P5a public browser matrix passed 88 assertions across query/form_post and
@@ -506,15 +521,15 @@ zero errors, warnings and notes. See [validation details](../integration/smart/R
 
 | Phase | Sandbox work within the phase | Release gate |
 | --- | --- | --- |
-| P3 | Add two isolated launcher/R4 sites with separate data volumes and a real-browser generic manager fixture (`test-browser-retention.R`). | Actual A-to-B navigation and new Shiny sessions retain both owner-bound grants; independent refresh/disconnect and existing store/concurrency tests pass. Repeat the same browser scenario with SMART targets during P4. |
+| P3 | Add two isolated launcher/R4 sites with separate data volumes and a real-browser generic manager fixture (`test-browser-retention.R`). | Actual A-to-B navigation and new Shiny sessions retain both owner-bound grants; independent refresh/disconnect and existing store/concurrency tests pass. Repeat the same browser scenario with SMART clients during P4. |
 | P4a reader implemented; positive external gate open | `test-smart-discovery.R` against live SMART Launcher v2 metadata and synthetic HTTP fixtures. | Full-base discovery, conditional metadata and endpoint policy checks work. The pinned launcher supplies grant types and S256 but lacks the asymmetric algorithm advertisement, so the reader rejects it. Require an upstream correction or independently verified compatible deployment, then a passing `--require-compatible-discovery` run. P4c1 registration checks are implemented separately. |
 | P4 standalone | Add a runnable Shiny SMART app plus `test-browser-standalone.R`; test patient selection, S256, FHIR `aud`, resource provenance and refresh/context behavior. | Actual browser authorization and matching Patient reads pass using the supported profile. Clinician/fhirUser identity requires independently observed SSO capability; absent scope/asymmetric/transport support is not inferred. |
 | P5b external repeat | Drive the P5a EHR app and `test-browser-ehr-launch.R` scenarios from the sandbox launcher after compatibility is resolved. | `iss`/`launch` entry, clean continuation, patient/encounter context, simultaneous launches and mixed callback handling pass against the external deployment. P5a's local fixture result is separate evidence. |
 | P6 / P7c | P6 adds one issuer, two registrations/resource paths and simultaneous top-level logins; `integration/connections/run-shared-router.R` runs in CI. P7c must extend the supported embedding matrix. | Same-issuer resource isolation and embedded navigation/cookie behavior each have their own evidence. P6's top-level fixture does not establish embedding or external SMART interoperability. |
 
-The initial sandbox uses loopback HTTP and synthetic Synthea records. Its FHIR proxy simulates authorization and accepts uncredentialed reads, so data retrieval alone is connectivity evidence. Keep the independent RS384/strict-AS conformance suite and Keycloak tests alongside it; do not treat simulator success as certification or server-side authorization enforcement. Do not patch metadata, disable validation, or weaken the SMART target to obtain a passing 2.2 flow. Any legacy profile must be explicit and separately tested. At P3-P5, expand the sandbox CI triggers to changed R APIs, install the required browser dependencies and require the implemented application-flow suites. Record transport, registration, capabilities, image IDs, browser versions, and results without credentials or patient context in artifacts.
+The initial sandbox uses loopback HTTP and synthetic Synthea records. Its FHIR proxy simulates authorization and accepts uncredentialed reads, so data retrieval alone is connectivity evidence. Keep the independent RS384/strict-AS conformance suite and Keycloak tests alongside it; do not treat simulator success as certification or server-side authorization enforcement. Do not patch metadata, disable validation, or weaken the SMART client to obtain a passing 2.2 flow. Any legacy profile must be explicit and separately tested. At P3-P5, expand the sandbox CI triggers to changed R APIs, install the required browser dependencies and require the implemented application-flow suites. Record transport, registration, capabilities, image IDs, browser versions, and results without credentials or patient context in artifacts.
 
-**Inferno client conformance checkpoints.** Follow [integration/smart/inferno.md](../integration/smart/inferno.md). The reviewed upstream kit is 1.0.3, source `980e54e4ed632b28267d797013399a8588772174`. Use `smart_client_stu2_2` (SMART App Launch STU2.2 Client), where Inferno simulates the server and evaluates our app's requests. The `smart_stu2_2` server suite is a different test target.
+**Inferno client conformance checkpoints.** Follow [integration/smart/inferno.md](../integration/smart/inferno.md). The reviewed upstream kit is 1.0.3, source `980e54e4ed632b28267d797013399a8588772174`. Use `smart_client_stu2_2` (SMART App Launch STU2.2 Client), where Inferno simulates the server and evaluates our app's requests. The `smart_stu2_2` server suite tests server conformance instead.
 
 | Phase | Implementation within the phase | Required result |
 | --- | --- | --- |
@@ -543,7 +558,7 @@ Discovery parsing and RS384 can be developed independently, but do not market a 
 
 SMART Backend Services is a later, separate grant-flow project: client credentials, system scopes and service ownership differ from interactive patient authorization. It can reuse discovery/signing/resource binding once implemented, but should not simulate an interactive user or reuse a browser connection owner. [SMART Backend Services](https://hl7.org/fhir/smart-app-launch/STU2.2/backend-services.html)
 
-FHIRcast, record matching, experimental app-state persistence, launch Tasks, styling and user-access brand directories are outside the initial roadmap. A future brand picker may help choose approved targets; it must not turn an advertised URL into an automatically trusted token destination. SMART refresh tokens do not by themselves provide live patient-chart context synchronization.
+FHIRcast, record matching, experimental app-state persistence, launch Tasks, styling and user-access brand directories are outside the initial roadmap. A future brand picker may help choose approved clients; it must not turn an advertised URL into an automatically trusted token destination. SMART refresh tokens do not by themselves provide live patient-chart context synchronization.
 
 | Deferred feature | Applicability | Boundary for a future proposal |
 | --- | --- | --- |
@@ -554,7 +569,7 @@ FHIRcast, record matching, experimental app-state persistence, launch Tasks, sty
 | SMART experimental app-state persistence | SMART/FHIR | Preserves SMART application state under the extension's semantics; distinct from generic credential retention. |
 | Launch Tasks | SMART/FHIR | Implements the healthcare workflow/context extension. |
 | SMART styling hints and style resources | SMART/FHIR | Healthcare launch presentation integration; must not imply credential access to arbitrary style URLs. |
-| User-access brand directories/picker | SMART/FHIR | Implements SMART brand discovery/selection. Its basic approved-target picker could reuse generic manager UI. |
+| User-access brand directories/picker | SMART/FHIR | Implements SMART brand discovery/selection. Its basic approved-client picker could reuse generic manager UI. |
 | Native mobile redirects and OS integration | General OAuth/OIDC | Useful for native clients broadly; separate deployment architecture from server-hosted Shiny. |
 | User-enrolled servers and dynamic client registration | General OAuth/OIDC | Broadly useful onboarding, requiring a separate trust/registration design; any SMART capability rules stay in its adapter. |
 
@@ -568,7 +583,7 @@ FHIRcast, record matching, experimental app-state persistence, launch Tasks, sty
 | Owner/session isolation | Separate browsers/accounts cannot read or act on each other's connections; local logout, expiry, cookie rotation and in-flight account changes invalidate restoration/commits correctly. |
 | Resource binding | Two FHIR bases on one hostname remain separate; every direct request, user reference and pagination link respects exact origin/base-path policy. |
 | Store concurrency and recovery | Two workers contend for one refresh; refresh rotation plus crash; storage outage at commit; disconnect versus late success; expired operations; restart and deployment key rotation. No automatic reuse after an uncertain outcome. |
-| Authorization server routing | Distinct issuer shared-route success/error; servers lacking issuer response support use distinct routes; same-issuer targets; mismatched configuration; unrouteable encrypted JARM. No code exchange before all applicable checks. |
+| Authorization server routing | Distinct issuer shared-route success/error; servers lacking issuer response support use distinct routes; same-issuer clients; mismatched configuration; unrouteable encrypted JARM. No code exchange before all applicable checks. |
 | SMART discovery | Base paths retained; OAuth-only and SSO metadata; public, secret and asymmetric registrations; metadata/cache trust boundaries; no registration inferred from discovery. |
 | SMART launch and context | Standalone versus EHR entry; clinician and patient differ; missing/cleared/changed context; omitted refresh extras; nested context; several concurrent launches; no replay of consumed launch handles. |
 | SMART scopes | Interaction equivalence, optional versus required grants, granular restrictions, v1 policy, unsupported comparisons and missing SMART scope response. Generic literal comparison unchanged. |
@@ -581,9 +596,9 @@ Testing retained `online_access` versus `offline_access` must distinguish storag
 
 **12. Suggested first PRs and decisions already made by this proposal.**
 
-Start with P0 and the RS384 portion of P1, then P2's target and resource-bound reference contract. Before implementing P3, settle the owner/store contracts through a small single-process vertical slice that performs real A-to-B browser navigation. That slice must include uncertain-refresh and disconnect semantics; these are foundational, not later hardening tasks.
+Start with P0 and the RS384 portion of P1, then P2's client and resource-bound reference contract. Before implementing P3, settle the owner/store contracts through a small single-process vertical slice that performs real A-to-B browser navigation. That slice must include uncertain-refresh and disconnect semantics; these are foundational, not later hardening tasks.
 
-The recommended decisions are: retain the existing core; add new explicitly selected APIs; use configured targets and distinct routes for the first multi-site experience; make browser retention the documented opt-in example; support account retention through a trusted application owner resolver; require stronger storage semantics for shared workers; and keep unsupported protocol combinations as explicit errors.
+The recommended decisions are: retain the existing core; add new explicitly selected APIs; use configured clients and distinct routes for the first multi-site experience; make browser retention the documented opt-in example; support account retention through a trusted application owner resolver; require stronger storage semantics for shared workers; and keep unsupported protocol combinations as explicit errors.
 
 API naming, the first external store adapter, and the precise list of independently tested EHRs remain implementation choices. They do not block the design. No implementation should rely on a promise that security or compatibility can be proved purely from design; the acceptance evidence above is required before release.
 

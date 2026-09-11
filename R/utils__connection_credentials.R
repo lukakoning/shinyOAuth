@@ -29,27 +29,25 @@ connection_credential_key <- function(key) {
   ))
 }
 
-connection_current_target_fingerprint <- function(target) {
-  if (!inherits(target, "OAuthTarget")) {
-    err_config("Connection credentials require an OAuthTarget")
-  }
-  # Re-read key/certificate references and material validation policy. A cached
-  # target fingerprint alone cannot detect changed key files or process policy.
-  current <- oauth_target(
-    target$client,
-    target$resource_bases,
-    target$required_scopes,
-    target$label
-  )$fingerprint
-  if (!identical(current, target$fingerprint)) {
-    err_token(
-      "Connection target configuration changed; reconnect with a new target"
-    )
-  }
-  current
+connection_client_fingerprint <- function(client) {
+  S7::check_is_S7(client, OAuthClient)
+  S7::validate(client)
+  bases <- normalize_resource_bases(client@resource_bases)
+  # Re-read key/certificate references and material validation policy every time.
+  # Managers and connections keep their own baseline; configuration has no cache.
+  state_policy_digest(list(
+    version = 2L,
+    client_id = client@client_id,
+    redirect_uri = client@redirect_uri,
+    provider = provider_fingerprint(client@provider),
+    client_policy = state_client_policy_fingerprint(client),
+    scopes = normalize_scope_tokens(effective_client_scopes(client)),
+    resource_bases = as.list(bases[sort(names(bases))]),
+    required_scopes = normalize_scope_tokens(client@required_scopes)
+  ))
 }
 
-connection_credential_binding <- function(owner, id, target) {
+connection_credential_binding <- function(owner, id, client) {
   for (value in list(owner, id)) {
     if (!is_valid_string(value) || !grepl("^[A-Za-z0-9_-]{16,128}$", value)) {
       err_input("Invalid connection credential binding")
@@ -60,7 +58,7 @@ connection_credential_binding <- function(owner, id, target) {
     version = 1L,
     owner = owner,
     id = id,
-    fingerprint = connection_current_target_fingerprint(target)
+    fingerprint = connection_client_fingerprint(client)
   )
 }
 
@@ -225,7 +223,7 @@ connection_credentials_seal <- function(
   token,
   owner,
   id,
-  target,
+  client,
   key,
   authenticated_at,
   refresh_scope_narrowed = FALSE
@@ -245,7 +243,7 @@ connection_credentials_seal <- function(
     connection_token_fields
   )
   payload <- list(
-    binding = connection_credential_binding(owner, id, target),
+    binding = connection_credential_binding(owner, id, client),
     authenticated_at = authenticated_at,
     credentials = connection_data_encode(values)
   )
@@ -264,9 +262,14 @@ connection_credentials_seal <- function(
   state_encrypt_gcm(payload, connection_credential_key(key))
 }
 
-connection_credentials_open <- function(sealed, owner, id, target, key) {
+connection_credentials_open <- function(sealed, owner, id, client, key,
+                                        expected_fingerprint = NULL) {
   derived_key <- connection_credential_key(key)
-  binding <- connection_credential_binding(owner, id, target)
+  binding <- connection_credential_binding(owner, id, client)
+  if (!is.null(expected_fingerprint) &&
+      !identical(binding$fingerprint, expected_fingerprint)) {
+    err_token("Connection credentials are unavailable or incompatible")
+  }
   tryCatch(
     {
       payload <- state_decrypt_gcm(

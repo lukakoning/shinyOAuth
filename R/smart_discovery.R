@@ -70,7 +70,7 @@
 #'   `shinyOAuth_parse_error`; failed HTTP requests raise a
 #'   `shinyOAuth_http_error`.
 #'
-#' @seealso [oauth_provider_oidc_discover()], [oauth_target()]
+#' @seealso [oauth_provider_oidc_discover()], [smart_client()]
 #' @references
 #' [SMART STU 2.2 discovery](https://hl7.org/fhir/smart-app-launch/STU2.2/conformance.html)
 #' and [asymmetric client metadata](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html).

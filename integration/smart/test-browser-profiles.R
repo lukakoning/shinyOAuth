@@ -46,7 +46,7 @@ for (index in seq_len(nrow(cases))) {
     both <- authorize("b", 2L)
     testthat::expect_gt(both$session, first$session)
     testthat::expect_length(both$errors, 0L)
-    retained_a <- Filter(function(value) identical(value$target_label, "Site a"), both$connections)[[1L]]
+    retained_a <- Filter(function(value) identical(value$client_label, "Site a"), both$connections)[[1L]]
     testthat::expect_identical(retained_a$connection_id, id)
     testthat::expect_identical(retained_a$status, "limited")
     retention_browser_click(browser, "refresh_a")
@@ -79,7 +79,7 @@ for (index in seq_len(nrow(cases))) {
     retention_browser_click(browser, "disconnect_b")
     retention_browser_wait(browser, function() {
       rows <- retention_browser_snapshot(browser)$connections
-      b <- Filter(function(value) identical(value$target_label, "Site b"), rows)
+      b <- Filter(function(value) identical(value$client_label, "Site b"), rows)
       length(b) == 1L && identical(b[[1L]]$status, "disconnected")
     }, "disconnect B")
     retention_browser_click(browser, "read_b")

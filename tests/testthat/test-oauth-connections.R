@@ -20,44 +20,45 @@ connection_test_headers <- function(req) {
   httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)$headers
 }
 
-test_that("targets preserve client settings and bind configuration immutably", {
-  client <- make_test_client(scopes = c("read", "write"))
-  target <- oauth_target(
-    client,
-    c(api = "https://api.example/v1"),
-    required_scopes = "read"
-  )
-  original <- target$fingerprint
-  expect_identical(target$client@resource, character())
-  expect_identical(target$client@scopes, client@scopes)
-  client@client_id <- "different-registration"
-  expect_identical(target$client@client_id, "abc")
-  expect_identical(target$fingerprint, original)
-  expect_error(
-    target$resource_bases <- c(api = "https://other.example"),
-    "read-only"
-  )
-  expect_error(
-    target$initialize(
-      client,
-      c(api = "https://other.example"),
-      character(),
-      "other"
-    ),
-    "read-only"
-  )
-  expect_error(
-    oauth_target(client, c(api = "https://api.example/v1"), "admin"),
-    "Required scopes"
-  )
-  expect_false(identical(
-    original,
-    oauth_target(client, c(api = "https://api.example/v1"), "read")$fingerprint
-  ))
-  expect_false(grepl(
-    "api.example|different-registration",
-    paste(capture.output(print(target)), collapse = "")
-  ))
+test_that("optional API configuration belongs to the existing OAuthClient", {
+  provider <- make_test_provider()
+  client <- oauth_client(provider, "abc", redirect_uri = "https://app.example/callback",
+    scopes = c("read", "write"), resource_bases = c(api = "https://api.example/v1/"),
+    required_scopes = "read", label = "Example API")
+  expect_true(S7::S7_inherits(client, OAuthClient))
+  expect_identical(client@resource_bases, c(api = "https://api.example/v1"))
+  expect_identical(client@required_scopes, "read")
+  expect_identical(client@label, "Example API")
+  original <- connection_client_fingerprint(client)
+  expect_identical(client@resource, character())
+  expect_identical(client@scopes, c("read", "write"))
+  changed <- client
+  changed@client_id <- "different-registration"
+  expect_identical(client@client_id, "abc")
+  expect_identical(connection_client_fingerprint(client), original)
+  expect_false(identical(connection_client_fingerprint(changed), original))
+  changed <- client
+  changed@label <- "Renamed API"
+  expect_identical(connection_client_fingerprint(changed), original)
+  changed@resource_bases <- c(api = "https://api.example/v2")
+  expect_false(identical(connection_client_fingerprint(changed), original))
+  expect_error(client@required_scopes <- "admin", "Required scopes")
+  expect_error(client@resource_bases <- c(api = "https://api.example/v1/../other"), "ambiguous")
+  expect_error(client@label <- "", "label")
+})
+
+test_that("ordinary clients can omit connection configuration and use existing helpers", {
+  client <- make_test_client(scopes = "read")
+  expect_identical(client@resource_bases, character())
+  expect_identical(client@required_scopes, character())
+  expect_identical(client@label, client@provider@name)
+  request <- resource_req(connection_test_token(scopes = "read"),
+    "https://api.example/records", oauth_client = client)
+  expect_identical(connection_test_headers(request)[["authorization"]], "Bearer synthetic-access")
+  expect_error(oauth_connections(list(api = client), "https://app.example"), "resource_bases")
+  expect_error(oauth_connections(list(client), "https://app.example"), "named list")
+  expect_false(any(c("oauth_target", "smart_target", "OAuthConnectionRef") %in%
+    getNamespaceExports("shinyOAuth")))
 })
 
 test_that("each session connection uses its own current credentials and complete base", {
@@ -71,12 +72,12 @@ test_that("each session connection uses its own current credentials and complete
       client_a <- make_test_client(scopes = c("read", "write"))
       client_b <- client_a
       client_b@client_id <- "registration-b"
-      target_a <- oauth_target(
+      target_a <- connection_test_client(
         client_a,
         c(api = "https://api.example/site-a/v1"),
         "read"
       )
-      target_b <- oauth_target(
+      target_b <- connection_test_client(
         client_b,
         c(api = "https://api.example/site-b/v1"),
         "read"
@@ -85,9 +86,12 @@ test_that("each session connection uses its own current credentials and complete
       source_b <- shiny::reactiveVal(connection_test_token("synthetic-b"))
       a <- oauth_connection(target_a, shiny::reactive(source_a()))
       b <- oauth_connection(target_b, shiny::reactive(source_b()))
+      # Editing an application's copy cannot retarget an already-bound connection.
+      target_a@resource_bases <- c(api = "https://other.example/v1")
     },
     {
       expect_true(a$is_usable())
+      expect_s3_class(a, "OAuthConnection")
       expect_false(identical(a$id, b$id))
       req_a <- a$request("api", "records", query = list(page = 2))
       req_b <- b$request("api", "records")
@@ -135,11 +139,11 @@ test_that("references reject a foreign session and become unavailable when the o
   foreign <- shiny::MockShinySession$new()
   withr::defer(owner$close())
   withr::defer(foreign$close())
-  target <- oauth_target(make_test_client(), c(api = "https://api.example/v1"))
+  client <- connection_test_client(make_test_client(), c(api = "https://api.example/v1"))
   source <- shiny::reactive(connection_test_token())
   connection <- shiny::withReactiveDomain(
     owner,
-    oauth_connection(target, source)
+    oauth_connection(client, source)
   )
   shiny::withReactiveDomain(
     foreign,
@@ -148,7 +152,7 @@ test_that("references reject a foreign session and become unavailable when the o
       expect_error(connection$summary(), "unavailable")
       expect_error(connection$request("api", "records"), "unavailable")
       expect_error(
-        oauth_connection(target, source, session = owner),
+        oauth_connection(client, source, session = owner),
         "owning Shiny session"
       )
     })
@@ -174,13 +178,13 @@ test_that("required and optional operations use current scope evidence and expir
   )
   shiny::testServer(
     function(input, output, session) {
-      target <- oauth_target(
+      client <- connection_test_client(
         make_test_client(scopes = c("read", "write")),
         c(api = "https://api.example/v1"),
         "read"
       )
       source <- shiny::reactiveVal(connection_test_token(scopes = "read"))
-      connection <- oauth_connection(target, shiny::reactive(source()))
+      connection <- oauth_connection(client, shiny::reactive(source()))
     },
     {
       expect_identical(connection$summary()$status, "limited")
@@ -192,7 +196,7 @@ test_that("required and optional operations use current scope evidence and expir
       )
       expect_error(
         connection$request("api", "records", required_scopes = "admin"),
-        "target's requested"
+        "client's requested"
       )
       for (expires in c(NA_real_, as.numeric(Sys.time()) - 1)) {
         source(connection_test_token(expires = expires))
@@ -210,10 +214,10 @@ test_that("required and optional operations use current scope evidence and expir
 test_that("connection requests preserve DPoP binding and redact transport failures", {
   client <- make_test_client(scopes = "read")
   client@dpop_private_key <- openssl::ec_keygen("P-256")
-  target <- oauth_target(client, c(api = "https://api.example/v1"))
+  client <- connection_test_client(client, c(api = "https://api.example/v1"))
   token <- connection_test_token(scopes = "read")
   token@token_type <- "DPoP"
-  record <- list(target = target, token = token)
+  record <- list(client = client, token = token)
   local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) req,
     .package = "shinyOAuth"
@@ -262,14 +266,14 @@ test_that("connection requests retain the configured mTLS certificate and bindin
     mtls_certificate_bound_access_tokens = TRUE,
     mtls_require_observed_cnf = FALSE
   )
-  target <- oauth_target(client, c(api = "https://api.example/v1"))
+  client <- connection_test_client(client, c(api = "https://api.example/v1"))
   token <- connection_test_token(scopes = "read")
   local_mocked_bindings(
     req_with_retry = function(req, ...) req,
     .package = "shinyOAuth"
   )
   request <- connection_record_request(
-    list(target = target, token = token),
+    list(client = client, token = token),
     "api",
     "records",
     NULL,
@@ -281,7 +285,7 @@ test_that("connection requests retain the configured mTLS certificate and bindin
   token@cnf <- list(`x5t#S256` = "LmpH6Yik2-D3dSsZpdndcwKkN1PcMYHtR5S6wXbUvDQ")
   expect_error(
     connection_record_request(
-      list(target = target, token = token),
+      list(client = client, token = token),
       "api",
       "records",
       NULL,
@@ -310,12 +314,12 @@ test_that("live connection requests send matching credentials and never follow r
     res$send(as.character(app$locals$b_requests))
   })
   process <- webfakes::local_app_process(app)
-  target <- oauth_target(
+  client <- connection_test_client(
     make_test_client(scopes = "read"),
     c(api = process$url("/a/v1"))
   )
   record <- list(
-    target = target,
+    client = client,
     token = connection_test_token(scopes = "read")
   )
   local_options(shinyOAuth.allow_redirect = TRUE)

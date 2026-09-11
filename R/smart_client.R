@@ -1,7 +1,7 @@
 #' Configure a SMART on FHIR app registration
 #'
 #' Combine a reviewed [smart_discover()] snapshot with an existing app
-#' registration. The result is an [OAuthTarget] for [oauth_connections()], with
+#' registration. The result is an [OAuthClient] for [oauth_connections()], with
 #' the resource ID `"fhir"`. Discovery does not register the app or grant access.
 #'
 #' This constructor selects SMART 2.2 scope rules, S256 PKCE and the exact FHIR
@@ -13,8 +13,8 @@
 #' Only direct authorization requests and query/form POST callbacks are currently
 #' supported. JAR, PAR, JARM, DPoP, mTLS and remote freshness requirements need
 #' separate SMART composition work; this constructor provides no overrides for
-#' those features. EHR targets require a fresh registered launch transaction.
-#' Configure standalone and EHR registrations as separate targets when both are
+#' those features. EHR clients require a fresh registered launch transaction.
+#' Configure standalone and EHR registrations as separate clients when both are
 #' needed. No launch handle is stored in shared provider configuration.
 #' Local usability policy requires a positive `expires_in` in initial and
 #' refresh responses; the generic assumed lifetime is not used for SMART.
@@ -24,7 +24,7 @@
 #' @param client_id,redirect_uri App registration values. The callback must use
 #'   HTTPS, except for the snapshot's explicit HTTP loopback development policy.
 #' @param scopes Permissions to request, without automatic wildcard/offline
-#'   access. Standalone patient scopes require `launch/patient`. EHR targets add
+#'   access. Standalone patient scopes require `launch/patient`. EHR clients add
 #'   `launch`. Supported scope syntax must be advertised through `permission-v2`
 #'   (or the explicit v1 compatibility selection).
 #' @param required_scopes Minimum permissions, defaulting to `scopes`. Pass a
@@ -44,7 +44,7 @@
 #' @param launch `"standalone"` or `"ehr"`, matching the registered app flow.
 #' @param identity `"none"` (default) or `"fhirUser"`. A validated `fhirUser`
 #'   claim may be an absolute URL or a supported resource instance reference
-#'   relative to this target's FHIR base, such as `"Practitioner/example"`.
+#'   relative to this client's FHIR base, such as `"Practitioner/example"`.
 #' @param allow_v1 Explicit compatibility flag enabling `.read`, `.write` and
 #'   `.*`; requires the advertised `permission-v1` capability. Default `FALSE`.
 #' @param authorization_method `"GET"` (default) or `"POST"` for the outgoing
@@ -53,25 +53,27 @@
 #' @param response_mode `NULL`, `"query"`, or `"form_post"`. Advertised response
 #'   modes, when present, must allow the selection.
 #' @param authorization_server_mode,authorization_server_redirect_uris See
-#'   [oauth_client()]. Multiple targets use distinct registered callback routes.
+#'   [oauth_client()]. Multiple clients use distinct registered callback routes.
 #' @param state_store,state_key,state_payload_max_age See [oauth_client()].
 #' @param label Display label, default `"FHIR server"`; no credentials or context.
-#' @return An immutable [OAuthTarget]. `$client` is its configured [OAuthClient],
-#'   `$resource_bases` contains only the approved FHIR base, and `$smart` describes
-#'   the selected profile without credentials. It does not contain a user's token.
+#' @return An [OAuthClient], usable by the existing module or the separate
+#'   connection manager. `@resource_bases` contains the approved `fhir` base;
+#'   `@required_scopes` and `@label` use the ordinary client properties. `@smart`
+#'   describes the selected profile. The client contains registration settings,
+#'   never a user's token or launch context. Configure it outside `server()`.
 #' @references
 #' [SMART 2.2 launch](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html)
 #' and [client authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html).
 #' @examples
 #' \dontrun{
 #' site <- smart_discover("https://ehr.example/fhir/R4")
-#' target <- smart_target(site, "registered-app", "https://app.example/callback",
+#' client <- smart_client(site, "registered-app", "https://app.example/callback",
 #'   scopes = c("launch/patient", "patient/Patient.r"),
 #'   required_scopes = "patient/Patient.r", token_auth_style = "public")
-#' target$smart$launch
+#' client@smart$launch
 #' }
 #' @export
-smart_target <- function(
+smart_client <- function(
   discovery, client_id, redirect_uri, scopes, required_scopes = scopes,
   token_auth_style = c("public", "header", "private_key_jwt"),
   client_secret = character(), client_assertion_private_key = NULL,
@@ -90,7 +92,7 @@ smart_target <- function(
   connection_manager_flag(allow_v1, "allow_v1")
   if (!is.list(discovery) || !identical(discovery$smart_version, "2.2.0") ||
       !is.list(discovery$metadata)) {
-    err_config("smart_target requires a SMART 2.2 discovery snapshot")
+    err_config("smart_client requires a SMART 2.2 discovery snapshot")
   }
   connection_manager_flag(discovery$allow_http_loopback, "allow_http_loopback")
   smart_discovery_url(discovery$fhir_base, "fhir_base",
@@ -123,7 +125,7 @@ smart_target <- function(
   required_scopes <- normalize_scope_tokens(required_scopes)
   if (identical(launch, "ehr")) scopes <- union(scopes, "launch")
   if (identical(launch, "standalone") && "launch" %in% scopes) {
-    err_config("Standalone SMART targets cannot request EHR launch scope")
+    err_config("Standalone SMART clients cannot request EHR launch scope")
   }
   if (identical(identity, "fhirUser")) {
     require_capability("sso-openid-connect")
@@ -151,7 +153,7 @@ smart_target <- function(
     err_config("SMART app launch does not support backend system scopes")
   }
   if (!identical(smart_scope_coverage(scopes, scopes, allow_v1)$status, "covered")) {
-    err_config("SMART target contains unsupported scope syntax")
+    err_config("SMART client contains unsupported scope syntax")
   }
   if (identical(token_auth_style, "private_key_jwt")) {
     if (!is_valid_string(client_assertion_alg) ||
@@ -211,14 +213,17 @@ smart_target <- function(
     } else NULL,
     state_store = state_store, state_key = state_key,
     state_payload_max_age = state_payload_max_age)
-  client@scope_policy <- list(profile = "smart", version = 1L, allow_v1 = allow_v1,
-    required_scopes = required_scopes)
   smart_policy <- list(version = "2.2.0", fhir_base = discovery$fhir_base,
     launch = launch, identity = identity, allow_http_loopback = discovery$allow_http_loopback,
     discovery_digest = state_policy_digest(discovery))
   if (identical(authorization_method, "POST")) smart_policy$authorization_method <- "POST"
-  client@smart <- smart_policy
-  oauth_target(client, c(fhir = discovery$fhir_base), required_scopes, label)
+  S7::props(client) <- list(
+    scope_policy = list(profile = "smart", version = 1L, allow_v1 = allow_v1),
+    smart = smart_policy,
+    resource_bases = normalize_resource_bases(c(fhir = discovery$fhir_base)),
+    required_scopes = required_scopes
+  )
+  client
 }
 
 client_uses_smart <- function(client) length(client@smart) > 0L
@@ -234,6 +239,10 @@ smart_validate_client <- function(client) {
       !is_valid_string(policy$launch) || !policy$launch %in% c("standalone", "ehr") ||
       !is_valid_string(policy$identity) || !policy$identity %in% c("none", "fhirUser") ||
       !client_uses_smart_scopes(client)) return("OAuthClient: invalid SMART policy")
+  if (!identical(client@resource_bases,
+      normalize_resource_bases(c(fhir = policy$fhir_base)))) {
+    return("OAuthClient: SMART client must retain its configured FHIR base")
+  }
   provider <- client@provider
   if (!isTRUE(provider@use_pkce) || !identical(provider@pkce_method, "S256") ||
       !identical(client@request_object_mode, "parameters") ||
@@ -247,6 +256,7 @@ smart_validate_client <- function(client) {
   }
   oidc <- identical(policy$identity, "fhirUser")
   if (!identical(provider_uses_oidc(provider), oidc) ||
+      (oidc && !all(c("openid", "fhirUser") %in% client@required_scopes)) ||
       !identical(provider@use_nonce, oidc) ||
       !identical(provider@id_token_validation, oidc) ||
       !identical(provider@id_token_required, oidc)) {

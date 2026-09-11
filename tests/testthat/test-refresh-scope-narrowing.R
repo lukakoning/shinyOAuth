@@ -1,8 +1,9 @@
 narrowing_client <- function(scopes = c("read", "write"), smart = FALSE) {
   client <- make_test_client(scopes = scopes, use_nonce = FALSE)
   client@scope_validation <- "none"
-  if (smart) client@scope_policy <- list(profile = "smart", version = 1L,
-    allow_v1 = FALSE, required_scopes = scopes[[1L]])
+  if (smart) S7::props(client) <- list(
+    scope_policy = list(profile = "smart", version = 1L, allow_v1 = FALSE),
+    required_scopes = scopes[[1L]])
   client
 }
 
@@ -25,8 +26,8 @@ narrowing_response <- function(req, scope = "read", rotate = TRUE) {
 narrowing_manager <- function() {
   client <- narrowing_client()
   client@redirect_uri <- "https://app.example/callback"
-  target <- oauth_target(client, c(api = "https://api.example/v1"), "read")
-  manager <- oauth_connections(list(a = target), "https://app.example", retention = "browser",
+  client <- connection_test_client(client, c(api = "https://api.example/v1"), "read")
+  manager <- oauth_connections(list(a = client), "https://app.example", retention = "browser",
     owner = oauth_browser_owner(), store = oauth_connection_store_memory(),
     keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
   ui <- oauth_connections_ui(shiny::fluidPage("Refresh narrowing"), "health", manager)

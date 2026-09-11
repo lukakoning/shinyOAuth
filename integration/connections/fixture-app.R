@@ -14,7 +14,7 @@ retention_fixture_app <- function(
     on.exit(mirai::daemons(0L), add = TRUE)
   }
   callbacks <- paste0(origin, "/callback/", c("a", "b"))
-  targets <- lapply(c("a", "b"), function(site) {
+  clients <- lapply(c("a", "b"), function(site) {
     base <- providers[[site]]
     provider <- shinyOAuth::oauth_provider(
       name = site,
@@ -27,7 +27,7 @@ retention_fixture_app <- function(
       token_auth_style = "public",
       use_nonce = FALSE
     )
-    client <- shinyOAuth::oauth_client(
+    shinyOAuth::oauth_client(
       provider,
       client_id = site,
       client_secret = "",
@@ -37,18 +37,15 @@ retention_fixture_app <- function(
       response_mode = response_mode,
       authorization_method = authorization_method,
       authorization_server_mode = if (shared_issuer) "multi_issuer" else "multi_redirect_uri",
-      authorization_server_redirect_uris = if (shared_issuer) character() else callbacks
-    )
-    shinyOAuth::oauth_target(
-      client,
-      c(api = paste0(base, "/api", if (shared_issuer) paste0("/", site))),
-      "read",
-      paste("Site", site)
+      authorization_server_redirect_uris = if (shared_issuer) character() else callbacks,
+      resource_bases = c(api = paste0(base, "/api", if (shared_issuer) paste0("/", site))),
+      required_scopes = "read",
+      label = paste("Site", site)
     )
   })
-  names(targets) <- c("a", "b")
+  names(clients) <- c("a", "b")
   manager <- shinyOAuth::oauth_connections(
-    targets,
+    clients,
     origin,
     callback_policy = if (shared_issuer) "shared_routes" else "distinct_routes",
     retention = "browser",
@@ -98,9 +95,14 @@ retention_fixture_app <- function(
       refresh_check_interval = 500
     )
     result <- shiny::reactiveVal("ready")
+    result_revision <- shiny::reactiveVal(0L)
+    complete <- function(value) {
+      result(value)
+      result_revision(shiny::isolate(result_revision()) + 1L)
+    }
     id_for <- function(site) {
       rows <- Filter(
-        function(row) identical(row$target_label, paste("Site", site)),
+        function(row) identical(row$client_label, paste("Site", site)),
         health$connections()
       )
       if (!length(rows)) {
@@ -115,14 +117,14 @@ retention_fixture_app <- function(
           if (inherits(value, "promise")) {
             promises::then(
               value,
-              function(...) result("refreshed"),
-              function(...) result("unavailable")
+              function(...) complete("refreshed"),
+              function(...) complete("unavailable")
             )
           } else {
-            result(as.character(value))
+            complete(as.character(value))
           }
         },
-        error = function(...) result("unavailable")
+        error = function(...) complete("unavailable")
       )
     }
     for (site in c("a", "b")) {
@@ -191,6 +193,8 @@ retention_fixture_app <- function(
     output$snapshot <- shiny::renderText(jsonlite::toJSON(
       list(
         session = session_number,
+        result = result(),
+        result_revision = result_revision(),
         connections = health$connections(),
         errors = health$errors(),
         post_owner_cookies = post_owner_cookies

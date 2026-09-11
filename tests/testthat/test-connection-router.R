@@ -13,7 +13,7 @@ router_controller <- function(manager, cookie) {
 router_fixture <- function(post = FALSE, jarm = FALSE, policy = "shared_routes",
                            distinct_issuers = FALSE, par = FALSE, same_registration = FALSE,
                            encrypted = FALSE) {
-  targets <- lapply(c("a", "b"), function(id) {
+  clients <- lapply(c("a", "b"), function(id) {
     issuer <- paste0("https://issuer.example", if (distinct_issuers) paste0("/", id))
     provider <- oauth_provider(name = id, issuer = issuer, issuer_thus_oidc = FALSE,
       auth_url = paste0(issuer, "/authorize"), token_url = paste0(issuer, "/token"),
@@ -28,13 +28,13 @@ router_fixture <- function(post = FALSE, jarm = FALSE, policy = "shared_routes",
       jarm_encrypted_response_alg = if (encrypted) "RSA-OAEP" else NULL,
       jarm_encrypted_response_enc = if (encrypted) "A128CBC-HS256" else NULL,
       jarm_decryption_private_key = if (encrypted) openssl::rsa_keygen(2048) else NULL)
-    oauth_target(client, c(api = paste0("https://api.example/", id)), "read", id)
+    connection_test_client(client, c(api = paste0("https://api.example/", id)), "read", id)
   })
-  names(targets) <- c("a", "b")
+  names(clients) <- c("a", "b")
   if (same_registration) {
-    targets$b <- oauth_target(targets$a$client, c(api = "https://api.example/b"), "read", "b")
+    clients$b <- connection_test_client(clients$a, c(api = "https://api.example/b"), "read", "b")
   }
-  manager <- oauth_connections(targets, "https://app.example", callback_policy = policy,
+  manager <- oauth_connections(clients, "https://app.example", callback_policy = policy,
     retention = "browser", owner = oauth_browser_owner(),
     store = oauth_connection_store_memory(),
     keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
@@ -42,22 +42,22 @@ router_fixture <- function(post = FALSE, jarm = FALSE, policy = "shared_routes",
   f <- list(manager = manager, ui = ui)
   f$cookie <- manager_test_cookie(f)
   f$controller <- router_controller(manager, f$cookie)
-  f$clients <- stats::setNames(lapply(targets, function(target) target$client), c("health-a", "health-b"))
+  f$clients <- stats::setNames(lapply(clients, function(client) client), c("health-a", "health-b"))
   f
 }
 
 router_prepare <- function(f, id = "a", browser = valid_browser_token()) {
   hooks <- f$controller$hooks(id)
   context <- hooks$prepare()
-  prepared <- prepare_call(f$manager$targets[[id]]$client, browser,
+  prepared <- prepare_call(f$manager$clients[[id]], browser,
     .transaction_context = context, .defer_build = TRUE)
   if (is.function(hooks$prepared)) hooks$prepared(prepared, context)
   list(context = context, prepared = prepared, state = prepared$build_args$payload, browser = browser)
 }
 
-router_request <- function(f, auth, id = auth$context$target, post = FALSE,
+router_request <- function(f, auth, id = auth$context$client, post = FALSE,
                            jarm = FALSE, error = FALSE, overrides = list()) {
-  client <- f$manager$targets[[id]]$client
+  client <- f$manager$clients[[id]]
   fields <- c(list(state = auth$state, iss = client@provider@issuer),
     if (error) list(error = "access_denied") else list(code = "synthetic-code"))
   if (jarm) {
@@ -77,11 +77,11 @@ router_request <- function(f, auth, id = auth$context$target, post = FALSE,
 
 test_that("shared issuer routing is explicit and leaves the legacy registry strict", {
   f <- router_fixture()
-  expect_error(oauth_connections(f$manager$targets, "https://app.example"), "multi_redirect_uri")
+  expect_error(oauth_connections(f$manager$clients, "https://app.example"), "multi_redirect_uri")
   expect_error(router_fixture(policy = "issuer"), "distinct issuers")
   expect_error(oauth_callback_registry(f$clients), "distinct issuers")
   expect_error(oauth_ui(shiny::fluidPage(), clients = f$clients), "distinct issuers")
-  expect_error(oauth_connections(list(a = oauth_target(make_test_client(), c(api = "https://api.example"))),
+  expect_error(oauth_connections(list(a = connection_test_client(make_test_client(), c(api = "https://api.example"))),
     "https://app.example", callback_policy = "shared_routes"), "multi_issuer")
   issuer <- router_fixture(policy = "issuer", distinct_issuers = TRUE)
   expect_null(issuer$controller$hooks("a")$prepared)
@@ -103,7 +103,7 @@ for (post in c(FALSE, TRUE)) for (jarm in c(FALSE, TRUE)) for (failure in c(FALS
     })
     for (id in c("b", "a")) {
       auth <- authorizations[[id]]
-      client <- f$manager$targets[[id]]$client
+      client <- f$manager$clients[[id]]
       payload <- state_payload_decrypt_validate(client, auth$state)
       before <- state_store_get(client, payload$state)
       response <- f$ui(router_request(f, auth, post = post, jarm = jarm, error = failure))
@@ -127,7 +127,7 @@ for (post in c(FALSE, TRUE)) for (jarm in c(FALSE, TRUE)) for (failure in c(FALS
     expect_identical(exchanges, if (failure) character() else c("b", "a"))
     rows <- f$controller$records()
     expect_length(rows, if (failure) 0L else 2L)
-    if (!failure) expect_setequal(vapply(rows, function(row) row$stored$target, character(1)), c("a", "b"))
+    if (!failure) expect_setequal(vapply(rows, function(row) row$stored$client, character(1)), c("a", "b"))
   })
 }
 
@@ -137,8 +137,8 @@ test_that("routing cannot replace issuer, state, signature or registration verif
     auth <- router_prepare(f)
     req <- router_request(f, auth, jarm = jarm)
     index <- as.list(f$manager$state$routes)
-    logical_state <- state_payload_decrypt_validate(f$manager$targets$a$client, auth$state)$state
-    before <- state_store_get(f$manager$targets$a$client, logical_state)
+    logical_state <- state_payload_decrypt_validate(f$manager$clients$a, auth$state)$state
+    before <- state_store_get(f$manager$clients$a, logical_state)
     bad <- list(
       router_request(f, auth, jarm = jarm, overrides = list(iss = "https://wrong.example")),
       router_request(f, auth, id = "b", jarm = jarm),
@@ -153,13 +153,13 @@ test_that("routing cannot replace issuer, state, signature or registration verif
       if (!jarm && identical(request, bad[[2L]])) next
       expect_identical(f$ui(request)$status, 400L)
       expect_identical(as.list(f$manager$state$routes), index)
-      expect_identical(state_store_get(f$manager$targets$a$client, logical_state), before)
+      expect_identical(state_store_get(f$manager$clients$a, logical_state), before)
     }
     expect_identical(f$ui(req)$status, 303L)
   }
 })
 
-test_that("routing records bind manager, target, exact state and live pending context", {
+test_that("routing records bind manager, client, exact state and live pending context", {
   f <- router_fixture()
   auth <- router_prepare(f)
   key <- connection_router_digest(auth$state)
@@ -171,7 +171,7 @@ test_that("routing records bind manager, target, exact state and live pending co
   expect_error(connection_router_select(f$manager, f$clients["health-b"], list(state = auth$state)), "route")
   route <- state_decrypt_gcm(sealed, connection_router_key(f$manager))
   manager_state <- f$manager$state
-  for (field in c("manager", "target", "fingerprint", "digest", "context_digest", "purpose", "expires_at")) {
+  for (field in c("manager", "client", "fingerprint", "digest", "context_digest", "purpose", "expires_at")) {
     changed <- route
     changed[[field]] <- if (field == "expires_at") 1 else "invalid"
     manager_state$routes[[key]] <- state_encrypt_gcm(changed, connection_router_key(f$manager))
@@ -179,9 +179,9 @@ test_that("routing records bind manager, target, exact state and live pending co
   }
   manager_state$routes[[key]] <- sealed
   foreign <- router_controller(f$manager, manager_test_cookie(f))
-  expect_error(oauth_module_managed_context(foreign$hooks("a"), f$manager$targets$a$client,
+  expect_error(oauth_module_managed_context(foreign$hooks("a"), f$manager$clients$a,
     auth$state, auth$browser), "owner")
-  expect_error(oauth_module_managed_context(f$controller$hooks("a"), f$manager$targets$a$client,
+  expect_error(oauth_module_managed_context(f$controller$hooks("a"), f$manager$clients$a,
     auth$state, strrep("f", 128)), "Browser token mismatch")
   expect_identical(names(select()), "health-a")
   f$controller$logout(revoke = FALSE)
@@ -211,7 +211,7 @@ test_that("same-issuer encrypted JARM requires distinct routes", {
 test_that("module registers structured state before provider work and cancels failed preparation", {
   local_options(shinyOAuth.skip_browser_token = TRUE)
   f <- router_fixture()
-  client <- f$manager$targets$a$client
+  client <- f$manager$clients$a
   called <- FALSE
   local_mocked_bindings(build_prepared_authorization = function(client, prepared) {
     called <<- TRUE
@@ -233,7 +233,7 @@ test_that("module registers structured state before provider work and cancels fa
 test_that("async PAR registers state on the parent before dispatch and cleans up failure", {
   local_options(shinyOAuth.skip_browser_token = TRUE)
   f <- router_fixture(par = TRUE)
-  client <- f$manager$targets$a$client
+  client <- f$manager$clients$a
   dispatched <- NULL
   local_mocked_bindings(async_dispatch = function(expr, args, ...) {
     dispatched <<- args$prepared
@@ -281,7 +281,7 @@ test_that("route, transport, parsing bounds and issuer checks precede index look
 test_that("selected signed JARM still requires signature, audience and expiry", {
   f <- router_fixture(jarm = TRUE)
   auth <- router_prepare(f)
-  client <- f$manager$targets$a$client
+  client <- f$manager$clients$a
   claims <- list(iss = client@provider@issuer, aud = client@client_id,
     exp = as.numeric(Sys.time()) + 60, state = auth$state, code = "synthetic-code")
   for (change in list(list(aud = "another-registration"), list(exp = 1), list(iss = "https://other.example"))) {
@@ -294,14 +294,15 @@ test_that("selected signed JARM still requires signature, audience and expiry", 
   expect_identical(f$ui(router_request(f, auth, jarm = TRUE))$status, 303L)
 })
 
-test_that("one registration can retain distinct resource targets on its shared route", {
+test_that("one registration can retain distinct resource clients on its shared route", {
   f <- router_fixture(same_registration = TRUE)
-  expect_identical(f$manager$targets$a$client, f$manager$targets$b$client)
-  expect_false(identical(f$manager$targets$a$fingerprint, f$manager$targets$b$fingerprint))
+  expect_identical(f$manager$clients$a@client_id, f$manager$clients$b@client_id)
+  expect_identical(f$manager$clients$a@provider, f$manager$clients$b@provider)
+  expect_false(identical(f$manager$fingerprints[["a"]], f$manager$fingerprints[["b"]]))
   authorizations <- lapply(c("a", "b"), function(id) router_prepare(f, id))
   for (auth in rev(authorizations)) {
     expect_identical(names(connection_router_select(f$manager, f$clients, list(state = auth$state))),
-      paste0("health-", auth$context$target))
+      paste0("health-", auth$context$client))
     expect_identical(f$ui(router_request(f, auth))$status, 303L)
   }
   f$controller$disconnect_all(revoke = FALSE)

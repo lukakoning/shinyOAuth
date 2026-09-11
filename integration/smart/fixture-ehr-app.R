@@ -5,15 +5,15 @@ smart_ehr_fixture_app <- function(origin, providers, async = FALSE, response_mod
     on.exit(mirai::daemons(0L), add = TRUE)
   }
   callbacks <- paste0(origin, "/callback/", c("a", "b"))
-  targets <- lapply(c("a", "b"), function(site) {
+  clients <- lapply(c("a", "b"), function(site) {
     discovery <- shinyOAuth::smart_discover(paste0(providers[[site]], "/fhir"), allow_http_loopback = TRUE)
-    shinyOAuth::smart_target(discovery, site, paste0(origin, "/callback/", site),
+    shinyOAuth::smart_client(discovery, site, paste0(origin, "/callback/", site),
       scopes = c("patient/Patient.r", "online_access"), launch = "ehr", label = paste("Site", site),
       response_mode = response_mode, authorization_server_mode = "multi_redirect_uri",
       authorization_server_redirect_uris = callbacks)
   })
-  names(targets) <- c("a", "b")
-  manager <- shinyOAuth::oauth_connections(targets, origin, retention = "browser",
+  names(clients) <- c("a", "b")
+  manager <- shinyOAuth::oauth_connections(clients, origin, retention = "browser",
     owner = shinyOAuth::oauth_browser_owner(allow_http_loopback = TRUE),
     store = shinyOAuth::oauth_connection_store_memory(),
     keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
@@ -29,7 +29,7 @@ smart_ehr_fixture_app <- function(origin, providers, async = FALSE, response_mod
     health <- shinyOAuth::oauth_connections_server("health", manager, async = async, refresh_check_interval = 500)
     result <- shiny::reactiveVal("ready")
     connection <- function(site) {
-      rows <- Filter(function(row) identical(row$target_label, paste("Site", site)), health$connections())
+      rows <- Filter(function(row) identical(row$client_label, paste("Site", site)), health$connections())
       if (!length(rows)) stop("Unavailable")
       health$connection(rows[[length(rows)]]$connection_id)
     }

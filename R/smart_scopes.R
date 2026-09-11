@@ -117,7 +117,7 @@ client_scope_coverage <- function(client, requested, granted) {
   )
 }
 
-# This internal policy is installed by the SMART target constructor, not by
+# This internal policy is installed by the SMART client constructor, not by
 # recognizing scope spelling. Keep generic client construction and wire defaults.
 validate_client_scope_policy <- function(policy) {
   if (identical(policy, list())) return(NULL)
@@ -125,33 +125,19 @@ validate_client_scope_policy <- function(policy) {
     !is.list(policy) ||
       !identical(
         sort(names(policy)),
-        sort(c("profile", "version", "allow_v1", "required_scopes"))
+        sort(c("profile", "version", "allow_v1"))
       ) ||
       !is_valid_string(policy$profile) ||
       !policy$profile %in% c("oauth", "smart") ||
       !identical(policy$version, 1L) ||
       !is.logical(policy$allow_v1) || length(policy$allow_v1) != 1L ||
-      is.na(policy$allow_v1) || !is.character(policy$required_scopes)
+      is.na(policy$allow_v1)
   ) {
     return("OAuthClient: invalid scope policy")
   }
   if (identical(policy$profile, "oauth") &&
-    (isTRUE(policy$allow_v1) || length(policy$required_scopes))) {
+    isTRUE(policy$allow_v1)) {
     return("OAuthClient: generic scope policy cannot contain SMART settings")
-  }
-  valid <- tryCatch(
-    {
-      validate_scopes(policy$required_scopes)
-      identical(evaluate_scope_coverage(
-        policy$required_scopes,
-        policy$required_scopes, policy$profile, policy$version,
-        policy$allow_v1
-      )$status, "covered")
-    },
-    error = function(e) FALSE
-  )
-  if (!valid) {
-    return("OAuthClient: unsupported required scope syntax")
   }
   NULL
 }
@@ -161,7 +147,7 @@ smart_verify_scope_grant <- function(client, granted, is_refresh, prior) {
   smart_scope_coverage(character(), granted, client@scope_policy$allow_v1)
   if (!identical(client_scope_coverage(
     client,
-    client@scope_policy$required_scopes, granted
+    client@required_scopes, granted
   )$status, "covered")) {
     err_token("SMART grant does not establish all required permissions")
   }

@@ -7,25 +7,25 @@ separate required check. Both use local fixtures; external SMART gates remain op
 
 P5a adds top-level EHR launch to the browser-retained manager. A registered
 launch route accepts the EHR's `iss` and opaque `launch` parameters. It matches
-the exact FHIR base to an approved EHR target **before any network request**.
+the exact FHIR base to an approved EHR client **before any network request**.
 Discovery and registration happen during application setup, not from incoming
 URLs. The [SMART 2.2 launch specification](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#launch-app-ehr-launch)
 defines these two entry parameters and their authorization-request role.
 
 The package encrypts a short-lived launch record bound to the current browser
-owner, target fingerprint and exact FHIR base. It redirects to the application
+owner, client fingerprint and exact FHIR base. It redirects to the application
 with an opaque continuation ticket. The initial handle is absent from the
 application HTML. Before Shiny connects, a script removes the ticket from the
 address bar and hands it to the manager. Possession of the ticket alone is
 insufficient: the server also checks the owner's HttpOnly cookie and generation.
 
 The manager consumes that ticket once. A fresh OAuth state and S256 PKCE bind
-the selected target and launch digest to authorization. The launch handle is a
+the selected client and launch digest to authorization. The launch handle is a
 per-transaction request parameter; shared provider settings never contain it.
 Returning callbacks still need the ordinary callback-route, state and browser
 proofs. Only an accepted token response can establish patient/encounter context
 or validated identity. Another launch in another tab gets a separate record and
-transaction. Reconnecting an EHR-only target requires a fresh EHR launch.
+transaction. Reconnecting an EHR-only client requires a fresh EHR launch.
 
 ## Application setup
 
@@ -35,7 +35,7 @@ Register both the callback URL and the distinct launch URL with the EHR.
 
 ```r
 site <- smart_discover("https://ehr.example/fhir/R4")
-hospital <- smart_target(
+hospital <- smart_client(
   site, client_id = "registered-app",
   redirect_uri = "https://app.example/callback",
   scopes = "patient/Patient.r", launch = "ehr",
@@ -54,9 +54,9 @@ ui <- oauth_connections_ui(
 ```
 
 Here the launch URL is `https://app.example/launch`. The route can name several
-targets when their FHIR bases differ. Two registrations sharing one exact base
-need separate launch routes. Multiple targets also require distinct callback
-URLs and the complete callback set in each target's client configuration.
+clients when their FHIR bases differ. Two registrations sharing one exact base
+need separate launch routes. Multiple clients also require distinct callback
+URLs and the complete callback set in each client's configuration.
 
 Read context with `smart_context(connection)` and fetch the selected Patient
 with `smart_patient(connection)`. Scope checks and approved-base checks apply.

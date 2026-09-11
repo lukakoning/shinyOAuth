@@ -34,7 +34,7 @@ for (async_mode in async_modes) {
         !is.null(snapshot) && length(snapshot$connections) == 2L
       }, "retained A and accepted B")
       rows <- retention_browser_snapshot(second)$connections
-      testthat::expect_setequal(vapply(rows, `[[`, "", "target_label"), c("Site a", "Site b"))
+      testthat::expect_setequal(vapply(rows, `[[`, "", "client_label"), c("Site a", "Site b"))
       testthat::expect_true(all(vapply(rows, `[[`, "", "status") == "active"))
       for (site in c("a", "b")) {
         retention_browser_click(second, paste0("read_", site))

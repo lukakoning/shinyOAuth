@@ -15,7 +15,7 @@ refresh_scope_request <- function(client, token, scopes, required_scopes = chara
       !covered(scopes, effective_client_scopes(client))) {
     err_token("Refresh scopes must be covered by the current grant and target configuration")
   }
-  required_scopes <- normalize_scope_tokens(c(required_scopes, client@scope_policy$required_scopes))
+  required_scopes <- normalize_scope_tokens(c(required_scopes, client@required_scopes))
   if (!covered(required_scopes, scopes)) {
     err_token("Refresh scopes must retain the target's required permissions")
   }

@@ -1,7 +1,7 @@
 smart_launch_test_fixture <- function() {
-  target <- smart_target(smart_target_fixture(), "example", "https://app.example/callback",
+  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
     scopes = "patient/Patient.r", launch = "ehr")
-  manager <- oauth_connections(list(hospital = target), "https://app.example",
+  manager <- oauth_connections(list(hospital = client), "https://app.example",
     retention = "browser", owner = oauth_browser_owner(),
     store = oauth_connection_store_memory(),
     keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
@@ -16,7 +16,7 @@ smart_launch_test_fixture <- function() {
 }
 
 smart_launch_test_entry <- function(f, handle = "synthetic-launch", cookie = NULL) {
-  query <- paste0("iss=", utils::URLencode(f$manager$targets$hospital$smart$fhir_base, reserved = TRUE),
+  query <- paste0("iss=", utils::URLencode(f$manager$clients$hospital@smart$fhir_base, reserved = TRUE),
     "&launch=", utils::URLencode(handle, reserved = TRUE))
   f$ui(manager_test_request(cookie, path = "/launch", query = query))
 }
@@ -108,7 +108,7 @@ test_that("launch is consumed once and the handle belongs to one state transacti
       params <- hooks$parameters(context)
       expect_identical(params$launch, "first-launch")
       expect_error(hooks$parameters(context), "fresh EHR launch")
-      client <- f$manager$targets$hospital$client
+      client <- f$manager$clients$hospital
       browser <- valid_browser_token()
       url <- prepare_call(client, browser_token = browser,
         .transaction_context = context, .smart_launch = params$launch)

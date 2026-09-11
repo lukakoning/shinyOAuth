@@ -21,7 +21,7 @@
 #' Records contain ciphertext only. Encryption keys stay with the manager, outside
 #' this adapter. Never expose these methods or credential imports as HTTP routes.
 #'
-#' * `$create(owner, id, transaction, target, fingerprint, sealed, expires_at)`
+#' * `$create(owner, id, transaction, client, fingerprint, sealed, expires_at)`
 #'   returns a record with a new revision, or `NULL` for a duplicate connection/transaction.
 #' * `$read(owner, id)` returns the owner's record, or `NULL` when absent, expired,
 #'   or owned by someone else. It includes the sealed envelope for internal use.
@@ -45,7 +45,7 @@
 #' or perform network calls. Atomicity applies to this R process only. A separate
 #' shared backend needs its own verified concurrency contract.
 #'
-#' @seealso [oauth_target()], [oauth_connection()]
+#' @seealso [oauth_client()], [oauth_connection()]
 #' @export
 oauth_connection_store_memory <- function(
   max_age = 28800,
@@ -178,7 +178,7 @@ connection_store_memory_impl <- function(
     owner,
     id,
     transaction,
-    target,
+    client,
     fingerprint,
     sealed,
     expires_at
@@ -187,12 +187,12 @@ connection_store_memory_impl <- function(
     lapply(list(owner, id, transaction), id_check)
     sealed_check(sealed)
     if (
-      !is_valid_string(target) ||
-        !grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", target) ||
+      !is_valid_string(client) ||
+        !grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", client) ||
         !is_valid_string(fingerprint) ||
         nchar(fingerprint, type = "bytes") > 256L
     ) {
-      err_input("Invalid connection target configuration")
+      err_input("Invalid connection client configuration")
     }
     if (
       !is.numeric(expires_at) ||
@@ -215,7 +215,7 @@ connection_store_memory_impl <- function(
       version = 1L,
       owner = owner,
       id = id,
-      target = target,
+      client = client,
       fingerprint = fingerprint,
       sealed = sealed,
       created_at = now,
@@ -293,7 +293,7 @@ connection_store_memory_impl <- function(
       }
       record[c(
         "id",
-        "target",
+        "client",
         "fingerprint",
         "created_at",
         "expires_at",

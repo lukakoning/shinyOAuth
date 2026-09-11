@@ -45,7 +45,7 @@ owner or connection ID does not authenticate a user.
 Records contain ciphertext only. Encryption keys stay with the manager, outside
 this adapter. Never expose these methods or credential imports as HTTP routes.
 \itemize{
-\item \verb{$create(owner, id, transaction, target, fingerprint, sealed, expires_at)}
+\item \verb{$create(owner, id, transaction, client, fingerprint, sealed, expires_at)}
 returns a record with a new revision, or \code{NULL} for a duplicate connection/transaction.
 \item \verb{$read(owner, id)} returns the owner's record, or \code{NULL} when absent, expired,
 or owned by someone else. It includes the sealed envelope for internal use.
@@ -71,5 +71,5 @@ or perform network calls. Atomicity applies to this R process only. A separate
 shared backend needs its own verified concurrency contract.
 }
 \seealso{
-\code{\link[=oauth_target]{oauth_target()}}, \code{\link[=oauth_connection]{oauth_connection()}}
+\code{\link[=oauth_client]{oauth_client()}}, \code{\link[=oauth_connection]{oauth_connection()}}
 }

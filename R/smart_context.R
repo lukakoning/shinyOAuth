@@ -4,7 +4,7 @@
 #' current accepted token. This is sensitive data; keep it out of general status
 #' tables and logs. Raw token extensions remain available separately on tokens.
 #'
-#' @param connection An [OAuthConnectionRef] for a [smart_target()], accessed in
+#' @param connection An [OAuthConnection] for a [smart_client()], accessed in
 #'   its owning Shiny session.
 #' @return `smart_context()` returns a list with `version`, `fhir_base`, `revision`,
 #'   `changed`, `patient`, `encounter`, `fhirUser` and `need_patient_banner`.
@@ -28,10 +28,10 @@
 #' for displaying patient identity clearly and discarding data from an older
 #' context revision. Experimental `fhirContext` and styling extensions remain
 #' raw data and are not automatically fetched or interpreted.
-#' @seealso [smart_target()], [OAuthConnectionRef]
+#' @seealso [smart_client()], [OAuthConnection]
 #' @export
 smart_context <- function(connection) {
-  if (!inherits(connection, "OAuthConnectionRef")) err_input("Expected an OAuthConnectionRef")
+  if (!inherits(connection, "OAuthConnection")) err_input("Expected an OAuthConnection")
   connection$smart_context()
 }
 
@@ -39,14 +39,14 @@ smart_context <- function(connection) {
 #' @return `smart_patient()` and `smart_fhir_user()` return an [httr2] response.
 #' @export
 smart_patient <- function(connection) {
-  if (!inherits(connection, "OAuthConnectionRef")) err_input("Expected an OAuthConnectionRef")
+  if (!inherits(connection, "OAuthConnection")) err_input("Expected an OAuthConnection")
   connection$smart_resource("patient")
 }
 
 #' @rdname smart_context
 #' @export
 smart_fhir_user <- function(connection) {
-  if (!inherits(connection, "OAuthConnectionRef")) err_input("Expected an OAuthConnectionRef")
+  if (!inherits(connection, "OAuthConnection")) err_input("Expected an OAuthConnection")
   connection$smart_resource("fhirUser")
 }
 
@@ -98,10 +98,10 @@ smart_update_token_context <- function(client, token, previous = NULL) {
 }
 
 smart_record_context <- function(record) {
-  if (!client_uses_smart(record$target$client) ||
+  if (!client_uses_smart(record$client) ||
       !connection_record_status(record) %in% c("active", "limited") ||
       !identical(record$token@smart_context$version, 1L) ||
-      !identical(record$token@smart_context$fhir_base, record$target$smart$fhir_base)) {
+      !identical(record$token@smart_context$fhir_base, record$client@smart$fhir_base)) {
     err_token("SMART context is unavailable")
   }
   record$token@smart_context
@@ -117,9 +117,9 @@ smart_record_resource <- function(record, kind) {
     if (!is_valid_string(context$fhirUser) || !isTRUE(record$token@id_token_validated)) {
       err_token("No validated SMART fhirUser is available")
     }
-    path <- tryCatch(resolve_bound_resource(record$target$resource_bases[["fhir"]],
+    path <- tryCatch(resolve_bound_resource(record$client@resource_bases[["fhir"]],
       context$fhirUser), error = function(...) err_token("SMART fhirUser is outside this connection's FHIR base"))
-    base_path <- resource_binding_components(record$target$resource_bases[["fhir"]])$path
+    base_path <- resource_binding_components(record$client@resource_bases[["fhir"]])$path
     relative <- substring(resource_binding_components(path)$path,
       nchar(paste0(sub("/$", "", base_path), "/")) + 1L)
     if (!grepl("^[A-Z][A-Za-z0-9]*/[A-Za-z0-9.-]{1,64}$", relative)) {
@@ -128,9 +128,9 @@ smart_record_resource <- function(record, kind) {
     candidates <- paste0("user/", sub("/.*$", "", relative), ".r")
   } else err_input("Unknown SMART resource helper")
   usable <- vapply(candidates, function(scope) {
-    identical(client_scope_coverage(record$target$client, scope,
-      effective_client_scopes(record$target$client))$status, "covered") &&
-      identical(client_scope_coverage(record$target$client, scope,
+    identical(client_scope_coverage(record$client, scope,
+      effective_client_scopes(record$client))$status, "covered") &&
+      identical(client_scope_coverage(record$client, scope,
         record$token@granted_scopes)$status, "covered")
   }, logical(1))
   if (!any(usable)) err_token("SMART grant does not cover this resource read")

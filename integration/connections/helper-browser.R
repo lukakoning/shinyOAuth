@@ -42,6 +42,7 @@ retention_browser_wait <- function(
         browser,
         paste0(
           "({path:location.pathname, provider:document.querySelector('#provider')?.textContent,",
+          "result:document.querySelector('#result')?.textContent,",
           "errors:(()=>{try{return JSON.parse(document.querySelector('#snapshot').textContent).errors}",
           "catch(_){return null}})()})"
         )
@@ -94,6 +95,19 @@ retention_browser_result <- function(browser, value) {
     },
     paste("result", value)
   )
+}
+
+# Wait for this action to complete, even when successive operations return the
+# same text. Reading an old result can otherwise batch later clicks together.
+retention_browser_action <- function(browser, id, value) {
+  before <- retention_browser_snapshot(browser)$result_revision
+  stopifnot(is.numeric(before), length(before) == 1L)
+  retention_browser_click(browser, id)
+  retention_browser_wait(browser, function() {
+    snapshot <- retention_browser_snapshot(browser)
+    !is.null(snapshot) && snapshot$result_revision > before &&
+      identical(snapshot$result, value)
+  }, paste("completed action", id, "with result", value))
 }
 
 retention_browser_setup <- function(

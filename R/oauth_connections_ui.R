@@ -55,10 +55,10 @@ oauth_connections_ui <- function(
   app_base <- paste0(sub("/$", "", app_base), "/")
   if (
     !all(vapply(
-      manager$targets,
-      function(target) {
+      manager$clients,
+      function(client) {
         startsWith(
-          resource_binding_components(target$client@redirect_uri)$path,
+          resource_binding_components(client@redirect_uri)$path,
           app_base_path
         )
       },
@@ -71,7 +71,7 @@ oauth_connections_ui <- function(
   if (!is.function(resolver)) {
     err_config("A request URI resolver must be a function")
   }
-  clients <- lapply(manager$targets, function(target) target$client)
+  clients <- manager$clients
   names(clients) <- shiny::NS(id)(names(clients))
   callback_handler <- oauth_ui_impl(
     base_ui,

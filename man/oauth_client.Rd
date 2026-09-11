@@ -60,6 +60,9 @@ oauth_client(
   compare_callback_issuer = NULL,
   client_assertion_typ = "JWT",
   authorization_method = "GET",
+  resource_bases = character(),
+  required_scopes = character(),
+  label = provider@name,
   ...
 )
 }
@@ -540,6 +543,28 @@ provider support. It submits form fields instead of a long URL query.
 Use the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}; URL-only
 helpers reject POST. This does not select the callback \code{response_mode} or
 replace a provider's PAR or signed Request Object requirements.}
+
+\item{resource_bases}{Optional named character vector of approved API base
+URLs for \code{\link[=oauth_connection]{oauth_connection()}} and \code{\link[=oauth_connections]{oauth_connections()}}. The default
+\code{character()} leaves the existing token/request APIs unchanged. Each resource
+ID starts with a letter and contains letters, digits, \verb{_} or \code{-} (at most
+64 bytes). Up to 64 bases are supported. HTTPS is required except for
+loopback development URLs. Requests through a connection stay within the
+exact scheme, host, effective port and base path; redirects are disabled.
+Bases exclude user information, query strings, fragments, dot segments,
+repeated slashes, semicolon parameters and ambiguous encoded characters.
+This is local request policy, not evidence of token audience, and does not
+add the OAuth \code{resource} authorization parameter.}
+
+\item{required_scopes}{Optional requested scopes that every usable connection
+needs, default \code{character()}. Other requested scopes may be absent from a
+limited grant. Ordinary OAuth clients compare literal scopes; \code{\link[=smart_client]{smart_client()}}
+selects SMART semantic comparison and also enforces these permissions when
+validating token responses. Explicit refresh narrowing retains these scopes.}
+
+\item{label}{Optional display label used in connection summaries; defaults to
+the provider name. Must be a non-empty string of at most 128 bytes without
+control characters. Labels contain no credentials or patient context.}
 
 \item{...}{Deprecated renamed arguments accepted temporarily for backward
 compatibility.}

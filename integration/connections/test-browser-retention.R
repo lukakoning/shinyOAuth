@@ -62,8 +62,7 @@ for (index in seq_len(nrow(cases))) {
         after
       }
       a <- authorize("a", 1L)
-      retention_browser_click(browser, "read_a")
-      retention_browser_result(browser, "a:1")
+      retention_browser_action(browser, "read_a", "a:1")
       both <- authorize("b", 2L)
       if (response_mode == "form_post") {
         testthat::expect_length(both$post_owner_cookies, 2L)
@@ -71,7 +70,7 @@ for (index in seq_len(nrow(cases))) {
       }
       testthat::expect_gt(both$session, a$session)
       testthat::expect_setequal(
-        vapply(both$connections, function(row) row$target_label, character(1)),
+        vapply(both$connections, function(row) row$client_label, character(1)),
         c("Site a", "Site b")
       )
       first_id <- a$connections[[1L]]$connection_id
@@ -83,15 +82,11 @@ for (index in seq_len(nrow(cases))) {
             character(1)
           )
       )
-      retention_browser_click(browser, "read_a")
-      retention_browser_result(browser, "a:1")
-      retention_browser_click(browser, "read_b")
-      retention_browser_result(browser, "b:1")
+      retention_browser_action(browser, "read_a", "a:1")
+      retention_browser_action(browser, "read_b", "b:1")
       for (site in c("a", "b")) {
-        retention_browser_click(browser, paste0("refresh_", site))
-        retention_browser_result(browser, "refreshed")
-        retention_browser_click(browser, paste0("read_", site))
-        retention_browser_result(browser, paste0(site, ":2"))
+        retention_browser_action(browser, paste0("refresh_", site), "refreshed")
+        retention_browser_action(browser, paste0("read_", site), paste0(site, ":2"))
       }
       rotated <- retention_browser_snapshot(browser)
       testthat::expect_setequal(
@@ -125,15 +120,11 @@ for (index in seq_len(nrow(cases))) {
           ",{priority:'event'})"
         )
       )
-      retention_browser_click(foreign, "probe")
-      retention_browser_result(foreign, "unavailable")
+      retention_browser_action(foreign, "probe", "unavailable")
 
-      retention_browser_click(browser, "disconnect_b")
-      retention_browser_result(browser, "disconnected")
-      retention_browser_click(browser, "read_b")
-      retention_browser_result(browser, "unavailable")
-      retention_browser_click(browser, "read_a")
-      retention_browser_result(browser, "a:2")
+      retention_browser_action(browser, "disconnect_b", "disconnected")
+      retention_browser_action(browser, "read_b", "unavailable")
+      retention_browser_action(browser, "read_a", "a:2")
       metrics <- lapply(f$providers, function(provider) {
         httr2::request(provider$url("/metrics")) |>
           httr2::req_timeout(5) |>
@@ -178,8 +169,7 @@ for (index in seq_len(nrow(cases))) {
           ",{priority:'event'})"
         )
       )
-      retention_browser_click(browser, "probe")
-      retention_browser_result(browser, "unavailable")
+      retention_browser_action(browser, "probe", "unavailable")
     }
   )
 }

@@ -13,7 +13,7 @@ smart_patient(connection)
 smart_fhir_user(connection)
 }
 \arguments{
-\item{connection}{An \link{OAuthConnectionRef} for a \code{\link[=smart_target]{smart_target()}}, accessed in
+\item{connection}{An \link{OAuthConnection} for a \code{\link[=smart_client]{smart_client()}}, accessed in
 its owning Shiny session.}
 }
 \value{
@@ -49,5 +49,5 @@ context revision. Experimental \code{fhirContext} and styling extensions remain
 raw data and are not automatically fetched or interpreted.
 }
 \seealso{
-\code{\link[=smart_target]{smart_target()}}, \link{OAuthConnectionRef}
+\code{\link[=smart_client]{smart_client()}}, \link{OAuthConnection}
 }

@@ -7,7 +7,7 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
     on.exit(mirai::daemons(0L), add = TRUE)
   }
   callbacks <- paste0(origin, "/callback/", c("a", "b"))
-  targets <- lapply(c("a", "b"), function(site) {
+  clients <- lapply(c("a", "b"), function(site) {
     discovery <- shinyOAuth::smart_discover(paste0(providers[[site]], "/fhir"), allow_http_loopback = TRUE)
     args <- list(discovery = discovery, client_id = site, redirect_uri = paste0(origin, "/callback/", site),
       scopes = c(if (launch == "standalone") "launch/patient", "patient/Patient.rs", "user/Practitioner.r", "offline_access", extra_scopes),
@@ -21,10 +21,10 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
       args$client_assertion_private_key_kid <- "fixture-client"
       args$client_assertion_alg <- "RS384"
     }
-    do.call(shinyOAuth::smart_target, args)
+    do.call(shinyOAuth::smart_client, args)
   })
-  names(targets) <- c("a", "b")
-  manager <- shinyOAuth::oauth_connections(targets, origin, retention = "browser",
+  names(clients) <- c("a", "b")
+  manager <- shinyOAuth::oauth_connections(clients, origin, retention = "browser",
     owner = shinyOAuth::oauth_browser_owner(allow_http_loopback = TRUE),
     store = shinyOAuth::oauth_connection_store_memory(),
     keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
@@ -45,7 +45,7 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
     health <- shinyOAuth::oauth_connections_server("health", manager, async = async)
     result <- shiny::reactiveVal("ready")
     connection <- function(site) {
-      rows <- Filter(function(row) identical(row$target_label, paste("Site", site)), health$connections())
+      rows <- Filter(function(row) identical(row$client_label, paste("Site", site)), health$connections())
       if (!length(rows)) stop("Unavailable")
       health$connection(rows[[1L]]$connection_id)
     }

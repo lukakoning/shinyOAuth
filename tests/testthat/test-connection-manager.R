@@ -1,6 +1,6 @@
 manager_test_fixture <- function(retention = "browser", owner = NULL) {
   redirects <- paste0("https://app.example/callback/", c("a", "b"))
-  targets <- lapply(c("a", "b"), function(id) {
+  clients <- lapply(c("a", "b"), function(id) {
     client <- oauth_client(
       provider = make_test_provider(),
       client_id = paste0("client-", id),
@@ -11,18 +11,18 @@ manager_test_fixture <- function(retention = "browser", owner = NULL) {
       authorization_server_mode = "multi_redirect_uri",
       authorization_server_redirect_uris = redirects
     )
-    oauth_target(
+    connection_test_client(
       client,
       c(api = paste0("https://api.example/", id)),
       "read",
       paste("Site", id)
     )
   })
-  names(targets) <- c("a", "b")
+  names(clients) <- c("a", "b")
   owner <- owner %||%
     if (retention == "browser") oauth_browser_owner() else NULL
   manager <- oauth_connections(
-    targets,
+    clients,
     "https://app.example",
     retention = retention,
     store = oauth_connection_store_memory(),
@@ -53,7 +53,7 @@ manager_test_token <- function(
 
 manager_test_accept <- function(
   controller,
-  target = "a",
+  client = "a",
   token = manager_test_token()
 ) {
   before <- vapply(
@@ -61,7 +61,7 @@ manager_test_accept <- function(
     function(row) row$stored$id,
     character(1)
   )
-  hooks <- controller$hooks(target)
+  hooks <- controller$hooks(client)
   context <- hooks$prepare()
   hooks$accept(token, context, as.numeric(Sys.time()) - 100)
   rows <- controller$records()
@@ -71,26 +71,26 @@ manager_test_accept <- function(
 
 test_that("manager configuration requires explicit retention and distinct registered routes", {
   f <- manager_test_fixture()
-  expect_match(capture.output(print(f$manager)), "2 target")
+  expect_match(capture.output(print(f$manager)), "2 client")
   expect_false(grepl(
     "app.example|api.example|synthetic",
     paste(capture.output(print(f$manager)), collapse = "")
   ))
   expect_error(
     oauth_connections(
-      f$manager$targets,
+      f$manager$clients,
       "https://app.example",
       retention = "browser"
     ),
     "owner policy"
   )
   expect_error(
-    oauth_connections(f$manager$targets, "https://other.example"),
+    oauth_connections(f$manager$clients, "https://other.example"),
     "application origin"
   )
   expect_error(
     oauth_connections(
-      f$manager$targets,
+      f$manager$clients,
       "https://app.example",
       callback_policy = "shared"
     ),
@@ -101,7 +101,7 @@ test_that("manager configuration requires explicit retention and distinct regist
     "one module namespace"
   )
   expect_error(
-    oauth_connections(f$manager$targets, "https://app.example", keys = list()),
+    oauth_connections(f$manager$clients, "https://app.example", keys = list()),
     "32-byte"
   )
 })
@@ -180,7 +180,7 @@ test_that("the same browser restores both grants across separate Shiny sessions"
     {
       expect_length(ctl$records(), 2L)
       expect_identical(ctl$read(kept$a)$token@access_token, "access-a")
-      expect_identical(ctl$read(kept$b)$target, f$manager$targets$b)
+      expect_identical(ctl$read(kept$b)$client, f$manager$clients$b)
       expect_error(kept$first_controller$read(kept$a), "owner is unavailable")
       result <- ctl$disconnect(kept$b, revoke = FALSE)
       expect_identical(result$local, "disconnected")
@@ -632,7 +632,7 @@ test_that("automatic refresh retry cooldown survives new sessions", {
   )
 })
 
-test_that("repeated authorizations create independent grants at the same target", {
+test_that("repeated authorizations create independent grants at the same client", {
   f <- manager_test_fixture()
   cookie <- manager_test_cookie(f)
   shiny::testServer(
@@ -713,7 +713,7 @@ test_that("HTTP continuations route to the manager's nested module namespace", {
           module$.process_query(
             query,
             current_uri = paste0(
-              f$manager$targets[[site]]$client@redirect_uri,
+              f$manager$clients[[site]]@redirect_uri,
               query
             )
           )

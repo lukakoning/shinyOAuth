@@ -1,4 +1,4 @@
-smart_target_fixture <- function(launch = "standalone", oidc = FALSE) {
+smart_client_fixture <- function(launch = "standalone", oidc = FALSE) {
   metadata <- list(
     authorization_endpoint = "https://ehr.example/authorize",
     token_endpoint = "https://ehr.example/token",

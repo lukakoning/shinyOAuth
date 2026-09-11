@@ -1,6 +1,7 @@
 **SMART/FHIR and the new shinyOAuth components, in plain language**
 
-This explains the implementation on `smart_fhir` through P7a, as of
+This explains the implementation on `smart_fhir` through P7b and the simpler
+client/connection API, as of
 2026-09-11. Some P4 and P5 release tests remain open, as listed below.
 Examples use invented hospitals and people. The detailed
 [roadmap](smart-fhir-roadmap.md) contains the implementation plan; this document
@@ -55,7 +56,7 @@ SMART App Launch builds on OAuth rather than replacing its authorization flow.
 It specifies healthcare app behavior that generic OAuth leaves to individual
 services: how the app starts, how it finds authorization settings, how it asks
 for FHIR access, and how the server communicates launch context. Our roadmap
-targets SMART App Launch 2.2. [SMART overview](https://hl7.org/fhir/smart-app-launch/STU2.2/)
+implements SMART App Launch 2.2. [SMART overview](https://hl7.org/fhir/smart-app-launch/STU2.2/)
 
 For example, SMART adds the following conventions:
 
@@ -76,7 +77,7 @@ A **scope** is a named permission requested by the app. A SMART scope such as
 `patient/Observation.rs` requests read and search access to Observations in the
 patient context. SMART gives those parts a meaning: `.r` is read and `.s` is
 search. It also defines equivalent ways to express permissions. Our generic
-OAuth code compares scope strings literally. A `smart_target()` now selects
+OAuth code compares scope strings literally. A `smart_client()` now selects
 SMART's permission rules: for example, separate `.r` and `.s` grants together
 cover `.rs`. Required permissions must be granted; a refresh cannot silently
 gain permissions that the preceding token did not have.
@@ -89,7 +90,7 @@ There are also two ways an interactive SMART app can start:
   record system, perhaps while viewing a patient's chart. The EHR supplies
   launch information so authorization can establish the relevant context.
 
-Both use OAuth. P4 supplies the SMART target, scopes and context rules. P5a adds
+Both use OAuth. P4 supplies the SMART client, scopes and context rules. P5a adds
 EHR entry and browser tests; external conformance runs remain scheduled in P4/P5.
 These names describe how the app starts, not where its R code runs.
 [SMART launch modes](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html)
@@ -112,10 +113,10 @@ Shiny session, with explicit rules about who can restore them. This problem
 also exists when connecting ordinary APIs. SMART motivated the work, but
 remembering several authorizations is useful beyond healthcare.
 
-The eventual SMART outcome is to keep both hospital connections and retrieve
-each site's selected patient correctly. We have demonstrated the retention part
-with real browser navigation and test OAuth services. The complete SMART
-patient workflow still needs the remaining adapter and integration work.
+The SMART browser tests now keep both hospital connections and retrieve each
+site's selected patient correctly, including after refresh and navigation.
+These tests use our synthetic services. Verification against an independent
+SMART implementation remains an open integration gate.
 
 **The existing provider, client and token still do their original jobs.**
 
@@ -136,114 +137,93 @@ for hospitals. Existing applications can continue using these interfaces.
 Using a hospital URL or a scope containing `patient/` does not automatically
 turn on SMART behavior or retained storage.
 
-**A target answers: “Which configured service and API are we connecting to?”**
+**The existing client now also says which APIs its connections may call.**
 
-`oauth_target()` creates an `OAuthTarget`. It groups an existing client with
-approved API base addresses and any minimum permissions the application needs.
-For example, one target groups Hospital A's app registration with Hospital A's
-FHIR base.
+`OAuthClient` still describes our app's registration. It now has three optional
+settings: `resource_bases` lists approved API addresses, `required_scopes` lists
+the minimum permissions a usable connection needs, and `label` gives the service
+a display name. Ordinary apps can leave all three at their defaults.
 
-The client already knows how our app authorizes. The target adds where a
-connection using that client may send its credentials. It is configuration
-created at app startup; it contains no person's access token.
+For example, Hospital A's client might have
+`resource_bases = c(fhir = "https://a.example/fhir")`. The connection checks the
+complete base address, including the path and port. This matters when two
+hospitals share a hostname but expose different API paths.
 
-This grouping matters because the authorization service and the data API can
-have different addresses. Also, two APIs can share a hostname but have different
-paths, such as `/hospital-a/fhir` and `/hospital-b/fhir`. Our request checks use
-the full approved base, including the path and port.
+`smart_client()` creates the same `OAuthClient` type with SMART settings already
+validated. We removed the separate target object: registration and API policy
+are both shared application configuration and can live together.
 
-Targets are read-only configuration. A configuration fingerprint is simply a
-way to recognize the settings under which a connection was created. It helps
-reject reuse if material settings change; it is not a patient or user identifier.
+**A connection answers: “Which particular authorization are we using?”**
 
-**A stored connection answers: “Which particular authorization did we receive?”**
-
-Each successful managed authorization creates a separate connection record.
-It associates the credentials with their target, their local owner, their
-expiry and their current status. A connection ID lets the app select that record.
+One client can have several successful authorizations. Each managed authorization
+gets its own connection ID, credentials, owner, expiry and status.
 
 | Item | Example |
 | --- | --- |
-| Target `hospital_a` | Shared configuration for connecting our app to Hospital A. |
-| Connection `A1` | One person's successful authorization using that target. |
-| Connection `A2` | Another authorization using the same target. |
-| Target `hospital_b` | Separate configuration for Hospital B. |
-| Connection `B1` | An authorization using Hospital B's target. |
+| Client named `hospital_a` | Our app's shared configuration for Hospital A. |
+| Connection `A1` | One authorization obtained using that configuration. |
+| Connection `A2` | Another authorization using the same configuration. |
+| Client named `hospital_b` | Separate configuration for Hospital B. |
+| Connection `B1` | An authorization obtained at Hospital B. |
 
-These IDs are illustrative; actual connection IDs are opaque generated values.
-The ID alone does not grant access. A target can have several connections, and
-authorizing again does not silently overwrite an existing one. Here,
-“connection” means a managed authorization, not a permanently open network socket.
+These IDs are illustrative. Real connection IDs are random selectors; knowing
+an ID does not grant access. “Connection” means an authorization we can use,
+not a permanently open network socket.
 
-**A connection reference answers: “How does this Shiny session use that connection?”**
+`OAuthConnection` gives application code `$request()`, `$is_usable()`,
+`$summary()` and, for managed connections, `$refresh()`. It looks up current
+credentials on each operation. Its request method applies the client's API and
+scope checks, then calls the existing `perform_resource_req()` helper.
+The existing `resource_req()` and `perform_resource_req()` remain available.
 
-`OAuthConnectionRef` is the object application code uses to make requests.
-“Ref” means it looks up the current credentials instead of carrying a token copy
-that might become stale. Every request rechecks the current session and
-connection, selects the matching client, and enforces the approved API base.
+| How to obtain an `OAuthConnection` | Where credentials come from |
+| --- | --- |
+| `oauth_connection(client, reactive_token)` | The existing module's reactive token; that module still owns refresh and logout. |
+| The manager server's `connection(id)` | The current owner's stored authorization; the manager owns retention and refresh. |
 
-The existing reactive token already updates when it is refreshed. The reference
-adds the consistent client/API pairing and access checks around that lookup.
-For managed connections, the lookup reads the latest stored record. This also
-means disconnecting a record takes effect for an existing reference.
+The R6 object belongs to one Shiny session. When that session ends, the object
+becomes unusable. With retention enabled, a new session can obtain an object
+for the same stored authorization after its owner is checked.
 
-There are two ways to get a reference:
+**Configuration and authorizations have different lifetimes.**
 
-| API | Where its credentials come from | Does this alone retain them across navigation? |
-| --- | --- | --- |
-| `oauth_connection(target, reactive_token)` | An existing module's reactive token, supplied by the app. | No. The module still owns its lifecycle. |
-| The manager server's `connection(id)` | The owner's connection record in the manager's store. | Retention depends on the manager's configured mode. |
+Configure an `OAuthClient` outside `server()` and share it across sessions.
+Each user's credentials stay in their module or owner-bound manager records.
+Putting a current user's token on the shared client would mix those lifetimes.
 
-The reference itself always belongs to one Shiny session. If that session ends,
-the reference becomes unusable. With retention enabled, the new session can get
-a new reference to the same stored connection after its owner is checked.
+The manager and connection capture their client configuration. S7 clients are
+value objects: changing another copy does not retarget an existing connection.
+Internal configuration digests also detect changed key files or material policy
+before credentials are reused. Display labels are excluded from those digests.
+[S7 objects and value semantics](https://rconsortium.github.io/S7/articles/classes-objects.html)
 
-**Targets and references are our library design, not objects required by SMART.**
-
-SMART describes requests, responses and protocol rules. It does not prescribe
-how an R package organizes its application objects. We chose these components
-to centralize client selection, destination checks and credential lookup.
-An app could assemble those pieces manually; these interfaces make the package
-responsible for applying the same rules on every connection request.
-
-The separation follows their different lifetimes: target configuration can be
-shared across users, a stored authorization belongs to one local owner, and a
-reference belongs to one Shiny session. Putting all of that into `OAuthClient`
-would mix shared app registration settings with individual authorizations.
-
-The tradeoff is extra configuration and more names to learn. A simple app using
-one ordinary OAuth module can keep its existing design. The manager becomes
-useful when the app needs several independent authorizations, retention, or
-consistent rules for which API each token may reach.
-
-R6 is just the R object system used to implement `OAuthTarget` and
-`OAuthConnectionRef`. It lets us expose methods and read-only fields. The
-existing provider/client/token objects still use S7. Neither object system is
-part of the SMART protocol; applications normally use the factory functions.
-Both new R6 classes have generated roxygen2 help documenting their behavior.
+These are package design choices. SMART specifies protocol behavior, not R
+classes. `OAuthClient` uses S7; the optional `OAuthConnection` uses R6 and has
+roxygen2 documentation for its fields and methods. No extra target class is
+needed, and the multiple-connection manager remains a separate module.
 
 **The manager, owner and store make retention work together.**
 
-The **manager** coordinates the list of targets and the current user's
+The **manager** coordinates the list of clients and the current user's
 connections. Its public interfaces are:
 
 | Function | Where it belongs | Job |
 | --- | --- | --- |
-| `oauth_connections()` | Outside `server()`, at app startup | Configure targets, ownership, storage and retention. |
+| `oauth_connections()` | Outside `server()`, at app startup | Configure clients, ownership, storage and retention. |
 | `oauth_connections_ui()` | Around the app UI | Handle callback entry and browser-owner setup. |
 | `oauth_connections_server()` | Inside each Shiny session's `server()` | Provide connect, list, request-reference, refresh/disconnect and logout behavior. |
 
 The app still supplies its own buttons and connection-selection interface.
-The server API offers `connect(target_id)`, `connections()`, `connection(id)`,
+The server API offers `connect(client_name)`, `connections()`, `connection(id)`,
 `disconnect(id)` and `logout()`. It manages the behavior behind those controls.
-By default, each target has a distinct registered callback route, so the return
+By default, each client has a distinct registered callback route, so the return
 from A is distinguishable from the return from B. P6 adds an optional way to
 share that URL when the authorization server supports issuer identification.
 
 Imagine two hospital APIs using the same login service. Their login results
 both say they came from that service, which alone does not tell us which API
 the user chose. With `callback_policy = "shared_routes"`, the manager remembers
-the chosen target when login starts. When the browser returns, it uses the
+the chosen client when login starts. When the browser returns, it uses the
 login's existing `state` value to find that original choice. It then performs
 all the normal login checks. It does not use whichever hospital button was
 clicked most recently, so pending logins in different tabs stay separate.
@@ -283,27 +263,27 @@ authoritative owner checks and store updates remain in one R process.
 
 **The components fit around the existing engine like this.**
 
-Solid arrows show the implemented arrangement. Dotted arrows show planned
-SMART adapter configuration; discovery currently returns a standalone metadata
-list rather than automatically creating a target.
+The diagram shows the implemented arrangement. Discovery returns metadata;
+`smart_client()` combines it with the app's registration to create an ordinary
+client for the manager's named list.
 
 ```mermaid
 flowchart TD
     App[Your Shiny app] --> Manager[Connection manager]
     Manager --> Core[Existing OAuth and OIDC engine]
-    Manager --> Targets[Targets: clients and approved APIs]
+    Manager --> Clients[Named OAuthClient configurations and approved APIs]
     Manager --> Saved[Owner checks and encrypted store]
-    App --> Ref[Connection reference]
-    Ref --> Manager
-    Ref --> HTTP[Existing API request transport]
-    Discovery[SMART discovery: built] -.-> SMART[SMART adapter: planned]
-    SMART -.-> Targets
+    App --> Connection[OAuthConnection]
+    Connection --> Manager
+    Connection --> HTTP[Existing API request transport]
+    Discovery[SMART discovery] --> SMART[smart_client constructor]
+    SMART --> Clients
 ```
 
 For the two-hospital example, with browser retention explicitly enabled, the
 implemented manager does this:
 
-1. The app already has approved targets for A and B. The manager establishes
+1. The app already has approved clients for A and B. The manager establishes
    the browser's local owner before authorization begins.
 2. The person connects A. The existing OAuth engine handles authorization and
    checks the return. The manager saves the accepted credentials as connection A1.
@@ -346,7 +326,7 @@ decides whether each request is allowed.
 Suppose a connection can read and write records, but the app now only needs to
 read. Calling `connection$refresh(scopes = "read")` asks for a replacement access
 token with just read permission. The manager checks that read was already
-allowed and that the connection keeps the permissions its target requires.
+allowed and that the connection keeps the permissions its client requires.
 For SMART, use the relevant SMART scope, such as `patient/Observation.r`, rather
 than the illustrative `read` name.
 
@@ -380,7 +360,7 @@ can refer to different people. A patient ID is also meaningful in its server's
 context: `123` at Hospital A does not establish the same person as `123` at B.
 [SMART identity and context](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html)
 
-This is why the design keeps local ownership, external identity, target and
+This is why the design keeps local ownership, external identity, client and
 patient context separate. Automatically treating a returned patient ID as the
 local user would give it a meaning it does not have.
 
@@ -417,11 +397,11 @@ conditional on the server's advertised SSO support.
 Discovery is like reading the service's configuration sheet. It does not
 register our app, obtain a token, select a patient or prove that every advertised
 feature works. Our registration with the hospital still supplies client-specific
-settings. `smart_target()` now connects that configuration and SMART rules to the
-existing authorization engine. It builds the same `OAuthTarget` used by the
+settings. `smart_client()` now connects that configuration and SMART rules to the
+existing authorization engine. It builds the same `OAuthClient` used by the
 manager, with explicit healthcare-specific settings; it is not another class.
 
-For example, the target supplies the FHIR base as OAuth's SMART `aud` parameter,
+For example, the client supplies the FHIR base as OAuth's SMART `aud` parameter,
 requires S256 PKCE, and chooses the hospital's registered client authentication
 method. Asking for `identity = "fhirUser"` also enables validated OIDC identity.
 The app must configure a compatible registration; discovery cannot invent one.
@@ -438,7 +418,7 @@ keeps its private key, and the service uses a registered public key to check
 the proof. This identifies the app; the person's login is a separate step.
 RS384 is a particular digital-signature algorithm used for that
 proof. We implemented and independently tested it in the generic signing code.
-Existing RSA signing defaults remain unchanged. The SMART target checks the
+Existing RSA signing defaults remain unchanged. The SMART client checks the
 configured key and algorithm against the registration and server metadata.
 Signing support alone does not establish a working SMART integration.
 The existing [cryptographic tests](../integration/conformance/README.md) describe
@@ -472,19 +452,19 @@ the EHR. See the [EHR setup and tests](../integration/smart/ehr-launch.md).
 | Existing provider/client/token model and OAuth/OIDC engine | Reused; ordinary interfaces keep their behavior. |
 | Raw initial/latest extra token fields | Already available at the roadmap's starting point; now also preserved in retained storage. |
 | RS384 signing | Built, with independent cryptographic/conformance tests. |
-| Internal preparation and callback hooks | Built. They remember who started authorization and which target was chosen, then check that association when the result returns. |
+| Internal preparation and callback hooks | Built. They remember who started authorization and which client was chosen, then check that association when the result returns. |
 | Internal place for adding scope rules | Built; the current default still compares literal OAuth scopes. |
-| Targets and connection references | Built, with roxygen2 class documentation and request/session checks. |
+| Optional client settings and `OAuthConnection` | Built, with roxygen2 documentation and request/session checks. |
 | Encrypted store, owner policies and connection manager | Built for one R process, including refresh/disconnect coordination. |
 | Real-browser A-to-B retention | Tested with generic OAuth fixtures, including ordinary query and form POST callbacks and synchronous/async operation. |
 | `smart_discover()` | Built; the pinned external sandbox exposes a compatibility failure described below. |
-| SMART scope interpretation | P4b engine and token/connection checks built; smart_target() selects them explicitly. See [scope examples](smart-scopes.md). |
-| `smart_target()` and SMART registration/request rules | P4c1 built for direct query/form_post authorization; optional transport combinations remain P4c2. |
+| SMART scope interpretation | P4b engine and token/connection checks built; smart_client() selects them explicitly. See [scope examples](smart-scopes.md). |
+| `smart_client()` and SMART registration/request rules | P4c1 built for direct query/form_post authorization; optional transport combinations remain P4c2. |
 | Interpreted patient/context handling and Patient/`fhirUser` helpers | P4d1 built; refresh preserves omitted context and marks context changes with a revision. Experimental context remains raw data. |
 | Standalone SMART app and browser scenarios | Runnable fixture and public/secret/RS384 matrix built, including identity and narrowing. P4e's external two-hospital sandbox repeat and vignette remain open. |
 | Inferno standalone client conformance runs | Planned: P4f. |
 | EHR launch entry routes | P5a built and browser-tested for public registrations, query/form_post and sync/mirai. Browser retention, top-level navigation and one R process are required. P5b external/profile gates remain open. |
-| Shared callback conveniences | P6 built: opt-in issuer routing and a pending-state index for several targets at one issuer. The default remains distinct routes. |
+| Shared callback conveniences | P6 built: opt-in issuer routing and a pending-state index for several clients at one issuer. The default remains distinct routes. |
 | Refresh scope narrowing | P7a built: request fewer permissions on one managed connection and retain that limit across refresh and navigation. |
 | Authorization POST, embedding, multi-resource authorization details and deployment/store adapters | P7b-P7e remain later roadmap items. |
 
@@ -534,13 +514,14 @@ See [examples and tests](../integration/smart/authorization-post.md).
 **For application code, the benefit is fewer pieces to pair manually.**
 
 Here is a small illustration using existing APIs, not a complete runnable app.
-`client_a` is assumed to be configured already. This generic target does not
+`provider_a` is assumed to be configured already. This generic client does not
 enable SMART-specific scopes or patient interpretation:
 
 ```r
 # At app startup: keep this client's approved API alongside its configuration.
-target_a <- oauth_target(
-  client_a,
+client_a <- oauth_client(
+  provider_a, client_id = "registered-app",
+  redirect_uri = "https://app.example/callback", scopes = "read",
   resource_bases = c(fhir = "https://hospital-a.example/fhir/R4"),
   label = "Hospital A"
 )

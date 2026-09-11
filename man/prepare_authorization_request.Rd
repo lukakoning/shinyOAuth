@@ -46,7 +46,7 @@ provider needs to interact with the user's browser and login cookies.
 
 The client selects \code{authorization_method = "POST"} explicitly. Ordinary
 OAuth providers may not support POST; confirm their documentation first.
-\code{\link[=smart_target]{smart_target()}} additionally requires the \code{authorize-post} capability.
+\code{\link[=smart_client]{smart_client()}} additionally requires the \code{authorize-post} capability.
 The outgoing method is independent of the callback \code{response_mode}.
 Configured PAR and Request Object requirements still apply. Each result
 belongs to one login attempt; do not cache it or reuse it after logout.

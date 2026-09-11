@@ -28,10 +28,10 @@ The Shiny parent and mirai workers must load the current installed checkout.
 | --- | --- | --- |
 | Initial/latest token extension snapshots | `test-token-extra-fields.R`, `test-smart-contracts.R` | SMART profile matrix preserves Patient and validated user context when refresh omits context/ID token. |
 | RS384 client assertions, JAR and DPoP signing | `test-rs384.R` and signing/claim tests | `integration/conformance/run-tests.R` independently verifies signatures and protocol exchanges in Python. The SMART profile matrix also exercises RS384 client authentication during code exchange and refresh. |
-| Targets, references and approved resource bases | `test-oauth-connections.R`, `test-resource-binding.R` | Retention/shared-callback suites and two-site SMART Patient/user requests. |
+| Optional client settings, connections and approved resource bases | `test-client-resources.R`, `test-oauth-connections.R`, `test-resource-binding.R` | Retention/shared-callback suites and two-site SMART Patient/user requests. |
 | Encrypted retention, ownership and atomic lifecycle | Connection credentials/store/owner/manager tests | Retention suite covers browser isolation, navigation and independent grants; EHR concurrency tests cover overlapping launches. |
 | SMART discovery and endpoint policy | `test-smart-discovery.R` | Real HTTP positive/negative fixtures plus unmodified Docker metadata; the live positive gate is currently blocked. |
-| Registration, S256, FHIR audience and scopes | `test-smart-target.R`, `test-smart-scopes.R` | Profile matrix validates the actual authorization and token requests for public, HTTP Basic and RS384 registrations. |
+| Registration, S256, FHIR audience and scopes | `test-smart-client.R`, `test-smart-scopes.R` | Profile matrix validates the actual authorization and token requests for public, HTTP Basic and RS384 registrations. |
 | SMART context and validated `fhirUser` | `test-smart-context.R`, SMART identity tests | Profile matrix obtains a signed ID token over HTTP, fetches live fixture JWKS, reads the contextual Patient and a distinct Practitioner, and repeats after refresh/navigation. |
 | EHR launch entry, owner-bound continuation | `test-smart-launch.R` | Both the profile matrix and dedicated concurrent two-tab/two-site EHR suite exercise registered launch routes. |
 | P6 shared callback routing | `test-connection-router.R` and callback tests | One issuer, two registrations/resource paths, concurrent tabs and query/form POST, with sync/mirai. This is generic OAuth evidence. |
@@ -74,7 +74,7 @@ are independent. Ordinary OAuth POST is also exercised by
 The official SMART Dev Sandbox uses an unmodified, digest-pinned Launcher v2.
 Its discovery still advertises asymmetric authentication without the required
 algorithm list. Strict `smart_discover()` rejects it before constructing a
-target or sending app credentials. Its FHIR proxy also permits uncredentialed
+client or sending app credentials. Its FHIR proxy also permits uncredentialed
 reads. Therefore its 46 diagnostic checks establish metadata rejection,
 connectivity and synthetic data availability; they establish neither a complete
 SMART app flow nor resource authorization enforcement.
@@ -118,6 +118,38 @@ and the [upstream launcher metadata handler](https://github.com/smart-on-fhir/sm
 Public clients select `client-public`; SMART's confidential authentication-method
 list does not require a `none` entry. The public registration regression and the
 profile fixture test that distinction without weakening confidential checks.
+
+## Recorded client/connection refactor validation, 2026-09-11
+
+The fixtures now configure optional `resource_bases`, `required_scopes` and
+`label` on `OAuthClient`, pass a named client list to the separate manager, and
+use `OAuthConnection`. `smart_client()` returns the same client type. The old
+target constructors have been removed before release.
+
+Status polling reuses records already read instead of constructing temporary
+connections and repeatedly decrypting the same credentials. Each credential
+read still checks the current configuration against the manager's captured
+policy and the encrypted binding. The two-tab tests retain their 500 ms polling
+interval. Generic fixture actions also report completion revisions, so a browser
+assertion cannot accept an earlier operation's identical result text.
+
+| Gate | Result |
+| --- | --- |
+| Complete package suite with browser tests enabled | 12,519 assertions passed; zero failures/errors. Only the known Windows filesystem-concurrency test skipped. Three installed-dependency build-version warnings were reported. |
+| Ordinary OAuth retention, outgoing GET and POST | Four scenarios / 120 assertions for each outgoing method; no skips. |
+| Shared callback routing | 68 assertions passed; concurrent tabs and foreign-owner isolation. |
+| Refresh scope narrowing | 64 assertions passed; synchronous and real async transport, query and form POST callbacks. |
+| Concurrent SMART EHR launches | 88 assertions passed; both sites, callback transports and execution modes. |
+| SMART GET and POST matrices | 24 scenarios / 432 assertions for GET; 24 scenarios / 480 assertions for POST. Both complete matrices passed against the final installed implementation. |
+| Independent Python cryptographic/strict-AS suite | 379 assertions passed, including RS384 verification and protected protocol combinations. |
+| Unmodified Docker sandbox | 46 diagnostic assertions passed; owned containers were cleaned up. Positive external discovery and SMART app conformance remain open. |
+| Package build/check | `R CMD check --no-tests --no-manual --ignore-vignettes`: zero errors, warnings or notes. Tests run separately. |
+
+Final browser/package suite exits are recorded in
+`.artifacts/refactor-final-suites.json`; the individual runners retain their
+sanitized evidence files. The scope runner records its own evidence under
+`integration/connections/.artifacts/scopes-<run>/`. Earlier failed runs remain
+diagnostic history and are not counted as passing results.
 
 ## Recorded P7b validation, 2026-09-11
 

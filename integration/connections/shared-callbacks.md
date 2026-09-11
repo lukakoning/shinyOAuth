@@ -1,27 +1,27 @@
-# Several targets using one callback URL (P6)
+# Several clients using one callback URL (P6)
 
 P6 is an optional convenience for the connection manager. Two API resources or
 app registrations can use the same authorization server and the same callback
-URL. Each resulting connection still belongs to its original target and owner.
+URL. Each resulting connection still belongs to its original client and owner.
 This works for generic OAuth/OIDC; it is not a new SMART protocol object.
 
 | `callback_policy` | Client configuration | Routing |
 | --- | --- | --- |
-| `"distinct_routes"` (default) | With multiple targets, `multi_redirect_uri` and all registered redirect URIs | A distinct registered route per target. |
+| `"distinct_routes"` (default) | With multiple clients, `multi_redirect_uri` and all registered redirect URIs | A distinct registered route per client. |
 | `"issuer"` | Explicit `multi_issuer` for every client | Shared routes require distinct trusted issuers. |
-| `"shared_routes"` | Explicit `multi_issuer` for every client | Issuer first; when several targets remain, the manager's pending-state index selects the original target. |
+| `"shared_routes"` | Explicit `multi_issuer` for every client | Issuer first; when several clients remain, the manager's pending-state index selects the original client. |
 
 For the two opt-in policies, direct responses require an explicitly configured
 issuer, advertised RFC 9207 response support and issuer enforcement. Signed JARM
 can instead supply issuer identification. Knowing the issuer through OIDC alone
 does not prove RFC 9207 support. Configure these settings on the clients before
-creating their targets; the manager does not rewrite client policies.
+creating their manager; the manager does not rewrite client policies.
 
 ```r
-# a and b are approved oauth_target() configurations whose clients explicitly
+# a and b are OAuthClient configurations with resource_bases that explicitly
 # use multi_issuer and the same registered callback URL.
 manager <- oauth_connections(
-  targets = list(a = a, b = b),
+  clients = list(a = a, b = b),
   app_origin = "https://app.example",
   callback_policy = "shared_routes"
 )
@@ -34,7 +34,7 @@ manager design.
 
 ## What happens during login
 
-1. The manager records the target, configuration fingerprint, transaction and
+1. The manager records the client, configuration fingerprint, transaction and
    expiry in an encrypted index. Its key is a SHA-256 digest of the exact outgoing
    OAuth state, obtained from structured preparation before provider work,
    including generic PAR/JAR. It never reads state back out of an authorization URL.
@@ -44,7 +44,7 @@ manager design.
 3. The existing bridge verifies the selected client's state and issuer/JARM.
    The module checks the owner, browser binding and transaction, then atomically
    consumes logical state before exchanging a code. Changing the selected site
-   in another tab cannot change the target or resource for an earlier login.
+   in another tab cannot change the client or resource for an earlier login.
 4. Completion, validated provider errors, preparation failures, disconnect-all
    and logout remove routing entries. Expired entries fail lookup and are pruned
    when another login starts. The index shares the manager's 1,000-pending-login
@@ -72,7 +72,7 @@ Rscript integration/connections/run-shared-router.R
 The real-browser gate runs query/form POST with synchronous and actual mirai
 transport. One loopback provider serves two registrations, one callback URL and
 two resource paths on the same origin. Two tabs start pending logins before
-either completes. Tests check target preservation, independent reads and refresh,
+either completes. Tests check client preservation, independent reads and refresh,
 cross-resource rejection, owner isolation, logout across tabs and POST callbacks
 without the owner cookie. CI runs it alongside the original retention gate.
 
