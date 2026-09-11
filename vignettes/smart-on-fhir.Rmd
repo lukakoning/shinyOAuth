@@ -7,7 +7,19 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-## FHIR, SMART and OAuth in plain terms
+shinyOAuth allows your Shiny app to request access to a FHIR server using SMART
+on FHIR, read data for the selected patient, and keep separate authorizations
+for different healthcare providers.
+
+This is useful for a patient dashboard that reads records from a hospital, or
+a clinical app that opens from an electronic health record (EHR) with a patient
+already selected.
+
+This vignette builds an app that connects to a hospital and reads a Patient
+resource. It also shows how to search for Observations, identify the logged-in
+user, and configure the app to launch from an EHR.
+
+## FHIR and SMART on FHIR
 
 **FHIR** defines healthcare data structures and ways to exchange them. A
 `Patient` resource describes a patient; an `Observation` can describe a clinical
@@ -17,23 +29,23 @@ FHIR API. See the [FHIR overview](https://hl7.org/fhir/R4/overview.html).
 **OAuth** lets an app obtain permission to call an API. **SMART on FHIR** specifies
 how to use OAuth with FHIR: discover authorization endpoints, request healthcare
 permissions, identify the intended FHIR server, and obtain launch context such
-as the selected patient. An electronic health record (EHR) can open the app, or
-the person can open it independently. See [SMART App Launch](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html).
+as the selected patient. The EHR can open the app, or the person can open it
+independently. See [SMART App Launch](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html).
 
-The ordinary code exchange and authenticated HTTP requests remain familiar:
+These functions configure access and make authenticated FHIR requests:
 
 | Step | shinyOAuth interface |
 | --- | --- |
 | Read a configured server's SMART metadata | `smart_discover()` |
-| Combine it with your registered app's settings | `smart_client()`, returning an ordinary `OAuthClient` |
+| Combine it with your registered app's settings | `smart_client()`, returning an `OAuthClient` |
 | Authorize and keep separate grants | `oauth_connections_ui()` and `oauth_connections_server()` |
 | Use one grant's current credentials | `OAuthConnection$request()` |
 | Read its accepted patient or user context | `smart_context()` |
 | Fetch the contextual Patient resource | `smart_patient()` |
 
-The manager and connection are package conveniences. SMART does not require
-those R objects. They are the same interfaces used for
-[multiple ordinary OAuth authorizations](multiple-authorizations.html).
+To connect several healthcare providers, pass a named list of clients to the
+connection manager, as shown in
+[Keep and use multiple OAuth authorizations](multiple-authorizations.html).
 
 ## Before running the example
 

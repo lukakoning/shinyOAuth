@@ -7,34 +7,36 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-## What this adds to an ordinary OAuth app
+shinyOAuth allows you to keep multiple OAuth authorizations in one Shiny app.
+Users can connect several services, choose which saved authorization to use for
+a request, and disconnect each one separately.
 
-Suppose someone connects Service A, then connects Service B, and wants to keep
-using both. Each authorization gives the app its own credentials. Starting the
-second authorization navigates away from Shiny and can end the session holding
-the first credentials.
+This is useful for a dashboard that combines data from several APIs, or an app
+where users need access to several accounts at the same service.
 
-The connection manager keeps those authorizations separately and can restore
-them when the browser returns. You still configure ordinary OAuth clients and
-use the package's request helpers. The extra pieces handle selection, storage,
-ownership, refresh and disconnecting.
+This vignette builds an app that connects to two services and reads data from
+either one. It uses browser retention to keep both authorizations available
+when the user returns from a provider's login page.
 
-| Piece | Meaning in this example |
+## Client configuration and connections
+
+Configure each service with an `OAuthClient` and give it a name in a `clients`
+list. The connection manager stores each authorization separately. In the Shiny
+server, select an `OAuthConnection` to make requests with that authorization.
+
+| Component | Purpose |
 | --- | --- |
 | `OAuthClient` | Shared settings for a service: registration, scopes and approved API addresses. |
 | `clients <- list(a = client_a, b = client_b)` | Local names used by the app's Connect buttons. |
 | `oauth_connections()` | Shared configuration for storing and managing the authorizations. |
 | `OAuthConnection` | A session-bound handle for making requests with one authorization's current credentials. |
 
-These are package interfaces, usable with ordinary OAuth as well as SMART.
-Neither OAuth nor SMART requires these particular R objects. One client can
-have several connections: connecting A again creates another authorization;
-it does not replace the earlier one or guarantee that a different external
-account was selected.
+One client can have several connections. Connecting A again creates another
+authorization alongside the first. Account selection happens at the provider;
+it may reuse the account already signed in there.
 
-For a single authorization that only needs to last for one Shiny session,
-the existing `oauth_ui()` and `oauth_module_server()` pattern in
-[Usage](usage.html) is still sufficient.
+For apps that need one authorization per Shiny session, see the `oauth_ui()`
+and `oauth_module_server()` example in [Usage](usage.html).
 
 ## Register two clients
 
