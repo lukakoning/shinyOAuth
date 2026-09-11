@@ -58,7 +58,9 @@ metadata must support the selected algorithm. Other styles omit assertions.}
 
 \item{launch}{\code{"standalone"} or \code{"ehr"}, matching the registered app flow.}
 
-\item{identity}{\code{"none"} (default) or \code{"fhirUser"}.}
+\item{identity}{\code{"none"} (default) or \code{"fhirUser"}. A validated \code{fhirUser}
+claim may be an absolute URL or a supported resource instance reference
+relative to this target's FHIR base, such as \code{"Practitioner/example"}.}
 
 \item{allow_v1}{Explicit compatibility flag enabling \code{.read}, \code{.write} and
 \verb{.*}; requires the advertised \code{permission-v1} capability. Default \code{FALSE}.}

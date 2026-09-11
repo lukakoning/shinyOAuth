@@ -40,7 +40,9 @@
 #' @param client_assertion_alg `"RS384"` (default) or `"ES384"`; the key and server
 #'   metadata must support the selected algorithm. Other styles omit assertions.
 #' @param launch `"standalone"` or `"ehr"`, matching the registered app flow.
-#' @param identity `"none"` (default) or `"fhirUser"`.
+#' @param identity `"none"` (default) or `"fhirUser"`. A validated `fhirUser`
+#'   claim may be an absolute URL or a supported resource instance reference
+#'   relative to this target's FHIR base, such as `"Practitioner/example"`.
 #' @param allow_v1 Explicit compatibility flag enabling `.read`, `.write` and
 #'   `.*`; requires the advertised `permission-v1` capability. Default `FALSE`.
 #' @param response_mode `NULL`, `"query"`, or `"form_post"`. Advertised response
@@ -268,7 +270,14 @@ smart_verify_identity <- function(client, token_set, is_refresh) {
   if (!is_valid_string(reference) || nchar(reference, type = "bytes") > 2048L) {
     err_id_token("SMART ID token requires a scalar fhirUser reference")
   }
-  tryCatch(smart_discovery_url(reference, "fhirUser", client@smart$allow_http_loopback),
-    error = function(...) err_id_token("SMART ID token contains an invalid fhirUser URL"))
+  tryCatch({
+    if (grepl("^(Patient|Practitioner|PractitionerRole|RelatedPerson|Person)/[A-Za-z0-9.-]{1,64}$", reference)) {
+      # SMART 2.2 explicitly permits references relative to the launch FHIR base.
+      # The existing resource resolver also rejects dot segments and path escape.
+      resolve_bound_resource(client@smart$fhir_base, reference)
+    } else {
+      smart_discovery_url(reference, "fhirUser", client@smart$allow_http_loopback)
+    }
+  }, error = function(...) err_id_token("SMART ID token contains an invalid fhirUser reference"))
   invisible(NULL)
 }

@@ -125,7 +125,13 @@ test_that("SMART fhirUser is taken only from a cryptographically validated ID to
       id_token = jose::jwt_encode_sig(do.call(jose::jwt_claim, claims), signing_key)),
     nonce = "expected-nonce")
   expect_true(verify(claims)$.id_token_validated)
-  for (value in list(NULL, 42, "javascript:example", "https://ehr.example/fhir/../secret")) {
+  for (kind in c("Patient", "Practitioner", "PractitionerRole", "RelatedPerson", "Person")) {
+    relative <- claims
+    relative$fhirUser <- paste0(kind, "/example")
+    expect_true(verify(relative)$.id_token_validated)
+  }
+  for (value in list(NULL, 42, "javascript:example", "https://ehr.example/fhir/../secret",
+      "Practitioner/..", "Practitioner/example?query=x", "../Practitioner/example", "Observation/example")) {
     bad <- claims
     bad$fhirUser <- value
     expect_error(verify(bad), "fhirUser")

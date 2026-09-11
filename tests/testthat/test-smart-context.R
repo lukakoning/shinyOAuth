@@ -93,6 +93,8 @@ test_that("SMART helpers restrict requests and redact general summaries", {
   expect_false(called)
   record$token@smart_context$fhirUser <- "https://ehr.example/fhir/R4/Practitioner/example"
   expect_identical(smart_fhir_user(foreign), record$token@smart_context$fhirUser)
+  record$token@smart_context$fhirUser <- "Practitioner/example"
+  expect_identical(smart_fhir_user(foreign), "https://ehr.example/fhir/R4/Practitioner/example")
 })
 
 test_that("retained credentials preserve interpreted context without plaintext", {
