@@ -410,6 +410,10 @@ navigation, use the separate connection manager with browser or account
 retention. See [Keep and use multiple OAuth authorizations](multiple-authorizations.html)
 for a complete two-service example.
 
+For healthcare APIs, [Use SMART on FHIR from Shiny](smart-on-fhir.html) shows
+discovery, client registration settings, patient requests and EHR launch using
+the same manager.
+
 Additional token fields are already available server-side. For example,
 `a$token@initial_extra_fields$patient` reads an initial SMART patient value,
 while `a$token@extra_fields` contains only the latest successful response's
