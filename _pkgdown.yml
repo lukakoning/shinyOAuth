@@ -6,6 +6,7 @@ articles:
   navbar: ~
   contents:
   - usage
+  - multiple-authorizations
   - example-spotify
   - authentication-flow
 - title: Configuration and monitoring

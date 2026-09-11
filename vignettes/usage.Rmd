@@ -405,8 +405,10 @@ See [OAuth Security BCP section 4.4.2](https://www.rfc-editor.org/rfc/rfc9700.ht
 This pattern routes multiple modules; it does not retain their credentials
 across navigation. Following the authorization redirect for B can end the Shiny
 session holding A. A new session starts with empty module credentials even if
-the clients share a pending-state store. Retained connections need a separate
-owner and connection lifecycle, which is planned in the SMART roadmap.
+the clients share a pending-state store. To preserve authorizations across
+navigation, use the separate connection manager with browser or account
+retention. See [Keep and use multiple OAuth authorizations](multiple-authorizations.html)
+for a complete two-service example.
 
 Additional token fields are already available server-side. For example,
 `a$token@initial_extra_fields$patient` reads an initial SMART patient value,
