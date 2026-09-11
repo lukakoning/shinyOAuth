@@ -20,16 +20,13 @@ when the user returns from a provider's login page.
 
 ## Client configuration and connections
 
-Configure each service with an `OAuthClient` and give it a name in a `clients`
-list. The connection manager stores each authorization separately. In the Shiny
-server, select an `OAuthConnection` to make requests with that authorization.
+Create an `OAuthClient` for each service with its registration details, scopes
+and API addresses. Put the clients in a named list and pass it to
+`oauth_connections()`. Your app uses those names to choose which service to
+connect when a user clicks a Connect button.
 
-| Component | Purpose |
-| --- | --- |
-| `OAuthClient` | Shared settings for a service: registration, scopes and approved API addresses. |
-| `clients <- list(a = client_a, b = client_b)` | Local names used by the app's Connect buttons. |
-| `oauth_connections()` | Shared configuration for storing and managing the authorizations. |
-| `OAuthConnection` | A session-bound handle for making requests with one authorization's current credentials. |
+Each successful authorization creates a separate connection. Inside `server()`,
+retrieve that `OAuthConnection` to make requests with its current credentials.
 
 One client can have several connections. Connecting A again creates another
 authorization alongside the first. Account selection happens at the provider;

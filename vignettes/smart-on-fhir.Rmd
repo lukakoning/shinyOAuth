@@ -32,16 +32,10 @@ permissions, identify the intended FHIR server, and obtain launch context such
 as the selected patient. The EHR can open the app, or the person can open it
 independently. See [SMART App Launch](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html).
 
-These functions configure access and make authenticated FHIR requests:
-
-| Step | shinyOAuth interface |
-| --- | --- |
-| Read a configured server's SMART metadata | `smart_discover()` |
-| Combine it with your registered app's settings | `smart_client()`, returning an `OAuthClient` |
-| Authorize and keep separate grants | `oauth_connections_ui()` and `oauth_connections_server()` |
-| Use one grant's current credentials | `OAuthConnection$request()` |
-| Read its accepted patient or user context | `smart_context()` |
-| Fetch the contextual Patient resource | `smart_patient()` |
+The example below uses `smart_discover()` to read the server's SMART metadata
+and `smart_client()` to configure your registered app. After the user authorizes
+access, `smart_patient()` reads the selected patient's record using the saved
+connection.
 
 To connect several healthcare providers, pass a named list of clients to the
 connection manager, as shown in
