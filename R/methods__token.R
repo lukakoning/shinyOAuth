@@ -769,7 +769,8 @@ refresh_token <- function(
 }
 
 # The manager supplies an explicit, validated scope request. Legacy refresh
-# calls keep their original public interface and omit scope on the wire.
+# calls keep their original public interface. Generic OAuth calls omit scope;
+# SMART automatic refreshes explicitly retain the latest accepted grant.
 refresh_token_dispatch <- function(
   oauth_client,
   token,
@@ -1000,7 +1001,14 @@ refresh_token_impl <- function(
             grant_type = "refresh_token",
             refresh_token = token@refresh_token
           )
-          if (!is.null(scope_request)) params$scope <- paste(scope_request$scopes, collapse = " ")
+          if (!is.null(scope_request)) {
+            params$scope <- paste(scope_request$scopes, collapse = " ")
+          } else if (client_uses_smart(oauth_client)) {
+            if (!length(token@granted_scopes)) {
+              err_token("SMART refresh with an empty grant requires fresh authorization")
+            }
+            params$scope <- paste(token@granted_scopes, collapse = " ")
+          }
           if (length(oauth_client@resource) > 0) {
             params[["resource"]] <- oauth_client@resource
           }

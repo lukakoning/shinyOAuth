@@ -267,6 +267,12 @@ Constraints are compared exactly as written; the package does not decode,
 reorder or infer implication between searches. Modifiers, chaining and
 experimental `_filter` expressions remain unsupported.
 
+SMART refresh requests send the latest accepted scopes, including after the
+server reduces a grant without rotating the refresh token. Refreshed grants may
+retain or narrow those permissions. An explicitly empty grant remains valid,
+but requires a fresh authorization to obtain more permissions; an empty OAuth
+refresh scope cannot express that limit.
+
 ## Patient context and user identity are different
 
 `smart_context(connection)$patient` identifies the chart in context. A clinician

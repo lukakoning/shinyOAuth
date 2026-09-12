@@ -67,7 +67,7 @@ for (index in seq_len(nrow(cases))) {
     retention_browser_result(browser, "b:2:context-1")
     retention_browser_click(browser, "search_b")
     retention_browser_result(browser, "b:search")
-    testthat::expect_identical(metrics("b")$scoped_refreshes, 0L)
+    testthat::expect_identical(metrics("b")$scoped_refreshes, 1L)
     for (site in c("a", "b")) {
       value <- metrics(site)
       testthat::expect_identical(value$exchanges, 1L)

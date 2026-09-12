@@ -89,6 +89,62 @@ test_that("legacy refresh still omits scope and carries its previous grant", {
   expect_false(result@granted_scopes_verified)
 })
 
+test_that("automatic SMART refresh retains server reductions across sessions", {
+  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
+    scopes = "user/Patient.rs", required_scopes = "user/Patient.r")
+  manager <- oauth_connections(list(a = client), "https://app.example", retention = "browser",
+    owner = oauth_browser_owner(), store = oauth_connection_store_memory(),
+    keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
+  f <- list(manager = manager, ui = oauth_connections_ui(shiny::fluidPage(), "health", manager))
+  cookie <- manager_test_cookie(f)
+  kept <- new.env(parent = emptyenv())
+  requests <- list()
+  reduced <- "user/Patient.r"
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    requests[[length(requests) + 1L]] <<- req$body$data
+    narrowing_response(req, reduced, rotate = FALSE)
+  })
+  server <- function(input, output, session) {
+    controller <- connection_manager_controller(manager, session)
+  }
+  shiny::testServer(server, session = manager_test_session(cookie), {
+    hooks <- controller$hooks("a")
+    original <- smart_update_token_context(client, narrowing_token(client@scopes))
+    hooks$accept(original, hooks$prepare(), as.numeric(Sys.time()))
+    kept$id <- controller$records()[[1L]]$stored$id
+    expect_identical(controller$refresh(kept$id), TRUE)
+    expect_setequal(strsplit(utils::URLdecode(as.character(requests[[1L]]$scope)), " ")[[1L]], client@scopes)
+    expect_identical(controller$read(kept$id)$token@refresh_token, "synthetic-refresh")
+    expect_setequal(controller$read(kept$id)$token@granted_scopes, strsplit(reduced, " ")[[1L]])
+  })
+  shiny::testServer(server, session = manager_test_session(cookie), {
+    expect_identical(controller$refresh(kept$id, touch = FALSE), TRUE)
+    expect_setequal(strsplit(utils::URLdecode(as.character(requests[[2L]]$scope)), " ")[[1L]], strsplit(reduced, " ")[[1L]])
+    expect_identical(as.character(requests[[2L]]$refresh_token), "synthetic-refresh")
+    expect_identical(controller$read(kept$id)$token@refresh_token, "synthetic-refresh")
+  })
+})
+
+test_that("automatic SMART refresh handles unsolicited grants and empty limits", {
+  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
+    scopes = "user/Patient.r", required_scopes = character())
+  token <- smart_update_token_context(client, narrowing_token(c("user/Patient.rs", "custom")))
+  calls <- 0L
+  seen <- NULL
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    calls <<- calls + 1L
+    seen <<- utils::URLdecode(as.character(req$body$data$scope))
+    narrowing_response(req, paste(token@granted_scopes, collapse = " "), rotate = FALSE)
+  })
+  expect_setequal(refresh_token(client, token)@granted_scopes, token@granted_scopes)
+  expect_identical(seen, paste(token@granted_scopes, collapse = " "))
+  token@granted_scopes <- character()
+  error <- tryCatch(refresh_token(client, token), error = identity)
+  expect_s3_class(error, "shinyOAuth_token_error")
+  expect_identical(error$refresh_credential_outcome, "not_consumed")
+  expect_identical(calls, 1L)
+})
+
 for (scope in c("read write", "admin", "write")) test_that(paste("requested limit is enforced before UserInfo", scope), {
   client <- narrowing_client()
   client@provider@userinfo_url <- "https://example.com/userinfo"
