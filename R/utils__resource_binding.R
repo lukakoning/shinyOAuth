@@ -155,6 +155,7 @@ resolve_bound_resource <- function(base, reference = "") {
   ) {
     resource_binding_error()
   }
+  if (!nzchar(reference)) return(approved$url)
   if (grepl("^[A-Za-z][A-Za-z0-9+.-]*:", reference)) {
     candidate <- reference
   } else if (startsWith(reference, "/")) {

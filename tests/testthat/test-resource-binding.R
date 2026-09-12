@@ -42,6 +42,15 @@ test_that("resource bases preserve full paths and compare exact origins", {
   }
 })
 
+test_that("an empty resource reference selects the approved base itself", {
+  for (base in c("https://api.example/v1", "https://api.example/v1/",
+      "https://API.EXAMPLE:443/v1")) {
+    expect_identical(resolve_bound_resource(base), "https://api.example/v1")
+    expect_identical(resolve_bound_resource(base, ""), "https://api.example/v1")
+  }
+  expect_identical(resolve_bound_resource("https://api.example"), "https://api.example/")
+})
+
 test_that("ambiguous paths fail closed before destination normalization", {
   for (path in c(
     "../Patient/123",

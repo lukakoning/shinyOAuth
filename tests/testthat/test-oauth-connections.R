@@ -93,6 +93,11 @@ test_that("each session connection uses its own current credentials and complete
       expect_true(a$is_usable())
       expect_s3_class(a, "OAuthConnection")
       expect_false(identical(a$id, b$id))
+      base_request <- a$request("api", query = list(page = 2))
+      expect_identical(base_request$url, "https://api.example/site-a/v1?page=2")
+      expect_identical(connection_test_headers(base_request)[["authorization"]],
+        "Bearer synthetic-a")
+      expect_false(base_request$options$followlocation)
       req_a <- a$request("api", "records", query = list(page = 2))
       req_b <- b$request("api", "records")
       expect_match(
