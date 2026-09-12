@@ -1,5 +1,9 @@
 # SMART integration baseline
 
+The optional [Oracle Health registration path](oracle.md) records the accepted
+discovery preflights, future vendor-validation scenarios, and why its open
+unauthenticated sandbox cannot close the SMART authorization gap.
+
 See [the implemented-roadmap coverage map](coverage.md) for the combined runner,
 the 24-scenario SMART registration/launch/identity/refresh browser matrix, and
 the distinction between local test results and the blocked external sandbox gate.
