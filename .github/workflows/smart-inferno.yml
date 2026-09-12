@@ -69,6 +69,8 @@ jobs:
         run: Rscript integration/smart/run-inferno-extensions.R account
       - name: Verify interrupted SMART refresh and logout
         run: Rscript integration/smart/run-lifecycle.R interrupted
+      - name: Verify reduced and declined SMART consent
+        run: Rscript integration/smart/run-lifecycle.R consent
       - name: Upload only sanitized client-verification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

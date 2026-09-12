@@ -13,6 +13,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
   state$metrics$refresh_attempts <- 0L
   state$metrics$expired_reads <- 0L
   state$metrics$refresh_responses <- 0L
+  state$metrics$denials <- 0L
   decode <- function(value) openssl::base64_decode(paste0(chartr("-_", "+/", value),
     strrep("=", (4L - nchar(value) %% 4L) %% 4L)))
   signing_pem <- openssl::write_pem(openssl::rsa_keygen(2048))
@@ -87,7 +88,8 @@ smart_profile_provider <- function(site, callback, registration, launch,
     id <- random()
     state$codes[[id]] <- list(query = query, expires = as.numeric(Sys.time()) + 120)
     res$set_type("text/html")$send(paste0('<!doctype html><html><body><h1 id="provider">Site ', site,
-      '</h1><a id="approve" href="/approve?ticket=', id, '">Approve synthetic access</a></body></html>'))
+      '</h1><a id="approve" href="/approve?ticket=', id, '">Approve synthetic access</a>',
+      '<a id="deny" href="/deny?ticket=', id, '">Decline synthetic access</a></body></html>'))
   }
   app$get("/authorize", authorize)
   app$post("/authorize", authorize)
@@ -103,6 +105,21 @@ smart_profile_provider <- function(site, callback, registration, launch,
     }
     res$set_status(302L)$set_header("Location", paste0(callback, "?code=", req$query$ticket,
       "&state=", utils::URLencode(record$query$state, reserved = TRUE)))$send("")
+  })
+  app$get("/deny", function(req, res) {
+    record <- state$codes[[req$query$ticket]]
+    if (is.null(record)) return(res$set_status(400L)$send("Unavailable"))
+    rm(list = req$query$ticket, envir = state$codes)
+    state$metrics$denials <- state$metrics$denials + 1L
+    if (identical(record$query$response_mode, "form_post")) {
+      escape <- function(value) htmltools::htmlEscape(value, attribute = TRUE)
+      return(res$set_type("text/html")$send(paste0('<!doctype html><html><body><form method="post" action="',
+        escape(callback), '"><input type="hidden" name="error" value="access_denied">',
+        '<input type="hidden" name="state" value="', escape(record$query$state),
+        '"></form><script>document.forms[0].submit()</script></body></html>')))
+    }
+    res$set_status(302L)$set_header("Location", paste0(callback, "?error=access_denied&state=",
+      utils::URLencode(record$query$state, reserved = TRUE)))$send("")
   })
   app$post("/token", function(req, res) {
     if (!is.null(res$locals$delayed_token)) {
@@ -145,6 +162,9 @@ smart_profile_provider <- function(site, callback, registration, launch,
       state$metrics$exchanges <- state$metrics$exchanges + 1L
       grant <- list(revision = 1L, nonce = record$query$nonce, patient = paste0("synthetic-", site))
       scopes <- initial_scopes
+      if (identical(behavior$consent, "reduced")) scopes[scopes == "patient/Patient.rs"] <- "patient/Patient.r"
+      if (identical(behavior$consent, "no_refresh")) scopes <- setdiff(scopes, "offline_access")
+      if (identical(behavior$consent, "missing_required")) scopes <- setdiff(scopes, "patient/Patient.rs")
     } else if (identical(body$grant_type, "refresh_token")) {
       state$metrics$refresh_attempts <- state$metrics$refresh_attempts + 1L
       if (state$revoked) return(res$set_status(400L)$send_json(list(error = "invalid_grant"), auto_unbox = TRUE))
@@ -171,6 +191,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
     state$access[[access]] <- grant
     token <- list(access_token = access, refresh_token = refresh, token_type = "Bearer",
       expires_in = lifetime, scope = paste(scopes, collapse = " "))
+    if (identical(behavior$consent, "no_refresh")) token$refresh_token <- NULL
     if (initial) {
       token$patient <- grant$patient
       token$encounter <- paste0("encounter-", site)

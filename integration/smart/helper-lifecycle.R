@@ -1,8 +1,8 @@
-lifecycle_setup <- function(async, behavior = list(), app_args = list(), .env = parent.frame()) {
+lifecycle_setup <- function(async, behavior = list(), app_args = list(), response_mode = "query", .env = parent.frame()) {
   registration <- list(style = "public", assertion_alg = NA_character_)
   factory <- function(site, callback) smart_profile_provider(site, callback, registration,
     "standalone", https = TRUE, behavior = if (site == "a") behavior else list())
-  f <- retention_browser_setup(async, provider_factory = factory,
+  f <- retention_browser_setup(async, response_mode, provider_factory = factory,
     app_script = "integration/smart/fixture-profile-app.R", app_function = "smart_profile_app",
     app_args = c(list(registration = registration, launch = "standalone", refresh_check_interval = 500), app_args),
     https = TRUE, https_providers = TRUE, .env = .env)

@@ -98,3 +98,20 @@ leave B usable. The socket-loss cases stop only their own provider process after
 its consumption counter advances; they do not contact external systems.
 
 Validation on 2026-09-13: five scenarios, 18 passing assertions, no skips.
+
+## 6. Reduced, incomplete and declined consent
+
+`Rscript integration/smart/run-lifecycle.R consent`
+
+Eight scenarios exercise four consent outcomes with sync/query and mirai/form-post
+transport: initial read-only access, no offline grant/refresh token, missing a
+required Patient permission, and explicit user denial. The first two permit the
+remaining operations; search must stay unavailable after reduced consent, and a
+grant without refresh credentials must become unusable at actual token expiry.
+Missing required permissions and denial must report a module error without
+creating a connection. Denial must not exchange a code. All cases retain B's
+original connection and continue reading its Patient. Callback waits require
+the completed error outcome, not merely the new Shiny session's initial output.
+This is synthetic-provider application behavior coverage.
+
+Validation on 2026-09-13: eight scenarios, 48 passing assertions, no skips.

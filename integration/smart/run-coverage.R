@@ -30,6 +30,7 @@ run_smart_coverage <- function(args = commandArgs(trailingOnly = TRUE)) {
     smart_expiry = c("integration/smart/run-lifecycle.R", "expiry"),
     smart_context = c("integration/smart/run-lifecycle.R", "context"),
     smart_interrupted = c("integration/smart/run-lifecycle.R", "interrupted"),
+    smart_consent = c("integration/smart/run-lifecycle.R", "consent"),
     inferno_identity = c("integration/smart/run-inferno-extensions.R", "identity"),
     inferno_account = c("integration/smart/run-inferno-extensions.R", "account"),
     smart_authorization_post = c("integration/smart/run-profiles.R", "--post"),

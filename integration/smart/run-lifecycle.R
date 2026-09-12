@@ -1,7 +1,7 @@
 # Supplemental synthetic SMART lifecycle gates; each scenario uses a real browser.
 run_smart_lifecycle <- function(args = commandArgs(trailingOnly = TRUE)) {
-  if (length(args) != 1L || !args %in% c("expiry", "context", "interrupted"))
-    stop("Usage: Rscript integration/smart/run-lifecycle.R expiry|context|interrupted")
+  if (length(args) != 1L || !args %in% c("expiry", "context", "interrupted", "consent"))
+    stop("Usage: Rscript integration/smart/run-lifecycle.R expiry|context|interrupted|consent")
   scenario <- args[[1L]]
   for (package in c("shinyOAuth", "testthat", "chromote", "webfakes", "callr", "processx", "mirai"))
     if (!requireNamespace(package, quietly = TRUE)) stop("Missing package: ", package)
@@ -21,7 +21,7 @@ run_smart_lifecycle <- function(args = commandArgs(trailingOnly = TRUE)) {
   counts <- as.data.frame(results)
   evidence$tests <- as.list(colSums(counts[c("passed", "failed", "error", "skipped")]))
   evidence$scenarios <- nrow(counts)
-  expected_scenarios <- if (scenario == "interrupted") 5L else 4L
+  expected_scenarios <- switch(scenario, interrupted = 5L, consent = 8L, 4L)
   if (nrow(counts) != expected_scenarios || evidence$tests$passed == 0L ||
     any(unlist(evidence$tests[c("failed", "error", "skipped")]) != 0)) stop("SMART lifecycle gate failed")
   evidence$status <- "passed"
