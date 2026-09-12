@@ -138,7 +138,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
       }
       rm(list = body$code, envir = state$codes)
       state$metrics$exchanges <- state$metrics$exchanges + 1L
-      grant <- list(revision = 1L, nonce = record$query$nonce)
+      grant <- list(revision = 1L, nonce = record$query$nonce, patient = paste0("synthetic-", site))
       scopes <- initial_scopes
     } else if (identical(body$grant_type, "refresh_token")) {
       state$metrics$refresh_attempts <- state$metrics$refresh_attempts + 1L
@@ -152,6 +152,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
       }
       rm(list = body$refresh_token, envir = state$refresh)
       grant$revision <- grant$revision + 1L
+      if (isTRUE(behavior$change_patient)) grant$patient <- paste0("synthetic-", site, "-new")
       state$metrics$refreshes <- state$metrics$refreshes + 1L
       if (!is.null(body$scope)) state$metrics$scoped_refreshes <- state$metrics$scoped_refreshes + 1L
     } else return(res$set_status(400L)$send_json(list(error = "unsupported_grant_type"), auto_unbox = TRUE))
@@ -166,7 +167,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
     token <- list(access_token = access, refresh_token = refresh, token_type = "Bearer",
       expires_in = lifetime, scope = paste(scopes, collapse = " "))
     if (initial) {
-      token$patient <- paste0("synthetic-", site)
+      token$patient <- grant$patient
       token$encounter <- paste0("encounter-", site)
       token$need_patient_banner <- TRUE
       claims <- jose::jwt_claim(iss = paste0(base(req), "/fhir"), sub = paste0("clinician-", site),
@@ -174,6 +175,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
         nonce = grant$nonce, fhirUser = paste0("Practitioner/clinician-", site))
       token$id_token <- jose::jwt_encode_sig(claims, openssl::read_key(signing_pem), header = list(kid = "fixture-id"))
     }
+    if (!initial && isTRUE(behavior$change_patient)) token$patient <- grant$patient
     res$send_json(token, auto_unbox = TRUE)
   })
   current <- function(req) {
@@ -188,7 +190,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
   }
   app$get("/fhir/Patient/:id", function(req, res) {
     grant <- current(req)
-    if (is.null(grant) || !identical(req$params$id, paste0("synthetic-", site)) ||
+    if (is.null(grant) || !identical(req$params$id, grant$patient) ||
         !any(c("patient/Patient.rs", "patient/Patient.r") %in% grant$scopes)) return(res$set_status(403L)$send("Denied"))
     state$metrics$reads <- state$metrics$reads + 1L
     res$send_json(list(resourceType = "Patient", id = req$params$id,

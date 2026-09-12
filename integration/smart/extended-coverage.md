@@ -38,3 +38,27 @@ affecting site B. The provider rejects expired access tokens and records attempt
 expired reads. No package clock or token exchange is mocked. This is synthetic
 SMART lifecycle evidence; Inferno's fixed token lifetime is unchanged.
 Validation on 2026-09-13: four scenarios, 30 passing assertions, no skips.
+
+## 3. Patient/representative identity and refresh context
+
+`Rscript integration/smart/run-inferno-extensions.R identity`
+
+Eight public-client scenarios cross Patient/RelatedPerson identity, standalone/EHR
+launch and synchronous/mirai transport. Inferno signs identity tokens and supplies
+Patient, representative and encounter context. The actual Shiny app validates and
+reads each identity before/after refresh and after restoring the connection in a
+new session. Recorded exchanges must contain exactly one code exchange, one
+refresh and six successful resource reads, each using the current issued token.
+Each scenario requires all five applicable upstream verifier tests. The pinned
+simulator corrections are unchanged; these are additional driver scenarios.
+
+`Rscript integration/smart/run-lifecycle.R context`
+
+Four additional synthetic-browser scenarios test omitted refresh context and a
+changed patient with an omitted encounter. The former must preserve context; the
+latter must clear the dependent encounter, advance context revision and read the
+new Patient while preserving clinician identity. Both outcomes must survive a new
+Shiny session. The unchanged Inferno simulator repeats configured context on
+refresh, so omission/change evidence is explicitly attributed to our fixture.
+Validation on 2026-09-13: eight Inferno scenarios with 40 upstream test passes;
+four context scenarios with 16 passing assertions; no skips.

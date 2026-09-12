@@ -61,6 +61,10 @@ jobs:
         run: Rscript integration/smart/run-profiles.R --cross-site
       - name: Verify expired retained SMART grants
         run: Rscript integration/smart/run-lifecycle.R expiry
+      - name: Verify SMART refresh context changes
+        run: Rscript integration/smart/run-lifecycle.R context
+      - name: Verify Patient and RelatedPerson identities with Inferno
+        run: Rscript integration/smart/run-inferno-extensions.R identity
       - name: Upload only sanitized client-verification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

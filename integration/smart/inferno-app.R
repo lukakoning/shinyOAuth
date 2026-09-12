@@ -18,8 +18,8 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
     args <- list(discovery = shinyOAuth::smart_discover(registration$fhir_base),
       client_id = registration$client_id, redirect_uri = paste0(origin, "/callback/", site),
       scopes = c(if (launch == "standalone") "launch/patient", "patient/Patient.rs",
-        "user/Practitioner.r", "offline_access", extra_scopes),
-      required_scopes = c("patient/Patient.r", "user/Practitioner.r"),
+        paste0("user/", registration$user_type, ".r"), "offline_access", extra_scopes),
+      required_scopes = c("patient/Patient.r", paste0("user/", registration$user_type, ".r")),
       launch = launch, identity = "fhirUser", label = paste("Site", site),
       token_auth_style = registration$style, authorization_method = authorization_method,
       authorization_server_mode = if (length(sites) > 1L) "multi_redirect_uri" else "single",
@@ -74,12 +74,13 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
         body <- httr2::resp_body_json(shinyOAuth::smart_patient(conn))
         stopifnot(identical(body$resourceType, "Patient"), identical(body$id, expected$patient),
           identical(context$patient, expected$patient))
+        if (!is.null(expected$encounter)) stopifnot(identical(context$encounter, expected$encounter))
         TRUE
       }))
       shiny::observeEvent(input[[paste0("user_", selected)]], perform(paste0("user_", selected), function() {
         body <- httr2::resp_body_json(shinyOAuth::smart_fhir_user(connection(selected)))
-        stopifnot(identical(body$resourceType, "Practitioner"), identical(body$id, expected$practitioner),
-          !identical(body$id, expected$patient))
+        stopifnot(identical(body$resourceType, expected$user_type), identical(body$id, expected$user_id))
+        if (expected$user_type != "Patient") stopifnot(!identical(body$id, expected$patient))
         TRUE
       }))
       shiny::observeEvent(input[[paste0("refresh_", selected)]],

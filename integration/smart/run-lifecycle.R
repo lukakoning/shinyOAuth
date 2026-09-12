@@ -1,6 +1,6 @@
 # Supplemental synthetic SMART lifecycle gates; each scenario uses a real browser.
 run_smart_lifecycle <- function(args = commandArgs(trailingOnly = TRUE)) {
-  if (length(args) != 1L || !args %in% c("expiry")) stop("Usage: Rscript integration/smart/run-lifecycle.R expiry")
+  if (length(args) != 1L || !args %in% c("expiry", "context")) stop("Usage: Rscript integration/smart/run-lifecycle.R expiry|context")
   scenario <- args[[1L]]
   for (package in c("shinyOAuth", "testthat", "chromote", "webfakes", "callr", "processx", "mirai"))
     if (!requireNamespace(package, quietly = TRUE)) stop("Missing package: ", package)

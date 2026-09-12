@@ -1,10 +1,10 @@
-lifecycle_setup <- function(async, behavior = list(), .env = parent.frame()) {
+lifecycle_setup <- function(async, behavior = list(), app_args = list(), .env = parent.frame()) {
   registration <- list(style = "public", assertion_alg = NA_character_)
   factory <- function(site, callback) smart_profile_provider(site, callback, registration,
     "standalone", https = TRUE, behavior = if (site == "a") behavior else list())
   f <- retention_browser_setup(async, provider_factory = factory,
     app_script = "integration/smart/fixture-profile-app.R", app_function = "smart_profile_app",
-    app_args = list(registration = registration, launch = "standalone", refresh_check_interval = 500),
+    app_args = c(list(registration = registration, launch = "standalone", refresh_check_interval = 500), app_args),
     https = TRUE, https_providers = TRUE, .env = .env)
   f$metrics <- function(site = "a") httr2::request(paste0(f$bases[[site]], "/metrics")) |>
     httr2::req_options(cainfo = file.path(retention_root, "integration/keycloak/tls/ca-cert.pem")) |>

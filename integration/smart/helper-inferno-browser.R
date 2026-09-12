@@ -1,7 +1,11 @@
-inferno_registration <- function(stack, style, algorithm, site) {
+inferno_registration <- function(stack, style, algorithm, site, user_type = "Practitioner", encounter = NULL) {
   registration <- list(fhir_base = stack$fhir_base, style = style, algorithm = algorithm,
     client_id = paste0("shinyoauth-", site, "-", paste(openssl::sha256(openssl::rand_bytes(16)))),
     patient = paste0("patient-", site), practitioner = paste0("practitioner-", site))
+  registration$user_type <- user_type
+  registration$user_id <- if (user_type == "Patient") registration$patient else if (user_type == "Practitioner")
+    registration$practitioner else paste0("representative-", site)
+  registration$encounter <- encounter
   # Upstream compares decoded Basic bytes without form-decoding the components.
   # Use a valid random unreserved secret; reserved-character credentials remain
   # covered by package wire-encoding tests, not by an independent server pass.
@@ -33,15 +37,19 @@ inferno_begin_session <- function(stack, registration, origin, site, launch) {
     private_key_jwt = "confidential_asymmetric")
   session <- inferno_api(stack, "/api/test_sessions", list(test_suite_id = inferno_suite,
     suite_options = list(list(id = "client_type", value = paste("SMART", "authorization_code", type, sep = ",")))))
+  context <- list(patient = registration$patient)
+  if (!is.null(registration$encounter)) context$encounter <- registration$encounter
+  resources <- list(list(resource = list(resourceType = "Patient", id = registration$patient)))
+  if (registration$user_type != "Patient") resources <- c(resources,
+    list(list(resource = list(resourceType = registration$user_type, id = registration$user_id))))
   inputs <- list(client_id = registration$client_id,
     smart_redirect_uris = paste0(origin, "/callback/", site),
-    launch_context = jsonlite::toJSON(list(patient = registration$patient), auto_unbox = TRUE),
-    fhir_user_relative_reference = paste0("Practitioner/", registration$practitioner),
+    launch_context = jsonlite::toJSON(context, auto_unbox = TRUE),
+    fhir_user_relative_reference = paste0(registration$user_type, "/", registration$user_id),
     echoed_fhir_response = jsonlite::toJSON(list(resourceType = "Bundle", type = "searchset",
       total = 0L, entry = list()), auto_unbox = TRUE),
     fhir_read_resources_bundle = jsonlite::toJSON(list(resourceType = "Bundle", type = "collection",
-      entry = list(list(resource = list(resourceType = "Patient", id = registration$patient)),
-        list(resource = list(resourceType = "Practitioner", id = registration$practitioner)))), auto_unbox = TRUE))
+      entry = resources), auto_unbox = TRUE))
   if (launch == "ehr") inputs$smart_launch_urls <- paste0(origin, "/launch")
   if (registration$style == "header") inputs$smart_client_secret <- registration$secret
   if (registration$style == "private_key_jwt") inputs$smart_jwk_set <- registration$jwks
