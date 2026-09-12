@@ -85,6 +85,16 @@ test_that("launch routes reject callback collisions and ambiguous registrations"
   }
 })
 
+test_that("launch paths do not require a placeholder host in the network allowlist", {
+  withr::local_options(shinyOAuth.allowed_hosts = "registered-app.example")
+  expect_identical(smart_launch_route("/%6caunch", "hospital")$path, "/launch")
+  for (path in c("//other.example", "/../launch", "/%2e%2e/launch", "/%2flaunch",
+    "/launch?x=1", "/launch#fragment", "/launch path", "/launch\n", "/%zz",
+    "/launch;param", paste0("/", strrep("x", 8192)))) {
+    expect_error(smart_launch_route(path, "hospital"))
+  }
+})
+
 test_that("escaped launch paths use the same spelling for routing and collisions", {
   f <- smart_launch_test_fixture()
   route <- smart_launch_route("/%6Caunch", "hospital")

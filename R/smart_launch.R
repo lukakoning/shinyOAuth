@@ -57,7 +57,7 @@
 #' @export
 smart_launch_route <- function(path, clients, max_age = 120) {
   if (!is_valid_string(path) || !startsWith(path, "/") ||
-      grepl("[?#]", path) ||
+      nchar(path, type = "bytes") > 8192L || grepl("[?#[:space:][:cntrl:]]", path) ||
       !is.character(clients) || !length(clients) || length(clients) > 64L ||
       anyNA(clients) || anyDuplicated(clients) ||
       any(!grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", clients)) ||
@@ -65,7 +65,10 @@ smart_launch_route <- function(path, clients, max_age = 120) {
       !is.finite(max_age) || max_age < 30 || max_age > 300) {
     err_config("Invalid SMART launch route configuration")
   }
-  path <- resource_binding_components(paste0("https://app.example", path))$path
+  # This is a path, not a network destination. A placeholder authority would
+  # incorrectly make route configuration depend on the global host allowlist.
+  # Actual app/callback/FHIR URLs are validated separately by the manager.
+  path <- resource_binding_path(path)
   list(path = path, clients = clients, max_age = max_age)
 }
 
