@@ -1,5 +1,13 @@
 # Optional application policy belongs to the existing OAuthClient value object.
 # No user's credentials or cached configuration digest lives on that object.
+default_client_label <- function(provider) {
+  label <- substr(enc2utf8(gsub("[[:cntrl:]]", " ", provider@name)), 1L, 128L)
+  while (nchar(label, type = "bytes") > 128L) {
+    label <- substr(label, 1L, nchar(label) - 1L)
+  }
+  label
+}
+
 validate_client_resources <- function(client) {
   tryCatch({
     if (length(client@resource_bases)) normalize_resource_bases(client@resource_bases)

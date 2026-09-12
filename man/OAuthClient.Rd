@@ -62,7 +62,7 @@ OAuthClient(
   client_assertion_typ = "JWT",
   resource_bases = character(0),
   required_scopes = character(0),
-  label = provider@name,
+  label = default_client_label(provider),
   authorization_method = "GET",
   scope_policy = list(),
   smart = list()
@@ -558,8 +558,10 @@ selects SMART semantic comparison and also enforces these permissions when
 validating token responses. Explicit refresh narrowing retains these scopes.}
 
 \item{label}{Optional display label used in connection summaries; defaults to
-the provider name. Must be a non-empty string of at most 128 bytes without
-control characters. Labels contain no credentials or patient context.}
+the provider name, with control characters replaced by spaces and shortened
+to 128 UTF-8 bytes if needed. Explicit labels must be non-empty strings of at
+most 128 bytes without control characters. Labels contain no credentials or
+patient context.}
 
 \item{authorization_method}{Browser method for sending the authorization
 request: \code{"GET"} (default) or \code{"POST"}. Select POST only after confirming

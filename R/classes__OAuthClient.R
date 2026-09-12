@@ -176,8 +176,10 @@
 #'   selects SMART semantic comparison and also enforces these permissions when
 #'   validating token responses. Explicit refresh narrowing retains these scopes.
 #' @param label Optional display label used in connection summaries; defaults to
-#'   the provider name. Must be a non-empty string of at most 128 bytes without
-#'   control characters. Labels contain no credentials or patient context.
+#'   the provider name, with control characters replaced by spaces and shortened
+#'   to 128 UTF-8 bytes if needed. Explicit labels must be non-empty strings of at
+#'   most 128 bytes without control characters. Labels contain no credentials or
+#'   patient context.
 #'
 #' @param claims_validation What to do if requested claims are missing or have
 #'   unexpected values: `"warn"` continues with a warning, `"strict"` stops
@@ -742,7 +744,7 @@ OAuthClient <- S7::new_class(
     # Append new properties to preserve the public positional constructor.
     resource_bases = S7::new_property(S7::class_character, default = character()),
     required_scopes = S7::new_property(S7::class_character, default = character()),
-    label = S7::new_property(S7::class_character, default = quote(provider@name)),
+    label = S7::new_property(S7::class_character, default = quote(default_client_label(provider))),
     authorization_method = S7::new_property(S7::class_character, default = "GET"),
     # Internal, versioned policy selected by SMART clients. A generic client
     # retains literal scopes and RFC 6749 omission behavior.
@@ -841,7 +843,7 @@ oauth_client <- function(
   authorization_method = "GET",
   resource_bases = character(),
   required_scopes = character(),
-  label = provider@name,
+  label = default_client_label(provider),
   ...
 ) {
   compat_args <- resolve_deprecated_constructor_args(

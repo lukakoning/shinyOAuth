@@ -18,6 +18,25 @@ test_that("client constructors validate optional API and scope configuration", {
   expect_false(client_uses_smart_scopes(client))
 })
 
+test_that("inherited provider names remain compatible with optional labels", {
+  for (name in c("Ordinary provider", strrep("a", 200), strrep("\u00e9", 100), "Line\nbreak")) {
+    provider <- make_test_provider()
+    provider@name <- name
+    for (constructor in list(oauth_client, OAuthClient)) {
+      client <- constructor(provider = provider, client_id = "example",
+        redirect_uri = "https://app.example/callback", scopes = "read")
+      expect_identical(client@provider@name, name)
+      expect_lte(nchar(client@label, type = "bytes"), 128L)
+      expect_identical(validUTF8(client@label), TRUE)
+      expect_identical(grepl("[[:cntrl:]]", client@label), FALSE)
+      expect_identical(client@smart, list())
+      explicit <- constructor(provider = provider, client_id = "example",
+        redirect_uri = "https://app.example/callback", scopes = "read", label = "Selected label")
+      expect_identical(explicit@label, "Selected label")
+    }
+  }
+})
+
 test_that("managers capture named client configuration and detect changed runtime policy", {
   withr::local_options(shinyOAuth.tls_min_version = NULL)
   client <- oauth_client(make_test_provider(), "external-registration-id",

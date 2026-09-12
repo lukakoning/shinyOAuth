@@ -62,7 +62,7 @@ oauth_client(
   authorization_method = "GET",
   resource_bases = character(),
   required_scopes = character(),
-  label = provider@name,
+  label = default_client_label(provider),
   ...
 )
 }
@@ -563,8 +563,10 @@ selects SMART semantic comparison and also enforces these permissions when
 validating token responses. Explicit refresh narrowing retains these scopes.}
 
 \item{label}{Optional display label used in connection summaries; defaults to
-the provider name. Must be a non-empty string of at most 128 bytes without
-control characters. Labels contain no credentials or patient context.}
+the provider name, with control characters replaced by spaces and shortened
+to 128 UTF-8 bytes if needed. Explicit labels must be non-empty strings of at
+most 128 bytes without control characters. Labels contain no credentials or
+patient context.}
 
 \item{...}{Deprecated renamed arguments accepted temporarily for backward
 compatibility.}
