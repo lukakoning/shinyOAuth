@@ -234,7 +234,8 @@ must cover any scopes required for this operation.
   path = "",
   query = NULL,
   method = "GET",
-  required_scopes = character()
+  required_scopes = character(),
+  configure = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -254,6 +255,11 @@ and \code{TRACK} are rejected by the resource transport.}
 operation, in addition to the client's required scopes. They must have
 been requested by the client and be covered by the current grant.
 \code{character()} adds no operation-specific scope check.}
+      \item{\code{configure}}{Optional function taking an unauthenticated \code{\link[httr2:request]{httr2::request()}}
+and returning it with only body and application headers changed. Use
+\code{\link[httr2:req_body_json]{httr2::req_body_json()}}, \code{\link[httr2:req_body_form]{httr2::req_body_form()}}, \code{\link[httr2:req_body_raw]{httr2::req_body_raw()}}
+and \code{\link[httr2:req_headers]{httr2::req_headers()}}. Set the HTTP method with \code{method} above.
+URL, transport policies, authentication and Host headers cannot be changed.}
     }
     \if{html}{\out{</div>}}
   }

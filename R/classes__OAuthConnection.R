@@ -208,6 +208,11 @@ OAuthConnection <- R6::R6Class(
     #'   operation, in addition to the client's required scopes. They must have
     #'   been requested by the client and be covered by the current grant.
     #'   `character()` adds no operation-specific scope check.
+    #' @param configure Optional function taking an unauthenticated [httr2::request()]
+    #'   and returning it with only body and application headers changed. Use
+    #'   [httr2::req_body_json()], [httr2::req_body_form()], [httr2::req_body_raw()]
+    #'   and [httr2::req_headers()]. Set the HTTP method with `method` above.
+    #'   URL, transport policies, authentication and Host headers cannot be changed.
     #' @return An [httr2] response object. Invalid resources, unusable connections,
     #'   insufficient scopes and transport failures raise errors.
     #' @details
@@ -221,7 +226,8 @@ OAuthConnection <- R6::R6Class(
       path = "",
       query = NULL,
       method = "GET",
-      required_scopes = character()
+      required_scopes = character(),
+      configure = NULL
     ) {
       connection_record_request(
         private$record(),
@@ -229,7 +235,8 @@ OAuthConnection <- R6::R6Class(
         path,
         query,
         method,
-        required_scopes
+        required_scopes,
+        configure
       )
     },
     #' @description

@@ -16,7 +16,9 @@
 #' @param session The owning Shiny session; defaults to the current session.
 #' @return An [OAuthConnection] with `$id`, `$is_usable()`, `$summary()` and
 #'   `$request(resource_id, path = "", query = NULL, method = "GET",
-#'   required_scopes = character())`. Requests return [httr2] responses.
+#'   required_scopes = character(), configure = NULL)`. Requests return [httr2]
+#'   responses. `configure` can add a body and application headers; see
+#'   [OAuthConnection] for its contract.
 #' @details
 #' Create the reference once inside `server()`. Access it only in that session's
 #' reactive context. `$summary()` excludes tokens, identity claims and extension
@@ -162,7 +164,8 @@ connection_record_request <- function(
   path,
   query,
   method,
-  required_scopes
+  required_scopes,
+  configure = NULL
 ) {
   if (
     !is_valid_string(resource_id) ||
@@ -201,7 +204,22 @@ connection_record_request <- function(
   ) {
     err_token("Current grant does not cover this operation")
   }
-  tryCatch(
+  tryCatch({
+    if (!is.null(configure)) {
+      if (!is.function(configure)) err_input("configure must be a function")
+      template <- httr2::request(url)
+      request <- configure(template)
+      if (!inherits(request, "httr2_request")) {
+        err_input("configure must return an httr2 request")
+      }
+      unchanged <- request
+      unchanged[c("body", "headers")] <- template[c("body", "headers")]
+      if (!identical(unchanged, template) || any(tolower(names(request$headers)) %in%
+          c("authorization", "dpop", "host", "proxy-authorization"))) {
+        err_input("configure may only change the body and application headers")
+      }
+      url <- request
+    }
     perform_resource_req(
       record$token,
       url,
@@ -210,7 +228,8 @@ connection_record_request <- function(
       oauth_client = record$client,
       check_url = TRUE,
       follow_redirect = FALSE
-    ),
+    )
+  },
     error = function(e) {
       # Transport conditions can contain a resource path, query or response body.
       # Do not expose those details through the connection's public error surface.

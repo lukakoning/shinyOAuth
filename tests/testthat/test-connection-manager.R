@@ -1,4 +1,5 @@
-manager_test_fixture <- function(retention = "browser", owner = NULL) {
+manager_test_fixture <- function(retention = "browser", owner = NULL,
+                                 api_origin = "https://api.example") {
   redirects <- paste0("https://app.example/callback/", c("a", "b"))
   clients <- lapply(c("a", "b"), function(id) {
     client <- oauth_client(
@@ -13,7 +14,7 @@ manager_test_fixture <- function(retention = "browser", owner = NULL) {
     )
     connection_test_client(
       client,
-      c(api = paste0("https://api.example/", id)),
+      c(api = paste0(api_origin, "/", id)),
       "read",
       paste("Site", id)
     )
@@ -68,6 +69,78 @@ manager_test_accept <- function(
   ids <- vapply(rows, function(row) row$stored$id, character(1))
   setdiff(ids, before)[[1L]]
 }
+
+test_that("retained connections support bodies and conditional application headers", {
+  skip_if_not_installed("webfakes")
+  app <- webfakes::new_app()
+  app$use(webfakes::mw_raw(type = "application/fhir+json"))
+  app$use(webfakes::mw_raw(type = "application/x-www-form-urlencoded"))
+  app$use(function(req, res) {
+    res$send_json(list(method = toupper(req$method), body = rawToChar(req$raw),
+      headers = list(authorization = req$get_header("Authorization"),
+        `if-match` = req$get_header("If-Match"), `content-type` = req$get_header("Content-Type"))),
+      auto_unbox = TRUE)
+  })
+  process <- webfakes::local_app_process(app)
+  f <- manager_test_fixture(api_origin = sub("/$", "", process$url()))
+  cookie <- manager_test_cookie(f)
+  requests <- list()
+  perform <- req_with_retry
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    requests[[length(requests) + 1L]] <<- req
+    httr2::resp_body_json(perform(req, ...))
+  }, .package = "shinyOAuth")
+  shiny::testServer(session = manager_test_session(cookie),
+    function(input, output, session) {
+      ctl <- connection_manager_controller(f$manager, session)
+      id <- manager_test_accept(ctl)
+      connection <- OAuthConnection$new(id, f$manager$clients$a, function() ctl$read(id))
+    }, {
+      for (method in c("POST", "PUT", "PATCH")) {
+        response <- connection$request("api", "Patient/example", method = method,
+          required_scopes = "write", configure = function(req) {
+            expect_null(req$headers$Authorization)
+            req |>
+              httr2::req_body_json(list(resourceType = "Patient", active = TRUE)) |>
+              httr2::req_headers(`Content-Type` = "application/fhir+json", `If-Match` = 'W/"7"')
+          })
+        expect_identical(response$method, method)
+        expect_identical(response$headers$authorization, "Bearer synthetic-access")
+        expect_identical(response$headers[["if-match"]], 'W/"7"')
+        expect_identical(response$headers[["content-type"]], "application/fhir+json")
+        expect_identical(jsonlite::fromJSON(response$body)$resourceType, "Patient")
+        expect_false(tail(requests, 1)[[1]]$options$followlocation)
+      }
+      response <- connection$request("api", "Patient/_search", method = "POST",
+        required_scopes = "read", configure = function(req) {
+          httr2::req_body_form(req, name = "Synthetic Patient", `_count` = 5)
+        })
+      expect_identical(response$method, "POST")
+      expect_identical(response$headers[["content-type"]], "application/x-www-form-urlencoded")
+      expect_match(response$body, "name=Synthetic(%20|[+])Patient")
+      expect_length(requests, 4L)
+      configure <- function(req) stop("body must not be configured before scope/destination checks")
+      expect_error(connection$request("api", "https://other.example/Patient",
+        configure = configure), "approved base")
+      expect_error(connection$request("api", required_scopes = "admin",
+        configure = configure), "Operation scopes")
+      for (configure in list(
+        function(req) httr2::req_url(req, "https://other.example/Patient"),
+        function(req) httr2::req_method(req, "POST"),
+        function(req) httr2::req_options(req, followlocation = TRUE),
+        function(req) httr2::req_auth_bearer_token(req, "other"),
+        function(req) httr2::req_headers(req, DPoP = "other"),
+        function(req) httr2::req_headers(req, Host = "other.example"),
+        function(req) httr2::req_body_form(req, access_token = "other"),
+        function(req) NULL,
+        function(req) stop("sensitive-body-detail")
+      )) {
+        expect_error(connection$request("api", configure = configure),
+          "^.*Connection resource request failed")
+      }
+      expect_length(requests, 4L)
+    })
+})
 
 test_that("manager configuration requires explicit retention and distinct registered routes", {
   f <- manager_test_fixture()

@@ -19,7 +19,9 @@ application wiring; a resource policy cannot prove an opaque token's audience.}
 }
 \value{
 An \link{OAuthConnection} with \verb{$id}, \verb{$is_usable()}, \verb{$summary()} and
-\verb{$request(resource_id, path = "", query = NULL, method = "GET", required_scopes = character())}. Requests return \link[httr2:httr2]{httr2} responses.
+\verb{$request(resource_id, path = "", query = NULL, method = "GET", required_scopes = character(), configure = NULL)}. Requests return \link[httr2:httr2]{httr2}
+responses. \code{configure} can add a body and application headers; see
+\link{OAuthConnection} for its contract.
 }
 \description{
 Combine one module's reactive token with its client and approved API addresses
