@@ -173,6 +173,45 @@ Public clients select `client-public`; SMART's confidential authentication-metho
 list does not require a `none` entry. The public registration regression and the
 profile fixture test that distinction without weakening confidential checks.
 
+## Recorded independent-client validation, 2026-09-12
+
+The complete Inferno matrix ran from clean checkout `9ee37c5`, with the current
+package installed for the Shiny app and mirai workers. Its sanitized proof is
+`.artifacts/coverage-20260912-175525/inferno-evidence.json`. The subsequent
+documentation commit does not change the tested implementation.
+
+| Gate | Result |
+| --- | --- |
+| Inferno application matrix | 32 two-site scenarios, 64 sessions and 320 applicable upstream tests passed; no skipped or unfinished tests. Both launch modes, public/Basic/RS384/ES384, GET/POST and sync/mirai. |
+| Retention and recorded exchanges in that matrix | All checks passed: original connection IDs survive navigation, A's explicit narrowed scope survives refresh, B retains search permission, every issued access token is used for matching Patient/Practitioner reads, and owner isolation/disconnect/logout prevent further requests. |
+| Long Inferno authorization POST | All 32 recorded POST bodies (two sites in 16 scenarios) exceeded 8 KiB; range 9,406–9,456 bytes. |
+| Simulator and evidence checks | 19 simulator examples and 44 evidence-contract assertions passed. Seven altered/partial copies of the completed report were rejected by the full-report validator. |
+| SMART fixture GET / POST | 32 scenarios and 576 assertions for GET; 32 scenarios and 640 assertions for POST. No failures or skips. |
+| Concurrent EHR launch fixture | 88 assertions passed; no skips. |
+| Ordinary OAuth GET / POST | 120 assertions for each method; no skips. |
+| Shared callbacks / refresh narrowing | 68 and 64 assertions respectively; no skips. |
+| Account retention, isolated final rerun | All 80 assertions passed; no skips. |
+| Independent Python conformance, corrected interpreter | All 379 assertions passed; no skips. |
+| Unmodified SMART sandbox | All 46 diagnostics passed; positive discovery remains rejected. |
+| Focused package and static checks | SMART client/launch, resource-binding and connection regressions passed, including the host-allowlist launch-path fix. R parsing, CI YAML parsing, local Markdown links and Git whitespace checks passed. |
+
+The **initial combined process exited unsuccessfully**: its selected Python
+interpreter lacked `cryptography`, and one account-browser login timed out.
+Selecting the existing interpreter with the required dependency resolved the
+conformance run. The account suite passed its isolated rerun without code changes;
+the timeout's cause was not established. The original combined report is retained
+unchanged rather than relabeled as a clean all-suite pass.
+`.artifacts/final-validation.json` links that report and the successful isolated
+reruns. No complete package-suite rerun or GitHub Actions execution is claimed
+for this follow-up; the focused regressions and local integration gates above ran.
+Installed-dependency build-version warnings and Chrome teardown EOF messages
+were separate from assertion failures.
+
+Inferno used the documented simulator corrections and bounded one-year ID-token
+lifetime policy. Its verifier remains independent upstream code. This materially
+advances P2 but does not establish unmodified vendor interoperability, server-side
+permission enforcement, Inferno form-post callbacks or refresh-token rotation.
+
 ## Recorded client/connection refactor validation, 2026-09-11
 
 The fixtures now configure optional `resource_bases`, `required_scopes` and

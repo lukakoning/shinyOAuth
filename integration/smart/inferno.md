@@ -118,6 +118,28 @@ context. Keep raw exports out of Git and ordinary CI artifacts. Publish only a
 sanitized result summary under the ignored `.artifacts/` tree, excluding tokens,
 codes, launch handles, secrets, private keys and patient/context payloads.
 
+## Recorded complete matrix, 2026-09-12
+
+The full driver passed against clean checkout `9ee37c5`: **32 two-site scenarios,
+64 Inferno sessions and 320 applicable upstream test passes**, with no missing,
+skipped or unfinished verifier tests. All browser-lifecycle and recorded-exchange
+checks passed. The run also passed 19 simulator examples and 44 evidence-contract
+assertions. Recorded POST bodies ranged from 9,406 to 9,456 bytes.
+
+The combined runner accepted the full Inferno report and recorded
+`independent_client_verification: "passed_modified_inferno_simulator"`.
+Its stricter `external_interoperability` field remains `not_established`.
+Seven deliberately altered in-memory copies of the completed report were rejected:
+missing/duplicate rows, a quick-run flag, a skipped test, a missing site, hidden
+simulator changes and a false unmodified-external claim.
+
+Sanitized proof is in
+`.artifacts/coverage-20260912-175525/inferno-evidence.json`; the final local
+validation summary is `.artifacts/final-validation.json`. The original combined
+report preserves an initial Python dependency failure and an account-login
+timeout. Their isolated reruns passed; see [the full validation record](coverage.md).
+The CI workflow is configured but was not executed on GitHub during this work.
+
 ## Coverage limits
 
 The reviewed client suite is described upstream as draft; the hosted test kit
