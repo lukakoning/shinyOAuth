@@ -272,10 +272,12 @@ requires `openid fhirUser`, signed ID-token validation and nonce binding.
 The server must advertise the corresponding capabilities and signing metadata.
 `smart_context(connection)$fhirUser` then exposes the validated reference.
 
-Fetching that resource with `smart_fhir_user(connection)` also needs the matching
-user-level read permission, for example `user/Practitioner.r` for a Practitioner
-reference. Add the appropriate scope to the client registration and requested
-scopes; identity scopes alone do not grant permission to read that resource.
+Fetching that resource with `smart_fhir_user(connection)` accepts the granted
+`openid fhirUser` identity scopes, as described by
+[SMART identity semantics](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html#scopes-for-requesting-identity-data).
+It also accepts a matching user-level read permission, or `patient/Patient.r`
+when the identity refers to the contextual Patient. The server enforces its own
+access rules. Absolute identity URLs need not use a REST-style resource path.
 A user reference outside the configured FHIR base is not fetched with this token.
 
 ## Start from an EHR instead

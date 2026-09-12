@@ -128,3 +128,42 @@ test_that("retained credentials preserve interpreted context without plaintext",
   opened <- connection_credentials_open(sealed, owner, id, record$client, key)
   expect_identical(opened$token@smart_context, record$token@smart_context)
 })
+
+test_that("Patient identity reads accept only the matching patient context", {
+  record <- smart_context_fixture()
+  record$token@id_token <- jose::jwt_encode_sig(jose::jwt_claim(sub = "example-user"),
+    openssl::rsa_keygen(2048))
+  record$token@id_token_validated <- TRUE
+  ref <- OAuthConnection$new("patient-identity", record$client, function() record)
+  local_mocked_bindings(perform_resource_req = function(token, url, follow_redirect, ...) {
+    expect_identical(follow_redirect, FALSE)
+    url
+  }, .package = "shinyOAuth")
+  for (reference in c("Patient/example-patient",
+      "https://ehr.example/fhir/R4/Patient/example-patient")) {
+    record$token@smart_context$fhirUser <- reference
+    expect_identical(smart_fhir_user(ref), smart_patient(ref))
+  }
+  record$token@smart_context$fhirUser <- "Patient/someone-else"
+  expect_error(smart_fhir_user(ref), "does not cover")
+  record$token@smart_context$fhirUser <- "Practitioner/example-patient"
+  expect_error(smart_fhir_user(ref), "does not cover")
+})
+
+test_that("identity scopes authorize the signed same-base fhirUser reference", {
+  record <- smart_identity_fixture()
+  ref <- OAuthConnection$new("signed-identity", record$client, function() record)
+  local_mocked_bindings(perform_resource_req = function(token, url, follow_redirect, ...) {
+    expect_identical(follow_redirect, FALSE)
+    url
+  }, .package = "shinyOAuth")
+  expect_identical(smart_fhir_user(ref), "https://ehr.example/fhir/R4/Practitioner/example")
+  record <- smart_identity_fixture("https://ehr.example/fhir/R4/identity/example")
+  ref <- OAuthConnection$new("signed-identity", record$client, function() record)
+  expect_identical(smart_fhir_user(ref), record$token@smart_context$fhirUser)
+  record <- smart_identity_fixture("https://other.example/identity/example")
+  ref <- OAuthConnection$new("signed-identity", record$client, function() record)
+  expect_error(smart_fhir_user(ref), "outside")
+  record$token@id_token_validated <- FALSE
+  expect_error(smart_fhir_user(ref), "validated")
+})

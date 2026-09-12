@@ -17,8 +17,9 @@
 #' @details
 #' `smart_patient()` fetches the contextual Patient only when the current grant
 #' covers `patient/Patient.r` or `user/Patient.r`. `smart_fhir_user()` fetches the
-#' identity reference only from a validated ID token, using a matching user-level
-#' read scope. Both stay inside the configured FHIR base and refuse redirects.
+#' identity reference only from a validated ID token. It accepts `openid fhirUser`,
+#' a matching user read scope, or patient read permission when the identity is
+#' the contextual Patient. Both stay inside the FHIR base and refuse redirects.
 #' A foreign `fhirUser` reference is reported as context but is never fetched
 #' with this connection's token. FHIR search, write, batch and pagination helpers
 #' are outside these two convenience methods.
@@ -117,7 +118,7 @@ smart_record_resource <- function(record, kind) {
   if (identical(kind, "patient")) {
     if (!is_valid_string(context$patient)) err_token("No SMART patient is in context")
     path <- paste0("Patient/", context$patient)
-    candidates <- c("patient/Patient.r", "user/Patient.r")
+    candidates <- list("patient/Patient.r", "user/Patient.r")
   } else if (identical(kind, "fhirUser")) {
     if (!is_valid_string(context$fhirUser) || !isTRUE(record$token@id_token_validated)) {
       err_token("No validated SMART fhirUser is available")
@@ -127,10 +128,18 @@ smart_record_resource <- function(record, kind) {
     base_path <- resource_binding_components(record$client@resource_bases[["fhir"]])$path
     relative <- substring(resource_binding_components(path)$path,
       nchar(paste0(sub("/$", "", base_path), "/")) + 1L)
-    if (!grepl("^[A-Z][A-Za-z0-9]*/[A-Za-z0-9.-]{1,64}$", relative)) {
-      err_token("SMART fhirUser must identify a FHIR resource instance")
+    candidates <- list()
+    if (identical(record$client@smart$identity, "fhirUser")) {
+      candidates <- list(c("openid", "fhirUser"))
     }
-    candidates <- paste0("user/", sub("/.*$", "", relative), ".r")
+    # Absolute FHIR references need not use a REST-style resource path.
+    if (grepl("^[A-Z][A-Za-z0-9]*/[A-Za-z0-9.-]{1,64}$", relative)) {
+      candidates <- c(candidates, list(paste0("user/", sub("/.*$", "", relative), ".r")))
+    }
+    if (is_valid_string(context$patient) &&
+        identical(relative, paste0("Patient/", context$patient))) {
+      candidates <- c(candidates, list("patient/Patient.r"))
+    }
   } else err_input("Unknown SMART resource helper")
   usable <- vapply(candidates, function(scope) {
     identical(client_scope_coverage(record$client, scope,
@@ -139,5 +148,5 @@ smart_record_resource <- function(record, kind) {
         record$token@granted_scopes)$status, "covered")
   }, logical(1))
   if (!any(usable)) err_token("SMART grant does not cover this resource read")
-  connection_record_request(record, "fhir", path, NULL, "GET", candidates[which(usable)[1L]])
+  connection_record_request(record, "fhir", path, NULL, "GET", candidates[[which(usable)[1L]]])
 }

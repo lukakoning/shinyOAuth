@@ -36,8 +36,9 @@ tables and logs. Raw token extensions remain available separately on tokens.
 \details{
 \code{smart_patient()} fetches the contextual Patient only when the current grant
 covers \code{patient/Patient.r} or \code{user/Patient.r}. \code{smart_fhir_user()} fetches the
-identity reference only from a validated ID token, using a matching user-level
-read scope. Both stay inside the configured FHIR base and refuse redirects.
+identity reference only from a validated ID token. It accepts \verb{openid fhirUser},
+a matching user read scope, or patient read permission when the identity is
+the contextual Patient. Both stay inside the FHIR base and refuse redirects.
 A foreign \code{fhirUser} reference is reported as context but is never fetched
 with this connection's token. FHIR search, write, batch and pagination helpers
 are outside these two convenience methods.

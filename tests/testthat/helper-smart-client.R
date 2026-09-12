@@ -21,3 +21,23 @@ smart_client_fixture <- function(launch = "standalone", oidc = FALSE) {
     discovery_url = "https://ehr.example/fhir/R4/.well-known/smart-configuration",
     metadata = metadata, endpoint_hosts = "ehr.example", allow_http_loopback = FALSE)
 }
+smart_identity_fixture <- function(reference = "Practitioner/example") {
+  client <- smart_client(smart_client_fixture(oidc = TRUE), "example",
+    "https://app.example/callback", scopes = character(), identity = "fhirUser")
+  key <- openssl::rsa_keygen(2048)
+  jwks <- list(keys = list(jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = FALSE)))
+  claims <- list(iss = "https://ehr.example", aud = "example", sub = "example-user",
+    nonce = "expected-nonce", iat = as.numeric(Sys.time()), exp = as.numeric(Sys.time()) + 300,
+    fhirUser = reference)
+  signed <- jose::jwt_encode_sig(do.call(jose::jwt_claim, claims), key)
+  testthat::local_mocked_bindings(fetch_jwks = function(...) jwks, .package = "shinyOAuth")
+  verified <- verify_token_set(client,
+    list(access_token = "example-access", token_type = "Bearer", expires_in = 300,
+      scope = "openid fhirUser", id_token = signed), nonce = "expected-nonce")
+  token <- OAuthToken(access_token = verified$access_token, refresh_token = "example-refresh",
+    token_type = "Bearer", expires_at = as.numeric(Sys.time()) + 300,
+    granted_scopes = verified$granted_scopes, granted_scopes_verified = TRUE,
+    id_token = signed, id_token_validated = verified$.id_token_validated)
+  list(client = client, token = smart_update_token_context(client, token),
+    key = key, jwks = jwks, claims = claims)
+}
