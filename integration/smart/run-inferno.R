@@ -18,7 +18,10 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
     checkout_revision = trimws(processx::run("git", c("rev-parse", "HEAD"))$stdout),
     checkout_dirty = nzchar(trimws(processx::run("git", c("status", "--porcelain"))$stdout)),
     package_version = as.character(utils::packageVersion("shinyOAuth")),
-    r_version = as.character(getRversion()), response_mode = "query", scenarios = list())
+    r_version = as.character(getRversion()), response_mode = "query",
+    limitations = list(form_post_callback = "not_verified_by_inferno",
+      server_permission_enforcement = "not_verified", refresh_token_rotation = "not_verified_by_inferno",
+      cross_vendor_portability = "not_established"), scenarios = list())
   on.exit(jsonlite::write_json(evidence, file.path(output, "evidence.json"),
     auto_unbox = TRUE, pretty = TRUE, null = "null"), add = TRUE)
   evidence$provenance <- inferno_build(root, output)
@@ -31,8 +34,9 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
   withr::local_envvar(CURL_CA_BUNDLE = stacks$a$ca)
   for (stack in stacks) shinyOAuth::smart_discover(stack$fhir_base)
   cases <- expand.grid(profile = c("public", "basic", "rs384", "es384"),
-    launch = c("standalone", "ehr"), stringsAsFactors = FALSE)
-  if ("--quick" %in% args) cases <- cases[1L, , drop = FALSE]
+    launch = c("standalone", "ehr"), async = c(FALSE, TRUE),
+    authorization_method = c("GET", "POST"), stringsAsFactors = FALSE)
+  if ("--quick" %in% args) cases <- cases[cases$profile == "public" & cases$launch == "standalone", , drop = FALSE]
   run_case <- function(row, index) {
     case_dir <- file.path(output, paste0("case-", index))
     dir.create(case_dir)
@@ -40,7 +44,8 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
     algorithm <- if (row$profile == "es384") "ES384" else "RS384"
     registrations <- lapply(names(stacks), function(site) inferno_registration(stacks[[site]], style, algorithm, site))
     names(registrations) <- names(stacks)
-    app <- inferno_start_app(root, case_dir, registrations, row$launch)
+    app <- inferno_start_app(root, case_dir, registrations, row$launch,
+      async = row$async, authorization_method = row$authorization_method)
     sessions <- lapply(names(stacks), function(site)
       inferno_begin_session(stacks[[site]], registrations[[site]], app$origin, site, row$launch))
     names(sessions) <- names(stacks)
@@ -105,12 +110,12 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
     verification <- lapply(names(stacks), function(site) {
       verified <- inferno_finish_session(stacks[[site]], sessions[[site]])
       verified$driver_exchange_checks <- inferno_exchange_summary(stacks[[site]], sessions[[site]],
-        registrations[[site]], row$launch)
+        registrations[[site]], row$launch, row$authorization_method)
       verified
     })
     names(verification) <- names(stacks)
     list(profile = row$profile, launch = row$launch, browser = chrome$version,
-      authorization_method = "GET", async = FALSE, response_mode = "query",
+      authorization_method = row$authorization_method, async = row$async, response_mode = "query",
       app_flow = "passed", patient_read = TRUE, validated_fhir_user = TRUE, refresh_and_read = TRUE,
       two_sites_retained = TRUE, browser_owner_isolation = TRUE, narrowing_retained = TRUE,
       independent_refresh_and_disconnect = TRUE, logout = TRUE,
@@ -119,14 +124,16 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
   }
   for (index in seq_len(nrow(cases))) {
     row <- cases[index, ]
-    message("Inferno app flow: ", row$profile, " / ", row$launch)
+    message("Inferno app flow: ", row$profile, " / ", row$launch, " / ",
+      row$authorization_method, " / ", if (row$async) "mirai" else "sync")
     evidence$scenarios[[index]] <- tryCatch(run_case(row, index), error = function(e) {
       # Browser/HTTP errors are intentionally coarse; raw exchange details remain
       # in the owned Inferno database, which is removed on exit.
       message("Scenario failed: ", conditionMessage(e))
       writeLines(paste(deparse(conditionCall(e)), collapse = "\n"),
         file.path(output, paste0("case-", index), "error-call.txt"))
-      list(profile = row$profile, launch = row$launch, status = "failed")
+      list(profile = row$profile, launch = row$launch, authorization_method = row$authorization_method,
+        async = row$async, status = "failed")
     })
   }
   if (length(evidence$scenarios) != nrow(cases) || !all(vapply(evidence$scenarios,

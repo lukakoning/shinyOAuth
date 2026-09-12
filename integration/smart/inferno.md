@@ -49,17 +49,21 @@ and expiry remain validated. See the
 | P5 | EHR launch for each supported App Launch client profile | Inferno initiates the real app's registered launch route. Browser evidence proves `iss`/`launch` entry and the correct context; finish Inferno's request-verification tests too. |
 | Future explicit backend-services work | Backend Services Confidential Asymmetric Client | Add a separate client-credentials scenario only when that SMART profile is implemented. It cannot substitute for the App Launch RS384 run. |
 
-The driver runs eight scenarios: public, HTTP Basic, RS384 and ES384, each with
-standalone and Inferno-initiated EHR launch. Each uses a fresh Shiny process,
+The complete driver runs 32 scenarios: public, HTTP Basic, RS384 and ES384,
+standalone and Inferno-initiated EHR launch, synchronous and real mirai token
+transport, and outgoing GET and POST authorization. Each uses a fresh Shiny process,
 browser context and two Inferno test sessions on separate deployments. The app
 authorizes both sites, reads each supplied Patient and distinct validated
 Practitioner, and retains the same connection IDs in a new Shiny session.
 It narrows site A from `.rs` to `.r`, blocks subsequent searches and widening,
 refreshes both grants independently, disconnects B while A still works, and
-logs out. A separate browser context cannot access either connection. Query callbacks and
-synchronous token transport are covered in this initial matrix.
+logs out. A separate browser context cannot access either connection. POST runs
+request additional granular scopes and require the recorded authorization body
+to exceed 8 KiB for both sites. This tests transport of long requests, not
+fulfillment or server enforcement of the granular permissions.
 
-`--quick` runs only public standalone and records `complete_matrix: false`.
+`--quick` runs the four public standalone method/transport combinations and
+records `complete_matrix: false`.
 Install the current checkout before either command; the child app and mirai
 workers use the selected R library. Chrome, Python 3, Docker Linux containers
 and Compose v2 are required in addition to the runner's R dependencies.
@@ -129,6 +133,10 @@ validation. Basic registrations use random unreserved credentials because the
 pinned upstream Basic parser does not form-decode credential components. It
 does not verify interoperability for secrets containing reserved characters.
 Those cases retain their independent strict-AS coverage.
+The upstream simulator always returns a query callback; `form_post` callback
+interoperability is unverified by this gate. Outgoing authorization POST and
+incoming form-post callbacks are separate capabilities. The existing local
+SMART matrix continues to cover both callback transports.
 
 The two deployments use the same independent upstream implementation, with
 separate issuers, registrations, databases and synthetic data. This verifies
@@ -146,6 +154,10 @@ connections and the wider transport matrix were separate extensions to that run.
 The subsequent two-site run passed all eight scenarios with 80 upstream tests,
 19 simulator examples and 44 evidence-contract assertions. Every scenario also
 passed the additional recorded-exchange, narrowing and browser-lifecycle checks.
+The focused transport extension passed all four public standalone GET/POST and
+sync/mirai combinations, including both recorded POST bodies exceeding 8 KiB.
+The complete cross-profile transport matrix is the 32-scenario command above;
+focused results do not satisfy it.
 
 Keep our own SMART scope/context tests, ID-token validation, callback defenses,
 refresh continuity and resource-binding checks, plus the P3/P5 browser ownership

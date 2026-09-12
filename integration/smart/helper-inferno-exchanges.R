@@ -17,6 +17,9 @@ inferno_exchange_summary <- function(stack, session, registration, launch, autho
   tokens <- Filter(function(request) identical(path(request), paste0(prefix, "/auth/token")), requests)
   access <- Filter(function(request) startsWith(path(request), paste0(fhir_path, "/")), requests)
   stopifnot(length(auth) == 1L, toupper(auth[[1L]]$verb) == authorization_method)
+  authorization_body_bytes <- if (authorization_method == "POST")
+    nchar(auth[[1L]]$request_body, type = "bytes") else 0L
+  if (authorization_method == "POST") stopifnot(authorization_body_bytes > 8192L)
   params <- lapply(tokens, function(request) shiny::parseQueryString(request$request_body))
   bodies <- lapply(tokens, function(request) jsonlite::fromJSON(request$response_body, simplifyVector = FALSE))
   narrow <- identical(registration$patient, "patient-a")
@@ -69,7 +72,8 @@ inferno_exchange_summary <- function(stack, session, registration, launch, autho
     following <- Filter(function(request) request$index > token_index[[index]] && request$index < end, access)
     stopifnot(all(c(patient_path, user_path) %in% vapply(following, path, character(1))))
   }
-  list(authorization_requests = length(auth), code_exchanges = 1L, refresh_requests = length(tokens) - 1L,
+  list(authorization_requests = length(auth), authorization_body_bytes = authorization_body_bytes,
+    code_exchanges = 1L, refresh_requests = length(tokens) - 1L,
     patient_reads = reads, fhir_user_reads = reads, search_requests = searches,
     every_issued_token_used_for_patient_and_user = TRUE,
     explicit_narrowing_preserved = narrow, untouched_grant_kept_search = !narrow)

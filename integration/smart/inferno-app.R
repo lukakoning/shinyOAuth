@@ -10,13 +10,15 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
     on.exit(mirai::daemons(0L), add = TRUE)
   }
   sites <- names(registrations)
+  extra_scopes <- if (authorization_method == "POST") paste0(
+    "patient/Observation.rs?code=https://example.test/synthetic-codes|observation-", seq_len(32)) else character()
   callbacks <- paste0(origin, "/callback/", sites)
   clients <- lapply(sites, function(site) {
     registration <- registrations[[site]]
     args <- list(discovery = shinyOAuth::smart_discover(registration$fhir_base),
       client_id = registration$client_id, redirect_uri = paste0(origin, "/callback/", site),
       scopes = c(if (launch == "standalone") "launch/patient", "patient/Patient.rs",
-        "user/Practitioner.r", "offline_access"),
+        "user/Practitioner.r", "offline_access", extra_scopes),
       required_scopes = c("patient/Patient.r", "user/Practitioner.r"),
       launch = launch, identity = "fhirUser", label = paste("Site", site),
       token_auth_style = registration$style, authorization_method = authorization_method,
