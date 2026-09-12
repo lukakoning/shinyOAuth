@@ -127,6 +127,7 @@ retention_browser_setup <- function(
   scope_narrowing = FALSE,
   app_args = list(),
   https = FALSE,
+  https_providers = FALSE,
   .env = parent.frame()
 ) {
   port <- httpuv::randomPort()
@@ -205,10 +206,22 @@ retention_browser_setup <- function(
   if (shared_issuer) {
     bases <- list(a = bases[[1L]], b = bases[[1L]])
   }
+  if (https_providers) {
+    stopifnot(https, !shared_issuer)
+    source(file.path(retention_root, "integration/smart/helper-inferno.R"), local = TRUE)
+    bases <- lapply(providers, function(provider) {
+      upstream <- as.integer(httr2::url_parse(provider$url())$port)
+      inferno_tls(retention_root, upstream, .env = .env)$origin
+    })
+    withr::local_envvar(CURL_CA_BUNDLE = file.path(retention_root,
+      "integration/keycloak/tls/ca-cert.pem"), .local_envir = .env)
+  }
   app_file <- normalizePath(file.path(
     retention_root,
     app_script
   ))
+  log_dir <- file.path(retention_root, "integration/connections/.artifacts")
+  dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
   process <- callr::r_bg(
     function(
       app_file,
@@ -249,8 +262,8 @@ retention_browser_setup <- function(
     ),
     libpath = .libPaths(),
     supervise = TRUE,
-    stdout = tempfile(),
-    stderr = tempfile()
+    stdout = tempfile("private-app-", tmpdir = log_dir),
+    stderr = tempfile("private-app-", tmpdir = log_dir)
   )
   withr::defer(process$kill(), envir = .env)
   deadline <- Sys.time() + 30

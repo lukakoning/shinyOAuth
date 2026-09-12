@@ -1,7 +1,7 @@
 # Browser app using exported APIs for both SMART launch modes and all supported
 # registration types. Synthetic identity/context never enters general summaries.
 smart_profile_app <- function(origin, providers, async = FALSE, response_mode = "query", registration, launch,
-  authorization_method = "GET", extra_scopes = character()) {
+  authorization_method = "GET", extra_scopes = character(), listen_port = NULL) {
   if (async) {
     mirai::daemons(2L)
     on.exit(mirai::daemons(0L), add = TRUE)
@@ -87,7 +87,14 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
       connections = health$connections(), errors = health$errors()), auto_unbox = TRUE, null = "null"))
   }
   routes <- if (launch == "ehr") list(shinyOAuth::smart_launch_route("/launch", c("a", "b"))) else list()
-  ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager, launch_routes = routes)
+  ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager, launch_routes = routes,
+    request_uri_resolver = function(req) {
+      url <- httr2::url_parse(origin)
+      stopifnot(identical(req$HTTP_HOST, paste0(url$hostname, ":", url$port)))
+      paste0(origin, req$PATH_INFO,
+        if (nzchar(req$QUERY_STRING)) paste0("?", req$QUERY_STRING))
+    })
   shiny::runApp(shiny::shinyApp(ui, server, uiPattern = ".*"), host = "127.0.0.1",
-    port = as.integer(httr2::url_parse(origin)$port), launch.browser = FALSE, quiet = TRUE)
+    port = if (is.null(listen_port)) as.integer(httr2::url_parse(origin)$port) else listen_port,
+    launch.browser = FALSE, quiet = TRUE)
 }

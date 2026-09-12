@@ -1,5 +1,8 @@
 # Coverage of the implemented SMART and connection roadmap
 
+Additional lifecycle and deployment gates are described in
+[extended coverage](extended-coverage.md).
+
 Install the current checkout, then run the full coverage entry point from the
 repository root:
 

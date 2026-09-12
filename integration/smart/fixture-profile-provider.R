@@ -1,7 +1,7 @@
 # Synthetic protocol fixture for supported SMART registrations and launch modes.
 # Keys and registrations are temporary. This does not replace external testing.
 smart_profile_provider <- function(site, callback, registration, launch,
-  authorization_method = "GET", extra_scopes = character()) {
+  authorization_method = "GET", extra_scopes = character(), https = FALSE) {
   state <- new.env(parent = emptyenv())
   for (name in c("launches", "codes", "access", "refresh", "assertions")) state[[name]] <- new.env(parent = emptyenv())
   state$metrics <- list(exchanges = 0L, refreshes = 0L, assertions = 0L,
@@ -23,7 +23,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
   initial_scopes <- c(if (launch == "ehr") "launch" else "launch/patient",
     "patient/Patient.rs", "user/Practitioner.r", "offline_access", "openid", "fhirUser", extra_scopes)
   random <- function() unclass(as.character(openssl::sha256(openssl::rand_bytes(32))))
-  base <- function(req) paste0("http://", req$get_header("Host"))
+  base <- function(req) paste0(if (https) "https://" else "http://", req$get_header("Host"))
   app <- webfakes::new_app()
   app$use(webfakes::mw_urlencoded())
   app$use(function(req, res) {

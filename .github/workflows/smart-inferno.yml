@@ -52,15 +52,20 @@ jobs:
             any::mirai
             any::promises
             any::processx
+            any::webfakes
       - name: Install this checkout for the app and mirai workers
         run: R CMD INSTALL .
       - name: Verify SMART clients and retained connections with pinned Inferno
         run: Rscript integration/smart/run-inferno.R
+      - name: Verify cross-site HTTPS SMART callbacks
+        run: Rscript integration/smart/run-profiles.R --cross-site
       - name: Upload only sanitized client-verification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: smart-inferno-evidence
-          path: integration/smart/.artifacts/inferno-*/evidence.json
+          path: |
+            integration/smart/.artifacts/inferno-*/evidence.json
+            integration/smart/.artifacts/profiles-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error

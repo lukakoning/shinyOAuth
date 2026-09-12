@@ -7,9 +7,10 @@ for (index in seq_len(nrow(cases))) {
     provider_registration <- registration
     provider_registration$private_pem <- NULL
     provider_factory <- function(site, callback) smart_profile_provider(site, callback, provider_registration, row$launch,
-      authorization_method, extra_scopes)
+      authorization_method, extra_scopes, https = cross_site)
     f <- retention_browser_setup(row$async, row$response_mode, provider_factory = provider_factory,
       app_script = "integration/smart/fixture-profile-app.R", app_function = "smart_profile_app",
+      https = cross_site, https_providers = cross_site,
       app_args = list(registration = registration, launch = row$launch,
         authorization_method = authorization_method, extra_scopes = extra_scopes))
     retention_evidence_env$chrome <- f$chrome$Browser$getVersion()$product
@@ -21,6 +22,16 @@ for (index in seq_len(nrow(cases))) {
         retention_browser_click(browser, paste0("connect_", site))
       retention_browser_wait(browser, function() identical(retention_browser_value(browser,
         "document.querySelector('#provider')?.textContent"), paste("Site", site)), "SMART authorization")
+      if (cross_site) {
+        testthat::expect_identical(retention_browser_value(browser, "location.origin"), f$bases[[site]])
+        testthat::expect_match(f$origin, "^https://127[.]0[.]0[.]1:")
+        testthat::expect_match(f$bases[[site]], "^https://localhost:")
+        cookies <- browser$Network$getCookies(urls = list(f$origin))$cookies
+        testthat::expect_true(length(cookies) > 0L)
+        testthat::expect_true(all(vapply(cookies, function(cookie) isTRUE(cookie$secure), logical(1))))
+        testthat::expect_true(any(vapply(cookies, function(cookie)
+          identical(cookie$sameSite, "Lax") && isTRUE(cookie$httpOnly), logical(1))))
+      }
       retention_browser_click(browser, "approve")
       retention_browser_wait(browser, function() {
         value <- retention_browser_snapshot(browser)
