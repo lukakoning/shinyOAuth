@@ -106,6 +106,33 @@ test_that("manager configuration requires explicit retention and distinct regist
   )
 })
 
+test_that("every client declares all canonical manager callback routes", {
+  clients <- manager_test_fixture()$manager$clients
+  for (name in names(clients)) {
+    incomplete <- clients
+    incomplete[[name]]@authorization_server_redirect_uris <- c(
+      clients[[name]]@redirect_uri,
+      "https://app.example/unrelated"
+    )
+    failure <- tryCatch(
+      oauth_connections(incomplete, "https://app.example"),
+      error = identity
+    )
+    expect_s3_class(failure, "shinyOAuth_config_error")
+  }
+  for (name in names(clients)) {
+    clients[[name]]@authorization_server_redirect_uris <- c(
+      "https://APP.EXAMPLE:443/callback/a",
+      "https://APP.EXAMPLE:443/callback/b",
+      "https://app.example/other-module"
+    )
+  }
+  expect_s3_class(
+    oauth_connections(clients, "https://app.example"),
+    "OAuthConnections"
+  )
+})
+
 test_that("browser UI establishes and clears cookies only at the ordinary HTTP boundary", {
   f <- manager_test_fixture()
   response <- f$ui(manager_test_request())

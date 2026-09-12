@@ -31,7 +31,9 @@ HTTP loopback exception. Session-only development also permits loopback HTTP.}
 \item{callback_policy}{\code{"distinct_routes"} (default) gives each client its own
 registered callback route. With several clients, configure every client with
 \code{authorization_server_mode = "multi_redirect_uri"} and the complete set of
-routes in \code{authorization_server_redirect_uris}.
+routes in \code{authorization_server_redirect_uris}. Every client's declared set
+must include all manager callback routes; additional application routes are
+permitted. Routes are compared by canonical origin and path.
 \code{"issuer"} allows shared routes for distinct authorization-server issuers.
 \code{"shared_routes"} additionally supports several clients or registrations at
 one issuer through a protected pending-state index. Both opt-in policies

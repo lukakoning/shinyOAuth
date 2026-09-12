@@ -117,7 +117,9 @@ clients <- list(a = client_a, b = client_b)
 
 The default callback policy gives each client a distinct route. Supply the
 **complete callback vector to each client**, even though each uses its own
-`redirect_uri`. This lets the package check the routing configuration. Shared
+`redirect_uri`. The manager verifies that each client's declared set includes
+all of its callback routes, comparing canonical origins and paths. Additional
+routes used elsewhere in the application may also be included. Shared
 callback routes are an advanced alternative documented in `?oauth_connections`.
 
 ### 2. Keep authorizations when the browser returns

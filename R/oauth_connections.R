@@ -16,7 +16,9 @@
 #' @param callback_policy `"distinct_routes"` (default) gives each client its own
 #'   registered callback route. With several clients, configure every client with
 #'   `authorization_server_mode = "multi_redirect_uri"` and the complete set of
-#'   routes in `authorization_server_redirect_uris`.
+#'   routes in `authorization_server_redirect_uris`. Every client's declared set
+#'   must include all manager callback routes; additional application routes are
+#'   permitted. Routes are compared by canonical origin and path.
 #'   `"issuer"` allows shared routes for distinct authorization-server issuers.
 #'   `"shared_routes"` additionally supports several clients or registrations at
 #'   one issuer through a protected pending-state index. Both opt-in policies
@@ -156,17 +158,32 @@ oauth_connections <- function(
     }
     oauth_callback_route(client@redirect_uri)
   })
-  if (
-    identical(callback_policy, "distinct_routes") &&
-      anyDuplicated(vapply(
-        routes,
-        function(route) {
-          as.character(jsonlite::toJSON(route, auto_unbox = TRUE))
-        },
-        character(1)
-      ))
-  ) {
-    err_config("Each client requires a distinct callback route")
+  if (identical(callback_policy, "distinct_routes")) {
+    route_key <- function(route) {
+      as.character(jsonlite::toJSON(route, auto_unbox = TRUE))
+    }
+    route_keys <- vapply(routes, route_key, character(1))
+    if (anyDuplicated(route_keys)) {
+      err_config("Each client requires a distinct callback route")
+    }
+    if (length(clients) > 1L) {
+      for (client in clients) {
+        declared <- vapply(
+          lapply(
+            client@authorization_server_redirect_uris,
+            oauth_callback_route
+          ),
+          route_key,
+          character(1)
+        )
+        if (!all(route_keys %in% declared)) {
+          err_config(paste0(
+            "Every client must include all manager callback routes in ",
+            "authorization_server_redirect_uris"
+          ))
+        }
+      }
+    }
   }
   if (callback_policy != "distinct_routes") {
     oauth_callback_registry(
