@@ -137,7 +137,7 @@ discovery requirement. Neither gate treats diagnostic connectivity as app proof.
 | SMART discovery | Strictly accepted by corrected local Inferno; unmodified Launcher/hosted Inferno blockers remain | Compatible unmodified deployment and positive strict discovery. |
 | Standalone, Patient/Practitioner and retained two-site connections | Implemented with actual Shiny actions and Inferno verification | Unmodified server/vendor qualification; the two Inferno instances use the same implementation. |
 | EHR entry for public/symmetric/RS384/ES384 registrations | Implemented using Inferno-generated launch URLs and per-registration verification | Unmodified vendor EHR validation; account/session-only EHR entry remains outside current support. |
-| SMART refresh narrowing | Inferno responses and retained client scope policy checked | Independent server permission enforcement and refresh-token rotation remain unverified by Inferno. |
+| SMART refresh narrowing | Inferno responses and retained client scope policy checked; Microsoft FHIR gate independently enforces Patient read/search permissions | Inferno does not enforce permissions or rotate refresh tokens; vendor and granular-scope qualification remain separate. |
 | Long authorization POST | Inferno GET/POST matrix implemented, including recorded bodies over 8 KiB | Unmodified vendor qualification and granular-permission fulfillment. |
 | Form-post callbacks | Existing local SMART browser matrix | The pinned Inferno simulator only returns query callbacks. |
 | P6 shared issuer/resource topology | Generic strict fixture coverage | Separately configured external registrations and resource destinations. |

@@ -1,4 +1,4 @@
-name: Independent SMART client verification
+name: SMART interoperability and lifecycle coverage
 
 on:
   workflow_dispatch:
@@ -10,6 +10,7 @@ on:
       - NAMESPACE
       - integration/smart/**
       - integration/connections/helper-browser.R
+      - integration/connections/fixture-account-app.R
       - integration/connections/tls-proxy.py
       - integration/keycloak/tls/**
       - .github/workflows/smart-inferno.yml
@@ -22,6 +23,7 @@ on:
       - NAMESPACE
       - integration/smart/**
       - integration/connections/helper-browser.R
+      - integration/connections/fixture-account-app.R
       - integration/connections/tls-proxy.py
       - integration/keycloak/tls/**
       - .github/workflows/smart-inferno.yml
@@ -71,6 +73,8 @@ jobs:
         run: Rscript integration/smart/run-lifecycle.R interrupted
       - name: Verify reduced and declined SMART consent
         run: Rscript integration/smart/run-lifecycle.R consent
+      - name: Verify SMART permissions against Microsoft FHIR Server
+        run: Rscript integration/smart/run-permissions.R
       - name: Upload only sanitized client-verification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -80,5 +84,6 @@ jobs:
             integration/smart/.artifacts/inferno-*/evidence.json
             integration/smart/.artifacts/profiles-*/evidence.json
             integration/smart/.artifacts/lifecycle-*/evidence.json
+            integration/smart/.artifacts/permissions-*/evidence.json
           include-hidden-files: true
           if-no-files-found: error

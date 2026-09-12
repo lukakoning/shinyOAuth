@@ -1,0 +1,43 @@
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest@sha256:7c29dfbac885ad7519e219c7fe4aee0e67283e21a10e9c252d13b0fbde1866f8
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${SMART_PERMISSION_SQL_PASSWORD:?runner generates password}
+    healthcheck:
+      test: [CMD-SHELL, '/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b -o /dev/null']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  auth:
+    image: shinyoauth-permission-fixture:1
+    volumes:
+      - ${SMART_PERMISSION_RUNTIME:?runner supplies runtime}:/runtime
+    ports:
+      - "127.0.0.1:${SMART_PERMISSION_PORT:?runner supplies port}:8443"
+  fhir:
+    image: mcr.microsoft.com/healthcareapis/r4-fhir-server:5.0.58@sha256:8440fe711e6f98c633863aacd4a79711e323c3a0d559633c70394d1da569ad4a
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      DataStore: SqlServer
+      SqlServer__ConnectionString: "Server=tcp:sql,1433;Initial Catalog=FHIR;User ID=sa;Password=${SMART_PERMISSION_SQL_PASSWORD};TrustServerCertificate=true"
+      SqlServer__AllowDatabaseCreation: "true"
+      SqlServer__Initialize: "true"
+      SqlServer__SchemaOptions__AutomaticUpdatesEnabled: "true"
+      FhirServer__Security__Enabled: "true"
+      FhirServer__Security__EnableAadSmartOnFhirProxy: "false"
+      FhirServer__Security__Authentication__Authority: https://auth:8443/oidc
+      FhirServer__Security__Authentication__Audience: ${SMART_PERMISSION_ORIGIN}/fhir
+      FhirServer__Security__Authorization__Enabled: "true"
+      FhirServer__Security__Authorization__ErrorOnMissingFhirUserClaim: "true"
+      SSL_CERT_FILE: /runtime/ca.pem
+      Logging__LogLevel__Default: Warning
+      Logging__LogLevel__Microsoft.Health: Warning
+    volumes:
+      - ${SMART_PERMISSION_RUNTIME}:/runtime:ro
+    depends_on:
+      sql:
+        condition: service_healthy
+      auth:
+        condition: service_started

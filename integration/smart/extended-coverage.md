@@ -115,3 +115,26 @@ the completed error outcome, not merely the new Shiny session's initial output.
 This is synthetic-provider application behavior coverage.
 
 Validation on 2026-09-13: eight scenarios, 48 passing assertions, no skips.
+
+## 7. Independent FHIR permission enforcement
+
+`Rscript integration/smart/run-permissions.R`
+
+The [pinned Microsoft FHIR server gate](permissions/README.md) uses an unmodified
+FHIR server and actual SQL storage behind our disposable SMART authorization
+fixture. Two public standalone browser scenarios cover sync/mirai token
+transport, authorized reads, patient-filtered search, denial of another patient's
+record and an ungranted resource type, server-denied search after refresh scope
+narrowing, and retained reads. The test requires six successful resource requests
+and three independently enforced denials per scenario, with exact token generation
+checks. This closes the resource-enforcement gap for the selected scenarios;
+vendor authorization-server interoperability remains a separate requirement.
+
+Validation on 2026-09-13: both browser scenarios passed, with 18 checked resource
+exchanges in total against Microsoft FHIR Server 5.0.58.
+
+Shared-harness regressions also passed: the original Inferno quick matrix (four
+two-site scenarios, 40 upstream checks), its 19 simulator examples and 44 evidence
+assertions; the original SMART profile quick matrix (four scenarios, 72
+assertions); and the original account-login matrix (80 assertions). The full
+combined command and remote GitHub workflow were not rerun for this follow-up.
