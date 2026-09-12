@@ -25,9 +25,19 @@
 #' The initial implementation supports top-level GET entry with browser retention
 #' in one R process. Account/session-only retention and iframe deployments are
 #' not supported for EHR entry yet. The ordinary standalone manager remains usable
-#' with its existing retention choices. Up to 1,000 unconsumed launch records are
-#' retained per manager. Raw query size is limited to 8 KiB, launch handles to
+#' with its existing retention choices. Up to eight unconsumed launch records are
+#' retained per browser owner across all of a manager's launch routes, with a
+#' total limit of 1,000 per manager. Further entries are rejected without evicting
+#' existing tickets. Consuming or expiring a ticket releases its capacity.
+#' Raw query size is limited to 8 KiB, launch handles to
 #' 2 KiB, and the only allowed initial parameters are `iss` and `launch`.
+#'
+#' Apply ingress rate limits to both launch entry and ordinary pages that create
+#' browser owners. The owner quota isolates an existing browser's pending work;
+#' it is not a per-person or per-network-client rate limit, since unauthenticated
+#' callers can obtain additional browser owners. Configure these controls at a
+#' trusted reverse proxy using its verified client address, not arbitrary inbound
+#' forwarded headers. Size the owner registry for the admitted traffic window.
 #'
 #' The HTTP response uses no-store and no-referrer policy and redirects to an
 #' opaque, owner-bound continuation. Its script removes that ticket from browser
@@ -174,6 +184,12 @@ smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
       ids <- Filter(function(id) identical(manager$clients[[id]]@smart$fhir_base, fields$iss),
         route$clients)
       if (length(ids) != 1L) err_input("SMART launch FHIR base is not approved")
+      # Apply one owner quota across all routes before allocating a ticket.
+      # Reject new work without replacing another pending tab's continuation.
+      if (!is.null(owner) && sum(vapply(as.list(manager$state$launches),
+          function(entry) identical(entry$owner, owner$id), logical(1))) >= 8L) {
+        err_token("SMART launch owner capacity reached")
+      }
       if (length(manager$state$launches) >= 1000L) err_token("SMART launch capacity reached")
       headers <- list("Cache-Control" = "no-store", "Referrer-Policy" = "no-referrer")
       if (is.null(owner)) {

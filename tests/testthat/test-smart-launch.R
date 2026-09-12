@@ -191,3 +191,57 @@ test_that("the public manager requires a fresh EHR entry before starting browser
       expect_length(f$manager$state$launches, 0L)
     })
 })
+
+test_that("EHR admission limits each owner across routes without displacing pending work", {
+  f <- smart_launch_test_fixture()
+  f$ui <- oauth_connections_ui(shiny::fluidPage("Synthetic SMART app"), "health", f$manager,
+    launch_routes = list(smart_launch_route("/launch", "hospital"),
+      smart_launch_route("/another-launch", "hospital")))
+  cookie <- manager_test_cookie(f)
+  first <- smart_launch_test_entry(f, cookie = cookie)
+  continuation_id <- sub("^.*=", "", first$headers$Location)
+  expect_identical(first$status, 303L)
+  for (i in seq_len(6L)) {
+    expect_identical(smart_launch_test_entry(f, cookie = cookie)$status, 303L)
+  }
+  query <- paste0("iss=", utils::URLencode(f$manager$clients$hospital@smart$fhir_base,
+    reserved = TRUE), "&launch=synthetic-launch")
+  alternate <- f$ui(manager_test_request(cookie, path = "/another-launch", query = query))
+  expect_identical(alternate$status, 303L)
+  pending <- as.list(f$manager$state$launches)
+  expect_length(pending, 8L)
+
+  for (path in c("/launch", "/another-launch")) {
+    response <- f$ui(manager_test_request(cookie, path = path, query = query))
+    expect_identical(response$status, 400L)
+    expect_null(response$headers[["Set-Cookie"]])
+    expect_identical(as.list(f$manager$state$launches), pending)
+  }
+  other_cookie <- manager_test_cookie(f)
+  expect_identical(smart_launch_test_entry(f, cookie = other_cookie)$status, 303L)
+  expect_length(f$manager$state$launches, 9L)
+
+  shiny::testServer(session = manager_test_session(cookie),
+    function(input, output, session) ctl <- connection_manager_controller(f$manager, session), {
+      expect_identical(ctl$resume_launch(continuation_id), "hospital")
+    })
+  expect_identical(smart_launch_test_entry(f, cookie = cookie)$status, 303L)
+  expect_length(f$manager$state$launches, 9L)
+})
+
+test_that("expired EHR handoffs release owner admission capacity", {
+  clock <- new.env(parent = emptyenv())
+  clock$now <- as.numeric(Sys.time())
+  local_mocked_bindings(Sys.time = function() {
+    as.POSIXct(clock$now, origin = "1970-01-01", tz = "UTC")
+  }, .package = "base")
+  f <- smart_launch_test_fixture()
+  cookie <- manager_test_cookie(f)
+  for (i in seq_len(8L)) {
+    expect_identical(smart_launch_test_entry(f, cookie = cookie)$status, 303L)
+  }
+  expect_identical(smart_launch_test_entry(f, cookie = cookie)$status, 400L)
+  clock$now <- clock$now + 121
+  expect_identical(smart_launch_test_entry(f, cookie = cookie)$status, 303L)
+  expect_length(f$manager$state$launches, 1L)
+})

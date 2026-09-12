@@ -339,6 +339,15 @@ fresh launch transaction. Calling `health$connect("hospital")` for an EHR client
 reports `fresh_ehr_launch_required`; reconnect by opening the app from the EHR.
 Keep launch handles out of shared client configuration and access-log queries.
 
+Each browser owner can hold up to eight unconsumed launch tickets across all
+manager routes; the manager retains at most 1,000 in total. Extra entries are
+rejected without removing existing tickets. Consumption or expiry frees space.
+Protect both launch entry and owner-creating application pages with ingress
+rate limits at a trusted reverse proxy. Browser cookies do not identify a person
+or network client, and callers can obtain additional owners, so these quotas
+do not replace those deployment controls. Use the proxy's verified client
+address for rate limits and size the owner registry for the admitted traffic.
+
 The current EHR entry implementation requires **top-level browser navigation,
 browser retention with a Lax owner cookie, and one R process**. Embedded iframe
 launch is not supported. A route can allow multiple named clients with distinct
