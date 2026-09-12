@@ -95,6 +95,26 @@ test_that("SMART scope and identity policies cannot be inferred or weakened", {
     none@required_scopes), "configured FHIR base")
 })
 
+test_that("SMART online refresh permission requires EHR launch", {
+  site <- smart_client_fixture()
+  site$metadata$capabilities <- c(site$metadata$capabilities,
+    list("permission-online", "permission-offline"))
+  create <- function(launch, scope = "online_access") smart_client(site, "example",
+    "https://app.example/callback", scopes = c("user/Patient.r", scope), launch = launch)
+  expect_error(create("standalone"), "online_access requires EHR launch")
+  expect_no_error(create("ehr"))
+  expect_no_error(create("standalone", "offline_access"))
+  expect_no_error(create("ehr", "offline_access"))
+  client <- create("standalone", "offline_access")
+  expect_error(client@scopes <- c(client@scopes, "online_access"), "requires EHR launch")
+  ordinary <- client
+  S7::props(ordinary) <- list(smart = list(), scope_policy = list())
+  expect_no_error(ordinary@scopes <- c(ordinary@scopes, "online_access"))
+  site$metadata$capabilities <- as.list(setdiff(unlist(site$metadata$capabilities),
+    "permission-online"))
+  expect_error(create("ehr"), "capability required: permission-online")
+})
+
 test_that("SMART asymmetric registration chooses explicit SHA-384 signing", {
   site <- smart_client_fixture()
   key <- openssl::rsa_keygen(2048)

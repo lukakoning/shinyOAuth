@@ -37,7 +37,9 @@ HTTPS, except for the snapshot's explicit HTTP loopback development policy.}
 
 \item{scopes}{Permissions to request, without automatic wildcard/offline
 access. Standalone patient scopes require \code{launch/patient}. EHR clients add
-\code{launch}. Each resource scope spelling must be advertised through
+\code{launch}. \code{online_access} requires EHR launch and \code{permission-online};
+\code{offline_access} requires \code{permission-offline} in either launch mode.
+Each resource scope spelling must be advertised through
 \code{permission-v2} or, for v1 spellings, \code{permission-v1} with \code{allow_v1 = TRUE}.}
 
 \item{required_scopes}{Minimum permissions, defaulting to \code{scopes}. Pass a

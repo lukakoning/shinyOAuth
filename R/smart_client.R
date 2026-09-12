@@ -25,7 +25,9 @@
 #'   HTTPS, except for the snapshot's explicit HTTP loopback development policy.
 #' @param scopes Permissions to request, without automatic wildcard/offline
 #'   access. Standalone patient scopes require `launch/patient`. EHR clients add
-#'   `launch`. Each resource scope spelling must be advertised through
+#'   `launch`. `online_access` requires EHR launch and `permission-online`;
+#'   `offline_access` requires `permission-offline` in either launch mode.
+#'   Each resource scope spelling must be advertised through
 #'   `permission-v2` or, for v1 spellings, `permission-v1` with `allow_v1 = TRUE`.
 #' @param required_scopes Minimum permissions, defaulting to `scopes`. Pass a
 #'   subset to accept reduced grants as limited connections. Identity scopes are
@@ -150,7 +152,10 @@ smart_client <- function(
     require_capability("context-standalone-encounter")
   }
   if ("offline_access" %in% scopes) require_capability("permission-offline")
-  if ("online_access" %in% scopes) require_capability("permission-online")
+  if ("online_access" %in% scopes) {
+    if (!identical(launch, "ehr")) err_config("SMART online_access requires EHR launch")
+    require_capability("permission-online")
+  }
   if (any(startsWith(scopes, "user/"))) require_capability("permission-user")
   if (any(startsWith(scopes, "system/"))) {
     err_config("SMART app launch does not support backend system scopes")
@@ -252,6 +257,10 @@ smart_validate_client <- function(client) {
     return("OAuthClient: SMART client must retain its configured FHIR base")
   }
   provider <- client@provider
+  if (!identical(policy$launch, "ehr") &&
+      "online_access" %in% effective_client_scopes(client)) {
+    return("OAuthClient: SMART online_access requires EHR launch")
+  }
   if (!isTRUE(provider@use_pkce) || !identical(provider@pkce_method, "S256") ||
       !identical(client@request_object_mode, "parameters") ||
       is_valid_string(provider@par_url) ||
