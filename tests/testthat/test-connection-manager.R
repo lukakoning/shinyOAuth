@@ -819,6 +819,189 @@ test_that("repeated authorizations create independent grants at the same client"
   )
 })
 
+test_that("another owner's changes do not invalidate connection readers", {
+  clock <- new.env(parent = emptyenv())
+  clock$now <- as.numeric(Sys.time())
+  local_mocked_bindings(Sys.time = function() {
+    as.POSIXct(clock$now, origin = "1970-01-01", tz = "UTC")
+  }, .package = "base")
+  f <- manager_test_fixture(owner = oauth_browser_owner(10, 60))
+  cookie <- manager_test_cookie(f)
+  other <- manager_test_session(manager_test_cookie(f))
+  withr::defer(other$close())
+  foreign <- shiny::withReactiveDomain(other, shiny::isolate(
+    connection_manager_controller(f$manager, other)
+  ))
+  requests <- 0L
+  local_mocked_bindings(perform_resource_req = function(...) {
+    requests <<- requests + 1L
+    "records"
+  })
+  shiny::testServer(oauth_connections_server,
+    args = list(id = "health", manager = f$manager, refresh_check_interval = 100),
+    session = manager_test_session(cookie), {
+      id <- manager_test_accept(controller)
+      health <- session$getReturned()
+      fixed <- health$connection(id)
+      output$data <- shiny::renderText({
+        if (fixed$is_usable()) fixed$request("api", "records") else "unavailable"
+      })
+      session$flushReact()
+      expect_identical(output$data, "records")
+      expect_identical(requests, 1L)
+
+      clock$now <- clock$now + 5
+      shiny::withReactiveDomain(other, shiny::isolate({
+        foreign_id <- manager_test_accept(foreign)
+        foreign$disconnect(foreign_id, revoke = FALSE)
+      }))
+      session$flushReact()
+      expect_identical(output$data, "records")
+      expect_identical(requests, 1L)
+
+      clock$now <- clock$now + 6
+      session$elapse(100)
+      expect_identical(output$data, "unavailable")
+      expect_identical(requests, 1L)
+    })
+  other$close()
+  expect_length(f$manager$state$signals, 0L)
+})
+
+test_that("a retained refresh notifies a replacement session after its initiator closes", {
+  f <- manager_test_fixture()
+  cookie <- manager_test_cookie(f)
+  first <- manager_test_session(cookie)
+  withr::defer(first$close())
+  finish <- NULL
+  completed <- FALSE
+  local_mocked_bindings(
+    refresh_token = function(...) promises::promise(function(resolve, reject) {
+      finish <<- resolve
+    }),
+    perform_resource_req = function(token, ...) token@access_token
+  )
+  retained_id <- shiny::withReactiveDomain(first, shiny::isolate({
+    initiating <- connection_manager_controller(f$manager, first)
+    id <- manager_test_accept(initiating)
+    promises::then(initiating$refresh(id, async = TRUE, touch = FALSE), function(value) {
+      completed <<- value
+    })
+    id
+  }))
+  first$close()
+  expect_length(f$manager$state$signals, 0L)
+  shiny::testServer(oauth_connections_server,
+    args = list(id = "health", manager = f$manager),
+    session = manager_test_session(cookie), {
+      health <- session$getReturned()
+      fixed <- health$connection(retained_id)
+      output$data <- shiny::renderText({
+        if (fixed$is_usable()) fixed$request("api", "records") else "unavailable"
+      })
+      session$flushReact()
+      expect_identical(output$data, "unavailable")
+      finish(manager_test_token("replacement-session-access"))
+      poll_for_async(function() completed, session)
+      expect_true(completed)
+      expect_identical(output$data, "replacement-session-access")
+    })
+  expect_length(f$manager$state$signals, 0L)
+})
+
+for (retention in c("browser", "account")) {
+  test_that(paste(retention, "automatic refresh updates readers without extending idle expiry"), {
+    clock <- new.env(parent = emptyenv())
+    clock$now <- as.numeric(Sys.time())
+    local_mocked_bindings(Sys.time = function() {
+      as.POSIXct(clock$now, origin = "1970-01-01", tz = "UTC")
+    }, .package = "base")
+    identity <- list(subject = "account", session_id = "login", generation = "one",
+      authenticated_at = clock$now, expires_at = clock$now + 60)
+    owner <- if (retention == "browser") oauth_browser_owner(10, 60) else
+      oauth_account_owner(function(session) identity, 10, 60, 60)
+    f <- manager_test_fixture(retention, owner)
+    cookie <- if (retention == "browser") manager_test_cookie(f) else NULL
+    refreshes <- 0L
+    requests <- 0L
+    local_mocked_bindings(
+      refresh_token = function(...) {
+        refreshes <<- refreshes + 1L
+        manager_test_token("current-access", "current-refresh")
+      },
+      perform_resource_req = function(token, ...) {
+        requests <<- requests + 1L
+        token@access_token
+      }
+    )
+    shiny::testServer(oauth_connections_server,
+      args = list(id = "health", manager = f$manager, refresh_proactively = TRUE,
+        refresh_lead_seconds = 2, refresh_check_interval = 100),
+      session = manager_test_session(cookie), {
+        token <- manager_test_token()
+        token@expires_at <- clock$now + 8
+        id <- manager_test_accept(controller, token = token)
+        health <- session$getReturned()
+        fixed <- health$connection(id)
+        output$data <- shiny::renderText({
+          if (fixed$is_usable()) fixed$request("api", "records") else "unavailable"
+        })
+        session$flushReact()
+        expect_identical(output$data, "synthetic-access")
+        expect_identical(refreshes, 0L)
+
+        clock$now <- clock$now + 6
+        session$elapse(100)
+        expect_identical(refreshes, 1L)
+        expect_identical(output$data, "current-access")
+        expect_gt(requests, 1L)
+
+        clock$now <- clock$now + 5
+        session$elapse(100)
+        expect_identical(output$data, "unavailable")
+        expect_identical(health$errors(), list(owner = "owner_unavailable"))
+      })
+    expect_length(f$manager$state$signals, 0L)
+  })
+
+  test_that(paste(retention, "explicit user activity extends only a live owning session"), {
+    clock <- new.env(parent = emptyenv())
+    clock$now <- as.numeric(Sys.time())
+    local_mocked_bindings(Sys.time = function() {
+      as.POSIXct(clock$now, origin = "1970-01-01", tz = "UTC")
+    }, .package = "base")
+    identity <- list(subject = "account", session_id = "login", generation = "one",
+      authenticated_at = clock$now, expires_at = clock$now + 60)
+    owner <- if (retention == "browser") oauth_browser_owner(10, 60) else
+      oauth_account_owner(function(session) identity, 10, 60, 60)
+    f <- manager_test_fixture(retention, owner)
+    cookie <- if (retention == "browser") manager_test_cookie(f) else NULL
+    foreign <- manager_test_session()
+    withr::defer(foreign$close())
+    shiny::testServer(oauth_connections_server,
+      args = list(id = "health", manager = f$manager, refresh_check_interval = 100),
+      session = manager_test_session(cookie), {
+        id <- manager_test_accept(controller)
+        health <- session$getReturned()
+        shiny::observeEvent(input$read, health$touch())
+        session$flushReact()
+        expect_error(shiny::withReactiveDomain(foreign, shiny::isolate(health$touch())),
+          "owner is unavailable")
+
+        clock$now <- clock$now + 6
+        session$setInputs(read = 1)
+        clock$now <- clock$now + 5
+        session$elapse(100)
+        expect_length(health$connections(), 1L)
+
+        clock$now <- clock$now + 6
+        session$elapse(100)
+        expect_length(health$connections(), 0L)
+        expect_error(health$touch(), "owner is unavailable")
+      })
+  })
+}
+
 test_that("Shiny setup rejects missing or cross-origin request headers", {
   f <- manager_test_fixture()
   cookie <- manager_test_cookie(f)

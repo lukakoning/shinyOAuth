@@ -31,6 +31,9 @@ reactive context. If the connection cannot be resolved, \verb{$is_usable()} retu
 \code{FALSE}; \verb{$summary()} and \verb{$request()} raise an error. The ID is read-only and
 cloning is disabled. The class generator is internal; the public factories
 establish the session binding required by applications.
+Managed resource and status reads do not count as owner activity. Record user
+actions with the manager's \code{touch()} method in an input event handler; automatic
+reactive updates must not prolong an idle owner's session.
 }
 \examples{
 \dontrun{
@@ -89,7 +92,7 @@ applications should use \code{\link[=oauth_connection]{oauth_connection()}} or t
 Calling it again on an initialized reference is an error.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{OAuthConnection$new(id, client, resolve, refresh = NULL, touch = NULL)}
+    \preformatted{OAuthConnection$new(id, client, resolve, refresh = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -103,8 +106,6 @@ client and \code{token} containing the current \link{OAuthToken} or \code{NULL}.
 It must raise an error when the owning session is unavailable.}
       \item{\code{refresh}}{Optional internal function implementing a manager's
 coordinated refresh. Legacy session references leave this \code{NULL}.}
-      \item{\code{touch}}{Optional internal owner-activity check before resource requests.
-Status reads do not count as activity. Legacy references leave this \code{NULL}.}
     }
     \if{html}{\out{</div>}}
   }

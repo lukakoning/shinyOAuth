@@ -22,6 +22,8 @@
 #'     use their registered [smart_launch_route()] to start authorization.
 #'   * `connections()`: reactive list of redacted connection summaries.
 #'   * `connection(connection_id)`: an [OAuthConnection] for requests and refresh.
+#'   * `touch()`: record explicit user activity after checking the current owner.
+#'     Call from an input event handler; returns `TRUE` invisibly.
 #'   * `disconnect(connection_id, revoke = TRUE)`: remove local usability first,
 #'     then return separate `local` and `remote` revocation results.
 #'   * `disconnect_all(revoke = TRUE)`: cancel pending authorizations and disconnect
@@ -42,6 +44,12 @@
 #' including references used without `connections()` or `errors()`. These checks
 #' notify dependent expressions when lifecycle state changes; unchanged polling
 #' does not rerun application requests or extend owner inactivity limits.
+#' Notifications to application code reflect only this owner's record changes.
+#' Resource requests and status reads never reset owner inactivity, including when
+#' reactive expressions rerun after automatic refresh. Call `touch()` from a user
+#' input event handler to count an application action as activity. Do not call it
+#' from polling observers or ordinary reactive readers. Connecting, explicitly
+#' refreshing and disconnecting also count as activity.
 #'
 #' Remote revocation is best effort: at most ten seconds per disconnect/logout
 #' batch, at most two seconds and one HTTP attempt per credential. Results are
@@ -104,7 +112,6 @@ oauth_connections_server <- function(
   }
   shiny::moduleServer(id, function(input, output, session) {
     controller <- connection_manager_controller(manager, session)
-    session$onSessionEnded(controller$end)
     modules <- lapply(names(manager$clients), function(client_name) {
       oauth_module_server_impl(
         client_name,
@@ -138,18 +145,17 @@ oauth_connections_server <- function(
         connection_id,
         record$client,
         resolve = function() {
-          manager$state$signal()
+          controller$changed()
           lifecycle()
           controller$read(connection_id)
         },
         refresh = function(scopes = NULL) {
           controller$refresh(connection_id, async = async, scopes = scopes)
-        },
-        touch = function() controller$guard(touch = TRUE)
+        }
       )
     }
     connections <- shiny::reactive({
-      manager$state$signal()
+      controller$changed()
       lifecycle()
       tryCatch(
         lapply(controller$records(), function(record) {
@@ -159,7 +165,7 @@ oauth_connections_server <- function(
       )
     })
     errors <- shiny::reactive({
-      manager$state$signal()
+      controller$changed()
       lifecycle()
       available <- tryCatch(
         {
@@ -180,11 +186,11 @@ oauth_connections_server <- function(
       )
     })
     shiny::observe({
-      manager$state$signal()
+      controller$changed()
       shiny::invalidateLater(refresh_check_interval, session)
       rows <- tryCatch(controller$records(), error = function(...) NULL)
-      # Only lifecycle transitions invalidate reference consumers. Invalidating
-      # them on every poll would rerun application requests and touch the owner.
+      # Only lifecycle transitions invalidate reference consumers on a poll.
+      # Explicit store changes notify this owner's consumers through changed().
       lifecycle(list(
         available = !is.null(rows),
         records = lapply(rows, function(record) {
@@ -227,6 +233,10 @@ oauth_connections_server <- function(
       },
       connections = connections,
       connection = connection,
+      touch = function() {
+        controller$guard(touch = TRUE)
+        invisible(TRUE)
+      },
       errors = errors,
       disconnect = controller$disconnect,
       disconnect_all = controller$disconnect_all,

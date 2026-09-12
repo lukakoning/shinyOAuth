@@ -28,6 +28,9 @@
 #' `FALSE`; `$summary()` and `$request()` raise an error. The ID is read-only and
 #' cloning is disabled. The class generator is internal; the public factories
 #' establish the session binding required by applications.
+#' Managed resource and status reads do not count as owner activity. Record user
+#' actions with the manager's `touch()` method in an input event handler; automatic
+#' reactive updates must not prolong an idle owner's session.
 #'
 #' @seealso [oauth_connection()], [OAuthClient], [perform_resource_req()]
 #' @examples
@@ -60,7 +63,6 @@ OAuthConnection <- R6::R6Class(
     .fingerprint = NULL,
     .resolve = NULL,
     .refresh = NULL,
-    .touch = NULL,
     record = function() {
       record <- tryCatch(private$.resolve(), error = function(...) {
         err_token("Connection is unavailable")
@@ -103,10 +105,8 @@ OAuthConnection <- R6::R6Class(
     #'   It must raise an error when the owning session is unavailable.
     #' @param refresh Optional internal function implementing a manager's
     #'   coordinated refresh. Legacy session references leave this `NULL`.
-    #' @param touch Optional internal owner-activity check before resource requests.
-    #'   Status reads do not count as activity. Legacy references leave this `NULL`.
     #' @return A new `OAuthConnection` instance.
-    initialize = function(id, client, resolve, refresh = NULL, touch = NULL) {
+    initialize = function(id, client, resolve, refresh = NULL) {
       if (!is.null(private$.id)) {
         err_input("Connection references are read-only")
       }
@@ -115,7 +115,6 @@ OAuthConnection <- R6::R6Class(
       private$.fingerprint <- connection_client_fingerprint(client)
       private$.resolve <- resolve
       private$.refresh <- refresh
-      private$.touch <- touch
       invisible(self)
     },
     #' @description
@@ -224,9 +223,6 @@ OAuthConnection <- R6::R6Class(
       method = "GET",
       required_scopes = character()
     ) {
-      if (is.function(private$.touch)) {
-        private$.touch()
-      }
       connection_record_request(
         private$record(),
         resource_id,
@@ -248,7 +244,6 @@ OAuthConnection <- R6::R6Class(
     #' @return An [httr2] response. Missing context, scope or resource binding
     #'   raises an error before an authenticated request is sent.
     smart_resource = function(kind) {
-      if (is.function(private$.touch)) private$.touch()
       smart_record_resource(private$record(), kind)
     },
     #' @description

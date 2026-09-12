@@ -39,6 +39,8 @@ EHR-only clients report \code{fresh_ehr_launch_required} and return \code{FALSE}
 use their registered \code{\link[=smart_launch_route]{smart_launch_route()}} to start authorization.
 \item \code{connections()}: reactive list of redacted connection summaries.
 \item \code{connection(connection_id)}: an \link{OAuthConnection} for requests and refresh.
+\item \code{touch()}: record explicit user activity after checking the current owner.
+Call from an input event handler; returns \code{TRUE} invisibly.
 \item \code{disconnect(connection_id, revoke = TRUE)}: remove local usability first,
 then return separate \code{local} and \code{remote} revocation results.
 \item \code{disconnect_all(revoke = TRUE)}: cancel pending authorizations and disconnect
@@ -67,6 +69,12 @@ Reactive connection reads also recheck expiry at \code{refresh_check_interval},
 including references used without \code{connections()} or \code{errors()}. These checks
 notify dependent expressions when lifecycle state changes; unchanged polling
 does not rerun application requests or extend owner inactivity limits.
+Notifications to application code reflect only this owner's record changes.
+Resource requests and status reads never reset owner inactivity, including when
+reactive expressions rerun after automatic refresh. Call \code{touch()} from a user
+input event handler to count an application action as activity. Do not call it
+from polling observers or ordinary reactive readers. Connecting, explicitly
+refreshing and disconnecting also count as activity.
 
 Remote revocation is best effort: at most ten seconds per disconnect/logout
 batch, at most two seconds and one HTTP attempt per credential. Results are

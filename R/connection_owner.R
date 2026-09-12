@@ -6,7 +6,9 @@
 #' set cookies, authenticate users or enable retention on [oauth_module_server()]
 #' calls by themselves.
 #'
-#' @param idle_timeout Maximum owner inactivity in seconds.
+#' @param idle_timeout Maximum owner inactivity in seconds. Resource and status
+#'   reads do not count as activity. Use the server manager's `touch()` from a user
+#'   input event handler; connecting, explicit refresh and disconnect also count.
 #' @param absolute_timeout Maximum owner lifetime in seconds, independent of
 #'   activity. Must be at least `idle_timeout`.
 #' @param same_site Owner-cookie policy, `"Lax"` for top-level authorization

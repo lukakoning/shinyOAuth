@@ -25,7 +25,9 @@ oauth_account_owner(
 \method{print}{OAuthOwnerPolicy}(x, ...)
 }
 \arguments{
-\item{idle_timeout}{Maximum owner inactivity in seconds.}
+\item{idle_timeout}{Maximum owner inactivity in seconds. Resource and status
+reads do not count as activity. Use the server manager's \code{touch()} from a user
+input event handler; connecting, explicit refresh and disconnect also count.}
 
 \item{absolute_timeout}{Maximum owner lifetime in seconds, independent of
 activity. Must be at least \code{idle_timeout}.}

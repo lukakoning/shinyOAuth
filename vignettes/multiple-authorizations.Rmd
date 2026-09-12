@@ -154,7 +154,10 @@ Keep the manager, store and keys outside `server()` so returning Shiny sessions
 use the same configuration. This memory store supports **one R process** and
 does not survive an R restart. Stable keys alone do not make it persistent or
 share records between workers. Browser ownership also has idle and absolute
-expiry limits; refresh does not extend them. For an app with its own verified
+expiry limits. Automatic refresh and API reads do not reset inactivity. Call
+`auth$touch()` from a user input event handler, as the Read handler below does,
+to count an application action as activity. Explicit refresh also counts as
+activity; the absolute expiry remains fixed. For an app with its own verified
 account login, see `?oauth_account_owner` and `retention = "account"`.
 
 Size the owner registry and credential store separately. Both owner factories
@@ -209,6 +212,7 @@ server <- function(input, output, session) {
   })
 
   result <- eventReactive(input$read, {
+    auth$touch()
     connection <- selected_connection()
     req(connection$is_usable())
     message <- tryCatch({

@@ -200,7 +200,7 @@ oauth_connections <- function(
   state$routes <- new.env(parent = emptyenv())
   state$launches <- new.env(parent = emptyenv())
   state$next_refresh <- new.env(parent = emptyenv())
-  state$signal <- shiny::reactiveVal(0)
+  state$signals <- new.env(parent = emptyenv())
   manager <- new.env(parent = emptyenv())
   for (name in c(
     "clients",
@@ -294,9 +294,38 @@ connection_manager_bind <- function(manager, id) {
   invisible(NULL)
 }
 
-connection_manager_signal <- function(manager) {
-  signal <- manager$state$signal
-  signal(shiny::isolate(signal()) + 1)
+connection_manager_subscribe <- function(manager, owner) {
+  signals <- manager$state$signals
+  entry <- signals[[owner]]
+  if (is.null(entry)) {
+    entry <- new.env(parent = emptyenv())
+    entry$signal <- shiny::reactiveVal(0)
+    entry$subscribers <- 0L
+    signals[[owner]] <- entry
+  }
+  entry$subscribers <- entry$subscribers + 1L
+  subscribed <- TRUE
+  list(
+    changed = entry$signal,
+    release = function() {
+      if (subscribed) {
+        subscribed <<- FALSE
+        entry$subscribers <- entry$subscribers - 1L
+        if (entry$subscribers == 0L) rm(list = owner, envir = signals)
+      }
+      invisible(NULL)
+    }
+  )
+}
+
+connection_manager_signal <- function(manager, owner) {
+  # Look up the current subscription at notification time. A retained refresh
+  # can finish after its initiating session ends and a new session subscribes.
+  entry <- manager$state$signals[[owner]]
+  if (!is.null(entry)) {
+    signal <- entry$signal
+    signal(shiny::isolate(signal()) + 1)
+  }
   invisible(NULL)
 }
 
@@ -401,9 +430,11 @@ connection_manager_controller <- function(manager, session) {
     err_config("No active local owner; return through the connection UI")
   }
   active <- TRUE
+  ended <- FALSE
   store <- manager$store
   next_refresh <- state$next_refresh
-  signal <- function() connection_manager_signal(manager)
+  subscription <- connection_manager_subscribe(manager, owner$id)
+  signal <- function() connection_manager_signal(manager, owner$id)
   verify_owner <- function(require_session = TRUE, touch = FALSE) {
     connection_manager_check(manager)
     if (
@@ -854,7 +885,10 @@ connection_manager_controller <- function(manager, session) {
     cleanup_records(previous, revoke)
   }
   end <- function() {
+    if (ended) return(invisible(NULL))
+    ended <<- TRUE
     active <<- FALSE
+    on.exit(subscription$release(), add = TRUE)
     rm(list = ls(launch_queue, all.names = TRUE), envir = launch_queue)
     if (manager$retention == "shiny") {
       store$disconnect_owner(owner$id)
@@ -907,7 +941,9 @@ connection_manager_controller <- function(manager, session) {
       discard = function(token) discard(client_name, token)
     )
   }
+  root$onSessionEnded(end)
   list(
+    changed = subscription$changed,
     guard = guard,
     read = read,
     records = records,
