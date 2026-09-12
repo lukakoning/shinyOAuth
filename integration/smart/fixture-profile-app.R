@@ -2,7 +2,8 @@
 # registration types. Synthetic identity/context never enters general summaries.
 smart_profile_app <- function(origin, providers, async = FALSE, response_mode = "query", registration, launch,
   authorization_method = "GET", extra_scopes = character(), listen_port = NULL,
-  refresh_check_interval = 10000, expected_context = NULL) {
+  refresh_check_interval = 10000, expected_context = NULL, http_timeout = 5) {
+  options(shinyOAuth.timeout = http_timeout)
   if (async) {
     mirai::daemons(2L)
     on.exit(mirai::daemons(0L), add = TRUE)
@@ -37,6 +38,7 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
       shiny::actionButton(paste0("search_", site), paste("Search", site)),
       shiny::actionButton(paste0("refresh_", site), paste("Refresh", site)))),
     shiny::actionButton("narrow_a", "Narrow A"), shiny::actionButton("widen_a", "Try broader scopes"),
+    shiny::actionButton("disconnect_a", "Disconnect A"),
     shiny::actionButton("disconnect_b", "Disconnect B"), shiny::actionButton("logout", "Log out"),
     shiny::actionButton("check_context", "Check context"),
     shiny::verbatimTextOutput("snapshot"), shiny::verbatimTextOutput("result"))
@@ -89,6 +91,7 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
     shiny::observeEvent(input$narrow_a, perform(function() connection("a")$refresh(scopes = limited)))
     shiny::observeEvent(input$widen_a, perform(function() connection("a")$refresh(scopes = c(limited, "patient/Patient.s"))))
     shiny::observeEvent(input$disconnect_b, health$disconnect(connection("b")$summary()$connection_id, revoke = FALSE))
+    shiny::observeEvent(input$disconnect_a, health$disconnect(connection("a")$summary()$connection_id, revoke = FALSE))
     shiny::observeEvent(input$logout, health$logout(revoke = FALSE))
     shiny::observeEvent(input$check_context, perform(function() {
       ctx <- shinyOAuth::smart_context(connection("a"))

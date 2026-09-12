@@ -12,6 +12,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
   state$revoked <- FALSE
   state$metrics$refresh_attempts <- 0L
   state$metrics$expired_reads <- 0L
+  state$metrics$refresh_responses <- 0L
   decode <- function(value) openssl::base64_decode(paste0(chartr("-_", "+/", value),
     strrep("=", (4L - nchar(value) %% 4L) %% 4L)))
   signing_pem <- openssl::write_pem(openssl::rsa_keygen(2048))
@@ -104,6 +105,10 @@ smart_profile_provider <- function(site, callback, registration, launch,
       "&state=", utils::URLencode(record$query$state, reserved = TRUE)))$send("")
   })
   app$post("/token", function(req, res) {
+    if (!is.null(res$locals$delayed_token)) {
+      state$metrics$refresh_responses <- state$metrics$refresh_responses + 1L
+      return(res$send_json(res$locals$delayed_token, auto_unbox = TRUE))
+    }
     body <- req$form
     header <- req$get_header("Authorization")
     authenticated <- switch(registration$style,
@@ -176,6 +181,11 @@ smart_profile_provider <- function(site, callback, registration, launch,
       token$id_token <- jose::jwt_encode_sig(claims, openssl::read_key(signing_pem), header = list(kid = "fixture-id"))
     }
     if (!initial && isTRUE(behavior$change_patient)) token$patient <- grant$patient
+    if (!initial && !is.null(behavior$refresh_delay)) {
+      res$locals$delayed_token <- token
+      return(res$delay(behavior$refresh_delay))
+    }
+    if (!initial) state$metrics$refresh_responses <- state$metrics$refresh_responses + 1L
     res$send_json(token, auto_unbox = TRUE)
   })
   current <- function(req) {

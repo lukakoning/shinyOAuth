@@ -81,3 +81,20 @@ documented modified Inferno deployment. Account-owned EHR launch remains outside
 the package's current support.
 Validation on 2026-09-13: both scenarios passed, including 20 upstream test passes
 and the recorded account/token-use checks.
+
+## 5. Interrupted refresh, competing tabs and logout
+
+`Rscript integration/smart/run-lifecycle.R interrupted`
+
+Five real-browser scenarios exercise an owned HTTPS SMART fixture with rotating
+refresh credentials: disconnect/logout before a delayed response, two tabs
+competing for the same refresh, and a socket closed after credential consumption
+in both synchronous/mirai modes. The fixture delays responses without blocking
+its metrics endpoint. Delayed-success scenarios explicitly select a 20-second
+HTTP timeout; package defaults remain unchanged. A competing tab must send no
+second refresh request. Both tabs must subsequently read with the rotated grant.
+A lost response must leave the grant uncertain, reject further use/refresh and
+leave B usable. The socket-loss cases stop only their own provider process after
+its consumption counter advances; they do not contact external systems.
+
+Validation on 2026-09-13: five scenarios, 18 passing assertions, no skips.
