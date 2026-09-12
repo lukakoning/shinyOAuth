@@ -319,8 +319,11 @@ client <- smart_client(
 ```
 
 Use the credentials for your EHR-launch registration. The constructor adds
-`launch`; do not include the standalone `launch/patient` request. Recreate the
-manager with this client, then replace the UI wrapper with:
+`launch` automatically. You may also request `launch/patient`, `launch/encounter`,
+or other `launch/` scopes as optional context hints. The EHR may ignore these
+hints when that context is unavailable in its current workflow; see the
+[SMART EHR context scope guidance](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html#apps-that-launch-from-the-ehr).
+Recreate the manager with this client, then replace the UI wrapper with:
 
 ```{r smart-ehr-ui, eval = FALSE}
 ui <- oauth_connections_ui(base_ui, "health", manager,
