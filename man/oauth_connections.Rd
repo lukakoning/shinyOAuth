@@ -38,7 +38,7 @@ permitted. Routes are compared by canonical origin and path.
 \code{"shared_routes"} additionally supports several clients or registrations at
 one issuer through a protected pending-state index. Both opt-in policies
 require explicit \code{authorization_server_mode = "multi_issuer"} clients, with
-RFC 9207 issuer responses or JARM. Same-issuer encrypted JARM still requires
+RFC 9207 issuer responses or signed JARM. Encrypted JARM requires
 distinct routes. Routing never substitutes for callback authentication.}
 
 \item{retention}{\code{"shiny"} (default) discards connections at Shiny session end.

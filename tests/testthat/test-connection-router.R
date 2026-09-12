@@ -14,6 +14,7 @@ router_fixture <- function(post = FALSE, jarm = FALSE, policy = "shared_routes",
                            distinct_issuers = FALSE, par = FALSE, same_registration = FALSE,
                            encrypted = FALSE) {
   clients <- lapply(c("a", "b"), function(id) {
+    distinct <- identical(policy, "distinct_routes")
     issuer <- paste0("https://issuer.example", if (distinct_issuers) paste0("/", id))
     provider <- oauth_provider(name = id, issuer = issuer, issuer_thus_oidc = FALSE,
       auth_url = paste0(issuer, "/authorize"), token_url = paste0(issuer, "/token"),
@@ -21,8 +22,11 @@ router_fixture <- function(post = FALSE, jarm = FALSE, policy = "shared_routes",
       token_auth_style = "public", use_nonce = FALSE,
       authorization_response_iss_parameter_supported = TRUE)
     client <- oauth_client(provider, client_id = id, client_secret = strrep(id, 64),
-      redirect_uri = "https://app.example/callback", state_key = strrep(id, 64),
-      scopes = "read", authorization_server_mode = "multi_issuer",
+      redirect_uri = paste0("https://app.example/callback", if (distinct) paste0("/", id)),
+      state_key = strrep(id, 64), scopes = "read",
+      authorization_server_mode = if (distinct) "multi_redirect_uri" else "multi_issuer",
+      authorization_server_redirect_uris = if (distinct)
+        paste0("https://app.example/callback/", c("a", "b")) else character(),
       response_mode = paste0(if (post) "form_post" else "query", if (jarm) ".jwt" else ""),
       jarm_signed_response_alg = if (jarm) "HS256" else NULL,
       jarm_encrypted_response_alg = if (encrypted) "RSA-OAEP" else NULL,
@@ -63,10 +67,16 @@ router_request <- function(f, auth, id = auth$context$client, post = FALSE,
   if (jarm) {
     fields <- list(response = jose::jwt_encode_hmac(do.call(jose::jwt_claim,
       c(fields, list(aud = client@client_id, exp = as.numeric(Sys.time()) + 60))), client@client_secret))
+    if (!is.null(client@jarm_decryption_private_key)) {
+      fields$response <- jwe_compact_encrypt(fields$response,
+        client@jarm_decryption_private_key$pubkey, alg = "RSA-OAEP",
+        enc = "A128CBC-HS256", cty = "JWT")
+    }
   }
   fields <- utils::modifyList(fields, overrides)
   encoded <- httr2::url_query_build(fields)
-  req <- manager_test_request(method = if (post) "POST" else "GET", path = "/callback",
+  req <- manager_test_request(method = if (post) "POST" else "GET",
+    path = httr2::url_parse(client@redirect_uri)$path,
     query = if (post) "" else encoded)
   if (post) {
     req$CONTENT_TYPE <- "application/x-www-form-urlencoded"
@@ -203,10 +213,45 @@ test_that("expired routing entries are rejected read-only and pruned on preparat
   expect_null(f$manager$state$pending[[auth$context$transaction]])
 })
 
-test_that("same-issuer encrypted JARM requires distinct routes", {
-  expect_error(router_fixture(jarm = TRUE, encrypted = TRUE), "encrypted JARM")
-  expect_no_error(router_fixture(jarm = TRUE, encrypted = TRUE, distinct_issuers = TRUE, policy = "issuer"))
+test_that("encrypted JARM requires distinct routes for every issuer policy", {
+  expect_error(router_fixture(jarm = TRUE, encrypted = TRUE), "Encrypted JARM")
+  for (policy in c("issuer", "shared_routes")) {
+    expect_error(router_fixture(jarm = TRUE, encrypted = TRUE,
+      distinct_issuers = TRUE, policy = policy), "Encrypted JARM")
+  }
 })
+
+for (post in c(FALSE, TRUE)) for (failure in c(FALSE, TRUE)) {
+  test_that(paste("distinct routes accept encrypted JARM without outer issuer", post, failure), {
+    f <- router_fixture(post = post, jarm = TRUE, encrypted = TRUE,
+      distinct_issuers = TRUE, policy = "distinct_routes")
+    exchanges <- character()
+    local_mocked_bindings(swap_code_for_token_set = function(client, ...) {
+      exchanges <<- c(exchanges, client@client_id)
+      list(access_token = "synthetic-access", token_type = "Bearer", expires_in = 3600, scope = "read")
+    })
+    for (id in c("b", "a")) {
+      auth <- router_prepare(f, id)
+      client <- f$manager$clients[[id]]
+      request <- router_request(f, auth, post = post, jarm = TRUE, error = failure)
+      encoded <- if (post) rawToChar(request$rook.input$read()) else request$QUERY_STRING
+      expect_identical(names(httr2::url_query_parse(encoded)), "response")
+      response <- f$ui(request)
+      expect_identical(response$status, 303L, info = response$content)
+      shiny::testServer(oauth_module_server_impl,
+        args = list(id = paste0("health-", id), client = client, auto_redirect = FALSE,
+          async = FALSE, .managed = f$controller$hooks(id)), {
+          values$browser_token <- auth$browser
+          values$.process_query(response$headers$Location,
+            current_uri = paste0(client@redirect_uri, response$headers$Location))
+          session$flushReact()
+          if (!failure) expect_null(values$error)
+        })
+    }
+    expect_identical(exchanges, if (failure) character() else c("b", "a"))
+    expect_length(f$controller$records(), if (failure) 0L else 2L)
+  })
+}
 
 test_that("module registers structured state before provider work and cancels failed preparation", {
   local_options(shinyOAuth.skip_browser_token = TRUE)

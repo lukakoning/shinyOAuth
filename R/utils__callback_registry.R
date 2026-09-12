@@ -46,11 +46,10 @@ oauth_callback_registry <- function(clients, allow_shared_issuer = FALSE, mark_u
             )
           }
           if (
-            identical(first@provider@issuer, second@provider@issuer) &&
-              (!is.null(resolve_authorization_response_encryption_config(first)) ||
-                !is.null(resolve_authorization_response_encryption_config(second)))
+            !is.null(resolve_authorization_response_encryption_config(first)) ||
+              !is.null(resolve_authorization_response_encryption_config(second))
           ) {
-            err_config("Same-issuer encrypted JARM requires distinct callback routes")
+            err_config("Encrypted JARM requires distinct callback routes")
           }
         }
       }
