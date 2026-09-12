@@ -1,12 +1,17 @@
 # Synthetic protocol fixture for supported SMART registrations and launch modes.
 # Keys and registrations are temporary. This does not replace external testing.
 smart_profile_provider <- function(site, callback, registration, launch,
-  authorization_method = "GET", extra_scopes = character(), https = FALSE) {
+  authorization_method = "GET", extra_scopes = character(), https = FALSE,
+  behavior = list()) {
   state <- new.env(parent = emptyenv())
   for (name in c("launches", "codes", "access", "refresh", "assertions")) state[[name]] <- new.env(parent = emptyenv())
   state$metrics <- list(exchanges = 0L, refreshes = 0L, assertions = 0L,
     scoped_refreshes = 0L, reads = 0L, users = 0L, searches = 0L,
     authorization_posts = 0L, authorization_gets = 0L, authorization_body_bytes = 0L)
+  lifetime <- if (is.null(behavior$access_lifetime)) 3600 else behavior$access_lifetime
+  state$revoked <- FALSE
+  state$metrics$refresh_attempts <- 0L
+  state$metrics$expired_reads <- 0L
   decode <- function(value) openssl::base64_decode(paste0(chartr("-_", "+/", value),
     strrep("=", (4L - nchar(value) %% 4L) %% 4L)))
   signing_pem <- openssl::write_pem(openssl::rsa_keygen(2048))
@@ -136,6 +141,8 @@ smart_profile_provider <- function(site, callback, registration, launch,
       grant <- list(revision = 1L, nonce = record$query$nonce)
       scopes <- initial_scopes
     } else if (identical(body$grant_type, "refresh_token")) {
+      state$metrics$refresh_attempts <- state$metrics$refresh_attempts + 1L
+      if (state$revoked) return(res$set_status(400L)$send_json(list(error = "invalid_grant"), auto_unbox = TRUE))
       grant <- state$refresh[[body$refresh_token]]
       if (is.null(grant)) return(res$set_status(400L)$send_json(list(error = "invalid_grant"), auto_unbox = TRUE))
       scopes <- if (is.null(body$scope)) initial_scopes else strsplit(body$scope, " ", fixed = TRUE)[[1L]]
@@ -153,9 +160,11 @@ smart_profile_provider <- function(site, callback, registration, launch,
     # Keep the original refresh authorization independently from access scope.
     state$refresh[[refresh]] <- grant
     grant$scopes <- scopes
+    grant$expires <- as.numeric(Sys.time()) + lifetime
+    state$metrics$access_expires <- grant$expires
     state$access[[access]] <- grant
     token <- list(access_token = access, refresh_token = refresh, token_type = "Bearer",
-      expires_in = 3600, scope = paste(scopes, collapse = " "))
+      expires_in = lifetime, scope = paste(scopes, collapse = " "))
     if (initial) {
       token$patient <- paste0("synthetic-", site)
       token$encounter <- paste0("encounter-", site)
@@ -170,7 +179,12 @@ smart_profile_provider <- function(site, callback, registration, launch,
   current <- function(req) {
     bearer <- req$get_header("Authorization")
     if (!is.character(bearer) || !startsWith(bearer, "Bearer ")) return(NULL)
-    state$access[[substring(bearer, 8L)]]
+    grant <- state$access[[substring(bearer, 8L)]]
+    if (!is.null(grant) && grant$expires <= as.numeric(Sys.time())) {
+      state$metrics$expired_reads <- state$metrics$expired_reads + 1L
+      return(NULL)
+    }
+    grant
   }
   app$get("/fhir/Patient/:id", function(req, res) {
     grant <- current(req)
@@ -194,6 +208,11 @@ smart_profile_provider <- function(site, callback, registration, launch,
     res$send_json(list(resourceType = "Bundle", type = "searchset"), auto_unbox = TRUE)
   })
   app$get("/metrics", function(req, res) res$send_json(state$metrics, auto_unbox = TRUE))
+  # Control only this disposable loopback fixture; no credentials are returned.
+  app$post("/test/revoke", function(req, res) {
+    state$revoked <- TRUE
+    res$send_json(list(revoked = TRUE), auto_unbox = TRUE)
+  })
   webfakes::new_app_process(app, opts = webfakes::server_opts(remote = TRUE,
     interfaces = "127.0.0.1", num_threads = 4L, access_log_file = FALSE, error_log_file = FALSE))
 }

@@ -23,3 +23,18 @@ callbacks; the pinned Inferno simulator supports query callbacks only.
 
 This gate currently runs Chrome. Firefox/WebKit coverage remains future work.
 Validation on 2026-09-13: eight scenarios, 240 passing assertions, no skips.
+
+## 2. Expired retained grants and automatic refresh
+
+`Rscript integration/smart/run-lifecycle.R expiry`
+
+Four HTTPS browser scenarios cross synchronous/mirai refresh with usable/revoked
+refresh grants. The provider issues a ten-second access token; the browser leaves
+the app so its Shiny session ends, waits past the recorded expiry, and verifies
+that no refresh occurred while closed. Returning to a new Shiny session must
+automatically refresh the retained connection and read Patient/user data with
+the replacement grant. A revoked grant must instead become unavailable without
+affecting site B. The provider rejects expired access tokens and records attempted
+expired reads. No package clock or token exchange is mocked. This is synthetic
+SMART lifecycle evidence; Inferno's fixed token lifetime is unchanged.
+Validation on 2026-09-13: four scenarios, 30 passing assertions, no skips.

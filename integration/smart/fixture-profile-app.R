@@ -1,7 +1,8 @@
 # Browser app using exported APIs for both SMART launch modes and all supported
 # registration types. Synthetic identity/context never enters general summaries.
 smart_profile_app <- function(origin, providers, async = FALSE, response_mode = "query", registration, launch,
-  authorization_method = "GET", extra_scopes = character(), listen_port = NULL) {
+  authorization_method = "GET", extra_scopes = character(), listen_port = NULL,
+  refresh_check_interval = 10000) {
   if (async) {
     mirai::daemons(2L)
     on.exit(mirai::daemons(0L), add = TRUE)
@@ -42,8 +43,14 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
   server <- function(input, output, session) {
     sessions <<- sessions + 1L
     number <- sessions
-    health <- shinyOAuth::oauth_connections_server("health", manager, async = async)
+    health <- shinyOAuth::oauth_connections_server("health", manager, async = async,
+      refresh_check_interval = refresh_check_interval)
     result <- shiny::reactiveVal("ready")
+    revision <- shiny::reactiveVal(0L)
+    complete <- function(value) {
+      result(value)
+      revision(shiny::isolate(revision()) + 1L)
+    }
     connection <- function(site) {
       rows <- Filter(function(row) identical(row$client_label, paste("Site", site)), health$connections())
       if (!length(rows)) stop("Unavailable")
@@ -52,8 +59,8 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
     perform <- function(fn) {
       value <- tryCatch(fn(), error = function(...) "unavailable")
       if (inherits(value, "promise")) {
-        promises::then(value, function(...) result("refreshed"), function(...) result("unavailable"))
-      } else result(if (isTRUE(value)) "refreshed" else value)
+        promises::then(value, function(...) complete("refreshed"), function(...) complete("unavailable"))
+      } else complete(if (isTRUE(value)) "refreshed" else value)
     }
     for (site in c("a", "b")) local({
       selected <- site
@@ -84,7 +91,8 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
     shiny::observeEvent(input$logout, health$logout(revoke = FALSE))
     output$result <- shiny::renderText(result())
     output$snapshot <- shiny::renderText(jsonlite::toJSON(list(session = number,
-      connections = health$connections(), errors = health$errors()), auto_unbox = TRUE, null = "null"))
+      connections = health$connections(), errors = health$errors(), result = result(),
+      result_revision = revision()), auto_unbox = TRUE, null = "null"))
   }
   routes <- if (launch == "ehr") list(shinyOAuth::smart_launch_route("/launch", c("a", "b"))) else list()
   ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager, launch_routes = routes,

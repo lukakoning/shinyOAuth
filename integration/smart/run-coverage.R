@@ -27,6 +27,7 @@ run_smart_coverage <- function(args = commandArgs(trailingOnly = TRUE)) {
     refresh_scopes = c("integration/connections/run-scope-narrowing.R"),
     smart_profiles = c("integration/smart/run-profiles.R"),
     smart_cross_site = c("integration/smart/run-profiles.R", "--cross-site"),
+    smart_expiry = c("integration/smart/run-lifecycle.R", "expiry"),
     smart_authorization_post = c("integration/smart/run-profiles.R", "--post"),
     ehr_concurrency = c("integration/smart/run-ehr-browser.R"),
     sandbox = c("integration/smart/run-tests.R"),
