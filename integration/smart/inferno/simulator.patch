@@ -1,0 +1,75 @@
+diff --git a/lib/smart_app_launch/endpoints/mock_smart_server.rb b/lib/smart_app_launch/endpoints/mock_smart_server.rb
+index a2f3e7d..aec7dfb 100644
+--- a/lib/smart_app_launch/endpoints/mock_smart_server.rb
++++ b/lib/smart_app_launch/endpoints/mock_smart_server.rb
+@@ -17,7 +17,7 @@ module SMARTAppLaunch
+       base_url = "#{Inferno::Application['base_url']}/custom/#{suite_id}"
+       response_body = {
+         token_endpoint_auth_signing_alg_values_supported: ['RS384', 'ES384'],
+-        capabilities: ['client-confidential-asymmetric', 'launch-ehr' ,'launch-standalone', 'authorize-post',
++        capabilities: ['sso-openid-connect', 'client-confidential-asymmetric', 'launch-ehr' ,'launch-standalone', 'authorize-post',
+                        'client-public', 'client-confidential-symmetric', 'permission-offline', 'permission-online',
+                        'permission-patient', 'permission-user', 'permission-v1', 'permission-v2',
+                        'context-ehr-patient', 'context-ehr-encounter', 
+@@ -26,6 +26,7 @@ module SMARTAppLaunch
+         code_challenge_methods_supported: ['S256'],
+         token_endpoint_auth_methods_supported: ['private_key_jwt', 'client_secret_basic', 'client_secret_post'],
+         issuer: base_url + FHIR_PATH,
++        jwks_uri: base_url + OIDC_JWKS_PATH,
+         grant_types_supported: ['client_credentials', 'authorization_code'],
+         scopes_supported: SUPPORTED_SCOPES,
+         authorization_endpoint: base_url + AUTHORIZATION_PATH,
+diff --git a/lib/smart_app_launch/endpoints/mock_smart_server/smart_token_response_creation.rb b/lib/smart_app_launch/endpoints/mock_smart_server/smart_token_response_creation.rb
+index ed93ef9..407237a 100644
+--- a/lib/smart_app_launch/endpoints/mock_smart_server/smart_token_response_creation.rb
++++ b/lib/smart_app_launch/endpoints/mock_smart_server/smart_token_response_creation.rb
+@@ -52,8 +52,8 @@ module SMARTAppLaunch
+           rescue JSON::ParserError
+             nil
+           end
+-        additional_context = smart_requested_scope_context(auth_code_request_inputs['scope'], authorization_code, 
+-                                                           launch_context)
++        additional_context = smart_requested_scope_context(auth_code_request_inputs['scope'], authorization_code,
++                                                           launch_context, auth_code_request_inputs['nonce'])
+ 
+         response.body = additional_context.merge(response_body).to_json # response body values take priority
+         response.headers['Cache-Control'] = 'no-store'
+@@ -144,7 +144,7 @@ module SMARTAppLaunch
+         response.status = 200
+       end
+ 
+-      def smart_requested_scope_context(requested_scopes, authorization_code, launch_context)
++      def smart_requested_scope_context(requested_scopes, authorization_code, launch_context, nonce = nil)
+         context = launch_context.present? ? launch_context : {}
+         scopes_list = requested_scopes&.split || []
+ 
+@@ -152,12 +152,12 @@ module SMARTAppLaunch
+           context[:refresh_token] = MockSMARTServer.authorization_code_to_refresh_token(authorization_code)
+         end
+ 
+-        context[:id_token] = smart_construct_id_token(scopes_list.include?('fhirUser')) if scopes_list.include?('openid')
++        context[:id_token] = smart_construct_id_token(scopes_list.include?('fhirUser'), nonce) if scopes_list.include?('openid')
+ 
+         context
+       end
+ 
+-      def smart_construct_id_token(include_fhir_user)
++      def smart_construct_id_token(include_fhir_user, nonce = nil)
+         client_id = JSON.parse(result.input_json)&.find do |input|
+           input['name'] == 'client_id'
+         end&.dig('value')
+@@ -178,6 +178,7 @@ module SMARTAppLaunch
+           exp: 1.year.from_now.to_i,
+           iat: Time.now.to_i
+         }
++        claims[:nonce] = nonce if nonce.present?
+         if include_fhir_user && fhir_user_relative_reference.present?
+           claims[:fhirUser] = "#{client_fhir_base_url}/#{fhir_user_relative_reference}"
+         end
+@@ -247,4 +248,4 @@ module SMARTAppLaunch
+       end  
+     end 
+   end
+-end
+\ No newline at end of file
++end

@@ -1,11 +1,12 @@
 # Inferno SMART client conformance gate
 
 Use the [Inferno SMART App Launch test kit](https://inferno.healthit.gov/test-kits/smart-app-launch/)
-alongside the [Launcher v2 sandbox](sandbox.md). Inferno evaluates requests from
-our runnable Shiny app; the launcher supplies the separate browser and FHIR
-integration environment. This document schedules the Inferno gate for P4/P5.
-No shinyOAuth SMART flow has been run against Inferno yet, and the current
-`run-tests.R` command runs only the sandbox smoke tests.
+to evaluate requests from the real Shiny app. The [pinned local environment](inferno/README.md)
+now builds and passes strict discovery plus simulator regressions using
+`Rscript integration/smart/run-inferno-preflight.R`. It explicitly patches two
+simulator compatibility defects while keeping upstream verification tests intact.
+No application flow has been executed by that preflight. The existing
+`run-tests.R` command remains the separate [Launcher sandbox](sandbox.md) smoke gate.
 
 ## Suite and version
 
@@ -29,10 +30,12 @@ key information is in a separate OIDC document. Our strict SMART reader rejects
 that combination. A read-only hosted preflight on 2026-09-12 against
 `https://inferno.healthit.gov/suites/custom/smart_client_stu2_2/fhir` also failed
 strict discovery because the issuer lacks `sso-openid-connect`. No client
-conformance scenario was run. Check deployed metadata before the matrix; resolve
-upstream compatibility without patching the advertised document or weakening
-client validation. P5a's [local EHR fixture](ehr-launch.md) is executable now but
-does not supply independent Inferno evidence.
+conformance scenario was run against that hosted deployment. On 2026-09-12 the
+local environment added explicit server-side metadata and initial ID-token nonce
+corrections, with patch/source provenance in evidence. This advances testing
+against independent upstream assertions but cannot be described as an unmodified
+upstream or hosted Inferno pass. Client validation remains strict. See the
+[patch rationale and limits](inferno/README.md).
 
 ## Required roadmap runs
 
