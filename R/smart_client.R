@@ -25,8 +25,8 @@
 #'   HTTPS, except for the snapshot's explicit HTTP loopback development policy.
 #' @param scopes Permissions to request, without automatic wildcard/offline
 #'   access. Standalone patient scopes require `launch/patient`. EHR clients add
-#'   `launch`. Supported scope syntax must be advertised through `permission-v2`
-#'   (or the explicit v1 compatibility selection).
+#'   `launch`. Each resource scope spelling must be advertised through
+#'   `permission-v2` or, for v1 spellings, `permission-v1` with `allow_v1 = TRUE`.
 #' @param required_scopes Minimum permissions, defaulting to `scopes`. Pass a
 #'   subset to accept reduced grants as limited connections. Identity scopes are
 #'   always required when identity is enabled. Unsupported comparisons fail closed.
@@ -46,7 +46,9 @@
 #'   claim may be an absolute URL or a supported resource instance reference
 #'   relative to this client's FHIR base, such as `"Practitioner/example"`.
 #' @param allow_v1 Explicit compatibility flag enabling `.read`, `.write` and
-#'   `.*`; requires the advertised `permission-v1` capability. Default `FALSE`.
+#'   `.*`. Requesting these spellings requires `permission-v1`; requesting v2
+#'   spellings requires `permission-v2`, including when this flag is enabled.
+#'   Default `FALSE`.
 #' @param authorization_method `"GET"` (default) or `"POST"` for the outgoing
 #'   browser request. POST requires the discovered `authorize-post` capability
 #'   and uses the module's `request_login()` or [prepare_authorization_request()].
@@ -118,7 +120,6 @@ smart_client <- function(
   if (!identical(token_auth_style, "public") && length(methods) && !method %in% methods) {
     err_config("SMART registration authentication method is not advertised")
   }
-  require_capability(if (allow_v1) "permission-v1" else "permission-v2")
   validate_scopes(scopes)
   validate_scopes(required_scopes)
   scopes <- normalize_scope_tokens(scopes)
@@ -155,6 +156,10 @@ smart_client <- function(
   if (!identical(smart_scope_coverage(scopes, scopes, allow_v1)$status, "covered")) {
     err_config("SMART client contains unsupported scope syntax")
   }
+  resource_scopes <- scopes[grepl("^(patient|user)/", scopes)]
+  v1_scopes <- grepl("\\.(read|write|\\*)(\\?|$)", resource_scopes)
+  if (any(v1_scopes)) require_capability("permission-v1")
+  if (any(!v1_scopes)) require_capability("permission-v2")
   if (identical(token_auth_style, "private_key_jwt")) {
     if (!is_valid_string(client_assertion_alg) ||
         !client_assertion_alg %in% c("RS384", "ES384") ||

@@ -37,8 +37,8 @@ HTTPS, except for the snapshot's explicit HTTP loopback development policy.}
 
 \item{scopes}{Permissions to request, without automatic wildcard/offline
 access. Standalone patient scopes require \code{launch/patient}. EHR clients add
-\code{launch}. Supported scope syntax must be advertised through \code{permission-v2}
-(or the explicit v1 compatibility selection).}
+\code{launch}. Each resource scope spelling must be advertised through
+\code{permission-v2} or, for v1 spellings, \code{permission-v1} with \code{allow_v1 = TRUE}.}
 
 \item{required_scopes}{Minimum permissions, defaulting to \code{scopes}. Pass a
 subset to accept reduced grants as limited connections. Identity scopes are
@@ -66,7 +66,9 @@ claim may be an absolute URL or a supported resource instance reference
 relative to this client's FHIR base, such as \code{"Practitioner/example"}.}
 
 \item{allow_v1}{Explicit compatibility flag enabling \code{.read}, \code{.write} and
-\verb{.*}; requires the advertised \code{permission-v1} capability. Default \code{FALSE}.}
+\verb{.*}. Requesting these spellings requires \code{permission-v1}; requesting v2
+spellings requires \code{permission-v2}, including when this flag is enabled.
+Default \code{FALSE}.}
 
 \item{response_mode}{\code{NULL}, \code{"query"}, or \code{"form_post"}. Advertised response
 modes, when present, must allow the selection.}

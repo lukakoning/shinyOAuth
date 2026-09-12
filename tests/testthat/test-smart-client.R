@@ -112,6 +112,30 @@ test_that("SMART asymmetric registration chooses explicit SHA-384 signing", {
     "key|EC")
 })
 
+test_that("SMART capabilities match resource scope spellings on the wire", {
+  for (advertised in list("permission-v1", "permission-v2",
+      c("permission-v1", "permission-v2"))) {
+    site <- smart_client_fixture()
+    site$metadata$capabilities <- as.list(union(
+      setdiff(unlist(site$metadata$capabilities), c("permission-v1", "permission-v2")),
+      advertised))
+    for (requested in list("user/Patient.read", "user/Patient.rs",
+        c("user/Patient.read", "user/Observation.rs"))) {
+      needed <- if (length(requested) == 2L) c("permission-v1", "permission-v2") else
+        if (endsWith(requested, ".read")) "permission-v1" else "permission-v2"
+      create <- function() smart_client(site, "example", "https://app.example/callback",
+        scopes = requested, allow_v1 = TRUE)
+      if (all(needed %in% advertised)) {
+        client <- create()
+        request <- httr2::url_parse(prepare_call(client, browser_token = valid_browser_token()))$query
+        expect_setequal(strsplit(request$scope, " ", fixed = TRUE)[[1L]], requested)
+      } else {
+        expect_error(create(), "SMART capability required")
+      }
+    }
+  }
+})
+
 test_that("SMART lifetime and identity checks cannot use generic fallbacks", {
   client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
     scopes = "user/Patient.r")
