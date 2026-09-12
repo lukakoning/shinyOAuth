@@ -523,10 +523,6 @@ OAuthClient <- S7::new_class(
     endpoint_auth = S7::new_property(S7::class_list, default = list()),
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
-    resource_bases = S7::new_property(S7::class_character, default = character()),
-    required_scopes = S7::new_property(S7::class_character, default = character()),
-    label = S7::new_property(S7::class_character, default = quote(provider@name)),
-    authorization_method = S7::new_property(S7::class_character, default = "GET"),
     # Authorization response mode for authorization-code callbacks.
     response_mode = S7::new_property(
       S7::class_character,
@@ -561,13 +557,6 @@ OAuthClient <- S7::new_class(
       S7::class_character,
       default = "warn"
     ),
-    # Internal, versioned policy selected by SMART clients. A generic client
-    # retains literal scopes and RFC 6749 omission behavior.
-    scope_policy = S7::new_property(
-      S7::class_list,
-      default = list()
-    ),
-    smart = S7::new_property(S7::class_list, default = list()),
     claims_validation = S7::new_property(
       S7::class_character,
       default = "none"
@@ -749,7 +738,16 @@ OAuthClient <- S7::new_class(
     client_assertion_typ = S7::new_property(
       S7::class_character,
       default = "JWT"
-    )
+    ),
+    # Append new properties to preserve the public positional constructor.
+    resource_bases = S7::new_property(S7::class_character, default = character()),
+    required_scopes = S7::new_property(S7::class_character, default = character()),
+    label = S7::new_property(S7::class_character, default = quote(provider@name)),
+    authorization_method = S7::new_property(S7::class_character, default = "GET"),
+    # Internal, versioned policy selected by SMART clients. A generic client
+    # retains literal scopes and RFC 6749 omission behavior.
+    scope_policy = S7::new_property(S7::class_list, default = list()),
+    smart = S7::new_property(S7::class_list, default = list())
   ),
   validator = function(self) oauth_client_validate(self)
 )

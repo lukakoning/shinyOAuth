@@ -11,10 +11,6 @@ OAuthClient(
   endpoint_auth = list(),
   redirect_uri = character(0),
   scopes = character(0),
-  resource_bases = character(0),
-  required_scopes = character(0),
-  label = provider@name,
-  authorization_method = "GET",
   response_mode = NA_character_,
   resource = character(0),
   claims = NULL,
@@ -22,8 +18,6 @@ OAuthClient(
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(0),
   scope_validation = "warn",
-  scope_policy = list(),
-  smart = list(),
   claims_validation = "none",
   required_acr_values = character(0),
   userinfo_jwt_required_time_claims = character(0),
@@ -65,7 +59,13 @@ OAuthClient(
   trusted_id_token_audiences = character(0),
   compare_callback_issuer = is_valid_string(provider@issuer) &&
     (missing(enforce_callback_issuer) || isTRUE(enforce_callback_issuer)),
-  client_assertion_typ = "JWT"
+  client_assertion_typ = "JWT",
+  resource_bases = character(0),
+  required_scopes = character(0),
+  label = provider@name,
+  authorization_method = "GET",
+  scope_policy = list(),
+  smart = list()
 )
 }
 \arguments{
@@ -103,35 +103,6 @@ and path. Use HTTPS in production.}
 the available names. For OIDC (\code{issuer} set and \code{issuer_thus_oidc = TRUE}),
 shinyOAuth adds \code{"openid"} automatically if absent. The resulting set is
 used in the request and subsequent scope checks.}
-
-\item{resource_bases}{Optional named character vector of approved API base
-URLs for \code{\link[=oauth_connection]{oauth_connection()}} and \code{\link[=oauth_connections]{oauth_connections()}}. The default
-\code{character()} leaves the existing token/request APIs unchanged. Each resource
-ID starts with a letter and contains letters, digits, \verb{_} or \code{-} (at most
-64 bytes). Up to 64 bases are supported. HTTPS is required except for
-loopback development URLs. Requests through a connection stay within the
-exact scheme, host, effective port and base path; redirects are disabled.
-Bases exclude user information, query strings, fragments, dot segments,
-repeated slashes, semicolon parameters and ambiguous encoded characters.
-This is local request policy, not evidence of token audience, and does not
-add the OAuth \code{resource} authorization parameter.}
-
-\item{required_scopes}{Optional requested scopes that every usable connection
-needs, default \code{character()}. Other requested scopes may be absent from a
-limited grant. Ordinary OAuth clients compare literal scopes; \code{\link[=smart_client]{smart_client()}}
-selects SMART semantic comparison and also enforces these permissions when
-validating token responses. Explicit refresh narrowing retains these scopes.}
-
-\item{label}{Optional display label used in connection summaries; defaults to
-the provider name. Must be a non-empty string of at most 128 bytes without
-control characters. Labels contain no credentials or patient context.}
-
-\item{authorization_method}{Browser method for sending the authorization
-request: \code{"GET"} (default) or \code{"POST"}. Select POST only after confirming
-provider support. It submits form fields instead of a long URL query.
-Use the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}; URL-only
-helpers reject POST. This does not select the callback \code{response_mode} or
-replace a provider's PAR or signed Request Object requirements.}
 
 \item{response_mode}{How the provider returns the login result. Leave \code{NULL}
 (default) for a normal callback with parameters in the URL; no
@@ -217,15 +188,6 @@ granted scopes. Omitted \code{scope} is treated as unchanged, not as an
 error.
 \item \code{"none"}: Skips scope validation entirely.
 }}
-
-\item{scope_policy}{Internal versioned scope policy. Leave the default for
-ordinary OAuth clients. SMART adapters install their own policy, including
-required permissions; these checks cannot be disabled by \code{scope_validation}.
-This parameter is not an argument to \code{\link[=oauth_client]{oauth_client()}}.}
-
-\item{smart}{Internal SMART configuration installed by \code{\link[=smart_client]{smart_client()}}.
-Leave the empty default for ordinary clients. This is not an argument to
-\code{\link[=oauth_client]{oauth_client()}}.}
 
 \item{claims_validation}{What to do if requested claims are missing or have
 unexpected values: \code{"warn"} continues with a warning, \code{"strict"} stops
@@ -576,6 +538,44 @@ provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.
 The explicit type is recommended; it does not replace audience validation.
 This setting does not change JAR, JARM, ID token or DPoP types, or the
 OAuth form parameter \code{client_assertion_type}.}
+
+\item{resource_bases}{Optional named character vector of approved API base
+URLs for \code{\link[=oauth_connection]{oauth_connection()}} and \code{\link[=oauth_connections]{oauth_connections()}}. The default
+\code{character()} leaves the existing token/request APIs unchanged. Each resource
+ID starts with a letter and contains letters, digits, \verb{_} or \code{-} (at most
+64 bytes). Up to 64 bases are supported. HTTPS is required except for
+loopback development URLs. Requests through a connection stay within the
+exact scheme, host, effective port and base path; redirects are disabled.
+Bases exclude user information, query strings, fragments, dot segments,
+repeated slashes, semicolon parameters and ambiguous encoded characters.
+This is local request policy, not evidence of token audience, and does not
+add the OAuth \code{resource} authorization parameter.}
+
+\item{required_scopes}{Optional requested scopes that every usable connection
+needs, default \code{character()}. Other requested scopes may be absent from a
+limited grant. Ordinary OAuth clients compare literal scopes; \code{\link[=smart_client]{smart_client()}}
+selects SMART semantic comparison and also enforces these permissions when
+validating token responses. Explicit refresh narrowing retains these scopes.}
+
+\item{label}{Optional display label used in connection summaries; defaults to
+the provider name. Must be a non-empty string of at most 128 bytes without
+control characters. Labels contain no credentials or patient context.}
+
+\item{authorization_method}{Browser method for sending the authorization
+request: \code{"GET"} (default) or \code{"POST"}. Select POST only after confirming
+provider support. It submits form fields instead of a long URL query.
+Use the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}; URL-only
+helpers reject POST. This does not select the callback \code{response_mode} or
+replace a provider's PAR or signed Request Object requirements.}
+
+\item{scope_policy}{Internal versioned scope policy. Leave the default for
+ordinary OAuth clients. SMART adapters install their own policy, including
+required permissions; these checks cannot be disabled by \code{scope_validation}.
+This parameter is not an argument to \code{\link[=oauth_client]{oauth_client()}}.}
+
+\item{smart}{Internal SMART configuration installed by \code{\link[=smart_client]{smart_client()}}.
+Leave the empty default for ordinary clients. This is not an argument to
+\code{\link[=oauth_client]{oauth_client()}}.}
 }
 \description{
 An \code{OAuthClient} holds your app's registration with a provider: its client ID,
