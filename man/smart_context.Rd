@@ -21,7 +21,8 @@ its owning Shiny session.}
 \code{changed}, \code{patient}, \code{encounter}, \code{fhirUser} and \code{need_patient_banner}.
 Absent values are \code{NULL}. \code{revision} increases when interpreted context
 changes; key patient-dependent application data by connection ID and this
-revision. Refresh omission carries context forward; explicit null clears a
+revision. Refresh omission carries context forward, except that a changed
+or cleared patient clears an omitted encounter. Explicit null clears a
 field, unless patient access still requires patient context. An initial
 launch query never establishes this context.
 

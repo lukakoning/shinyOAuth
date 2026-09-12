@@ -427,20 +427,21 @@ For scopes, factor out the narrow scope-reconciliation decision from `verify_tok
 
 Preserve the distinction between optional requested permissions and permissions the app requires. A reduced grant can create a limited connection; only operations covered by the current grant may be offered. Initial grant data is not evidence of current permissions. SMART-specific response checks can require an explicit returned scope, while ordinary OAuth's scope-omission behavior remains unchanged. Required identity/context omissions produce clear, profile-specific errors.
 
-The context adapter maintains raw snapshots and a separate interpreted context:
+The context adapter maintains raw snapshots and a separate interpreted context.
+The implemented revision policy supersedes the earlier `launch_fixed` proposal:
 
-| Surface/event | Proposed behavior |
+| Surface/event | Current behavior |
 | --- | --- |
 | `token@initial_extra_fields` | Unmodified initial response snapshot. |
 | `token@extra_fields` | Unmodified latest successful response extras. |
-| Refresh omits a launch context field | Preserve the established launch context in the interpreted view, tagged with its source. |
-| Refresh explicitly clears a required field | Mark the context unavailable; do not treat null as omission. |
-| Refresh changes patient or encounter | Under default `launch_fixed` policy, stop context-dependent requests and require a new launch. Never silently select another patient. |
+| Refresh omits a launch context field | Preserve the established context, except an omitted encounter is cleared when patient changes or is cleared. |
+| Refresh explicitly clears a required field | Reject the response if patient permissions still require patient context; do not treat null as omission. |
+| Refresh changes patient or encounter | Accept the explicit context, clear an omitted encounter when patient changes, and increment the context revision. Applications must discard data from the previous revision. |
 | Refresh changes optional UI hints | Use the latest explicit value, without changing identity or access permissions. |
-| `fhirContext` or another structured field is present | Validate its supported shape and replace that field as a unit; no recursive union of contexts. |
+| `fhirContext` or another structured field is present | Retain it as raw data without interpreting or fetching it. |
 | New authorization | Establish a new launch snapshot and connection, or perform an explicit guarded replacement. |
 
-On a context change after a valid refresh, retain the accepted rotated credentials atomically with a `context_changed` status; do not revert to the previous token. If the response fails token validation, no usable connection is published. Initial and latest views remain available for server-side diagnostics with normal redaction.
+On a context change after a valid refresh, retain the accepted rotated credentials atomically with the new context revision and `changed = TRUE`; there is no separate `context_changed` connection status. If the response fails token validation, no usable replacement is published. Initial and latest views remain available for server-side diagnostics with normal redaction.
 
 In the first release, `authorization_details` and experimental extension fields remain exposed as data. They do not automatically expand credential destinations. Explicit multi-resource support later intersects the latest accepted locations with application-approved bases and resolves context per location; it never assigns one site's patient ID to another site.
 

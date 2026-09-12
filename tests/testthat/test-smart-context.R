@@ -62,9 +62,30 @@ test_that("SMART context and rotating credentials are accepted together", {
   changed <- refresh_token(record$client, token)
   expect_identical(changed@smart_context$revision, 2L)
   expect_identical(changed@smart_context$patient, "second-patient")
+  expect_null(changed@smart_context$encounter)
+  expect_identical(changed@refresh_token, "next-refresh")
   body$patient <- 42
   expect_error(refresh_token(record$client, changed), "resource ID")
   expect_identical(changed@smart_context$patient, "second-patient")
+})
+
+test_that("patient changes clear only an omitted dependent encounter", {
+  record <- smart_context_fixture(scopes = "user/Patient.r")
+  previous <- record$token
+  for (patient in list("second-patient", NULL)) {
+    token <- previous
+    token@extra_fields <- list(patient = patient)
+    changed <- smart_update_token_context(record$client, token, previous)
+    expect_identical(changed@smart_context$patient, patient)
+    expect_null(changed@smart_context$encounter)
+    expect_identical(changed@smart_context$revision, 2L)
+  }
+  token@extra_fields <- list(patient = "second-patient", encounter = "second-encounter")
+  changed <- smart_update_token_context(record$client, token, previous)
+  expect_identical(changed@smart_context$encounter, "second-encounter")
+  token@extra_fields <- list(patient = previous@smart_context$patient)
+  unchanged <- smart_update_token_context(record$client, token, previous)
+  expect_identical(unchanged@smart_context, previous@smart_context)
 })
 
 test_that("SMART helpers restrict requests and redact general summaries", {

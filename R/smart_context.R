@@ -10,7 +10,8 @@
 #'   `changed`, `patient`, `encounter`, `fhirUser` and `need_patient_banner`.
 #'   Absent values are `NULL`. `revision` increases when interpreted context
 #'   changes; key patient-dependent application data by connection ID and this
-#'   revision. Refresh omission carries context forward; explicit null clears a
+#'   revision. Refresh omission carries context forward, except that a changed
+#'   or cleared patient clears an omitted encounter. Explicit null clears a
 #'   field, unless patient access still requires patient context. An initial
 #'   launch query never establishes this context.
 #' @details
@@ -70,6 +71,10 @@ smart_update_token_context <- function(client, token, previous = NULL) {
       err_token("SMART context contains an invalid FHIR resource ID")
     }
     values[name] <- list(value)
+  }
+  if (!is.null(prior) && !identical(values$patient, prior$patient) &&
+      !"encounter" %in% names(token@extra_fields)) {
+    values["encounter"] <- list(NULL)
   }
   if ("need_patient_banner" %in% names(token@extra_fields)) {
     value <- token@extra_fields$need_patient_banner
