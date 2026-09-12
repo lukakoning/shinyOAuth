@@ -559,7 +559,8 @@ validating token responses. Explicit refresh narrowing retains these scopes.}
 
 \item{label}{Optional display label used in connection summaries; defaults to
 the provider name, with control characters replaced by spaces and shortened
-to 128 UTF-8 bytes if needed. Explicit labels must be non-empty strings of at
+to 128 UTF-8 bytes if needed. If the provider name is empty, missing or not a
+single string, the default is \code{"OAuth provider"}. Explicit labels must be non-empty strings of at
 most 128 bytes without control characters. Labels contain no credentials or
 patient context.}
 

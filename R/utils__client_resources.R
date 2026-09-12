@@ -1,6 +1,9 @@
 # Optional application policy belongs to the existing OAuthClient value object.
 # No user's credentials or cached configuration digest lives on that object.
 default_client_label <- function(provider) {
+  # Provider names historically accepted any character vector. Optional display
+  # metadata must not add a prerequisite to ordinary OAuth client construction.
+  if (!is_valid_string(provider@name)) return("OAuth provider")
   label <- substr(enc2utf8(gsub("[[:cntrl:]]", " ", provider@name)), 1L, 128L)
   while (nchar(label, type = "bytes") > 128L) {
     label <- substr(label, 1L, nchar(label) - 1L)

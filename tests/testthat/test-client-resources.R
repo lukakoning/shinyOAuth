@@ -63,6 +63,25 @@ test_that("managers capture named client configuration and detect changed runtim
   }))
 })
 
+test_that("optional default labels preserve clients with absent or nonscalar provider names", {
+  for (name in list("", NA_character_, character(), c("one", "two"))) {
+    provider <- make_test_provider()
+    provider@name <- name
+    for (constructor in list(oauth_client, OAuthClient)) {
+      create <- function(...) constructor(provider = provider, client_id = "example",
+        redirect_uri = "https://app.example/callback", scopes = "read", ...)
+      client <- create()
+      expect_identical(client@provider@name, name)
+      expect_identical(client@label, "OAuth provider")
+      expect_identical(client@resource_bases, character())
+      expect_identical(client@smart, list())
+      expect_identical(create(label = "Selected label")@label, "Selected label")
+      expect_error(create(label = ""), "label")
+      expect_error(create(label = NA_character_), "label")
+    }
+  }
+})
+
 test_that("changed runtime policy prevents refresh commits and still permits local disconnect", {
   withr::local_options(shinyOAuth.tls_min_version = NULL)
   client <- oauth_client(make_test_provider(), "registration",
