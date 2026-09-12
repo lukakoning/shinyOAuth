@@ -85,6 +85,24 @@ test_that("launch routes reject callback collisions and ambiguous registrations"
   }
 })
 
+test_that("escaped launch paths use the same spelling for routing and collisions", {
+  f <- smart_launch_test_fixture()
+  route <- smart_launch_route("/%6Caunch", "hospital")
+  expect_identical(route$path, "/launch")
+  f$ui <- oauth_connections_ui(shiny::fluidPage("Synthetic SMART app"), "health",
+    f$manager, launch_routes = list(route))
+  query <- "iss=https%3A%2F%2Fehr.example%2Ffhir%2FR4&launch=example"
+  for (path in c("/launch", "/%6caunch", "/%6Caunch")) {
+    expect_identical(f$ui(manager_test_request(path = path, query = query))$status, 303L)
+  }
+  expect_error(smart_launch_routes_validate(list(route,
+    smart_launch_route("/launch", "hospital")), f$manager, "/"), "distinct")
+  expect_error(smart_launch_routes_validate(list(smart_launch_route("/%63allback", "hospital")),
+    f$manager, "/"), "distinct")
+  route$path <- "/%6caunch"
+  expect_error(smart_launch_routes_validate(list(route), f$manager, "/"), "canonicalize")
+})
+
 test_that("launch is consumed once and the handle belongs to one state transaction", {
   f <- smart_launch_test_fixture()
   response <- smart_launch_test_entry(f, "first-launch")

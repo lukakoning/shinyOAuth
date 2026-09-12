@@ -14,6 +14,7 @@
 #' @param path Absolute application path, such as `"/smart/launch"`. Register
 #'   `paste0(manager$app_origin, path)` with the EHR. It must be inside the UI's
 #'   `app_base_path` and distinct from every callback and other launch route.
+#'   Accepted percent-encoded unreserved characters are stored decoded.
 #' @param clients Character vector of names from the manager's `clients` list,
 #'   not OAuth `client_id` values. Each must select an EHR-mode [smart_client()].
 #'   A route cannot contain two registrations for the
@@ -64,7 +65,7 @@ smart_launch_route <- function(path, clients, max_age = 120) {
       !is.finite(max_age) || max_age < 30 || max_age > 300) {
     err_config("Invalid SMART launch route configuration")
   }
-  resource_binding_components(paste0("https://app.example", path))
+  path <- resource_binding_components(paste0("https://app.example", path))$path
   list(path = path, clients = clients, max_age = max_age)
 }
 
@@ -87,7 +88,10 @@ smart_launch_routes_validate <- function(routes, manager, app_base_path) {
     if (!is.list(route) || !setequal(names(route), c("path", "clients", "max_age"))) {
       err_config("Use smart_launch_route() to configure EHR entry")
     }
-    do.call(smart_launch_route, route)
+    canonical <- do.call(smart_launch_route, route)
+    if (!identical(route$path, canonical$path)) {
+      err_config("Use smart_launch_route() to canonicalize EHR entry paths")
+    }
     if (!startsWith(route$path, app_base_path) || route$path %in% c(paths, callbacks, app_base_path)) {
       err_config("SMART launch paths must be distinct from callbacks and inside the app")
     }

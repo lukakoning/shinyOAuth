@@ -9,7 +9,8 @@ smart_launch_route(path, clients, max_age = 120)
 \arguments{
 \item{path}{Absolute application path, such as \code{"/smart/launch"}. Register
 \code{paste0(manager$app_origin, path)} with the EHR. It must be inside the UI's
-\code{app_base_path} and distinct from every callback and other launch route.}
+\code{app_base_path} and distinct from every callback and other launch route.
+Accepted percent-encoded unreserved characters are stored decoded.}
 
 \item{clients}{Character vector of names from the manager's \code{clients} list,
 not OAuth \code{client_id} values. Each must select an EHR-mode \code{\link[=smart_client]{smart_client()}}.
