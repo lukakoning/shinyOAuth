@@ -299,3 +299,41 @@ test_that("the internal manager rejects conflicting legacy lifecycle controls", 
   )
   expect_error(oauth_module_validate_managed_hooks(list()), "Invalid internal")
 })
+
+test_that("managed form POST setup uses its full namespace for ordinary diagnostics", {
+  local_mocked_bindings(
+    .is_test = function() FALSE,
+    .watchdog_environment = new.env(parent = emptyenv())
+  )
+  client <- oauth_client(
+    make_test_provider(),
+    "test-client",
+    client_secret = "",
+    redirect_uri = "https://app.example/callback",
+    scopes = "read",
+    resource_bases = c(api = "https://api.example"),
+    response_mode = "form_post"
+  )
+  manager <- oauth_connections(list(a = client), "https://app.example")
+  ui <- oauth_connections_ui(shiny::fluidPage(), "health", manager)
+  warnings <- character()
+  withCallingHandlers(
+    shiny::testServer(
+      oauth_connections_server,
+      args = list(id = "health", manager = manager),
+      session = manager_test_session(),
+      {
+        expect_length(session$getReturned()$connections(), 0L)
+      }
+    ),
+    warning = function(condition) {
+      warnings <<- c(warnings, conditionMessage(condition))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_identical(
+    any(grepl("form_post UI wrapper not detected", warnings, fixed = TRUE)),
+    FALSE
+  )
+  expect_no_warning(warn_about_missing_form_post_ui("health-a", client))
+})

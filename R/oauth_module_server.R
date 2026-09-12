@@ -456,7 +456,9 @@ oauth_module_server_impl <- function(
   }
 
   warn_about_missing_js_dependency()
-  warn_about_missing_form_post_ui(id, client)
+  if (is.null(.managed)) {
+    warn_about_missing_form_post_ui(id, client)
+  }
 
   browser_cookie_samesite <- match.arg(browser_cookie_samesite)
   if (identical(browser_cookie_samesite, "Lax")) {
@@ -562,6 +564,9 @@ oauth_module_server_impl <- function(
       id
     } else {
       sub("-$", "", session$ns(""))
+    }
+    if (!is.null(.managed)) {
+      warn_about_missing_form_post_ui(callback_module_id, client)
     }
     exclude_oauth_module_bookmarks(session)
     ## 2.1 Reactive values -----------------------------------------------------
@@ -1473,8 +1478,13 @@ oauth_module_server_impl <- function(
     # @return Authorization URL string, or `NA_character_` after recording a
     #   module error.
     .build_auth_url <- function(.authorization_request = FALSE) {
-      if (!isTRUE(.authorization_request) && identical(client@authorization_method, "POST")) {
-        err_config("POST authorization requires request_login(); build_auth_url() returns a URL only")
+      if (
+        !isTRUE(.authorization_request) &&
+          identical(client@authorization_method, "POST")
+      ) {
+        err_config(
+          "POST authorization requires request_login(); build_auth_url() returns a URL only"
+        )
       }
       if (.is_authenticated_now()) {
         .warn_about_authenticated_login_request("build_auth_url")
@@ -1535,14 +1545,18 @@ oauth_module_server_impl <- function(
       managed_launch <- tryCatch(
         if (!is.null(.managed) && is.function(.managed$parameters)) {
           .managed$parameters(managed_context)$launch
-        } else NULL,
+        } else {
+          NULL
+        },
         error = function(e) {
           .set_error("auth_url_error", e, phase = "build_auth_url")
           NA
         }
       )
       if (identical(managed_launch, NA)) {
-        if (!is.null(.managed)) .managed$cancel(managed_context)
+        if (!is.null(.managed)) {
+          .managed$cancel(managed_context)
+        }
         return(NA_character_)
       }
       register_prepared <- function(prepared) {
@@ -1562,16 +1576,31 @@ oauth_module_server_impl <- function(
         return(tryCatch(
           {
             if (!is.null(.managed) && is.function(.managed$prepared)) {
-              prepared <- prepare_call(client, values$browser_token,
-                .requested_max_age = requested_max_age, .defer_build = TRUE,
-                .transaction_context = managed_context, .smart_launch = managed_launch)
+              prepared <- prepare_call(
+                client,
+                values$browser_token,
+                .requested_max_age = requested_max_age,
+                .defer_build = TRUE,
+                .transaction_context = managed_context,
+                .smart_launch = managed_launch
+              )
               register_prepared(prepared)
-              finish_prepared_authorization(build_prepared_authorization(client, prepared),
-                client, prepared, publisher)
+              finish_prepared_authorization(
+                build_prepared_authorization(client, prepared),
+                client,
+                prepared,
+                publisher
+              )
             } else {
-              prepare_call(client, values$browser_token, publisher, requested_max_age,
-                .transaction_context = managed_context, .smart_launch = managed_launch,
-                .authorization_request = .authorization_request)
+              prepare_call(
+                client,
+                values$browser_token,
+                publisher,
+                requested_max_age,
+                .transaction_context = managed_context,
+                .smart_launch = managed_launch,
+                .authorization_request = .authorization_request
+              )
             }
           },
           error = function(e) {
