@@ -96,7 +96,7 @@ test_that("SMART helpers restrict requests and redact general summaries", {
   called <- FALSE
   local_mocked_bindings(perform_resource_req = function(token, url, ...) {
     called <<- TRUE
-    url
+    url$url
   }, .package = "shinyOAuth")
   expect_identical(smart_patient(ref), "https://ehr.example/fhir/R4/Patient/example-patient")
   expect_true(called)
@@ -118,6 +118,39 @@ test_that("SMART helpers restrict requests and redact general summaries", {
   expect_identical(smart_fhir_user(foreign), "https://ehr.example/fhir/R4/Practitioner/example")
 })
 
+test_that("SMART read helpers negotiate FHIR JSON while generic requests keep their defaults", {
+  skip_if_not_installed("webfakes")
+  app <- webfakes::new_app()
+  app$get("/fhir/R4/:type/:id", function(req, res) {
+    if (identical(req$get_header("Accept"), "application/fhir+json")) {
+      res$set_header("Content-Type", "application/fhir+json")$send(
+        paste0('{"resourceType":"', req$params$type, '","id":"', req$params$id, '"}'))
+    } else {
+      res$set_header("Content-Type", "application/fhir+xml")$send(
+        '<Patient xmlns="http://hl7.org/fhir"><id value="example-patient"/></Patient>')
+    }
+  })
+  process <- webfakes::local_app_process(app)
+  record <- smart_identity_fixture()
+  site <- smart_client_fixture(oidc = TRUE)
+  site$fhir_base <- process$url("/fhir/R4")
+  site$allow_http_loopback <- TRUE
+  record$client <- smart_client(site, "example", "https://app.example/callback",
+    scopes = "user/Patient.r", identity = "fhirUser")
+  record$token@granted_scopes <- c("openid", "fhirUser", "user/Patient.r")
+  record$token@extra_fields <- list(patient = "example-patient")
+  record$token <- smart_update_token_context(record$client, record$token)
+  ref <- OAuthConnection$new("json-negotiation", record$client, function() record)
+  patient <- smart_patient(ref)
+  expect_identical(httr2::resp_content_type(patient), "application/fhir+json")
+  expect_identical(httr2::resp_body_json(patient)$resourceType, "Patient")
+  user <- smart_fhir_user(ref)
+  expect_identical(httr2::resp_content_type(user), "application/fhir+json")
+  expect_identical(httr2::resp_body_json(user)$resourceType, "Practitioner")
+  generic <- ref$request("fhir", "Patient/example-patient")
+  expect_identical(httr2::resp_content_type(generic), "application/fhir+xml")
+})
+
 test_that("retained credentials preserve interpreted context without plaintext", {
   record <- smart_context_fixture()
   key <- openssl::rand_bytes(32)
@@ -137,7 +170,7 @@ test_that("Patient identity reads accept only the matching patient context", {
   ref <- OAuthConnection$new("patient-identity", record$client, function() record)
   local_mocked_bindings(perform_resource_req = function(token, url, follow_redirect, ...) {
     expect_identical(follow_redirect, FALSE)
-    url
+    url$url
   }, .package = "shinyOAuth")
   for (reference in c("Patient/example-patient",
       "https://ehr.example/fhir/R4/Patient/example-patient")) {
@@ -155,7 +188,7 @@ test_that("identity scopes authorize the signed same-base fhirUser reference", {
   ref <- OAuthConnection$new("signed-identity", record$client, function() record)
   local_mocked_bindings(perform_resource_req = function(token, url, follow_redirect, ...) {
     expect_identical(follow_redirect, FALSE)
-    url
+    url$url
   }, .package = "shinyOAuth")
   expect_identical(smart_fhir_user(ref), "https://ehr.example/fhir/R4/Practitioner/example")
   record <- smart_identity_fixture("https://ehr.example/fhir/R4/identity/example")

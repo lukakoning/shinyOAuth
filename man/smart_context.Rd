@@ -39,6 +39,7 @@ covers \code{patient/Patient.r} or \code{user/Patient.r}. \code{smart_fhir_user(
 identity reference only from a validated ID token. It accepts \verb{openid fhirUser},
 a matching user read scope, or patient read permission when the identity is
 the contextual Patient. Both stay inside the FHIR base and refuse redirects.
+Both request JSON with \code{Accept: application/fhir+json}.
 A foreign \code{fhirUser} reference is reported as context but is never fetched
 with this connection's token. FHIR search, write, batch and pagination helpers
 are outside these two convenience methods.

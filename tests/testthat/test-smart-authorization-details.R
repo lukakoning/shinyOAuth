@@ -29,7 +29,7 @@ test_that("initial SMART context and scopes use only the configured location", {
   expect_identical(token@extra_fields$authorization_details, body$authorization_details)
   record <- list(client = client, token = token)
   ref <- OAuthConnection$new("location-reference", client, function() record)
-  local_mocked_bindings(perform_resource_req = function(token, url, ...) url,
+  local_mocked_bindings(perform_resource_req = function(token, url, ...) url$url,
     .package = "shinyOAuth")
   expect_identical(smart_patient(ref), paste0(client@smart$fhir_base, "/Patient/local-patient"))
   expect_error(ref$request("fhir", "Observation/example", required_scopes = "user/Observation.r"),

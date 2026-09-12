@@ -20,6 +20,7 @@
 #' identity reference only from a validated ID token. It accepts `openid fhirUser`,
 #' a matching user read scope, or patient read permission when the identity is
 #' the contextual Patient. Both stay inside the FHIR base and refuse redirects.
+#' Both request JSON with `Accept: application/fhir+json`.
 #' A foreign `fhirUser` reference is reported as context but is never fetched
 #' with this connection's token. FHIR search, write, batch and pagination helpers
 #' are outside these two convenience methods.
@@ -202,5 +203,6 @@ smart_record_resource <- function(record, kind) {
         record$token@granted_scopes)$status, "covered")
   }, logical(1))
   if (!any(usable)) err_token("SMART grant does not cover this resource read")
-  connection_record_request(record, "fhir", path, NULL, "GET", candidates[[which(usable)[1L]]])
+  connection_record_request(record, "fhir", path, NULL, "GET", candidates[[which(usable)[1L]]],
+    configure = function(req) httr2::req_headers(req, Accept = "application/fhir+json"))
 }
