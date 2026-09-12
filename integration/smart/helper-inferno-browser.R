@@ -11,6 +11,15 @@ inferno_registration <- function(stack, style, algorithm, site) {
     registration$private_pem <- openssl::write_pem(key)
     registration$kid <- paste0("client-", site)
     jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey), simplifyVector = FALSE)
+    # Some jose versions include ASN.1's sign byte. RSA JWK integers use the
+    # minimum-length unsigned representation required by RFC 7518.
+    for (field in intersect(c("n", "e"), names(jwk))) {
+      encoded <- jwk[[field]]
+      bytes <- openssl::base64_decode(paste0(chartr("-_", "+/", encoded),
+        strrep("=", (4L - nchar(encoded) %% 4L) %% 4L)))
+      while (length(bytes) > 1L && bytes[[1L]] == as.raw(0)) bytes <- bytes[-1L]
+      jwk[[field]] <- sub("=+$", "", chartr("+/", "-_", openssl::base64_encode(bytes)))
+    }
     jwk$kid <- registration$kid
     jwk$alg <- algorithm
     jwk$use <- "sig"
@@ -28,6 +37,8 @@ inferno_begin_session <- function(stack, registration, origin, site, launch) {
     smart_redirect_uris = paste0(origin, "/callback/", site),
     launch_context = jsonlite::toJSON(list(patient = registration$patient), auto_unbox = TRUE),
     fhir_user_relative_reference = paste0("Practitioner/", registration$practitioner),
+    echoed_fhir_response = jsonlite::toJSON(list(resourceType = "Bundle", type = "searchset",
+      total = 0L, entry = list()), auto_unbox = TRUE),
     fhir_read_resources_bundle = jsonlite::toJSON(list(resourceType = "Bundle", type = "collection",
       entry = list(list(resource = list(resourceType = "Patient", id = registration$patient)),
         list(resource = list(resourceType = "Practitioner", id = registration$practitioner)))), auto_unbox = TRUE))

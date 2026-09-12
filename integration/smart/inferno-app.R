@@ -35,8 +35,9 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
     owner = shinyOAuth::oauth_browser_owner(), store = shinyOAuth::oauth_connection_store_memory(),
     keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
   ui <- shiny::fluidPage(shinyOAuth::use_shinyOAuth(),
-    lapply(sites, function(site) shiny::tagList(lapply(c("connect", "read", "user", "refresh"),
+    lapply(sites, function(site) shiny::tagList(lapply(c("connect", "read", "user", "search", "refresh", "disconnect"),
       function(action) shiny::actionButton(paste0(action, "_", site), paste(action, site))))),
+    shiny::actionButton("narrow_a", "Narrow A"), shiny::actionButton("widen_a", "Try broader scopes"),
     shiny::actionButton("logout", "Log out"),
     shiny::verbatimTextOutput("snapshot"), shiny::verbatimTextOutput("result"))
   sessions <- 0L
@@ -81,7 +82,19 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
       }))
       shiny::observeEvent(input[[paste0("refresh_", selected)]],
         perform(paste0("refresh_", selected), function() connection(selected)$refresh()))
+      shiny::observeEvent(input[[paste0("search_", selected)]], perform(paste0("search_", selected), function() {
+        response <- connection(selected)$request("fhir", "Patient", required_scopes = "patient/Patient.s")
+        body <- httr2::resp_body_json(response)
+        stopifnot(identical(body$resourceType, "Bundle"), identical(body$type, "searchset"))
+        TRUE
+      }))
+      shiny::observeEvent(input[[paste0("disconnect_", selected)]],
+        health$disconnect(connection(selected)$summary()$connection_id, revoke = FALSE))
     })
+    limited <- c("patient/Patient.r", "user/Practitioner.r", "offline_access", "openid", "fhirUser")
+    shiny::observeEvent(input$narrow_a, perform("narrow_a", function() connection("a")$refresh(scopes = limited)))
+    shiny::observeEvent(input$widen_a,
+      perform("widen_a", function() connection("a")$refresh(scopes = c(limited, "patient/Patient.s"))))
     shiny::observeEvent(input$logout, health$logout(revoke = FALSE))
     output$result <- shiny::renderText(result())
     output$snapshot <- shiny::renderText(jsonlite::toJSON(list(session = session_number,

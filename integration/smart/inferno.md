@@ -51,8 +51,12 @@ and expiry remain validated. See the
 
 The driver runs eight scenarios: public, HTTP Basic, RS384 and ES384, each with
 standalone and Inferno-initiated EHR launch. Each uses a fresh Shiny process,
-browser context and Inferno test session, reads a supplied Patient and distinct
-validated Practitioner, refreshes, and repeats both reads. Query callbacks and
+browser context and two Inferno test sessions on separate deployments. The app
+authorizes both sites, reads each supplied Patient and distinct validated
+Practitioner, and retains the same connection IDs in a new Shiny session.
+It narrows site A from `.rs` to `.r`, blocks subsequent searches and widening,
+refreshes both grants independently, disconnects B while A still works, and
+logs out. A separate browser context cannot access either connection. Query callbacks and
 synchronous token transport are covered in this initial matrix.
 
 `--quick` runs only public standalone and records `complete_matrix: false`.
@@ -98,6 +102,12 @@ RS384 selection where applicable, transport, browser version and per-test result
 Record which scenarios actually ran; a standalone pass cannot fill an EHR row.
 The result gate requires the exact five applicable upstream test IDs per
 registration, rather than counting arbitrary passing tests.
+Additional driver checks read the owned session's exchanges in memory. They
+require one code exchange per site, two refreshes for A and one for B, exact
+resource paths and request counts, explicit returned narrowed scopes, and
+Patient/Practitioner reads using the current token after every token response.
+No additional requests may escape after a locally rejected search, widening,
+foreign-owner read, disconnect or logout. Only counts and booleans are exported.
 
 Inferno stores request/response details, which can contain credentials and
 context. Keep raw exports out of Git and ordinary CI artifacts. Publish only a
@@ -120,11 +130,22 @@ pinned upstream Basic parser does not form-decode credential components. It
 does not verify interoperability for secrets containing reserved characters.
 Those cases retain their independent strict-AS coverage.
 
+The two deployments use the same independent upstream implementation, with
+separate issuers, registrations, databases and synthetic data. This verifies
+multi-connection behavior; it is not evidence from two different EHR vendors.
+The search response is an explicitly supplied empty Bundle. Scope narrowing
+is checked in returned scopes and client behavior, because Inferno does not
+enforce resource authorization. Its refresh token does not rotate; rotation
+remains covered by the strict local fixtures.
+
 Validation on 2026-09-12: all eight core application scenarios passed against
 the installed checkout, with 40 applicable upstream tests passing, 19 simulator
 examples passing and 39 result-gate assertions passing. This is evidence from
 the locally modified simulator and unchanged upstream verifier. Two-site retained
-connections and the wider transport matrix are separate extensions to this run.
+connections and the wider transport matrix were separate extensions to that run.
+The subsequent two-site run passed all eight scenarios with 80 upstream tests,
+19 simulator examples and 44 evidence-contract assertions. Every scenario also
+passed the additional recorded-exchange, narrowing and browser-lifecycle checks.
 
 Keep our own SMART scope/context tests, ID-token validation, callback defenses,
 refresh continuity and resource-binding checks, plus the P3/P5 browser ownership
