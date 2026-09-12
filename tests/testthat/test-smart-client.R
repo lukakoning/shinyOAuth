@@ -112,6 +112,43 @@ test_that("SMART asymmetric registration chooses explicit SHA-384 signing", {
     "key|EC")
 })
 
+test_that("SMART asymmetric exchange and refresh omit redundant client_id", {
+  key <- openssl::rsa_keygen(2048)
+  smart <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
+    scopes = "user/Patient.r", token_auth_style = "private_key_jwt",
+    client_assertion_private_key = key, client_assertion_private_key_kid = "registered-key")
+  ordinary <- smart
+  S7::props(ordinary) <- list(smart = list(), scope_policy = list())
+  requests <- list()
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    requests[[length(requests) + 1L]] <<- lapply(req$body$data, function(value) {
+      utils::URLdecode(as.character(value))
+    })
+    httr2::response(url = req$url, status = 200,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw('{"access_token":"example","token_type":"Bearer","expires_in":300,"scope":"user/Patient.r"}'))
+  }, .package = "shinyOAuth")
+  for (client in list(smart, ordinary)) {
+    requests <- list()
+    swap_code_for_token_set(client, "example-code", code_verifier = strrep("x", 64))
+    token <- OAuthToken(access_token = "example", refresh_token = "example-refresh",
+      token_type = "Bearer", expires_at = as.numeric(Sys.time()) + 300,
+      granted_scopes = "user/Patient.r", granted_scopes_verified = TRUE)
+    refresh_token(client, smart_update_token_context(client, token))
+    expect_length(requests, 2L)
+    expect_identical(vapply(requests, `[[`, "", "grant_type"), c("authorization_code", "refresh_token"))
+    for (request in requests) {
+      expect_identical(request$client_id, if (client_uses_smart(client)) NULL else "example")
+      expect_null(request$client_secret)
+      expect_identical(request$client_assertion_type, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+      claims <- jose::jwt_decode_sig(request$client_assertion, key$pubkey)
+      expect_identical(claims$iss, "example")
+      expect_identical(claims$sub, "example")
+      expect_identical(claims$aud, "https://ehr.example/token")
+    }
+  }
+})
+
 test_that("SMART capabilities match resource scope spellings on the wire", {
   for (advertised in list("permission-v1", "permission-v2",
       c("permission-v1", "permission-v2"))) {

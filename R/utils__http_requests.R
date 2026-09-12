@@ -232,8 +232,12 @@ apply_direct_client_auth <- function(req, params, client, context) {
   } else if (
     identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
   ) {
-    params[["client_id"]] <- params[["client_id"]] %||%
-      client@client_id
+    if (client_uses_smart(client) && identical(tas, "private_key_jwt") &&
+        context %in% c("token_exchange", "refresh_token")) {
+      params[["client_id"]] <- NULL
+    } else {
+      params[["client_id"]] <- params[["client_id"]] %||% client@client_id
+    }
     params[["client_assertion_type"]] <-
       "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
     params[["client_assertion"]] <- build_client_assertion(

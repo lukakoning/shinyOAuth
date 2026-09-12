@@ -106,7 +106,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
       header = identical(header, paste0("Basic ", openssl::base64_encode(charToRaw(paste0(site, ":", registration$secret))))) &&
         is.null(body$client_secret) && is.null(body$client_assertion),
       private_key_jwt = tryCatch({
-        stopifnot(is.null(header), is.null(body$client_secret),
+        stopifnot(is.null(header), is.null(body$client_secret), is.null(body$client_id),
           identical(body$client_assertion_type, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"))
         parts <- strsplit(body$client_assertion, ".", fixed = TRUE)[[1L]]
         jwt_header <- jsonlite::fromJSON(rawToChar(decode(parts[[1L]])))

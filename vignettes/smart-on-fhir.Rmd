@@ -356,6 +356,14 @@ clients for those flows.
 
 ## Other registration and refresh options
 
+For SMART asymmetric registrations, code exchange and refresh identify the
+client through the signed assertion and omit form-body `client_id`. This follows
+the [App Launch token parameter table](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#obtain-access-token)
+and its [asymmetric worked example](https://hl7.org/fhir/smart-app-launch/STU2.2/example-app-launch-asymmetric-auth.html#retrieve-access-token).
+The signature-verification text also describes checking a supplied client ID;
+this package chooses the table's request shape. Ordinary OAuth JWT client
+authentication retains its existing serialization.
+
 Choose authentication to match the server registration:
 
 | Registration | `smart_client()` settings |
