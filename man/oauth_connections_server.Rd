@@ -63,6 +63,10 @@ A new session obtains new references after owner verification. The existing
 module never holds managed tokens, so its refresh observers cannot compete with
 the manager. Refresh uses the store's revision and exclusive claim and preserves
 the original authentication time and retention expiry.
+Reactive connection reads also recheck expiry at \code{refresh_check_interval},
+including references used without \code{connections()} or \code{errors()}. These checks
+notify dependent expressions when lifecycle state changes; unchanged polling
+does not rerun application requests or extend owner inactivity limits.
 
 Remote revocation is best effort: at most ten seconds per disconnect/logout
 batch, at most two seconds and one HTTP attempt per credential. Results are

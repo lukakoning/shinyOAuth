@@ -38,6 +38,10 @@
 #' module never holds managed tokens, so its refresh observers cannot compete with
 #' the manager. Refresh uses the store's revision and exclusive claim and preserves
 #' the original authentication time and retention expiry.
+#' Reactive connection reads also recheck expiry at `refresh_check_interval`,
+#' including references used without `connections()` or `errors()`. These checks
+#' notify dependent expressions when lifecycle state changes; unchanged polling
+#' does not rerun application requests or extend owner inactivity limits.
 #'
 #' Remote revocation is best effort: at most ten seconds per disconnect/logout
 #' batch, at most two seconds and one HTTP attempt per credential. Results are
@@ -112,14 +116,22 @@ oauth_connections_server <- function(
       )
     })
     names(modules) <- names(manager$clients)
+    lifecycle <- shiny::reactiveVal(NULL)
     launch_error <- shiny::reactiveVal(NULL)
-    shiny::observeEvent(input$smart_launch, {
-      tryCatch({
-        client_name <- controller$resume_launch(input$smart_launch)
-        launch_error(NULL)
-        modules[[client_name]]$request_login()
-      }, error = function(...) launch_error("fresh_ehr_launch_required"))
-    }, ignoreInit = FALSE)
+    shiny::observeEvent(
+      input$smart_launch,
+      {
+        tryCatch(
+          {
+            client_name <- controller$resume_launch(input$smart_launch)
+            launch_error(NULL)
+            modules[[client_name]]$request_login()
+          },
+          error = function(...) launch_error("fresh_ehr_launch_required")
+        )
+      },
+      ignoreInit = FALSE
+    )
     connection <- function(connection_id) {
       record <- controller$read(connection_id)
       OAuthConnection$new(
@@ -127,6 +139,7 @@ oauth_connections_server <- function(
         record$client,
         resolve = function() {
           manager$state$signal()
+          lifecycle()
           controller$read(connection_id)
         },
         refresh = function(scopes = NULL) {
@@ -137,7 +150,7 @@ oauth_connections_server <- function(
     }
     connections <- shiny::reactive({
       manager$state$signal()
-      shiny::invalidateLater(refresh_check_interval, session)
+      lifecycle()
       tryCatch(
         lapply(controller$records(), function(record) {
           connection_record_summary(record, record$stored$id)
@@ -147,7 +160,7 @@ oauth_connections_server <- function(
     })
     errors <- shiny::reactive({
       manager$state$signal()
-      shiny::invalidateLater(refresh_check_interval, session)
+      lifecycle()
       available <- tryCatch(
         {
           controller$guard()
@@ -158,13 +171,26 @@ oauth_connections_server <- function(
       if (!available) {
         return(list(owner = "owner_unavailable"))
       }
-      Filter(Negate(is.null), c(lapply(modules, function(module) module$error),
-        list(smart_launch = launch_error())))
+      Filter(
+        Negate(is.null),
+        c(
+          lapply(modules, function(module) module$error),
+          list(smart_launch = launch_error())
+        )
+      )
     })
     shiny::observe({
       manager$state$signal()
       shiny::invalidateLater(refresh_check_interval, session)
-      rows <- tryCatch(controller$records(), error = function(...) list())
+      rows <- tryCatch(controller$records(), error = function(...) NULL)
+      # Only lifecycle transitions invalidate reference consumers. Invalidating
+      # them on every poll would rerun application requests and touch the owner.
+      lifecycle(list(
+        available = !is.null(rows),
+        records = lapply(rows, function(record) {
+          list(id = record$stored$id, status = connection_record_status(record))
+        })
+      ))
       for (record in rows) {
         token <- record$token
         now <- as.numeric(Sys.time())

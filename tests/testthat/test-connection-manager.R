@@ -632,6 +632,73 @@ test_that("automatic refresh retry cooldown survives new sessions", {
   )
 })
 
+test_that("fixed connection outputs recheck owner, token and retention expiry", {
+  check_expiry <- function(boundary) {
+    clock <- new.env(parent = emptyenv())
+    clock$now <- as.numeric(Sys.time())
+    local_mocked_bindings(
+      Sys.time = function() {
+        as.POSIXct(clock$now, origin = "1970-01-01", tz = "UTC")
+      },
+      .package = "base"
+    )
+    f <- manager_test_fixture(
+      owner = oauth_browser_owner(
+        idle_timeout = if (boundary == "owner") 10 else 60000,
+        absolute_timeout = 60000
+      )
+    )
+    cookie <- manager_test_cookie(f)
+    requests <- 0L
+    local_mocked_bindings(perform_resource_req = function(...) {
+      requests <<- requests + 1L
+      "synthetic records"
+    })
+    shiny::testServer(
+      oauth_connections_server,
+      args = list(
+        id = "health",
+        manager = f$manager,
+        refresh_check_interval = 100
+      ),
+      session = manager_test_session(cookie),
+      {
+        token <- manager_test_token(refresh = NA_character_)
+        token@expires_at <- clock$now + if (boundary == "token") 10 else 100000
+        id <- manager_test_accept(controller, token = token)
+        health <- session$getReturned()
+        fixed <- health$connection(id)
+        output$status <- shiny::renderText({
+          if (fixed$is_usable()) fixed$summary()$status else "unavailable"
+        })
+        output$data <- shiny::renderText({
+          if (!fixed$is_usable()) {
+            return("unavailable")
+          }
+          fixed$request("api", "records")
+        })
+        session$flushReact()
+        expect_identical(output$status, "active", info = boundary)
+        expect_identical(output$data, "synthetic records", info = boundary)
+        expect_identical(requests, 1L, info = boundary)
+
+        clock$now <- clock$now + 5
+        session$elapse(100)
+        expect_identical(output$status, "active", info = boundary)
+        expect_identical(output$data, "synthetic records", info = boundary)
+        expect_identical(requests, 1L, info = boundary)
+
+        clock$now <- clock$now + if (boundary == "retention") 28796 else 6
+        session$elapse(100)
+        expect_identical(output$status, "unavailable", info = boundary)
+        expect_identical(output$data, "unavailable", info = boundary)
+        expect_identical(requests, 1L, info = boundary)
+      }
+    )
+  }
+  invisible(lapply(c("owner", "token", "retention"), check_expiry))
+})
+
 test_that("repeated authorizations create independent grants at the same client", {
   f <- manager_test_fixture()
   cookie <- manager_test_cookie(f)
