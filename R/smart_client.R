@@ -136,6 +136,7 @@ smart_client <- function(
   } else if (any(c("openid", "fhirUser") %in% scopes)) {
     err_config("Identity scopes require identity = 'fhirUser'")
   }
+  if (!length(scopes)) err_config("SMART authorization requires at least one requested scope")
   if (any(startsWith(scopes, "patient/"))) {
     require_capability("permission-patient")
     if (identical(launch, "standalone") && !"launch/patient" %in% scopes) {
@@ -236,6 +237,7 @@ client_uses_smart <- function(client) length(client@smart) > 0L
 
 smart_validate_client <- function(client) {
   if (!client_uses_smart(client)) return(NULL)
+  if (!length(client@scopes)) return("OAuthClient: SMART authorization requires at least one requested scope")
   policy <- client@smart
   if (!identical(sort(setdiff(names(policy), "authorization_method")), sort(c("version", "fhir_base", "launch",
       "identity", "allow_http_loopback", "discovery_digest"))) ||

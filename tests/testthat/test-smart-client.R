@@ -153,6 +153,30 @@ test_that("SMART lifetime and identity checks cannot use generic fallbacks", {
   expect_no_error(smart_verify_identity(identity, list(), TRUE))
 })
 
+test_that("SMART requires effective request scopes while accepting explicit empty grants", {
+  site <- smart_client_fixture(oidc = TRUE)
+  expect_error(smart_client(site, "example", "https://app.example/callback",
+    scopes = character()), "at least one requested scope")
+  client <- smart_client(site, "example", "https://app.example/callback",
+    scopes = "user/Patient.r", required_scopes = character())
+  expect_error(client@scopes <- character(), "at least one requested scope")
+  verified <- verify_token_set(client,
+    list(access_token = "example", token_type = "Bearer", expires_in = 60, scope = ""),
+    nonce = NULL)
+  expect_identical(verified$granted_scopes, character())
+  expect_identical(verified$granted_scopes_verified, TRUE)
+  identity <- smart_client(site, "example", "https://app.example/callback",
+    scopes = character(), identity = "fhirUser")
+  request <- httr2::url_parse(prepare_call(identity, browser_token = valid_browser_token()))$query
+  expect_setequal(strsplit(request$scope, " ", fixed = TRUE)[[1L]], c("openid", "fhirUser"))
+  ehr <- smart_client(site, "example", "https://app.example/callback",
+    scopes = character(), launch = "ehr")
+  expect_identical(ehr@scopes, "launch")
+  ordinary <- make_test_client(scopes = character())
+  request <- httr2::url_parse(prepare_call(ordinary, browser_token = valid_browser_token()))$query
+  expect_null(request$scope)
+})
+
 test_that("SMART fhirUser is taken only from a cryptographically validated ID token", {
   client <- smart_client(smart_client_fixture(oidc = TRUE), "example",
     "https://app.example/callback", scopes = "user/Patient.r", identity = "fhirUser")
