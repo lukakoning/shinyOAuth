@@ -9,6 +9,8 @@ on:
       - DESCRIPTION
       - NAMESPACE
       - integration/connections/**
+      - integration/keycloak/tls/server-cert.pem
+      - integration/keycloak/tls/server-key.pem
       - .github/workflows/connection-retention.yml
   push:
     branches: [main, master]
@@ -18,6 +20,8 @@ on:
       - DESCRIPTION
       - NAMESPACE
       - integration/connections/**
+      - integration/keycloak/tls/server-cert.pem
+      - integration/keycloak/tls/server-key.pem
       - .github/workflows/connection-retention.yml
 
 permissions:
@@ -46,12 +50,15 @@ jobs:
             any::promises
             any::future
             any::mirai
+            any::processx
       - name: Test cross-site authorization and retained connections
         run: Rscript integration/connections/run-tests.R
       - name: Test shared-issuer callbacks and resource isolation
         run: Rscript integration/connections/run-shared-router.R
       - name: Test retained refresh scope narrowing
         run: Rscript integration/connections/run-scope-narrowing.R
+      - name: Test account login and retained authorization across sessions
+        run: Rscript integration/connections/run-account.R
       - name: Upload sanitized browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

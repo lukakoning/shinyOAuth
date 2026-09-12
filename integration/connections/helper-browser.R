@@ -11,7 +11,9 @@ retention_chrome_close <- function(chrome) {
       process$wait(timeout = 2000)
     }
   }
-  if (process$is_alive()) stop("Fixture Chrome did not stop")
+  if (process$is_alive()) {
+    stop("Fixture Chrome did not stop")
+  }
   # The process is confirmed dead; websocket's close event can still be queued.
   tryCatch(chrome$close(wait = FALSE), error = function(...) NULL)
   invisible(NULL)
@@ -103,11 +105,16 @@ retention_browser_action <- function(browser, id, value) {
   before <- retention_browser_snapshot(browser)$result_revision
   stopifnot(is.numeric(before), length(before) == 1L)
   retention_browser_click(browser, id)
-  retention_browser_wait(browser, function() {
-    snapshot <- retention_browser_snapshot(browser)
-    !is.null(snapshot) && snapshot$result_revision > before &&
-      identical(snapshot$result, value)
-  }, paste("completed action", id, "with result", value))
+  retention_browser_wait(
+    browser,
+    function() {
+      snapshot <- retention_browser_snapshot(browser)
+      !is.null(snapshot) &&
+        snapshot$result_revision > before &&
+        identical(snapshot$result, value)
+    },
+    paste("completed action", id, "with result", value)
+  )
 }
 
 retention_browser_setup <- function(
@@ -119,24 +126,72 @@ retention_browser_setup <- function(
   shared_issuer = FALSE,
   scope_narrowing = FALSE,
   app_args = list(),
+  https = FALSE,
   .env = parent.frame()
 ) {
   port <- httpuv::randomPort()
-  origin <- paste0("http://127.0.0.1:", port)
-  providers <- lapply(if (shared_issuer) "shared" else c("a", "b"), function(site) {
-    if (shared_issuer) {
-      provider <- provider_factory(site, paste0(origin, "/callback/shared"), shared_issuer = TRUE)
-    } else if (scope_narrowing) {
-      provider <- provider_factory(site, paste0(origin, "/callback/", site), scope_narrowing = TRUE)
-    } else {
-      provider <- provider_factory(
-        site,
-        paste0(origin, "/callback/", site)
-      )
+  if (https) {
+    python <- Sys.which(if (.Platform$OS.type == "windows") "py" else "python3")
+    if (!nzchar(python)) {
+      stop("The account browser gate requires Python 3")
     }
-    withr::defer(provider$stop(), envir = .env)
-    provider
-  })
+    proxy <- processx::process$new(
+      python,
+      c(
+        file.path(retention_root, "integration/connections/tls-proxy.py"),
+        "--target-port",
+        as.character(port),
+        "--cert",
+        file.path(retention_root, "integration/keycloak/tls/server-cert.pem"),
+        "--key",
+        file.path(retention_root, "integration/keycloak/tls/server-key.pem")
+      ),
+      stdout = "|",
+      stderr = "|",
+      supervise = TRUE
+    )
+    withr::defer(proxy$kill(), envir = .env)
+    app_args$listen_port <- port
+    deadline <- Sys.time() + 10
+    repeat {
+      proxy$poll_io(100)
+      published <- proxy$read_output_lines(n = 1L)
+      if (length(published)) {
+        break
+      }
+      if (!proxy$is_alive() || Sys.time() >= deadline) {
+        stop("Account TLS fixture did not start: ", proxy$read_error())
+      }
+    }
+    port <- as.integer(published)
+    stopifnot(length(port) == 1L, !is.na(port), port > 0L, port <= 65535L)
+  }
+  origin <- paste0(if (https) "https" else "http", "://127.0.0.1:", port)
+  providers <- lapply(
+    if (shared_issuer) "shared" else c("a", "b"),
+    function(site) {
+      if (shared_issuer) {
+        provider <- provider_factory(
+          site,
+          paste0(origin, "/callback/shared"),
+          shared_issuer = TRUE
+        )
+      } else if (scope_narrowing) {
+        provider <- provider_factory(
+          site,
+          paste0(origin, "/callback/", site),
+          scope_narrowing = TRUE
+        )
+      } else {
+        provider <- provider_factory(
+          site,
+          paste0(origin, "/callback/", site)
+        )
+      }
+      withr::defer(provider$stop(), envir = .env)
+      provider
+    }
+  )
   names(providers) <- if (shared_issuer) "shared" else c("a", "b")
   # Different hosts force real cross-site navigation; both hosts remain loopback.
   bases <- lapply(providers, function(provider) {
@@ -147,21 +202,37 @@ retention_browser_setup <- function(
       fixed = TRUE
     )
   })
-  if (shared_issuer) bases <- list(a = bases[[1L]], b = bases[[1L]])
+  if (shared_issuer) {
+    bases <- list(a = bases[[1L]], b = bases[[1L]])
+  }
   app_file <- normalizePath(file.path(
     retention_root,
     app_script
   ))
   process <- callr::r_bg(
-    function(app_file, origin, bases, async, response_mode, app_function, shared_issuer, scope_narrowing, app_args) {
+    function(
+      app_file,
+      origin,
+      bases,
+      async,
+      response_mode,
+      app_function,
+      shared_issuer,
+      scope_narrowing,
+      app_args
+    ) {
       Sys.setenv(CURL_SSL_BACKEND = "openssl")
       # mirai starts fresh R processes: carry the selected callr library paths
       # into those processes as well as the Shiny parent.
       Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
       source(app_file, local = TRUE)
       args <- list(origin, bases, async, response_mode = response_mode)
-      if (shared_issuer) args$shared_issuer <- TRUE
-      if (scope_narrowing) args$scope_narrowing <- TRUE
+      if (shared_issuer) {
+        args$shared_issuer <- TRUE
+      }
+      if (scope_narrowing) {
+        args$scope_narrowing <- TRUE
+      }
       args <- c(args, app_args)
       do.call(get(app_function), args)
     },
@@ -188,7 +259,11 @@ retention_browser_setup <- function(
       {
         response <- curl::curl_fetch_memory(
           origin,
-          handle = curl::new_handle(timeout = 1)
+          handle = curl::new_handle(
+            timeout = 1,
+            ssl_verifypeer = !https,
+            ssl_verifyhost = if (https) 0L else 2L
+          )
         )
         response$status_code == 200L
       },
@@ -213,13 +288,28 @@ retention_browser_setup <- function(
       "about:blank",
       browserContextId = context
     )$targetId
-    browser <- chromote::ChromoteSession$new(parent = chrome_instance, targetId = target)
+    browser <- chromote::ChromoteSession$new(
+      parent = chrome_instance,
+      targetId = target
+    )
     withr::defer(browser$close(), envir = .env)
+    if (https) {
+      browser$Security$setIgnoreCertificateErrors(ignore = TRUE)
+    }
     # Navigate from the initial blank document without waiting for a CDP
     # Page.navigate acknowledgement. The following wait requires actual app
     # output, so an unsuccessful navigation still fails the test.
-    tryCatch(retention_browser_value(browser, paste0("window.location.replace(",
-      jsonlite::toJSON(origin, auto_unbox = TRUE), ")")), error = function(...) NULL)
+    tryCatch(
+      retention_browser_value(
+        browser,
+        paste0(
+          "window.location.replace(",
+          jsonlite::toJSON(origin, auto_unbox = TRUE),
+          ")"
+        )
+      ),
+      error = function(...) NULL
+    )
     retention_browser_wait(
       browser,
       function() retention_browser_snapshot(browser),
