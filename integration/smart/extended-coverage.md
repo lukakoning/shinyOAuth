@@ -62,3 +62,22 @@ Shiny session. The unchanged Inferno simulator repeats configured context on
 refresh, so omission/change evidence is explicitly attributed to our fixture.
 Validation on 2026-09-13: eight Inferno scenarios with 40 upstream test passes;
 four context scenarios with 16 passing assertions; no skips.
+
+## 4. Account retention with independent SMART grants
+
+`Rscript integration/smart/run-inferno-extensions.R account`
+
+Two scenarios use the existing local Alice/Bob login boundary with public
+standalone registrations on two Inferno deployments, over sync/mirai transport.
+Alice authorizes A; Bob must not inherit A and authorizes B. Alice's old tab must
+lose access both after switching accounts and after Alice logs in again. Alice's
+new login restores the same A connection and refreshes it. Disconnecting Alice's
+grants must leave Bob's B grant usable after his next login. Each site must pass
+its five upstream tests; recorded requests must contain the expected code/refresh
+exchanges and exactly four Patient/Practitioner reads using current credentials.
+Rejected account operations must produce no resource requests. Local account
+authentication is still synthetic; SMART grants and verification come from the
+documented modified Inferno deployment. Account-owned EHR launch remains outside
+the package's current support.
+Validation on 2026-09-13: both scenarios passed, including 20 upstream test passes
+and the recorded account/token-use checks.

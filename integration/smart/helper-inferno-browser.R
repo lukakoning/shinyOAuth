@@ -122,5 +122,5 @@ inferno_open_browser <- function(app, .env = parent.frame()) {
   tryCatch(retention_browser_value(browser, paste0("window.location.replace(",
     jsonlite::toJSON(app$origin, auto_unbox = TRUE), ")")), error = function(...) NULL)
   retention_browser_wait(browser, function() retention_browser_snapshot(browser), "Shiny ready")
-  list(browser = browser, version = chrome$Browser$getVersion()$product)
+  list(browser = browser, chrome = chrome, version = chrome$Browser$getVersion()$product)
 }

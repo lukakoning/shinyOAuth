@@ -65,6 +65,8 @@ jobs:
         run: Rscript integration/smart/run-lifecycle.R context
       - name: Verify Patient and RelatedPerson identities with Inferno
         run: Rscript integration/smart/run-inferno-extensions.R identity
+      - name: Verify account retention with Inferno grants
+        run: Rscript integration/smart/run-inferno-extensions.R account
       - name: Upload only sanitized client-verification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

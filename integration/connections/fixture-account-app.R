@@ -5,7 +5,8 @@ account_fixture_app <- function(
   providers,
   async = FALSE,
   response_mode = "query",
-  listen_port
+  listen_port,
+  smart_registrations = NULL
 ) {
   if (async) {
     mirai::daemons(2L)
@@ -139,6 +140,15 @@ account_fixture_app <- function(
   callbacks <- paste0(origin, "/callback/", c("a", "b"))
   clients <- lapply(c("a", "b"), function(site) {
     base <- providers[[site]]
+    if (!is.null(smart_registrations)) {
+      registration <- smart_registrations[[site]]
+      return(shinyOAuth::smart_client(shinyOAuth::smart_discover(registration$fhir_base),
+        client_id = registration$client_id, redirect_uri = paste0(origin, "/callback/", site),
+        scopes = c("launch/patient", "patient/Patient.rs", "user/Practitioner.r", "offline_access"),
+        required_scopes = c("patient/Patient.r", "user/Practitioner.r"),
+        launch = "standalone", identity = "fhirUser", token_auth_style = "public", label = site,
+        authorization_server_mode = "multi_redirect_uri", authorization_server_redirect_uris = callbacks))
+    }
     provider <- shinyOAuth::oauth_provider(
       name = site,
       auth_url = paste0(base, "/authorize"),
@@ -265,6 +275,15 @@ account_fixture_app <- function(
         shiny::observeEvent(
           input[[paste0("read_", selected)]],
           perform(function() {
+            if (!is.null(smart_registrations)) {
+              conn <- connection(selected)
+              patient <- httr2::resp_body_json(shinyOAuth::smart_patient(conn))
+              user <- httr2::resp_body_json(shinyOAuth::smart_fhir_user(conn))
+              expected <- smart_registrations[[selected]]
+              stopifnot(identical(patient$resourceType, "Patient"), identical(patient$id, expected$patient),
+                identical(user$resourceType, "Practitioner"), identical(user$id, expected$practitioner))
+              return(paste0(selected, ":patient"))
+            }
             body <- httr2::resp_body_json(connection(selected)$request(
               "api",
               "records"
