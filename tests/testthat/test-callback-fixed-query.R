@@ -21,6 +21,32 @@ test_that("client configuration rejects reserved fixed callback query names", {
   })
 })
 
+test_that("SMART callbacks retain registered queries and HTTPS policy", {
+  site <- smart_client_fixture()
+  registered <- "https://app.example/callback?tenant=one&tag=a&tag=b&empty=&label=hello+world"
+  create <- function(uri, ...) smart_client(site, "example", uri,
+    scopes = "user/Patient.r", ...)
+  for (mode in c("query", "form_post")) {
+    client <- create(registered, response_mode = mode)
+    request <- httr2::url_parse(prepare_call(client, browser_token = valid_browser_token()))$query
+    expect_identical(request$redirect_uri, registered)
+    expect_identical(oauth_callback_route_matches(
+      paste0(registered, "&code=example&state=example"), client@redirect_uri), TRUE)
+    expect_identical(oauth_callback_route_matches(
+      sub("tenant=one", "tenant=two", registered, fixed = TRUE), client@redirect_uri), FALSE)
+  }
+  for (uri in c("http://app.example/callback?tenant=one",
+      "http://localhost/callback?tenant=one", paste0(registered, "#fragment"),
+      "https://user@app.example/callback?tenant=one")) {
+    expect_error(create(uri), "SMART redirect_uri")
+  }
+  expect_error(create("https://app.example/callback?%73tate=fixed"), "callback-reserved")
+  site$allow_http_loopback <- TRUE
+  expect_no_error(create("http://localhost/callback?tenant=one"))
+  site$fhir_base <- paste0(site$fhir_base, "?tenant=one")
+  expect_error(create(registered), "SMART fhir_base")
+})
+
 test_that("callback routes enforce the registered query multiset", {
   registered <- "https://app.example/callback?tenant=one&tag=a&tag=b&empty=&label=hello+world"
   valid <- "label=hello%20world&tag=b&empty&tenant=one&tag=a"

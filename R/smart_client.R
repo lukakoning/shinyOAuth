@@ -99,8 +99,9 @@ smart_client <- function(
   connection_manager_flag(discovery$allow_http_loopback, "allow_http_loopback")
   smart_discovery_url(discovery$fhir_base, "fhir_base",
     discovery$allow_http_loopback, identifier = TRUE)
-  smart_discovery_url(redirect_uri, "redirect_uri",
-    discovery$allow_http_loopback, identifier = TRUE)
+  # Callbacks may contain registered fixed queries. The generic constructor
+  # validates reserved query names and preserves the exact registration value.
+  smart_discovery_url(redirect_uri, "redirect_uri", discovery$allow_http_loopback)
   hosts <- smart_discovery_hosts(discovery$endpoint_hosts)
   metadata <- discovery$metadata
   smart_discovery_validate(metadata, hosts, discovery$allow_http_loopback)
