@@ -2638,7 +2638,7 @@ verify_token_set <- function(
     requested_scopes %||% effective_client_scopes(client)
   )
   granted_scope_state <- resolve_granted_scope_state(
-    token_scope = token_set[["scope"]],
+    token_scope = smart_response_scope(client, token_set),
     requested_scopes = requested_scopes,
     is_refresh = is_refresh,
     previous_granted_scopes = prior_granted_scopes,

@@ -30,6 +30,10 @@
 #' for displaying patient identity clearly and discarding data from an older
 #' context revision. Experimental `fhirContext` and styling extensions remain
 #' raw data and are not automatically fetched or interpreted.
+#' Location-specific `authorization_details` apply scope, patient and encounter
+#' overrides only for the configured FHIR base, with omitted fields falling back
+#' to this response's top-level values. Other locations never add destinations.
+#' Malformed details or multiple entries matching this base are rejected.
 #' @seealso [smart_client()], [OAuthConnection]
 #' @export
 smart_context <- function(connection) {
@@ -54,6 +58,7 @@ smart_fhir_user <- function(connection) {
 
 smart_update_token_context <- function(client, token, previous = NULL) {
   if (!client_uses_smart(client)) return(token)
+  fields <- smart_location_fields(client, token@extra_fields)
   prior <- if (is.null(previous)) NULL else previous@smart_context
   if (!is.null(previous) && (!identical(prior$version, 1L) ||
       !identical(prior$fhir_base, client@smart$fhir_base))) {
@@ -65,8 +70,8 @@ smart_update_token_context <- function(client, token, previous = NULL) {
     if (!is.null(prior)) values[name] <- prior[name]
   }
   for (name in c("patient", "encounter")) {
-    if (!name %in% names(token@extra_fields)) next
-    value <- token@extra_fields[[name]]
+    if (!name %in% names(fields)) next
+    value <- fields[[name]]
     if (!is.null(value) && (!is_valid_string(value) ||
         !grepl("^[A-Za-z0-9.-]{1,64}$", value))) {
       err_token("SMART context contains an invalid FHIR resource ID")
@@ -74,7 +79,7 @@ smart_update_token_context <- function(client, token, previous = NULL) {
     values[name] <- list(value)
   }
   if (!is.null(prior) && !identical(values$patient, prior$patient) &&
-      !"encounter" %in% names(token@extra_fields)) {
+      !"encounter" %in% names(fields)) {
     values["encounter"] <- list(NULL)
   }
   if ("need_patient_banner" %in% names(token@extra_fields)) {
@@ -105,6 +110,44 @@ smart_update_token_context <- function(client, token, previous = NULL) {
     revision = if (is.null(prior)) 1L else prior$revision + as.integer(changed),
     changed = changed), values)
   token
+}
+
+# Interpret only the already-approved destination. Keep the wire extensions
+# unchanged on the token and never turn server-supplied locations into bindings.
+smart_location_fields <- function(client, fields) {
+  if (!client_uses_smart(client) || !"authorization_details" %in% names(fields)) return(fields)
+  details <- fields[["authorization_details"]]
+  invalid <- function() err_token("Invalid SMART authorization_details")
+  array <- function(value) is.list(value) && !is.object(value) && is.null(names(value))
+  strings <- function(value) array(value) && length(value) > 0L &&
+    all(vapply(value, is_valid_string, logical(1)))
+  if (!array(details)) invalid()
+  matching <- list()
+  for (entry in details) {
+    if (!is.list(entry) || is.null(names(entry)) || anyDuplicated(names(entry)) ||
+        !is_valid_string(entry[["type"]])) invalid()
+    if (!identical(entry[["type"]], "smart_on_fhir")) next
+    if (!strings(entry[["locations"]]) || !strings(entry[["fhirVersions"]])) invalid()
+    locations <- tryCatch(vapply(entry[["locations"]], function(location) {
+      resource_binding_components(location, base = TRUE)$url
+    }, character(1)), error = function(...) invalid())
+    if (client@resource_bases[["fhir"]] %in% locations) {
+      matching[[length(matching) + 1L]] <- entry
+    }
+  }
+  if (length(matching) > 1L) err_token("Ambiguous SMART authorization_details for configured FHIR base")
+  if (length(matching)) {
+    overrides <- intersect(c("scope", "patient", "encounter"), names(matching[[1L]]))
+    fields[overrides] <- matching[[1L]][overrides]
+  }
+  fields
+}
+
+smart_response_scope <- function(client, fields) {
+  if (!client_uses_smart(client)) return(fields[["scope"]])
+  # SMART still requires an explicit top-level scope, even with local overrides.
+  resolve_granted_scope_state(fields[["scope"]], character(), smart = TRUE)
+  smart_location_fields(client, fields)[["scope"]]
 }
 
 smart_identity_reference <- function(client, reference) {

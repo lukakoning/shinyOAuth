@@ -49,6 +49,10 @@ General summaries omit all of this data. The application remains responsible
 for displaying patient identity clearly and discarding data from an older
 context revision. Experimental \code{fhirContext} and styling extensions remain
 raw data and are not automatically fetched or interpreted.
+Location-specific \code{authorization_details} apply scope, patient and encounter
+overrides only for the configured FHIR base, with omitted fields falling back
+to this response's top-level values. Other locations never add destinations.
+Malformed details or multiple entries matching this base are rejected.
 }
 \seealso{
 \code{\link[=smart_client]{smart_client()}}, \link{OAuthConnection}

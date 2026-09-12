@@ -1188,11 +1188,12 @@ refresh_token_impl <- function(
             expires_in = tok[["expires_in"]],
             scope = tok[["scope"]]
           )
+          token_set <- c(token_set, tok[intersect("authorization_details", names(tok))])
           if (!is.null(scope_request)) {
             # RFC 6749 permits omission only when the response matches the
             # current request. Preserve the unverified evidence flag; SMART
             # still requires an explicit response scope.
-            grant <- resolve_granted_scope_state(token_set$scope, scope_request$scopes,
+            grant <- resolve_granted_scope_state(smart_response_scope(oauth_client, token_set), scope_request$scopes,
               is_refresh = TRUE, previous_granted_scopes = scope_request$scopes,
               smart = client_uses_smart_scopes(oauth_client))
             validate_refresh_scope_grant(oauth_client, grant$granted_scopes, scope_request)
