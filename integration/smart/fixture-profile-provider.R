@@ -44,7 +44,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
       grant_types_supported = list("authorization_code", "refresh_token"),
       scopes_supported = as.list(initial_scopes),
       code_challenge_methods_supported = list("S256"), response_modes_supported = list("query", "form_post"),
-      token_endpoint_auth_signing_alg_values_supported = list("RS384"),
+      token_endpoint_auth_signing_alg_values_supported = list("RS384", "ES384"),
       token_endpoint_auth_methods_supported = list("client_secret_basic", "private_key_jwt")), auto_unbox = TRUE)
   })
   app$get("/keys", function(req, res) res$send_json(list(keys = list(public)), auto_unbox = TRUE))
@@ -110,7 +110,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
           identical(body$client_assertion_type, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"))
         parts <- strsplit(body$client_assertion, ".", fixed = TRUE)[[1L]]
         jwt_header <- jsonlite::fromJSON(rawToChar(decode(parts[[1L]])))
-        stopifnot(identical(jwt_header$alg, "RS384"), identical(jwt_header$kid, "fixture-client"))
+        stopifnot(identical(jwt_header$alg, registration$assertion_alg), identical(jwt_header$kid, "fixture-client"))
         claims <- jose::jwt_decode_sig(body$client_assertion, openssl::read_pubkey(registration$public_pem))
         now <- as.numeric(Sys.time())
         stopifnot(identical(claims$iss, site), identical(claims$sub, site),

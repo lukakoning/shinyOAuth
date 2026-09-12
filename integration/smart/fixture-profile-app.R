@@ -19,7 +19,7 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
     if (registration$style == "private_key_jwt") {
       args$client_assertion_private_key <- openssl::read_key(registration$private_pem)
       args$client_assertion_private_key_kid <- "fixture-client"
-      args$client_assertion_alg <- "RS384"
+      args$client_assertion_alg <- registration$assertion_alg
     }
     do.call(shinyOAuth::smart_client, args)
   })

@@ -1,8 +1,8 @@
 for (index in seq_len(nrow(cases))) {
   row <- cases[index, ]
   testthat::test_that(paste("SMART profile", paste(unlist(row), collapse = " ")), {
-    key <- openssl::rsa_keygen(2048)
-    registration <- list(style = row$registration, secret = "synthetic-profile-secret",
+    key <- if (identical(row$assertion_alg, "ES384")) openssl::ec_keygen("P-384") else openssl::rsa_keygen(2048)
+    registration <- list(style = row$registration, assertion_alg = row$assertion_alg, secret = "synthetic-profile-secret",
       public_pem = openssl::write_pem(key$pubkey), private_pem = openssl::write_pem(key))
     provider_registration <- registration
     provider_registration$private_pem <- NULL

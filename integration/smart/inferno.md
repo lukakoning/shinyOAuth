@@ -26,8 +26,10 @@ Source review on 2026-09-11 found a preflight concern in the pinned
 [mock server metadata](https://github.com/inferno-framework/smart-app-launch-test-kit/blob/980e54e4ed632b28267d797013399a8588772174/lib/smart_app_launch/endpoints/mock_smart_server.rb):
 its SMART document includes `issuer` but omits `sso-openid-connect` and `jwks_uri`;
 key information is in a separate OIDC document. Our strict SMART reader rejects
-that combination. This is a source-based compatibility concern, not a failed live
-Inferno run. Check the deployed metadata before attempting the matrix; resolve
+that combination. A read-only hosted preflight on 2026-09-12 against
+`https://inferno.healthit.gov/suites/custom/smart_client_stu2_2/fhir` also failed
+strict discovery because the issuer lacks `sso-openid-connect`. No client
+conformance scenario was run. Check deployed metadata before the matrix; resolve
 upstream compatibility without patching the advertised document or weakening
 client validation. P5a's [local EHR fixture](ehr-launch.md) is executable now but
 does not supply independent Inferno evidence.

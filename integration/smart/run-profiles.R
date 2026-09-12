@@ -1,6 +1,6 @@
 # Run from the repository root after installing this checkout.
 run_smart_profiles <- function(args = commandArgs(trailingOnly = TRUE)) {
-  if (!all(args %in% c("--quick", "--post"))) stop("Usage: Rscript integration/smart/run-profiles.R [--quick] [--post]")
+  if (!all(args %in% c("--quick", "--post", "--es384"))) stop("Usage: Rscript integration/smart/run-profiles.R [--quick] [--post] [--es384]")
   authorization_method <- if ("--post" %in% args) "POST" else "GET"
   extra_scopes <- if (authorization_method == "POST") paste0(
     "patient/Observation.rs?code=https://example.test/synthetic-codes|observation-", seq_len(32)) else character()
@@ -14,11 +14,16 @@ run_smart_profiles <- function(args = commandArgs(trailingOnly = TRUE)) {
   cases <- expand.grid(registration = c("public", "header", "private_key_jwt"),
     launch = c("standalone", "ehr"), response_mode = c("query", "form_post"),
     async = c(FALSE, TRUE), stringsAsFactors = FALSE)
+  cases$assertion_alg <- ifelse(cases$registration == "private_key_jwt", "RS384", NA_character_)
+  elliptic <- cases[cases$registration == "private_key_jwt", ]
+  elliptic$assertion_alg <- "ES384"
+  cases <- rbind(cases, elliptic)
+  if ("--es384" %in% args) cases <- cases[cases$assertion_alg %in% "ES384", ]
   if ("--quick" %in% args) cases <- cases[cases$launch == "standalone" & cases$response_mode == "query" & !cases$async, ]
   output <- file.path("integration/smart/.artifacts", paste0("profiles-", format(Sys.time(), "%Y%m%d-%H%M%S")))
   dir.create(output, recursive = TRUE)
   evidence <- list(gate = "SMART profile browser matrix", status = "failed", external_conformance = FALSE,
-    complete_matrix = !"--quick" %in% args, scenarios = cases, server = "strict synthetic SMART fixture",
+    complete_matrix = !any(c("--quick", "--es384") %in% args), scenarios = cases, server = "strict synthetic SMART fixture",
     authorization_method = authorization_method, extra_scope_count = length(extra_scopes),
     transport = "HTTP loopback development exception", identity = "validated fhirUser distinct from Patient",
     versions = setNames(lapply(packages, function(p) as.character(utils::packageVersion(p))), packages))
