@@ -167,3 +167,39 @@ test_that("identity scopes authorize the signed same-base fhirUser reference", {
   record$token@id_token_validated <- FALSE
   expect_error(smart_fhir_user(ref), "validated")
 })
+
+test_that("signed refresh identity continuity compares resolved FHIR references", {
+  relative <- "Practitioner/example"
+  absolute <- "https://ehr.example/fhir/R4/Practitioner/example"
+  for (references in list(c(relative, absolute), c(absolute, relative),
+      rep("https://other.example/identity/example", 2))) {
+    record <- smart_identity_fixture(references[[1L]])
+    local_mocked_bindings(fetch_jwks = function(...) record$jwks, .package = "shinyOAuth")
+    claims <- record$claims
+    claims$fhirUser <- references[[2L]]
+    claims$nonce <- NULL
+    response <- function() {
+      list(access_token = "refreshed-access", refresh_token = "rotated-refresh",
+        token_type = "Bearer", expires_in = 300, scope = "openid fhirUser",
+        id_token = jose::jwt_encode_sig(do.call(jose::jwt_claim, claims), record$key))
+    }
+    local_mocked_bindings(req_with_retry = function(req, ...) {
+      httr2::response(url = req$url, status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(jsonlite::toJSON(response(), auto_unbox = TRUE)))
+    }, .package = "shinyOAuth")
+    refreshed <- refresh_token(record$client, record$token)
+    expect_identical(refreshed@smart_context, record$token@smart_context)
+    expect_identical(refreshed@id_token_claims$fhirUser, references[[2L]])
+    expect_identical(refreshed@id_token_validated, TRUE)
+    expect_identical(refreshed@refresh_token, "rotated-refresh")
+    claims$fhirUser <- "Practitioner/someone-else"
+    expect_error(refresh_token(record$client, refreshed), "fhirUser changed")
+    claims$fhirUser <- references[[2L]]
+    claims$sub <- "different-user"
+    expect_error(refresh_token(record$client, refreshed), class = "shinyOAuth_id_token_error")
+    claims$sub <- record$claims$sub
+    claims$iss <- "https://different.example"
+    expect_error(refresh_token(record$client, refreshed), class = "shinyOAuth_id_token_error")
+  }
+})

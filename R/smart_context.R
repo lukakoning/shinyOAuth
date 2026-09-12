@@ -91,16 +91,27 @@ smart_update_token_context <- function(client, token, previous = NULL) {
     if (!isTRUE(token@id_token_validated)) err_token("SMART identity has not been validated")
     reference <- token@id_token_claims$fhirUser
     if (!is_valid_string(reference)) err_token("SMART identity requires fhirUser")
-    if (!is.null(prior$fhirUser) && !identical(prior$fhirUser, reference)) {
+    if (!is.null(prior$fhirUser) && !identical(
+        smart_identity_reference(client, prior$fhirUser),
+        smart_identity_reference(client, reference))) {
       err_token("SMART fhirUser changed; a fresh authorization is required")
     }
-    values$fhirUser <- reference
+    # Keep the established spelling and revision for the same resource. The
+    # refreshed signed claim remains available on the accepted token itself.
+    values$fhirUser <- prior$fhirUser %||% reference
   }
   changed <- !is.null(prior) && !identical(values, prior[names(values)])
   token@smart_context <- c(list(version = 1L, fhir_base = client@smart$fhir_base,
     revision = if (is.null(prior)) 1L else prior$revision + as.integer(changed),
     changed = changed), values)
   token
+}
+
+smart_identity_reference <- function(client, reference) {
+  if (grepl("^https?://", reference, ignore.case = TRUE)) {
+    return(resource_binding_components(reference)$url)
+  }
+  resolve_bound_resource(client@smart$fhir_base, reference)
 }
 
 smart_record_context <- function(record) {
