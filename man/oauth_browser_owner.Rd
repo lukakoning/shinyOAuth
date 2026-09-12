@@ -10,14 +10,16 @@ oauth_browser_owner(
   idle_timeout = 1800,
   absolute_timeout = 28800,
   same_site = c("Lax", "Strict"),
-  allow_http_loopback = FALSE
+  allow_http_loopback = FALSE,
+  max_entries = 1000L
 )
 
 oauth_account_owner(
   resolver,
   idle_timeout,
   absolute_timeout,
-  reauth_after_seconds
+  reauth_after_seconds,
+  max_entries = 1000L
 )
 
 \method{print}{OAuthOwnerPolicy}(x, ...)
@@ -34,6 +36,12 @@ navigation or \code{"Strict"}. Embedded cross-site ownership is not supported.}
 \item{allow_http_loopback}{Explicit development-only exception for HTTP on
 localhost or a loopback address. Default \code{FALSE} requires HTTPS. The exception
 cannot provide a Secure, host-prefixed owner cookie.}
+
+\item{max_entries}{Maximum owner-registry entries per manager, a positive
+whole number. Browser mode counts recently visiting browsers, including
+visitors that never authorize a service. Account mode counts authentication
+generations, including retired generations until their local reauthentication
+deadline. This limit is independent of the connection store's \code{max_entries}.}
 
 \item{resolver}{Trusted application function accepting the current Shiny
 session. On every call it must validate the application's local login and
@@ -76,6 +84,12 @@ session. The manager checks that generation before code exchange and credential
 commit, with no grace period for pending authorization, and handles credential
 cleanup after logout. An external provider login cannot
 establish a local owner or implicitly link browser connections to an account.
+
+A full owner registry rejects new owners without evicting live sessions or
+retirement records. Browser session end does not release ownership; logout or
+idle/absolute expiry does. Account logout retains its retired generation until
+\code{authenticated_at + reauth_after_seconds} so it cannot be enrolled again.
+Size \code{max_entries} for that entire window, not only simultaneous Shiny sessions.
 
 Account retention requires finite idle, absolute and local reauthentication
 lifetimes. The internal session registry re-runs \code{resolver} when resolving or

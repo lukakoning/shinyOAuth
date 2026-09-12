@@ -13,6 +13,31 @@ owner_test_sessions <- function(max_entries = 1000L) {
   list(time = time, policy = policy, registry = registry)
 }
 
+test_that("owner factories validate and retain explicit capacity limits", {
+  account <- function(limit) {
+    oauth_account_owner(
+      function(session) NULL,
+      600,
+      3600,
+      3600,
+      max_entries = limit
+    )
+  }
+  expect_identical(oauth_browser_owner()$max_entries, 1000L)
+  expect_identical(oauth_browser_owner(max_entries = 2000L)$max_entries, 2000L)
+  expect_identical(account(2500L)$max_entries, 2500L)
+  for (limit in list(NULL, NA_real_, Inf, 0, -1, 1.5, c(1, 2), "1000")) {
+    expect_s3_class(
+      tryCatch(oauth_browser_owner(max_entries = limit), error = identity),
+      "shinyOAuth_config_error"
+    )
+    expect_s3_class(
+      tryCatch(account(limit), error = identity),
+      "shinyOAuth_config_error"
+    )
+  }
+})
+
 test_that("browser owner sessions require server state and bind generations", {
   f <- owner_test_sessions()
   created <- f$registry$create()

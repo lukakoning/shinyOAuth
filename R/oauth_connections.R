@@ -67,8 +67,10 @@ oauth_connections <- function(
   retention_seconds = 28800
 ) {
   retention <- match.arg(retention)
-  if (!is_valid_string(callback_policy) ||
-      !callback_policy %in% c("distinct_routes", "issuer", "shared_routes")) {
+  if (
+    !is_valid_string(callback_policy) ||
+      !callback_policy %in% c("distinct_routes", "issuer", "shared_routes")
+  ) {
     err_config(
       "callback_policy must be distinct_routes, issuer or shared_routes"
     )
@@ -135,14 +137,19 @@ oauth_connections <- function(
   fingerprints <- vapply(clients, connection_client_fingerprint, character(1))
   routes <- lapply(clients, function(client) {
     if (
-      identical(callback_policy, "distinct_routes") && length(clients) > 1L &&
+      identical(callback_policy, "distinct_routes") &&
+        length(clients) > 1L &&
         !identical(client@authorization_server_mode, "multi_redirect_uri")
     ) {
       err_config("Multiple clients require multi_redirect_uri clients")
     }
-    if (callback_policy != "distinct_routes" &&
-        !identical(client@authorization_server_mode, "multi_issuer")) {
-      err_config("Issuer-based callback policies require explicit multi_issuer clients")
+    if (
+      callback_policy != "distinct_routes" &&
+        !identical(client@authorization_server_mode, "multi_issuer")
+    ) {
+      err_config(
+        "Issuer-based callback policies require explicit multi_issuer clients"
+      )
     }
     if (!connection_manager_same_origin(client@redirect_uri, app_origin)) {
       err_config("Every callback must use the configured application origin")
@@ -150,19 +157,23 @@ oauth_connections <- function(
     oauth_callback_route(client@redirect_uri)
   })
   if (
-    identical(callback_policy, "distinct_routes") && anyDuplicated(vapply(
-      routes,
-      function(route) {
-        as.character(jsonlite::toJSON(route, auto_unbox = TRUE))
-      },
-      character(1)
-    ))
+    identical(callback_policy, "distinct_routes") &&
+      anyDuplicated(vapply(
+        routes,
+        function(route) {
+          as.character(jsonlite::toJSON(route, auto_unbox = TRUE))
+        },
+        character(1)
+      ))
   ) {
     err_config("Each client requires a distinct callback route")
   }
   if (callback_policy != "distinct_routes") {
-    oauth_callback_registry(clients,
-      allow_shared_issuer = identical(callback_policy, "shared_routes"), mark_ui = FALSE)
+    oauth_callback_registry(
+      clients,
+      allow_shared_issuer = identical(callback_policy, "shared_routes"),
+      mark_ui = FALSE
+    )
   }
   state <- new.env(parent = emptyenv())
   state$id <- NULL
@@ -249,13 +260,15 @@ connection_manager_bind <- function(manager, id) {
       manager$owner,
       manager$app_origin,
       id,
-      manager$keys$owner
+      manager$keys$owner,
+      max_entries = manager$owner$max_entries %||% 1000L
     ),
     account = connection_account_sessions(
       manager$owner,
       manager$app_origin,
       id,
-      manager$keys$owner
+      manager$keys$owner,
+      max_entries = manager$owner$max_entries %||% 1000L
     ),
     shiny = NULL
   )
@@ -280,8 +293,13 @@ connection_manager_revoke <- function(manager, client, token, deadline) {
   unchanged <- tryCatch(
     {
       index <- which(vapply(manager$clients, identical, logical(1), client))
-      if (!length(index) || !identical(connection_client_fingerprint(client),
-          unname(manager$fingerprints[[index[[1L]]]]))) {
+      if (
+        !length(index) ||
+          !identical(
+            connection_client_fingerprint(client),
+            unname(manager$fingerprints[[index[[1L]]]])
+          )
+      ) {
         err_token("Connection client configuration changed")
       }
       TRUE
@@ -409,8 +427,16 @@ connection_manager_controller <- function(manager, session) {
       err_input("Unknown connection client")
     }
     client <- manager$clients[[id]]
-    if (check && !identical(connection_client_fingerprint(client), manager$fingerprints[[id]])) {
-      err_token("Connection client configuration changed; reconnect with a new manager")
+    if (
+      check &&
+        !identical(
+          connection_client_fingerprint(client),
+          manager$fingerprints[[id]]
+        )
+    ) {
+      err_token(
+        "Connection client configuration changed; reconnect with a new manager"
+      )
     }
     client
   }
@@ -430,9 +456,13 @@ connection_manager_controller <- function(manager, session) {
     }
     smart_launch_prune(manager)
     entry <- state$launches[[id]]
-    if (is.null(entry)) err_token("SMART launch is unavailable")
+    if (is.null(entry)) {
+      err_token("SMART launch is unavailable")
+    }
     launch <- smart_launch_open(manager, entry, verified, id)
-    if (!is.null(launch_queue[[launch$client]])) err_token("A SMART launch is already pending")
+    if (!is.null(launch_queue[[launch$client]])) {
+      err_token("A SMART launch is already pending")
+    }
     # Atomic process-local take after owner and client checks. Another browser
     # or failed lookup cannot consume a valid launch belonging to its owner.
     rm(list = id, envir = state$launches)
@@ -467,11 +497,16 @@ connection_manager_controller <- function(manager, session) {
     launch_entry <- NULL
     if (identical(client@smart$launch, "ehr")) {
       launch_entry <- launch_queue[[client_name]]
-      if (is.null(launch_entry)) err_token("Start a fresh EHR launch to reconnect")
+      if (is.null(launch_entry)) {
+        err_token("Start a fresh EHR launch to reconnect")
+      }
       launch <- smart_launch_open(manager, launch_entry, verified)
       rm(list = client_name, envir = launch_queue)
-      context$smart <- list(launch_id = launch$id, fhir_base = launch$fhir_base,
-        launch_digest = state_policy_value_digest(launch$launch))
+      context$smart <- list(
+        launch_id = launch$id,
+        fhir_base = launch$fhir_base,
+        launch_digest = state_policy_value_digest(launch$launch)
+      )
       context$expires_at <- min(context$expires_at, launch$expires_at)
     }
     state$pending[[context$transaction]] <- list(
@@ -630,10 +665,19 @@ connection_manager_controller <- function(manager, session) {
     }
     # Validate before taking the refresh claim or sending any credentials.
     # After explicit narrowing, automatic calls retain the accepted grant.
-    if (is.null(scopes) && isTRUE(record$refresh_scope_narrowed)) scopes <- record$token@granted_scopes
+    if (is.null(scopes) && isTRUE(record$refresh_scope_narrowed)) {
+      scopes <- record$token@granted_scopes
+    }
     scope_request <- if (!is.null(scopes)) {
-      refresh_scope_request(record$client, record$token, scopes, record$client@required_scopes)
-    } else NULL
+      refresh_scope_request(
+        record$client,
+        record$token,
+        scopes,
+        record$client@required_scopes
+      )
+    } else {
+      NULL
+    }
     claim <- store$begin_refresh(owner$id, id, record$stored$revision)
     if (is.null(claim)) {
       err_token("Connection refresh is already in progress or unavailable")
@@ -665,7 +709,11 @@ connection_manager_controller <- function(manager, session) {
       tryCatch(
         {
           validate_token_acceptance_deadline(token)
-          validate_refresh_scope_grant(record$client, token@granted_scopes, scope_request)
+          validate_refresh_scope_grant(
+            record$client,
+            token@granted_scopes,
+            scope_request
+          )
           if (is.null(verify_owner(require_session = FALSE))) {
             err_token("Connection owner is unavailable")
           }
@@ -704,7 +752,12 @@ connection_manager_controller <- function(manager, session) {
       if (is.null(scope_request)) {
         refresh_token(record$client, record$token, async = async)
       } else {
-        refresh_token_dispatch(record$client, record$token, async = async, scope_request = scope_request)
+        refresh_token_dispatch(
+          record$client,
+          record$token,
+          async = async,
+          scope_request = scope_request
+        )
       },
       error = fail
     )
@@ -803,13 +856,26 @@ connection_manager_controller <- function(manager, session) {
           }
           connection_router_register(manager, client_name, context, prepared)
         }
-      } else NULL,
+      } else {
+        NULL
+      },
       parameters = function(context) {
-        if (!identical(client_for(client_name)@smart$launch, "ehr")) return(list())
-        if (!validate(context)) err_token("SMART launch owner is unavailable")
+        if (!identical(client_for(client_name)@smart$launch, "ehr")) {
+          return(list())
+        }
+        if (!validate(context)) {
+          err_token("SMART launch owner is unavailable")
+        }
         pending <- state$pending[[context$transaction]]
-        if (is.null(pending$launch_entry)) err_token("Start a fresh EHR launch to reconnect")
-        launch <- smart_launch_open(manager, pending$launch_entry, guard(), context$smart$launch_id)
+        if (is.null(pending$launch_entry)) {
+          err_token("Start a fresh EHR launch to reconnect")
+        }
+        launch <- smart_launch_open(
+          manager,
+          pending$launch_entry,
+          guard(),
+          context$smart$launch_id
+        )
         pending$launch_entry <- NULL
         state$pending[[context$transaction]] <- pending
         list(launch = launch$launch)

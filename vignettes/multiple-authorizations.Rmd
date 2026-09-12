@@ -155,6 +155,16 @@ share records between workers. Browser ownership also has idle and absolute
 expiry limits; refresh does not extend them. For an app with its own verified
 account login, see `?oauth_account_owner` and `retention = "account"`.
 
+Size the owner registry and credential store separately. Both owner factories
+accept `max_entries` (default 1,000) per manager. Browser entries include recent
+visitors who never authorize a service. Account entries include logged-out login
+generations until their reauthentication deadline. A full registry rejects new
+owners while preserving existing sessions and retirement records.
+`oauth_connection_store_memory(max_entries = ...)` controls a different limit:
+successful authorization transactions occupy capacity for the store's full
+`max_age`, including after a connection is disconnected. Neither limit measures
+only the number of currently open Shiny sessions.
+
 ### 3. Select a connection and make a request
 
 ```{r multiple-app, eval = FALSE}

@@ -147,6 +147,72 @@ test_that("browser UI establishes and clears cookies only at the ordinary HTTP b
   expect_null(plain$ui(manager_test_request())$headers[["Set-Cookie"]])
 })
 
+test_that("browser owner capacity is configurable independently of the store", {
+  f <- manager_test_fixture(owner = oauth_browser_owner(max_entries = 1L))
+  cookie <- manager_test_cookie(f)
+  expect_identical(f$ui(manager_test_request())$status, 400L)
+  shiny::testServer(
+    oauth_connections_server,
+    args = list(id = "health", manager = f$manager),
+    session = manager_test_session(cookie),
+    {
+      id <- manager_test_accept(controller)
+      health <- session$getReturned()
+      expect_identical(health$connection(id)$is_usable(), TRUE)
+      health$logout(revoke = FALSE, reload = FALSE)
+    }
+  )
+  expect_equal(f$ui(manager_test_request())$status, 200L)
+})
+
+test_that("configured account capacity includes logged-out generations", {
+  now <- as.numeric(Sys.time())
+  auth <- new.env(parent = emptyenv())
+  auth$login <- list(
+    subject = "local-account",
+    session_id = "login",
+    generation = "one",
+    authenticated_at = now - 10,
+    expires_at = now + 3600
+  )
+  policy <- oauth_account_owner(
+    function(session) auth$login,
+    idle_timeout = 600,
+    absolute_timeout = 3600,
+    reauth_after_seconds = 3600,
+    max_entries = 2L
+  )
+  f <- manager_test_fixture("account", policy)
+  for (generation in c("one", "two")) {
+    auth$login$generation <- generation
+    shiny::testServer(
+      oauth_connections_server,
+      args = list(id = "health", manager = f$manager),
+      session = manager_test_session(),
+      {
+        health <- session$getReturned()
+        expect_length(health$connections(), 0L)
+        health$logout(revoke = FALSE, reload = FALSE)
+      }
+    )
+  }
+  auth$login$generation <- "three"
+  expect_snapshot(
+    error = TRUE,
+    transform = function(lines) {
+      gsub("Trace ID: [A-Za-z0-9_-]+", "Trace ID: <redacted>", lines)
+    },
+    {
+      shiny::testServer(
+        oauth_connections_server,
+        args = list(id = "health", manager = f$manager),
+        session = manager_test_session(),
+        {}
+      )
+    }
+  )
+})
+
 test_that("the same browser restores both grants across separate Shiny sessions", {
   f <- manager_test_fixture()
   cookie <- manager_test_cookie(f)
