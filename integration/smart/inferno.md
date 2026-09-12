@@ -2,10 +2,11 @@
 
 Use the [Inferno SMART App Launch test kit](https://inferno.healthit.gov/test-kits/smart-app-launch/)
 to evaluate requests from the real Shiny app. The [pinned local environment](inferno/README.md)
-now builds and passes strict discovery plus simulator regressions using
+builds and passes strict discovery plus simulator regressions using
 `Rscript integration/smart/run-inferno-preflight.R`. It explicitly patches two
 simulator compatibility defects while keeping upstream verification tests intact.
-No application flow has been executed by that preflight. The existing
+The application driver is `Rscript integration/smart/run-inferno.R`; the preflight
+alone does not run an app. The existing
 `run-tests.R` command remains the separate [Launcher sandbox](sandbox.md) smoke gate.
 
 ## Suite and version
@@ -34,7 +35,8 @@ conformance scenario was run against that hosted deployment. On 2026-09-12 the
 local environment added explicit server-side metadata and initial ID-token nonce
 corrections, with patch/source provenance in evidence. This advances testing
 against independent upstream assertions but cannot be described as an unmodified
-upstream or hosted Inferno pass. Client validation remains strict. See the
+upstream or hosted Inferno pass. Discovery, signatures, issuer, audience, nonce
+and expiry remain validated. See the
 [patch rationale and limits](inferno/README.md).
 
 ## Required roadmap runs
@@ -43,14 +45,20 @@ upstream or hosted Inferno pass. Client validation remains strict. See the
 | --- | --- | --- |
 | P4 | Public client, standalone launch | Real app sends S256 and the discovered FHIR `aud`, completes the code exchange, reads the supplied Patient using the issued token, and refreshes. |
 | P4 | Confidential symmetric client, standalone launch | Same scenario with the registered secret and supported authentication method. |
-| P4 | Confidential asymmetric client, standalone launch | Same scenario with a temporary RS384 key and registered public JWKS; both code and refresh requests exercise client assertions. Keep the existing independent Python signature tests. |
+| P4 | Confidential asymmetric client, standalone launch | Same scenario with temporary RS384 and ES384 keys and registered public JWKS; both code and refresh requests exercise client assertions. Keep the existing independent Python signature tests. |
 | P5 | EHR launch for each supported App Launch client profile | Inferno initiates the real app's registered launch route. Browser evidence proves `iss`/`launch` entry and the correct context; finish Inferno's request-verification tests too. |
 | Future explicit backend-services work | Backend Services Confidential Asymmetric Client | Add a separate client-credentials scenario only when that SMART profile is implemented. It cannot substitute for the App Launch RS384 run. |
 
-The P4 implementation adds a real app fixture and an Inferno driver under
-`integration/smart/`, with separate sessions/results per matrix row. P5 extends
-that driver for EHR entry. These are implementation tasks, not skipped tests
-already present in this repository.
+The driver runs eight scenarios: public, HTTP Basic, RS384 and ES384, each with
+standalone and Inferno-initiated EHR launch. Each uses a fresh Shiny process,
+browser context and Inferno test session, reads a supplied Patient and distinct
+validated Practitioner, refreshes, and repeats both reads. Query callbacks and
+synchronous token transport are covered in this initial matrix.
+
+`--quick` runs only public standalone and records `complete_matrix: false`.
+Install the current checkout before either command; the child app and mirai
+workers use the selected R library. Chrome, Python 3, Docker Linux containers
+and Compose v2 are required in addition to the runner's R dependencies.
 
 ## Procedure for each app run
 
@@ -77,17 +85,19 @@ already present in this repository.
 
 ## CI and evidence contract
 
-At P4, add a separate Inferno job with the pinned deployment, browser dependencies,
-app fixture, driver, readiness checks and cleanup of its own project. Expand CI
-path filters to the SMART/authentication R APIs, fixtures, driver and workflow.
-The current sandbox smoke job remains a fast prerequisite. P5 adds the EHR rows
-to the same release gate.
+The driver builds the pinned deployment, checks discovery, runs 19 simulator
+specs, performs the browser matrix and cleans up its own stack. Its result-gate
+regressions reject missing, duplicated, skipped, unfinished and unrelated tests.
+The sandbox smoke gate is separate: Launcher discovery failure cannot determine
+the outcome of a successful Inferno client-verification run.
 
 Every applicable verification test must pass. Failures, errors, unfinished
 interactions or unexpected skips block that scenario. Record suite ID, kit
 version/source and image digests, shinyOAuth revision, client profile, launch mode,
 RS384 selection where applicable, transport, browser version and per-test results.
 Record which scenarios actually ran; a standalone pass cannot fill an EHR row.
+The result gate requires the exact five applicable upstream test IDs per
+registration, rather than counting arbitrary passing tests.
 
 Inferno stores request/response details, which can contain credentials and
 context. Keep raw exports out of Git and ordinary CI artifacts. Publish only a
@@ -101,6 +111,20 @@ has medium maturity. Its simulated server can respond successfully to requests
 that its later verification tests reject. Its scope checks do not establish
 scope syntax, continuity, fulfillment of context scopes or resource authorization.
 Its FHIR simulation serves supplied resources or static responses.
+
+Inferno issues one-year ID tokens. The app explicitly selects a 366-day maximum
+lifetime, recorded as `max_id_token_lifetime_seconds`, instead of the package's
+one-day default. This deployment policy does not disable signature or claim
+validation. Basic registrations use random unreserved credentials because the
+pinned upstream Basic parser does not form-decode credential components. It
+does not verify interoperability for secrets containing reserved characters.
+Those cases retain their independent strict-AS coverage.
+
+Validation on 2026-09-12: all eight core application scenarios passed against
+the installed checkout, with 40 applicable upstream tests passing, 19 simulator
+examples passing and 39 result-gate assertions passing. This is evidence from
+the locally modified simulator and unchanged upstream verifier. Two-site retained
+connections and the wider transport matrix are separate extensions to this run.
 
 Keep our own SMART scope/context tests, ID-token validation, callback defenses,
 refresh continuity and resource-binding checks, plus the P3/P5 browser ownership
