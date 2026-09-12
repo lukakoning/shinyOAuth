@@ -8,7 +8,7 @@ Rscript integration/smart/run-coverage.R
 ```
 
 This runs the complete package suite with browser tests enabled, independent
-Python conformance checks, the retained-connection browser gates, GET and POST
+Python conformance checks, the retained-connection and account-login browser gates, GET and POST
 SMART registration/launch matrices, concurrent EHR launches, and the pinned Docker
 sandbox. Suites run in fresh R processes, and browser suites run sequentially.
 The runner continues after a failed suite to collect the remaining results, then
@@ -22,6 +22,13 @@ individual runners, and Python with
 isolated package library and `SHINYOAUTH_TEST_PYTHON` when Python is not on PATH.
 The Shiny parent and mirai workers must load the current installed checkout.
 
+The combined runner includes `integration/connections/run-account.R`. On
+2026-09-12 that gate passed all 80 browser assertions without skips against a
+fresh installation, covering query/form POST and synchronous/mirai transports.
+The runner parsed successfully and the regenerated API help was checked. This
+focused validation did not rerun the other combined suites or establish external
+SMART interoperability.
+
 ## Which implementation each suite verifies
 
 | Implemented component | Package tests | Integration evidence |
@@ -30,6 +37,7 @@ The Shiny parent and mirai workers must load the current installed checkout.
 | RS384 client assertions, JAR and DPoP signing | `test-rs384.R` and signing/claim tests | `integration/conformance/run-tests.R` independently verifies signatures and protocol exchanges in Python. The SMART profile matrix also exercises RS384 client authentication during code exchange and refresh. |
 | Optional client settings, connections and approved resource bases | `test-client-resources.R`, `test-oauth-connections.R`, `test-resource-binding.R` | Retention/shared-callback suites and two-site SMART Patient/user requests. |
 | Encrypted retention, ownership and atomic lifecycle | Connection credentials/store/owner/manager tests | Retention suite covers browser isolation, navigation and independent grants; EHR concurrency tests cover overlapping launches. |
+| Account login and retained grants | Account owner and manager lifecycle tests | `integration/connections/run-account.R` covers real local login/logout, account switching, retained grants and refresh across query/form POST and sync/mirai. Synthetic providers; independent external SMART verification remains separate. |
 | SMART discovery and endpoint policy | `test-smart-discovery.R` | Real HTTP positive/negative fixtures plus unmodified Docker metadata; the live positive gate is currently blocked. |
 | Registration, S256, FHIR audience and scopes | `test-smart-client.R`, `test-smart-scopes.R` | Profile matrix validates the actual authorization and token requests for public, HTTP Basic, RS384 and ES384 registrations. |
 | SMART context and validated `fhirUser` | `test-smart-context.R`, SMART identity tests | Profile matrix obtains a signed ID token over HTTP, fetches live fixture JWKS, reads the contextual Patient and a distinct Practitioner, and repeats after refresh/navigation. |

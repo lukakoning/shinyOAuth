@@ -19,6 +19,7 @@ run_smart_coverage <- function(args = commandArgs(trailingOnly = TRUE)) {
   suites <- list(
     conformance = c("integration/conformance/run-tests.R"),
     retention = c("integration/connections/run-tests.R"),
+    account_retention = c("integration/connections/run-account.R"),
     oauth_authorization_post = c("integration/connections/run-tests.R", "--post"),
     shared_callbacks = c("integration/connections/run-shared-router.R"),
     refresh_scopes = c("integration/connections/run-scope-narrowing.R"),

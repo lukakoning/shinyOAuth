@@ -60,8 +60,9 @@
 #' Use this API inside its owning session's reactive context. Session setup
 #' requires a matching HTTP Origin on the Shiny request. Raw HTTP routes cannot
 #' import credentials or select an owner. This initial manager supports one R
-#' process. The two-site real-browser interoperability gate remains a separate
-#' roadmap checkpoint; mocked Shiny tests do not establish that evidence.
+#' process. Local browser tests cover two-site retention, account login/logout
+#' and switching, and independent refresh using synthetic providers. Independent
+#' external SMART application interoperability remains a separate validation gate.
 #' @examples
 #' \dontrun{
 #' # Outside server(), using clients with resource_bases already configured:
