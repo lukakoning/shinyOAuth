@@ -117,10 +117,12 @@ optional transport combinations need their own implementation and tests.
 Iframe behavior remains deferred. Configure access logs to omit launch query
 strings; HTTP no-store/no-referrer policy does not redact reverse-proxy logs.
 
-P5b must run every supported registration profile against the pinned
-[Inferno client suite](inferno.md), and repeat the applicable EHR scenarios in
-the [official sandbox](sandbox.md). P4's standalone application/conformance
-gates remain open. The pinned Launcher advertises asymmetric support without
-required algorithm metadata; strict discovery still rejects it. The local
-fixture does not repair that server or substitute for its acceptance gate.
-Preflight Inferno metadata too before calling its deployment compatible.
+The pinned [Inferno client gate](inferno.md) now implements every supported
+registration profile with EHR initiation, retained two-site connections and
+actual upstream verification results. Its simulator metadata/nonce corrections
+are explicit, and the client still validates signatures and claims. Repeating
+the applicable scenarios against an unmodified vendor or the
+[official sandbox](sandbox.md) remains open. The pinned Launcher advertises
+asymmetric support without required algorithm metadata; strict discovery still
+rejects it. Neither local fixture nor corrected Inferno results substitute for
+that unmodified-server acceptance gate.

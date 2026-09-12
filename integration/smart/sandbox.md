@@ -178,10 +178,10 @@ Rows marked planned describe future tests, not currently skipped tests.
 | P4a reader implemented; positive sandbox gate open | `test-smart-discovery.R` and `--require-compatible-discovery` | The reader detects missing asymmetric algorithm metadata in the pinned launcher. Positive/negative HTTP fixtures verify the reader, but the release gate requires acceptance by an unmodified compatible external server. |
 | P4 standalone | Add a real app fixture and `test-browser-standalone.R` | Browser consent/selection, S256 and FHIR `aud`, matching Patient retrieval, supported scopes, refresh/context continuity; identity and clinician tests require advertised SSO support. |
 | P5 EHR launch | Add `test-browser-ehr-launch.R` | Launch from the real launcher with `iss` and `launch`; clean continuation, selected patient/encounter, concurrent launch isolation, and mixed callback rejection. |
-| Local app coverage, now | `run-profiles.R` and `run-ehr-browser.R` | Twenty-four strict fixture scenarios cover the supported registration types and both launch modes; the separate EHR suite covers concurrent launches. These do not satisfy the external launcher rows. |
+| Local app coverage, now | `run-profiles.R` and `run-ehr-browser.R` | Thirty-two strict fixture scenarios cover public, Basic, RS384 and ES384 with both launch modes; the separate EHR suite covers concurrent launches. These do not satisfy the external launcher rows. |
 | P7a external refresh narrowing | Repeat `run-profiles.R` semantics against an independently compatible provider | Accepted narrower SMART scope, preserved required permissions/context, and the limit retained through later refresh/navigation. Current local coverage cannot establish external support. |
 | P7b external authorization POST | Repeat [long-request browser tests](authorization-post.md) against compatible unmodified metadata | Require `authorize-post`, then verify standalone/EHR, fixed query, long scopes, both callback transports and retained two-site grants. Until strict discovery succeeds, this app-flow gate remains open. |
-| P4/P5 independent conformance | Add the [Inferno STU2.2 Client gate](inferno.md) and real-app driver | Separate public, symmetric and RS384 asymmetric runs, followed by EHR runs; require Inferno's request-verification results as well as browser/resource evidence. |
+| P4/P5 independent client verification | Implemented [Inferno STU2.2 Client gate](inferno.md) and real-app driver | Public, Basic, RS384 and ES384 with standalone/EHR, two retained grants, GET/POST and sync/mirai; actual upstream verification results required. Its local simulator corrections are recorded separately from this unmodified Launcher gate. |
 | P6 and P7c | Extend site topology and browser matrix | Same-issuer resource binding and iframe/navigation/cookie behavior, with separate evidence per supported mode. |
 
 The generic P3 gate has its own `connection-retention.yml` workflow watching R
@@ -191,7 +191,7 @@ and its launch parameters, rather than treating generic retention as SMART suppo
 At P4/P5, expand the sandbox CI path triggers to the implemented R APIs and app fixtures,
 install the browser dependencies, and make the relevant browser suites required.
 Do not replace the existing unit, strict conformance, or Keycloak suites.
-Inferno's client suite provides independent request checks; its planned setup,
+Inferno's client suite provides independent request checks; its implemented setup,
 version reference, registration procedure and coverage gaps are in [inferno.md](inferno.md).
 Simulation controls and absent features are recorded as limitations, not
 alternative passing outcomes for a required feature.

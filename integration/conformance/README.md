@@ -62,6 +62,7 @@ record its actual capabilities and known claim-validation gaps. Its rejection
 canaries must not be counted as successful combination interoperability.
 
 For SMART App Launch P4/P5, the [Inferno STU2.2 Client gate](../smart/inferno.md)
-adds external client-request verification, including an RS384 asymmetric profile.
-That gate is planned and has not run yet; it complements these cryptographic
-tests and the [Launcher v2 sandbox](../smart/sandbox.md).
+adds independent client-request verification, including RS384 and ES384 profiles.
+That gate is implemented with two explicit simulator corrections and unchanged
+upstream verification tests. It complements these cryptographic tests and the
+[Launcher v2 sandbox](../smart/sandbox.md); it is not an unmodified vendor pass.

@@ -7,7 +7,8 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
   root <- normalizePath(".", winslash = "/")
   output <- file.path(root, "integration/smart/.artifacts", paste0("inferno-", format(Sys.time(), "%Y%m%d-%H%M%S")))
   dir.create(output, recursive = TRUE)
-  for (file in c("integration/smart/helper-inferno.R", "integration/smart/helper-inferno-browser.R",
+  for (file in c("integration/smart/helper-inferno-evidence.R", "integration/smart/helper-inferno.R",
+    "integration/smart/helper-inferno-browser.R",
     "integration/smart/helper-inferno-exchanges.R",
     "integration/connections/helper-browser.R")) source(file, local = TRUE)
   testthat::test_file(file.path(root, "integration/smart/test-inferno-evidence.R"),
@@ -18,12 +19,16 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
     checkout_revision = trimws(processx::run("git", c("rev-parse", "HEAD"))$stdout),
     checkout_dirty = nzchar(trimws(processx::run("git", c("status", "--porcelain"))$stdout)),
     package_version = as.character(utils::packageVersion("shinyOAuth")),
+    versions = setNames(lapply(packages, function(package) as.character(utils::packageVersion(package))), packages),
     r_version = as.character(getRversion()), response_mode = "query",
     limitations = list(form_post_callback = "not_verified_by_inferno",
       server_permission_enforcement = "not_verified", refresh_token_rotation = "not_verified_by_inferno",
       cross_vendor_portability = "not_established"), scenarios = list())
-  on.exit(jsonlite::write_json(evidence, file.path(output, "evidence.json"),
-    auto_unbox = TRUE, pretty = TRUE, null = "null"), add = TRUE)
+  on.exit({
+    paths <- c(file.path(output, "evidence.json"), Sys.getenv("SHINYOAUTH_INFERNO_REPORT"))
+    for (path in paths[nzchar(paths)]) jsonlite::write_json(evidence, path,
+      auto_unbox = TRUE, pretty = TRUE, null = "null")
+  }, add = TRUE)
   evidence$provenance <- inferno_build(root, output)
   evidence$simulator_regressions <- inferno_test_simulator(root, output)
   run_env <- environment()
@@ -33,9 +38,7 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
   # The explicit environment avoids attaching cleanup to lapply's short frame.
   withr::local_envvar(CURL_CA_BUNDLE = stacks$a$ca)
   for (stack in stacks) shinyOAuth::smart_discover(stack$fhir_base)
-  cases <- expand.grid(profile = c("public", "basic", "rs384", "es384"),
-    launch = c("standalone", "ehr"), async = c(FALSE, TRUE),
-    authorization_method = c("GET", "POST"), stringsAsFactors = FALSE)
+  cases <- inferno_matrix()
   if ("--quick" %in% args) cases <- cases[cases$profile == "public" & cases$launch == "standalone", , drop = FALSE]
   run_case <- function(row, index) {
     case_dir <- file.path(output, paste0("case-", index))
@@ -139,6 +142,10 @@ run_inferno <- function(args = commandArgs(trailingOnly = TRUE)) {
   if (length(evidence$scenarios) != nrow(cases) || !all(vapply(evidence$scenarios,
     function(row) identical(row$status, "passed"), logical(1)))) stop("Inferno application matrix did not pass")
   evidence$status <- "passed"
+  if (!"--quick" %in% args && !inferno_report_passed(evidence)) {
+    evidence$status <- "failed"
+    stop("Incomplete Inferno evidence contract")
+  }
   cat("Inferno application scenarios passed:", nrow(cases), "; simulator modifications recorded.\n")
 }
 run_inferno()

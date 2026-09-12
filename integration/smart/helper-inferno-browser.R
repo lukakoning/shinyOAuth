@@ -4,7 +4,7 @@ inferno_registration <- function(stack, style, algorithm, site) {
     patient = paste0("patient-", site), practitioner = paste0("practitioner-", site))
   # Upstream compares decoded Basic bytes without form-decoding the components.
   # Use a valid random unreserved secret; reserved-character credentials remain
-  # covered by our strict-AS suite, not by this Inferno registration.
+  # covered by package wire-encoding tests, not by an independent server pass.
   if (style == "header") registration$secret <- paste(format(openssl::rand_bytes(32)), collapse = "")
   if (style == "private_key_jwt") {
     key <- if (algorithm == "ES384") openssl::ec_keygen("P-384") else openssl::rsa_keygen(2048)
@@ -61,26 +61,6 @@ inferno_begin_session <- function(stack, registration, origin, site, launch) {
   list(id = session$id, run_id = run$id, expected_tests = inferno_expected_tests(registration$style),
     continuation = get_input("continuation_url"),
     launch_url = get_input("launch_urls"))
-}
-
-inferno_expected_tests <- function(style) {
-  profile <- switch(style, public = "alp", header = "alcs", private_key_jwt = "alca")
-  stopifnot(length(profile) == 1L)
-  paste0(inferno_suite, "-", c(
-    paste0("smart_client_registration_", profile, "-smart_client_registration_", profile, "_verification"),
-    paste0("smart_client_access-smart_client_access_", profile, "_interaction"),
-    paste0("smart_client_access-smart_client_authorization_request_", profile, "_verification"),
-    paste0("smart_client_access-smart_client_token_request_", profile, "_verification"),
-    "smart_client_access-smart_client_token_use_verification"))
-}
-
-inferno_verification_summary <- function(results, expected_tests) {
-  tests <- Filter(function(result) !is.null(result$test_id), results)
-  ids <- vapply(tests, function(result) result$test_id, character(1))
-  summary <- lapply(tests, function(result) list(test_id = result$test_id, status = result$result))
-  list(passed = length(ids) == length(expected_tests) && !anyDuplicated(ids) &&
-    setequal(ids, expected_tests) && all(vapply(tests,
-      function(result) identical(result$result, "pass"), logical(1))), tests = summary)
 }
 
 inferno_finish_session <- function(stack, session) {

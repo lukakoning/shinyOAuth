@@ -7,6 +7,7 @@ run_inferno_preflight <- function() {
   output <- file.path(root, "integration/smart/.artifacts",
     paste0("inferno-preflight-", format(Sys.time(), "%Y%m%d-%H%M%S")))
   dir.create(output, recursive = TRUE)
+  source("integration/smart/helper-inferno-evidence.R", local = TRUE)
   source("integration/smart/helper-inferno.R", local = TRUE)
   evidence <- list(status = "failed", application_flow = "not_attempted")
   on.exit(jsonlite::write_json(evidence, file.path(output, "evidence.json"),

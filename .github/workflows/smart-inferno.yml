@@ -1,0 +1,66 @@
+name: Independent SMART client verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - R/**
+      - inst/www/**
+      - DESCRIPTION
+      - NAMESPACE
+      - integration/smart/**
+      - integration/connections/helper-browser.R
+      - integration/connections/tls-proxy.py
+      - integration/keycloak/tls/**
+      - .github/workflows/smart-inferno.yml
+  push:
+    branches: [main, master]
+    paths:
+      - R/**
+      - inst/www/**
+      - DESCRIPTION
+      - NAMESPACE
+      - integration/smart/**
+      - integration/connections/helper-browser.R
+      - integration/connections/tls-proxy.py
+      - integration/keycloak/tls/**
+      - .github/workflows/smart-inferno.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inferno-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NOT_CRAN: "true"
+      CURL_SSL_BACKEND: openssl
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: r-lib/actions/setup-r@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        with:
+          extra-packages: |
+            local::.
+            any::testthat
+            any::chromote
+            any::callr
+            any::withr
+            any::mirai
+            any::promises
+            any::processx
+      - name: Install this checkout for the app and mirai workers
+        run: R CMD INSTALL .
+      - name: Verify SMART clients and retained connections with pinned Inferno
+        run: Rscript integration/smart/run-inferno.R
+      - name: Upload only sanitized client-verification evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: smart-inferno-evidence
+          path: integration/smart/.artifacts/inferno-*/evidence.json
+          include-hidden-files: true
+          if-no-files-found: error

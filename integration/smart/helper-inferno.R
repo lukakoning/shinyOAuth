@@ -2,7 +2,6 @@
 # not replace shinyOAuth protocol code or Inferno's verification assertions.
 inferno_image <- "shinyoauth-inferno:980e54e4-simulator1"
 inferno_revision <- "980e54e4ed632b28267d797013399a8588772174"
-inferno_suite <- "smart_client_stu2_2"
 
 inferno_wait <- function(predicate, description, timeout = 60) {
   deadline <- Sys.time() + timeout

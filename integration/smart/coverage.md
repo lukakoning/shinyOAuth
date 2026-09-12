@@ -9,8 +9,11 @@ Rscript integration/smart/run-coverage.R
 
 This runs the complete package suite with browser tests enabled, independent
 Python conformance checks, the retained-connection and account-login browser gates, GET and POST
-SMART registration/launch matrices, concurrent EHR launches, and the pinned Docker
-sandbox. Suites run in fresh R processes, and browser suites run sequentially.
+SMART registration/launch matrices, concurrent EHR launches, the pinned Docker
+sandbox, and the [independent Inferno client gate](inferno.md). Inferno requires
+32 two-site scenarios and 320 applicable upstream test results. Its simulator
+has two documented compatibility corrections; upstream verification tests are
+unchanged. Suites run in fresh R processes, and browser suites run sequentially.
 The runner continues after a failed suite to collect the remaining results, then
 fails if any suite failed. `--integration-only` omits the package suite when it
 has already been run for the same checkout.
@@ -45,6 +48,7 @@ SMART interoperability.
 | P6 shared callback routing | `test-connection-router.R` and callback tests | One issuer, two registrations/resource paths, concurrent tabs and query/form POST, with sync/mirai. This is generic OAuth evidence. |
 | P7a refresh scope narrowing | `test-refresh-scope-narrowing.R` | Generic scope gate plus SMART semantic `.rs` to `.r` narrowing; retained limit, required permissions, refresh rotation and another unaffected connection. |
 | P7b authorization POST | `test-authorization-post.R`, Node form handler | SMART matrix with long granular scopes and fixed endpoint query; ordinary OAuth browser retention; independent Python RS256/RS384 protected combinations over TLS. See [commands and limits](authorization-post.md). |
+| Independent SMART client requests and retained grants | Evidence-contract regressions reject incomplete results and stale post-refresh reads | `run-inferno.R`: public/Basic/RS384/ES384, standalone/EHR, sync/mirai and GET/POST against two pinned Inferno deployments; browser lifecycle and recorded-exchange checks supplement the unchanged upstream verifier. |
 
 ## SMART profile browser matrix
 
@@ -93,29 +97,48 @@ reads. Therefore its 46 diagnostic checks establish metadata rejection,
 connectivity and synthetic data availability; they establish neither a complete
 SMART app flow nor resource authorization enforcement.
 
-The external requirement is deliberately separate:
+## Independent client verification and unmodified external interoperability
+
+The combined runner now executes `integration/smart/run-inferno.R` and validates
+its complete sanitized report. It records
+`independent_client_verification: "passed_modified_inferno_simulator"` only when
+all 32 distinct rows and both sites' exact applicable test sets pass. A quick
+run, missing report, duplicate row, unfinished interaction or skipped verifier
+test cannot satisfy the gate. The report is copied into the combined run as
+`inferno-evidence.json`; the standalone copy is under `.artifacts/inferno-<run>/`.
+
+The separate [CI job](../../.github/workflows/smart-inferno.yml) installs the
+checkout, runs that full command, and uploads only `evidence.json`. Raw Inferno
+databases, HTTP exchanges and private diagnostic logs are excluded. The runner
+removes its own containers and database volumes.
+
+`external_interoperability` retains the stricter meaning of a completed app run
+against an **unmodified** external implementation. That evidence is still absent.
+The optional requirement remains explicit:
 
 ```sh
 Rscript integration/smart/run-coverage.R --require-external
 ```
 
-This requires the sandbox's positive discovery gate in addition to the other
-suites and currently fails. It also fails while the external app gate is
-unimplemented. Even after discovery is accepted, independent app
-interoperability remains unestablished until the two-site sandbox browser runs
-and [Inferno client verification matrix](inferno.md) are implemented and pass.
-The coverage report always distinguishes `external_interoperability` from the
-status of implemented suites. A diagnostic pass cannot turn that field green.
+This executes the implemented suites, then fails the named
+`unmodified_external_app_interoperability` requirement with an `unverified`
+result explaining the simulator corrections. The old unconditional
+`external_app_interoperability: not_implemented` placeholder is removed.
+It does not require every candidate sandbox to accept discovery: an unrelated
+Launcher defect cannot invalidate Inferno's request-verification results.
+Use `run-tests.R --require-compatible-discovery` for the separate strict Launcher
+discovery requirement. Neither gate treats diagnostic connectivity as app proof.
 
 | External scenario | Current status | What is still needed |
 | --- | --- | --- |
-| SMART discovery | Blocked by missing launcher algorithm advertisement | Compatible unmodified deployment and positive strict discovery. |
-| Standalone, Patient/Practitioner and retained two-site connections | Not run against an external SMART server | Registered app/browser driver, two isolated datasets and accepted discovery. |
-| EHR entry for public/symmetric/RS384/ES384 registrations | Local browser coverage; external gate open | External launcher initiation plus independent request verification for each registration. |
-| SMART refresh narrowing | Local browser coverage; external gate open | Provider-supported narrowing with explicit returned scope and continuity assertions. |
-| Long authorization POST | Local SMART/OAuth browser and Python coverage; external SMART gate open | Accepted discovery advertising `authorize-post`, followed by both external launch modes and the retained two-site repeat. |
+| SMART discovery | Strictly accepted by corrected local Inferno; unmodified Launcher/hosted Inferno blockers remain | Compatible unmodified deployment and positive strict discovery. |
+| Standalone, Patient/Practitioner and retained two-site connections | Implemented with actual Shiny actions and Inferno verification | Unmodified server/vendor qualification; the two Inferno instances use the same implementation. |
+| EHR entry for public/symmetric/RS384/ES384 registrations | Implemented using Inferno-generated launch URLs and per-registration verification | Unmodified vendor EHR validation; account/session-only EHR entry remains outside current support. |
+| SMART refresh narrowing | Inferno responses and retained client scope policy checked | Independent server permission enforcement and refresh-token rotation remain unverified by Inferno. |
+| Long authorization POST | Inferno GET/POST matrix implemented, including recorded bodies over 8 KiB | Unmodified vendor qualification and granular-permission fulfillment. |
+| Form-post callbacks | Existing local SMART browser matrix | The pinned Inferno simulator only returns query callbacks. |
 | P6 shared issuer/resource topology | Generic strict fixture coverage | Separately configured external registrations and resource destinations. |
-| Inferno STU2.2 client suite | Not run; source metadata concern remains | Pinned deployment, compatible discovery and actual verification results, not merely issued tokens. |
+| Inferno STU2.2 client suite | Pinned deployment, actual client verifier and sanitized evidence implemented | Qualify an upstream release with the simulator corrections; no hosted or certification pass is claimed. |
 
 On 2026-09-12 the strict sandbox gate was rerun against these pinned images:
 all 46 diagnostic assertions passed, but `sandbox_discovery_accepted` remained
@@ -127,9 +150,12 @@ A read-only preflight of the hosted Inferno client-suite FHIR base,
 `https://inferno.healthit.gov/suites/custom/smart_client_stu2_2/fhir`, also failed
 strict discovery on 2026-09-12: its issuer lacks the `sso-openid-connect`
 capability. This confirms a live discovery blocker, not a completed or failed
-client conformance suite. The external application driver and pinned Inferno
-verification runs remain open work; adding local ES384 coverage does not close
-them. See [the Inferno gate](inferno.md).
+client conformance suite. The implemented local driver uses the documented
+metadata and nonce corrections instead. It also explicitly configures a bounded
+one-year ID-token lifetime policy for Inferno and uses unreserved Basic credentials
+to accommodate its parser. See [the Inferno gate](inferno.md) for these limits.
+The [optional Oracle registration path](oracle.md) records what a future account
+would enable; Oracle's unauthenticated endpoint cannot test these grant flows.
 
 The runner selects sandbox test files explicitly. Adding a browser test to this
 directory no longer makes the smoke suite execute it without its browser setup.

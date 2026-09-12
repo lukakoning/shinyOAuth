@@ -29,9 +29,12 @@ revision, image ID and patch digest. The changes should be proposed upstream
 separately; no issue or pull request has been submitted by this work. Remove the
 patch only after qualifying an upstream release with the fixes.
 
-No shinyOAuth discovery or identity check is relaxed. No verification test,
-expected result or scope assertion is altered. The simulator still does not
-establish server-side scope enforcement or complete refresh-scope conformance.
+Production client defaults remain unchanged. No verification test, expected
+result or scope assertion is altered. The app keeps signature, issuer, audience,
+nonce and expiry validation, but explicitly selects a bounded 366-day maximum
+ID-token lifetime for Inferno's one-year tokens; see the [app policy and other
+limits](../inferno.md). The simulator still does not establish server-side scope
+enforcement or complete refresh-scope conformance.
 
 Sources: [SMART discovery](https://hl7.org/fhir/smart-app-launch/STU2.2/conformance.html),
 [OIDC ID-token validation](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation),

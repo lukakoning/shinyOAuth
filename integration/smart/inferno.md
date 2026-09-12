@@ -132,7 +132,9 @@ one-day default. This deployment policy does not disable signature or claim
 validation. Basic registrations use random unreserved credentials because the
 pinned upstream Basic parser does not form-decode credential components. It
 does not verify interoperability for secrets containing reserved characters.
-Those cases retain their independent strict-AS coverage.
+Reserved-character handling has package wire-encoding regressions in
+`tests/testthat/test-client-secret-basic-encoding.R`; independent server
+interoperability for those credentials remains unverified by this gate.
 The upstream simulator always returns a query callback; `form_post` callback
 interoperability is unverified by this gate. Outgoing authorization POST and
 incoming form-post callbacks are separate capabilities. The existing local

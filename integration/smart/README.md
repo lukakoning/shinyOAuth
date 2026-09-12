@@ -5,8 +5,9 @@ discovery preflights, future vendor-validation scenarios, and why its open
 unauthenticated sandbox cannot close the SMART authorization gap.
 
 See [the implemented-roadmap coverage map](coverage.md) for the combined runner,
-the 24-scenario SMART registration/launch/identity/refresh browser matrix, and
-the distinction between local test results and the blocked external sandbox gate.
+the 32-scenario SMART registration/launch/identity/refresh browser matrix, and
+the distinction between our fixtures, independent Inferno verification and
+unmodified external interoperability.
 
 The [local Docker sandbox setup](sandbox.md) uses official SMART Dev Sandbox
 components with SMART Launcher v2. Run `Rscript integration/smart/run-tests.R`
@@ -15,8 +16,11 @@ tests and P4a's SMART discovery tests. It also maps
 the browser and application-flow suites to P3-P5. The generic P3
 [retention browser gate](../connections/README.md) now passes. P5a adds a
 [SMART EHR browser app and tests](ehr-launch.md), using strict synthetic servers.
-The [Inferno client conformance gate](inferno.md) specifies the
-independent STU2.2 Client suite, profile matrix and required P4/P5 evidence.
+The [Inferno client gate](inferno.md) runs the real Shiny app against two pinned
+STU2.2 Client simulators and requires their unchanged upstream verification
+results. Run `Rscript integration/smart/run-inferno.R` for the complete matrix.
+Two simulator compatibility corrections and remaining limitations are explicit
+in its documentation and every evidence report.
 
 Protocol baseline: SMART App Launch STU 2.2 (2.2.0), checked 2026-09-11.
 The synthetic response files live in `tests/testthat/fixtures/smart/` so package
@@ -34,9 +38,9 @@ independent interoperability evidence.
 | SMART discovery API | P4a `smart_discover()` implemented; live Launcher v2 rejected because its asymmetric algorithm advertisement is missing. Positive external gate remains open. Unit and HTTP fixtures validate the reader. |
 | SMART registration, scopes and context | P4b/P4c1/P4d1 implemented; `smart_client()` opts into explicit SMART checks and interpreted refresh context |
 | EHR entry and retained Patient reads | P5a `run-ehr-browser.R`: concurrent two-site launch, query/form_post, sync/mirai, Patient binding, refresh, owner isolation and logout; fixture evidence only |
-| Supported registrations, both launch modes, signed identity and narrowing | `run-profiles.R`: public/HTTP Basic/RS384 across standalone/EHR, query/form_post and sync/mirai; Patient and distinct validated Practitioner, retained narrowed scopes and independent grants; strict local fixture evidence. |
+| Supported registrations, both launch modes, signed identity and narrowing | `run-profiles.R`: public/HTTP Basic/RS384/ES384 across standalone/EHR, query/form_post and sync/mirai; Patient and distinct validated Practitioner, retained narrowed scopes and independent grants; strict local fixture evidence. |
 | A-to-B navigation retains both connections | P3 implemented: real Chrome navigation, new Shiny sessions, independent refresh, owner isolation and disconnect. Query/form_post, sync/mirai; 104 assertions. |
-| Independent SMART compatibility | P4/P5: record sandbox/tool version, registration, capabilities, transport and outcome |
+| Independent SMART client verification | `run-inferno.R`: both launch modes, four registrations, GET/POST, sync/mirai, two retained grants and actual verifier results; locally corrected simulator, not an unmodified external or vendor pass. |
 
 Fixtures use `https://api.site-a.example/fhir/R4` as the approved FHIR base.
 Discovery belongs at its `/.well-known/smart-configuration` suffix. A second
@@ -96,9 +100,9 @@ its isolated containers and data volume on exit.
 P4a protocol sources rechecked on 2026-09-10: the SMART 2.2 conformance page and
 asymmetric authentication profile linked above. P4b, P4c1 and P4d1 subsequently
 added scopes, the client and baseline context/resource helpers. Remaining P4
-items cover optional transport combinations, richer context, standalone browser
-flows and the Inferno client matrix. P5a's local EHR test does not satisfy those
-external gates.
+items cover optional transport compositions, richer context and unmodified
+external/vendor qualification. The independent Inferno client matrix is now
+implemented with its simulator modifications recorded separately.
 
 P2 adds optional resource policy to the existing client and per-session
 `OAuthConnection` handles that read the module's current reactive token.
