@@ -80,7 +80,9 @@ test_that("granular scope comparisons never guess query implication", {
   expect_identical(result$status, "indeterminate")
   expect_identical(result$indeterminate, scope)
   expect_identical(result$missing, character())
-  for (query in c("code:in=x", "patient.birthdate=1990", "_filter=x", "code=%zz", "code=", "")) {
+  for (query in c("code:in=x", "patient.birthdate=1990", "_filter=x",
+      "code=x&_filter=y", "_id:exact=x", "_has:Observation:patient:code=x",
+      "code=%zz", "code=", "")) {
     unknown <- paste0("patient/Observation.rs?", query)
     expect_identical(smart_scope_coverage(unknown, unknown)$status, "indeterminate")
   }
@@ -90,6 +92,23 @@ test_that("granular scope comparisons never guess query implication", {
     )$status,
     "indeterminate"
   )
+})
+
+test_that("granular scopes accept simple common FHIR search parameters", {
+  for (query in c("_id=example", "_lastUpdated=ge2026-01-01",
+      "_tag=http://example.org|reviewed", "_profile=http://example.org/Patient",
+      "_security=http://example.org|R", "code=example&_id=example")) {
+    scope <- paste0("user/Patient.rs?", query)
+    expect_identical(smart_scope_coverage(scope, scope)$status, "covered")
+    expect_identical(smart_scope_coverage(scope, "user/Patient.rs")$status, "covered")
+    expect_identical(smart_scope_coverage("user/Patient.rs", scope)$status, "insufficient")
+    different <- paste0(scope, "-other")
+    expect_identical(smart_scope_coverage(scope, different)$status, "indeterminate")
+    client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
+      scopes = scope)
+    request <- httr2::url_parse(prepare_call(client, browser_token = valid_browser_token()))$query
+    expect_identical(request$scope, scope)
+  }
 })
 
 test_that("SMART response scope is explicit, including the empty grant", {

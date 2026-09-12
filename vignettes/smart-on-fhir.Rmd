@@ -260,6 +260,13 @@ scope comparisons understand supported combinations such as `.rs` covering
 `.r` and `.s`. The package does not infer permissions from arbitrary HTTP paths.
 Pagination links must remain inside this connection's approved FHIR base.
 
+Granular scopes support simple search parameter names: an optional leading
+underscore, then a letter, followed by letters, digits or hyphens, with nonempty
+values. This includes `_id`, `_lastUpdated`, `_tag`, `_profile` and `_security`.
+Constraints are compared exactly as written; the package does not decode,
+reorder or infer implication between searches. Modifiers, chaining and
+experimental `_filter` expressions remain unsupported.
+
 ## Patient context and user identity are different
 
 `smart_context(connection)$patient` identifies the chart in context. A clinician

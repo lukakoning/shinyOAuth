@@ -27,10 +27,11 @@ smart_scope_parse <- function(scope, allow_v1 = FALSE) {
     # Even supported constraints are compared byte for byte, never decoded or
     # reordered: proving implication between FHIR searches needs a FHIR engine.
     if (
-      !grepl("^[A-Za-z][A-Za-z0-9-]*=[^&]+(?:&[A-Za-z][A-Za-z0-9-]*=[^&]+)*$",
+      !grepl("^_?[A-Za-z][A-Za-z0-9-]*=[^&]+(?:&_?[A-Za-z][A-Za-z0-9-]*=[^&]+)*$",
         constraint,
         perl = TRUE
       ) ||
+        grepl("(^|&)_filter=", constraint) ||
         grepl("%(?![A-Fa-f0-9]{2})", constraint, perl = TRUE) ||
         grepl("[[:space:]#]", constraint)
     ) {
