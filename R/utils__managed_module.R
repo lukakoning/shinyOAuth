@@ -17,7 +17,7 @@ oauth_module_validate_managed_hooks <- function(hooks) {
   ) {
     err_config("Invalid internal connection-manager hooks")
   }
-  for (name in c("parameters", "prepared")) {
+  for (name in c("parameters", "prepared", "begin_cleanup")) {
     if (!is.null(hooks[[name]]) && !is.function(hooks[[name]])) {
       err_config("Invalid internal connection-manager hooks")
     }

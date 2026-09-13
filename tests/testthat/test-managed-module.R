@@ -241,6 +241,16 @@ test_that("async managed login carries only context data and rechecks before com
   client <- make_test_client()
   finish <- NULL
   dispatched <- NULL
+  cleanup_finished <- 0L
+  cleanup_discarded <- 0L
+  f$hooks$begin_cleanup <- function(context) {
+    expect_identical(context, f$context)
+    list(discard = function(token) {
+      cleanup_discarded <<- cleanup_discarded + 1L
+    }, finish = function() {
+      cleanup_finished <<- cleanup_finished + 1L
+    })
+  }
   local_mocked_bindings(
     prepare_client_for_worker = function(client) client,
     async_dispatch = function(expr, args, ...) {
@@ -277,7 +287,10 @@ test_that("async managed login carries only context data and rechecks before com
         access_token = "late",
         expires_at = as.numeric(Sys.time()) + 3600
       ))
-      poll_for_async(function() length(f$discarded) == 1L, session)
+      poll_for_async(function() cleanup_finished == 1L, session)
+      expect_identical(cleanup_discarded, 1L)
+      expect_identical(cleanup_finished, 1L)
+      expect_length(f$discarded, 0L)
       expect_length(f$accepted, 0L)
       expect_null(values$token)
       expect_false(is.null(values$error))

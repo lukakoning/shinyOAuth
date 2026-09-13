@@ -477,7 +477,9 @@ for (outcome in c("not_consumed", "possibly_consumed", "consumed")) {
   })
 }
 
-test_that("disconnect wins against a competing async refresh result", {
+for (revoke in c(FALSE, TRUE)) {
+for (removal in c("disconnect", "disconnect_all", "logout")) {
+test_that(paste(removal, "preserves revoke =", revoke, "for a sibling session's refresh"), {
   skip_if_not_installed("promises")
   f <- manager_test_fixture()
   cookie <- manager_test_cookie(f)
@@ -514,15 +516,58 @@ test_that("disconnect wins against a competing async refresh result", {
       expect_identical(ctl$read(id)$status, "refreshing")
       expect_error(ctl$refresh(id, async = TRUE), "current state")
       expect_identical(calls, 1L)
-      ctl$disconnect(id, FALSE)
+      peer_session <- manager_test_session(cookie)
+      peer <- shiny::withReactiveDomain(peer_session,
+        connection_manager_controller(f$manager, peer_session))
+      shiny::withReactiveDomain(peer_session, {
+        if (removal == "disconnect") peer$disconnect(id, revoke)
+        else peer[[removal]](revoke)
+      })
       finish(manager_test_token("late", "late-rotated"))
       poll_for_async(function() !is.null(failure), session)
-      expect_identical(ctl$read(id)$status, "disconnected")
-      expect_null(ctl$read(id)$token)
-      expect_identical(revoked, 2L)
+      if (removal == "logout") {
+        expect_error(ctl$read(id), "owner is unavailable")
+      } else {
+        expect_identical(ctl$read(id)$status, "disconnected")
+        expect_null(ctl$read(id)$token)
+      }
+      # Both the old pair and any returned pair follow the removal policy.
+      expect_identical(revoked, if (revoke) 4L else 0L)
+      poll_for_async(function() length(f$manager$state$cleanup) == 0L, session)
+      expect_length(f$manager$state$cleanup, 0L)
+      peer$end()
     }
   )
 })
+}
+}
+
+for (revoke in c(FALSE, TRUE)) {
+for (removal in c("disconnect_all", "logout")) {
+test_that(paste(removal, "preserves revoke =", revoke, "for a late authorization"), {
+  f <- manager_test_fixture()
+  revoked <- 0L
+  local_mocked_bindings(revoke_token = function(...) {
+    revoked <<- revoked + 1L
+    list(supported = TRUE, revoked = TRUE)
+  })
+  shiny::testServer(session = manager_test_session(manager_test_cookie(f)),
+    function(input, output, session) {
+      ctl <- connection_manager_controller(f$manager, session)
+    }, {
+      hooks <- ctl$hooks("a")
+      context <- hooks$prepare()
+      cleanup <- hooks$begin_cleanup(context)
+      ctl[[removal]](revoke)
+      expect_false(hooks$validate(context))
+      cleanup$discard(manager_test_token("late", "late-refresh"))
+      cleanup$finish()
+      expect_identical(revoked, if (revoke) 2L else 0L)
+      expect_length(f$manager$state$cleanup, 0L)
+    })
+})
+}
+}
 
 test_that("logout invalidates the owner before bounded remote cleanup", {
   local_options(

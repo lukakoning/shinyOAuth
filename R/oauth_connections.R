@@ -203,6 +203,7 @@ oauth_connections <- function(
   state$launches <- new.env(parent = emptyenv())
   state$next_refresh <- new.env(parent = emptyenv())
   state$signals <- new.env(parent = emptyenv())
+  state$cleanup <- new.env(parent = emptyenv())
   manager <- new.env(parent = emptyenv())
   for (name in c(
     "clients",
@@ -700,6 +701,43 @@ connection_manager_controller <- function(manager, session) {
     )
     invisible(NULL)
   }
+  # Keep removal intent with live work, including work started by another
+  # controller for this owner. No credentials are retained in this registry.
+  begin_cleanup <- function(client_name, connection = NULL) {
+    if (length(state$cleanup) >= 2000L) {
+      err_token("Too many pending connection operations")
+    }
+    key <- random_urlsafe(32)
+    intent <- new.env(parent = emptyenv())
+    intent$owner <- owner$id
+    intent$connection <- connection
+    intent$revoke <- TRUE
+    intent$removed <- FALSE
+    state$cleanup[[key]] <- intent
+    list(
+      discard = function(token) {
+        if (isTRUE(intent$revoke)) discard(client_name, token)
+        invisible(NULL)
+      },
+      finish = function() {
+        if (exists(key, state$cleanup, inherits = FALSE)) {
+          rm(list = key, envir = state$cleanup)
+        }
+        invisible(NULL)
+      }
+    )
+  }
+  mark_cleanup <- function(revoke, connection = NULL) {
+    for (key in ls(state$cleanup, all.names = TRUE)) {
+      intent <- state$cleanup[[key]]
+      if (identical(intent$owner, owner$id) && !intent$removed &&
+          (is.null(connection) || identical(intent$connection, connection))) {
+        intent$revoke <- revoke
+        intent$removed <- TRUE
+      }
+    }
+    invisible(NULL)
+  }
   refresh <- function(id, async = FALSE, touch = TRUE, scopes = NULL) {
     for (key in ls(next_refresh, all.names = TRUE)) {
       if (next_refresh[[key]] <= as.numeric(Sys.time())) {
@@ -728,6 +766,9 @@ connection_manager_controller <- function(manager, session) {
     } else {
       NULL
     }
+    cleanup <- begin_cleanup(record$stored$client, id)
+    deferred <- FALSE
+    on.exit(if (!deferred) cleanup$finish(), add = TRUE)
     claim <- store$begin_refresh(owner$id, id, record$stored$revision)
     if (is.null(claim)) {
       err_token("Connection refresh is already in progress or unavailable")
@@ -755,7 +796,7 @@ connection_manager_controller <- function(manager, session) {
     }
     succeed <- function(token) {
       committed <- FALSE
-      on.exit(if (!committed) discard(claim$client, token), add = TRUE)
+      on.exit(if (!committed) cleanup$discard(token), add = TRUE)
       tryCatch(
         {
           validate_token_acceptance_deadline(token)
@@ -812,7 +853,12 @@ connection_manager_controller <- function(manager, session) {
       error = fail
     )
     if (inherits(result, "promise")) {
-      promises::then(result, onFulfilled = succeed, onRejected = fail)
+      pending <- promises::finally(
+        promises::then(result, onFulfilled = succeed, onRejected = fail),
+        cleanup$finish
+      )
+      deferred <- TRUE
+      pending
     } else {
       succeed(result)
     }
@@ -849,6 +895,7 @@ connection_manager_controller <- function(manager, session) {
     if (is.null(changed)) {
       err_token("Connection changed before disconnect")
     }
+    mark_cleanup(revoke, id)
     signal()
     cleanup_records(list(changed$previous), revoke)[[1L]]
   }
@@ -869,6 +916,7 @@ connection_manager_controller <- function(manager, session) {
   disconnect_all <- function(revoke = TRUE) {
     connection_manager_flag(revoke, "revoke")
     guard(touch = TRUE)
+    mark_cleanup(revoke)
     cancel_owner_pending()
     previous <- store$disconnect_owner(owner$id)
     signal()
@@ -877,6 +925,7 @@ connection_manager_controller <- function(manager, session) {
   logout <- function(revoke = TRUE) {
     connection_manager_flag(revoke, "revoke")
     guard()
+    mark_cleanup(revoke)
     active <<- FALSE
     if (manager$retention != "shiny") {
       state$owners$revoke(owner)
@@ -893,6 +942,7 @@ connection_manager_controller <- function(manager, session) {
     on.exit(subscription$release(), add = TRUE)
     rm(list = ls(launch_queue, all.names = TRUE), envir = launch_queue)
     if (manager$retention == "shiny") {
+      mark_cleanup(FALSE)
       store$disconnect_owner(owner$id)
       signal()
     }
@@ -940,6 +990,12 @@ connection_manager_controller <- function(manager, session) {
       },
       accept = accept,
       cancel = cancel,
+      begin_cleanup = function(context) {
+        if (!validate(context) || !identical(context$client, client_name)) {
+          err_token("Managed authorization owner is unavailable")
+        }
+        begin_cleanup(client_name)
+      },
       discard = function(token) discard(client_name, token)
     )
   }

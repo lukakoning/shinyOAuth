@@ -61,8 +61,9 @@
 #' provider grants, even after repeated consent or account selection. Consequently,
 #' default `revoke = TRUE` may also end access for sibling connections or other
 #' applications covered by the provider's revocation policy. Use `revoke = FALSE`
-#' for a local-only removal when preserving those authorizations is required;
-#' the removed credentials then remain valid remotely until the provider expires
+#' when preserving those authorizations is required. This also applies to
+#' credentials returned by work already in flight. Removed credentials remain
+#' valid remotely until the provider expires
 #' or revokes them. Local summaries and `is_usable()` do not detect such remote
 #' changes: handle API authorization failures and obtain a new authorization.
 #'

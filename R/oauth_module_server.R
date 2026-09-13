@@ -665,13 +665,14 @@ oauth_module_server_impl <- function(
       invisible(TRUE)
     }
 
-    .revoke_stale_credentials <- function(tok, shiny_session = NULL) {
+    .revoke_stale_credentials <- function(tok, shiny_session = NULL, cleanup = NULL) {
       if (!S7::S7_inherits(tok, OAuthToken)) {
         return(invisible(NULL))
       }
 
       if (!is.null(.managed)) {
-        try(.managed$discard(tok), silent = TRUE)
+        try(if (is.null(cleanup)) .managed$discard(tok) else cleanup$discard(tok),
+          silent = TRUE)
         return(invisible(NULL))
       }
 
@@ -736,7 +737,7 @@ oauth_module_server_impl <- function(
             )
           },
           error = function(e) {
-            .revoke_stale_credentials(tok)
+            .revoke_stale_credentials(tok, cleanup = context$cleanup)
             stop(e)
           }
         )
@@ -3371,6 +3372,11 @@ oauth_module_server_impl <- function(
       callback_validated = FALSE
     ) {
       callback_parent <- NULL
+      managed_cleanup <- NULL
+      cleanup_deferred <- FALSE
+      on.exit(if (!cleanup_deferred && !is.null(managed_cleanup)) {
+        managed_cleanup$finish()
+      }, add = TRUE)
       callback_hint <- otel_callback_parent_hint(client, state)
       # Always clear callback params once we've parsed them (success or failure)
       on.exit(
@@ -3423,6 +3429,10 @@ oauth_module_server_impl <- function(
             decrypted_payload,
             state_store_values
           )
+          if (!is.null(.managed$begin_cleanup)) {
+            managed_cleanup <- .managed$begin_cleanup(managed_context$data)
+            managed_context$cleanup <- managed_cleanup
+          }
           with_trace_id(
             callback_hint[["trace_id"]] %||% NULL,
             {
@@ -3843,7 +3853,8 @@ oauth_module_server_impl <- function(
                       .finish_auth_operation(login_operation, "login")
                       .revoke_stale_credentials(
                         tok,
-                        shiny_session = captured_shiny_session
+                        shiny_session = captured_shiny_session,
+                        cleanup = managed_cleanup
                       )
                       if (!is.null(callback_parent)) {
                         otel_end_async_parent(callback_parent, status = "ok")
@@ -3914,7 +3925,11 @@ oauth_module_server_impl <- function(
                     if (isTRUE(getOption("shinyOAuth.debug", FALSE))) {
                       rlang::abort(message = conditionMessage(e), parent = e)
                     }
+                  }) |>
+                  promises::finally(function() {
+                    if (!is.null(managed_cleanup)) managed_cleanup$finish()
                   })
+                cleanup_deferred <- TRUE
               } else {
                 if (
                   !isTRUE(.auth_operation_can_apply(
@@ -3923,7 +3938,7 @@ oauth_module_server_impl <- function(
                   ))
                 ) {
                   .finish_auth_operation(login_operation, "login")
-                  .revoke_stale_credentials(res)
+                  .revoke_stale_credentials(res, cleanup = managed_cleanup)
                   return(invisible(NULL))
                 }
                 .accept_login_token(res, managed_context)

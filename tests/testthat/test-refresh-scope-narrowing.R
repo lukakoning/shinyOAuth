@@ -336,6 +336,6 @@ test_that("disconnect prevents a pending narrowed grant from being installed", {
     expect_s3_class(failure, "shinyOAuth_token_error")
     expect_identical(controller$read(id)$status, "disconnected")
     expect_null(controller$read(id)$token)
-    expect_identical(revoked, 2L)
+    expect_identical(revoked, 0L)
   })
 })
