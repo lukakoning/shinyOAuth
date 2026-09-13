@@ -185,7 +185,8 @@ validate_id_token <- function(
                 ao <- try(prov@jwks_host_allow_only, silent = TRUE)
                 if (inherits(ao, "try-error")) NA_character_ else ao
               },
-              jwks_uri_override = provider_jwks_uri(prov)
+              jwks_uri_override = provider_jwks_uri(prov),
+              tls_minimum = client_tls_minimum(client)
             ))
           ) {
             did_force_refresh <- TRUE

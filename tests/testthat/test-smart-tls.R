@@ -62,3 +62,57 @@ test_that("SMART code exchange, refresh and revocation retain their TLS minimum"
   expect_gte(length(seen), 3L)
   expect_true(all(vapply(seen, function(req) identical(req$options$sslversion, 6L), logical(1))))
 })
+
+for (smart_first in c(FALSE, TRUE)) {
+  for (same_kid in c(FALSE, TRUE)) {
+    test_that(paste("shared JWKS rotation isolates TLS throttles; SMART first =",
+      smart_first, "same kid =", same_kid), {
+      local_options(shinyOAuth.tls_min_version = NULL)
+      smart <- smart_client(smart_client_fixture(oidc = TRUE), "app",
+        "https://app.example/callback", character(), identity = "fhirUser")
+      ordinary <- oauth_client(smart@provider, client_id = "app",
+        client_secret = character(), redirect_uri = "https://app.example/callback",
+        scopes = "openid")
+      clients <- if (smart_first) list(smart, ordinary) else list(ordinary, smart)
+      old <- openssl::rsa_keygen(2048)
+      fresh <- openssl::rsa_keygen(2048)
+      public <- function(key, kid) {
+        jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = FALSE)
+        jwk$kid <- kid
+        list(keys = list(jwk))
+      }
+      current <- public(old, "old")
+      requests <- list()
+      local_mocked_bindings(req_with_retry = function(req, ...) {
+        requests[[length(requests) + 1L]] <<- req
+        httr2::response(url = req$url, status = 200L,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(jsonlite::toJSON(current, auto_unbox = TRUE)))
+      })
+      for (client in clients) {
+        fetch_client_jwks(client, client@provider@issuer,
+          client@provider@jwks_cache, provider = client@provider)
+      }
+      expect_length(requests, 2L)
+      kid <- if (same_kid) "old" else "new"
+      current <- public(fresh, kid)
+      token <- jose::jwt_encode_sig(jose::jwt_claim(iss = smart@provider@issuer,
+        aud = "app", sub = "user", iat = as.numeric(Sys.time()),
+        exp = as.numeric(Sys.time()) + 120), fresh, header = list(kid = kid))
+      for (client in clients) {
+        expect_identical(validate_id_token(client, token)$sub, "user")
+      }
+      expect_length(requests, 4L)
+      expect_identical(vapply(requests, function(req) {
+        req$options$sslversion %||% 0L
+      }, integer(1)), rep(if (smart_first) c(6L, 0L) else c(0L, 6L), 2L))
+      # Repeated rotation attempts within each partition are still throttled.
+      for (client in clients) {
+        expect_null(force_refresh_client_jwks(client, client@provider@issuer,
+          client@provider@jwks_cache, provider = client@provider))
+        expect_identical(validate_id_token(client, token)$sub, "user")
+      }
+      expect_length(requests, 4L)
+    })
+  }
+}

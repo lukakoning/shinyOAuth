@@ -319,14 +319,9 @@ fetch_jwks <- function(
     issuer_match = issuer_match,
     jwks_host_issuer_match = host_match,
     jwks_host_allow_only = allow_only,
-    jwks_uri_override = jwks_uri_override
+    jwks_uri_override = jwks_uri_override,
+    tls_minimum = tls_minimum
   )
-
-  if (!is.null(tls_minimum)) {
-    policy <- resolve_tls_policy(minimum = tls_minimum)
-    if (!is.null(policy$problem)) err_config(policy$problem)
-    cache_key <- paste0(cache_key, "tls", gsub(".", "", tls_minimum, fixed = TRUE))
-  }
   entry <- jwks_cache$get(cache_key, missing = NULL)
 
   cached_jwks_source_valid <- function(entry) {
@@ -552,7 +547,8 @@ jwks_force_refresh_allowed <- function(
   issuer_match = "url",
   jwks_host_issuer_match = FALSE,
   jwks_host_allow_only = NA_character_,
-  jwks_uri_override = NA_character_
+  jwks_uri_override = NA_character_,
+  tls_minimum = NULL
 ) {
   pin_mode <- match.arg(pin_mode)
   issuer_match <- match.arg(issuer_match, choices = c("url", "host", "none"))
@@ -571,7 +567,8 @@ jwks_force_refresh_allowed <- function(
     issuer_match = issuer_match,
     jwks_host_issuer_match = jwks_host_issuer_match,
     jwks_host_allow_only = jwks_host_allow_only,
-    jwks_uri_override = jwks_uri_override
+    jwks_uri_override = jwks_uri_override,
+    tls_minimum = tls_minimum
   )
   throttle_key <- paste0(base_key, "xfr")
 
@@ -646,7 +643,8 @@ force_refresh_provider_jwks <- function(
     issuer_match = provider_issuer_match(provider),
     jwks_host_issuer_match = host_match,
     jwks_host_allow_only = allow_only,
-    jwks_uri_override = provider_jwks_uri(provider)
+    jwks_uri_override = provider_jwks_uri(provider),
+    tls_minimum = tls_minimum
   )
   if (!isTRUE(allowed)) {
     return(NULL)
@@ -709,7 +707,7 @@ normalize_jwks_cache_host_patterns <- function(patterns) {
 #' relaxed provider or looser runtime allowlist populates the cache and a
 #' stricter configuration skips validation on hit.
 #' Used by `fetch_jwks()` and `jwks_force_refresh_allowed()` so cached JWKS
-#' data and refresh throttles stay scoped to the same issuer and host policy.
+#' data and refresh throttles stay scoped to the same issuer, host and TLS policy.
 #'
 #' @param issuer Issuer URL.
 #' @param pins Optional vector of pinned JWK thumbprints.
@@ -738,7 +736,8 @@ jwks_cache_key <- function(
   allowed_non_https_hosts = getOption(
     "shinyOAuth.allowed_non_https_hosts",
     default = c("localhost", "127.0.0.1", "::1", "[::1]")
-  )
+  ),
+  tls_minimum = NULL
 ) {
   pin_mode <- match.arg(pin_mode)
   issuer_match <- match.arg(issuer_match, choices = c("url", "host", "none"))
@@ -795,7 +794,13 @@ jwks_cache_key <- function(
   ch_raw <- openssl::sha256(charToRaw(cfg_str))
   ch <- paste0(sprintf("%02x", as.integer(ch_raw)), collapse = "")
   # Use an alphanumeric delimiter to satisfy cache key constraints while keeping clarity
-  paste0(ih, "x", ch)
+  key <- paste0(ih, "x", ch)
+  if (!is.null(tls_minimum)) {
+    policy <- resolve_tls_policy(minimum = tls_minimum)
+    if (!is.null(policy$problem)) err_config(policy$problem)
+    key <- paste0(key, "tls", gsub(".", "", tls_minimum, fixed = TRUE))
+  }
+  key
 }
 
 #' Internal: ensure JWKS host aligns with issuer
