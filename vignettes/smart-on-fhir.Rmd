@@ -243,7 +243,8 @@ observeEvent(input$search, {
     response <- connection$request(
       "fhir", "Observation",
       query = list(patient = context$patient, `_count` = 10),
-      required_scopes = "patient/Observation.s"
+      required_scopes = "patient/Observation.s",
+      configure = function(req) httr2::req_headers(req, Accept = "application/fhir+json")
     )
     httr2::resp_check_status(response)
     bundle <- httr2::resp_body_json(response, simplifyVector = FALSE)
@@ -255,6 +256,9 @@ observeEvent(input$search, {
   })
 })
 ```
+
+The `Accept` header requests FHIR JSON for `resp_body_json()`; a FHIR server may
+otherwise choose XML. Generic requests retain their existing format defaults.
 
 The `patient` query selects data; it does not enforce authorization. The server
 enforces access, and the connection checks the declared operation scope. SMART
