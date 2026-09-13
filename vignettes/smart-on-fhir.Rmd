@@ -414,8 +414,14 @@ and signs the assertion; app code does not assemble JWTs. See
 If your use case needs access when the user is offline, request `offline_access`
 only with an appropriate registration and advertised support. Saving a browser
 connection by itself does not request offline access or a refresh token. The
-manager refreshes when a refresh credential is available. SMART responses need
-an explicit positive `expires_in`; the package does not guess their lifetime.
+manager refreshes when a refresh credential is available. SMART refresh responses
+must include a positive `expires_in`. For initial responses, SMART recommends
+that field but permits its omission. If the authorization server supplies the
+initial lifetime out of band, configure `smart_client(initial_expires_in = 300)`
+with that documented value in seconds. It is used only when the initial response
+omits `expires_in`; an explicit value takes precedence. The default `NULL`
+requires an explicit response lifetime, and generic OAuth lifetime options do
+not apply to SMART.
 
 `connection$refresh(scopes = ...)` can narrow the connection's accepted scopes.
 That local limit is retained and sent on later refreshes; it does not prove the

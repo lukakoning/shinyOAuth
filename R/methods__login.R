@@ -2631,7 +2631,7 @@ verify_token_set <- function(
   if (!is.list(token_set) || length(token_set) == 0) {
     err_token("Invalid token set: must be a non-empty list")
   }
-  smart_verify_token_response(client, token_set)
+  token_set <- smart_verify_token_response(client, token_set, is_refresh)
 
   scope_validation_mode <- client@scope_validation %||% "warn"
   requested_scopes <- normalize_scope_tokens(

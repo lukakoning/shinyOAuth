@@ -16,8 +16,9 @@
 #' those features. EHR clients require a fresh registered launch transaction.
 #' Configure standalone and EHR registrations as separate clients when both are
 #' needed. No launch handle is stored in shared provider configuration.
-#' Local usability policy requires a positive `expires_in` in initial and
-#' refresh responses; the generic assumed lifetime is not used for SMART.
+#' Local usability policy requires a positive lifetime. An initial response may
+#' omit `expires_in` only when `initial_expires_in` is configured explicitly;
+#' refresh responses must include it. The generic assumed lifetime is not used.
 #' SMART back-channel and resource requests require TLS 1.2 or newer. A stronger
 #' configured TLS minimum is preserved; ordinary clients keep their defaults.
 #'
@@ -62,6 +63,11 @@
 #'   [oauth_client()]. Multiple clients use distinct registered callback routes.
 #' @param state_store,state_key,state_payload_max_age See [oauth_client()].
 #' @param label Display label, default `"FHIR server"`; no credentials or context.
+#' @param initial_expires_in Optional positive lifetime in seconds, supplied by
+#'   the authorization server out of band for initial access tokens. Used only
+#'   when an initial response omits `expires_in`; an explicit response value
+#'   takes precedence. Default `NULL` requires the response to include a lifetime.
+#'   This does not apply to refresh responses or change ordinary OAuth defaults.
 #' @return An [OAuthClient], usable by the existing module or the separate
 #'   connection manager. `@resource_bases` contains the approved `fhir` base;
 #'   `@required_scopes` and `@label` use the ordinary client properties. `@smart`
@@ -90,7 +96,7 @@ smart_client <- function(
   authorization_server_redirect_uris = character(),
   state_store = cachem::cache_mem(max_age = 300),
   state_key = random_urlsafe(128), state_payload_max_age = 300,
-  label = "FHIR server", authorization_method = "GET"
+  label = "FHIR server", authorization_method = "GET", initial_expires_in = NULL
 ) {
   token_auth_style <- match.arg(token_auth_style)
   launch <- match.arg(launch)
@@ -231,6 +237,7 @@ smart_client <- function(
     launch = launch, identity = identity, allow_http_loopback = discovery$allow_http_loopback,
     discovery_digest = state_policy_digest(discovery))
   if (identical(authorization_method, "POST")) smart_policy$authorization_method <- "POST"
+  if (!is.null(initial_expires_in)) smart_policy$initial_expires_in <- initial_expires_in
   S7::props(client) <- list(
     scope_policy = list(profile = "smart", version = 1L, allow_v1 = allow_v1),
     smart = smart_policy,
@@ -246,7 +253,7 @@ smart_validate_client <- function(client) {
   if (!client_uses_smart(client)) return(NULL)
   if (!length(client@scopes)) return("OAuthClient: SMART authorization requires at least one requested scope")
   policy <- client@smart
-  if (!identical(sort(setdiff(names(policy), "authorization_method")), sort(c("version", "fhir_base", "launch",
+  if (!identical(sort(setdiff(names(policy), c("authorization_method", "initial_expires_in"))), sort(c("version", "fhir_base", "launch",
       "identity", "allow_http_loopback", "discovery_digest"))) ||
       !identical(policy$authorization_method %||% "GET", client@authorization_method) ||
       !identical(policy$version, "2.2.0") ||
@@ -254,6 +261,11 @@ smart_validate_client <- function(client) {
       !is_valid_string(policy$launch) || !policy$launch %in% c("standalone", "ehr") ||
       !is_valid_string(policy$identity) || !policy$identity %in% c("none", "fhirUser") ||
       !client_uses_smart_scopes(client)) return("OAuthClient: invalid SMART policy")
+  lifetime <- policy$initial_expires_in
+  if (!is.null(lifetime) && (!is.numeric(lifetime) || length(lifetime) != 1L ||
+      !is.finite(lifetime) || lifetime <= 0)) {
+    return("OAuthClient: SMART initial_expires_in must be a finite positive number of seconds")
+  }
   if (!identical(client@resource_bases,
       normalize_resource_bases(c(fhir = policy$fhir_base)))) {
     return("OAuthClient: SMART client must retain its configured FHIR base")
@@ -284,18 +296,22 @@ smart_validate_client <- function(client) {
   NULL
 }
 
-smart_verify_token_response <- function(client, token_set) {
-  if (!client_uses_smart(client)) return(invisible(NULL))
+smart_verify_token_response <- function(client, token_set, is_refresh = FALSE) {
+  if (!client_uses_smart(client)) return(token_set)
   if (!is_valid_string(token_set$token_type) ||
       !identical(tolower(token_set$token_type), "bearer")) {
     err_token("SMART app launch requires a Bearer token_type")
+  }
+  if (!isTRUE(is_refresh) && !"expires_in" %in% names(token_set) &&
+      !is.null(client@smart$initial_expires_in)) {
+    token_set$expires_in <- client@smart$initial_expires_in
   }
   expires <- token_set$expires_in
   if (!is.numeric(expires) || length(expires) != 1L ||
       !is.finite(expires) || expires <= 0) {
     err_token("SMART connections require an explicit positive expires_in")
   }
-  invisible(NULL)
+  token_set
 }
 
 smart_verify_identity <- function(client, token_set, is_refresh) {

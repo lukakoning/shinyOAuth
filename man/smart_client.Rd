@@ -25,7 +25,8 @@ smart_client(
   state_key = random_urlsafe(128),
   state_payload_max_age = 300,
   label = "FHIR server",
-  authorization_method = "GET"
+  authorization_method = "GET",
+  initial_expires_in = NULL
 )
 }
 \arguments{
@@ -85,6 +86,12 @@ modes, when present, must allow the selection.}
 \item{authorization_method}{\code{"GET"} (default) or \code{"POST"} for the outgoing
 browser request. POST requires the discovered \code{authorize-post} capability
 and uses the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}.}
+
+\item{initial_expires_in}{Optional positive lifetime in seconds, supplied by
+the authorization server out of band for initial access tokens. Used only
+when an initial response omits \code{expires_in}; an explicit response value
+takes precedence. Default \code{NULL} requires the response to include a lifetime.
+This does not apply to refresh responses or change ordinary OAuth defaults.}
 }
 \value{
 An \link{OAuthClient}, usable by the existing module or the separate
@@ -111,8 +118,9 @@ separate SMART composition work; this constructor provides no overrides for
 those features. EHR clients require a fresh registered launch transaction.
 Configure standalone and EHR registrations as separate clients when both are
 needed. No launch handle is stored in shared provider configuration.
-Local usability policy requires a positive \code{expires_in} in initial and
-refresh responses; the generic assumed lifetime is not used for SMART.
+Local usability policy requires a positive lifetime. An initial response may
+omit \code{expires_in} only when \code{initial_expires_in} is configured explicitly;
+refresh responses must include it. The generic assumed lifetime is not used.
 SMART back-channel and resource requests require TLS 1.2 or newer. A stronger
 configured TLS minimum is preserved; ordinary clients keep their defaults.
 }

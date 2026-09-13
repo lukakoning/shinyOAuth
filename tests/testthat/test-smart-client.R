@@ -210,6 +210,45 @@ test_that("SMART lifetime and identity checks cannot use generic fallbacks", {
   expect_no_error(smart_verify_identity(identity, list(), TRUE))
 })
 
+test_that("SMART initial lifetimes can be supplied explicitly out of band", {
+  site <- smart_client_fixture()
+  create <- function(...) smart_client(site, "example", "https://app.example/callback",
+    scopes = "user/Patient.r", ...)
+  for (value in list(NA_real_, Inf, 0, -1, "60", TRUE, numeric(), c(60, 120))) {
+    expect_error(create(initial_expires_in = value), "initial_expires_in")
+  }
+  client <- create(initial_expires_in = 120)
+  expect_error(client@smart$initial_expires_in <- -1, "initial_expires_in")
+  expect_false(identical(connection_client_fingerprint(client),
+    connection_client_fingerprint(create())))
+  worker <- unserialize(serialize(prepare_client_for_worker(client), NULL))
+  expect_identical(worker@smart, client@smart)
+  base <- list(access_token = "example-access", refresh_token = "example-refresh",
+    token_type = "Bearer", scope = "user/Patient.r")
+  for (candidate in list(client, worker)) {
+    verified <- verify_token_set(candidate, base, nonce = NULL)
+    expect_identical(verified$expires_in, 120)
+    expect_identical(verify_token_set(candidate, c(base, list(expires_in = 60)),
+      nonce = NULL)$expires_in, 60)
+    expect_error(verify_token_set(candidate, base, nonce = NULL, is_refresh = TRUE),
+      "explicit positive expires_in")
+    for (value in list(NULL, NA_real_, 0, -1, "60")) {
+      expect_error(verify_token_set(candidate, c(base, list(expires_in = value)),
+        nonce = NULL), "explicit positive expires_in")
+    }
+  }
+  local_options(shinyOAuth.default_expires_in = 3600)
+  local_mocked_bindings(swap_code_for_token_set = function(...) base)
+  browser <- valid_browser_token()
+  state <- parse_query_param(prepare_call(client, browser), "state", TRUE)
+  started <- as.numeric(Sys.time())
+  token <- handle_callback(client, "example-code", state, browser)
+  expect_gte(token@expires_at, started + 120)
+  expect_lte(token@expires_at, as.numeric(Sys.time()) + 120)
+  ordinary <- make_test_client()
+  expect_identical(smart_verify_token_response(ordinary, base), base)
+})
+
 test_that("SMART requires effective request scopes while accepting explicit empty grants", {
   site <- smart_client_fixture(oidc = TRUE)
   expect_error(smart_client(site, "example", "https://app.example/callback",
