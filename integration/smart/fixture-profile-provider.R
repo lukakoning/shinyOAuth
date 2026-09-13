@@ -165,14 +165,16 @@ smart_profile_provider <- function(site, callback, registration, launch,
       if (identical(behavior$consent, "reduced")) scopes[scopes == "patient/Patient.rs"] <- "patient/Patient.r"
       if (identical(behavior$consent, "no_refresh")) scopes <- setdiff(scopes, "offline_access")
       if (identical(behavior$consent, "missing_required")) scopes <- setdiff(scopes, "patient/Patient.rs")
+      grant$original_scopes <- scopes
     } else if (identical(body$grant_type, "refresh_token")) {
       state$metrics$refresh_attempts <- state$metrics$refresh_attempts + 1L
       if (state$revoked) return(res$set_status(400L)$send_json(list(error = "invalid_grant"), auto_unbox = TRUE))
       grant <- state$refresh[[body$refresh_token]]
       if (is.null(grant)) return(res$set_status(400L)$send_json(list(error = "invalid_grant"), auto_unbox = TRUE))
-      scopes <- if (is.null(body$scope)) initial_scopes else strsplit(body$scope, " ", fixed = TRUE)[[1L]]
-      allowed <- c(initial_scopes, "patient/Patient.r")
-      if (!length(scopes) || !all(scopes %in% allowed)) {
+      scopes <- if (is.null(body$scope)) grant$original_scopes else strsplit(body$scope, " ", fixed = TRUE)[[1L]]
+      allowed <- c(grant$original_scopes, "patient/Patient.r")
+      if (!length(scopes) || !all(scopes %in% allowed) ||
+          (!is.null(body$scope) && setequal(scopes, grant$original_scopes))) {
         return(res$set_status(400L)$send_json(list(error = "invalid_scope"), auto_unbox = TRUE))
       }
       rm(list = body$refresh_token, envir = state$refresh)

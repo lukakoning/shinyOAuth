@@ -59,6 +59,7 @@ smart_fhir_user <- function(connection) {
 
 smart_update_token_context <- function(client, token, previous = NULL) {
   if (!client_uses_smart(client)) return(token)
+  token@original_granted_scopes <- if (is.null(previous)) token@granted_scopes else previous@original_granted_scopes
   fields <- smart_location_fields(client, token@extra_fields)
   prior <- if (is.null(previous)) NULL else previous@smart_context
   if (!is.null(previous) && (!identical(prior$version, 1L) ||

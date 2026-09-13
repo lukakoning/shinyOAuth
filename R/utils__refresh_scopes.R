@@ -43,3 +43,18 @@ validate_refresh_scope_grant <- function(client, granted, request) {
   }
   invisible(NULL)
 }
+
+# SMART 2.2 permits explicit scope only for a strict subset of the original
+# launch grant. Compare permissions, including equivalent SMART spellings.
+smart_refresh_request_scopes <- function(client, token, request = NULL) {
+  scopes <- request$scopes %||% token@granted_scopes
+  original <- token@original_granted_scopes
+  if (!length(scopes) || !length(original)) {
+    err_token("SMART refresh requires a non-empty grant and its original scope evidence; authorize again")
+  }
+  covered <- function(need, grant) identical(client_scope_coverage(client, need, grant)$status, "covered")
+  if (!covered(scopes, original)) {
+    err_token("SMART refresh scopes cannot exceed the original grant")
+  }
+  if (covered(original, scopes)) NULL else scopes
+}

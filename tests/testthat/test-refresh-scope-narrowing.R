@@ -113,8 +113,9 @@ test_that("automatic SMART refresh retains server reductions across sessions", {
     hooks$accept(original, hooks$prepare(), as.numeric(Sys.time()))
     kept$id <- controller$records()[[1L]]$stored$id
     expect_identical(controller$refresh(kept$id), TRUE)
-    expect_setequal(strsplit(utils::URLdecode(as.character(requests[[1L]]$scope)), " ")[[1L]], client@scopes)
+    expect_null(requests[[1L]]$scope)
     expect_identical(controller$read(kept$id)$token@refresh_token, "synthetic-refresh")
+    expect_identical(controller$read(kept$id)$token@original_granted_scopes, client@scopes)
     expect_setequal(controller$read(kept$id)$token@granted_scopes, strsplit(reduced, " ")[[1L]])
   })
   shiny::testServer(server, session = manager_test_session(cookie), {
@@ -133,16 +134,27 @@ test_that("automatic SMART refresh handles unsolicited grants and empty limits",
   seen <- NULL
   local_mocked_bindings(req_with_retry = function(req, ...) {
     calls <<- calls + 1L
-    seen <<- utils::URLdecode(as.character(req$body$data$scope))
+    seen <<- req$body$data$scope
     narrowing_response(req, paste(token@granted_scopes, collapse = " "), rotate = FALSE)
   })
   expect_setequal(refresh_token(client, token)@granted_scopes, token@granted_scopes)
-  expect_identical(seen, paste(token@granted_scopes, collapse = " "))
+  expect_null(seen)
   token@granted_scopes <- character()
   error <- tryCatch(refresh_token(client, token), error = identity)
   expect_s3_class(error, "shinyOAuth_token_error")
   expect_identical(error$refresh_credential_outcome, "not_consumed")
   expect_identical(calls, 1L)
+})
+
+test_that("SMART refresh omits semantically unchanged scope and preserves the launch baseline", {
+  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
+    scopes = "user/Patient.rs", required_scopes = "user/Patient.r")
+  token <- smart_update_token_context(client, narrowing_token("user/Patient.rs"))
+  request <- refresh_scope_request(client, token, c("user/Patient.r", "user/Patient.s"))
+  expect_null(smart_refresh_request_scopes(client, token, request))
+  token@granted_scopes <- "user/Patient.r"
+  expect_identical(smart_refresh_request_scopes(client, token), "user/Patient.r")
+  expect_identical(token@original_granted_scopes, "user/Patient.rs")
 })
 
 for (scope in c("read write", "admin", "write")) test_that(paste("requested limit is enforced before UserInfo", scope), {

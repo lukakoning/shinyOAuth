@@ -770,7 +770,7 @@ refresh_token <- function(
 
 # The manager supplies an explicit, validated scope request. Legacy refresh
 # calls keep their original public interface. Generic OAuth calls omit scope;
-# SMART automatic refreshes explicitly retain the latest accepted grant.
+# SMART refreshes explicitly request a limit only after the grant narrows.
 refresh_token_dispatch <- function(
   oauth_client,
   token,
@@ -1001,13 +1001,11 @@ refresh_token_impl <- function(
             grant_type = "refresh_token",
             refresh_token = token@refresh_token
           )
-          if (!is.null(scope_request)) {
+          if (client_uses_smart(oauth_client)) {
+            scopes <- smart_refresh_request_scopes(oauth_client, token, scope_request)
+            if (!is.null(scopes)) params$scope <- paste(scopes, collapse = " ")
+          } else if (!is.null(scope_request)) {
             params$scope <- paste(scope_request$scopes, collapse = " ")
-          } else if (client_uses_smart(oauth_client)) {
-            if (!length(token@granted_scopes)) {
-              err_token("SMART refresh with an empty grant requires fresh authorization")
-            }
-            params$scope <- paste(token@granted_scopes, collapse = " ")
           }
           if (length(oauth_client@resource) > 0) {
             params[["resource"]] <- oauth_client@resource
@@ -1271,7 +1269,8 @@ refresh_token_impl <- function(
               token_set[["granted_scopes_verified"]]
             ),
             extra_fields = extra_fields,
-            initial_extra_fields = token@initial_extra_fields
+            initial_extra_fields = token@initial_extra_fields,
+            original_granted_scopes = token@original_granted_scopes
           )
 
           intro_res <- NULL
@@ -1412,6 +1411,7 @@ refresh_token_impl <- function(
           token@extra_fields <- refreshed_token@extra_fields
           token@initial_extra_fields <- refreshed_token@initial_extra_fields
           token@smart_context <- refreshed_token@smart_context
+          token@original_granted_scopes <- refreshed_token@original_granted_scopes
 
           audit_event(
             "token_refresh",
