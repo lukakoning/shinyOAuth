@@ -165,7 +165,7 @@ revoke_token <- function(
           token = oauth_token
         )
 
-        req <- add_req_defaults(req)
+        req <- add_req_defaults(req, client = oauth_client)
         req <- req_no_redirect(req)
         extra_headers <- as.list(auth_client@provider@extra_token_headers)
         if (length(extra_headers)) {
@@ -447,7 +447,7 @@ introspect_token <- function(
           auth_client,
           token = oauth_token
         )
-        req <- add_req_defaults(req)
+        req <- add_req_defaults(req, client = oauth_client)
         req <- req_no_redirect(req)
         extra_headers <- as.list(auth_client@provider@extra_token_headers)
         if (length(extra_headers)) {
@@ -1042,7 +1042,7 @@ refresh_token_impl <- function(
             token = token
           )
 
-          req <- add_req_defaults(req)
+          req <- add_req_defaults(req, client = oauth_client)
           req <- req_no_redirect(req)
           # Allow provider to add custom token headers (mirrors login path)
           extra_headers <- as.list(auth_client@provider@extra_token_headers)

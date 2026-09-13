@@ -142,11 +142,12 @@ resolve_http_timeout <- function() {
 #'   applied.
 #' @keywords internal
 #' @noRd
-add_req_defaults <- function(req) {
+add_req_defaults <- function(req, client = NULL, tls_minimum = client_tls_minimum(client)) {
   # If a test double/fake is passed, do nothing
   if (!inherits(req, "httr2_request")) {
     return(req)
   }
+  if (!is.null(tls_minimum)) req[["shinyOAuth_tls_minimum"]] <- tls_minimum
   # Resolve timeout (seconds)
   timeout <- resolve_http_timeout()
 

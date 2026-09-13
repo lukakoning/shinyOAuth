@@ -111,7 +111,7 @@ smart_discover <- function(
   req <- httr2::request(discovery_url) |>
     httr2::req_headers(Accept = "application/json") |>
     httr2::req_error(is_error = function(resp) FALSE) |>
-    add_req_defaults() |>
+    add_req_defaults(tls_minimum = "1.2") |>
     httr2::req_options(followlocation = FALSE)
   resp <- tryCatch(req_with_retry(req), error = function(e) {
     if (inherits(e, "shinyOAuth_parse_error")) {

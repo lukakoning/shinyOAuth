@@ -77,7 +77,7 @@ provider_jwks_uri <- function(provider = NULL) {
 #'
 #' @keywords internal
 #' @noRd
-fetch_authorization_server_metadata <- function(issuer) {
+fetch_authorization_server_metadata <- function(issuer, tls_minimum = NULL) {
   build_metadata_url <- function(suffix, legacy_append = FALSE) {
     normalized_issuer <- rtrim_slash(issuer)
     parsed <- httr2::url_parse(normalized_issuer)
@@ -133,7 +133,7 @@ fetch_authorization_server_metadata <- function(issuer) {
 
     resp <- try(
       httr2::request(target[["url"]]) |>
-        add_req_defaults() |>
+        add_req_defaults(tls_minimum = tls_minimum) |>
         req_no_redirect() |>
         req_with_retry(),
       silent = TRUE
@@ -228,6 +228,20 @@ fetch_authorization_server_metadata <- function(issuer) {
   )
 }
 
+fetch_client_jwks <- function(client, ...) {
+  args <- list(...)
+  minimum <- client_tls_minimum(client)
+  if (!is.null(minimum)) args$tls_minimum <- minimum
+  do.call(fetch_jwks, args)
+}
+
+force_refresh_client_jwks <- function(client, ...) {
+  args <- list(...)
+  minimum <- client_tls_minimum(client)
+  if (!is.null(minimum)) args$tls_minimum <- minimum
+  do.call(force_refresh_provider_jwks, args)
+}
+
 #' Internal: Fetch JWKS for issuer (cachem-only)
 #'
 #' Attempts to resolve an explicit provider `jwks_uri` or download
@@ -269,7 +283,8 @@ fetch_jwks <- function(
   force_refresh = FALSE,
   pins = NULL,
   pin_mode = c("any", "all"),
-  provider = NULL
+  provider = NULL,
+  tls_minimum = NULL
 ) {
   # Duck-type the cache interface instead of enforcing cachem inheritance
   has_get <- !is.null(jwks_cache$get) && is.function(jwks_cache$get)
@@ -307,6 +322,11 @@ fetch_jwks <- function(
     jwks_uri_override = jwks_uri_override
   )
 
+  if (!is.null(tls_minimum)) {
+    policy <- resolve_tls_policy(minimum = tls_minimum)
+    if (!is.null(policy$problem)) err_config(policy$problem)
+    cache_key <- paste0(cache_key, "tls", gsub(".", "", tls_minimum, fixed = TRUE))
+  }
   entry <- jwks_cache$get(cache_key, missing = NULL)
 
   cached_jwks_source_valid <- function(entry) {
@@ -421,7 +441,8 @@ fetch_jwks <- function(
     discovery_issuer <- issuer
     jwks_uri <- jwks_uri_override
   } else {
-    metadata <- fetch_authorization_server_metadata(issuer)
+    metadata <- if (is.null(tls_minimum)) fetch_authorization_server_metadata(issuer) else
+      fetch_authorization_server_metadata(issuer, tls_minimum = tls_minimum)
     disc <- metadata[["document"]]
     discovery_issuer <- validate_discovery_issuer(
       issuer_input = issuer,
@@ -452,7 +473,7 @@ fetch_jwks <- function(
   }
 
   jresp <- httr2::request(jwks_uri) |>
-    add_req_defaults() |>
+    add_req_defaults(tls_minimum = tls_minimum) |>
     req_no_redirect() |>
     req_with_retry()
   # Security: reject redirect responses to prevent bypassing host validation
@@ -606,7 +627,8 @@ force_refresh_provider_jwks <- function(
   pins = NULL,
   pin_mode = c("any", "all"),
   provider = NULL,
-  min_interval = 30
+  min_interval = 30,
+  tls_minimum = NULL
 ) {
   pin_mode <- match.arg(pin_mode)
   host_match <- isTRUE(try(provider@jwks_host_issuer_match, silent = TRUE))
@@ -630,7 +652,7 @@ force_refresh_provider_jwks <- function(
     return(NULL)
   }
 
-  fetch_jwks(
+  args <- list(
     issuer,
     jwks_cache,
     force_refresh = TRUE,
@@ -638,6 +660,8 @@ force_refresh_provider_jwks <- function(
     pin_mode = pin_mode,
     provider = provider
   )
+  if (!is.null(tls_minimum)) args$tls_minimum <- tls_minimum
+  do.call(fetch_jwks, args)
 }
 
 #' Internal: Compute cache key for JWKS entries

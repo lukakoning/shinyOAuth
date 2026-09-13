@@ -18,6 +18,8 @@
 #' needed. No launch handle is stored in shared provider configuration.
 #' Local usability policy requires a positive `expires_in` in initial and
 #' refresh responses; the generic assumed lifetime is not used for SMART.
+#' SMART back-channel and resource requests require TLS 1.2 or newer. A stronger
+#' configured TLS minimum is preserved; ordinary clients keep their defaults.
 #'
 #' @param discovery A plain snapshot returned by [smart_discover()]. Its metadata
 #'   and endpoint policy are revalidated locally; this performs no network calls.

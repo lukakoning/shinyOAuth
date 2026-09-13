@@ -777,13 +777,13 @@ build_client_bearer_authorized_request <- function(
           access_token = access_token,
           nonce = dpop_nonce
         ) |>
-        add_req_defaults()
+        add_req_defaults(client = oauth_client)
     )
   }
 
   req |>
     httr2::req_auth_bearer_token(access_token) |>
-    add_req_defaults()
+    add_req_defaults(client = oauth_client)
 }
 
 

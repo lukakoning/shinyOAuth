@@ -585,7 +585,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       params <- prepared[["params"]]
       req <- req_apply_authorization_server_mtls(req, auth_client)
 
-      req <- add_req_defaults(req)
+      req <- add_req_defaults(req, client = client)
       req <- req_no_redirect(req)
 
       extra_headers <- as.list(auth_client@provider@extra_token_headers)
@@ -2448,7 +2448,7 @@ swap_code_for_token_set <- function(
       req <- req_apply_authorization_server_mtls(req, auth_client)
 
       # Apply defaults first; disable redirects to prevent leaking secrets
-      req <- add_req_defaults(req)
+      req <- add_req_defaults(req, client = client)
       req <- req_no_redirect(req)
 
       # Add any extra token headers without using rlang splicing so tests can stub
