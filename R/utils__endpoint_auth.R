@@ -301,6 +301,13 @@ endpoint_auth_client <- function(client, endpoint) {
   }
   changes$provider <- provider
   changes$endpoint_auth <- list()
+  if (client_uses_smart(client) && endpoint %in% c("introspection", "revocation")) {
+    # SMART app-launch constraints govern the token endpoint. These temporary
+    # authentication settings follow the separate endpoint's registration.
+    # Request transport and response validation still use the original client.
+    S7::validate(client)
+    changes$smart <- list()
+  }
   S7::props(client) <- changes
   client
 }

@@ -51,7 +51,10 @@ always required when identity is enabled. Unsupported comparisons fail closed.}
 symmetric secret using HTTP Basic, or \code{"private_key_jwt"}. Selection must
 agree with advertised capabilities. Confidential methods must also agree
 with authentication metadata; public clients do not authenticate and need
-no \code{"none"} entry in that metadata.}
+no \code{"none"} entry in that metadata.
+Later property edits must retain a supported SMART token authentication
+method. Asymmetric assertions require \code{typ = "JWT"}, a key ID, an explicit
+RS384/ES384 algorithm, and the token endpoint as their audience.}
 
 \item{client_secret}{Secret for a symmetric registration; otherwise omit.}
 

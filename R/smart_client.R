@@ -40,6 +40,9 @@
 #'   agree with advertised capabilities. Confidential methods must also agree
 #'   with authentication metadata; public clients do not authenticate and need
 #'   no `"none"` entry in that metadata.
+#'   Later property edits must retain a supported SMART token authentication
+#'   method. Asymmetric assertions require `typ = "JWT"`, a key ID, an explicit
+#'   RS384/ES384 algorithm, and the token endpoint as their audience.
 #' @param client_secret Secret for a symmetric registration; otherwise omit.
 #' @param client_assertion_private_key,client_assertion_private_key_kid Private
 #'   signing key and registered key ID for asymmetric authentication; see
@@ -271,6 +274,22 @@ smart_validate_client <- function(client) {
     return("OAuthClient: SMART client must retain its configured FHIR base")
   }
   provider <- client@provider
+  style <- normalize_token_auth_style(provider@token_auth_style)
+  if (!style %in% c("public", "header", "private_key_jwt")) {
+    return("OAuthClient: SMART token authentication requires public, header or private_key_jwt")
+  }
+  if (identical(style, "private_key_jwt")) {
+    if (!identical(client@client_assertion_typ, "JWT") ||
+        !is_valid_string(client@client_assertion_private_key_kid) ||
+        !is_valid_string(client@client_assertion_alg) ||
+        !client@client_assertion_alg %in% c("RS384", "ES384")) {
+      return("OAuthClient: SMART asymmetric authentication requires typ JWT, a key ID and explicit RS384 or ES384")
+    }
+    audience <- client@client_assertion_audience
+    if (is_valid_string(audience) && !identical(audience, provider@token_url)) {
+      return("OAuthClient: SMART client assertion audience must equal the token endpoint")
+    }
+  }
   if (!identical(policy$launch, "ehr") &&
       "online_access" %in% effective_client_scopes(client)) {
     return("OAuthClient: SMART online_access requires EHR launch")

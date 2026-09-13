@@ -130,6 +130,47 @@ test_that("SMART asymmetric registration chooses explicit SHA-384 signing", {
   expect_error(create(client_assertion_private_key = key,
     client_assertion_private_key_kid = "registered-key", client_assertion_alg = "ES384"),
     "key|EC")
+  expect_error(client@client_assertion_typ <- "client-authentication+jwt", "SMART asymmetric")
+  expect_error(client@client_assertion_audience <- "https://ehr.example", "SMART client assertion audience")
+  expect_error(client@client_assertion_private_key_kid <- NA_character_, "SMART asymmetric")
+  expect_no_error(client@client_assertion_audience <- client@provider@token_url)
+  provider <- client@provider
+  provider@token_endpoint_auth_signing_alg_values_supported <- c("RS256", "RS384")
+  expect_error(S7::props(client) <- list(provider = provider, client_assertion_alg = "RS256"),
+    "SMART asymmetric")
+  expect_error(S7::props(client) <- list(provider = provider, client_assertion_alg = NA_character_),
+    "SMART asymmetric")
+  ordinary <- client
+  S7::props(ordinary) <- list(smart = list(), scope_policy = list())
+  expect_no_error(ordinary@client_assertion_typ <- "client-authentication+jwt")
+  expect_no_error(ordinary@client_assertion_audience <- "https://ehr.example")
+  expect_no_error(S7::props(ordinary) <- list(provider = provider, client_assertion_alg = "RS256"))
+  expect_no_error(ordinary@client_assertion_private_key_kid <- NA_character_)
+})
+
+test_that("SMART token authentication constraints leave other endpoints independent", {
+  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
+    scopes = "user/Patient.r", token_auth_style = "header", client_secret = strrep("s", 64))
+  client@provider@token_endpoint_auth_signing_alg_values_supported <- c("RS384", "HS256")
+  expect_error(client@provider@token_auth_style <- "body", "SMART token authentication")
+  expect_error(client@provider@token_auth_style <- "client_secret_jwt", "SMART token authentication")
+  ordinary <- client
+  S7::props(ordinary) <- list(smart = list(), scope_policy = list())
+  expect_no_error(ordinary@provider@token_auth_style <- "body")
+  expect_no_error(ordinary@provider@token_auth_style <- "client_secret_jwt")
+  client@provider@revocation_url <- "https://ehr.example/revoke"
+  client@endpoint_auth <- list(revocation = list(token_auth_style = "body"))
+  seen <- NULL
+  local_options(shinyOAuth.tls_min_version = NULL)
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    seen <<- req
+    httr2::response(url = req$url, status = 200L, body = raw())
+  })
+  expect_no_error(revoke_token(client, OAuthToken(access_token = "example-access"), which = "access"))
+  expect_identical(seen$options$sslversion, 6L)
+  expect_identical(utils::URLdecode(seen$body$data$client_secret), client@client_secret)
+  expect_identical(client@provider@token_auth_style, "header")
+  expect_true(client_uses_smart(client))
 })
 
 test_that("SMART asymmetric exchange and refresh omit redundant client_id", {
