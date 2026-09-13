@@ -99,7 +99,9 @@ req_apply_tls_policy <- function(req) {
 }
 
 client_tls_minimum <- function(client = NULL) {
-  if (!is.null(client) && client_uses_smart(client)) "1.2" else NULL
+  if (is.null(client) || !client_uses_smart(client)) return(NULL)
+  smart_assert_client_policy(client)
+  "1.2"
 }
 
 configured_tls_minimum <- function() {

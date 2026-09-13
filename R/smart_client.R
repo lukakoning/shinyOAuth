@@ -241,7 +241,7 @@ smart_client <- function(
     state_payload_max_age = state_payload_max_age)
   smart_policy <- list(version = "2.2.0", fhir_base = discovery[["fhir_base"]],
     launch = launch, identity = identity, allow_http_loopback = discovery[["allow_http_loopback"]],
-    discovery_digest = state_policy_digest(discovery))
+    discovery_digest = state_policy_digest(discovery), discovery = discovery)
   if (identical(authorization_method, "POST")) smart_policy[["authorization_method"]] <- "POST"
   if (!is.null(initial_expires_in)) smart_policy[["initial_expires_in"]] <- initial_expires_in
   S7::props(client) <- list(
@@ -255,12 +255,18 @@ smart_client <- function(
 
 client_uses_smart <- function(client) length(client@smart) > 0L
 
+smart_assert_client_policy <- function(client) {
+  problem <- smart_validate_client(client)
+  if (!is.null(problem)) err_config(problem)
+  invisible(NULL)
+}
+
 smart_validate_client <- function(client) {
   if (!client_uses_smart(client)) return(NULL)
   if (!length(client@scopes)) return("OAuthClient: SMART authorization requires at least one requested scope")
   policy <- client@smart
   if (!identical(sort(setdiff(names(policy), c("authorization_method", "initial_expires_in"))), sort(c("version", "fhir_base", "launch",
-      "identity", "allow_http_loopback", "discovery_digest"))) ||
+      "identity", "allow_http_loopback", "discovery_digest", "discovery"))) ||
       !identical(policy[["authorization_method"]] %||% "GET", client@authorization_method) ||
       !identical(policy[["version"]], "2.2.0") ||
       !is_valid_string(policy[["fhir_base"]]) ||
@@ -315,7 +321,97 @@ smart_validate_client <- function(client) {
       !identical(provider@id_token_required, oidc)) {
     return("OAuthClient: SMART identity validation policy cannot be weakened")
   }
-  NULL
+  tryCatch({
+    smart_validate_registration_policy(client)
+    NULL
+  }, error = function(e) paste0("OAuthClient: ", conditionMessage(e)))
+}
+
+# Recheck the reviewed discovery policy after supported S7 property edits and
+# before requests. A digest alone cannot validate newly selected endpoints or
+# capabilities; retain the snapshot that established this registration.
+smart_validate_registration_policy <- function(client) {
+  policy <- client@smart
+  discovery <- policy[["discovery"]]
+  if (!is.list(discovery) ||
+      !identical(state_policy_digest(discovery), policy[["discovery_digest"]]) ||
+      !identical(discovery[["fhir_base"]], policy[["fhir_base"]]) ||
+      !identical(discovery[["allow_http_loopback"]], policy[["allow_http_loopback"]])) {
+    err_config("SMART discovery policy must retain its reviewed snapshot")
+  }
+  allow_http <- discovery[["allow_http_loopback"]]
+  connection_manager_flag(allow_http, "allow_http_loopback")
+  hosts <- smart_discovery_hosts(discovery[["endpoint_hosts"]])
+  metadata <- discovery[["metadata"]]
+  smart_discovery_validate(metadata, hosts, allow_http)
+  for (url in c(client@redirect_uri, client@authorization_server_redirect_uris)) {
+    smart_discovery_url(url, "redirect_uri", allow_http)
+  }
+  provider <- client@provider
+  endpoints <- c(authorization_endpoint = provider@auth_url, token_endpoint = provider@token_url,
+    issuer = provider@issuer, jwks_uri = provider@jwks_uri,
+    userinfo_endpoint = provider@userinfo_url, revocation_endpoint = provider@revocation_url,
+    introspection_endpoint = provider@introspection_url)
+  for (field in names(endpoints)) {
+    if (!is_valid_string(endpoints[[field]])) next
+    parsed <- smart_discovery_url(endpoints[[field]], field, allow_http,
+      identifier = identical(field, "issuer"))
+    if (!sub("^\\[::1\\]$", "::1", parsed[["host"]]) %in% hosts) {
+      err_config(paste0("SMART ", field, " host is outside endpoint_hosts"))
+    }
+  }
+  capabilities <- unlist(metadata[["capabilities"]], use.names = FALSE)
+  require_capability <- function(value) {
+    if (!value %in% capabilities) err_config(paste("SMART capability required:", value))
+  }
+  launch <- policy[["launch"]]
+  require_capability(paste0("launch-", launch))
+  if (identical(client@authorization_method, "POST")) require_capability("authorize-post")
+  style <- normalize_token_auth_style(provider@token_auth_style)
+  require_capability(c(public = "client-public", header = "client-confidential-symmetric",
+    private_key_jwt = "client-confidential-asymmetric")[[style]])
+  methods <- smart_discovery_array(metadata, "token_endpoint_auth_methods_supported")
+  method <- c(public = "none", header = "client_secret_basic", private_key_jwt = "private_key_jwt")[[style]]
+  if (style != "public" && length(methods) && !method %in% methods) {
+    err_config("SMART registration authentication method is not advertised")
+  }
+  if (style == "private_key_jwt" && !client@client_assertion_alg %in%
+      smart_discovery_array(metadata, "token_endpoint_auth_signing_alg_values_supported")) {
+    err_config("SMART client assertion algorithm is not advertised")
+  }
+  modes <- smart_discovery_array(metadata, "response_modes_supported")
+  if (length(modes) && !(client@response_mode %||% "query") %in% modes) {
+    err_config("SMART callback response mode is not advertised")
+  }
+  scopes <- effective_client_scopes(client, warn = FALSE)
+  if (launch == "ehr" && !"launch" %in% scopes) err_config("SMART EHR clients require launch scope")
+  if (launch == "standalone" && "launch" %in% scopes) err_config("Standalone SMART clients cannot request EHR launch scope")
+  if (any(startsWith(scopes, "system/"))) err_config("SMART app launch does not support backend system scopes")
+  if (policy[["identity"]] == "fhirUser") {
+    require_capability("sso-openid-connect")
+    if (!all(c("openid", "fhirUser") %in% scopes)) err_config("SMART identity scopes are required")
+  } else if (any(c("openid", "fhirUser") %in% scopes)) err_config("Identity scopes require identity = 'fhirUser'")
+  if (any(startsWith(scopes, "patient/"))) {
+    require_capability("permission-patient")
+    if (launch == "standalone" && !"launch/patient" %in% scopes) err_config("Standalone patient access requires launch/patient")
+  }
+  if (any(startsWith(scopes, "user/"))) require_capability("permission-user")
+  for (context in c("patient", "encounter")) {
+    if (launch == "standalone" && paste0("launch/", context) %in% scopes) {
+      require_capability(paste0("context-standalone-", context))
+    }
+  }
+  if ("online_access" %in% scopes) require_capability("permission-online")
+  if ("offline_access" %in% scopes) require_capability("permission-offline")
+  allow_v1 <- client@scope_policy[["allow_v1"]]
+  if (smart_scope_coverage(scopes, scopes, allow_v1)[["status"]] != "covered") {
+    err_config("SMART client contains unsupported scope syntax")
+  }
+  resource_scopes <- scopes[grepl("^(patient|user)/", scopes)]
+  v1 <- grepl("\\.(read|write|\\*)(\\?|$)", resource_scopes)
+  if (any(v1)) require_capability("permission-v1")
+  if (!all(v1)) require_capability("permission-v2")
+  invisible(NULL)
 }
 
 smart_verify_token_response <- function(client, token_set, is_refresh = FALSE) {

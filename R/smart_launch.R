@@ -260,6 +260,7 @@ smart_prepare_launch <- function(client, context, launch) {
     if (!is.null(launch)) err_config("Launch parameters require a SMART client")
     return(invisible(NULL))
   }
+  smart_assert_client_policy(client)
   if (identical(client@smart$launch, "standalone")) {
     if (!is.null(launch)) err_config("Standalone SMART clients cannot reuse EHR launch handles")
   } else if (!is_valid_string(launch) || nchar(launch, type = "bytes") > 2048L ||
