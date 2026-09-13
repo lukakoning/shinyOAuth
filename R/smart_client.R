@@ -121,6 +121,7 @@ smart_client <- function(
   # Keep reads exact after validation: an unrecognized extension must never
   # supply an endpoint, issuer or policy flag through R's partial $ matching.
   smart_discovery_validate(metadata, hosts, discovery[["allow_http_loopback"]])
+  smart_validate_authorization_query(metadata[["authorization_endpoint"]])
   capabilities <- unlist(metadata[["capabilities"]], use.names = FALSE)
   require_capability <- function(value) {
     if (!value %in% capabilities) err_config(paste("SMART capability required:", value))
@@ -348,6 +349,7 @@ smart_validate_registration_policy <- function(client) {
     smart_discovery_url(url, "redirect_uri", allow_http)
   }
   provider <- client@provider
+  smart_validate_authorization_query(provider@auth_url)
   endpoints <- c(authorization_endpoint = provider@auth_url, token_endpoint = provider@token_url,
     issuer = provider@issuer, jwks_uri = provider@jwks_uri,
     userinfo_endpoint = provider@userinfo_url, revocation_endpoint = provider@revocation_url,
@@ -411,6 +413,17 @@ smart_validate_registration_policy <- function(client) {
   v1 <- grepl("\\.(read|write|\\*)(\\?|$)", resource_scopes)
   if (any(v1)) require_capability("permission-v1")
   if (!all(v1)) require_capability("permission-v2")
+  invisible(NULL)
+}
+
+smart_validate_authorization_query <- function(url) {
+  fields <- decode_form_pairs(url_raw_query(url), "SMART authorization endpoint query")
+  # aud and launch belong to the current sealed SMART transaction. The other
+  # fields would enable compositions this SMART client does not implement.
+  forbidden <- c("aud", "launch", "request", "request_uri", "max_age", "claims", "resource", "dpop_jkt")
+  if (any(names(fields) %in% forbidden)) {
+    err_config("SMART authorization endpoint query contains a reserved transaction or unsupported composition parameter")
+  }
   invisible(NULL)
 }
 
