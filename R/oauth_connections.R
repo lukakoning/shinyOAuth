@@ -302,7 +302,9 @@ connection_manager_subscribe <- function(manager, owner) {
   entry <- signals[[owner]]
   if (is.null(entry)) {
     entry <- new.env(parent = emptyenv())
-    entry$signal <- shiny::reactiveVal(0)
+    # This owner notification is shared across sessions. It must outlive the
+    # module that first subscribes; the last subscriber releases it below.
+    entry$signal <- shiny::withReactiveDomain(NULL, shiny::reactiveVal(0))
     entry$subscribers <- 0L
     signals[[owner]] <- entry
   }

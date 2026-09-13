@@ -37,6 +37,32 @@ manager_test_fixture <- function(retention = "browser", owner = NULL,
   list(manager = manager, ui = ui)
 }
 
+test_that("owner notifications survive the first subscribing module session", {
+  f <- manager_test_fixture()
+  first <- shiny::MockShinySession$new()
+  second <- shiny::MockShinySession$new()
+  withr::defer(first$close())
+  withr::defer(second$close())
+  subscribe <- function(session) {
+    shiny::withReactiveDomain(session$makeScope("health"), {
+      connection_manager_subscribe(f$manager, "shared-owner")
+    })
+  }
+  a <- subscribe(first)
+  b <- subscribe(second)
+  withr::defer(a$release())
+  withr::defer(b$release())
+  connection_manager_signal(f$manager, "shared-owner")
+  expect_identical(shiny::isolate(b$changed()), 1)
+
+  first$close()
+  a$release()
+  expect_silent(connection_manager_signal(f$manager, "shared-owner"))
+  expect_identical(shiny::isolate(b$changed()), 2)
+  b$release()
+  expect_length(ls(f$manager$state$signals), 0L)
+})
+
 manager_test_token <- function(
   access = "synthetic-access",
   refresh = "synthetic-refresh"
