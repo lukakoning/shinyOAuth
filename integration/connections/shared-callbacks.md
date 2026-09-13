@@ -29,8 +29,8 @@ manager <- oauth_connections(
 
 Add the usual retention, owner and store arguments to retain connections across
 navigation. Existing UI/server calls stay the same. See the
-[plain-language guide](../../playground/smart-fhir-explained.md) for the complete
-manager design.
+[multiple-authorizations guide](../../vignettes/multiple-authorizations.Rmd)
+for the complete manager setup.
 
 ## What happens during login
 

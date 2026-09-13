@@ -1,136 +1,62 @@
-# SMART integration baseline
+# SMART on FHIR integration tests
 
-The [SMART on FHIR CI job](../../.github/workflows/smart-fhir.yml) runs the
-EHR and profile browsers, Inferno verification, lifecycle and permission tests,
-and sandbox discovery in one lane with a shared R and Chrome setup. Generic
-retained OAuth browser tests run in the [OAuth integration job](../../.github/workflows/integration-tests.yml).
+This directory contains test fixtures, runners and implementation notes for
+SMART App Launch STU 2.2 (2.2.0). For application setup, start with the
+[SMART on FHIR guide](../../vignettes/smart-on-fhir.Rmd) and
+[multiple-authorizations guide](../../vignettes/multiple-authorizations.Rmd).
+`playground/` contains runnable provider experiments.
 
-The optional [Oracle Health registration path](oracle.md) records the accepted
-discovery preflights, future vendor-validation scenarios, and why its open
-unauthenticated sandbox cannot close the SMART authorization gap.
+The [SMART on FHIR CI job](../../.github/workflows/smart-fhir.yml) runs all the
+SMART suites below with one R and Chrome setup. Generic retained OAuth browser
+tests live in [integration/connections](../connections/README.md) and run with
+the package browser, strict conformance and Keycloak suites in the
+[OAuth integration job](../../.github/workflows/integration-tests.yml).
 
-See [the implemented-roadmap coverage map](coverage.md) for the combined runner,
-the 32-scenario SMART registration/launch/identity/refresh browser matrix, and
-the distinction between our fixtures, independent Inferno verification and
-unmodified external interoperability.
+Run commands from the repository root after installing this checkout:
 
-The [local Docker sandbox setup](sandbox.md) uses official SMART Dev Sandbox
-components with SMART Launcher v2. Run `Rscript integration/smart/run-tests.R`
-from the repository root after installing this checkout for infrastructure smoke
-tests and P4a's SMART discovery tests. It also maps
-the browser and application-flow suites to P3-P5. The generic P3
-[retention browser gate](../connections/README.md) now passes. P5a adds a
-[SMART EHR browser app and tests](ehr-launch.md), using strict synthetic servers.
-The [Inferno client gate](inferno.md) runs the real Shiny app against two pinned
-STU2.2 Client simulators and requires their unchanged upstream verification
-results. Run `Rscript integration/smart/run-inferno.R` for the complete matrix.
-Two simulator compatibility corrections and remaining limitations are explicit
-in its documentation and every evidence report.
+```sh
+R CMD INSTALL .
+Rscript integration/smart/run-ehr-browser.R
+Rscript integration/smart/run-profiles.R
+```
 
-Protocol baseline: SMART App Launch STU 2.2 (2.2.0), checked 2026-09-11.
-The synthetic response files live in `tests/testthat/fixtures/smart/` so package
-tests can also consume them. They contain invented credentials and context.
-They characterize generic OAuth behavior; they are not a SMART server or
-independent interoperability evidence.
+The browser runners require Chrome, `chromote`, `callr`, `webfakes`, `testthat`,
+`withr`, `mirai`, `promises` and the package dependencies. HTTPS fixtures also
+require Python 3; Inferno, permissions and sandbox runners require Docker
+Compose. Apps and background workers must load the same installed checkout.
+Failures, missing prerequisites and skipped scenarios fail the full runners.
 
-| Contract | Evidence / future gate |
-| --- | --- |
-| Token extension snapshots and literal OAuth scopes | `test-smart-contracts.R`, `test-token-extra-fields.R` |
-| Distinct routes; issuer-identified shared routes | `test-callback-registry.R`, `test-callback-iss-validation.R` |
-| New legacy sessions start without credentials | `test-smart-contracts.R`; this is not a browser retention test |
-| EHR launch requires an explicit adapter | Legacy wrapper rejects `iss`/`launch`; P5a adds `smart_launch_route()` to the manager wrapper |
-| Standalone metadata without SSO | `standalone-metadata.json` deliberately omits OIDC issuer/JWKS |
-| SMART discovery API | P4a `smart_discover()` implemented; live Launcher v2 rejected because its asymmetric algorithm advertisement is missing. Positive external gate remains open. Unit and HTTP fixtures validate the reader. |
-| SMART registration, scopes and context | P4b/P4c1/P4d1 implemented; `smart_client()` opts into explicit SMART checks and interpreted refresh context |
-| EHR entry and retained Patient reads | P5a `run-ehr-browser.R`: concurrent two-site launch, query/form_post, sync/mirai, Patient binding, refresh, owner isolation and logout; fixture evidence only |
-| Supported registrations, both launch modes, signed identity and narrowing | `run-profiles.R`: public/HTTP Basic/RS384/ES384 across standalone/EHR, query/form_post and sync/mirai; Patient and distinct validated Practitioner, retained narrowed scopes and independent grants; strict local fixture evidence. |
-| A-to-B navigation retains both connections | P3 implemented: real Chrome navigation, new Shiny sessions, independent refresh, owner isolation and disconnect. Query/form_post, sync/mirai; 104 assertions. |
-| Independent SMART client verification | `run-inferno.R`: both launch modes, four registrations, GET/POST, sync/mirai, two retained grants and actual verifier results; locally corrected simulator, not an unmodified external or vendor pass. |
+| Coverage | Command after `Rscript integration/smart/` | Details |
+| --- | --- | --- |
+| Public EHR launch, concurrent grants and context | `run-ehr-browser.R` | [EHR launch](ehr-launch.md) |
+| Four registrations, standalone/EHR launch, identity and retained refresh scopes | `run-profiles.R` | [Coverage map](coverage.md) |
+| Long outgoing authorization POST | `run-profiles.R --post` | [Authorization POST](authorization-post.md) |
+| Cross-site HTTPS callbacks | `run-profiles.R --cross-site` | [Extended coverage](extended-coverage.md) |
+| Ordinary OIDC alongside SMART | `run-mixed.R` | [Mixed OIDC and SMART](mixed-oidc.md) |
+| Independent client verification over two retained grants | `run-inferno.R` | [Pinned Inferno suite](inferno.md) |
+| Patient and RelatedPerson identity | `run-inferno-extensions.R identity` | [Extended coverage](extended-coverage.md) |
+| Account retention with Inferno grants | `run-inferno-extensions.R account` | [Extended coverage](extended-coverage.md) |
+| Expiry, context changes, interrupted refresh/logout and consent | `run-lifecycle.R expiry`, `context`, `interrupted`, `consent` (separate runs) | [Extended coverage](extended-coverage.md) |
+| Resource permission enforcement | `run-permissions.R` | [Microsoft FHIR Server fixture](permissions/README.md) |
+| Official sandbox infrastructure and discovery | `run-tests.R` | [Docker sandbox](sandbox.md) |
 
-Fixtures use `https://api.site-a.example/fhir/R4` as the approved FHIR base.
-Discovery belongs at its `/.well-known/smart-configuration` suffix. A second
-base on the same host must remain a separate resource binding. SMART `.rs` is
-semantically equivalent to separate `.r` and `.s` grants; generic OAuth clients
-continue comparing the literal tokens. A refresh without context must preserve
-raw initial extras while replacing latest extras. P4d1 separately preserves
-interpreted context when omitted and exposes changes through its revision.
+The [coverage map](coverage.md) also documents `run-coverage.R`, which combines
+package, cryptographic and browser checks for local verification. The
+[scope evaluator note](scopes.md) explains semantic permissions and refresh
+limits; the [retention notes](retention.md) describe ownership and storage.
+Synthetic protocol response files are in `tests/testthat/fixtures/smart/`.
 
-Sources checked online:
+Runners write sanitized status, versions and assertion counts to
+`.artifacts/<run>/evidence.json`. CI uploads those reports. Raw HTTP exchanges,
+credentials, patient records and private fixture logs are excluded. Each Docker
+runner cleans up its own containers and data volumes.
 
-- [SMART discovery and capabilities](https://hl7.org/fhir/smart-app-launch/STU2.2/conformance.html)
-- [SMART authorization](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html)
-- [SMART scopes and context](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html)
-- [Asymmetric client authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html)
-- [OAuth mix-up defenses](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2)
-- [JWA RSA signatures](https://www.rfc-editor.org/rfc/rfc7518.html#section-3.3)
-- [OAuth scope semantics](https://www.rfc-editor.org/rfc/rfc6749.html#section-3.3)
-- [jose signing implementation](https://github.com/r-lib/jose/blob/main/R/jwt.R)
-
-P1 adds RS384 using jose's explicit `size = 384`, verified independently with
-OpenSSL for assertions, JAR and DPoP. RSA defaults stay RS256. Its internal
-structured preparation exposes exact outgoing state even with PAR, and binds
-data-only manager context to the pending transaction. Legacy callbacks cannot
-consume managed context; P3 supplies owner/session lifecycle checks.
-The scope evaluator defaults to versioned literal OAuth coverage; SMART
-semantics are selected explicitly by `smart_client()` in P4b/P4c1.
-
-P4a adds `smart_discover()` with a plain list result containing the exact FHIR
-base, discovery URL, validated metadata, version baseline and host policy. It
-does not add a new R6 configuration object. Required metadata and conditional
-SSO/asymmetric fields are checked separately from OIDC discovery. Server
-capabilities never choose the client's registration, and extension URLs never
-expand resource trust. The implementation reuses the package HTTP bounds and
-TLS policy; redirects remain disabled even under the generic redirect option.
-No automatic cache means a later call cannot mutate an earlier snapshot.
-
-The live Docker run exposed a missing asymmetric signing-algorithm advertisement
-in Launcher v2. `run-tests.R` records diagnostic assertions separately from
-`sandbox_discovery_accepted` and `discovery_release_gate`; add
-`--require-compatible-discovery` to require a successful live discovery result.
-That gate currently fails with the pinned image. See [sandbox.md](sandbox.md)
-for the upstream source evidence and required follow-up. Synthetic positive
-tests do not satisfy that external interoperability gate.
-
-P4a validation on Windows / R 4.5.1 (2026-09-10): 816 affected regression
-assertions passed, including 260 new discovery assertions, with no failures or
-skips and one installed-Shiny build-version warning. The Docker run passed all
-46 diagnostic assertions; `--require-compatible-discovery` then exited with
-failure because live discovery was rejected, as required. The report records
-`sandbox_discovery_accepted: false` and `discovery_release_gate: "not_met"`.
-Roxygen help rendering/example parsing, formatting/lint checks, source
-installation, and `R CMD check --no-tests --no-manual --ignore-vignettes` passed;
-the package check reported zero errors, warnings and notes. The runner removed
-its isolated containers and data volume on exit.
-
-P4a protocol sources rechecked on 2026-09-10: the SMART 2.2 conformance page and
-asymmetric authentication profile linked above. P4b, P4c1 and P4d1 subsequently
-added scopes, the client and baseline context/resource helpers. Remaining P4
-items cover optional transport compositions, richer context and unmodified
-external/vendor qualification. The independent Inferno client matrix is now
-implemented with its simulator modifications recorded separately.
-
-P2 adds optional resource policy to the existing client and per-session
-`OAuthConnection` handles that read the module's current reactive token.
-Resource IDs enforce exact origin and base
-paths before attaching credentials; two APIs on one host remain separate.
-Absolute references use the same policy. Generic applications declare their
-operation scopes explicitly. There is no inferred opaque-token audience or
-SMART permission mapping. Session end releases the reference's token source.
-`test-oauth-connections.R` and `test-resource-binding.R` cover these contracts.
-P3 now supplies the optional manager, encrypted memory store, owner validation,
-coordinated refresh and [real-browser retention evidence](retention.md).
-
-Validation for P0-P2 on Windows / R 4.5.1 (2026-09-10): the complete unit suite
-passed 11,031 assertions, with 26 browser/platform skips and three installed
-dependency build-version warnings. After formatting, 189 focused assertions
-passed again. Source build and installation passed. `R CMD check --no-tests
---no-manual --ignore-vignettes` reported zero errors, zero warnings and one note
-from curl announcing the selected OpenSSL backend. The unit suite was run
-separately with the current checkout installed for async workers. Local check
-processes used the `C` locale and OpenSSL curl backend; no package defaults were
-changed for those environment settings.
-
-The roadmap is in `playground/smart-fhir-roadmap.md`. Do not claim a completed
-SMART or retained multi-site workflow until the corresponding integration gates
-pass. Top-level Shiny deployment is the initial scope; embedding, account
-stores, and shared-worker coordination need their own evidence.
+The strict local fixtures exercise package behavior. Inferno independently
+verifies client requests, but its two documented simulator corrections mean
+this is not an unmodified external or vendor interoperability result. The
+official SMART Launcher's missing asymmetric signing-algorithm advertisement
+still prevents strict discovery; passing its diagnostic rejection checks does
+not establish an application flow. Use `run-tests.R --require-compatible-discovery`
+to require a positive external discovery result. See [sandbox.md](sandbox.md),
+[inferno.md](inferno.md) and the optional [Oracle validation path](oracle.md)
+for evidence and remaining gaps.

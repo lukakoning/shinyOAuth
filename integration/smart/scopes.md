@@ -1,9 +1,9 @@
 # How SMART permission checks work
 
-This is the P4b implementation note. The evaluator and its login, refresh,
-introspection and connection checks are implemented. `smart_client()` (P4c1)
-selects these rules explicitly; an ordinary `oauth_client()`
-still uses ordinary OAuth rules.
+This note describes the scope evaluator and its login, refresh, introspection
+and connection checks. `smart_client()` selects these rules explicitly; an
+ordinary `oauth_client()` still uses ordinary OAuth rules. For application
+setup, see the [SMART on FHIR guide](../../vignettes/smart-on-fhir.Rmd).
 
 A scope is a permission requested from the server. In ordinary OAuth, it is a
 name: `read` only matches `read`. SMART gives some scope names a defined meaning.
@@ -60,7 +60,7 @@ connections require explicit grant evidence before becoming usable.
 The policy is included in SMART client and client fingerprints, binding it to
 pending authorization and retained credentials. The default generic fingerprint
 format is unchanged. Tests in
-[test-smart-scopes.R](../tests/testthat/test-smart-scopes.R) exercise comparisons,
+[test-smart-scopes.R](../../tests/testthat/test-smart-scopes.R) exercise comparisons,
 strict parsing, actual callback/refresh paths, introspection, and request checks;
 the existing generic scope tests remain regression gates. These are local
 protocol tests, not an external SMART conformance result.
