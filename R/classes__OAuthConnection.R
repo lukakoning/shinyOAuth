@@ -148,6 +148,9 @@ OAuthConnection <- R6::R6Class(
     #' not reduced by requesting a narrower access token. Existing connections
     #' that have never selected narrowing continue to omit request scope.
     #' Providers may reject requested scopes; there is no retry without them.
+    #' OIDC clients that require UserInfo must retain `openid`; narrowing that
+    #' removes it is rejected before exchange. Include any additional scopes
+    #' needed by the provider's profile endpoint in the client's `required_scopes`.
     #' @return `TRUE` after a successful commit, or a promise resolving to `TRUE`
     #'   when the manager uses async transport. Failure raises a redacted error.
     refresh = function(scopes = NULL) {

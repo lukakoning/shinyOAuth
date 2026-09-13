@@ -165,6 +165,9 @@ This is a local connection policy: OAuth refresh-token scope itself is
 not reduced by requesting a narrower access token. Existing connections
 that have never selected narrowing continue to omit request scope.
 Providers may reject requested scopes; there is no retry without them.
+OIDC clients that require UserInfo must retain \code{openid}; narrowing that
+removes it is rejected before exchange. Include any additional scopes
+needed by the provider's profile endpoint in the client's \code{required_scopes}.
   }
   \subsection{Returns}{
     \code{TRUE} after a successful commit, or a promise resolving to \code{TRUE}

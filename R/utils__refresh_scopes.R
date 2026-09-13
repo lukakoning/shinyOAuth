@@ -16,6 +16,14 @@ refresh_scope_request <- function(client, token, scopes, required_scopes = chara
     err_token("Refresh scopes must be covered by the current grant and target configuration")
   }
   required_scopes <- normalize_scope_tokens(c(required_scopes, client@required_scopes))
+  # Refresh still performs the provider's required UserInfo request. Reject
+  # removal of its OIDC permission before a rotating refresh token is used.
+  if (provider_uses_oidc(client@provider) && isTRUE(client@provider@userinfo_required)) {
+    if (!"openid" %in% scopes) {
+      err_token("Refresh scopes must retain openid while OIDC UserInfo is required")
+    }
+    required_scopes <- normalize_scope_tokens(c(required_scopes, "openid"))
+  }
   if (!covered(required_scopes, scopes)) {
     err_token("Refresh scopes must retain the target's required permissions")
   }

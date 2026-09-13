@@ -89,6 +89,27 @@ test_that("legacy refresh still omits scope and carries its previous grant", {
   expect_false(result@granted_scopes_verified)
 })
 
+test_that("OIDC narrowing retains permission for required UserInfo before exchange", {
+  provider <- oauth_provider(name = "OIDC", issuer = "https://id.example",
+    auth_url = "https://id.example/authorize", token_url = "https://id.example/token",
+    userinfo_url = "https://id.example/userinfo", token_auth_style = "public")
+  client <- oauth_client(provider, "app", redirect_uri = "https://app.example/callback",
+    scopes = c("openid", "profile", "records.read"), required_scopes = "records.read")
+  token <- narrowing_token(client@scopes)
+  requests <- 0L
+  local_mocked_bindings(req_with_retry = function(...) { requests <<- requests + 1L })
+  expect_error(refresh_token_dispatch(client, token,
+    scope_request = list(scopes = "records.read", required_scopes = "records.read")), "retain openid")
+  expect_identical(requests, 0L)
+  request <- refresh_scope_request(client, token, c("openid", "records.read"))
+  expect_setequal(request$required_scopes, c("openid", "records.read"))
+  expect_no_error(validate_refresh_scope_request(client, token, request))
+  provider@userinfo_id_token_match <- FALSE
+  provider@userinfo_required <- FALSE
+  client@provider <- provider
+  expect_identical(refresh_scope_request(client, token, "records.read")$scopes, "records.read")
+})
+
 test_that("automatic SMART refresh retains server reductions across sessions", {
   client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
     scopes = "user/Patient.rs", required_scopes = "user/Patient.r")
