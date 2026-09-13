@@ -28,8 +28,10 @@
 #' @return A request UI function for `shinyApp(..., uiPattern = ".*")`.
 #' @details
 #' Raw GET and form POST callbacks never create or rotate an owner. A POST may
-#' lack a SameSite owner cookie; its clean continuation must carry a still-valid
-#' owner before credentials can be exchanged. An invalid cookie on an ordinary
+#' lack a SameSite owner cookie; a managed continuation must carry a still-valid
+#' owner before credentials can be exchanged. A validated ordinary callback for
+#' `additional_clients` can establish a new empty manager owner independently.
+#' An invalid cookie on an ordinary
 #' page is cleared using an HTTP response and a same-origin redirect; the next
 #' request establishes a new empty browser owner.
 #'
@@ -154,12 +156,14 @@ oauth_connections_ui <- function(
           oauth_form_post_handle_param
         )) >
           0L
-        if (is.null(owner) && continuation) {
+        ordinary_continuation <- is.null(owner) && continuation &&
+          connection_ordinary_continuation(query, uri, additional_clients)
+        if (is.null(owner) && continuation && !ordinary_continuation) {
           return(oauth_get_setup_error(
             "The local owner session ended; start a new connection from the application."
           ))
         }
-        if (is.null(owner) && !is.null(cookie)) {
+        if (is.null(owner) && !is.null(cookie) && !ordinary_continuation) {
           return(shiny::httpResponse(
             303L,
             "text/plain",
@@ -211,6 +215,34 @@ oauth_connections_ui <- function(
     "http_methods_supported"
   )
   ui
+}
+
+# Establish only whether this clean continuation belongs to an independent
+# configured module. Read and validate its candidate without consuming it;
+# the module must still prove its browser binding and consume state once.
+connection_ordinary_continuation <- function(query, uri, clients) {
+  if (!length(clients)) return(FALSE)
+  tryCatch({
+    fields <- decode_form_pairs(query, "Connection continuation")
+    selected <- fields[names(fields) %in% c(oauth_form_post_id_param, oauth_form_post_handle_param)]
+    if (length(selected) != 2L || anyDuplicated(names(selected))) return(FALSE)
+    id <- selected[[oauth_form_post_id_param]]
+    handle <- selected[[oauth_form_post_handle_param]]
+    if (!is_valid_string(id) || !id %in% names(clients)) return(FALSE)
+    client <- clients[[id]]
+    if (!oauth_callback_route_matches(paste0(sub("[?#].*$", "", uri), "?", query), client@redirect_uri)) return(FALSE)
+    key <- oauth_form_post_cache_key(id, handle, client)
+    sealed <- state_store_backend_call(client@state_store$get(key, missing = NULL), "form_post_store_get")
+    payload <- oauth_form_post_unseal_payload(client, id, handle, sealed)
+    oauth_form_post_validate_handle_freshness(client, payload)
+    payload <- oauth_form_post_validate_payload(payload, client = client)
+    state <- payload[["state"]] %||% payload[["normalized_response"]][["state"]]
+    validated <- state_payload_decrypt_validate(client, state, audit_success = FALSE)
+    if (!is.null(validated[["transaction_context_digest"]])) return(FALSE)
+    record <- state_store_get(client, validated[["state"]])
+    state_record_verify_authorization_context(record, NULL)
+    TRUE
+  }, error = function(...) FALSE)
 }
 
 connection_manager_document_base <- function(response, app_base) {
