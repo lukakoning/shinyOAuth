@@ -32,6 +32,9 @@
 #'   `offline_access` requires `permission-offline` in either launch mode.
 #'   Each resource scope spelling must be advertised through
 #'   `permission-v2` or, for v1 spellings, `permission-v1` with `allow_v1 = TRUE`.
+#'   A SMART scope comparison supports at most 256 distinct scopes on each side
+#'   and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons fail
+#'   closed, including during token acceptance and refresh.
 #' @param required_scopes Minimum permissions, defaulting to `scopes`. Pass a
 #'   subset to accept reduced grants as limited connections. Identity scopes are
 #'   always required when identity is enabled. Unsupported comparisons fail closed.
@@ -61,6 +64,8 @@
 #' @param authorization_method `"GET"` (default) or `"POST"` for the outgoing
 #'   browser request. POST requires the discovered `authorize-post` capability
 #'   and uses the module's `request_login()` or [prepare_authorization_request()].
+#'   POST supports longer browser requests but retains the scope comparison
+#'   limits described under `scopes`.
 #' @param response_mode `NULL`, `"query"`, or `"form_post"`. Advertised response
 #'   modes, when present, must allow the selection.
 #' @param authorization_server_mode,authorization_server_redirect_uris See

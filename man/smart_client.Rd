@@ -42,7 +42,10 @@ access. Standalone patient scopes require \code{launch/patient}. EHR clients add
 \code{launch}. \code{online_access} requires EHR launch and \code{permission-online};
 \code{offline_access} requires \code{permission-offline} in either launch mode.
 Each resource scope spelling must be advertised through
-\code{permission-v2} or, for v1 spellings, \code{permission-v1} with \code{allow_v1 = TRUE}.}
+\code{permission-v2} or, for v1 spellings, \code{permission-v1} with \code{allow_v1 = TRUE}.
+A SMART scope comparison supports at most 256 distinct scopes on each side
+and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons fail
+closed, including during token acceptance and refresh.}
 
 \item{required_scopes}{Minimum permissions, defaulting to \code{scopes}. Pass a
 subset to accept reduced grants as limited connections. Identity scopes are
@@ -90,7 +93,9 @@ modes, when present, must allow the selection.}
 
 \item{authorization_method}{\code{"GET"} (default) or \code{"POST"} for the outgoing
 browser request. POST requires the discovered \code{authorize-post} capability
-and uses the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}.}
+and uses the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}.
+POST supports longer browser requests but retains the scope comparison
+limits described under \code{scopes}.}
 
 \item{initial_expires_in}{Optional positive lifetime in seconds, supplied by
 the authorization server out of band for initial access tokens. Used only
