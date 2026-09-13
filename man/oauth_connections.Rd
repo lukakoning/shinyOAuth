@@ -78,6 +78,12 @@ successful authorization creates a separate connection, including repeated
 authorizations at the same client.
 Connections are independent local records. Providers may reuse an upstream
 grant, so revoking one can invalidate tokens held by other connections.
+Within a manager, refreshes sharing one credential are serialized. Rotation
+or an uncertain refresh invalidates other records holding the same credential;
+authorize those records again. Their identity and permissions are never
+replaced by another connection's response. Successful revocation also
+invalidates known copies of that credential. Distinct tokens may still share
+an upstream grant whose revocation effects the manager cannot predict.
 }
 \details{
 A manager is bound to one UI/server module ID and one public origin. Create

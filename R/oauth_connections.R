@@ -7,6 +7,12 @@
 #' authorizations at the same client.
 #' Connections are independent local records. Providers may reuse an upstream
 #' grant, so revoking one can invalidate tokens held by other connections.
+#' Within a manager, refreshes sharing one credential are serialized. Rotation
+#' or an uncertain refresh invalidates other records holding the same credential;
+#' authorize those records again. Their identity and permissions are never
+#' replaced by another connection's response. Successful revocation also
+#' invalidates known copies of that credential. Distinct tokens may still share
+#' an upstream grant whose revocation effects the manager cannot predict.
 #'
 #' @param clients Non-empty named list of [OAuthClient] objects, at most 64.
 #'   Each client must configure non-empty `resource_bases`. Names select local
@@ -205,6 +211,8 @@ oauth_connections <- function(
   state$next_refresh <- new.env(parent = emptyenv())
   state$signals <- new.env(parent = emptyenv())
   state$cleanup <- new.env(parent = emptyenv())
+  state$credential_records <- new.env(parent = emptyenv())
+  state$credential_flights <- new.env(parent = emptyenv())
   manager <- new.env(parent = emptyenv())
   for (name in c(
     "clients",
@@ -375,6 +383,8 @@ connection_manager_revoke <- function(manager, client, token, deadline) {
         {
           response <- revoke_token(client, token, which = which)
           if (isTRUE(response$revoked)) {
+            keys <- connection_credential_keys(manager, client, token)
+            connection_credential_retire(manager, keys[which])
             "accepted"
           } else if (identical(response$supported, FALSE)) {
             "unsupported"
@@ -616,6 +626,10 @@ connection_manager_controller <- function(manager, session) {
       err_token("Managed authorization owner is unavailable")
     }
     client <- client_for(context$client)
+    connection_credential_prune(manager)
+    if (connection_credential_unusable(manager, connection_credential_keys(manager, client, token))) {
+      err_token("Authorization returned a credential already retired by this manager")
+    }
     id <- random_urlsafe(32L)
     sealed <- connection_credentials_seal(
       token,
@@ -647,6 +661,7 @@ connection_manager_controller <- function(manager, session) {
     if (is.null(record)) {
       err_token("Connection credentials could not be committed")
     }
+    connection_credential_track(manager, record, token)
     signal()
     invisible(TRUE)
   }
@@ -677,6 +692,14 @@ connection_manager_controller <- function(manager, session) {
     if (is.null(value)) {
       result$status <- "unavailable"
     } else {
+      keys <- connection_credential_keys(manager, client, value$token)
+      if (connection_credential_unusable(manager, keys)) {
+        connection_credential_retire(manager, connection_credential_retired(manager, keys))
+        result$status <- "uncertain"
+        result$stored <- store$read(owner$id, record$id)
+        return(result)
+      }
+      connection_credential_track(manager, record, value$token)
       result$token <- value$token
       result$authenticated_at <- value$authenticated_at
       result$refresh_scope_narrowed <- value$refresh_scope_narrowed
@@ -685,6 +708,7 @@ connection_manager_controller <- function(manager, session) {
   }
   read <- function(id, touch = FALSE) {
     guard(touch)
+    connection_credential_prune(manager)
     record <- store$read(owner$id, id)
     if (is.null(record)) {
       err_token("Connection is unavailable")
@@ -754,6 +778,18 @@ connection_manager_controller <- function(manager, session) {
     if (!is_valid_string(record$token@refresh_token)) {
       err_token("Connection has no refresh credential")
     }
+    credential <- connection_credential_keys(manager, record$client, record$token)$refresh
+    flights <- state$credential_flights
+    outstanding <- flights[[credential]]
+    if (!is.null(outstanding)) {
+      if (!isTRUE(async) || is.null(outstanding$promise)) {
+        err_token("Shared credential refresh is in progress; await its completion")
+      }
+      # Re-read after completion. A queued call must never capture and later
+      # dispatch the old token snapshot, even if the earlier call failed.
+      resume <- function(...) refresh(id, async = TRUE, touch = touch, scopes = scopes)
+      return(promises::then(outstanding$promise, resume, resume))
+    }
     # Validate before taking the refresh claim or sending any credentials.
     # After explicit narrowing, automatic calls retain the accepted grant.
     if (is.null(scopes) && isTRUE(record$refresh_scope_narrowed)) {
@@ -776,6 +812,14 @@ connection_manager_controller <- function(manager, session) {
     if (is.null(claim)) {
       err_token("Connection refresh is already in progress or unavailable")
     }
+    flight <- new.env(parent = emptyenv())
+    flight$expires_at <- claim$operation_expires_at
+    flights[[credential]] <- flight
+    release <- function() {
+      if (identical(flights[[credential]], flight)) rm(list = credential, envir = flights)
+      cleanup$finish()
+    }
+    on.exit(if (!deferred) release(), add = TRUE)
     next_refresh[[id]] <- as.numeric(Sys.time()) + 30
     signal()
     fail <- function(error) {
@@ -783,6 +827,9 @@ connection_manager_controller <- function(manager, session) {
       outcome <- error[["refresh_credential_outcome"]] %||% "possibly_consumed"
       if (!outcome %in% c("not_consumed", "possibly_consumed", "consumed")) {
         outcome <- "possibly_consumed"
+      }
+      if (!identical(outcome, "not_consumed")) {
+        connection_credential_retire(manager, list(refresh = credential))
       }
       try(
         store$fail_refresh(
@@ -813,6 +860,9 @@ connection_manager_controller <- function(manager, session) {
           }
           # A key file or process policy may have changed while HTTP was pending.
           client_for(claim$client)
+          if (connection_credential_unusable(manager, list(refresh = credential))) {
+            err_token("Shared refresh credential is no longer usable")
+          }
           sealed <- connection_credentials_seal(
             token,
             owner$id,
@@ -825,6 +875,10 @@ connection_manager_controller <- function(manager, session) {
           if (is.null(verify_owner(require_session = FALSE))) {
             err_token("Connection owner is unavailable")
           }
+          if (!identical(credential,
+              connection_credential_keys(manager, record$client, token)$refresh)) {
+            connection_credential_retire(manager, list(refresh = credential), except = id)
+          }
           installed <- store$commit_refresh(
             owner$id,
             id,
@@ -835,6 +889,7 @@ connection_manager_controller <- function(manager, session) {
           if (is.null(installed)) {
             err_token("Connection refresh could not be committed")
           }
+          connection_credential_track(manager, installed, token)
           committed <- TRUE
           signal()
           TRUE
@@ -858,8 +913,9 @@ connection_manager_controller <- function(manager, session) {
     if (inherits(result, "promise")) {
       pending <- promises::finally(
         promises::then(result, onFulfilled = succeed, onRejected = fail),
-        cleanup$finish
+        release
       )
+      flight$promise <- pending
       deferred <- TRUE
       pending
     } else {

@@ -32,6 +32,13 @@ One client can have several connections. Connecting A again creates another
 authorization alongside the first. Account selection happens at the provider;
 it may reuse the account already signed in there.
 
+A provider may also return the same refresh credential for both connections.
+The manager queues overlapping asynchronous refreshes for that credential.
+If it rotates or its refresh outcome is uncertain, other connections holding
+the old credential become uncertain and require authorization again. The manager
+keeps their account identity and permissions separate. Successful revocation
+also stops use of known copies of the revoked credential within that manager.
+
 For apps that need one authorization per Shiny session, see the `oauth_ui()`
 and `oauth_module_server()` example in [Usage](usage.html).
 

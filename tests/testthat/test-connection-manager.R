@@ -1,42 +1,3 @@
-manager_test_fixture <- function(retention = "browser", owner = NULL,
-                                 api_origin = "https://api.example") {
-  redirects <- paste0("https://app.example/callback/", c("a", "b"))
-  clients <- lapply(c("a", "b"), function(id) {
-    client <- oauth_client(
-      provider = make_test_provider(),
-      client_id = paste0("client-", id),
-      client_secret = "",
-      redirect_uri = paste0("https://app.example/callback/", id),
-      scopes = c("read", "write"),
-      state_key = strrep(id, 64L),
-      authorization_server_mode = "multi_redirect_uri",
-      authorization_server_redirect_uris = redirects
-    )
-    connection_test_client(
-      client,
-      c(api = paste0(api_origin, "/", id)),
-      "read",
-      paste("Site", id)
-    )
-  })
-  names(clients) <- c("a", "b")
-  owner <- owner %||%
-    if (retention == "browser") oauth_browser_owner() else NULL
-  manager <- oauth_connections(
-    clients,
-    "https://app.example",
-    retention = retention,
-    store = oauth_connection_store_memory(),
-    owner = owner,
-    keys = list(
-      credentials = openssl::rand_bytes(32L),
-      owner = openssl::rand_bytes(32L)
-    )
-  )
-  ui <- oauth_connections_ui(shiny::fluidPage("Connections"), "health", manager)
-  list(manager = manager, ui = ui)
-}
-
 test_that("owner notifications survive the first subscribing module session", {
   f <- manager_test_fixture()
   first <- shiny::MockShinySession$new()
@@ -62,39 +23,6 @@ test_that("owner notifications survive the first subscribing module session", {
   b$release()
   expect_length(ls(f$manager$state$signals), 0L)
 })
-
-manager_test_token <- function(
-  access = "synthetic-access",
-  refresh = "synthetic-refresh"
-) {
-  OAuthToken(
-    access_token = access,
-    refresh_token = refresh,
-    token_type = "Bearer",
-    expires_at = as.numeric(Sys.time()) + 3600,
-    granted_scopes = c("read", "write"),
-    granted_scopes_verified = TRUE,
-    extra_fields = list(patient = "synthetic-patient")
-  )
-}
-
-manager_test_accept <- function(
-  controller,
-  client = "a",
-  token = manager_test_token()
-) {
-  before <- vapply(
-    controller$records(),
-    function(row) row$stored$id,
-    character(1)
-  )
-  hooks <- controller$hooks(client)
-  context <- hooks$prepare()
-  hooks$accept(token, context, as.numeric(Sys.time()) - 100)
-  rows <- controller$records()
-  ids <- vapply(rows, function(row) row$stored$id, character(1))
-  setdiff(ids, before)[[1L]]
-}
 
 test_that("retained connections support bodies and conditional application headers", {
   skip_if_not_installed("webfakes")
