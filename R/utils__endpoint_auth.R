@@ -270,6 +270,7 @@ endpoint_auth_client <- function(client, endpoint) {
       !is_valid_string(client@client_assertion_alg) &&
       endpoint %in% c("introspection", "revocation")
   ) {
+    preferred <- NA_character_
     compatible <- if (style == "client_secret_jwt") {
       secret <- changes$client_secret %||% client@client_secret
       Filter(
@@ -285,6 +286,7 @@ endpoint_auth_client <- function(client, endpoint) {
         changes$client_assertion_private_key %||%
           client@client_assertion_private_key
       )
+      preferred <- choose_default_alg_for_private_key(key)
       Filter(
         function(alg) private_key_can_sign_jws_alg(key, alg, typ = "JWT"),
         algs
@@ -296,7 +298,13 @@ endpoint_auth_client <- function(client, endpoint) {
       if (!length(compatible)) {
         err_config(paste0("No compatible assertion algorithm for ", endpoint))
       }
-      changes$client_assertion_alg <- compatible[[1]]
+      # Discovery lists capabilities, not a preference order. Preserve the
+      # key's usual default when advertised, even as signing support expands.
+      changes$client_assertion_alg <- if (preferred %in% compatible) {
+        preferred
+      } else {
+        compatible[[1]]
+      }
     }
   }
   changes$provider <- provider

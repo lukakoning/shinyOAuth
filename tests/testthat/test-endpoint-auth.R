@@ -289,6 +289,29 @@ test_that("endpoint JWT algorithms, audiences and retry assertions are independe
   )
 })
 
+test_that("endpoint RSA defaults are stable as advertised algorithms expand", {
+  client <- make_test_client()
+  client@client_assertion_private_key <- openssl::rsa_keygen()
+  client@provider@token_auth_style <- "private_key_jwt"
+  client@provider@introspection_url <- "https://example.com/introspect"
+  client@provider@revocation_url <- "https://example.com/revoke"
+  for (endpoint in c("introspection", "revocation")) {
+    for (algs in list(c("RS384", "RS256"), c("RS256", "RS384"), "RS384")) {
+      client@provider@endpoint_auth_metadata <- setNames(list(list(
+        methods = "private_key_jwt", signing_algs = algs
+      )), endpoint)
+      auth <- endpoint_auth_client(client, endpoint)
+      expected <- if ("RS256" %in% algs) "RS256" else "RS384"
+      jwt <- build_client_assertion(auth, "https://example.com")
+      expect_identical(parse_jwt_header(jwt)$alg, expected)
+      expect_true(is.na(client@client_assertion_alg))
+    }
+    client@endpoint_auth <- setNames(list(list(client_assertion_alg = "RS384")), endpoint)
+    expect_identical(endpoint_auth_client(client, endpoint)@client_assertion_alg, "RS384")
+    client@endpoint_auth <- list()
+  }
+})
+
 test_that("endpoint authentication changes are bound to pending login policy", {
   client <- make_test_client()
   initial <- state_client_policy_fingerprint(client)
