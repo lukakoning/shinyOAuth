@@ -63,9 +63,9 @@ Each client must select a multi-server defense. Shared routes require
 \code{authorization_server_mode = "multi_issuer"} and distinct trusted issuers.
 An RFC 9207 \code{iss} or signed JARM issuer selects the configured client; the
 complete callback is then verified before a bridge handle is stored.
-Encrypted JARM on a shared route requires an outer \code{iss} (verified against
-the decrypted response); otherwise use distinct routes. Do not nest wrappers
-to route multiple providers.
+Encrypted JARM requires distinct callback routes, even when an outer \code{iss}
+is supplied. Shared encrypted routes are rejected at configuration time.
+Do not nest wrappers to route multiple providers.
 
 Without \code{id} and \code{client}, ordinary pages still render, but raw OAuth GET
 callbacks fail closed with a setup error. Earlier \code{oauth_ui(ui)} query-flow

@@ -57,8 +57,9 @@ exact comparison, including error responses.
 
 For signed JARM, the unverified state claim is only a bounded routing hint. The
 selected client's signature, issuer, audience, expiry and state checks still
-apply. Same-issuer encrypted JARM on the same route is rejected at setup: use
-distinct routes. The router does not guess keys or try decrypting against several
+apply. Encrypted JARM on a shared route is rejected at setup, including with
+distinct issuers or an outer `iss`: use distinct callback routes. The router
+does not guess keys or try decrypting against several
 registrations. [JARM processing rules](https://openid.net/specs/oauth-v2-jarm-final.html#name-processing-rules).
 
 ## Verification
