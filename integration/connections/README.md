@@ -5,9 +5,15 @@ From the repository root, install the current checkout and run:
 ```sh
 R CMD INSTALL .
 Rscript integration/connections/run-tests.R
+Rscript integration/connections/run-tests.R --post
 Rscript integration/connections/run-shared-router.R
 Rscript integration/connections/run-scope-narrowing.R
+Rscript integration/connections/run-account.R
 ```
+
+These commands run in the [OAuth integration CI job](../../.github/workflows/integration-tests.yml)
+alongside the package browser suite, strict authorization-server fixture and
+Keycloak tests. They share its R, Chrome and package installation.
 
 Requires Chrome/Chromium, the package's dependencies, and `testthat`, `webfakes`,
 `chromote`, `callr`, `withr`, `promises`, `future` and `mirai`. An isolated R library

@@ -91,7 +91,7 @@ and logs out locally. Unit tests separately cover unknown bases, duplicate or
 mixed messages, expiry, wrong-owner attempts, ciphertext storage and exact
 transaction binding.
 
-The [SMART EHR workflow](../../.github/workflows/smart-ehr.yml) runs this gate on
+The [SMART on FHIR workflow](../../.github/workflows/smart-fhir.yml) runs this gate on
 relevant PRs. Artifacts contain counts, versions and the tested profile, never
 tokens, launch handles, raw HTTP logs or patient context. Loopback HTTP is an
 explicit development exception, not production TLS evidence.

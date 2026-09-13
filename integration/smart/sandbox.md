@@ -184,13 +184,12 @@ Rows marked planned describe future tests, not currently skipped tests.
 | P4/P5 independent client verification | Implemented [Inferno STU2.2 Client gate](inferno.md) and real-app driver | Public, Basic, RS384 and ES384 with standalone/EHR, two retained grants, GET/POST and sync/mirai; actual upstream verification results required. Its local simulator corrections are recorded separately from this unmodified Launcher gate. |
 | P6 and P7c | Extend site topology and browser matrix | Same-issuer resource binding and iframe/navigation/cookie behavior, with separate evidence per supported mode. |
 
-The generic P3 gate has its own `connection-retention.yml` workflow watching R
-APIs and browser fixtures. Its fixtures make no SMART conformance claim. The
+The generic P3 gate runs in the OAuth `integration-tests.yml` workflow alongside
+the existing browser, strict conformance and Keycloak suites. SMART browser,
+Inferno and sandbox checks share the `smart-fhir.yml` job.
+The generic fixtures make no SMART conformance claim. The
 two-site sandbox repeat is scheduled with P4 so it tests the actual SMART adapter
 and its launch parameters, rather than treating generic retention as SMART support.
-At P4/P5, expand the sandbox CI path triggers to the implemented R APIs and app fixtures,
-install the browser dependencies, and make the relevant browser suites required.
-Do not replace the existing unit, strict conformance, or Keycloak suites.
 Inferno's client suite provides independent request checks; its implemented setup,
 version reference, registration procedure and coverage gaps are in [inferno.md](inferno.md).
 Simulation controls and absent features are recorded as limitations, not

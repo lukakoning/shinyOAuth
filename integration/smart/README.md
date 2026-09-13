@@ -1,5 +1,10 @@
 # SMART integration baseline
 
+The [SMART on FHIR CI job](../../.github/workflows/smart-fhir.yml) runs the
+EHR and profile browsers, Inferno verification, lifecycle and permission tests,
+and sandbox discovery in one lane with a shared R and Chrome setup. Generic
+retained OAuth browser tests run in the [OAuth integration job](../../.github/workflows/integration-tests.yml).
+
 The optional [Oracle Health registration path](oracle.md) records the accepted
 discovery preflights, future vendor-validation scenarios, and why its open
 unauthenticated sandbox cannot close the SMART authorization gap.

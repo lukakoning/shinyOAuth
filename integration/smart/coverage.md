@@ -86,7 +86,7 @@ matrix. `--es384` selects the eight ES384 scenarios for focused validation and
 also records an incomplete matrix; it can be combined with `--post` or `--quick`.
 Missing prerequisites, errors, failed assertions or skipped tests fail
 the full runner. Sanitized scenario choices, versions and counts are written to
-`.artifacts/profiles-<run>/evidence.json` and uploaded by `smart-ehr.yml`.
+`.artifacts/profiles-<run>/evidence.json` and uploaded by `smart-fhir.yml`.
 The POST run repeats all 32 cases with long granular scopes and verifies actual
 method and form length at the provider. Outgoing method and callback transport
 are independent. Ordinary OAuth POST is also exercised by
@@ -112,8 +112,9 @@ run, missing report, duplicate row, unfinished interaction or skipped verifier
 test cannot satisfy the gate. The report is copied into the combined run as
 `inferno-evidence.json`; the standalone copy is under `.artifacts/inferno-<run>/`.
 
-The separate [CI job](../../.github/workflows/smart-inferno.yml) installs the
-checkout, runs that full command, and uploads only `evidence.json`. Raw Inferno
+The [SMART CI job](../../.github/workflows/smart-fhir.yml) installs the
+checkout, runs that full command alongside the other SMART suites, and uploads
+only `evidence.json`. Raw Inferno
 databases, HTTP exchanges and private diagnostic logs are excluded. The runner
 removes its own containers and database volumes.
 

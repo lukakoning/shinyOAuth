@@ -92,8 +92,9 @@ Rscript integration/conformance/run-tests.R
   SMART capability, callback completion, cleanup on preparation failure, form
   limits, PAR expiry and discarded prepared state. Node checks the form handler.
 
-The combined `run-coverage.R` and `smart-ehr.yml` include both new POST browser
-gates. Evidence records the selected method and keeps synthetic fixtures
+The combined `run-coverage.R` includes both POST browser gates. In CI,
+`smart-fhir.yml` runs the SMART matrix and `integration-tests.yml` runs the
+ordinary OAuth matrix. Evidence records the selected method and keeps synthetic fixtures
 separate from external SMART conformance. Run without `--post` to verify the GET
 default. `--quick --post` runs only three SMART scenarios and is diagnostic.
 
