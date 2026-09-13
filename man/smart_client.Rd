@@ -26,7 +26,8 @@ smart_client(
   state_payload_max_age = 300,
   label = "FHIR server",
   authorization_method = "GET",
-  initial_expires_in = NULL
+  initial_expires_in = NULL,
+  online_access_policy = c("online_only", "allow_offline")
 )
 }
 \arguments{
@@ -96,6 +97,14 @@ the authorization server out of band for initial access tokens. Used only
 when an initial response omits \code{expires_in}; an explicit response value
 takes precedence. Default \code{NULL} requires the response to include a lifetime.
 This does not apply to refresh responses or change ordinary OAuth defaults.}
+
+\item{online_access_policy}{\code{"online_only"} (default) or \code{"allow_offline"}.
+SMART permits an \code{online_access} request to negotiate \code{offline_access}.
+Opt in to \code{"allow_offline"} to accept that longer-lived permission in place
+of required \code{online_access}. The default rejects this substitution, even
+when \code{online_access} is optional. Explicitly requesting \code{offline_access}
+also authorizes offline persistence. Granted scopes retain their actual
+spelling; refresh responses cannot escalate an existing online grant.}
 }
 \value{
 An \link{OAuthClient}, usable by the existing module or the separate

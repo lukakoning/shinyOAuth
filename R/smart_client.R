@@ -72,6 +72,13 @@
 #'   when an initial response omits `expires_in`; an explicit response value
 #'   takes precedence. Default `NULL` requires the response to include a lifetime.
 #'   This does not apply to refresh responses or change ordinary OAuth defaults.
+#' @param online_access_policy `"online_only"` (default) or `"allow_offline"`.
+#'   SMART permits an `online_access` request to negotiate `offline_access`.
+#'   Opt in to `"allow_offline"` to accept that longer-lived permission in place
+#'   of required `online_access`. The default rejects this substitution, even
+#'   when `online_access` is optional. Explicitly requesting `offline_access`
+#'   also authorizes offline persistence. Granted scopes retain their actual
+#'   spelling; refresh responses cannot escalate an existing online grant.
 #' @return An [OAuthClient], usable by the existing module or the separate
 #'   connection manager. `@resource_bases` contains the approved `fhir` base;
 #'   `@required_scopes` and `@label` use the ordinary client properties. `@smart`
@@ -100,8 +107,10 @@ smart_client <- function(
   authorization_server_redirect_uris = character(),
   state_store = cachem::cache_mem(max_age = 300),
   state_key = random_urlsafe(128), state_payload_max_age = 300,
-  label = "FHIR server", authorization_method = "GET", initial_expires_in = NULL
+  label = "FHIR server", authorization_method = "GET", initial_expires_in = NULL,
+  online_access_policy = c("online_only", "allow_offline")
 ) {
+  online_access_policy <- match.arg(online_access_policy)
   token_auth_style <- match.arg(token_auth_style)
   launch <- match.arg(launch)
   identity <- match.arg(identity)
@@ -245,6 +254,7 @@ smart_client <- function(
     discovery_digest = state_policy_digest(discovery), discovery = discovery)
   if (identical(authorization_method, "POST")) smart_policy[["authorization_method"]] <- "POST"
   if (!is.null(initial_expires_in)) smart_policy[["initial_expires_in"]] <- initial_expires_in
+  smart_policy[["online_access_policy"]] <- online_access_policy
   S7::props(client) <- list(
     scope_policy = list(profile = "smart", version = 1L, allow_v1 = allow_v1),
     smart = smart_policy,
@@ -266,7 +276,7 @@ smart_validate_client <- function(client) {
   if (!client_uses_smart(client)) return(NULL)
   if (!length(client@scopes)) return("OAuthClient: SMART authorization requires at least one requested scope")
   policy <- client@smart
-  if (!identical(sort(setdiff(names(policy), c("authorization_method", "initial_expires_in"))), sort(c("version", "fhir_base", "launch",
+  if (!identical(sort(setdiff(names(policy), c("authorization_method", "initial_expires_in", "online_access_policy"))), sort(c("version", "fhir_base", "launch",
       "identity", "allow_http_loopback", "discovery_digest", "discovery"))) ||
       !identical(policy[["authorization_method"]] %||% "GET", client@authorization_method) ||
       !identical(policy[["version"]], "2.2.0") ||
@@ -274,6 +284,10 @@ smart_validate_client <- function(client) {
       !is_valid_string(policy[["launch"]]) || !policy[["launch"]] %in% c("standalone", "ehr") ||
       !is_valid_string(policy[["identity"]]) || !policy[["identity"]] %in% c("none", "fhirUser") ||
       !client_uses_smart_scopes(client)) return("OAuthClient: invalid SMART policy")
+  online_policy <- policy[["online_access_policy"]] %||% "online_only"
+  if (!is_valid_string(online_policy) || !online_policy %in% c("online_only", "allow_offline")) {
+    return("OAuthClient: invalid SMART online_access_policy")
+  }
   lifetime <- policy[["initial_expires_in"]]
   if (!is.null(lifetime) && (!is.numeric(lifetime) || length(lifetime) != 1L ||
       !is.finite(lifetime) || lifetime <= 0)) {

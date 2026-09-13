@@ -112,6 +112,12 @@ client_uses_smart_scopes <- function(client) {
 client_scope_coverage <- function(client, requested, granted) {
   policy <- client@scope_policy
   if (!length(policy)) return(evaluate_scope_coverage(requested, granted))
+  if (client_uses_smart(client) &&
+      identical(client@smart[["online_access_policy"]], "allow_offline") &&
+      "offline_access" %in% normalize_scope_tokens(granted)) {
+    requested <- normalize_scope_tokens(requested)
+    requested[requested == "online_access"] <- "offline_access"
+  }
   evaluate_scope_coverage(requested, granted,
     profile = policy$profile,
     version = policy$version, allow_v1 = policy$allow_v1
@@ -146,6 +152,13 @@ validate_client_scope_policy <- function(policy) {
 smart_verify_scope_grant <- function(client, granted, is_refresh, prior) {
   # Validate even an optional-only grant before a status/request can use it.
   smart_scope_coverage(character(), granted, client@scope_policy$allow_v1)
+  if (client_uses_smart(client) &&
+      !identical(client@smart[["online_access_policy"]], "allow_offline") &&
+      "online_access" %in% effective_client_scopes(client) &&
+      !"offline_access" %in% effective_client_scopes(client) &&
+      "offline_access" %in% granted) {
+    err_token("SMART offline negotiation requires online_access_policy = 'allow_offline'")
+  }
   if (!identical(client_scope_coverage(
     client,
     client@required_scopes, granted
