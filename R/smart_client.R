@@ -52,7 +52,8 @@
 #' @param launch `"standalone"` or `"ehr"`, matching the registered app flow.
 #' @param identity `"none"` (default) or `"fhirUser"`. A validated `fhirUser`
 #'   claim may be an absolute URL or a supported resource instance reference
-#'   relative to this client's FHIR base, such as `"Practitioner/example"`.
+#'   relative to this client's FHIR base, such as `"Practitioner/example"` or
+#'   `"Practitioner/example/_history/2"`. Versioned references retain their version.
 #' @param allow_v1 Explicit compatibility flag enabling `.read`, `.write` and
 #'   `.*`. Requesting these spellings requires `permission-v1`; requesting v2
 #'   spellings requires `permission-v2`, including when this flag is enabled.
@@ -347,7 +348,8 @@ smart_verify_identity <- function(client, token_set, is_refresh) {
     err_id_token("SMART ID token requires a scalar fhirUser reference")
   }
   tryCatch({
-    if (grepl("^(Patient|Practitioner|PractitionerRole|RelatedPerson|Person)/[A-Za-z0-9.-]{1,64}$", reference)) {
+    if (grepl(paste0("^(Patient|Practitioner|PractitionerRole|RelatedPerson|Person)/",
+        "[A-Za-z0-9.-]{1,64}(/_history/[A-Za-z0-9.-]{1,64})?$"), reference)) {
       # SMART 2.2 explicitly permits references relative to the launch FHIR base.
       # The existing resource resolver also rejects dot segments and path escape.
       resolve_bound_resource(client@smart$fhir_base, reference)

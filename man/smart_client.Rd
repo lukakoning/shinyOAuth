@@ -69,7 +69,8 @@ metadata must support the selected algorithm. Other styles omit assertions.}
 
 \item{identity}{\code{"none"} (default) or \code{"fhirUser"}. A validated \code{fhirUser}
 claim may be an absolute URL or a supported resource instance reference
-relative to this client's FHIR base, such as \code{"Practitioner/example"}.}
+relative to this client's FHIR base, such as \code{"Practitioner/example"} or
+\code{"Practitioner/example/_history/2"}. Versioned references retain their version.}
 
 \item{allow_v1}{Explicit compatibility flag enabling \code{.read}, \code{.write} and
 \verb{.*}. Requesting these spellings requires \code{permission-v1}; requesting v2

@@ -116,6 +116,8 @@ test_that("SMART helpers restrict requests and redact general summaries", {
   expect_identical(smart_fhir_user(foreign), record$token@smart_context$fhirUser)
   record$token@smart_context$fhirUser <- "Practitioner/example"
   expect_identical(smart_fhir_user(foreign), "https://ehr.example/fhir/R4/Practitioner/example")
+  record$token@smart_context$fhirUser <- "Practitioner/example/_history/2"
+  expect_identical(smart_fhir_user(foreign), "https://ehr.example/fhir/R4/Practitioner/example/_history/2")
 })
 
 test_that("SMART read helpers negotiate FHIR JSON while generic requests keep their defaults", {
@@ -173,9 +175,11 @@ test_that("Patient identity reads accept only the matching patient context", {
     url$url
   }, .package = "shinyOAuth")
   for (reference in c("Patient/example-patient",
-      "https://ehr.example/fhir/R4/Patient/example-patient")) {
+      "https://ehr.example/fhir/R4/Patient/example-patient",
+      "Patient/example-patient/_history/2",
+      "https://ehr.example/fhir/R4/Patient/example-patient/_history/2")) {
     record$token@smart_context$fhirUser <- reference
-    expect_identical(smart_fhir_user(ref), smart_patient(ref))
+    expect_identical(smart_fhir_user(ref), resolve_bound_resource(record$client@smart$fhir_base, reference))
   }
   record$token@smart_context$fhirUser <- "Patient/someone-else"
   expect_error(smart_fhir_user(ref), "does not cover")
@@ -191,6 +195,13 @@ test_that("identity scopes authorize the signed same-base fhirUser reference", {
     url$url
   }, .package = "shinyOAuth")
   expect_identical(smart_fhir_user(ref), "https://ehr.example/fhir/R4/Practitioner/example")
+  for (reference in c("Practitioner/example/_history/2",
+      "https://ehr.example/fhir/R4/Practitioner/example/_history/2")) {
+    record <- smart_identity_fixture(reference)
+    ref <- OAuthConnection$new("signed-identity", record$client, function() record)
+    expect_identical(smart_fhir_user(ref),
+      "https://ehr.example/fhir/R4/Practitioner/example/_history/2")
+  }
   record <- smart_identity_fixture("https://ehr.example/fhir/R4/identity/example")
   ref <- OAuthConnection$new("signed-identity", record$client, function() record)
   expect_identical(smart_fhir_user(ref), record$token@smart_context$fhirUser)
@@ -205,6 +216,8 @@ test_that("signed refresh identity continuity compares resolved FHIR references"
   relative <- "Practitioner/example"
   absolute <- "https://ehr.example/fhir/R4/Practitioner/example"
   for (references in list(c(relative, absolute), c(absolute, relative),
+      paste0(c(relative, absolute), "/_history/2"),
+      paste0(c(absolute, relative), "/_history/2"),
       rep("https://other.example/identity/example", 2))) {
     record <- smart_identity_fixture(references[[1L]])
     local_mocked_bindings(fetch_jwks = function(...) record$jwks, .package = "shinyOAuth")

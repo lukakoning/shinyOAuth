@@ -189,11 +189,14 @@ smart_record_resource <- function(record, kind) {
       candidates <- list(c("openid", "fhirUser"))
     }
     # Absolute FHIR references need not use a REST-style resource path.
-    if (grepl("^[A-Z][A-Za-z0-9]*/[A-Za-z0-9.-]{1,64}$", relative)) {
+    instance <- NULL
+    if (grepl(paste0("^[A-Z][A-Za-z0-9]*/[A-Za-z0-9.-]{1,64}",
+        "(/_history/[A-Za-z0-9.-]{1,64})?$"), relative)) {
+      instance <- sub("/_history/.*$", "", relative)
       candidates <- c(candidates, list(paste0("user/", sub("/.*$", "", relative), ".r")))
     }
     if (is_valid_string(context$patient) &&
-        identical(relative, paste0("Patient/", context$patient))) {
+        identical(instance, paste0("Patient/", context$patient))) {
       candidates <- c(candidates, list("patient/Patient.r"))
     }
   } else err_input("Unknown SMART resource helper")

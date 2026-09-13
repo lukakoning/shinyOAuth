@@ -333,9 +333,17 @@ test_that("SMART fhirUser is taken only from a cryptographically validated ID to
     relative <- claims
     relative$fhirUser <- paste0(kind, "/example")
     expect_true(verify(relative)$.id_token_validated)
+    for (prefix in c("", "https://ehr.example/fhir/R4/")) {
+      relative$fhirUser <- paste0(prefix, kind, "/example/_history/v1.2-3")
+      expect_true(verify(relative)$.id_token_validated)
+    }
   }
   for (value in list(NULL, 42, "javascript:example", "https://ehr.example/fhir/../secret",
-      "Practitioner/..", "Practitioner/example?query=x", "../Practitioner/example", "Observation/example")) {
+      "Practitioner/..", "Practitioner/example?query=x", "../Practitioner/example", "Observation/example",
+      "Practitioner/example/_history", "Practitioner/example/_history/",
+      "Practitioner/example/_history/..", "Practitioner/example/_history/1/extra",
+      "Practitioner/example/_history/1?query=x", "Practitioner/example/_history/1#fragment",
+      paste0("Practitioner/example/_history/", strrep("v", 65)))) {
     bad <- claims
     bad$fhirUser <- value
     expect_error(verify(bad), "fhirUser")
