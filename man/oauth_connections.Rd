@@ -76,6 +76,8 @@ configurations from \code{\link[=oauth_client]{oauth_client()}} or \code{\link[=
 callbacks and \code{\link[=oauth_connections_server]{oauth_connections_server()}} for each Shiny session. Each
 successful authorization creates a separate connection, including repeated
 authorizations at the same client.
+Connections are independent local records. Providers may reuse an upstream
+grant, so revoking one can invalidate tokens held by other connections.
 }
 \details{
 A manager is bound to one UI/server module ID and one public origin. Create

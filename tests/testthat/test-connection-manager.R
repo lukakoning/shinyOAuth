@@ -1209,3 +1209,40 @@ test_that("document base insertion invalidates old HTML length and validators", 
     fixed = TRUE
   )
 })
+
+test_that("shared upstream grants can cascade revocation beyond one local connection", {
+  for (revoke in c(FALSE, TRUE)) {
+    f <- manager_test_fixture()
+    cookie <- manager_test_cookie(f)
+    remote_active <- TRUE
+    calls <- 0L
+    local_mocked_bindings(
+      revoke_token = function(...) {
+        calls <<- calls + 1L
+        remote_active <<- FALSE
+        list(supported = TRUE, revoked = TRUE)
+      },
+      req_with_retry = function(req, ...) {
+        httr2::response(url = req$url, status = if (remote_active) 200L else 401L,
+          headers = list("content-type" = "application/json"), body = charToRaw("{}"))
+      }
+    )
+    shiny::testServer(session = manager_test_session(cookie),
+      function(input, output, session) {
+        ctl <- connection_manager_controller(f$manager, session)
+      }, {
+        first <- manager_test_accept(ctl, token = manager_test_token("access-one", "refresh-one"))
+        second <- manager_test_accept(ctl, token = manager_test_token("access-two", "refresh-two"))
+        sibling <- OAuthConnection$new(second, f$manager$clients$a, function() ctl$read(second))
+        result <- ctl$disconnect(first, revoke = revoke)
+        expect_identical(result$local, "disconnected")
+        expect_null(ctl$read(first)$token)
+        expect_true(sibling$is_usable())
+        expect_identical(sibling$summary()$status, "active")
+        expect_identical(httr2::resp_status(sibling$request("api", "records")),
+          if (revoke) 401L else 200L)
+        expect_identical(calls, if (revoke) 2L else 0L)
+        if (!revoke) expect_identical(result$remote, "not_requested")
+      })
+  }
+})

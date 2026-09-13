@@ -248,7 +248,8 @@ runApp(shinyApp(ui, server, uiPattern = ".*"),
 
 Open `http://127.0.0.1:8100` in a regular browser. Connect A, return, then connect
 B. Both authorizations should appear in the selector. Select each and read its
-records; disconnecting one leaves the other available. The numeric suffix only
+records. Disconnect removes the selected local connection; provider revocation
+may affect other authorizations as explained below. The numeric suffix only
 distinguishes rows in this demo; use the opaque `connection_id` as the stable key.
 
 The UI wrapper handles callback pages; `uiPattern = ".*"` lets Shiny serve those
@@ -334,6 +335,23 @@ configure revocation endpoints, so add each provider's documented
 `revocation_url` if supported. `logout()` also ends this local owner session;
 it does not sign the person out of the external services or your own account
 login system.
+
+Separate connection IDs represent separate local records. A provider can reuse
+the same upstream grant for repeated authorizations and invalidate all related
+credentials when one is revoked; OAuth explicitly permits this behavior
+([RFC 7009, section 2.1](https://www.rfc-editor.org/rfc/rfc7009.html#section-2.1)).
+For example, Google's documented revocation can affect all scopes granted to a
+project and invalidate related tokens
+([Google's revocation policy](https://developers.google.com/identity/protocols/oauth2/web-server#tokenrevoke)).
+Repeated consent, distinct token strings, and local connection IDs do not prove
+independent upstream grants.
+
+The default `auth$disconnect(id)` requests remote revocation. To remove only the
+local connection, use `auth$disconnect(id, revoke = FALSE)`; those removed
+credentials remain valid remotely until expiry or provider-side revocation.
+Choose this deliberately using the provider's documented behavior. Sibling
+connections can still report `active` locally after remote revocation: always
+handle API authorization failures and offer a new authorization.
 
 ## Keep an ordinary OIDC login alongside SMART connections
 

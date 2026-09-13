@@ -5,6 +5,8 @@
 #' callbacks and [oauth_connections_server()] for each Shiny session. Each
 #' successful authorization creates a separate connection, including repeated
 #' authorizations at the same client.
+#' Connections are independent local records. Providers may reuse an upstream
+#' grant, so revoking one can invalidate tokens held by other connections.
 #'
 #' @param clients Non-empty named list of [OAuthClient] objects, at most 64.
 #'   Each client must configure non-empty `resource_bases`. Names select local

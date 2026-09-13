@@ -56,6 +56,15 @@
 #' `accepted`, `unsupported`, `missing`, `failed` or `not_attempted` for access and
 #' refresh credentials. `accepted` describes the endpoint response, not proof of
 #' prior token validity. Local disconnect remains effective if revocation fails.
+#' A provider may revoke an entire authorization grant or related credentials
+#' (RFC 7009 section 2.1). Separate connection IDs do not establish independent
+#' provider grants, even after repeated consent or account selection. Consequently,
+#' default `revoke = TRUE` may also end access for sibling connections or other
+#' applications covered by the provider's revocation policy. Use `revoke = FALSE`
+#' for a local-only removal when preserving those authorizations is required;
+#' the removed credentials then remain valid remotely until the provider expires
+#' or revokes them. Local summaries and `is_usable()` do not detect such remote
+#' changes: handle API authorization failures and obtain a new authorization.
 #'
 #' Use this API inside its owning session's reactive context. Session setup
 #' requires a matching HTTP Origin on the Shiny request. Raw HTTP routes cannot
