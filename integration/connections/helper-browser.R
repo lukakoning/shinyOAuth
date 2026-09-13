@@ -1,3 +1,10 @@
+retention_chrome_start <- function() {
+  # A cold Chrome launch can exceed chromote's ten-second default on CI.
+  # Keep this bounded and local to startup; assertion timeouts stay unchanged.
+  withr::local_options(chromote.timeout = max(30, getOption("chromote.timeout", 10)))
+  chromote::Chromote$new()
+}
+
 retention_chrome_close <- function(chrome) {
   # Chromote 0.5.1 close() discards an asynchronous Browser.close promise.
   # Await our own request and process exit first, so a lost shutdown reply
@@ -293,7 +300,7 @@ retention_browser_setup <- function(
     }
     Sys.sleep(0.1)
   }
-  chrome <- chromote::Chromote$new()
+  chrome <- retention_chrome_start()
   withr::defer(retention_chrome_close(chrome), envir = .env)
   new_browser <- function(chrome_instance = chrome) {
     context <- chrome_instance$Target$createBrowserContext()$browserContextId

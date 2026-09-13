@@ -112,7 +112,7 @@ inferno_open_browser <- function(app, .env = parent.frame()) {
       NULL
     })
   }, paste0("Shiny app readiness (", last_error, ")"))
-  chrome <- chromote::Chromote$new()
+  chrome <- retention_chrome_start()
   withr::defer(retention_chrome_close(chrome), envir = .env)
   context <- chrome$Target$createBrowserContext()$browserContextId
   target <- chrome$Target$createTarget("about:blank", browserContextId = context)$targetId

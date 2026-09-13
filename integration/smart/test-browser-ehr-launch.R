@@ -61,7 +61,7 @@ for (async_mode in async_modes) {
       testthat::expect_length(retention_browser_snapshot(second)$connections, 2L)
       # Keep both launch tabs active while a separate Chrome process tests
       # another browser owner. Each process uses an isolated browser context.
-      foreign_chrome <- chromote::Chromote$new()
+      foreign_chrome <- retention_chrome_start()
       withr::defer(retention_chrome_close(foreign_chrome))
       foreign <- f$new_browser(foreign_chrome)
       testthat::expect_length(retention_browser_snapshot(foreign)$connections, 0L)

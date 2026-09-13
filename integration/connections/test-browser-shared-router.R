@@ -59,7 +59,7 @@ for (index in seq_len(nrow(cases))) {
     testthat::expect_identical(metrics()$requests, before$requests)
     # Separate browser process gives a separate owner while both original tabs
     # remain live. Connection IDs convey no authority to that other owner.
-    foreign_chrome <- chromote::Chromote$new()
+    foreign_chrome <- retention_chrome_start()
     withr::defer(retention_chrome_close(foreign_chrome))
     foreign <- f$new_browser(foreign_chrome)
     testthat::expect_length(retention_browser_snapshot(foreign)$connections, 0L)
