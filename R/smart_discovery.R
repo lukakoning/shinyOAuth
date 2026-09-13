@@ -103,7 +103,7 @@ smart_discover <- function(
     allow_http_loopback,
     identifier = TRUE
   )
-  hosts <- smart_discovery_hosts(endpoint_hosts %||% base$host)
+  hosts <- smart_discovery_hosts(endpoint_hosts %||% base[["host"]])
   discovery_url <- paste0(
     sub("/$", "", fhir_base),
     "/.well-known/smart-configuration"
@@ -152,7 +152,7 @@ smart_discovery_url <- function(
       " must be an absolute URL with unambiguous syntax"
     ))
   }
-  if (parsed$scheme != "https" && !allow_http_loopback) {
+  if (parsed[["scheme"]] != "https" && !allow_http_loopback) {
     err_config(paste0(
       "SMART ",
       field,
@@ -323,7 +323,7 @@ smart_discovery_validate <- function(metadata, hosts, allow_http_loopback) {
       allow_http_loopback,
       identifier = identical(field, "issuer")
     )
-    host <- sub("^\\[::1\\]$", "::1", endpoint$host)
+    host <- sub("^\\[::1\\]$", "::1", endpoint[["host"]])
     if (!host %in% hosts) {
       err_config(paste0("SMART ", field, " host is outside endpoint_hosts"))
     }
@@ -339,7 +339,7 @@ smart_discovery_validate <- function(metadata, hosts, allow_http_loopback) {
   if (
     launch &&
       "response_types_supported" %in% names(metadata) &&
-      !"code" %in% metadata$response_types_supported
+      !"code" %in% metadata[["response_types_supported"]]
   ) {
     err_parse("SMART response_types_supported must include code for app launch")
   }

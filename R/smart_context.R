@@ -62,8 +62,8 @@ smart_update_token_context <- function(client, token, previous = NULL) {
   token@original_granted_scopes <- if (is.null(previous)) token@granted_scopes else previous@original_granted_scopes
   fields <- smart_location_fields(client, token@extra_fields)
   prior <- if (is.null(previous)) NULL else previous@smart_context
-  if (!is.null(previous) && (!identical(prior$version, 1L) ||
-      !identical(prior$fhir_base, client@smart$fhir_base))) {
+  if (!is.null(previous) && (!identical(prior[["version"]], 1L) ||
+      !identical(prior[["fhir_base"]], client@smart[["fhir_base"]]))) {
     err_token("SMART refresh requires the original interpreted context")
   }
   values <- list(patient = NULL, encounter = NULL, fhirUser = NULL,
@@ -80,36 +80,36 @@ smart_update_token_context <- function(client, token, previous = NULL) {
     }
     values[name] <- list(value)
   }
-  if (!is.null(prior) && !identical(values$patient, prior$patient) &&
+  if (!is.null(prior) && !identical(values[["patient"]], prior[["patient"]]) &&
       !"encounter" %in% names(fields)) {
     values["encounter"] <- list(NULL)
   }
   if ("need_patient_banner" %in% names(token@extra_fields)) {
-    value <- token@extra_fields$need_patient_banner
+    value <- token@extra_fields[["need_patient_banner"]]
     if (!is.null(value) && (!is.logical(value) || length(value) != 1L || is.na(value))) {
       err_token("SMART need_patient_banner must be a boolean or null")
     }
     values["need_patient_banner"] <- list(value)
   }
-  if (any(startsWith(token@granted_scopes, "patient/")) && is.null(values$patient)) {
+  if (any(startsWith(token@granted_scopes, "patient/")) && is.null(values[["patient"]])) {
     err_token("SMART patient permissions require patient context")
   }
-  if (identical(client@smart$identity, "fhirUser")) {
+  if (identical(client@smart[["identity"]], "fhirUser")) {
     if (!isTRUE(token@id_token_validated)) err_token("SMART identity has not been validated")
-    reference <- token@id_token_claims$fhirUser
+    reference <- token@id_token_claims[["fhirUser"]]
     if (!is_valid_string(reference)) err_token("SMART identity requires fhirUser")
-    if (!is.null(prior$fhirUser) && !identical(
-        smart_identity_reference(client, prior$fhirUser),
+    if (!is.null(prior[["fhirUser"]]) && !identical(
+        smart_identity_reference(client, prior[["fhirUser"]]),
         smart_identity_reference(client, reference))) {
       err_token("SMART fhirUser changed; a fresh authorization is required")
     }
     # Keep the established spelling and revision for the same resource. The
     # refreshed signed claim remains available on the accepted token itself.
-    values$fhirUser <- prior$fhirUser %||% reference
+    values[["fhirUser"]] <- prior[["fhirUser"]] %||% reference
   }
   changed <- !is.null(prior) && !identical(values, prior[names(values)])
-  token@smart_context <- c(list(version = 1L, fhir_base = client@smart$fhir_base,
-    revision = if (is.null(prior)) 1L else prior$revision + as.integer(changed),
+  token@smart_context <- c(list(version = 1L, fhir_base = client@smart[["fhir_base"]],
+    revision = if (is.null(prior)) 1L else prior[["revision"]] + as.integer(changed),
     changed = changed), values)
   token
 }
@@ -131,7 +131,7 @@ smart_location_fields <- function(client, fields) {
     if (!identical(entry[["type"]], "smart_on_fhir")) next
     if (!strings(entry[["locations"]]) || !strings(entry[["fhirVersions"]])) invalid()
     locations <- tryCatch(vapply(entry[["locations"]], function(location) {
-      resource_binding_components(location, base = TRUE)$url
+      resource_binding_components(location, base = TRUE)[["url"]]
     }, character(1)), error = function(...) invalid())
     if (client@resource_bases[["fhir"]] %in% locations) {
       matching[[length(matching) + 1L]] <- entry
@@ -154,38 +154,38 @@ smart_response_scope <- function(client, fields) {
 
 smart_identity_reference <- function(client, reference) {
   if (grepl("^https?://", reference, ignore.case = TRUE)) {
-    return(resource_binding_components(reference)$url)
+    return(resource_binding_components(reference)[["url"]])
   }
-  resolve_bound_resource(client@smart$fhir_base, reference)
+  resolve_bound_resource(client@smart[["fhir_base"]], reference)
 }
 
 smart_record_context <- function(record) {
-  if (!client_uses_smart(record$client) ||
+  if (!client_uses_smart(record[["client"]]) ||
       !connection_record_status(record) %in% c("active", "limited") ||
-      !identical(record$token@smart_context$version, 1L) ||
-      !identical(record$token@smart_context$fhir_base, record$client@smart$fhir_base)) {
+      !identical(record[["token"]]@smart_context[["version"]], 1L) ||
+      !identical(record[["token"]]@smart_context[["fhir_base"]], record[["client"]]@smart[["fhir_base"]])) {
     err_token("SMART context is unavailable")
   }
-  record$token@smart_context
+  record[["token"]]@smart_context
 }
 
 smart_record_resource <- function(record, kind) {
   context <- smart_record_context(record)
   if (identical(kind, "patient")) {
-    if (!is_valid_string(context$patient)) err_token("No SMART patient is in context")
-    path <- paste0("Patient/", context$patient)
+    if (!is_valid_string(context[["patient"]])) err_token("No SMART patient is in context")
+    path <- paste0("Patient/", context[["patient"]])
     candidates <- list("patient/Patient.r", "user/Patient.r")
   } else if (identical(kind, "fhirUser")) {
-    if (!is_valid_string(context$fhirUser) || !isTRUE(record$token@id_token_validated)) {
+    if (!is_valid_string(context[["fhirUser"]]) || !isTRUE(record[["token"]]@id_token_validated)) {
       err_token("No validated SMART fhirUser is available")
     }
-    path <- tryCatch(resolve_bound_resource(record$client@resource_bases[["fhir"]],
-      context$fhirUser), error = function(...) err_token("SMART fhirUser is outside this connection's FHIR base"))
-    base_path <- resource_binding_components(record$client@resource_bases[["fhir"]])$path
-    relative <- substring(resource_binding_components(path)$path,
+    path <- tryCatch(resolve_bound_resource(record[["client"]]@resource_bases[["fhir"]],
+      context[["fhirUser"]]), error = function(...) err_token("SMART fhirUser is outside this connection's FHIR base"))
+    base_path <- resource_binding_components(record[["client"]]@resource_bases[["fhir"]])[["path"]]
+    relative <- substring(resource_binding_components(path)[["path"]],
       nchar(paste0(sub("/$", "", base_path), "/")) + 1L)
     candidates <- list()
-    if (identical(record$client@smart$identity, "fhirUser")) {
+    if (identical(record[["client"]]@smart[["identity"]], "fhirUser")) {
       candidates <- list(c("openid", "fhirUser"))
     }
     # Absolute FHIR references need not use a REST-style resource path.
@@ -195,16 +195,16 @@ smart_record_resource <- function(record, kind) {
       instance <- sub("/_history/.*$", "", relative)
       candidates <- c(candidates, list(paste0("user/", sub("/.*$", "", relative), ".r")))
     }
-    if (is_valid_string(context$patient) &&
-        identical(instance, paste0("Patient/", context$patient))) {
+    if (is_valid_string(context[["patient"]]) &&
+        identical(instance, paste0("Patient/", context[["patient"]]))) {
       candidates <- c(candidates, list("patient/Patient.r"))
     }
   } else err_input("Unknown SMART resource helper")
   usable <- vapply(candidates, function(scope) {
-    identical(client_scope_coverage(record$client, scope,
-      effective_client_scopes(record$client))$status, "covered") &&
-      identical(client_scope_coverage(record$client, scope,
-        record$token@granted_scopes)$status, "covered")
+    identical(client_scope_coverage(record[["client"]], scope,
+      effective_client_scopes(record[["client"]]))[["status"]], "covered") &&
+      identical(client_scope_coverage(record[["client"]], scope,
+        record[["token"]]@granted_scopes)[["status"]], "covered")
   }, logical(1))
   if (!any(usable)) err_token("SMART grant does not cover this resource read")
   connection_record_request(record, "fhir", path, NULL, "GET", candidates[[which(usable)[1L]]],

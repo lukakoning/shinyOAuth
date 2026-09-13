@@ -106,20 +106,22 @@ smart_client <- function(
   launch <- match.arg(launch)
   identity <- match.arg(identity)
   connection_manager_flag(allow_v1, "allow_v1")
-  if (!is.list(discovery) || !identical(discovery$smart_version, "2.2.0") ||
-      !is.list(discovery$metadata)) {
+  if (!is.list(discovery) || !identical(discovery[["smart_version"]], "2.2.0") ||
+      !is.list(discovery[["metadata"]])) {
     err_config("smart_client requires a SMART 2.2 discovery snapshot")
   }
-  connection_manager_flag(discovery$allow_http_loopback, "allow_http_loopback")
-  smart_discovery_url(discovery$fhir_base, "fhir_base",
-    discovery$allow_http_loopback, identifier = TRUE)
+  connection_manager_flag(discovery[["allow_http_loopback"]], "allow_http_loopback")
+  smart_discovery_url(discovery[["fhir_base"]], "fhir_base",
+    discovery[["allow_http_loopback"]], identifier = TRUE)
   # Callbacks may contain registered fixed queries. The generic constructor
   # validates reserved query names and preserves the exact registration value.
-  smart_discovery_url(redirect_uri, "redirect_uri", discovery$allow_http_loopback)
-  hosts <- smart_discovery_hosts(discovery$endpoint_hosts)
-  metadata <- discovery$metadata
-  smart_discovery_validate(metadata, hosts, discovery$allow_http_loopback)
-  capabilities <- unlist(metadata$capabilities, use.names = FALSE)
+  smart_discovery_url(redirect_uri, "redirect_uri", discovery[["allow_http_loopback"]])
+  hosts <- smart_discovery_hosts(discovery[["endpoint_hosts"]])
+  metadata <- discovery[["metadata"]]
+  # Keep reads exact after validation: an unrecognized extension must never
+  # supply an endpoint, issuer or policy flag through R's partial $ matching.
+  smart_discovery_validate(metadata, hosts, discovery[["allow_http_loopback"]])
+  capabilities <- unlist(metadata[["capabilities"]], use.names = FALSE)
   require_capability <- function(value) {
     if (!value %in% capabilities) err_config(paste("SMART capability required:", value))
   }
@@ -172,7 +174,7 @@ smart_client <- function(
   if (any(startsWith(scopes, "system/"))) {
     err_config("SMART app launch does not support backend system scopes")
   }
-  if (!identical(smart_scope_coverage(scopes, scopes, allow_v1)$status, "covered")) {
+  if (!identical(smart_scope_coverage(scopes, scopes, allow_v1)[["status"]], "covered")) {
     err_config("SMART client contains unsupported scope syntax")
   }
   resource_scopes <- scopes[grepl("^(patient|user)/", scopes)]
@@ -182,7 +184,7 @@ smart_client <- function(
   if (identical(token_auth_style, "private_key_jwt")) {
     if (!is_valid_string(client_assertion_alg) ||
         !client_assertion_alg %in% c("RS384", "ES384") ||
-        !client_assertion_alg %in% metadata$token_endpoint_auth_signing_alg_values_supported ||
+        !client_assertion_alg %in% metadata[["token_endpoint_auth_signing_alg_values_supported"]] ||
         is.null(client_assertion_private_key) ||
         !is_valid_string(client_assertion_private_key_kid)) {
       err_config("SMART asymmetric registration requires a key, key ID and advertised RS384 or ES384")
@@ -198,8 +200,8 @@ smart_client <- function(
       (!is_valid_string(response_mode) || !response_mode %in% c("query", "form_post"))) {
     err_config("SMART currently supports query and form_post callbacks")
   }
-  if (isTRUE(metadata$require_pushed_authorization_requests) ||
-      isTRUE(metadata$require_signed_request_object)) {
+  if (isTRUE(metadata[["require_pushed_authorization_requests"]]) ||
+      isTRUE(metadata[["require_signed_request_object"]])) {
     err_config("SMART required PAR/JAR composition is not supported")
   }
   response_modes <- smart_discovery_array(metadata, "response_modes_supported")
@@ -208,20 +210,20 @@ smart_client <- function(
   }
   oidc <- identical(identity, "fhirUser")
   provider <- oauth_provider(
-    name = label, auth_url = metadata$authorization_endpoint,
-    token_url = metadata$token_endpoint, issuer = metadata$issuer %||% NA_character_,
+    name = label, auth_url = metadata[["authorization_endpoint"]],
+    token_url = metadata[["token_endpoint"]], issuer = metadata[["issuer"]] %||% NA_character_,
     issuer_thus_oidc = oidc, issuer_match = "url", token_auth_style = token_auth_style,
     use_pkce = TRUE, pkce_method = "S256", use_nonce = oidc,
     userinfo_required = FALSE, userinfo_id_token_match = FALSE,
     id_token_required = oidc, id_token_validation = oidc,
-    jwks_uri = if (oidc) metadata$jwks_uri else NA_character_,
+    jwks_uri = if (oidc) metadata[["jwks_uri"]] else NA_character_,
     jwks_host_issuer_match = FALSE,
-    jwks_host_allow_only = if (oidc) metadata$jwks_uri else NULL,
-    revocation_url = metadata$revocation_endpoint %||% NA_character_,
-    extra_auth_params = list(aud = discovery$fhir_base),
+    jwks_host_allow_only = if (oidc) metadata[["jwks_uri"]] else NULL,
+    revocation_url = metadata[["revocation_endpoint"]] %||% NA_character_,
+    extra_auth_params = list(aud = discovery[["fhir_base"]]),
     response_modes_supported = response_modes,
     authorization_response_iss_parameter_supported =
-      isTRUE(metadata$authorization_response_iss_parameter_supported),
+      isTRUE(metadata[["authorization_response_iss_parameter_supported"]]),
     token_endpoint_auth_signing_alg_values_supported =
       smart_discovery_array(metadata, "token_endpoint_auth_signing_alg_values_supported")
   )
@@ -237,15 +239,15 @@ smart_client <- function(
     } else NULL,
     state_store = state_store, state_key = state_key,
     state_payload_max_age = state_payload_max_age)
-  smart_policy <- list(version = "2.2.0", fhir_base = discovery$fhir_base,
-    launch = launch, identity = identity, allow_http_loopback = discovery$allow_http_loopback,
+  smart_policy <- list(version = "2.2.0", fhir_base = discovery[["fhir_base"]],
+    launch = launch, identity = identity, allow_http_loopback = discovery[["allow_http_loopback"]],
     discovery_digest = state_policy_digest(discovery))
-  if (identical(authorization_method, "POST")) smart_policy$authorization_method <- "POST"
-  if (!is.null(initial_expires_in)) smart_policy$initial_expires_in <- initial_expires_in
+  if (identical(authorization_method, "POST")) smart_policy[["authorization_method"]] <- "POST"
+  if (!is.null(initial_expires_in)) smart_policy[["initial_expires_in"]] <- initial_expires_in
   S7::props(client) <- list(
     scope_policy = list(profile = "smart", version = 1L, allow_v1 = allow_v1),
     smart = smart_policy,
-    resource_bases = normalize_resource_bases(c(fhir = discovery$fhir_base)),
+    resource_bases = normalize_resource_bases(c(fhir = discovery[["fhir_base"]])),
     required_scopes = required_scopes
   )
   client
@@ -259,19 +261,19 @@ smart_validate_client <- function(client) {
   policy <- client@smart
   if (!identical(sort(setdiff(names(policy), c("authorization_method", "initial_expires_in"))), sort(c("version", "fhir_base", "launch",
       "identity", "allow_http_loopback", "discovery_digest"))) ||
-      !identical(policy$authorization_method %||% "GET", client@authorization_method) ||
-      !identical(policy$version, "2.2.0") ||
-      !is_valid_string(policy$fhir_base) ||
-      !is_valid_string(policy$launch) || !policy$launch %in% c("standalone", "ehr") ||
-      !is_valid_string(policy$identity) || !policy$identity %in% c("none", "fhirUser") ||
+      !identical(policy[["authorization_method"]] %||% "GET", client@authorization_method) ||
+      !identical(policy[["version"]], "2.2.0") ||
+      !is_valid_string(policy[["fhir_base"]]) ||
+      !is_valid_string(policy[["launch"]]) || !policy[["launch"]] %in% c("standalone", "ehr") ||
+      !is_valid_string(policy[["identity"]]) || !policy[["identity"]] %in% c("none", "fhirUser") ||
       !client_uses_smart_scopes(client)) return("OAuthClient: invalid SMART policy")
-  lifetime <- policy$initial_expires_in
+  lifetime <- policy[["initial_expires_in"]]
   if (!is.null(lifetime) && (!is.numeric(lifetime) || length(lifetime) != 1L ||
       !is.finite(lifetime) || lifetime <= 0)) {
     return("OAuthClient: SMART initial_expires_in must be a finite positive number of seconds")
   }
   if (!identical(client@resource_bases,
-      normalize_resource_bases(c(fhir = policy$fhir_base)))) {
+      normalize_resource_bases(c(fhir = policy[["fhir_base"]])))) {
     return("OAuthClient: SMART client must retain its configured FHIR base")
   }
   provider <- client@provider
@@ -291,7 +293,7 @@ smart_validate_client <- function(client) {
       return("OAuthClient: SMART client assertion audience must equal the token endpoint")
     }
   }
-  if (!identical(policy$launch, "ehr") &&
+  if (!identical(policy[["launch"]], "ehr") &&
       "online_access" %in% effective_client_scopes(client)) {
     return("OAuthClient: SMART online_access requires EHR launch")
   }
@@ -299,13 +301,13 @@ smart_validate_client <- function(client) {
       !identical(client@request_object_mode, "parameters") ||
       is_valid_string(provider@par_url) ||
       !is.null(resolve_jarm_callback_transport(client)) ||
-      !identical(provider@extra_auth_params, list(aud = policy$fhir_base)) ||
+      !identical(provider@extra_auth_params, list(aud = policy[["fhir_base"]])) ||
       !identical(provider@allowed_token_types, "Bearer") ||
       length(client@resource) || !is.null(client@dpop_private_key) ||
       is_valid_string(client@mtls_client_cert_file)) {
     return("OAuthClient: unsupported SMART request composition")
   }
-  oidc <- identical(policy$identity, "fhirUser")
+  oidc <- identical(policy[["identity"]], "fhirUser")
   if (!identical(provider_uses_oidc(provider), oidc) ||
       (oidc && !all(c("openid", "fhirUser") %in% client@required_scopes)) ||
       !identical(provider@use_nonce, oidc) ||
@@ -318,15 +320,15 @@ smart_validate_client <- function(client) {
 
 smart_verify_token_response <- function(client, token_set, is_refresh = FALSE) {
   if (!client_uses_smart(client)) return(token_set)
-  if (!is_valid_string(token_set$token_type) ||
-      !identical(tolower(token_set$token_type), "bearer")) {
+  if (!is_valid_string(token_set[["token_type"]]) ||
+      !identical(tolower(token_set[["token_type"]]), "bearer")) {
     err_token("SMART app launch requires a Bearer token_type")
   }
   if (!isTRUE(is_refresh) && !"expires_in" %in% names(token_set) &&
-      !is.null(client@smart$initial_expires_in)) {
-    token_set$expires_in <- client@smart$initial_expires_in
+      !is.null(client@smart[["initial_expires_in"]])) {
+    token_set[["expires_in"]] <- client@smart[["initial_expires_in"]]
   }
-  expires <- token_set$expires_in
+  expires <- token_set[["expires_in"]]
   if (!is.numeric(expires) || length(expires) != 1L ||
       !is.finite(expires) || expires <= 0) {
     err_token("SMART connections require an explicit positive expires_in")
@@ -335,15 +337,16 @@ smart_verify_token_response <- function(client, token_set, is_refresh = FALSE) {
 }
 
 smart_verify_identity <- function(client, token_set, is_refresh) {
-  if (!client_uses_smart(client) || !identical(client@smart$identity, "fhirUser")) {
+  if (!client_uses_smart(client) || !identical(client@smart[["identity"]], "fhirUser")) {
     return(invisible(NULL))
   }
-  if (isTRUE(is_refresh) && is.null(token_set$id_token)) return(invisible(NULL))
-  if (!isTRUE(token_set$.id_token_validated)) {
+  if (isTRUE(is_refresh) && is.null(token_set[["id_token"]])) return(invisible(NULL))
+  if (!isTRUE(token_set[[".id_token_validated"]])) {
     err_id_token("SMART fhirUser requires a validated ID token")
   }
-  claims <- parse_jwt_payload(token_set$id_token)
-  reference <- claims$fhirUser
+  claims <- parse_jwt_payload(token_set[["id_token"]])
+  # A valid signature does not make extension claims aliases of fhirUser.
+  reference <- claims[["fhirUser"]]
   if (!is_valid_string(reference) || nchar(reference, type = "bytes") > 2048L) {
     err_id_token("SMART ID token requires a scalar fhirUser reference")
   }
@@ -352,9 +355,9 @@ smart_verify_identity <- function(client, token_set, is_refresh) {
         "[A-Za-z0-9.-]{1,64}(/_history/[A-Za-z0-9.-]{1,64})?$"), reference)) {
       # SMART 2.2 explicitly permits references relative to the launch FHIR base.
       # The existing resource resolver also rejects dot segments and path escape.
-      resolve_bound_resource(client@smart$fhir_base, reference)
+      resolve_bound_resource(client@smart[["fhir_base"]], reference)
     } else {
-      smart_discovery_url(reference, "fhirUser", client@smart$allow_http_loopback)
+      smart_discovery_url(reference, "fhirUser", client@smart[["allow_http_loopback"]])
     }
   }, error = function(...) err_id_token("SMART ID token contains an invalid fhirUser reference"))
   invisible(NULL)

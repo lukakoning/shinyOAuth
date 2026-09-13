@@ -128,9 +128,9 @@ smart_launch_query <- function(query, continuation = FALSE) {
     if (!grepl("^[A-Za-z0-9_-]{32}$", fields[[smart_launch_parameter]])) {
       err_input("Invalid SMART continuation")
     }
-  } else if (nchar(fields$iss, type = "bytes") > 2048L ||
-      nchar(fields$launch, type = "bytes") > 2048L ||
-      !grepl("^[!-~]+$", fields$launch)) {
+  } else if (nchar(fields[["iss"]], type = "bytes") > 2048L ||
+      nchar(fields[["launch"]], type = "bytes") > 2048L ||
+      !grepl("^[!-~]+$", fields[["launch"]])) {
     err_input("Invalid SMART launch parameter size or syntax")
   }
   fields
@@ -188,7 +188,7 @@ smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
     if (length(matches)) {
       fields <- smart_launch_query(query)
       route <- matches[[1L]]
-      ids <- Filter(function(id) identical(manager$clients[[id]]@smart$fhir_base, fields$iss),
+      ids <- Filter(function(id) identical(manager$clients[[id]]@smart$fhir_base, fields[["iss"]]),
         route$clients)
       if (length(ids) != 1L) err_input("SMART launch FHIR base is not approved")
       # Apply one owner quota across all routes before allocating a ticket.
@@ -209,8 +209,8 @@ smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
       client <- manager$clients[[ids[[1L]]]]
       expires <- min(owner$expires_at, as.numeric(Sys.time()) + route$max_age)
       record <- list(purpose = "smart-launch-v1", id = id, owner = owner$id,
-        generation = owner$generation, client = ids[[1L]], fhir_base = fields$iss,
-        launch = fields$launch, fingerprint = connection_client_fingerprint(client),
+        generation = owner$generation, client = ids[[1L]], fhir_base = fields[["iss"]],
+        launch = fields[["launch"]], fingerprint = connection_client_fingerprint(client),
         expires_at = expires)
       entries <- manager$state$launches
       entries[[id]] <- list(expires_at = expires, owner = owner$id,
