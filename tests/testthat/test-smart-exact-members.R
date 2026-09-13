@@ -110,6 +110,59 @@ test_that("SMART token checks require exact type and lifetime members", {
   }
 })
 
+test_that("callback lifetime policy cannot be supplied by a near-match extension", {
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    httr2::response(url = req$url, status = 200L,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw(jsonlite::toJSON(list(access_token = "example-access",
+        token_type = "Bearer", expires_in_hint = 300, scope = "user/Patient.r"),
+        auto_unbox = TRUE)))
+  }, .package = "shinyOAuth")
+  for (lifetime in list(NULL, 90)) {
+    client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
+      scopes = "user/Patient.r", initial_expires_in = lifetime)
+    browser <- valid_browser_token()
+    state <- parse_query_param(prepare_call(client, browser_token = browser), "state")
+    callback <- function() handle_callback(client, code = "example-code", payload = state,
+      browser_token = browser)
+    if (is.null(lifetime)) {
+      expect_error(callback(), "expires_in", class = "shinyOAuth_token_error")
+    } else {
+      before <- as.numeric(Sys.time())
+      token <- callback()
+      expect_gte(token@expires_at, before + 85)
+      expect_lte(token@expires_at, as.numeric(Sys.time()) + 90)
+      expect_identical(token@extra_fields[["expires_in_hint"]], 300L)
+    }
+  }
+})
+
+test_that("a signed near-match fhirUser claim fails the complete callback", {
+  fixture <- smart_identity_fixture()
+  client <- fixture$client
+  browser <- valid_browser_token()
+  url <- prepare_call(client, browser_token = browser)
+  claims <- fixture$claims
+  claims[["nonce"]] <- parse_query_param(url, "nonce")
+  names(claims)[names(claims) == "fhirUser"] <- "fhirUser_hint"
+  signed <- jose::jwt_encode_sig(do.call(jose::jwt_claim, claims), fixture$key)
+  fetched <- FALSE
+  local_mocked_bindings(fetch_jwks = function(...) {
+    fetched <<- TRUE
+    fixture$jwks
+  }, req_with_retry = function(req, ...) {
+    httr2::response(url = req$url, status = 200L,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw(jsonlite::toJSON(list(access_token = "example-access",
+        token_type = "Bearer", expires_in = 300, scope = "openid fhirUser",
+        id_token = signed), auto_unbox = TRUE)))
+  }, .package = "shinyOAuth")
+  expect_error(handle_callback(client, code = "example-code",
+    payload = parse_query_param(url, "state"), browser_token = browser),
+    "fhirUser", class = "shinyOAuth_id_token_error")
+  expect_true(fetched)
+})
+
 test_that("a signed fhirUser extension cannot establish or refresh SMART identity", {
   record <- smart_identity_fixture()
   local_mocked_bindings(fetch_jwks = function(...) record$jwks, .package = "shinyOAuth")
