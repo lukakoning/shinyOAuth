@@ -42,7 +42,12 @@ resource_binding_path <- function(path) {
   if (any(segments %in% c(".", ".."))) {
     resource_binding_error()
   }
-  path
+  # Use one spelling for literal and escaped UTF-8 without changing reserved
+  # path characters. Escaped delimiters have already been rejected above.
+  bytes <- as.integer(charToRaw(enc2utf8(path)))
+  paste0(vapply(bytes, function(byte) {
+    if (byte >= 128L) sprintf("%%%02X", byte) else rawToChar(as.raw(byte))
+  }, character(1)), collapse = "")
 }
 
 resource_binding_components <- function(
@@ -106,7 +111,12 @@ resource_binding_components <- function(
   } else {
     port
   }
-  parsed$path <- path
+  # Rebuild only the authority. url_parse/url_build treat queries as form data
+  # and paths as decoded strings; round-tripping either changes opaque URLs.
+  parsed$path <- "/"
+  parsed$query <- NULL
+  origin <- if (canonicalize) sub("/$", "", httr2::url_build(parsed)) else NULL
+  query <- if (grepl("?", url, fixed = TRUE)) sub("^[^?]*", "", url) else ""
   list(
     scheme = scheme,
     host = host,
@@ -114,7 +124,7 @@ resource_binding_components <- function(
     path = path,
     # Discovery validates identifiers without rewriting them. Avoiding a URL
     # rebuild also accommodates curl backends that cannot rebuild IPv6 hosts.
-    url = if (canonicalize) httr2::url_build(parsed) else url
+    url = if (canonicalize) paste0(origin, path, query) else url
   )
 }
 

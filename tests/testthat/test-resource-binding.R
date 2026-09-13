@@ -51,6 +51,24 @@ test_that("an empty resource reference selects the approved base itself", {
   expect_identical(resolve_bound_resource("https://api.example"), "https://api.example/")
 })
 
+test_that("resource paths and opaque pagination queries survive normalization", {
+  base <- "https://api.example/v1"
+  for (reference in c("documents/caf%C3%A9", "items?cursor=a+b", "items?flag",
+      "items?signature=a%2fb&cursor=%7E&cursor=two", "items?")) {
+    expected <- paste0(base, "/", reference)
+    expect_identical(resolve_bound_resource(base, reference), expected)
+    expect_identical(resolve_bound_resource(base, expected), expected)
+    expect_identical(resource_binding_components(expected)$url, expected)
+  }
+  encoded_base <- "https://api.example/caf%C3%A9"
+  expect_identical(normalize_resource_bases(c(api = encoded_base)), c(api = encoded_base))
+  expect_identical(normalize_resource_bases(normalize_resource_bases(c(api = encoded_base))),
+    c(api = encoded_base))
+  expect_identical(resolve_bound_resource(encoded_base, "records/123"),
+    paste0(encoded_base, "/records/123"))
+  expect_identical(resource_binding_components("https://api.example/caf\u00e9")$url, encoded_base)
+})
+
 test_that("ambiguous paths fail closed before destination normalization", {
   for (path in c(
     "../Patient/123",
