@@ -60,7 +60,7 @@ smart_launch_route <- function(path, clients, max_age = 120) {
       nchar(path, type = "bytes") > 8192L || grepl("[?#[:space:][:cntrl:]]", path) ||
       !is.character(clients) || !length(clients) || length(clients) > 64L ||
       anyNA(clients) || anyDuplicated(clients) ||
-      any(!grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", clients)) ||
+      !all(grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", clients)) ||
       !is.numeric(max_age) || length(max_age) != 1L ||
       !is.finite(max_age) || max_age < 30 || max_age > 300) {
     err_config("Invalid SMART launch route configuration")

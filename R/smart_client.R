@@ -178,7 +178,7 @@ smart_client <- function(
   resource_scopes <- scopes[grepl("^(patient|user)/", scopes)]
   v1_scopes <- grepl("\\.(read|write|\\*)(\\?|$)", resource_scopes)
   if (any(v1_scopes)) require_capability("permission-v1")
-  if (any(!v1_scopes)) require_capability("permission-v2")
+  if (!all(v1_scopes)) require_capability("permission-v2")
   if (identical(token_auth_style, "private_key_jwt")) {
     if (!is_valid_string(client_assertion_alg) ||
         !client_assertion_alg %in% c("RS384", "ES384") ||

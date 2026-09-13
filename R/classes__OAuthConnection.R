@@ -226,7 +226,7 @@ OAuthConnection <- R6::R6Class(
         err_token("Connection has no usable validated OIDC identity")
       }
       for (fields in list(claims, userinfo)) {
-        if (!is.character(fields) || anyNA(fields) || any(!nzchar(fields)) ||
+        if (!is.character(fields) || anyNA(fields) || !all(nzchar(fields)) ||
             anyDuplicated(fields)) {
           err_input("Identity field selections must be distinct non-empty names")
         }
