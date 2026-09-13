@@ -115,22 +115,6 @@ clients <- list(a = client_a, b = client_b)
 `api` names an approved resource within each client. For connection A,
 `$request("api", "records")` means `https://api.a.example/v1/records`.
 
-For writes, use `configure` to add a body or application headers to the
-unauthenticated request. Supply the method and required permissions explicitly:
-
-```{r multiple-request-body, eval = FALSE}
-connection$request("api", "records/example", method = "PUT",
-  required_scopes = "write", configure = function(req) {
-    req |>
-      httr2::req_body_json(list(name = "Updated record")) |>
-      httr2::req_headers(`If-Match` = 'W/"7"')
-  })
-```
-
-`httr2::req_body_form()` and `httr2::req_body_raw()` are also supported.
-The function may change only the body and application headers. The connection
-retains control of its destination, authentication and redirect policy.
-
 The default callback policy gives each client a distinct route. Supply the
 **complete callback vector to each client**, even though each uses its own
 `redirect_uri`. The manager verifies that each client's declared set includes
@@ -273,6 +257,37 @@ subpath or behind a proxy can also require `app_base_path` and a trusted
 `request_uri_resolver`; see `?oauth_connections_ui`.
 
 ## Requests, permissions and refresh
+
+For optional writes, first configure the applicable client with
+`scopes = c("records.read", "records.write")` and obtain a new authorization.
+Replace these example permissions with the provider's actual scope names.
+Add `actionButton("write", "Update selected record")` to the UI and place this
+observer inside `server()`, after `selected_connection` is defined:
+
+```{r multiple-request-body, eval = FALSE}
+observeEvent(input$write, {
+  auth$touch()
+  connection <- selected_connection()
+  req(connection$is_usable())
+  tryCatch({
+    response <- connection$request("api", "records/example", method = "PUT",
+      required_scopes = "records.write", configure = function(req) {
+        req |>
+          httr2::req_body_json(list(name = "Updated record")) |>
+          httr2::req_headers(`If-Match` = 'W/"7"')
+      })
+    httr2::resp_check_status(response)
+    showNotification("Record updated.")
+  }, error = function(e) {
+    showNotification("Could not update the record.", type = "error")
+  })
+})
+```
+
+`configure` adds a body or application headers to the unauthenticated request;
+`httr2::req_body_form()` and `httr2::req_body_raw()` are also supported.
+The connection retains control of its destination, authentication and redirect
+policy. The write scope is optional for connecting, but required for this action.
 
 `OAuthConnection$request()` uses the existing `perform_resource_req()` transport.
 It adds selection of the current owned credentials and checks the approved API
