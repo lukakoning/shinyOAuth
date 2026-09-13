@@ -98,14 +98,20 @@ smart_update_token_context <- function(client, token, previous = NULL) {
     if (!isTRUE(token@id_token_validated)) err_token("SMART identity has not been validated")
     reference <- token@id_token_claims[["fhirUser"]]
     if (!is_valid_string(reference)) err_token("SMART identity requires fhirUser")
-    if (!is.null(prior[["fhirUser"]]) && !identical(
-        smart_identity_reference(client, prior[["fhirUser"]]),
-        smart_identity_reference(client, reference))) {
+    prior_reference <- if (!is.null(prior[["fhirUser"]])) {
+      smart_identity_reference(client, prior[["fhirUser"]])
+    } else NULL
+    current_reference <- smart_identity_reference(client, reference)
+    if (!is.null(prior_reference) && !identical(
+        smart_identity_logical_reference(prior_reference),
+        smart_identity_logical_reference(current_reference))) {
       err_token("SMART fhirUser changed; a fresh authorization is required")
     }
-    # Keep the established spelling and revision for the same resource. The
-    # refreshed signed claim remains available on the accepted token itself.
-    values[["fhirUser"]] <- prior[["fhirUser"]] %||% reference
+    # Equivalent spellings retain the established context. A new resource
+    # version keeps the same identity but updates the reference and revision.
+    values[["fhirUser"]] <- if (identical(prior_reference, current_reference)) {
+      prior[["fhirUser"]]
+    } else reference
   }
   changed <- !is.null(prior) && !identical(values, prior[names(values)])
   token@smart_context <- c(list(version = 1L, fhir_base = client@smart[["fhir_base"]],
@@ -157,6 +163,15 @@ smart_identity_reference <- function(client, reference) {
     return(resource_binding_components(reference)[["url"]])
   }
   resolve_bound_resource(client@smart[["fhir_base"]], reference)
+}
+
+smart_identity_logical_reference <- function(reference) {
+  # Only recognized FHIR identity resource paths carry version semantics.
+  # Keep origins, base paths, arbitrary identity URLs and queries distinct.
+  if (grepl("?", reference, fixed = TRUE)) return(reference)
+  sub(paste0("(/(?:Patient|Practitioner|PractitionerRole|RelatedPerson|Person)/",
+    "[A-Za-z0-9.-]{1,64})/_history/[A-Za-z0-9.-]{1,64}$"),
+    "\\1", reference, perl = TRUE)
 }
 
 smart_record_context <- function(record) {
