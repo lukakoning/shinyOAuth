@@ -76,6 +76,7 @@ The ID is never an access token and does not authorize access by itself.}
     \item \href{#method-OAuthConnection-is_usable}{\code{OAuthConnection$is_usable()}}
     \item \href{#method-OAuthConnection-refresh}{\code{OAuthConnection$refresh()}}
     \item \href{#method-OAuthConnection-summary}{\code{OAuthConnection$summary()}}
+    \item \href{#method-OAuthConnection-identity}{\code{OAuthConnection$identity()}}
     \item \href{#method-OAuthConnection-request}{\code{OAuthConnection$request()}}
     \item \href{#method-OAuthConnection-smart_context}{\code{OAuthConnection$smart_context()}}
     \item \href{#method-OAuthConnection-smart_resource}{\code{OAuthConnection$smart_resource()}}
@@ -220,6 +221,47 @@ there is no token or its expiry is unknown, or \code{Inf} for a
 non-expiring token.
 \item \code{resource_ids}: character vector of the client's approved resource IDs.
 }
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-OAuthConnection-identity"></a>}}
+\if{latex}{\out{\hypertarget{method-OAuthConnection-identity}{}}}
+\subsection{\code{OAuthConnection$identity()}}{
+  Read explicitly selected OIDC identity fields from the current usable
+connection. Requires \code{openid} and a cryptographically validated ID token.
+This method never returns raw tokens or fetches profile data.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{OAuthConnection$identity(claims = c("iss", "sub"), userinfo = character())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{claims}}{Character vector of ID-token claim names, defaulting to
+\code{c("iss", "sub")}. Use \code{character()} to select none.}
+      \item{\code{userinfo}}{Character vector of previously fetched UserInfo field
+names, defaulting to none. UserInfo must have a \code{sub} exactly matching
+the validated ID token before any requested profile fields are returned.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Details}{
+    Call inside the owning session's reactive context. The result contains
+sensitive identity data: select only what the application needs and keep
+it out of logs and generic status displays. \verb{$summary()} and printing
+continue to omit identity. Ordinary OAuth connections without validated
+OIDC identity cannot use this accessor.
+
+These are the last validated identity/profile snapshots; an OAuth refresh
+can retain earlier ID-token claims and does not establish fresh user
+authentication. This accessor does not log the user into your application
+or establish an account-retention owner. It does not count as owner activity.
+  }
+  \subsection{Returns}{
+    A list with \code{id_token_claims} and \code{userinfo}, each containing only
+selected fields that exist. Missing fields are omitted.
   }
 }
 

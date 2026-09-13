@@ -195,6 +195,58 @@ OAuthConnection <- R6::R6Class(
       connection_record_summary(private$record(), private$.id)
     },
     #' @description
+    #' Read explicitly selected OIDC identity fields from the current usable
+    #' connection. Requires `openid` and a cryptographically validated ID token.
+    #' This method never returns raw tokens or fetches profile data.
+    #' @param claims Character vector of ID-token claim names, defaulting to
+    #'   `c("iss", "sub")`. Use `character()` to select none.
+    #' @param userinfo Character vector of previously fetched UserInfo field
+    #'   names, defaulting to none. UserInfo must have a `sub` exactly matching
+    #'   the validated ID token before any requested profile fields are returned.
+    #' @return A list with `id_token_claims` and `userinfo`, each containing only
+    #'   selected fields that exist. Missing fields are omitted.
+    #' @details
+    #' Call inside the owning session's reactive context. The result contains
+    #' sensitive identity data: select only what the application needs and keep
+    #' it out of logs and generic status displays. `$summary()` and printing
+    #' continue to omit identity. Ordinary OAuth connections without validated
+    #' OIDC identity cannot use this accessor.
+    #'
+    #' These are the last validated identity/profile snapshots; an OAuth refresh
+    #' can retain earlier ID-token claims and does not establish fresh user
+    #' authentication. This accessor does not log the user into your application
+    #' or establish an account-retention owner. It does not count as owner activity.
+    identity = function(claims = c("iss", "sub"), userinfo = character()) {
+      record <- private$record()
+      token <- record$token
+      if (!connection_record_status(record) %in% c("active", "limited") ||
+          !provider_uses_oidc(record$client@provider) ||
+          !isTRUE(token@id_token_validated) ||
+          !"openid" %in% token@granted_scopes) {
+        err_token("Connection has no usable validated OIDC identity")
+      }
+      for (fields in list(claims, userinfo)) {
+        if (!is.character(fields) || anyNA(fields) || any(!nzchar(fields)) ||
+            anyDuplicated(fields)) {
+          err_input("Identity field selections must be distinct non-empty names")
+        }
+      }
+      verified <- token@id_token_claims
+      if (!is_valid_string(verified$iss) || !is_valid_string(verified$sub)) {
+        err_token("Connection has no usable validated OIDC identity")
+      }
+      profile <- token@userinfo
+      if (length(userinfo) && length(profile) &&
+          !identical(profile$sub, verified$sub)) {
+        err_token("UserInfo is not bound to the validated OIDC identity")
+      }
+      select <- function(values, fields) {
+        fields <- intersect(fields, names(values))
+        if (!length(fields)) list() else values[fields]
+      }
+      list(id_token_claims = select(verified, claims), userinfo = select(profile, userinfo))
+    },
+    #' @description
     #' Resolve the current token and perform an authenticated request within a
     #' named resource base. The connection must be usable, and its current grant
     #' must cover any scopes required for this operation.

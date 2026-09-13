@@ -355,6 +355,23 @@ handle API authorization failures and offer a new authorization.
 
 ## Keep an ordinary OIDC login alongside SMART connections
 
+For an OIDC client inside the manager, select validated identity explicitly in
+the owning server session:
+
+```{r multiple-identity, eval = FALSE}
+identity <- selected_connection()$identity(userinfo = c("name", "email"))
+# identity$id_token_claims contains only iss and sub by default.
+# identity$userinfo contains only the selected, previously fetched fields.
+```
+
+This requires a usable connection with `openid` and a validated ID token.
+UserInfo fields are returned only when its `sub` matches that token. Configure
+the provider's UserInfo endpoint and required profile scopes if those fields
+are needed; the accessor does not fetch them. Treat the returned data as
+sensitive. Identity stays out of connection summaries and printing, and raw
+credentials are never returned. These snapshots can predate the latest OAuth
+refresh; they do not establish fresh login or an account-retention owner.
+
 Use one callback wrapper with `additional_clients` for ordinary modules. Given
 your existing `login_provider` and a reviewed SMART discovery snapshot `site`,
 configure both registered callbacks with the same multi-server defense:
