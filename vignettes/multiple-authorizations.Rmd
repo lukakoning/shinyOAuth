@@ -319,3 +319,49 @@ configure revocation endpoints, so add each provider's documented
 `revocation_url` if supported. `logout()` also ends this local owner session;
 it does not sign the person out of the external services or your own account
 login system.
+
+## Keep an ordinary OIDC login alongside SMART connections
+
+Use one callback wrapper with `additional_clients` for ordinary modules. Given
+your existing `login_provider` and a reviewed SMART discovery snapshot `site`,
+configure both registered callbacks with the same multi-server defense:
+
+```{r mixed-login-configuration, eval = FALSE}
+callbacks <- c("https://app.example/login/callback", "https://app.example/fhir/callback")
+login_client <- oauth_client(login_provider, "registered-login-app",
+  redirect_uri = callbacks[[1]], scopes = c("openid", "profile"),
+  authorization_server_mode = "multi_redirect_uri",
+  authorization_server_redirect_uris = callbacks)
+fhir_client <- smart_client(site, "registered-fhir-app", callbacks[[2]],
+  scopes = c("launch/patient", "patient/Patient.r"),
+  authorization_server_mode = "multi_redirect_uri",
+  authorization_server_redirect_uris = callbacks)
+manager <- oauth_connections(list(fhir = fhir_client), "https://app.example",
+  retention = "browser", owner = oauth_browser_owner(),
+  store = oauth_connection_store_memory(), keys = keys)
+base_ui <- fluidPage(actionButton("sign_in", "Sign in"),
+  actionButton("connect_fhir", "Connect FHIR"))
+ui <- oauth_connections_ui(base_ui, "health", manager,
+  additional_clients = list(login = login_client))
+server <- function(input, output, session) {
+  login <- oauth_module_server("login", login_client, auto_redirect = FALSE)
+  health <- oauth_connections_server("health", manager)
+  observeEvent(input$sign_in, login$request_login())
+  observeEvent(input$connect_fhir, health$connect("fhir"))
+}
+shinyApp(ui, server, uiPattern = ".*")
+```
+
+Supply the existing registration's secret or key to `login_client` as required.
+`keys` is the deployment key configuration described above. The additional
+client names are ordinary module IDs, without the manager namespace. Both GET
+and form-post callbacks are supported; select each registered response mode on
+its client. Additional clients need distinct routes from managed clients.
+
+This preserves the ordinary module's token and logout API. The manager neither
+stores that login token nor changes its lifecycle. A full browser navigation
+still ends the ordinary Shiny session; retain application login through your
+existing application-session mechanism if needed. Disable automatic login
+redirects while processing other authorizations, as in this example. Browser
+ownership for retained SMART grants is independent of OIDC identity; use account
+retention with a trusted local-account resolver when that binding is required.

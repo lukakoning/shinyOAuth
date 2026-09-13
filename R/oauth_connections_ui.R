@@ -18,6 +18,13 @@
 #'   nested callback pages. Do not supply a separate HTML `base` element.
 #' @param launch_routes List of [smart_launch_route()] configurations, empty by
 #'   default. EHR entry requires browser retention and top-level navigation.
+#' @param additional_clients Optional named list of ordinary OAuth/OIDC clients
+#'   used by separate [oauth_module_server()] modules. Names are their full module
+#'   IDs. These clients keep their existing login lifecycle and are not managed
+#'   connections. Use this single UI wrapper instead of nesting [oauth_ui()].
+#'   Their callback routes must be distinct from managed routes, on this app's
+#'   origin and inside `app_base_path`. All clients must select an appropriate
+#'   multi-server authorization mode, even when the manager contains one client.
 #' @return A request UI function for `shinyApp(..., uiPattern = ".*")`.
 #' @details
 #' Raw GET and form POST callbacks never create or rotate an owner. A POST may
@@ -37,9 +44,29 @@ oauth_connections_ui <- function(
   manager,
   request_uri_resolver = NULL,
   app_base_path = "/",
-  launch_routes = list()
+  launch_routes = list(),
+  additional_clients = list()
 ) {
   connection_manager_bind(manager, id)
+  clients <- manager$clients
+  names(clients) <- shiny::NS(id)(names(clients))
+  if (!is.list(additional_clients) || length(additional_clients) > 64L) {
+    err_config("additional_clients must be a named list of at most 64 ordinary clients")
+  }
+  if (length(additional_clients)) {
+    additional_clients <- oauth_callback_registry(additional_clients, mark_ui = FALSE)
+    for (client in additional_clients) {
+      if (!connection_manager_same_origin(client@redirect_uri, manager$app_origin)) {
+        err_config("Additional callbacks must use the configured application origin")
+      }
+      if (any(vapply(clients, function(managed) {
+        identical(oauth_callback_route(client@redirect_uri), oauth_callback_route(managed@redirect_uri))
+      }, logical(1)))) {
+        err_config("Additional clients require callback routes distinct from managed clients")
+      }
+    }
+    clients <- c(clients, additional_clients)
+  }
   if (
     !is_valid_string(app_base_path) ||
       !startsWith(app_base_path, "/") ||
@@ -55,7 +82,7 @@ oauth_connections_ui <- function(
   app_base <- paste0(sub("/$", "", app_base), "/")
   if (
     !all(vapply(
-      manager$clients,
+      clients,
       function(client) {
         startsWith(
           resource_binding_components(client@redirect_uri)$path,
@@ -65,14 +92,12 @@ oauth_connections_ui <- function(
       logical(1)
     ))
   ) {
-    err_config("All managed callbacks must be inside app_base_path")
+    err_config("All callbacks must be inside app_base_path")
   }
   resolver <- request_uri_resolver %||% oauth_form_post_request_uri
   if (!is.function(resolver)) {
     err_config("A request URI resolver must be a function")
   }
-  clients <- manager$clients
-  names(clients) <- shiny::NS(id)(names(clients))
   callback_handler <- oauth_ui_impl(
     base_ui,
     clients = clients,

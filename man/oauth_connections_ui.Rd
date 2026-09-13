@@ -10,7 +10,8 @@ oauth_connections_ui(
   manager,
   request_uri_resolver = NULL,
   app_base_path = "/",
-  launch_routes = list()
+  launch_routes = list(),
+  additional_clients = list()
 )
 }
 \arguments{
@@ -32,6 +33,14 @@ nested callback pages. Do not supply a separate HTML \code{base} element.}
 
 \item{launch_routes}{List of \code{\link[=smart_launch_route]{smart_launch_route()}} configurations, empty by
 default. EHR entry requires browser retention and top-level navigation.}
+
+\item{additional_clients}{Optional named list of ordinary OAuth/OIDC clients
+used by separate \code{\link[=oauth_module_server]{oauth_module_server()}} modules. Names are their full module
+IDs. These clients keep their existing login lifecycle and are not managed
+connections. Use this single UI wrapper instead of nesting \code{\link[=oauth_ui]{oauth_ui()}}.
+Their callback routes must be distinct from managed routes, on this app's
+origin and inside \code{app_base_path}. All clients must select an appropriate
+multi-server authorization mode, even when the manager contains one client.}
 }
 \value{
 A request UI function for \code{shinyApp(..., uiPattern = ".*")}.
