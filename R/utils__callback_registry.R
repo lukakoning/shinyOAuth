@@ -1,7 +1,8 @@
 # A registry selects only preconfigured clients. Issuer values are routing
 # hints; the selected bridge still verifies issuer, state and JARM, and the
 # module still verifies the browser binding before consuming logical state.
-oauth_callback_registry <- function(clients, allow_shared_issuer = FALSE, mark_ui = TRUE) {
+oauth_callback_registry <- function(clients, allow_shared_issuer = FALSE, mark_ui = TRUE,
+                                    allow_shared_encrypted = TRUE) {
   if (
     !is.list(clients) ||
       !length(clients) ||
@@ -45,10 +46,10 @@ oauth_callback_registry <- function(clients, allow_shared_issuer = FALSE, mark_u
               "Shared callback routes require multi_issuer clients with distinct issuers."
             )
           }
-          if (
+          if ((!allow_shared_encrypted || identical(first@provider@issuer, second@provider@issuer)) && (
             !is.null(resolve_authorization_response_encryption_config(first)) ||
               !is.null(resolve_authorization_response_encryption_config(second))
-          ) {
+          )) {
             err_config("Encrypted JARM requires distinct callback routes")
           }
         }

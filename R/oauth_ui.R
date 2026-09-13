@@ -35,8 +35,8 @@
 #' `authorization_server_mode = "multi_issuer"` and distinct trusted issuers.
 #' An RFC 9207 `iss` or signed JARM issuer selects the configured client; the
 #' complete callback is then verified before a bridge handle is stored.
-#' Encrypted JARM requires distinct callback routes, even when an outer `iss`
-#' is supplied. Shared encrypted routes are rejected at configuration time.
+#' Encrypted JARM on a shared route requires an outer `iss` identifying one
+#' distinct configured issuer. The decrypted, signed response must match it.
 #' Do not nest wrappers to route multiple providers.
 #'
 #' Without `id` and `client`, ordinary pages still render, but raw OAuth GET

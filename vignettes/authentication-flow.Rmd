@@ -279,8 +279,9 @@ through `oauth_form_post_ui(..., clients = clients)`. Each client must select
 one of the multi-server modes above. Distinct routes support legacy providers
 without issuer response parameters. Shared routes require `multi_issuer` with
 distinct configured issuers and RFC 9207 `iss` or a signed JARM response.
-Encrypted JARM requires distinct callback routes, even with an outer `iss`;
-shared encrypted routes are rejected at configuration time. Issuer routing never replaces signature,
+Encrypted JARM can share an ordinary registry route when an outer `iss`
+identifies one distinct configured issuer and matches the decrypted, signed
+response. Without that routing hint, use distinct callback routes. Issuer routing never replaces signature,
 transaction or browser-binding validation. The dispatcher redirects to a clean
 bridge URL before rendering the app. Nesting single-client wrappers does not
 provide this routing. Supply the same trusted `request_uri_resolver` used for

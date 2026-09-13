@@ -191,6 +191,7 @@ oauth_connections <- function(
     oauth_callback_registry(
       clients,
       allow_shared_issuer = identical(callback_policy, "shared_routes"),
+      allow_shared_encrypted = FALSE,
       mark_ui = FALSE
     )
   }
