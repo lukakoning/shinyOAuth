@@ -77,6 +77,10 @@ retention_fixture_app <- function(
       shiny::actionButton("write_b", "Write B")
     ),
     shiny::actionButton("disconnect_b", "Disconnect B"),
+    shiny::textInput("selected_id", "Connection ID"),
+    shiny::actionButton("read_selected", "Read selected connection"),
+    shiny::actionButton("refresh_selected", "Refresh selected connection"),
+    shiny::actionButton("disconnect_selected", "Disconnect selected connection locally"),
     shiny::actionButton("logout", "Log out"),
     shiny::textInput("probe_id", "Connection ID for isolation check"),
     shiny::actionButton("probe", "Check access"),
@@ -175,6 +179,19 @@ retention_fixture_app <- function(
       })
     )
     shiny::observeEvent(input$logout, health$logout())
+    shiny::observeEvent(input$read_selected, perform(function() {
+      response <- health$connection(input$selected_id)$request("api", "records")
+      body <- httr2::resp_body_json(response)
+      paste(body$site, body$account, body$revision, sep = ":")
+    }))
+    shiny::observeEvent(input$refresh_selected, perform(function() {
+      value <- health$connection(input$selected_id)$refresh()
+      if (inherits(value, "promise")) value else "refreshed"
+    }))
+    shiny::observeEvent(input$disconnect_selected, perform(function() {
+      health$disconnect(input$selected_id, revoke = FALSE)
+      "disconnected"
+    }))
     shiny::observeEvent(input$cross_resource, perform(function() {
       health$connection(id_for("a"))$request("api", "../b/records")
       "unexpected access"

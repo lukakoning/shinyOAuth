@@ -2,6 +2,9 @@
 
 Additional lifecycle and deployment gates are described in
 [extended coverage](extended-coverage.md).
+The [repeated authorization browser gate](../connections/repeated-authorizations.md)
+covers two authorizations at one client, explicit connection selection,
+navigation, independent refresh, and providers that reuse credentials.
 The [mixed OIDC/SMART browser gate](mixed-oidc.md) covers ordinary modules and
 managed OIDC alongside SMART, including cross-site HTTPS query/form-post callbacks.
 

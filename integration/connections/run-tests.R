@@ -1,6 +1,8 @@
 # Run from the repository root after installing the current package checkout.
 run_retention_browser_tests <- function(args = commandArgs(trailingOnly = TRUE)) {
-  if (!all(args %in% "--post")) stop("Usage: Rscript integration/connections/run-tests.R [--post]")
+  if (!all(args %in% c("--post", "--repeated"))) {
+    stop("Usage: Rscript integration/connections/run-tests.R [--post] [--repeated]")
+  }
   authorization_method <- if ("--post" %in% args) "POST" else "GET"
   required <- c(
     "shinyOAuth",
@@ -59,13 +61,12 @@ run_retention_browser_tests <- function(args = commandArgs(trailingOnly = TRUE))
     },
     add = TRUE
   )
-  results <- testthat::test_file(
-    "integration/connections/test-browser-retention.R",
-    env = environment(),
-    reporter = "summary",
-    stop_on_failure = TRUE
-  )
-  counts <- as.data.frame(results)
+  files <- c(if (!"--repeated" %in% args) "test-browser-retention.R", "test-repeated-authorizations.R")
+  counts <- do.call(rbind, lapply(files, function(file) {
+    as.data.frame(testthat::test_file(file.path("integration/connections", file),
+      env = environment(), reporter = "summary", stop_on_failure = TRUE))
+  }))
+  evidence$scenarios <- files
   evidence$passed <- sum(counts$passed)
   evidence$skipped <- sum(counts$skipped)
   if (sum(counts$failed) || sum(counts$error) || evidence$skipped) {

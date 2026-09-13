@@ -1,16 +1,18 @@
 # Synthetic OAuth provider for the browser-retention gate, bound to loopback.
 # This verifies real HTTP, PKCE and credential rotation; it is not conformance tooling.
 retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, scope_narrowing = FALSE,
-  authorization_method = "GET") {
+  authorization_method = "GET", grant_reuse = FALSE) {
   registrations <- if (shared_issuer) c("a", "b") else site
   original_scopes <- if (scope_narrowing) c("read", "write") else "read"
   state <- new.env(parent = emptyenv())
   state$codes <- new.env(parent = emptyenv())
   state$access <- new.env(parent = emptyenv())
   state$refresh <- new.env(parent = emptyenv())
+  state$reused <- new.env(parent = emptyenv())
   state$metrics <- list(
     exchanges = 0L,
     refreshes = 0L,
+    rejected_refreshes = 0L,
     requests = 0L,
     revocations = 0L,
     scoped_refreshes = 0L,
@@ -22,12 +24,14 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, sc
   random <- function() {
     unclass(as.character(openssl::sha256(openssl::rand_bytes(32))))
   }
-  issue <- function(revision, registration, scopes = original_scopes) {
+  issue <- function(revision, registration, scopes = original_scopes,
+                    account = state$metrics$exchanges) {
     access <- random()
     refresh <- random()
-    state$access[[access]] <- list(revision = revision, site = registration, scopes = scopes)
+    state$access[[access]] <- list(revision = revision, site = registration, scopes = scopes,
+      account = account)
     # RFC 6749: narrowing the access token does not reduce refresh-token scope.
-    state$refresh[[refresh]] <- list(revision = revision, site = registration)
+    state$refresh[[refresh]] <- list(revision = revision, site = registration, account = account)
     list(
       access_token = access,
       refresh_token = refresh,
@@ -150,10 +154,14 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, sc
       }
       rm(list = body$code, envir = state$codes)
       state$metrics$exchanges <- state$metrics$exchanges + 1L
-      token <- issue(1L, body$client_id)
+      token <- if (grant_reuse && !is.null(state$reused[[body$client_id]])) {
+        state$reused[[body$client_id]]
+      } else issue(1L, body$client_id)
+      if (grant_reuse) state$reused[[body$client_id]] <- token
     } else if (identical(body$grant_type, "refresh_token")) {
       record <- state$refresh[[body$refresh_token]]
       if (is.null(record) || !identical(body$client_id, record$site)) {
+        state$metrics$rejected_refreshes <- state$metrics$rejected_refreshes + 1L
         return(res$set_status(400L)$send_json(
           list(error = "invalid_grant"),
           auto_unbox = TRUE
@@ -167,7 +175,8 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, sc
       state$metrics[[metric]] <- state$metrics[[metric]] + 1L
       rm(list = body$refresh_token, envir = state$refresh)
       state$metrics$refreshes <- state$metrics$refreshes + 1L
-      token <- issue(record$revision + 1L, body$client_id, scopes)
+      token <- issue(record$revision + 1L, body$client_id, scopes, record$account)
+      if (grant_reuse) state$reused[[body$client_id]] <- token
     } else {
       return(res$set_status(400L)$send_json(
         list(error = "unsupported_grant_type"),
@@ -188,7 +197,7 @@ retention_fixture_provider <- function(site, callback, shared_issuer = FALSE, sc
       return(res$set_status(401L)$send("Unauthorized"))
     }
     state$metrics$requests <- state$metrics$requests + 1L
-    res$send_json(list(site = record$site, revision = record$revision), auto_unbox = TRUE)
+    res$send_json(list(site = record$site, revision = record$revision, account = record$account), auto_unbox = TRUE)
   }
   app$get(if (shared_issuer) "/api/:site/records" else "/api/records", resource)
   app$post(if (shared_issuer) "/api/:site/records" else "/api/records", function(req, res) {
