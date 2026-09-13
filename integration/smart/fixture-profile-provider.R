@@ -29,6 +29,8 @@ smart_profile_provider <- function(site, callback, registration, launch,
   public$use <- "sig"
   initial_scopes <- c(if (launch == "ehr") "launch" else "launch/patient",
     "patient/Patient.rs", "user/Practitioner.r", "offline_access", "openid", "fhirUser", extra_scopes)
+  ordinary_oidc <- isTRUE(behavior$ordinary_oidc)
+  if (ordinary_oidc) initial_scopes <- c("openid", "profile", "offline_access")
   random <- function() unclass(as.character(openssl::sha256(openssl::rand_bytes(32))))
   base <- function(req) paste0(if (https) "https://" else "http://", req$get_header("Host"))
   app <- webfakes::new_app()
@@ -75,7 +77,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
       is.character(query$launch) && isTRUE(state$launches[[query$launch]])
     } else is.null(query$launch)
     if (!valid_launch || !identical(query$client_id, site) || !identical(query$redirect_uri, callback) ||
-        !identical(query$aud, paste0(base(req), "/fhir")) || !identical(query$response_type, "code") ||
+        !identical(query$aud, if (ordinary_oidc) NULL else paste0(base(req), "/fhir")) || !identical(query$response_type, "code") ||
         !identical(query$code_challenge_method, "S256") || !is.character(query$nonce) ||
         !is.character(query$state) || !setequal(scopes, initial_scopes) ||
         !is.character(query$code_challenge) || !grepl("^[A-Za-z0-9_-]{43}$", query$code_challenge)) {
@@ -174,7 +176,7 @@ smart_profile_provider <- function(site, callback, registration, launch,
       scopes <- if (is.null(body$scope)) grant$original_scopes else strsplit(body$scope, " ", fixed = TRUE)[[1L]]
       allowed <- c(grant$original_scopes, "patient/Patient.r")
       if (!length(scopes) || !all(scopes %in% allowed) ||
-          (!is.null(body$scope) && setequal(scopes, grant$original_scopes))) {
+          (!ordinary_oidc && !is.null(body$scope) && setequal(scopes, grant$original_scopes))) {
         return(res$set_status(400L)$send_json(list(error = "invalid_scope"), auto_unbox = TRUE))
       }
       rm(list = body$refresh_token, envir = state$refresh)
@@ -201,6 +203,10 @@ smart_profile_provider <- function(site, callback, registration, launch,
       claims <- jose::jwt_claim(iss = paste0(base(req), "/fhir"), sub = paste0("clinician-", site),
         aud = site, exp = as.numeric(Sys.time()) + 300, iat = as.numeric(Sys.time()),
         nonce = grant$nonce, fhirUser = paste0("Practitioner/clinician-", site))
+      if (ordinary_oidc) {
+        token$patient <- token$encounter <- token$need_patient_banner <- NULL
+        claims$fhirUser <- NULL
+      }
       token$id_token <- jose::jwt_encode_sig(claims, openssl::read_key(signing_pem), header = list(kid = "fixture-id"))
     }
     if (!initial && isTRUE(behavior$change_patient)) token$patient <- grant$patient
@@ -221,6 +227,15 @@ smart_profile_provider <- function(site, callback, registration, launch,
     }
     grant
   }
+  app$get("/userinfo", function(req, res) {
+    if (!ordinary_oidc || is.null(current(req))) return(res$set_status(401L)$send("Denied"))
+    res$send_json(list(sub = paste0("clinician-", site), name = "Synthetic OIDC Name"), auto_unbox = TRUE)
+  })
+  app$get("/api/records", function(req, res) {
+    grant <- current(req)
+    if (!ordinary_oidc || is.null(grant)) return(res$set_status(401L)$send("Denied"))
+    res$send_json(list(site = site, revision = grant$revision), auto_unbox = TRUE)
+  })
   app$get("/fhir/Patient/:id", function(req, res) {
     grant <- current(req)
     if (is.null(grant) || !identical(req$params$id, grant$patient) ||

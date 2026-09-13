@@ -27,6 +27,7 @@ run_smart_coverage <- function(args = commandArgs(trailingOnly = TRUE)) {
     refresh_scopes = c("integration/connections/run-scope-narrowing.R"),
     smart_profiles = c("integration/smart/run-profiles.R"),
     smart_cross_site = c("integration/smart/run-profiles.R", "--cross-site"),
+    mixed_oidc_smart = c("integration/smart/run-mixed.R"),
     smart_expiry = c("integration/smart/run-lifecycle.R", "expiry"),
     smart_context = c("integration/smart/run-lifecycle.R", "context"),
     smart_interrupted = c("integration/smart/run-lifecycle.R", "interrupted"),

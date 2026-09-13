@@ -2,6 +2,8 @@
 
 Additional lifecycle and deployment gates are described in
 [extended coverage](extended-coverage.md).
+The [mixed OIDC/SMART browser gate](mixed-oidc.md) covers ordinary modules and
+managed OIDC alongside SMART, including cross-site HTTPS query/form-post callbacks.
 
 Install the current checkout, then run the full coverage entry point from the
 repository root:

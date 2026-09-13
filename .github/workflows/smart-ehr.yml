@@ -56,6 +56,8 @@ jobs:
         run: Rscript integration/smart/run-profiles.R --post
       - name: Test ordinary OAuth authorization POST and retained connections
         run: Rscript integration/connections/run-tests.R --post
+      - name: Test ordinary OIDC alongside SMART over cross-site HTTPS
+        run: Rscript integration/smart/run-mixed.R
       - name: Upload sanitized fixture evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -64,6 +66,7 @@ jobs:
           path: |
             integration/smart/.artifacts/ehr-*/evidence.json
             integration/smart/.artifacts/profiles-*/evidence.json
+            integration/smart/.artifacts/mixed-*/evidence.json
             integration/connections/.artifacts/*/evidence.json
           include-hidden-files: true
           if-no-files-found: ignore
