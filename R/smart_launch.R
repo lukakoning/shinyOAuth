@@ -74,7 +74,8 @@ smart_launch_route <- function(path, clients, max_age = 120) {
 
 smart_launch_parameter <- "shinyOAuth_smart_launch"
 
-smart_launch_routes_validate <- function(routes, manager, app_base_path) {
+smart_launch_routes_validate <- function(routes, manager, app_base_path,
+                                         callback_clients = manager$clients) {
   if (!is.list(routes) || length(routes) > 32L) err_config("Invalid SMART launch routes")
   if (!length(routes)) return(invisible(NULL))
   if (!identical(manager$retention, "browser")) {
@@ -84,7 +85,7 @@ smart_launch_routes_validate <- function(routes, manager, app_base_path) {
     err_config("SMART top-level launch requires a Lax browser owner cookie")
   }
   paths <- character()
-  callbacks <- vapply(manager$clients, function(client) {
+  callbacks <- vapply(callback_clients, function(client) {
     resource_binding_components(client@redirect_uri)$path
   }, character(1))
   for (route in routes) {

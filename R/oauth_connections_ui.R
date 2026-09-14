@@ -22,7 +22,8 @@
 #'   used by separate [oauth_module_server()] modules. Names are their full module
 #'   IDs. These clients keep their existing login lifecycle and are not managed
 #'   connections. Use this single UI wrapper instead of nesting [oauth_ui()].
-#'   Their callback routes must be distinct from managed routes, on this app's
+#'   Their callback routes must be distinct from managed callbacks and SMART
+#'   launch routes, on this app's
 #'   origin and inside `app_base_path`. All clients must select an appropriate
 #'   multi-server authorization mode, even when the manager contains one client.
 #' @return A request UI function for `shinyApp(..., uiPattern = ".*")`.
@@ -100,6 +101,7 @@ oauth_connections_ui <- function(
   if (!is.function(resolver)) {
     err_config("A request URI resolver must be a function")
   }
+  smart_launch_routes_validate(launch_routes, manager, app_base_path, clients)
   callback_handler <- oauth_ui_impl(
     base_ui,
     clients = clients,
@@ -113,7 +115,6 @@ oauth_connections_ui <- function(
     connection_manager_document_base(callback_handler(req), app_base)
   }
   state <- manager$state
-  smart_launch_routes_validate(launch_routes, manager, app_base_path)
   state$ui_bound <- TRUE
   ui <- function(req) {
     connection_manager_check(manager)

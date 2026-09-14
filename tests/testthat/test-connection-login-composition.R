@@ -1,3 +1,33 @@
+for (base in c("/", "/app/")) test_that(paste("EHR routes cannot intercept ordinary callbacks", base), {
+  redirects <- paste0("https://app.example", base, c("login/callback", "fhir/callback"))
+  login <- oauth_client(oauth_provider(name = "Login", issuer = "https://login.example",
+    issuer_thus_oidc = FALSE, auth_url = "https://login.example/authorize",
+    token_url = "https://login.example/token", token_auth_style = "public"), "login",
+    redirect_uri = redirects[[1L]], authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirects)
+  fhir <- smart_client(smart_client_fixture(), "fhir", redirects[[2L]],
+    scopes = "user/Patient.r", launch = "ehr", authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirects)
+  manager <- oauth_connections(list(fhir = fhir), "https://app.example", retention = "browser",
+    owner = oauth_browser_owner(), store = oauth_connection_store_memory(),
+    keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
+  for (path in paste0(base, c("login/callback", "login/%63allback", "fhir/callback"))) {
+    expect_error(oauth_connections_ui(shiny::fluidPage("App"), "health", manager,
+      app_base_path = base, additional_clients = list(login = login),
+      launch_routes = list(smart_launch_route(path, "fhir"))), "distinct from callbacks")
+  }
+  ui <- oauth_connections_ui(shiny::fluidPage("App"), "health", manager,
+    app_base_path = base, additional_clients = list(login = login),
+    launch_routes = list(smart_launch_route(paste0(base, "launch"), "fhir")))
+  prepared <- prepare_call(login, valid_browser_token(), .defer_build = TRUE)
+  query <- httr2::url_query_build(list(code = "synthetic-code", state = prepared$build_args$payload))
+  callback <- ui(manager_test_request(path = paste0(base, "login/callback"), query = query))
+  expect_identical(callback$status, 303L)
+  expect_identical(parse_query_param(callback$headers$Location, oauth_form_post_id_param,
+    decode = TRUE), "login")
+  expect_false(client_uses_smart(login))
+})
+
 for (post in c(FALSE, TRUE)) test_that(paste("one wrapper bridges ordinary OIDC and SMART", post), {
   redirects <- c("https://app.example/login/callback", "https://app.example/fhir/callback")
   mode <- if (post) "form_post" else "query"
