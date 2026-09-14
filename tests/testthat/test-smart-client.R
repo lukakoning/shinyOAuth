@@ -52,7 +52,7 @@ test_that("SMART capability and registration selection fails before network", {
 test_that("SMART public registration needs capability but no none authentication advertisement", {
   site <- smart_client_fixture()
   site$metadata$capabilities <- as.list(setdiff(unlist(site$metadata$capabilities), "client-confidential-asymmetric"))
-  for (methods in list(NULL, list("client_secret_basic"), list("private_key_jwt"))) {
+  for (methods in list(NULL, list(), list("client_secret_basic"), list("private_key_jwt"))) {
     site$metadata$token_endpoint_auth_methods_supported <- methods
     client <- smart_client(site, "public-client", "https://app.example/callback",
       scopes = c("launch/patient", "patient/Patient.r"))

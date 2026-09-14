@@ -21,6 +21,9 @@
 #' plain PKCE is rejected. Client-specific capability, scope, key and algorithm
 #' selection belongs to the application's registration configuration.
 #' `scopes_supported` is informative, not an exhaustive permission allowlist.
+#' Its array may be empty. An empty `token_endpoint_auth_methods_supported`
+#' array permits public registrations; confidential registrations still require
+#' their selected method whenever that array is present.
 #'
 #' @section Network and trust policy:
 #' Supply a trusted, deployment-configured base, never an arbitrary browser
@@ -228,9 +231,10 @@ smart_discovery_array <- function(metadata, field, required = FALSE) {
     return(character())
   }
   value <- metadata[[field]]
+  allow_empty <- field %in% c("scopes_supported", "token_endpoint_auth_methods_supported")
   if (
     !is.list(value) ||
-      !length(value) ||
+      (!allow_empty && !length(value)) ||
       length(value) > 4096L ||
       !is.null(names(value)) ||
       !all(vapply(
@@ -248,10 +252,10 @@ smart_discovery_array <- function(metadata, field, required = FALSE) {
     err_parse(paste0(
       "SMART ",
       field,
-      " must be a non-empty JSON array of non-empty strings"
+      " must be a ", if (!allow_empty) "non-empty ", "JSON array of non-empty strings"
     ))
   }
-  unlist(value, use.names = FALSE)
+  as.character(unlist(value, use.names = FALSE))
 }
 
 smart_discovery_validate <- function(metadata, hosts, allow_http_loopback) {

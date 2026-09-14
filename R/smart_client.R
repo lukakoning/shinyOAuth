@@ -153,7 +153,8 @@ smart_client <- function(
     private_key_jwt = "private_key_jwt")[[token_auth_style]]
   # SMART lists confidential authentication methods here. Public-client support
   # comes from client-public; the SMART metadata contract does not require none.
-  if (!identical(token_auth_style, "public") && length(methods) && !method %in% methods) {
+  if (!identical(token_auth_style, "public") &&
+      "token_endpoint_auth_methods_supported" %in% names(metadata) && !method %in% methods) {
     err_config("SMART registration authentication method is not advertised")
   }
   validate_scopes(scopes)
@@ -403,7 +404,8 @@ smart_validate_registration_policy <- function(client) {
     private_key_jwt = "client-confidential-asymmetric")[[style]])
   methods <- smart_discovery_array(metadata, "token_endpoint_auth_methods_supported")
   method <- c(public = "none", header = "client_secret_basic", private_key_jwt = "private_key_jwt")[[style]]
-  if (style != "public" && length(methods) && !method %in% methods) {
+  if (style != "public" && "token_endpoint_auth_methods_supported" %in% names(metadata) &&
+      !method %in% methods) {
     err_config("SMART registration authentication method is not advertised")
   }
   if (style == "private_key_jwt" && !client@client_assertion_alg %in%

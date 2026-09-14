@@ -52,6 +52,9 @@ asymmetric-authentication metadata are checked. S256 must be advertised and
 plain PKCE is rejected. Client-specific capability, scope, key and algorithm
 selection belongs to the application's registration configuration.
 \code{scopes_supported} is informative, not an exhaustive permission allowlist.
+Its array may be empty. An empty \code{token_endpoint_auth_methods_supported}
+array permits public registrations; confidential registrations still require
+their selected method whenever that array is present.
 }
 \section{Network and trust policy}{
 
