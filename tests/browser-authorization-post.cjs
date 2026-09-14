@@ -3,11 +3,12 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const handlers = {};
 let submitted, attached = 0, removed = 0;
+const Node = { prototype: { appendChild(input) { this.children.push(input); } } };
+const Element = { prototype: { remove() { removed++; } } };
 const document = { addEventListener() {}, querySelector() { return null; }, body: { appendChild() { attached++; } },
   createElement(tag) {
     assert.ok(['form', 'input'].includes(tag));
-    const node = { children: [], appendChild(input) { this.children.push(input); },
-      remove() { removed++; } };
+    const node = { children: [] };
     Object.defineProperty(node, 'innerHTML', { set() { throw Error('Use DOM values'); } });
     return node;
   } };
@@ -15,12 +16,13 @@ const Shiny = { addCustomMessageHandler: (name, fn) => handlers[name] = fn };
 const window = { Shiny };
 const HTMLFormElement = { prototype: { submit() { submitted = this; } } };
 vm.runInNewContext(fs.readFileSync(process.argv[2], 'utf8'),
-  { window, document, Shiny, HTMLFormElement, URL, URLSearchParams });
+  { window, document, Shiny, Node, Element, HTMLFormElement, URL, URLSearchParams });
 const send = handlers['shinyOAuth:authorizePost'];
 const request = { method: 'POST', url: 'https://provider.example/authorize?tenant=a%2Bb', fields: [
   { name: 'scope', value: 'read write' }, { name: 'resource', value: 'https://api.example/a' },
   { name: 'resource', value: 'https://api.example/b' }, { name: 'login_hint', value: 'A+B & <literal> "quote" é' },
-  { name: 'submit', value: 'provider extension' }
+  { name: 'appendChild', value: 'provider extension' }, { name: 'remove', value: 'provider extension' },
+  { name: 'submit', value: 'provider extension' }, { name: 'last_field', value: 'after the method names' }
 ] };
 send(request);
 assert.equal(attached, 1);

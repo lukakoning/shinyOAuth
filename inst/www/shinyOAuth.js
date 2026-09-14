@@ -232,17 +232,17 @@
     form.acceptCharset = 'UTF-8';
     form.target = '_self';
     form.hidden = true;
+    // Provider field names can shadow form methods; call their prototypes.
     for (var j = 0; j < fields.length; j++) {
       var input = document.createElement('input');
       input.type = 'hidden';
       input.name = fields[j].name;
       input.value = fields[j].value;
-      form.appendChild(input);
+      Node.prototype.appendChild.call(form, input);
     }
     document.body.appendChild(form);
-    // A provider extension named "submit" must not shadow the DOM method.
     HTMLFormElement.prototype.submit.call(form);
-    form.remove();
+    Element.prototype.remove.call(form);
   }
 
   function shouldDropCallbackParam(key, value, drop, dropResponse){
