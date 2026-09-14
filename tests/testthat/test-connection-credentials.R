@@ -90,7 +90,11 @@ test_that("plain-data encoding preserves vector shapes and rejects executable ob
     array = c("one", "two"),
     named = c(a = 1L, b = NA_integer_),
     logical = c(TRUE, FALSE, NA),
-    double = c(1.25, 1789064672.1234567, NA_real_, Inf, -Inf, NaN)
+    double = c(1.25, 1789064672.1234567,
+      # Decimal round-trips can move these timestamps by one ULP on Apple ARM.
+      1789412683 + seq_len(64) * 2^-22,
+      .Machine$double.xmin, .Machine$double.xmin * .Machine$double.eps,
+      .Machine$double.xmax, NA_real_, Inf, -Inf, NaN)
   )
   json <- jsonlite::toJSON(
     connection_data_encode(value),

@@ -107,7 +107,9 @@ connection_data_encode <- function(value) {
       missing_values <- missing_values & !is.nan(value)
     }
     values <- if (kind == "double") {
-      sprintf("%.17g", value)
+      # Hexadecimal fractions round-trip without decimal conversion error,
+      # including on platforms where R parses numbers without extended precision.
+      sprintf("%a", value)
     } else {
       as.character(value)
     }
@@ -201,7 +203,16 @@ connection_data_decode <- function(node) {
           text == "TRUE"
         },
         integer = suppressWarnings(as.integer(text)),
-        double = suppressWarnings(as.numeric(text))
+        double = suppressWarnings({
+          numbers <- as.numeric(text)
+          hex <- grepl("^[+-]?0[xX][[:xdigit:]]+(\\.[[:xdigit:]]*)?[pP][+-]?[0-9]+$", text)
+          # R's direct hex parser can underflow tiny values. Parse the fraction
+          # first, then scale by a power of two to retain subnormal values too.
+          fraction <- sub("[pP].*$", "p0", text[hex])
+          exponent <- sub("^.*[pP]", "", text[hex])
+          numbers[hex] <- as.numeric(fraction) * 2^as.numeric(exponent)
+          numbers
+        })
       )
       if (
         node$kind %in%

@@ -984,7 +984,9 @@ test_that("a retained refresh notifies a replacement session after its initiator
 for (retention in c("browser", "account")) {
   test_that(paste(retention, "automatic refresh updates readers without extending idle expiry"), {
     clock <- new.env(parent = emptyenv())
-    clock$now <- as.numeric(Sys.time())
+    # Use an exact binary fraction whose expiry used to round upward when
+    # restored from decimal storage on Apple ARM, missing the refresh boundary.
+    clock$now <- 1789412675 + 38 * 2^-22
     local_mocked_bindings(Sys.time = function() {
       as.POSIXct(clock$now, origin = "1970-01-01", tz = "UTC")
     }, .package = "base")
@@ -1013,6 +1015,7 @@ for (retention in c("browser", "account")) {
         token <- manager_test_token()
         token@expires_at <- clock$now + 8
         id <- manager_test_accept(controller, token = token)
+        expect_identical(controller$read(id)$token@expires_at, token@expires_at)
         health <- session$getReturned()
         fixed <- health$connection(id)
         output$data <- shiny::renderText({
