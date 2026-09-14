@@ -48,7 +48,7 @@ jobs:
       CURL_SSL_BACKEND: openssl
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: r-lib/actions/setup-r@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+      - uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
           use-public-rspm: true
       - name: Set up Chrome
@@ -56,7 +56,7 @@ jobs:
         uses: browser-actions/setup-chrome@2dbff04819ebbfd5c974947148805a825b8a07fd # v2.1.0
       - name: Select Chrome for browser tests
         run: echo "CHROMOTE_CHROME=${{ steps.setup-chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
-      - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+      - uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
           extra-packages: |
             local::.

@@ -1,0 +1,34 @@
+name: Set up Pandoc with retry
+description: Install the pinned Pandoc release, retrying once after a transient download failure.
+
+inputs:
+  pandoc-version:
+    description: Pandoc release to install.
+    default: '3.8.3'
+
+runs:
+  using: composite
+  steps:
+    - name: Install Pandoc
+      id: install
+      continue-on-error: true
+      uses: r-lib/actions/setup-pandoc@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+      with:
+        pandoc-version: ${{ inputs.pandoc-version }}
+
+    # setup-pandoc already retries individual HTTP requests. Allow a longer
+    # pause before one final installation attempt when those retries fail.
+    - name: Wait before retrying Pandoc
+      if: steps.install.outcome == 'failure'
+      shell: bash
+      run: sleep 30
+
+    - name: Retry Pandoc installation
+      if: steps.install.outcome == 'failure'
+      uses: r-lib/actions/setup-pandoc@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+      with:
+        pandoc-version: ${{ inputs.pandoc-version }}
+
+    - name: Verify Pandoc installation
+      shell: bash
+      run: pandoc --version
