@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const handlers = {};
 let submitted, attached = 0, removed = 0;
-const document = { addEventListener() {}, body: { appendChild() { attached++; } },
+const document = { addEventListener() {}, querySelector() { return null; }, body: { appendChild() { attached++; } },
   createElement(tag) {
     assert.ok(['form', 'input'].includes(tag));
     const node = { children: [], appendChild(input) { this.children.push(input); },

@@ -330,5 +330,25 @@
     Shiny.addCustomMessageHandler('shinyOAuth:clearQueryAndFixTitle', handleClearQueryAndFixTitle);
   }
 
+  function prepareSmartLaunch(){
+    var marker = document.querySelector('meta[name="shinyOAuth-smart-launch"]');
+    if (!marker) return;
+    var ticket = marker.getAttribute('content');
+    var input = marker.getAttribute('data-input');
+    var clean = marker.getAttribute('data-url');
+    marker.remove();
+    if (!ticket || !/^[A-Za-z0-9_-]{32}$/.test(ticket) || !input || !window.jQuery) return;
+    try {
+      var url = new URL(clean);
+      if (url.origin !== window.location.origin || url.search || url.hash) return;
+      window.history.replaceState(null, '', url.href);
+    } catch(e) { return; }
+    jQuery(document).one('shiny:connected', function(){
+      var shiny = ensureShiny();
+      if (shiny) shiny.setInputValue(input, ticket, {priority: 'event'});
+    });
+  }
+
+  prepareSmartLaunch();
   register();
 })();

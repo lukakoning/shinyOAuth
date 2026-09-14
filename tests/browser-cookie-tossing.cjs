@@ -8,7 +8,7 @@ for (const path of ['/', '/app']) {
   const inputs = {};
   const handlers = {};
   const storage = new Map();
-  const document = {addEventListener() {}};
+  const document = {addEventListener() {}, querySelector() { return null; }};
   const cookies = new Map([['shinyOAuth_sid-auth', planted]]);
   Object.defineProperty(document, 'cookie', {
     get: () => Array.from(cookies, ([key, value]) => key + '=' + value).join('; '),

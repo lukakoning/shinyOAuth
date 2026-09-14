@@ -57,8 +57,17 @@ smart_ehr_fixture_app <- function(origin, providers, async = FALSE, response_mod
     output$snapshot <- shiny::renderText(jsonlite::toJSON(list(session = number,
       connections = health$connections(), errors = health$errors()), auto_unbox = TRUE, null = "null"))
   }
-  ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager,
+  launch_ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager,
     launch_routes = list(shinyOAuth::smart_launch_route("/launch", c("a", "b"))))
+  ui <- function(req) {
+    response <- launch_ui(req)
+    if (!is.null(response)) {
+      response$headers <- c(response$headers,
+        list("Content-Security-Policy" = "script-src 'self'; object-src 'none'"))
+    }
+    response
+  }
+  attr(ui, "http_methods_supported") <- attr(launch_ui, "http_methods_supported")
   shiny::runApp(shiny::shinyApp(ui, server, uiPattern = ".*"), host = "127.0.0.1",
     port = as.integer(httr2::url_parse(origin)$port), launch.browser = FALSE, quiet = TRUE)
 }

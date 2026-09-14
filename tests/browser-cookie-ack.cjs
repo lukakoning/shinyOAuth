@@ -5,7 +5,7 @@ const source = fs.readFileSync(process.argv[2], 'utf8');
 let now = 0, stored = '', expiry = 0, blocked = false;
 const handlers = {}, inputs = {};
 const storage = new Map();
-const document = {addEventListener() {}};
+const document = {addEventListener() {}, querySelector() { return null; }};
 Object.defineProperty(document, 'cookie', {
   get: () => now < expiry ? stored : '',
   set: value => {

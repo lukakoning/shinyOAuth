@@ -1,6 +1,6 @@
 for (async_mode in async_modes) {
   for (callback_mode in response_modes) {
-    testthat::test_that(paste("EHR browser launch", callback_mode, if (async_mode) "mirai" else "sync"), {
+    testthat::test_that(paste("EHR browser launch under strict CSP", callback_mode, if (async_mode) "mirai" else "sync"), {
       f <- retention_browser_setup(async_mode, callback_mode,
         provider_factory = smart_ehr_fixture_provider,
         app_script = "integration/smart/fixture-ehr-app.R", app_function = "smart_ehr_fixture_app")
@@ -34,6 +34,10 @@ for (async_mode in async_modes) {
         !is.null(snapshot) && length(snapshot$connections) == 2L
       }, "retained A and accepted B")
       rows <- retention_browser_snapshot(second)$connections
+      # The fixture's real HTTP policy blocks inline code on application pages.
+      # Both handoffs above had to run through the installed external helper.
+      testthat::expect_false(retention_browser_value(second,
+        "(() => { const script = document.createElement('script'); script.textContent = 'window.inlineCspProbe = true'; document.head.appendChild(script); script.remove(); return window.inlineCspProbe === true; })()"))
       testthat::expect_setequal(vapply(rows, `[[`, "", "client_label"), c("Site a", "Site b"))
       testthat::expect_true(all(vapply(rows, `[[`, "", "status") == "active"))
       for (site in c("a", "b")) {

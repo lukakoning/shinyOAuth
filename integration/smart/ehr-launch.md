@@ -15,9 +15,11 @@ defines these two entry parameters and their authorization-request role.
 The package encrypts a short-lived launch record bound to the current browser
 owner, client fingerprint and exact FHIR base. It redirects to the application
 with an opaque continuation ticket. The initial handle is absent from the
-application HTML. Before Shiny connects, a script removes the ticket from the
+application HTML. Before Shiny connects, the package's external JavaScript removes the ticket from the
 address bar and hands it to the manager. Possession of the ticket alone is
 insufficient: the server also checks the owner's HttpOnly cookie and generation.
+The continuation supplies inert metadata before the page dependencies; it needs
+no inline script permission or extra CSP nonce.
 
 The manager consumes that ticket once. A fresh OAuth state and S256 PKCE bind
 the selected client and launch digest to authorization. The launch handle is a
@@ -73,7 +75,9 @@ root:
 Rscript integration/smart/run-ehr-browser.R
 ```
 
-The runner uses Chromote, callr, webfakes, testthat and mirai. It exercises the
+The runner uses Chromote, callr, webfakes, testthat and mirai. Application pages
+enforce `script-src 'self'`, and the tests verify that inline scripts are blocked.
+It exercises the
 actual exported SMART/manager APIs in isolated R app processes. Two strict
 synthetic authorization servers verify EHR handles, FHIR `aud`, S256, one-use
 codes and rotating refresh tokens. Their FHIR endpoints enforce the issued

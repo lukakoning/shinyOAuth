@@ -43,8 +43,9 @@
 #' forwarded headers. Size the owner registry for the admitted traffic window.
 #'
 #' The HTTP response uses no-store and no-referrer policy and redirects to an
-#' opaque, owner-bound continuation. Its script removes that ticket from browser
+#' opaque, owner-bound continuation. The package's external JavaScript removes that ticket from browser
 #' history before Shiny connects. The ticket alone cannot authorize a connection.
+#' No inline script permission or additional CSP nonce is needed for the handoff.
 #' Application access logs must also avoid recording raw launch query strings.
 #' Normal callback issuer checks and single-use browser/state checks still apply.
 #' @seealso [smart_client()], [oauth_connections_ui()]
@@ -239,16 +240,18 @@ smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
         !grepl("^text/html", response$content_type, ignore.case = TRUE)) {
       err_token("SMART launch continuation requires application HTML")
     }
-    json <- function(value) as.character(jsonlite::toJSON(value, auto_unbox = TRUE))
-    script <- paste0("<script>history.replaceState(null,'',", json(app_base),
-      ");jQuery(document).one('shiny:connected',function(){Shiny.setInputValue(",
-      json(shiny::NS(manager$state$id)("smart_launch")), ",", json(id),
-      ",{priority:'event'});});</script>")
+    marker <- as.character(htmltools::tags$meta(name = "shinyOAuth-smart-launch",
+      content = id, `data-input` = shiny::NS(manager$state$id)("smart_launch"),
+      `data-url` = app_base))
     if (!is.character(response$content) || length(response$content) != 1L ||
-        !grepl("</body>", response$content, fixed = TRUE)) {
+        !grepl("</body>", response$content, fixed = TRUE) ||
+        !grepl("<head\\b[^>]*>", response$content, perl = TRUE, ignore.case = TRUE)) {
       err_token("SMART continuation requires a complete HTML document")
     }
-    response$content <- sub("</body>", paste0(script, "</body>"), response$content, fixed = TRUE)
+    # Put inert data before every dependency, so the external helper can clean
+    # history and subscribe before Shiny connects, including under strict CSP.
+    response$content <- sub("(<head\\b[^>]*>)", paste0("\\1", marker),
+      response$content, perl = TRUE, ignore.case = TRUE)
     response$headers <- response$headers[!tolower(names(response$headers)) %in%
       c("content-length", "etag", "content-md5", "cache-control", "referrer-policy")]
     response$headers <- c(response$headers,

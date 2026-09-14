@@ -37,7 +37,11 @@ test_that("EHR HTTP entry redirects before UI and binds an encrypted launch to i
   expect_identical(f$rendered$count, 1L)
   expect_identical(f$rendered$query, "")
   expect_false(grepl("synthetic-launch|ehr.example", continuation$content))
-  expect_match(continuation$content, "history.replaceState", fixed = TRUE)
+  expect_false(grepl("history.replaceState", continuation$content, fixed = TRUE))
+  expect_match(continuation$content, 'name="shinyOAuth-smart-launch"', fixed = TRUE)
+  expect_lt(regexpr('name="shinyOAuth-smart-launch"', continuation$content, fixed = TRUE)[[1]],
+    regexpr("<script", continuation$content, fixed = TRUE)[[1]])
+  expect_match(continuation$content, "shinyOAuth.js", fixed = TRUE)
   expect_match(continuation$content, "health-smart_launch", fixed = TRUE)
   entries <- as.list(f$manager$state$launches)
   expect_length(entries, 1L)

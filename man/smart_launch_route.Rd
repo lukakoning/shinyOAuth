@@ -56,8 +56,9 @@ trusted reverse proxy using its verified client address, not arbitrary inbound
 forwarded headers. Size the owner registry for the admitted traffic window.
 
 The HTTP response uses no-store and no-referrer policy and redirects to an
-opaque, owner-bound continuation. Its script removes that ticket from browser
+opaque, owner-bound continuation. The package's external JavaScript removes that ticket from browser
 history before Shiny connects. The ticket alone cannot authorize a connection.
+No inline script permission or additional CSP nonce is needed for the handoff.
 Application access logs must also avoid recording raw launch query strings.
 Normal callback issuer checks and single-use browser/state checks still apply.
 }

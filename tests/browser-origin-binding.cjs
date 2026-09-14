@@ -5,7 +5,7 @@ const source = fs.readFileSync(process.argv[2], 'utf8');
 const handlers = {}, inputs = {}, storage = new Map(), cookies = new Map();
 const name = '__Host-shinyOAuth_sid-auth', key = name + ':binding';
 let blocked = false, silentlyBlocked = false;
-const document = {};
+const document = {querySelector() { return null; }};
 Object.defineProperty(document, 'cookie', {
   get: () => Array.from(cookies, ([k, v]) => k + '=' + v).join('; '),
   set: value => {
