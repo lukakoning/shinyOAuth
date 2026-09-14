@@ -77,7 +77,7 @@ provider_jwks_uri <- function(provider = NULL) {
 #'
 #' @keywords internal
 #' @noRd
-fetch_authorization_server_metadata <- function(issuer) {
+fetch_authorization_server_metadata <- function(issuer, tls_minimum = NULL) {
   build_metadata_url <- function(suffix, legacy_append = FALSE) {
     normalized_issuer <- rtrim_slash(issuer)
     parsed <- httr2::url_parse(normalized_issuer)
@@ -133,7 +133,7 @@ fetch_authorization_server_metadata <- function(issuer) {
 
     resp <- try(
       httr2::request(target[["url"]]) |>
-        add_req_defaults() |>
+        add_req_defaults(tls_minimum = tls_minimum) |>
         req_no_redirect() |>
         req_with_retry(),
       silent = TRUE
@@ -228,6 +228,20 @@ fetch_authorization_server_metadata <- function(issuer) {
   )
 }
 
+fetch_client_jwks <- function(client, ...) {
+  args <- list(...)
+  minimum <- client_tls_minimum(client)
+  if (!is.null(minimum)) args$tls_minimum <- minimum
+  do.call(fetch_jwks, args)
+}
+
+force_refresh_client_jwks <- function(client, ...) {
+  args <- list(...)
+  minimum <- client_tls_minimum(client)
+  if (!is.null(minimum)) args$tls_minimum <- minimum
+  do.call(force_refresh_provider_jwks, args)
+}
+
 #' Internal: Fetch JWKS for issuer (cachem-only)
 #'
 #' Attempts to resolve an explicit provider `jwks_uri` or download
@@ -269,7 +283,8 @@ fetch_jwks <- function(
   force_refresh = FALSE,
   pins = NULL,
   pin_mode = c("any", "all"),
-  provider = NULL
+  provider = NULL,
+  tls_minimum = NULL
 ) {
   # Duck-type the cache interface instead of enforcing cachem inheritance
   has_get <- !is.null(jwks_cache$get) && is.function(jwks_cache$get)
@@ -304,9 +319,9 @@ fetch_jwks <- function(
     issuer_match = issuer_match,
     jwks_host_issuer_match = host_match,
     jwks_host_allow_only = allow_only,
-    jwks_uri_override = jwks_uri_override
+    jwks_uri_override = jwks_uri_override,
+    tls_minimum = tls_minimum
   )
-
   entry <- jwks_cache$get(cache_key, missing = NULL)
 
   cached_jwks_source_valid <- function(entry) {
@@ -421,7 +436,8 @@ fetch_jwks <- function(
     discovery_issuer <- issuer
     jwks_uri <- jwks_uri_override
   } else {
-    metadata <- fetch_authorization_server_metadata(issuer)
+    metadata <- if (is.null(tls_minimum)) fetch_authorization_server_metadata(issuer) else
+      fetch_authorization_server_metadata(issuer, tls_minimum = tls_minimum)
     disc <- metadata[["document"]]
     discovery_issuer <- validate_discovery_issuer(
       issuer_input = issuer,
@@ -452,7 +468,7 @@ fetch_jwks <- function(
   }
 
   jresp <- httr2::request(jwks_uri) |>
-    add_req_defaults() |>
+    add_req_defaults(tls_minimum = tls_minimum) |>
     req_no_redirect() |>
     req_with_retry()
   # Security: reject redirect responses to prevent bypassing host validation
@@ -531,7 +547,8 @@ jwks_force_refresh_allowed <- function(
   issuer_match = "url",
   jwks_host_issuer_match = FALSE,
   jwks_host_allow_only = NA_character_,
-  jwks_uri_override = NA_character_
+  jwks_uri_override = NA_character_,
+  tls_minimum = NULL
 ) {
   pin_mode <- match.arg(pin_mode)
   issuer_match <- match.arg(issuer_match, choices = c("url", "host", "none"))
@@ -550,7 +567,8 @@ jwks_force_refresh_allowed <- function(
     issuer_match = issuer_match,
     jwks_host_issuer_match = jwks_host_issuer_match,
     jwks_host_allow_only = jwks_host_allow_only,
-    jwks_uri_override = jwks_uri_override
+    jwks_uri_override = jwks_uri_override,
+    tls_minimum = tls_minimum
   )
   throttle_key <- paste0(base_key, "xfr")
 
@@ -606,7 +624,8 @@ force_refresh_provider_jwks <- function(
   pins = NULL,
   pin_mode = c("any", "all"),
   provider = NULL,
-  min_interval = 30
+  min_interval = 30,
+  tls_minimum = NULL
 ) {
   pin_mode <- match.arg(pin_mode)
   host_match <- isTRUE(try(provider@jwks_host_issuer_match, silent = TRUE))
@@ -624,13 +643,14 @@ force_refresh_provider_jwks <- function(
     issuer_match = provider_issuer_match(provider),
     jwks_host_issuer_match = host_match,
     jwks_host_allow_only = allow_only,
-    jwks_uri_override = provider_jwks_uri(provider)
+    jwks_uri_override = provider_jwks_uri(provider),
+    tls_minimum = tls_minimum
   )
   if (!isTRUE(allowed)) {
     return(NULL)
   }
 
-  fetch_jwks(
+  args <- list(
     issuer,
     jwks_cache,
     force_refresh = TRUE,
@@ -638,6 +658,8 @@ force_refresh_provider_jwks <- function(
     pin_mode = pin_mode,
     provider = provider
   )
+  if (!is.null(tls_minimum)) args$tls_minimum <- tls_minimum
+  do.call(fetch_jwks, args)
 }
 
 #' Internal: Compute cache key for JWKS entries
@@ -685,7 +707,7 @@ normalize_jwks_cache_host_patterns <- function(patterns) {
 #' relaxed provider or looser runtime allowlist populates the cache and a
 #' stricter configuration skips validation on hit.
 #' Used by `fetch_jwks()` and `jwks_force_refresh_allowed()` so cached JWKS
-#' data and refresh throttles stay scoped to the same issuer and host policy.
+#' data and refresh throttles stay scoped to the same issuer, host and TLS policy.
 #'
 #' @param issuer Issuer URL.
 #' @param pins Optional vector of pinned JWK thumbprints.
@@ -714,7 +736,8 @@ jwks_cache_key <- function(
   allowed_non_https_hosts = getOption(
     "shinyOAuth.allowed_non_https_hosts",
     default = c("localhost", "127.0.0.1", "::1", "[::1]")
-  )
+  ),
+  tls_minimum = NULL
 ) {
   pin_mode <- match.arg(pin_mode)
   issuer_match <- match.arg(issuer_match, choices = c("url", "host", "none"))
@@ -771,7 +794,13 @@ jwks_cache_key <- function(
   ch_raw <- openssl::sha256(charToRaw(cfg_str))
   ch <- paste0(sprintf("%02x", as.integer(ch_raw)), collapse = "")
   # Use an alphanumeric delimiter to satisfy cache key constraints while keeping clarity
-  paste0(ih, "x", ch)
+  key <- paste0(ih, "x", ch)
+  if (!is.null(tls_minimum)) {
+    policy <- resolve_tls_policy(minimum = tls_minimum)
+    if (!is.null(policy$problem)) err_config(policy$problem)
+    key <- paste0(key, "tls", gsub(".", "", tls_minimum, fixed = TRUE))
+  }
+  key
 }
 
 #' Internal: ensure JWKS host aligns with issuer

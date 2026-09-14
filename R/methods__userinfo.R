@@ -664,7 +664,7 @@ decode_userinfo_jwt <- function(
 
   # Verify signature against JWKS
   jwks <- try(
-    fetch_jwks(
+    fetch_client_jwks(oauth_client,
       prov@issuer,
       prov@jwks_cache,
       pins = prov@jwks_pins %||% character(),
@@ -719,7 +719,7 @@ decode_userinfo_jwt <- function(
     ) {
       did_force_refresh <- TRUE
       jwks <- try(
-        fetch_jwks(
+        fetch_client_jwks(oauth_client,
           prov@issuer,
           prov@jwks_cache,
           force_refresh = TRUE,
@@ -747,7 +747,7 @@ decode_userinfo_jwt <- function(
       !isTRUE(did_force_refresh)
   ) {
     refreshed_jwks <- try(
-      force_refresh_provider_jwks(
+      force_refresh_client_jwks(oauth_client,
         prov@issuer,
         prov@jwks_cache,
         pins = prov@jwks_pins %||% character(),

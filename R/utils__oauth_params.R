@@ -41,7 +41,7 @@ merge_oauth_extra_params <- function(params, extra) {
 merge_token_extra_params <- function(params, extra) {
   if ("scope" %in% tolower(trimws(names(extra)))) {
     err_config(
-      "scope is reserved in extra_token_params; refresh scope narrowing is not supported"
+      "scope is reserved in extra_token_params; use a managed connection's refresh(scopes = ...)"
     )
   }
   merge_oauth_extra_params(params, extra)

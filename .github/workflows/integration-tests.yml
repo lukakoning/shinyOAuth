@@ -1,4 +1,4 @@
-name: Integration tests (Keycloak)
+name: OAuth integration tests
 
 on:
   push:
@@ -13,14 +13,17 @@ jobs:
   integration:
     name: Run integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    env:
+      NOT_CRAN: "true"
+      CURL_SSL_BACKEND: openssl
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up R
-        uses: r-lib/actions/setup-r@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
           use-public-rspm: true
 
@@ -29,7 +32,7 @@ jobs:
         uses: browser-actions/setup-chrome@2dbff04819ebbfd5c974947148805a825b8a07fd # v2.1.0
 
       - name: Query dependencies
-        uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
+        uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
           extra-packages: |
             local::.
@@ -39,7 +42,19 @@ jobs:
             any::rvest
             any::shinytest2
             any::chromote
+            any::callr
+            any::withr
+            any::promises
+            any::future
+            any::mirai
+            any::processx
           cache-version: 1
+
+      - name: Select Chrome for browser tests
+        run: echo "CHROMOTE_CHROME=${{ steps.setup-chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+
+      - name: Install this checkout for apps and mirai workers
+        run: R CMD INSTALL .
 
       - name: Print session info (debug)
         run: |
@@ -56,6 +71,21 @@ jobs:
         run: |
           docker --version
           docker compose version || true
+
+      - name: Test retained OAuth connections
+        run: Rscript integration/connections/run-tests.R
+
+      - name: Test OAuth authorization POST and retained connections
+        run: Rscript integration/connections/run-tests.R --post
+
+      - name: Test shared-issuer callbacks and resource isolation
+        run: Rscript integration/connections/run-shared-router.R
+
+      - name: Test retained refresh scope narrowing
+        run: Rscript integration/connections/run-scope-narrowing.R
+
+      - name: Test account login and retained authorization across sessions
+        run: Rscript integration/connections/run-account.R
 
       - name: Run independent strict authorization-server fixture
         run: |
@@ -80,4 +110,13 @@ jobs:
           path: |
             integration/keycloak/.generated/**
             integration/keycloak/_snaps/**
+          if-no-files-found: ignore
+
+      - name: Upload sanitized retained-connection evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: connection-retention-evidence
+          path: integration/connections/.artifacts/**/evidence.json
+          include-hidden-files: true
           if-no-files-found: ignore

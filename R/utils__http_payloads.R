@@ -26,7 +26,7 @@
 #'
 #' @keywords internal
 #' @noRd
-parse_token_response <- function(resp) {
+parse_token_response <- function(resp, allow_empty_scope = FALSE) {
   check_resp_body_size(resp, context = "token")
 
   content_type <- tolower(trimws(sub(
@@ -38,12 +38,15 @@ parse_token_response <- function(resp) {
 
   # Some providers include charset, e.g. application/json; charset=utf-8.
   if (identical(content_type, "application/json")) {
-    return(parse_token_response_json(body, resp = resp))
+    return(parse_token_response_json(body,
+      resp = resp,
+      allow_empty_scope = allow_empty_scope
+    ))
   }
 
   # GitHub historically returns form-encoded unless Accept requests JSON.
   if (identical(content_type, "application/x-www-form-urlencoded")) {
-    return(parse_token_response_form(body))
+    return(parse_token_response_form(body, allow_empty_scope))
   }
 
   # Legacy providers may omit the content type or send JSON as text/plain.
@@ -51,7 +54,7 @@ parse_token_response <- function(resp) {
     identical(content_type, "") ||
       identical(content_type, "text/plain")
   ) {
-    return(parse_lenient_token_response(body))
+    return(parse_lenient_token_response(body, allow_empty_scope))
   }
 
   err_parse(
@@ -102,8 +105,11 @@ token_response_extra_fields <- function(token_response) {
 #' @return Parsed JSON value, normalized by `normalize_token_response_json()`.
 #' @keywords internal
 #' @noRd
-parse_token_response_json <- function(body, resp = NULL) {
-  parsed <- try_parse_token_response_json(body, resp = resp)
+parse_token_response_json <- function(body, resp = NULL, allow_empty_scope = FALSE) {
+  parsed <- try_parse_token_response_json(body,
+    resp = resp,
+    allow_empty_scope = allow_empty_scope
+  )
   if (!isTRUE(parsed[["ok"]])) {
     err_parse(c("x" = "Failed to parse JSON token response"))
   }
@@ -127,7 +133,7 @@ parse_token_response_json <- function(body, resp = NULL) {
 #'   `is_object` indicating whether the payload used a top-level JSON object.
 #' @keywords internal
 #' @noRd
-try_parse_token_response_json <- function(body, resp = NULL) {
+try_parse_token_response_json <- function(body, resp = NULL, allow_empty_scope = FALSE) {
   reject_duplicate_json_object_members(body, "Token response JSON")
   is_object <- json_text_is_object(body)
 
@@ -147,7 +153,7 @@ try_parse_token_response_json <- function(body, resp = NULL) {
   list(
     ok = TRUE,
     value = if (isTRUE(is_object)) {
-      normalize_token_response_json(out)
+      normalize_token_response_json(out, allow_empty_scope)
     } else {
       out
     },
@@ -165,7 +171,7 @@ try_parse_token_response_json <- function(body, resp = NULL) {
 #' @return `value`, with data frames converted to lists.
 #' @keywords internal
 #' @noRd
-normalize_token_response_json <- function(value) {
+normalize_token_response_json <- function(value, allow_empty_scope = FALSE) {
   for (field in c(
     "access_token",
     "refresh_token",
@@ -183,7 +189,7 @@ normalize_token_response_json <- function(value) {
     }
   }
   if ("scope" %in% names(value)) {
-    validate_response_scope(value[["scope"]])
+    validate_response_scope(value[["scope"]], allow_empty = allow_empty_scope)
   }
   if (is.data.frame(value)) {
     return(as.list(value))
@@ -201,13 +207,13 @@ normalize_token_response_json <- function(value) {
 #' @return Named character list parsed from the form body.
 #' @keywords internal
 #' @noRd
-parse_token_response_form <- function(body) {
+parse_token_response_form <- function(body, allow_empty_scope = FALSE) {
   reject_duplicate_form_encoded_members(body, "Token response body")
   # httr2's query parser preserves "+", while HTML form encoding uses it for
   # spaces. Convert only literal plus signs; percent-encoded %2B remains "+".
   value <- httr2::url_query_parse(gsub("+", "%20", body, fixed = TRUE))
   if ("scope" %in% names(value)) {
-    validate_response_scope(value[["scope"]])
+    validate_response_scope(value[["scope"]], allow_empty = allow_empty_scope)
   }
   value
 }
@@ -222,8 +228,10 @@ parse_token_response_form <- function(body) {
 #' @return Parsed token response as JSON data or a named character list.
 #' @keywords internal
 #' @noRd
-parse_lenient_token_response <- function(body) {
-  parsed_json <- try_parse_token_response_json(body)
+parse_lenient_token_response <- function(body, allow_empty_scope = FALSE) {
+  parsed_json <- try_parse_token_response_json(body,
+    allow_empty_scope = allow_empty_scope
+  )
   if (isTRUE(parsed_json[["ok"]])) {
     if (!isTRUE(parsed_json[["is_object"]])) {
       err_parse("Token response JSON must be a JSON object")
@@ -231,7 +239,7 @@ parse_lenient_token_response <- function(body) {
     return(parsed_json[["value"]])
   }
 
-  parse_token_response_form(body)
+  parse_token_response_form(body, allow_empty_scope)
 }
 
 #' Reject duplicate form-encoded parameter names

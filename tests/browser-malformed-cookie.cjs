@@ -15,7 +15,7 @@ for (const protocol of ['http:', 'https:']) {
         version: 2, id: 'c'.repeat(32), token: 'd'.repeat(128),
         cookie: 'e'.repeat(128), expiresAt: Date.now() + 60000
       }));
-      const document = {};
+      const document = {querySelector() { return null; }};
       Object.defineProperty(document, 'cookie', {
         get: () => Array.from(cookies, ([k, v]) => k + '=' + v).join('; '),
         set: value => {

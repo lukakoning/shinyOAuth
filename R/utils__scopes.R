@@ -6,16 +6,43 @@
 
 # 1 Scope helpers --------------------------------------------------------------
 
+# A versioned profile seam for coverage decisions. It neither rewrites wire
+# scopes nor infers a profile from their spelling. Unknown profiles fail closed;
+# SMART reports indeterminate coverage for unsupported syntax or implication.
+evaluate_scope_coverage <- function(
+    requested,
+    granted,
+    profile = "oauth",
+    version = 1L,
+    allow_v1 = FALSE) {
+  if (identical(profile, "smart") && identical(version, 1L)) {
+    return(smart_scope_coverage(requested, granted, allow_v1))
+  }
+  if (!identical(profile, "oauth") || !identical(version, 1L)) {
+    err_config("Unsupported scope evaluation profile or version")
+  }
+  requested <- normalize_scope_tokens(requested)
+  granted <- normalize_scope_tokens(granted)
+  missing <- setdiff(requested, granted)
+  list(
+    status = if (length(missing)) "insufficient" else "covered",
+    missing = missing,
+    indeterminate = character()
+  )
+}
+
 ## 1.1 Normalize and validate scopes -------------------------------------------
 
 # Validate wire values before the permissive local-input normalizer sees them.
-# An omitted scope is allowed by callers; an explicit empty string is not.
-validate_response_scope <- function(scope, signal_error = err_parse) {
+# An omitted scope is handled by callers; only SMART accepts an explicit empty
+# grant (SMART 2.2 scopes-and-launch-context, wildcard grant examples).
+validate_response_scope <- function(
+    scope, signal_error = err_parse, allow_empty = FALSE) {
   if (
     !is.character(scope) ||
       length(scope) != 1L ||
       is.na(scope) ||
-      !nzchar(scope) ||
+      (!isTRUE(allow_empty) && !nzchar(scope)) ||
       !grepl("^(?:[!#-\\[\\]-~]+(?: [!#-\\[\\]-~]+)*)?$", scope, perl = TRUE)
   ) {
     signal_error(
@@ -151,23 +178,28 @@ normalize_scope_tokens <- function(scopes) {
 #' @param is_refresh Whether the current response came from a refresh flow.
 #' @param previous_granted_scopes Previously stored granted scopes to carry
 #'   forward when a refresh response omits `scope`.
+#' @param smart Enforce explicit SMART scope evidence; an empty string is an
+#'   explicit grant of no permissions, while absence is an error.
 #' @return A list containing normalized `granted_scopes`, logical
 #'   `granted_scopes_verified`, and booleans `scope_is_omitted` /
 #'   `scope_is_empty`.
 #' @keywords internal
 #' @noRd
 resolve_granted_scope_state <- function(
-  token_scope,
-  requested_scopes,
-  is_refresh = FALSE,
-  previous_granted_scopes = NULL
-) {
+    token_scope,
+    requested_scopes,
+    is_refresh = FALSE,
+    previous_granted_scopes = NULL,
+    smart = FALSE) {
   requested_scopes <- normalize_scope_tokens(requested_scopes)
   previous_granted_scopes <- normalize_scope_tokens(previous_granted_scopes)
 
   scope_is_omitted <- is.null(token_scope)
+  if (isTRUE(smart) && scope_is_omitted) {
+    err_token("SMART token responses must include an explicit scope string")
+  }
   if (!scope_is_omitted) {
-    validate_response_scope(token_scope, err_token)
+    validate_response_scope(token_scope, err_token, allow_empty = smart)
   }
   scope_is_empty <- !scope_is_omitted &&
     length(token_scope) == 1L &&
@@ -222,12 +254,14 @@ provider_uses_oidc <- function(provider) {
 #'
 #' @param scopes Character vector of scope tokens.
 #' @param provider An [OAuthProvider] object.
+#' @param warn Whether to report an omitted `openid` scope. Internal validators
+#'   use `FALSE` so checking configuration does not consume the login warning.
 #'
 #' @return Character vector of scope tokens, possibly with `"openid"` prepended.
 #'
 #' @keywords internal
 #' @noRd
-ensure_openid_scope <- function(scopes, provider) {
+ensure_openid_scope <- function(scopes, provider, warn = TRUE) {
   if (!provider_uses_oidc(provider)) {
     return(scopes)
   }
@@ -243,7 +277,7 @@ ensure_openid_scope <- function(scopes, provider) {
 
   provider_name <- provider@name %||% "(unnamed)"
 
-  warn_pkg(
+  if (warn) warn_pkg(
     "Missing `openid` scope for OIDC provider",
     c(
       "!" = paste0(
@@ -267,13 +301,14 @@ ensure_openid_scope <- function(scopes, provider) {
 #' caller omitted it.
 #'
 #' @param client An [OAuthClient] object.
+#' @param warn Whether to report an omitted `openid` scope.
 #'
 #' @return Character vector of scope tokens used in the authorization request.
 #'
 #' @keywords internal
 #' @noRd
-effective_client_scopes <- function(client) {
+effective_client_scopes <- function(client, warn = TRUE) {
   S7::check_is_S7(client, class = OAuthClient)
 
-  ensure_openid_scope(client@scopes, client@provider)
+  ensure_openid_scope(client@scopes, client@provider, warn = warn)
 }

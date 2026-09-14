@@ -59,6 +59,12 @@
 #'   successful authorization-code exchange. Preserved across refreshes and
 #'   replaced on a new login. Defaults to an empty list for manually constructed
 #'   tokens; refresh does not infer an initial response from `extra_fields`.
+#' @param smart_context Internal interpreted SMART context. Empty for ordinary
+#'   tokens; populated only by SMART token processing. Use [smart_context()] on
+#'   a connection to read it. Includes sensitive patient and identity references.
+#' @param original_granted_scopes Initial accepted SMART grant, preserved across
+#'   refreshes to distinguish unchanged grants from strict scope reductions.
+#'   Empty for ordinary OAuth tokens. Set by SMART token processing.
 #'
 #' @details
 #' The `id_token_claims` property is a read-only computed property that returns
@@ -163,6 +169,14 @@ OAuthToken <- S7::new_class(
     initial_extra_fields = S7::new_property(
       S7::class_list,
       default = list()
+    ),
+    smart_context = S7::new_property(
+      S7::class_list,
+      default = list()
+    ),
+    original_granted_scopes = S7::new_property(
+      S7::class_character,
+      default = character()
     )
   ),
   validator = function(self) oauth_token_validate(self)
@@ -236,6 +250,13 @@ oauth_token_validate <- function(self) {
     )
   }
 
+  original_scope_error <- tryCatch({
+    validate_scopes(self@original_granted_scopes)
+    NULL
+  }, error = function(e) conditionMessage(e))
+  if (!is.null(original_scope_error)) {
+    return(paste0("OAuthToken: invalid original_granted_scopes: ", original_scope_error))
+  }
   granted_scopes <- self@granted_scopes
   if (!is.character(granted_scopes)) {
     return("OAuthToken: granted_scopes must be a character vector")

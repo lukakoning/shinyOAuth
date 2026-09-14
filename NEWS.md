@@ -1,5 +1,68 @@
 # shinyOAuth (development version)
 
+* Simplified the unreleased connection API: optional `resource_bases`,
+`required_scopes` and `label` settings now live on `OAuthClient`.
+`smart_client()` returns that same type, and the separate manager accepts
+`oauth_connections(clients = list(hospital_a = client_a, hospital_b = client_b), ...)`.
+The convenient R6 object is now `OAuthConnection`, with `client_label` in its
+summary. Removed the target wrapper and its constructors before release.
+Connections still resolve live credentials and reuse `perform_resource_req()`;
+ownership, resource boundaries and configuration-change checks remain enforced.
+
+* Added explicit `authorization_method = "POST"` for long browser authorization
+requests. SMART clients require advertised `authorize-post`; GET remains the
+default. Shiny submits a form automatically, while custom callers can use
+`prepare_authorization_request()`. Transaction binding and configured PAR/JAR
+requirements are preserved. Tests cover the SMART/OAuth browser matrices and
+independent Python verification of protected POST combinations over TLS.
+
+* Added a 24-scenario SMART browser matrix covering standalone/EHR launch,
+public/HTTP Basic/RS384 registrations, query/form POST, synchronous/mirai
+transport, signed identity and retained scope narrowing. A combined coverage
+runner includes package/browser, conformance, retention and live Docker checks;
+external SMART interoperability remains separately gated.
+
+* SMART public registrations now rely on the advertised `client-public`
+capability without requiring `none` in the list of confidential authentication
+methods. Confidential registrations still require their advertised method.
+
+* Managed connections now support `$refresh(scopes = ...)` to request fewer
+permissions while retaining required scopes. Successful narrowing is remembered
+in encrypted storage and applied to later refreshes, including after navigation.
+It does not revoke the authorization server's original refresh-token grant;
+widening through the manager requires a new authorization. Existing refresh
+calls keep their behavior until narrowing is selected. Unit and real-browser
+tests cover grant checks, rotation, retention and synchronous/mirai transport.
+
+* Added opt-in `callback_policy = "issuer"` and `"shared_routes"` to the
+connection manager. A protected pending-state index supports multiple clients
+at one issuer and callback URL while preserving issuer/JARM, state, owner and
+browser validation. Distinct routes remain the default; ambiguous encrypted
+JARM still requires them. Browser tests cover same-issuer resource isolation.
+
+* Added `smart_discover()` to read SMART STU 2.2 metadata at the full FHIR
+base, with explicit endpoint-host policy, conditional SSO/asymmetric checks,
+S256 enforcement, and an opt-in loopback HTTP exception. Returns a plain
+metadata snapshot; client registration and authorization are separate steps.
+The Docker sandbox suite now tests the reader against official Launcher v2.
+
+* Added the optional `oauth_connections()` manager with matching UI/server
+wrappers, separate grants per authorization, encrypted process-local retention,
+browser/account owner validation, coordinated refresh and local disconnect before
+bounded remote revocation. Managed references support `$refresh()` and resolve
+the latest stored credentials. The default remains Shiny-session retention.
+Real-browser query/form_post retention tests cover both synchronous and mirai
+transport. SMART interoperability remains a separate roadmap gate.
+
+* Added session-bound `oauth_connection()` objects using optional client settings.
+Requests resolve current credentials, enforce exact approved resource bases,
+retain DPoP/mTLS transport, and reject cross-session access. This initial
+adapter follows a module's reactive token and does not persist across redirects.
+
+* Added explicitly selected RS384 signing for client assertions, Request Objects
+and DPoP proofs, with RSA key compatibility checks. RSA signing still defaults
+to RS256; inbound algorithm defaults are unchanged.
+
 * `OAuthToken` now exposes additional token endpoint response parameters in
 `extra_fields` (#16).
 `initial_extra_fields` preserves the initial code-exchange parameters across

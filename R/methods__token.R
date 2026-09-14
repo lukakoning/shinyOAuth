@@ -165,7 +165,7 @@ revoke_token <- function(
           token = oauth_token
         )
 
-        req <- add_req_defaults(req)
+        req <- add_req_defaults(req, client = oauth_client)
         req <- req_no_redirect(req)
         extra_headers <- as.list(auth_client@provider@extra_token_headers)
         if (length(extra_headers)) {
@@ -447,7 +447,7 @@ introspect_token <- function(
           auth_client,
           token = oauth_token
         )
-        req <- add_req_defaults(req)
+        req <- add_req_defaults(req, client = oauth_client)
         req <- req_no_redirect(req)
         extra_headers <- as.list(auth_client@provider@extra_token_headers)
         if (length(extra_headers)) {
@@ -587,7 +587,9 @@ introspect_token <- function(
             )
             value <- jsonlite::fromJSON(body_txt, simplifyVector = FALSE)
             if ("scope" %in% names(value)) {
-              validate_response_scope(value[["scope"]])
+              validate_response_scope(value[["scope"]],
+                allow_empty = client_uses_smart_scopes(oauth_client)
+              )
             }
             value
           },
@@ -763,8 +765,23 @@ refresh_token <- function(
   introspect = NULL,
   shiny_session = NULL
 ) {
+  refresh_token_dispatch(oauth_client, token, async, introspect, shiny_session)
+}
+
+# The manager supplies an explicit, validated scope request. Legacy refresh
+# calls keep their original public interface. Generic OAuth calls omit scope;
+# SMART refreshes explicitly request a limit only after the grant narrows.
+refresh_token_dispatch <- function(
+  oauth_client,
+  token,
+  async = FALSE,
+  introspect = NULL,
+  shiny_session = NULL,
+  scope_request = NULL
+) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
+  scope_request <- validate_refresh_scope_request(oauth_client, token, scope_request)
   if (!(is.logical(async) && length(async) == 1L && !is.na(async))) {
     err_input("`async` must be a single non-NA logical.")
   }
@@ -794,6 +811,7 @@ refresh_token <- function(
       !identical(active$client, oauth_client) ||
         !identical(active$token, token) ||
         !identical(active$introspect, effective_introspect) ||
+        !identical(active$scope_request, scope_request) ||
         !identical(active$options, policy_options)
     ) {
       err_token(
@@ -807,6 +825,7 @@ refresh_token <- function(
   flight$client <- oauth_client
   flight$token <- token
   flight$introspect <- effective_introspect
+  flight$scope_request <- scope_request
   flight$options <- policy_options
   flights[[key]] <- flight
   release <- function() {
@@ -818,13 +837,12 @@ refresh_token <- function(
   deferred <- FALSE
   on.exit(if (!deferred) release(), add = TRUE)
   result <- tryCatch(
-    refresh_token_impl(
-      oauth_client,
-      token,
-      async = async,
-      introspect = effective_introspect,
-      shiny_session = shiny_session
-    ),
+    {
+      args <- list(oauth_client = oauth_client, token = token, async = async,
+        introspect = effective_introspect, shiny_session = shiny_session)
+      if (!is.null(scope_request)) args$scope_request <- scope_request
+      do.call(refresh_token_impl, args)
+    },
     error = function(e) stop(refresh_outcome_error(e, "not_consumed"))
   )
   if (isTRUE(async) && promises::is.promise(result)) {
@@ -906,10 +924,12 @@ refresh_token_impl <- function(
   token,
   async = FALSE,
   introspect = NULL,
-  shiny_session = NULL
+  shiny_session = NULL,
+  scope_request = NULL
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
+  scope_request <- validate_refresh_scope_request(oauth_client, token, scope_request)
   if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
     err_input("`async` must be a single non-NA logical.")
   }
@@ -940,7 +960,8 @@ refresh_token_impl <- function(
           call_args = list(
             oauth_client = oauth_client,
             token = token,
-            introspect = effective_introspect
+            introspect = effective_introspect,
+            scope_request = scope_request
           ),
           client = oauth_client,
           shiny_session = shiny_session,
@@ -980,6 +1001,12 @@ refresh_token_impl <- function(
             grant_type = "refresh_token",
             refresh_token = token@refresh_token
           )
+          if (client_uses_smart(oauth_client)) {
+            scopes <- smart_refresh_request_scopes(oauth_client, token, scope_request)
+            if (!is.null(scopes)) params$scope <- paste(scopes, collapse = " ")
+          } else if (!is.null(scope_request)) {
+            params$scope <- paste(scope_request$scopes, collapse = " ")
+          }
           if (length(oauth_client@resource) > 0) {
             params[["resource"]] <- oauth_client@resource
           }
@@ -1015,7 +1042,7 @@ refresh_token_impl <- function(
             token = token
           )
 
-          req <- add_req_defaults(req)
+          req <- add_req_defaults(req, client = oauth_client)
           req <- req_no_redirect(req)
           # Allow provider to add custom token headers (mirrors login path)
           extra_headers <- as.list(auth_client@provider@extra_token_headers)
@@ -1090,7 +1117,9 @@ refresh_token_impl <- function(
             )
           }
 
-          tok <- parse_token_response(resp)
+          tok <- parse_token_response(resp,
+            allow_empty_scope = client_uses_smart_scopes(oauth_client)
+          )
           extra_fields <- token_response_extra_fields(tok)
           outcome$value <- if (
             is_valid_string(tok[["refresh_token"]]) &&
@@ -1157,6 +1186,16 @@ refresh_token_impl <- function(
             expires_in = tok[["expires_in"]],
             scope = tok[["scope"]]
           )
+          token_set <- c(token_set, tok[intersect("authorization_details", names(tok))])
+          if (!is.null(scope_request)) {
+            # RFC 6749 permits omission only when the response matches the
+            # current request. Preserve the unverified evidence flag; SMART
+            # still requires an explicit response scope.
+            grant <- resolve_granted_scope_state(smart_response_scope(oauth_client, token_set), scope_request$scopes,
+              is_refresh = TRUE, previous_granted_scopes = scope_request$scopes,
+              smart = client_uses_smart_scopes(oauth_client))
+            validate_refresh_scope_grant(oauth_client, grant$granted_scopes, scope_request)
+          }
           defer_certificate_binding <- isTRUE(effective_introspect) &&
             client_requires_observed_mtls_cnf(oauth_client) &&
             !is_valid_string(
@@ -1172,7 +1211,8 @@ refresh_token_impl <- function(
             is_refresh = TRUE,
             original_id_token = original_id_token,
             refresh_request_started_at = token_request_started_at,
-            prior_granted_scopes = token@granted_scopes,
+            requested_scopes = scope_request$scopes,
+            prior_granted_scopes = scope_request$scopes %||% token@granted_scopes,
             shiny_session = shiny_session,
             defer_certificate_binding = defer_certificate_binding,
             introspection_pending = isTRUE(effective_introspect)
@@ -1229,7 +1269,8 @@ refresh_token_impl <- function(
               token_set[["granted_scopes_verified"]]
             ),
             extra_fields = extra_fields,
-            initial_extra_fields = token@initial_extra_fields
+            initial_extra_fields = token@initial_extra_fields,
+            original_granted_scopes = token@original_granted_scopes
           )
 
           intro_res <- NULL
@@ -1242,11 +1283,17 @@ refresh_token_impl <- function(
               async = FALSE,
               shiny_session = shiny_session
             )
+            if (!is.null(scope_request) && "scope" %in% names(intro_res$raw)) {
+              validate_response_scope(intro_res$raw$scope, err_token,
+                allow_empty = client_uses_smart_scopes(oauth_client))
+              validate_refresh_scope_grant(oauth_client,
+                normalize_scope_tokens(intro_res$raw$scope), scope_request)
+            }
             refreshed_token <- enforce_token_introspection_policy(
               oauth_client = oauth_client,
               token = refreshed_token,
               introspection_result = intro_res,
-              requested_scopes = effective_client_scopes(oauth_client),
+              requested_scopes = scope_request$scopes %||% effective_client_scopes(oauth_client),
               phase = "refresh_token",
               token_response_cnf = token_set[["cnf"]],
               expires_in_missing = is.null(token_set[["expires_in"]]),
@@ -1294,6 +1341,7 @@ refresh_token_impl <- function(
             )
           }
 
+          validate_refresh_scope_grant(oauth_client, refreshed_token@granted_scopes, scope_request)
           if (isTRUE(oauth_client@provider@userinfo_required)) {
             userinfo_baseline_id_token <- if (
               isTRUE(token_set[[".id_token_validated"]]) &&
@@ -1347,6 +1395,7 @@ refresh_token_impl <- function(
             )
           }
 
+          refreshed_token <- smart_update_token_context(oauth_client, refreshed_token, token)
           validate_token_acceptance_deadline(refreshed_token)
           token@access_token <- refreshed_token@access_token
           token@refresh_token <- refreshed_token@refresh_token
@@ -1361,6 +1410,8 @@ refresh_token_impl <- function(
           token@userinfo <- refreshed_token@userinfo
           token@extra_fields <- refreshed_token@extra_fields
           token@initial_extra_fields <- refreshed_token@initial_extra_fields
+          token@smart_context <- refreshed_token@smart_context
+          token@original_granted_scopes <- refreshed_token@original_granted_scopes
 
           audit_event(
             "token_refresh",

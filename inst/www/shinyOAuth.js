@@ -210,6 +210,41 @@
     window.location.assign(String(payload.url));
   }
 
+  function handleAuthorizePost(payload){
+    if (!payload || payload.method !== 'POST' || typeof payload.url !== 'string' ||
+        !Array.isArray(payload.fields) || payload.fields.length > 256) return;
+    var endpoint;
+    try { endpoint = new URL(payload.url); } catch(e) { return; }
+    if (!/^https?:$/.test(endpoint.protocol) || endpoint.username || endpoint.password || endpoint.hash) return;
+    var fields = payload.fields;
+    var encoded = new URLSearchParams();
+    for (var i = 0; i < fields.length; i++) {
+      var field = fields[i];
+      if (!field || typeof field.name !== 'string' || !field.name || /^_charset_$/i.test(field.name) ||
+          typeof field.value !== 'string' || /[\r\n]/.test(field.name + field.value)) return;
+      encoded.append(field.name, field.value);
+    }
+    if (encoded.toString().length > 131072) return;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = payload.url;
+    form.enctype = 'application/x-www-form-urlencoded';
+    form.acceptCharset = 'UTF-8';
+    form.target = '_self';
+    form.hidden = true;
+    // Provider field names can shadow form methods; call their prototypes.
+    for (var j = 0; j < fields.length; j++) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = fields[j].name;
+      input.value = fields[j].value;
+      Node.prototype.appendChild.call(form, input);
+    }
+    document.body.appendChild(form);
+    HTMLFormElement.prototype.submit.call(form);
+    Element.prototype.remove.call(form);
+  }
+
   function shouldDropCallbackParam(key, value, drop, dropResponse){
     if(key === 'response') return !!dropResponse;
     return drop.indexOf(key) !== -1;
@@ -291,8 +326,29 @@
     Shiny.addCustomMessageHandler('shinyOAuth:setBrowserToken', handleSetBrowserToken);
     Shiny.addCustomMessageHandler('shinyOAuth:clearBrowserToken', handleClearBrowserToken);
     Shiny.addCustomMessageHandler('shinyOAuth:redirect', handleRedirect);
+    Shiny.addCustomMessageHandler('shinyOAuth:authorizePost', handleAuthorizePost);
     Shiny.addCustomMessageHandler('shinyOAuth:clearQueryAndFixTitle', handleClearQueryAndFixTitle);
   }
 
+  function prepareSmartLaunch(){
+    var marker = document.querySelector('meta[name="shinyOAuth-smart-launch"]');
+    if (!marker) return;
+    var ticket = marker.getAttribute('content');
+    var input = marker.getAttribute('data-input');
+    var clean = marker.getAttribute('data-url');
+    marker.remove();
+    if (!ticket || !/^[A-Za-z0-9_-]{32}$/.test(ticket) || !input || !window.jQuery) return;
+    try {
+      var url = new URL(clean);
+      if (url.origin !== window.location.origin || url.search || url.hash) return;
+      window.history.replaceState(null, '', url.href);
+    } catch(e) { return; }
+    jQuery(document).one('shiny:connected', function(){
+      var shiny = ensureShiny();
+      if (shiny) shiny.setInputValue(input, ticket, {priority: 'event'});
+    });
+  }
+
+  prepareSmartLaunch();
   register();
 })();

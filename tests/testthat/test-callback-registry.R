@@ -1,4 +1,4 @@
-registry_test_clients <- function(shared = FALSE, jarm = FALSE, post = FALSE) {
+registry_test_clients <- function(shared = FALSE, jarm = FALSE, post = FALSE, encrypted = FALSE) {
   redirects <- if (shared) {
     rep("https://app.example/callback", 2L)
   } else {
@@ -36,19 +36,24 @@ registry_test_clients <- function(shared = FALSE, jarm = FALSE, post = FALSE) {
         if (post) "form_post" else "query",
         if (jarm) ".jwt" else ""
       ),
-      jarm_signed_response_alg = if (jarm) "HS256" else NULL
+      jarm_signed_response_alg = if (jarm) "HS256" else NULL,
+      jarm_encrypted_response_alg = if (encrypted) "RSA-OAEP" else NULL,
+      jarm_encrypted_response_enc = if (encrypted) "A128CBC-HS256" else NULL,
+      jarm_decryption_private_key = if (encrypted) openssl::rsa_keygen(2048) else NULL
     )
   })
   stats::setNames(clients, c("auth_a", "auth_b"))
 }
 
 for (shared in c(FALSE, TRUE)) {
-  for (jarm in c(FALSE, TRUE)) {
+  for (profile in c("plain", "signed", "encrypted")) {
+    jarm <- profile != "plain"
+    encrypted <- profile == "encrypted"
     for (post in c(FALSE, TRUE)) {
       test_that(
-        paste("registry completes both provider flows", shared, jarm, post),
+        paste("registry completes both provider flows", shared, profile, post),
         {
-          clients <- registry_test_clients(shared, jarm, post)
+          clients <- registry_test_clients(shared, jarm, post, encrypted)
           browsers <- lapply(clients, function(...) valid_browser_token())
           rendered <- 0L
           base_ui <- function(req) {
@@ -86,6 +91,12 @@ for (shared in c(FALSE, TRUE)) {
                 state = state,
                 iss = client@provider@issuer
               )
+            }
+            if (encrypted) {
+              fields[["response"]] <- jwe_compact_encrypt(fields[["response"]],
+                client@jarm_decryption_private_key$pubkey, alg = "RSA-OAEP",
+                enc = "A128CBC-HS256", cty = "JWT")
+              if (shared) fields[["iss"]] <- client@provider@issuer
             }
             encoded <- httr2::url_query_build(fields)
             req <- list(
@@ -163,6 +174,41 @@ for (shared in c(FALSE, TRUE)) {
       )
     }
   }
+}
+
+for (post in c(FALSE, TRUE)) {
+  test_that(paste("shared encrypted registry validates the outer routing issuer", post), {
+    clients <- registry_test_clients(shared = TRUE, jarm = TRUE, post = post, encrypted = TRUE)
+    client <- clients[[1L]]
+    ui <- if (post) oauth_form_post_ui(shiny::fluidPage("App"), clients = clients) else
+      oauth_ui(shiny::fluidPage("App"), clients = clients)
+    state <- parse_query_param(prepare_call(client, valid_browser_token()), "state", decode = TRUE)
+    encrypted <- function(issuer = client@provider@issuer) {
+      signed <- jose::jwt_encode_hmac(jose::jwt_claim(iss = issuer, aud = client@client_id,
+        exp = as.numeric(Sys.time()) + 60, code = "example-code", state = state), client@client_secret)
+      jwe_compact_encrypt(signed, client@jarm_decryption_private_key$pubkey,
+        alg = "RSA-OAEP", enc = "A128CBC-HS256", cty = "JWT")
+    }
+    request <- function(fields) {
+      encoded <- httr2::url_query_build(fields)
+      req <- list(REQUEST_METHOD = if (post) "POST" else "GET", PATH_INFO = "/callback",
+        QUERY_STRING = if (post) "" else encoded, rook.url_scheme = "https", HTTP_HOST = "app.example")
+      if (post) {
+        req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
+        req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
+      }
+      ui(req)
+    }
+    local_mocked_bindings(swap_code_for_token_set = function(...) stop("Unexpected exchange"),
+      .package = "shinyOAuth")
+    response <- encrypted()
+    expect_identical(request(list(response = response))$status, 400L)
+    expect_identical(request(list(response = response, iss = "https://unknown.example"))$status, 400L)
+    expect_identical(request(list(response = response, iss = clients[[2L]]@provider@issuer))$status, 400L)
+    expect_identical(request(list(response = encrypted(clients[[2L]]@provider@issuer),
+      iss = client@provider@issuer))$status, 400L)
+    expect_identical(request(list(response = response, iss = client@provider@issuer))$status, 303L)
+  })
 }
 
 test_that("registry early rejections emit one sanitized routing event and error span", {

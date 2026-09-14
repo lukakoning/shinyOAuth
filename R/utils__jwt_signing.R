@@ -288,6 +288,7 @@ resolve_request_object_signing_alg <- function(client) {
   allowed_hmac <- c("HS256", "HS384", "HS512")
   allowed_asym <- c(
     "RS256",
+    "RS384",
     "ES256",
     "ES384",
     "ES512",
@@ -470,7 +471,7 @@ private_key_jws_alg_compatibility <- function(key, alg) {
 
   if (inherits(key, "rsa")) {
     bits <- jwe_rsa_key_size_bits(key)
-    return(bits >= 2048L && identical(alg, "RS256"))
+    return(bits >= 2048L && alg %in% c("RS256", "RS384"))
   }
 
   if (inherits(key, "ecdsa")) {
@@ -504,12 +505,16 @@ private_key_jws_alg_compatibility <- function(key, alg) {
   NA
 }
 
-# jose does not accept OKP private keys. Encode the standard JWS signing input
-# here and delegate Ed25519 itself to OpenSSL; do not prehash the signing input.
+# jose's RSA digest size defaults to 256 independently of the supplied header.
+# Select SHA-384 explicitly for RS384 (RFC 7518 section 3.3). For OKP keys,
+# retain our explicit-header encoder and delegate Ed25519 to OpenSSL.
 encode_asymmetric_jwt_with_header <- function(claims, key, header) {
   alg <- canonicalize_jws_alg(header[["alg"]])
   if (!private_key_can_sign_jws_alg(key, alg)) {
     err_config("JWT signing algorithm is incompatible with the private key")
+  }
+  if (identical(alg, "RS384")) {
+    return(jose::jwt_encode_sig(claims, key = key, size = 384, header = header))
   }
   if (!(alg %in% c("Ed25519", "EdDSA"))) {
     return(jose::jwt_encode_sig(claims, key = key, header = header))

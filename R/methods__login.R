@@ -20,6 +20,8 @@
 #' The helper records one-time state and creates any required PKCE and nonce
 #' values. Custom callers must preserve the browser binding and process the
 #' returning callback themselves.
+#' For an explicitly configured POST client, use [prepare_authorization_request()]
+#' instead. This URL-only helper rejects POST before storing a transaction.
 #'
 #' @param oauth_client An [OAuthClient] object.
 #' @param browser_token Browser-bound token used to tie the login attempt to the
@@ -33,6 +35,12 @@
 #'   the Shiny module for forced reauthentication.
 #' @param .defer_build Internal flag returning prepared local state for async
 #'   authorization work instead of completing the authorization URL.
+#' @param .transaction_context Internal bounded manager context. Ordinary callers
+#'   leave this `NULL`; managed state requires manager-aware consumption.
+#' @param .smart_launch Internal per-transaction EHR launch handle supplied by
+#'   the manager. Bound to the approved target and sealed transaction context.
+#' @param .authorization_request Internal flag permitting a structured POST
+#'   result for the module and [prepare_authorization_request()].
 #'
 #' @return A length-1 string containing the authorization URL to send the user
 #'   to. When PAR is used, the returned string also carries
@@ -48,12 +56,24 @@ prepare_call <- function(
   browser_token,
   request_uri_publisher = NULL,
   .requested_max_age = NULL,
-  .defer_build = FALSE
+  .defer_build = FALSE,
+  .transaction_context = NULL,
+  .smart_launch = NULL,
+  .authorization_request = FALSE
 ) {
   # Verify input  --------------------------------------------------------------
 
   # Verify oauth_client
   S7::check_is_S7(oauth_client, OAuthClient)
+  if (!isTRUE(.defer_build) && !isTRUE(.authorization_request) &&
+      identical(oauth_client@authorization_method, "POST")) {
+    err_config("POST authorization requires prepare_authorization_request() or request_login(); prepare_call() returns a URL only")
+  }
+  smart_prepare_launch(oauth_client, .transaction_context, .smart_launch)
+  if (client_uses_smart(oauth_client) && !is.null(.requested_max_age)) {
+    err_config("SMART remote freshness overrides are not supported")
+  }
+  transaction_context <- authorization_context_json(.transaction_context)
 
   # Verify browser_token
   if (is.null(browser_token) && isTRUE(allow_skip_browser_token())) {
@@ -158,6 +178,7 @@ prepare_call <- function(
           max_age = requested_max_age,
           provider = oauth_client@provider |> provider_fingerprint(),
           client_policy = state_client_policy_fingerprint(oauth_client),
+          transaction_context_digest = authorization_context_digest(transaction_context),
           issued_at = as.numeric(Sys.time()),
           trace_id = flow_trace_id,
           otel_login_span_headers = login_span_headers
@@ -191,11 +212,15 @@ prepare_call <- function(
             oauth_client@state_store$set(
               key = state_cache_key(state),
               value = state_store_seal(
-                list(
+                c(list(
                   browser_token = browser_token,
                   pkce_code_verifier = pkce_code_verifier,
                   nonce = nonce
-                ),
+                ), if (!is.null(transaction_context)) {
+                  list(
+                    transaction_context = transaction_context
+                  )
+                }),
                 oauth_client,
                 state
               )
@@ -241,6 +266,7 @@ prepare_call <- function(
             redirect_uri = oauth_client@redirect_uri %||% NA_character_
           )
         )
+        if (!is.null(.smart_launch)) prepared$build_args$.smart_launch <- .smart_launch
         if (isTRUE(.defer_build)) {
           prepared
         } else {
@@ -324,7 +350,8 @@ build_authorization_params <- function(
   pkce_code_challenge,
   pkce_method,
   nonce,
-  requested_max_age = provider_auth_max_age(oauth_client@provider)
+  requested_max_age = provider_auth_max_age(oauth_client@provider),
+  .smart_launch = NULL
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
@@ -507,6 +534,7 @@ build_authorization_params <- function(
   }
 
   # Drop NULLs before building query strings or form bodies.
+  if (!is.null(.smart_launch)) params$launch <- .smart_launch
   compact_list(params)
 }
 
@@ -557,7 +585,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       params <- prepared[["params"]]
       req <- req_apply_authorization_server_mtls(req, auth_client)
 
-      req <- add_req_defaults(req)
+      req <- add_req_defaults(req, client = client)
       req <- req_no_redirect(req)
 
       extra_headers <- as.list(auth_client@provider@extra_token_headers)
@@ -710,7 +738,7 @@ attach_par_auth_url_metadata <- function(
   par_resp,
   issued_at = as.numeric(Sys.time())
 ) {
-  if (!is_valid_string(auth_url) || !is.list(par_resp)) {
+  if ((!is_valid_string(auth_url) && !is.list(auth_url)) || !is.list(par_resp)) {
     return(auth_url)
   }
 
@@ -786,8 +814,14 @@ build_auth_url <- function(
   request_handle_id = NULL,
   .request_object = NULL,
   .request_object_expires_at = NULL,
-  .defer_publication = FALSE
+  .defer_publication = FALSE,
+  .smart_launch = NULL
 ) {
+  # Keep request composition (PAR/JAR included) identical for both browser
+  # methods. Only the final serialization changes.
+  authorization_url_append <- function(url, params) {
+    authorization_front_channel(oauth_client, url, params)
+  }
   warn_if_request_uri_is_long <- function(request_uri) {
     request_uri_len <- nchar(enc2utf8(request_uri), type = "bytes")
 
@@ -848,7 +882,8 @@ build_auth_url <- function(
     pkce_code_challenge = pkce_code_challenge,
     pkce_method = pkce_method,
     nonce = nonce,
-    requested_max_age = requested_max_age
+    requested_max_age = requested_max_age,
+    .smart_launch = .smart_launch
   )
   # Validate known inner values before signing, publishing or sending PAR.
   # Final outer composition also validates request/request_uri once available.
@@ -1303,6 +1338,8 @@ handle_callback <- function(
 #' @param trace_id_seeded Whether the surrounding callback span already started
 #'   with the recovered shinyOAuth trace id.
 #' @param shiny_session Optional Shiny session context.
+#' @param .transaction_context Internal context already checked by the manager
+#'   against the intended owner and session generation.
 #' @return An [OAuthToken] object on success. Otherwise this function raises a
 #'   typed error.
 #' @keywords internal
@@ -1315,7 +1352,8 @@ handle_callback_internal <- function(
   decrypted_payload = NULL,
   state_store_values = NULL,
   trace_id_seeded = FALSE,
-  shiny_session = NULL
+  shiny_session = NULL,
+  .transaction_context = NULL
 ) {
   # Type checks ----------------------------------------------------------------
 
@@ -1451,6 +1489,13 @@ handle_callback_internal <- function(
         )
       }
 
+      state_record_verify_authorization_context(
+        state_store_values, payload[["transaction_context_digest"]]
+      )
+      if (!identical(state_store_values[["transaction_context"]], .transaction_context)) {
+        err_invalid_state("Managed authorization requires its verified transaction context")
+      }
+
       # Verify browser token -------------------------------------------------------
 
       # Verify browser_token matches
@@ -1524,7 +1569,9 @@ handle_callback_internal <- function(
               oauth_client,
               payload[["state"]],
               expected_record = state_store_values,
-              shiny_session = shiny_session
+              shiny_session = shiny_session,
+              .transaction_context = .transaction_context,
+              .transaction_context_digest = payload[["transaction_context_digest"]]
             )
           },
           attributes = otel_client_attributes(
@@ -1870,6 +1917,7 @@ handle_callback_internal <- function(
       }
 
       # Audit: login success with redacted identifiers
+      token <- smart_update_token_context(oauth_client, token)
       validate_token_acceptance_deadline(token)
       try(
         {
@@ -2126,7 +2174,18 @@ enforce_token_introspection_policy <- function(
     )
     intro_scope_raw <- raw[["scope"]] %||% NULL
     if ("scope" %in% names(raw)) {
-      validate_response_scope(intro_scope_raw, err_token)
+      validate_response_scope(intro_scope_raw, err_token,
+        allow_empty = client_uses_smart_scopes(oauth_client)
+      )
+    }
+    if (client_uses_smart_scopes(oauth_client)) {
+      if (is.null(intro_scope_raw)) {
+        err_token("SMART introspection scope check requires an explicit scope string")
+      }
+      smart_verify_scope_grant(
+        oauth_client,
+        normalize_scope_tokens(intro_scope_raw), TRUE, token@granted_scopes
+      )
     }
 
     if (!is.null(intro_scope_raw)) {
@@ -2135,7 +2194,8 @@ enforce_token_introspection_policy <- function(
     }
 
     if (
-      !identical(scope_validation_mode, "none") && length(requested_scopes) > 0
+      !client_uses_smart_scopes(oauth_client) &&
+        !identical(scope_validation_mode, "none") && length(requested_scopes) > 0
     ) {
       if (is.null(intro_scope_raw)) {
         msg <- "Token introspection response missing scope; cannot validate requested scopes"
@@ -2158,7 +2218,7 @@ enforce_token_introspection_policy <- function(
       } else {
         intro_scopes <- normalize_scope_tokens(intro_scope_raw)
 
-        missing <- setdiff(requested_scopes, intro_scopes)
+        missing <- evaluate_scope_coverage(requested_scopes, intro_scopes)$missing
         if (length(missing) > 0) {
           msg <- paste0(
             "Introspected scopes missing requested entries: ",
@@ -2388,7 +2448,7 @@ swap_code_for_token_set <- function(
       req <- req_apply_authorization_server_mtls(req, auth_client)
 
       # Apply defaults first; disable redirects to prevent leaking secrets
-      req <- add_req_defaults(req)
+      req <- add_req_defaults(req, client = client)
       req <- req_no_redirect(req)
 
       # Add any extra token headers without using rlang splicing so tests can stub
@@ -2446,7 +2506,9 @@ swap_code_for_token_set <- function(
         )
       }
 
-      token_set <- parse_token_response(resp)
+      token_set <- parse_token_response(resp,
+        allow_empty_scope = client_uses_smart_scopes(client)
+      )
 
       # Some providers return expires_in as a character string (e.g., form-encoded
       # responses or JSON where the value is quoted). Convert digit-only strings to
@@ -2569,16 +2631,18 @@ verify_token_set <- function(
   if (!is.list(token_set) || length(token_set) == 0) {
     err_token("Invalid token set: must be a non-empty list")
   }
+  token_set <- smart_verify_token_response(client, token_set, is_refresh)
 
   scope_validation_mode <- client@scope_validation %||% "warn"
   requested_scopes <- normalize_scope_tokens(
     requested_scopes %||% effective_client_scopes(client)
   )
   granted_scope_state <- resolve_granted_scope_state(
-    token_scope = token_set[["scope"]],
+    token_scope = smart_response_scope(client, token_set),
     requested_scopes = requested_scopes,
     is_refresh = is_refresh,
-    previous_granted_scopes = prior_granted_scopes
+    previous_granted_scopes = prior_granted_scopes,
+    smart = client_uses_smart_scopes(client)
   )
   granted_scopes <- granted_scope_state[["granted_scopes"]] %||%
     character(0)
@@ -2683,12 +2747,17 @@ verify_token_set <- function(
       # Skip explicit scope reconciliation when provider omits scope. Per RFC
       # 6749 Sections 5.1 and 6, omission means unchanged from the requested
       # scope. Explicit empty scope values are rejected by the wire validator.
-      if (
+      if (client_uses_smart_scopes(client)) {
+        smart_verify_scope_grant(
+          client, granted_scopes, is_refresh,
+          prior_granted_scopes
+        )
+      } else if (
         !identical(scope_validation_mode, "none") &&
           length(requested_scopes) > 0 &&
           !scope_is_omitted
       ) {
-        missing <- setdiff(requested_scopes, granted_scopes)
+        missing <- evaluate_scope_coverage(requested_scopes, granted_scopes)$missing
         if (length(missing) > 0) {
           msg <- paste0(
             "Granted scopes missing requested entries: ",
@@ -2945,6 +3014,7 @@ verify_token_set <- function(
       # and fail closed when policy explicitly requires that baseline.
 
       token_set[[".id_token_validated"]] <- id_token_validated
+      smart_verify_identity(client, token_set, is_refresh)
 
       if (isTRUE(is_refresh)) {
         userinfo_present <- is.list(token_set[["userinfo"]]) &&

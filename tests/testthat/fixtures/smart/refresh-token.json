@@ -1,0 +1,7 @@
+{
+  "access_token": "synthetic-access-a-rotated",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "synthetic-refresh-a-rotated",
+  "scope": "launch/patient patient/Patient.r patient/Patient.s"
+}

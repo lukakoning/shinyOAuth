@@ -142,10 +142,13 @@ refresh, or logout.
 The object also supplies:
 \itemize{
 \item \code{auth$request_login()}: start login. Waits for browser setup when needed
-and does nothing if the session is already authenticated.
+and does nothing if the session is already authenticated. Uses a browser
+form when the client selects \code{authorization_method = "POST"}; the app's
+Content Security Policy \code{form-action} must permit the provider endpoint.
 \item \code{auth$logout()}: clear the local login and attempt to revoke tokens when
 supported, following \code{async}. It does not sign out of the provider account.
 \item \code{auth$build_auth_url()}: advanced helper for a custom login link.
+Rejects POST clients; use \code{request_login()} for their form submission.
 Creates pending login state as well as the URL, so retain the result for
 the link instead of rebuilding it on every UI update.
 Rotates and checks the browser binding before creating state. Returns a

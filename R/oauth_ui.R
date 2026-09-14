@@ -35,9 +35,9 @@
 #' `authorization_server_mode = "multi_issuer"` and distinct trusted issuers.
 #' An RFC 9207 `iss` or signed JARM issuer selects the configured client; the
 #' complete callback is then verified before a bridge handle is stored.
-#' Encrypted JARM on a shared route requires an outer `iss` (verified against
-#' the decrypted response); otherwise use distinct routes. Do not nest wrappers
-#' to route multiple providers.
+#' Encrypted JARM on a shared route requires an outer `iss` identifying one
+#' distinct configured issuer. The decrypted, signed response must match it.
+#' Do not nest wrappers to route multiple providers.
 #'
 #' Without `id` and `client`, ordinary pages still render, but raw OAuth GET
 #' callbacks fail closed with a setup error. Earlier `oauth_ui(ui)` query-flow
@@ -81,11 +81,24 @@ oauth_ui <- function(
   request_uri_resolver = NULL,
   clients = NULL
 ) {
+  oauth_ui_impl(base_ui, id, client, request_uri_resolver, clients)
+}
+
+# Private extension point: only the manager can supply a pending-state router.
+oauth_ui_impl <- function(
+  base_ui,
+  id = NULL,
+  client = NULL,
+  request_uri_resolver = NULL,
+  clients = NULL,
+  allow_shared_issuer = FALSE,
+  select_client = NULL
+) {
   registry <- if (!is.null(clients)) {
     if (!is.null(id) || !is.null(client)) {
       err_input("Use clients or id/client, not both.")
     }
-    oauth_callback_registry(clients)
+    oauth_callback_registry(clients, allow_shared_issuer = allow_shared_issuer)
   } else {
     NULL
   }
@@ -131,7 +144,8 @@ oauth_ui <- function(
       response <- oauth_registry_http_handler(
         req,
         registry,
-        request_uri_resolver
+        request_uri_resolver,
+        select_client = select_client
       )
       if (!is.null(response)) {
         return(response)

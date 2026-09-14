@@ -292,7 +292,7 @@ capture_set_cookie_writes <- function(
   expression <- paste0(
     "(function(source, payload, protocol) {",
     "  var writes = [];",
-    "  var fakeDocument = { title: '', body: { textContent: '' } };",
+    "  var fakeDocument = { title: '', body: { textContent: '' }, querySelector: function() { return null; } };",
     "  Object.defineProperty(fakeDocument, 'cookie', {",
     "    get: function() { return ''; },",
     "    set: function(value) { writes.push(String(value)); }",
@@ -358,7 +358,7 @@ capture_clear_query_url <- function(
     "(function(source, href, cleanTitle, dropResponse) {",
     "  var replaced = null;",
     "  var parsed = new URL(href);",
-    "  var fakeDocument = { title: '', body: { textContent: '' } };",
+    "  var fakeDocument = { title: '', body: { textContent: '' }, querySelector: function() { return null; } };",
     "  var fakeWindow = {",
     "    location: {",
     "      href: href,",

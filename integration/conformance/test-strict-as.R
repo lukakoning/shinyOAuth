@@ -1,4 +1,4 @@
-testthat::test_that("independent AS enforces JAR and completes protected combinations", {
+run_strict_as <- function(alg) {
   python <- Sys.getenv("SHINYOAUTH_TEST_PYTHON", unset = Sys.which("python"))
   testthat::expect_true(nzchar(python))
   root <- tempfile("strict-as-")
@@ -11,7 +11,7 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
   )
   server <- processx::process$new(
     python,
-    c("strict_as.py", root),
+    c("strict_as.py", root, alg),
     stdout = "|",
     stderr = "|"
   )
@@ -31,6 +31,7 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
   withr::local_options(list(
     shinyOAuth.tls_min_version = "1.2",
     shinyOAuth.timeout = 5,
+    shinyOAuth.skip_id_sig = FALSE,
     shinyOAuth.otel_tracing_enabled = FALSE,
     shinyOAuth.otel_logging_enabled = FALSE
   ))
@@ -47,7 +48,7 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
     userinfo_required = FALSE,
     signed_request_object_required = TRUE,
     request_parameter_supported = TRUE,
-    request_object_signing_alg_values_supported = "RS256",
+    request_object_signing_alg_values_supported = alg,
     allowed_token_types = c("Bearer", "DPoP")
   )
   client <- shinyOAuth::oauth_client(
@@ -58,11 +59,17 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
     scopes = "openid",
     client_assertion_private_key = signing_key,
     request_object_mode = "request",
-    request_object_signing_alg = "RS256"
+    request_object_signing_alg = alg
   )
   browser <- strrep("ab", 64)
   get <- function(url) {
-    httr2::request(url) |>
+    if (is.list(url)) {
+      fields <- stats::setNames(lapply(url$fields, `[[`, "value"),
+        vapply(url$fields, `[[`, "", "name"))
+      testthat::expect_identical(url$method, "POST")
+      request <- do.call(httr2::req_body_form, c(list(httr2::request(url$url)), fields))
+    } else request <- httr2::request(url)
+    request |>
       httr2::req_options(
         cainfo = file.path(root, "ca.pem"),
         followlocation = FALSE
@@ -98,7 +105,9 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
     )
     jwt <- jose::jwt_encode_sig(
       do.call(jose::jwt_claim, claims),
-      key = signing_key
+      key = signing_key,
+      size = if (alg == "RS384") 384 else 256,
+      header = list(alg = alg)
     )
     response <- get(paste0(
       issuer,
@@ -121,7 +130,7 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
   replay <- get(url)
   testthat::expect_identical(httr2::resp_body_json(replay)$reason, "jar_replay")
 
-  for (mode in c(
+  for (authorization_method in c("GET", "POST")) for (mode in c(
     "dpop",
     "dpop-par",
     "mtls",
@@ -138,7 +147,8 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
       profile <- if (grepl("oauth21", mode)) "oauth21" else "legacy"
       configured@provider@issuer_thus_oidc <- FALSE
       configured@provider@token_auth_style <- "private_key_jwt"
-      configured@client_assertion_alg <- "RS256"
+      configured@client_assertion_alg <- alg
+      configured@provider@token_endpoint_auth_signing_alg_values_supported <- alg
       configured@scopes <- paste0("jwt-", profile)
       configured@provider@introspection_url <- paste0(
         issuer,
@@ -177,7 +187,7 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
     }
     if (mode == "jarm") {
       configured@response_mode <- "query.jwt"
-      configured@jarm_signed_response_alg <- "RS256"
+      configured@jarm_signed_response_alg <- alg
     }
     if (jwt_profile) {
       assessment <- shinyOAuth::check_oauth21(
@@ -189,9 +199,13 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
         profile == "oauth21"
       )
     }
-    url <- shinyOAuth::prepare_call(configured, browser_token = browser)
+    configured@authorization_method <- authorization_method
+    url <- if (authorization_method == "POST") {
+      shinyOAuth::prepare_authorization_request(configured, browser_token = browser)
+    } else shinyOAuth::prepare_call(configured, browser_token = browser)
     response <- get(url)
     testthat::expect_identical(httr2::resp_status(response), 302L, info = mode)
+    testthat::expect_identical(httr2::resp_header(response, "x-fixture-authorization-method"), authorization_method)
     callback <- query(httr2::resp_header(response, "location"))
     if (mode != "jarm" && !jwt_profile) {
       state <- shinyOAuth:::state_payload_decrypt_validate(
@@ -277,4 +291,15 @@ testthat::test_that("independent AS enforces JAR and completes protected combina
       )
     }
   }
-})
+}
+
+for (alg in c("RS256", "RS384")) {
+  testthat::test_that(
+    paste(
+      "independent AS enforces",
+      alg,
+      "JAR and completes protected combinations"
+    ),
+    run_strict_as(alg)
+  )
+}

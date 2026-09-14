@@ -196,9 +196,9 @@ a token, for example during logout (RFC 7009).}
 \item{extra_auth_params}{Extra parameters for authorization URL}
 
 \item{extra_token_params}{Extra parameters for token exchange.
-\code{scope} is reserved and cannot be unblocked: explicit refresh scope
-narrowing is not currently supported. Configure login scopes on
-\code{\link[=oauth_client]{oauth_client()}} instead.}
+\code{scope} is reserved and cannot be unblocked. For explicit refresh scope
+narrowing use a managed connection's \verb{$refresh(scopes = ...)}. Configure
+login scopes on \code{\link[=oauth_client]{oauth_client()}} instead.}
 
 \item{extra_token_headers}{Extra headers for back-channel token-style
 requests (named character vector), applied only to token exchange and

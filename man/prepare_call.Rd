@@ -9,7 +9,10 @@ prepare_call(
   browser_token,
   request_uri_publisher = NULL,
   .requested_max_age = NULL,
-  .defer_build = FALSE
+  .defer_build = FALSE,
+  .transaction_context = NULL,
+  .smart_launch = NULL,
+  .authorization_request = FALSE
 )
 }
 \arguments{
@@ -29,6 +32,15 @@ the Shiny module for forced reauthentication.}
 
 \item{.defer_build}{Internal flag returning prepared local state for async
 authorization work instead of completing the authorization URL.}
+
+\item{.transaction_context}{Internal bounded manager context. Ordinary callers
+leave this \code{NULL}; managed state requires manager-aware consumption.}
+
+\item{.smart_launch}{Internal per-transaction EHR launch handle supplied by
+the manager. Bound to the approved target and sealed transaction context.}
+
+\item{.authorization_request}{Internal flag permitting a structured POST
+result for the module and \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}.}
 }
 \value{
 A length-1 string containing the authorization URL to send the user
@@ -51,6 +63,8 @@ reactive session state.
 The helper records one-time state and creates any required PKCE and nonce
 values. Custom callers must preserve the browser binding and process the
 returning callback themselves.
+For an explicitly configured POST client, use \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}
+instead. This URL-only helper rejects POST before storing a transaction.
 }
 \examples{
 # Advanced example: your code supplies browser redirects and callback handling.

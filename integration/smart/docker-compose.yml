@@ -1,0 +1,52 @@
+# R4-only SMART Dev Sandbox components with the official SMART Launcher v2.
+# Digests resolved 2026-09-10; see sandbox.md for provenance and upgrades.
+services:
+  r4:
+    image: smartonfhir/hapi-5:r4-synthea@sha256:5ba5f4a10df4610f53fac05fbdc34b37d733ba1315e39fa6ef4685dc6dfeec95
+    platform: linux/amd64
+    environment:
+      HOST: localhost
+      PORT: "18404"
+    ports:
+      - "127.0.0.1:18404:8080"
+    volumes:
+      - r4-data:/usr/local/tomcat/target/database
+    mem_limit: 2g
+    cpus: 2
+    command:
+      - /bin/sh
+      - -c
+      - |
+        envsubst < /tmp/hapi.properties.tpl > /config/hapi.properties
+        envsubst < /tmp/server.xml > /usr/local/tomcat/conf/server.xml
+        exec catalina.sh run
+
+  launcher:
+    image: smartonfhir/smart-launcher-2@sha256:72bd3e3c682ce4c74e6dddb605d89acad7c8aae446ae38079e8dfe8455b84793
+    depends_on:
+      - r4
+      - patient-browser
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "80"
+      FHIR_SERVER_R4: http://localhost:18404/hapi-fhir-jpaserver/fhir
+      FHIR_SERVER_R4_INTERNAL: http://r4:8080/hapi-fhir-jpaserver/fhir
+      # Empty upstreams disable these releases in Launcher v2.
+      FHIR_SERVER_R2: ""
+      FHIR_SERVER_R3: ""
+      PICKER_ORIGIN: http://localhost:18412
+    ports:
+      - "127.0.0.1:18413:80"
+
+  patient-browser:
+    image: smartonfhir/patient-browser@sha256:cc35336e9fe57bf702dde9fae609a5e2fa3ff21b4fc5ead9311bacefbb9bbca8
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:18412:80"
+    volumes:
+      # Launcher v2 opens the picker with config=r4.
+      - ./patient-browser/r4-local.json5:/usr/share/nginx/html/config/r4.json5:ro
+
+volumes:
+  r4-data:

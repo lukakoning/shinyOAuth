@@ -1,0 +1,8 @@
+{
+  server: {
+    type: "R4",
+    url: "http://localhost:18404/hapi-fhir-jpaserver/fhir",
+    tags: [{ key: "synthea-5-2019", label: "Synthetic sample patients" }],
+    conditions: {}
+  }
+}

@@ -1,0 +1,31 @@
+# The runner supplies fresh project/volume names, loopback ports and public TLS
+# origins. No public port is published for Redis or the worker.
+services:
+  inferno:
+    build: .
+    image: shinyoauth-inferno:980e54e4-simulator1
+    environment:
+      APP_ENV: production
+      INFERNO_HOST: ${SMART_INFERNO_ORIGIN:?runner supplies TLS origin}
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "127.0.0.1:${SMART_INFERNO_PORT:?runner supplies loopback port}:4567"
+    volumes:
+      - data:/opt/inferno/data
+    depends_on:
+      - redis
+  worker:
+    image: shinyoauth-inferno:980e54e4-simulator1
+    command: bundle exec sidekiq -r ./worker.rb
+    environment:
+      APP_ENV: production
+      INFERNO_HOST: ${SMART_INFERNO_ORIGIN:?runner supplies TLS origin}
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - data:/opt/inferno/data
+    depends_on:
+      - redis
+  redis:
+    image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+volumes:
+  data:

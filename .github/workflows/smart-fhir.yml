@@ -1,0 +1,109 @@
+name: SMART on FHIR integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      require_compatible_discovery:
+        description: Require the positive external discovery gate (currently unmet by the pinned launcher)
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - R/**
+      - inst/www/**
+      - DESCRIPTION
+      - NAMESPACE
+      - tests/testthat/**
+      - integration/smart/**
+      - integration/connections/helper-browser.R
+      - integration/connections/fixture-account-app.R
+      - integration/connections/tls-proxy.py
+      - integration/keycloak/tls/**
+      - .github/workflows/smart-fhir.yml
+  push:
+    branches: [main, master]
+    paths:
+      - R/**
+      - inst/www/**
+      - DESCRIPTION
+      - NAMESPACE
+      - tests/testthat/**
+      - integration/smart/**
+      - integration/connections/helper-browser.R
+      - integration/connections/fixture-account-app.R
+      - integration/connections/tls-proxy.py
+      - integration/keycloak/tls/**
+      - .github/workflows/smart-fhir.yml
+
+permissions:
+  contents: read
+
+jobs:
+  smart-fhir:
+    name: SMART on FHIR
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      NOT_CRAN: "true"
+      CURL_SSL_BACKEND: openssl
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        with:
+          use-public-rspm: true
+      - name: Set up Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@2dbff04819ebbfd5c974947148805a825b8a07fd # v2.1.0
+      - name: Select Chrome for browser tests
+        run: echo "CHROMOTE_CHROME=${{ steps.setup-chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+      - uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        with:
+          extra-packages: |
+            local::.
+            any::testthat
+            any::webfakes
+            any::chromote
+            any::callr
+            any::withr
+            any::mirai
+            any::promises
+            any::future
+            any::processx
+      - name: Install this checkout for apps and mirai workers
+        run: R CMD INSTALL .
+      - name: Test public SMART EHR launch, context and retention
+        run: Rscript integration/smart/run-ehr-browser.R
+      - name: Test SMART registrations, launch modes, identity and refresh scopes
+        run: Rscript integration/smart/run-profiles.R
+      - name: Test long authorization POST across the SMART browser matrix
+        run: Rscript integration/smart/run-profiles.R --post
+      - name: Test ordinary OIDC alongside SMART over cross-site HTTPS
+        run: Rscript integration/smart/run-mixed.R
+      - name: Verify SMART clients and retained connections with pinned Inferno
+        run: Rscript integration/smart/run-inferno.R
+      - name: Verify cross-site HTTPS SMART callbacks
+        run: Rscript integration/smart/run-profiles.R --cross-site
+      - name: Verify expired retained SMART grants
+        run: Rscript integration/smart/run-lifecycle.R expiry
+      - name: Verify SMART refresh context changes
+        run: Rscript integration/smart/run-lifecycle.R context
+      - name: Verify Patient and RelatedPerson identities with Inferno
+        run: Rscript integration/smart/run-inferno-extensions.R identity
+      - name: Verify account retention with Inferno grants
+        run: Rscript integration/smart/run-inferno-extensions.R account
+      - name: Verify interrupted SMART refresh and logout
+        run: Rscript integration/smart/run-lifecycle.R interrupted
+      - name: Verify reduced and declined SMART consent
+        run: Rscript integration/smart/run-lifecycle.R consent
+      - name: Verify SMART permissions against Microsoft FHIR Server
+        run: Rscript integration/smart/run-permissions.R
+      - name: Test sandbox infrastructure and discovery
+        run: Rscript integration/smart/run-tests.R ${{ inputs.require_compatible_discovery && '--require-compatible-discovery' || '' }}
+      - name: Upload sanitized SMART evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: smart-fhir-evidence
+          path: integration/smart/.artifacts/**/evidence.json
+          include-hidden-files: true
+          if-no-files-found: ignore

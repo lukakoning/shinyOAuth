@@ -142,11 +142,12 @@ resolve_http_timeout <- function() {
 #'   applied.
 #' @keywords internal
 #' @noRd
-add_req_defaults <- function(req) {
+add_req_defaults <- function(req, client = NULL, tls_minimum = client_tls_minimum(client)) {
   # If a test double/fake is passed, do nothing
   if (!inherits(req, "httr2_request")) {
     return(req)
   }
+  if (!is.null(tls_minimum)) req[["shinyOAuth_tls_minimum"]] <- tls_minimum
   # Resolve timeout (seconds)
   timeout <- resolve_http_timeout()
 
@@ -232,8 +233,12 @@ apply_direct_client_auth <- function(req, params, client, context) {
   } else if (
     identical(tas, "client_secret_jwt") || identical(tas, "private_key_jwt")
   ) {
-    params[["client_id"]] <- params[["client_id"]] %||%
-      client@client_id
+    if (client_uses_smart(client) && identical(tas, "private_key_jwt") &&
+        context %in% c("token_exchange", "refresh_token")) {
+      params[["client_id"]] <- NULL
+    } else {
+      params[["client_id"]] <- params[["client_id"]] %||% client@client_id
+    }
     params[["client_assertion_type"]] <-
       "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
     params[["client_assertion"]] <- build_client_assertion(

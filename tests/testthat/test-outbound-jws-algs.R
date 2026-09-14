@@ -42,6 +42,7 @@ outbound_alg_public_key <- function(key) {
 outbound_alg_asym_cases <- function() {
   list(
     RS256 = openssl::rsa_keygen(2048),
+    RS384 = openssl::rsa_keygen(2048),
     ES256 = openssl::ec_keygen(curve = "P-256"),
     ES384 = openssl::ec_keygen(curve = "P-384"),
     ES512 = openssl::ec_keygen(curve = "P-521")
@@ -197,7 +198,7 @@ testthat::test_that("DPoP proofs self-verify for every outbound alg", {
 
 testthat::test_that("unsupported RSA-family outbound algs are rejected", {
   rsa <- openssl::rsa_keygen(2048)
-  unsupported <- c("RS384", "RS512", "PS256", "PS384", "PS512")
+  unsupported <- c("RS512", "PS256", "PS384", "PS512")
 
   for (alg in unsupported) {
     testthat::expect_error(

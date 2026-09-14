@@ -17,7 +17,9 @@ OAuthToken(
   id_token_validated = FALSE,
   original_id_token = NA_character_,
   extra_fields = list(),
-  initial_extra_fields = list()
+  initial_extra_fields = list(),
+  smart_context = list(),
+  original_granted_scopes = character(0)
 )
 }
 \arguments{
@@ -74,6 +76,14 @@ list, including when the response contains no extra fields.}
 successful authorization-code exchange. Preserved across refreshes and
 replaced on a new login. Defaults to an empty list for manually constructed
 tokens; refresh does not infer an initial response from \code{extra_fields}.}
+
+\item{smart_context}{Internal interpreted SMART context. Empty for ordinary
+tokens; populated only by SMART token processing. Use \code{\link[=smart_context]{smart_context()}} on
+a connection to read it. Includes sensitive patient and identity references.}
+
+\item{original_granted_scopes}{Initial accepted SMART grant, preserved across
+refreshes to distinguish unchanged grants from strict scope reductions.
+Empty for ordinary OAuth tokens. Set by SMART token processing.}
 }
 \description{
 An \code{OAuthToken} holds credentials and user information returned after login.
