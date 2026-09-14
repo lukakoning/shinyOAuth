@@ -111,6 +111,9 @@ test_that("OIDC narrowing retains permission for required UserInfo before exchan
 })
 
 test_that("automatic SMART refresh retains server reductions across sessions", {
+  clock <- new.env(parent = emptyenv())
+  clock$now <- Sys.time()
+  local_mocked_bindings(Sys.time = function() clock$now, .package = "base")
   client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
     scopes = "user/Patient.rs", required_scopes = "user/Patient.r")
   manager <- oauth_connections(list(a = client), "https://app.example", retention = "browser",
@@ -140,6 +143,9 @@ test_that("automatic SMART refresh retains server reductions across sessions", {
     expect_setequal(controller$read(kept$id)$token@granted_scopes, strsplit(reduced, " ")[[1L]])
   })
   shiny::testServer(server, session = manager_test_session(cookie), {
+    expect_identical(controller$refresh(kept$id, touch = FALSE), FALSE)
+    expect_length(requests, 1L)
+    clock$now <- clock$now + 30
     expect_identical(controller$refresh(kept$id, touch = FALSE), TRUE)
     expect_setequal(strsplit(utils::URLdecode(as.character(requests[[2L]]$scope)), " ")[[1L]], strsplit(reduced, " ")[[1L]])
     expect_identical(as.character(requests[[2L]]$refresh_token), "synthetic-refresh")
