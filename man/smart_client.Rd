@@ -135,7 +135,8 @@ requests and requires \code{openid}, signed ID-token validation and nonce bindin
 A patient in context is independent of the authenticated user and local owner.
 
 Only direct authorization requests and query/form POST callbacks are currently
-supported. JAR, PAR, JARM, DPoP, mTLS and remote freshness requirements need
+supported. Claims requests (including \code{auth_time}), JAR, PAR, JARM, DPoP,
+mTLS and remote freshness requirements need
 separate SMART composition work; this constructor provides no overrides for
 those features. EHR clients require a fresh registered launch transaction.
 Configure standalone and EHR registrations as separate clients when both are

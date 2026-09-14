@@ -12,7 +12,8 @@
 #' A patient in context is independent of the authenticated user and local owner.
 #'
 #' Only direct authorization requests and query/form POST callbacks are currently
-#' supported. JAR, PAR, JARM, DPoP, mTLS and remote freshness requirements need
+#' supported. Claims requests (including `auth_time`), JAR, PAR, JARM, DPoP,
+#' mTLS and remote freshness requirements need
 #' separate SMART composition work; this constructor provides no overrides for
 #' those features. EHR clients require a fresh registered launch transaction.
 #' Configure standalone and EHR registrations as separate clients when both are
@@ -333,6 +334,9 @@ smart_validate_client <- function(client) {
   if (!identical(policy[["launch"]], "ehr") &&
       "online_access" %in% effective_client_scopes(client)) {
     return("OAuthClient: SMART online_access requires EHR launch")
+  }
+  if (!is.null(client@claims)) {
+    return("OAuthClient: SMART claims requests are not supported")
   }
   if (!isTRUE(provider@use_pkce) || !identical(provider@pkce_method, "S256") ||
       !identical(client@request_object_mode, "parameters") ||

@@ -65,3 +65,28 @@ test_that("SMART operations revalidate configuration restored without S7 setters
     .package = "shinyOAuth")
   expect_error(swap_code_for_token_set(client, "example-code", strrep("v", 64)), "requires HTTPS")
 })
+
+test_that("SMART rejects claims through property edits and restored configuration", {
+  claims <- list(id_token = list(auth_time = list(essential = TRUE)))
+  for (supported in list(FALSE, TRUE, NULL)) {
+    site <- smart_client_fixture(oidc = TRUE)
+    site$metadata$claims_parameter_supported <- supported
+    client <- smart_client(site, "example", "https://app.example/callback",
+      scopes = "user/Patient.r", identity = "openid")
+    for (value in list(claims, as.character(jsonlite::toJSON(claims, auto_unbox = TRUE)))) {
+      expect_error(client@claims <- value, "SMART claims requests are not supported")
+      restored <- client
+      attr(restored, "claims") <- value
+      expect_error(prepare_call(restored, valid_browser_token()),
+        "SMART claims requests are not supported")
+      expect_error(prepare_authorization_request(restored, valid_browser_token()),
+        "SMART claims requests are not supported")
+
+      ordinary <- make_test_client(scopes = "openid")
+      expect_no_error(ordinary@claims <- value)
+      prepared <- prepare_call(ordinary, valid_browser_token())
+      fields <- decode_form_pairs(url_raw_query(prepared), "test")
+      expect_identical(jsonlite::fromJSON(fields$claims, simplifyVector = FALSE), claims)
+    }
+  }
+})
