@@ -112,7 +112,8 @@ test_that("rotation disposes of known refresh aliases without merging authorizat
         "already retired")
       # The registry contains no access or refresh token bytes.
       registry <- serialize(as.list(f$manager$state$credential_records), NULL)
-      expect_false(grepl("rotated-refresh|same-access", rawToChar(registry[registry != as.raw(0)])))
+      expect_false(grepl("rotated-refresh|same-access",
+        rawToChar(registry[registry != as.raw(0)]), useBytes = TRUE))
     })
 })
 
