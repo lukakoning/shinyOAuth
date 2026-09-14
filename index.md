@@ -72,12 +72,14 @@ providers and protocol features.
 Install from [CRAN](https://CRAN.R-project.org/package=shinyOAuth):
 
 ``` r
+
 install.packages("shinyOAuth")
 ```
 
 Install the development version from GitHub:
 
 ``` r
+
 if (!requireNamespace("remotes", quietly = TRUE)) {
   install.packages("remotes")
 }
@@ -100,6 +102,7 @@ try this example yourself, you can register an app at your [GitHub
 Developer Settings](https://github.com/settings/developers).
 
 ``` r
+
 library(shiny)
 library(shinyOAuth)
 

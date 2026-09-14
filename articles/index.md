@@ -3,6 +3,10 @@
 ### Usage and authentication
 
 - [Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md):
+- [Keep and use multiple OAuth
+  authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md):
+- [Use SMART on FHIR from
+  Shiny](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.md):
 - [Example: Spotify login to display listening
   data](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md):
 - [Authentication

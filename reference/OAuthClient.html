@@ -27,6 +27,8 @@ resolves defaults from the provider and the supplied client settings."></head><b
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -114,7 +116,13 @@ resolves defaults from the provider and the supplied client settings.</p>
 <span>  trusted_id_token_audiences <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  compare_callback_issuer <span class="op">=</span> <span class="fu">is_valid_string</span><span class="op">(</span><span class="va">provider</span><span class="op">@</span><span class="va">issuer</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span>
 <span>    <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/missing.html" class="external-link">missing</a></span><span class="op">(</span><span class="va">enforce_callback_issuer</span><span class="op">)</span> <span class="op">||</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">enforce_callback_issuer</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  client_assertion_typ <span class="op">=</span> <span class="st">"JWT"</span></span>
+<span>  client_assertion_typ <span class="op">=</span> <span class="st">"JWT"</span>,</span>
+<span>  resource_bases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  required_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  label <span class="op">=</span> <span class="fu">default_client_label</span><span class="op">(</span><span class="va">provider</span><span class="op">)</span>,</span>
+<span>  authorization_method <span class="op">=</span> <span class="st">"GET"</span>,</span>
+<span>  scope_policy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  smart <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -354,8 +362,8 @@ at the token endpoint. Can be an <code>openssl::key</code> or a PEM string conta
 private key. Required when the provider's <code>token_auth_style = 'private_key_jwt'</code>.
 Also used to sign JAR Request Objects, regardless of the token auth style.
 Current outbound private-key JWT signing
-supports RSA, EC, and Ed25519 private keys. For RSA keys, outbound signing is currently
-limited to <code>RS256</code>; <code>RS384</code>, <code>RS512</code>, and RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>)
+supports RSA, EC, and Ed25519 private keys. RSA keys support <code>RS256</code> and
+explicitly selected <code>RS384</code>; <code>RS512</code> and RSA-PSS (<code>PS256</code>, <code>PS384</code>, <code>PS512</code>)
 are not supported. Ed25519 keys support <code>Ed25519</code> (RFC 9864) and legacy
 <code>EdDSA</code> (the default for compatibility); Ed448 is not supported.</p></dd>
 
@@ -376,8 +384,8 @@ error. When the provider advertises
 <code>token_endpoint_auth_signing_alg_values_supported</code>, both explicit values and
 inferred defaults must be included in that set.
 Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> for client_secret_jwt and asymmetric algorithms
-supported for outbound signing (<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
-<code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys) for private keys. <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code>
+supported for outbound signing (<code>RS256</code>, <code>RS384</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
+<code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys) for private keys. <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code>
 are not currently supported for outbound client assertions.</p></dd>
 
 
@@ -444,7 +452,7 @@ using Demonstrating Proof of Possession (DPoP). Only needed when your
 provider/API supports DPoP. Accepts an
 <code>openssl::key</code> or PEM private-key string, using RSA, EC, or Ed25519.
 <code><a href="oauth_client.html">oauth_client()</a></code> then defaults <code>dpop_require_access_token</code> to <code>TRUE</code>.
-Supported signing algorithms are <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
+Supported signing algorithms are <code>RS256</code>, <code>RS384</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
 <code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
 outgoing proofs. See <code>dpop_signing_alg</code> and the <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a>.</p></dd>
 
@@ -459,7 +467,7 @@ server expects a stable key identifier alongside the embedded public JWK.</p></d
 <dd><p>Optional JWT signing algorithm to use for DPoP
 proofs. When omitted, a compatible asymmetric default is selected based on
 the private key type/curve (for example <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or
-<code>ES512</code>, or <code>EdDSA</code> for Ed25519). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code> are
+<code>ES512</code>, or <code>EdDSA</code> for Ed25519). <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code> are
 not currently supported for outbound DPoP proofs. If an explicit value is
 provided but incompatible with the key, validation fails early with a
 configuration error. When the provider advertises
@@ -528,7 +536,7 @@ signed authorization requests when <code>request_object_mode</code> uses a
 Request Object (<code>"request"</code> or <code>"request_uri"</code>).
 When omitted, shinyOAuth chooses <code>HS256</code> for HMAC-based signing or a
 compatible asymmetric default based on <code>client_assertion_private_key</code> (for example
-<code>RS256</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, or <code>EdDSA</code> for Ed25519). <code>RS384</code>, <code>RS512</code>, <code>PS256</code>,
+<code>RS256</code>, <code>RS384</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, or <code>EdDSA</code> for Ed25519). <code>RS512</code>, <code>PS256</code>,
 <code>PS384</code>, and <code>PS512</code> are not currently supported for outbound
 signed authorization requests.</p></dd>
 
@@ -679,6 +687,59 @@ provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.
 The explicit type is recommended; it does not replace audience validation.
 This setting does not change JAR, JARM, ID token or DPoP types, or the
 OAuth form parameter <code>client_assertion_type</code>.</p></dd>
+
+
+<dt id="arg-resource-bases">resource_bases<a class="anchor" aria-label="anchor" href="#arg-resource-bases"></a></dt>
+<dd><p>Optional named character vector of approved API base
+URLs for <code><a href="oauth_connection.html">oauth_connection()</a></code> and <code><a href="oauth_connections.html">oauth_connections()</a></code>. The default
+<code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> leaves the existing token/request APIs unchanged. Each resource
+ID starts with a letter and contains letters, digits, <code>_</code> or <code>-</code> (at most
+64 bytes). Up to 64 bases are supported. HTTPS is required except for
+loopback development URLs. Requests through a connection stay within the
+exact scheme, host, effective port and base path; redirects are disabled.
+Bases exclude user information, query strings, fragments, dot segments,
+repeated slashes, semicolon parameters and ambiguous encoded characters.
+This is local request policy, not evidence of token audience, and does not
+add the OAuth <code>resource</code> authorization parameter.</p></dd>
+
+
+<dt id="arg-required-scopes">required_scopes<a class="anchor" aria-label="anchor" href="#arg-required-scopes"></a></dt>
+<dd><p>Optional requested scopes that every usable connection
+needs, default <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>. Other requested scopes may be absent from a
+limited grant. Ordinary OAuth clients compare literal scopes; <code><a href="smart_client.html">smart_client()</a></code>
+selects SMART semantic comparison and also enforces these permissions when
+validating token responses. Explicit refresh narrowing retains these scopes.</p></dd>
+
+
+<dt id="arg-label">label<a class="anchor" aria-label="anchor" href="#arg-label"></a></dt>
+<dd><p>Optional display label used in connection summaries; defaults to
+the provider name, with control characters replaced by spaces and shortened
+to 128 UTF-8 bytes if needed. If the provider name is empty, missing or not a
+single string, the default is <code>"OAuth provider"</code>. Explicit labels must be non-empty strings of at
+most 128 bytes without control characters. Labels contain no credentials or
+patient context.</p></dd>
+
+
+<dt id="arg-authorization-method">authorization_method<a class="anchor" aria-label="anchor" href="#arg-authorization-method"></a></dt>
+<dd><p>Browser method for sending the authorization
+request: <code>"GET"</code> (default) or <code>"POST"</code>. Select POST only after confirming
+provider support. It submits form fields instead of a long URL query.
+Use the module's <code>request_login()</code> or <code><a href="prepare_authorization_request.html">prepare_authorization_request()</a></code>; URL-only
+helpers reject POST. This does not select the callback <code>response_mode</code> or
+replace a provider's PAR or signed Request Object requirements.</p></dd>
+
+
+<dt id="arg-scope-policy">scope_policy<a class="anchor" aria-label="anchor" href="#arg-scope-policy"></a></dt>
+<dd><p>Internal versioned scope policy. Leave the default for
+ordinary OAuth clients. SMART adapters install their own policy, including
+required permissions; these checks cannot be disabled by <code>scope_validation</code>.
+This parameter is not an argument to <code><a href="oauth_client.html">oauth_client()</a></code>.</p></dd>
+
+
+<dt id="arg-smart">smart<a class="anchor" aria-label="anchor" href="#arg-smart"></a></dt>
+<dd><p>Internal SMART configuration installed by <code><a href="smart_client.html">smart_client()</a></code>.
+Leave the empty default for ordinary clients. This is not an argument to
+<code><a href="oauth_client.html">oauth_client()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

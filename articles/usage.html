@@ -34,6 +34,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -456,6 +458,152 @@ supply missing local settings and is never treated as observed server
 evidence. S256 remains recommended.</p>
 </div>
 <div class="section level2">
+<h2 id="multiple-authorization-servers">Multiple authorization servers<a class="anchor" aria-label="anchor" href="#multiple-authorization-servers"></a>
+</h2>
+<p>Create one client and module for each registration. Give each
+authorization server a distinct registered callback path and list the
+same clients in the UI wrapper. Module IDs alone do not distinguish
+browser callback routes.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">redirects</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://app.example/oauth/a"</span>, <span class="st">"https://app.example/oauth/b"</span><span class="op">)</span></span>
+<span><span class="co"># provider_a and provider_b are independently configured OAuth/OIDC providers.</span></span>
+<span><span class="va">clients</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  auth_a <span class="op">=</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>    <span class="va">provider_a</span>, client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SITE_A_CLIENT_ID"</span><span class="op">)</span>,</span>
+<span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SITE_A_CLIENT_SECRET"</span><span class="op">)</span>,</span>
+<span>    redirect_uri <span class="op">=</span> <span class="va">redirects</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"read"</span><span class="op">)</span>,</span>
+<span>    authorization_server_mode <span class="op">=</span> <span class="st">"multi_redirect_uri"</span>,</span>
+<span>    authorization_server_redirect_uris <span class="op">=</span> <span class="va">redirects</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  auth_b <span class="op">=</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>    <span class="va">provider_b</span>, client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SITE_B_CLIENT_ID"</span><span class="op">)</span>,</span>
+<span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SITE_B_CLIENT_SECRET"</span><span class="op">)</span>,</span>
+<span>    redirect_uri <span class="op">=</span> <span class="va">redirects</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"read"</span><span class="op">)</span>,</span>
+<span>    authorization_server_mode <span class="op">=</span> <span class="st">"multi_redirect_uri"</span>,</span>
+<span>    authorization_server_redirect_uris <span class="op">=</span> <span class="va">redirects</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_ui.html">oauth_ui</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"connect_a"</span>, <span class="st">"Connect A"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"connect_b"</span>, <span class="st">"Connect B"</span><span class="op">)</span></span>
+<span><span class="op">)</span>, clients <span class="op">=</span> <span class="va">clients</span><span class="op">)</span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth_a"</span>, <span class="va">clients</span><span class="op">$</span><span class="va">auth_a</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth_b"</span>, <span class="va">clients</span><span class="op">$</span><span class="va">auth_b</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">connect_a</span>, <span class="va">a</span><span class="op">$</span><span class="fu">request_login</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">connect_b</span>, <span class="va">b</span><span class="op">$</span><span class="fu">request_login</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
+<p>Register those exact redirect URIs with the respective services and
+configure the web host to serve the app at both paths. Shared routes
+require independent authorization-server identification
+(<code>multi_issuer</code>, using RFC 9207 or JARM); the static registry
+rejects multiple clients with the same issuer on one route. See <a href="https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2" class="external-link">OAuth
+Security BCP section 4.4.2</a>.</p>
+<p>This pattern routes multiple modules; it does not retain their
+credentials across navigation. Following the authorization redirect for
+B can end the Shiny session holding A. A new session starts with empty
+module credentials even if the clients share a pending-state store. To
+preserve authorizations across navigation, use the separate connection
+manager with browser or account retention. See <a href="multiple-authorizations.html">Keep and use multiple OAuth
+authorizations</a> for a complete two-service example.</p>
+<p>For healthcare APIs, <a href="smart-on-fhir.html">Use SMART on FHIR
+from Shiny</a> shows discovery, client registration settings, patient
+requests and EHR launch using the same manager.</p>
+<p>Additional token fields are already available server-side. For
+example, <code>a$token@initial_extra_fields$patient</code> reads an
+initial SMART patient value, while <code>a$token@extra_fields</code>
+contains only the latest successful response’s extras. Refresh may omit
+<code>patient</code>. Neither list is validated identity data or
+evidence of permission to read a resource. Ordinary clients do not infer
+SMART discovery, launch handling, scope equivalence, or a FHIR
+destination from these fields. Keep the matching client, token and
+approved resource together when making requests, and keep raw context
+out of logs and session summaries.</p>
+<div class="section level3">
+<h3 id="requests-bound-to-a-client-and-resource">Requests bound to a client and resource<a class="anchor" aria-label="anchor" href="#requests-bound-to-a-client-and-resource"></a>
+</h3>
+<p>These optional helpers group the client, API address and current
+credentials used for a request. They are package API choices; OAuth and
+SMART on FHIR do not require these classes.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Object</th>
+<th>What it represents</th>
+<th>Example</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>OAuthClient</code></td>
+<td>Registration settings and optional approved API addresses</td>
+<td>Hospital A’s client ID, scopes and
+<code>https://a.example/fhir</code>
+</td>
+</tr>
+<tr class="even">
+<td><code>OAuthConnection</code></td>
+<td>Access to one Shiny session’s current credentials through that
+configuration</td>
+<td>This session’s authorized requests to Hospital A</td>
+</tr>
+</tbody>
+</table>
+<p>The client holds shared configuration, with no user’s token. A
+connection reads the current token for each request. The object refers
+to credentials that can change instead of keeping a token copy. The
+existing reactive token already updates on refresh; the connection adds
+client selection, API-address restrictions and session checks. It does
+not implement refresh or retention by itself.</p>
+<p>Set <code>resource_bases</code> on <code><a href="../reference/oauth_client.html">oauth_client()</a></code>
+outside <code>server()</code>, then create a connection for that
+client’s module inside <code>server()</code>:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  <span class="va">provider</span>, client_id <span class="op">=</span> <span class="st">"registered-app"</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example/callback"</span>, scopes <span class="op">=</span> <span class="st">"read"</span>,</span>
+<span>  resource_bases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>records <span class="op">=</span> <span class="st">"https://api.example/v1"</span><span class="op">)</span>,</span>
+<span>  required_scopes <span class="op">=</span> <span class="st">"read"</span> <span class="co"># A subset of the requested scopes.</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
+<span>  <span class="va">connection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_connection.html">oauth_connection</a></span><span class="op">(</span><span class="va">client</span>, <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">records</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">connection</span><span class="op">$</span><span class="fu">is_usable</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">connection</span><span class="op">$</span><span class="fu">request</span><span class="op">(</span><span class="st">"records"</span>, <span class="st">"records"</span>, query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>      <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>The reference reads the latest token after refresh and becomes
+unusable after logout, token expiry, or session end. A reference from
+another Shiny session cannot read its summary or make requests. This
+adapter still uses the legacy module’s lifecycle and does not retain
+credentials across navigation.</p>
+<p><code>resource_bases</code> restricts the token’s destinations; it
+does not request an audience or prove an opaque token’s audience. Wire
+the token expression to the module using <code>client</code>. Resource
+indicators remain an explicit client setting (<a href="https://www.rfc-editor.org/rfc/rfc8707.html" class="external-link">RFC 8707</a>).</p>
+<p>Each request selects a resource ID and resolves a path against its
+full base. An absolute pagination or resource reference must stay within
+that base too. For example, <code>/v1-other</code> is outside
+<code>/v1</code>, even on the same hostname. Ambiguous path syntax is
+rejected before URL normalization, and redirects are disabled. General
+URL options cannot relax this policy. These comparisons use URI origin
+and path rules from <a href="https://www.rfc-editor.org/rfc/rfc3986.html" class="external-link">RFC 3986</a>.</p>
+<p>Optional permissions can produce a limited connection. Declare an
+operation’s extra permissions with
+<code>$request(..., required_scopes = "write")</code>; the current grant
+must cover them. No generic mapping from API paths to OAuth scopes is
+assumed. <code>$summary()</code> contains the opaque connection ID,
+client label, local status, expiry, and resource IDs. It excludes
+credentials and raw context.</p>
+</div>
+</div>
+<div class="section level2">
 <h2 id="asynchronous-execution">Asynchronous execution<a class="anchor" aria-label="anchor" href="#asynchronous-execution"></a>
 </h2>
 <p>By default, network work runs in the app’s R process. A slow provider
@@ -463,7 +611,7 @@ can make other sessions on that process wait too. To run the module’s
 network work in background R processes, install <code>mirai</code> and
 <code>promises</code>, then configure workers before
 <code>server()</code>:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -479,7 +627,7 @@ and does not avoid blocking.</p>
 <p>For an app using future instead of mirai, configure its worker plan
 before starting the server and release the workers when the app
 stops:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">sequential</a></span><span class="op">)</span><span class="op">)</span></span>
 <span></span>

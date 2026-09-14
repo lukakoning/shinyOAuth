@@ -7,6 +7,7 @@ provider and client. The defaults apply when an option is unset.
 For example, allow a slow provider up to ten seconds per HTTP request:
 
 ``` r
+
 options(shinyOAuth.timeout = 10)
 ```
 

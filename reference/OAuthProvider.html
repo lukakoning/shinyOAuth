@@ -29,6 +29,8 @@ endpoint and validation settings."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -290,9 +292,9 @@ a token, for example during logout (RFC 7009).</p></dd>
 
 <dt id="arg-extra-token-params">extra_token_params<a class="anchor" aria-label="anchor" href="#arg-extra-token-params"></a></dt>
 <dd><p>Extra parameters for token exchange.
-<code>scope</code> is reserved and cannot be unblocked: explicit refresh scope
-narrowing is not currently supported. Configure login scopes on
-<code><a href="oauth_client.html">oauth_client()</a></code> instead.</p></dd>
+<code>scope</code> is reserved and cannot be unblocked. For explicit refresh scope
+narrowing use a managed connection's <code>$refresh(scopes = ...)</code>. Configure
+login scopes on <code><a href="oauth_client.html">oauth_client()</a></code> instead.</p></dd>
 
 
 <dt id="arg-extra-token-headers">extra_token_headers<a class="anchor" aria-label="anchor" href="#arg-extra-token-headers"></a></dt>

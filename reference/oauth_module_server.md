@@ -199,13 +199,17 @@ object. If you assign it to `auth`, its main fields are:
 The object also supplies:
 
 - `auth$request_login()`: start login. Waits for browser setup when
-  needed and does nothing if the session is already authenticated.
+  needed and does nothing if the session is already authenticated. Uses
+  a browser form when the client selects
+  `authorization_method = "POST"`; the app's Content Security Policy
+  `form-action` must permit the provider endpoint.
 
 - `auth$logout()`: clear the local login and attempt to revoke tokens
   when supported, following `async`. It does not sign out of the
   provider account.
 
 - `auth$build_auth_url()`: advanced helper for a custom login link.
+  Rejects POST clients; use `request_login()` for their form submission.
   Creates pending login state as well as the URL, so retain the result
   for the link instead of rebuilding it on every UI update. Rotates and
   checks the browser binding before creating state. Returns a promise

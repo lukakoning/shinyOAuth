@@ -19,6 +19,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -43,21 +45,21 @@
 <div id="oauth-21-readiness-audit-investigation-and-fixes" class="section level1">
 
 <p>All seven findings in the supplied 9 September 2026 audit were confirmed in the relevant configurations. The target remains <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16" class="external-link">OAuth 2.1 draft 16</a>, an Internet-Draft. The changes preserve OAuth 2.0 configuration support and keep assessment and optional extensions explicitly selected.</p>
-<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr class="header"><th>Finding</th>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Finding</th>
 <th>Investigation and resolution</th>
-</tr></thead><tbody><tr class="odd"><td>F1: refresh credential lifetime</td>
+</tr></thead><tbody><tr><td>F1: refresh credential lifetime</td>
 <td>A refresh could rotate its credential before later validation or delivery failed. Errors now carry <code>refresh_credential_outcome</code>: <code>not_consumed</code>, <code>consumed</code>, <code>possibly_consumed</code>, or <code>rejected</code>. Only the first allows retrying the old credential. Async replay preserves the outcome. The module removes unsafe renewal credentials while retaining stale session identity when requested; candidates still require full validation. Direct callers must act on the outcome and store successful replacements.</td>
-</tr><tr class="even"><td>F2: encryption key retrieval</td>
+</tr><tr><td>F2: encryption key retrieval</td>
 <td>Encrypted Request Objects can fetch provider JWKS when no explicit recipient key is supplied. Pure dependency resolution now covers this operation, distinguishing explicit keys, configured JWKS and unresolved discovery. Runtime encryption selection shares the key-source decision. Assessment performs no key or cache operations.</td>
-</tr><tr class="odd"><td>F3: DPoP token representation</td>
+</tr><tr><td>F3: DPoP token representation</td>
 <td>The old strict token-type policy additionally required visible binding from parseable JWTs. Token-type enforcement and <code>dpop_require_observed_cnf</code> are now independent. Missing binding can await required introspection regardless of representation. <code>shinyOAuth.access_token_cnf = "opaque"</code> disables access-token decoding for DPoP and mTLS; the compatibility default remains <code>"jwt"</code>. Observed contradictory binding and Bearer fallback remain rejected where the configured policies require it.</td>
-</tr><tr class="even"><td>F4: multiple callback clients</td>
+</tr><tr><td>F4: multiple callback clients</td>
 <td>Single-client GET wrappers intercept callbacks before nested wrappers can route them. Both UI wrappers now support <code>clients = list(module_id = client, ...)</code>. Distinct routes and shared routes with issuer identification select a configured client before the existing full validation and bridge redirect. Module browser/transaction binding remains enforced.</td>
-</tr><tr class="odd"><td>F5: UserInfo assessment</td>
+</tr><tr><td>F5: UserInfo assessment</td>
 <td>Runtime compares UserInfo with every available validated ID-token baseline, independently of the matching flag. The assessment now recognizes a guaranteed validated baseline for managed flows, excludes active signature bypasses, and leaves separately selected UserInfo calls unresolved when their caller-supplied baseline cannot be established.</td>
-</tr><tr class="even"><td>F6: HMAC JARM</td>
+</tr><tr><td>F6: HMAC JARM</td>
 <td>HMAC signature verification uses the client secret and returns before JWKS retrieval. The dependency resolver now uses the same selected JARM algorithm as runtime; HMAC-only JARM has no key-fetch dependency unless another operation requires one.</td>
-</tr><tr class="odd"><td>F7: advice and provenance</td>
+</tr><tr><td>F7: advice and provenance</td>
 <td>Ruleset <code>1.1.0</code> adds <code>requirement_source</code>, non-blocking advice for asymmetric client authentication, issuer identification and loopback IPs, separate client/scope/public-client refresh obligations, separate resource-server and application responsibilities, early-invalidation advice, and explicit package-policy labeling for callback capacity and back-channel redirects.</td>
 </tr></tbody></table><div class="section level2">
 <h2 id="compatibility-and-scope">Compatibility and scope<a class="anchor" aria-label="anchor" href="#compatibility-and-scope"></a></h2>

@@ -19,6 +19,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -113,6 +115,57 @@
 
         </dt>
         <dd>OAuthToken S7 class</dd>
+
+        <dt>
+
+          <code><a href="OAuthConnection.html">OAuthConnection</a></code>
+
+        </dt>
+        <dd>OAuthConnection R6 class</dd>
+      </dl></div><div class="section level2">
+      <h2 id="multiple-retained-connections">Multiple retained connections<a class="anchor" aria-label="anchor" href="#multiple-retained-connections"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="oauth_connections.html">oauth_connections()</a></code> <code><a href="oauth_connections.html">print(<i>&lt;OAuthConnections&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Configure several independently managed OAuth connections</dd>
+
+        <dt>
+
+          <code><a href="oauth_connections_ui.html">oauth_connections_ui()</a></code>
+
+        </dt>
+        <dd>Handle callbacks and establish the connection owner's browser session</dd>
+
+        <dt>
+
+          <code><a href="oauth_connections_server.html">oauth_connections_server()</a></code>
+
+        </dt>
+        <dd>Connect, restore and use several OAuth authorizations in a Shiny session</dd>
+
+        <dt>
+
+          <code><a href="oauth_connection_store_memory.html">oauth_connection_store_memory()</a></code> <code><a href="oauth_connection_store_memory.html">print(<i>&lt;OAuthConnectionStore&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Create a process-local store for retained OAuth connections</dd>
+
+        <dt>
+
+          <code><a href="oauth_browser_owner.html">oauth_browser_owner()</a></code> <code><a href="oauth_browser_owner.html">oauth_account_owner()</a></code> <code><a href="oauth_browser_owner.html">print(<i>&lt;OAuthOwnerPolicy&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Configure ownership of retained OAuth connections</dd>
       </dl></div><div class="section level2">
       <h2 id="provider-configuration">Provider configuration<a class="anchor" aria-label="anchor" href="#provider-configuration"></a></h2>
 
@@ -221,6 +274,43 @@
         </dt>
         <dd>Create a Spotify OAuthProvider</dd>
       </dl></div><div class="section level2">
+      <h2 id="smart-on-fhir">SMART on FHIR<a class="anchor" aria-label="anchor" href="#smart-on-fhir"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="smart_discover.html">smart_discover()</a></code>
+
+        </dt>
+        <dd>Discover SMART on FHIR server metadata</dd>
+
+        <dt>
+
+          <code><a href="smart_client.html">smart_client()</a></code>
+
+        </dt>
+        <dd>Configure a SMART on FHIR app registration</dd>
+
+        <dt>
+
+          <code><a href="smart_launch_route.html">smart_launch_route()</a></code>
+
+        </dt>
+        <dd>Register a SMART EHR launch entry route</dd>
+
+        <dt>
+
+          <code><a href="smart_context.html">smart_context()</a></code> <code><a href="smart_context.html">smart_patient()</a></code> <code><a href="smart_context.html">smart_fhir_user()</a></code>
+
+        </dt>
+        <dd>Read a connection's current SMART context</dd>
+      </dl></div><div class="section level2">
       <h2 id="provider-specific-client-settings">Provider-specific client settings<a class="anchor" aria-label="anchor" href="#provider-specific-client-settings"></a></h2>
 
 
@@ -267,6 +357,13 @@
 
         <dt>
 
+          <code><a href="prepare_authorization_request.html">prepare_authorization_request()</a></code>
+
+        </dt>
+        <dd>Prepare a browser authorization request using GET or POST</dd>
+
+        <dt>
+
           <code><a href="handle_callback.html">handle_callback()</a></code>
 
         </dt>
@@ -282,6 +379,13 @@
 
 
       <dl><dt>
+
+          <code><a href="oauth_connection.html">oauth_connection()</a></code>
+
+        </dt>
+        <dd>Make API requests with a Shiny session's current OAuth credentials</dd>
+
+        <dt>
 
           <code><a href="get_userinfo.html">get_userinfo()</a></code>
 

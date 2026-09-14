@@ -25,6 +25,8 @@ query callbacks before rendering any application UI or scripts."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -122,9 +124,9 @@ Each client must select a multi-server defense. Shared routes require
 <code>authorization_server_mode = "multi_issuer"</code> and distinct trusted issuers.
 An RFC 9207 <code>iss</code> or signed JARM issuer selects the configured client; the
 complete callback is then verified before a bridge handle is stored.
-Encrypted JARM on a shared route requires an outer <code>iss</code> (verified against
-the decrypted response); otherwise use distinct routes. Do not nest wrappers
-to route multiple providers.</p>
+Encrypted JARM on a shared route requires an outer <code>iss</code> identifying one
+distinct configured issuer. The decrypted, signed response must match it.
+Do not nest wrappers to route multiple providers.</p>
 <p>Without <code>id</code> and <code>client</code>, ordinary pages still render, but raw OAuth GET
 callbacks fail closed with a setup error. Earlier <code>oauth_ui(ui)</code> query-flow
 applications must add those arguments. When integrating <code><a href="use_shinyOAuth.html">use_shinyOAuth()</a></code>

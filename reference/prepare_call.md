@@ -15,7 +15,10 @@ prepare_call(
   browser_token,
   request_uri_publisher = NULL,
   .requested_max_age = NULL,
-  .defer_build = FALSE
+  .defer_build = FALSE,
+  .transaction_context = NULL,
+  .smart_launch = NULL,
+  .authorization_request = FALSE
 )
 ```
 
@@ -49,6 +52,21 @@ prepare_call(
   Internal flag returning prepared local state for async authorization
   work instead of completing the authorization URL.
 
+- .transaction_context:
+
+  Internal bounded manager context. Ordinary callers leave this `NULL`;
+  managed state requires manager-aware consumption.
+
+- .smart_launch:
+
+  Internal per-transaction EHR launch handle supplied by the manager.
+  Bound to the approved target and sealed transaction context.
+
+- .authorization_request:
+
+  Internal flag permitting a structured POST result for the module and
+  [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md).
+
 ## Value
 
 A length-1 string containing the authorization URL to send the user to.
@@ -66,7 +84,10 @@ manages both operations and the reactive session state.
 
 The helper records one-time state and creates any required PKCE and
 nonce values. Custom callers must preserve the browser binding and
-process the returning callback themselves.
+process the returning callback themselves. For an explicitly configured
+POST client, use
+[`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md)
+instead. This URL-only helper rejects POST before storing a transaction.
 
 ## Examples
 

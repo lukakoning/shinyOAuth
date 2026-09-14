@@ -34,6 +34,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -766,14 +768,18 @@ construction. Adding query parameters is allowed. Use
 <h2 id="signature-and-encryption-support">Signature and encryption support<a class="anchor" aria-label="anchor" href="#signature-and-encryption-support"></a>
 </h2>
 <p>For outgoing private-key client assertions, JAR, and DPoP, signing
-supports <code>RS256</code>, <code>ES256</code>, <code>ES384</code>,
-<code>ES512</code>, and both <code>EdDSA</code> and <code>Ed25519</code>
-with Ed25519 keys. Ed25519 accepts an OpenSSL private key or PEM; DPoP
-embeds only its public OKP JWK. Algorithm inference and explicit choices
-remain constrained by provider metadata. Secret-based assertions and JAR
-support <code>HS256</code>, <code>HS384</code>, and <code>HS512</code>.
-RSA-PSS and Ed448 are not supported for outgoing signatures. Incoming
-signature policies are separate; see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html"><code>oauth_provider()</code></a>
+supports <code>RS256</code>, <code>RS384</code>, <code>ES256</code>,
+<code>ES384</code>, <code>ES512</code>, and both <code>EdDSA</code> and
+<code>Ed25519</code> with Ed25519 keys. Ed25519 accepts an OpenSSL
+private key or PEM; DPoP embeds only its public OKP JWK. Algorithm
+inference and explicit choices remain constrained by provider metadata.
+Secret-based assertions and JAR support <code>HS256</code>,
+<code>HS384</code>, and <code>HS512</code>. RSA continues to default to
+RS256; choose <code>client_assertion_alg = "RS384"</code> explicitly for
+a registration requiring it. RS384 uses SHA-384 with RSASSA-PKCS1-v1_5
+and requires an RSA key of at least 2048 bits, as specified in <a href="https://www.rfc-editor.org/rfc/rfc7518.html#section-3.3" class="external-link">RFC 7518
+section 3.3</a>. RSA-PSS and Ed448 are not supported for outgoing
+signatures. Incoming signature policies are separate; see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html"><code>oauth_provider()</code></a>
 and the <code>jarm_*</code> arguments in <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html"><code>oauth_client()</code></a>.</p>
 <p>Request Object encryption and JARM decryption support
 <code>RSA-OAEP</code> with <code>A128CBC-HS256</code>,

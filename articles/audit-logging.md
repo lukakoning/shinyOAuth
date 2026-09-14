@@ -14,6 +14,7 @@ Put this near the top of `app.R`, before creating the provider and
 client:
 
 ``` r
+
 options(shinyOAuth.audit_hook = function(event) {
   cat(sprintf("[shinyOAuth] %s | %s\n", event$type, event$trace_id))
   str(event)
@@ -76,6 +77,7 @@ client addresses. The raw Shiny session token is also omitted. To omit
 HTTP context entirely:
 
 ``` r
+
 options(shinyOAuth.audit_include_http = FALSE)
 ```
 
@@ -119,6 +121,7 @@ shares that key with its async workers. To match digests across separate
 app processes or restarts, configure the same secret key everywhere:
 
 ``` r
+
 audit_digest_key <- Sys.getenv("AUDIT_DIGEST_KEY", unset = NA_character_)
 if (is.na(audit_digest_key) || !nzchar(audit_digest_key)) {
   stop("AUDIT_DIGEST_KEY must be configured before the app starts")

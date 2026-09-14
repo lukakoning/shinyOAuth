@@ -61,6 +61,7 @@ reads provider metadata used by these features, including PAR support,
 JARM and DPoP algorithms, and mTLS endpoint aliases:
 
 ``` r
+
 provider <- oauth_provider_oidc_discover(
   issuer = "https://id.example.com"
 )
@@ -82,6 +83,7 @@ For a registered private key, select the method during provider setup
 and supply the key when creating your client:
 
 ``` r
+
 provider <- oauth_provider_oidc_discover(
   "https://id.example.com", token_auth_style = "private_key_jwt"
 )
@@ -106,6 +108,7 @@ select the trusted authorization-server issuer as the sole audience and
 optionally use the recommended explicit type:
 
 ``` r
+
 client@client_assertion_audience <- provider@issuer
 client@client_assertion_typ <- "client-authentication+jwt"
 ```
@@ -126,6 +129,7 @@ metadata; configure credentials and audiences to match each endpoint’s
 registration agreement:
 
 ``` r
+
 client@endpoint_auth <- list(
   introspection = list(
     token_auth_style = "header",
@@ -248,6 +252,7 @@ certificate-bound tokens, the API requires the matching certificate when
 accepting a token. The provider must support the selected use of mTLS.
 
 ``` r
+
 provider <- oauth_provider(
   name = "example-mtls",
   # Exact OIDC issuer; enables nonce and ID-token validation
@@ -269,6 +274,7 @@ provider <- oauth_provider(
 ```
 
 ``` r
+
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",
@@ -300,6 +306,7 @@ certificate/key and provider capability as above, then use both
 settings:
 
 ``` r
+
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",
@@ -355,6 +362,7 @@ requests ([RFC 9101 section
 10.5](https://www.rfc-editor.org/rfc/rfc9101.html#section-10.5)).
 
 ``` r
+
 provider <- oauth_provider(
   name = "example-jar",
   issuer = "https://id.example.com",
@@ -385,6 +393,7 @@ authorization request for this same client without `request` or
 `request_uri`. For example:
 
 ``` r
+
 unsigned <- httr2::request(provider@auth_url) |>
   httr2::req_url_query(
     client_id = client@client_id,
@@ -449,6 +458,7 @@ Deployment requirements:
   public URL or wildcard prefix must already be registered there
 
 ``` r
+
 request_uri_provider <- oauth_provider(
   name = "example-request-uri",
   issuer = "https://id.example.com",
@@ -526,6 +536,7 @@ request details out of browser history and logs of browser requests. Set
 `par_required = TRUE` when the provider requires PAR.
 
 ``` r
+
 provider <- oauth_provider(
   name = "example-par",
   issuer = "https://id.example.com",
@@ -565,6 +576,7 @@ Here `client` has a registered `redirect_uri` such as
 `https://app.example.com/callback`.
 
 ``` r
+
 base_ui <- shiny::fluidPage(shiny::textOutput("status"))
 ui <- oauth_form_post_ui(base_ui, id = "auth", client = client)
 
@@ -593,6 +605,7 @@ needs a trusted way to recover the public request address. Configure
 proxy IP and a fixed public origin, including a mounted app path:
 
 ``` r
+
 trusted_proxy_uri <- function(req) {
   if (!identical(req[["REMOTE_ADDR"]], "10.0.0.10") ||
       !identical(req[["HTTP_X_FORWARDED_PROTO"]], "https")) {
@@ -620,6 +633,7 @@ configured, shinyOAuth decrypts the response before validating the
 signed contents.
 
 ``` r
+
 provider <- oauth_provider(
   name = "example-jarm",
   issuer = "https://id.example.com",
@@ -647,6 +661,7 @@ client <- oauth_client(
 For encrypted JARM, add the decryption settings:
 
 ``` r
+
 client <- oauth_client(
   provider = provider,
   client_id = "client-id",
@@ -676,6 +691,7 @@ a proof from the matching private key. Configure it when supported by
 the authorization server and the API.
 
 ``` r
+
 provider <- oauth_provider(
   name = "example-dpop",
   issuer = "https://id.example.com",
@@ -701,6 +717,7 @@ After login, keep using the request helpers instead of adding
 `Authorization` or `DPoP` headers manually:
 
 ``` r
+
 resp <- perform_resource_req(
   auth$token,
   "https://api.example.com/me",
@@ -751,12 +768,17 @@ to manage nonce retries.
 ## Signature and encryption support
 
 For outgoing private-key client assertions, JAR, and DPoP, signing
-supports `RS256`, `ES256`, `ES384`, `ES512`, and both `EdDSA` and
-`Ed25519` with Ed25519 keys. Ed25519 accepts an OpenSSL private key or
-PEM; DPoP embeds only its public OKP JWK. Algorithm inference and
+supports `RS256`, `RS384`, `ES256`, `ES384`, `ES512`, and both `EdDSA`
+and `Ed25519` with Ed25519 keys. Ed25519 accepts an OpenSSL private key
+or PEM; DPoP embeds only its public OKP JWK. Algorithm inference and
 explicit choices remain constrained by provider metadata. Secret-based
-assertions and JAR support `HS256`, `HS384`, and `HS512`. RSA-PSS and
-Ed448 are not supported for outgoing signatures. Incoming signature
+assertions and JAR support `HS256`, `HS384`, and `HS512`. RSA continues
+to default to RS256; choose `client_assertion_alg = "RS384"` explicitly
+for a registration requiring it. RS384 uses SHA-384 with
+RSASSA-PKCS1-v1_5 and requires an RSA key of at least 2048 bits, as
+specified in [RFC 7518 section
+3.3](https://www.rfc-editor.org/rfc/rfc7518.html#section-3.3). RSA-PSS
+and Ed448 are not supported for outgoing signatures. Incoming signature
 policies are separate; see
 [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html)
 and the `jarm_*` arguments in

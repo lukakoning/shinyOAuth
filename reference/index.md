@@ -21,6 +21,27 @@
   : OAuthClient S7 class
 - [`OAuthToken()`](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   : OAuthToken S7 class
+- [`OAuthConnection`](https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.md)
+  : OAuthConnection R6 class
+
+## Multiple retained connections
+
+- [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
+  [`print(`*`<OAuthConnections>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
+  : Configure several independently managed OAuth connections
+- [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
+  : Handle callbacks and establish the connection owner's browser
+  session
+- [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
+  : Connect, restore and use several OAuth authorizations in a Shiny
+  session
+- [`oauth_connection_store_memory()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md)
+  [`print(`*`<OAuthConnectionStore>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md)
+  : Create a process-local store for retained OAuth connections
+- [`oauth_browser_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+  [`oauth_account_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+  [`print(`*`<OAuthOwnerPolicy>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+  : Configure ownership of retained OAuth connections
 
 ## Provider configuration
 
@@ -54,6 +75,19 @@
 - [`oauth_provider_spotify()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.md)
   : Create a Spotify OAuthProvider
 
+## SMART on FHIR
+
+- [`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md)
+  : Discover SMART on FHIR server metadata
+- [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
+  : Configure a SMART on FHIR app registration
+- [`smart_launch_route()`](https://lukakoning.github.io/shinyOAuth/reference/smart_launch_route.md)
+  : Register a SMART EHR launch entry route
+- [`smart_context()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+  [`smart_patient()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+  [`smart_fhir_user()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+  : Read a connection's current SMART context
+
 ## Provider-specific client settings
 
 - [`oauth_client_mtls_registration()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_mtls_registration.md)
@@ -67,11 +101,16 @@
 
 - [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
   : Prepare an OAuth 2.0 authorization request and build its URL
+- [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md)
+  : Prepare a browser authorization request using GET or POST
 - [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
   : Handle OAuth 2.0 callback: verify state, swap code for token, verify
   token
 
 ## Tokens and API requests
+
+- [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
+  : Make API requests with a Shiny session's current OAuth credentials
 
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   : Fetch a user's profile (UserInfo)

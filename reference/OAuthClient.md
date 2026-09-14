@@ -66,7 +66,13 @@ OAuthClient(
   trusted_id_token_audiences = character(0),
   compare_callback_issuer = is_valid_string(provider@issuer) &&
     (missing(enforce_callback_issuer) || isTRUE(enforce_callback_issuer)),
-  client_assertion_typ = "JWT"
+  client_assertion_typ = "JWT",
+  resource_bases = character(0),
+  required_scopes = character(0),
+  label = default_client_label(provider),
+  authorization_method = "GET",
+  scope_policy = list(),
+  smart = list()
 )
 ```
 
@@ -340,10 +346,10 @@ OAuthClient(
   `token_auth_style = 'private_key_jwt'`. Also used to sign JAR Request
   Objects, regardless of the token auth style. Current outbound
   private-key JWT signing supports RSA, EC, and Ed25519 private keys.
-  For RSA keys, outbound signing is currently limited to `RS256`;
-  `RS384`, `RS512`, and RSA-PSS (`PS256`, `PS384`, `PS512`) are not
-  supported. Ed25519 keys support `Ed25519` (RFC 9864) and legacy
-  `EdDSA` (the default for compatibility); Ed448 is not supported.
+  RSA keys support `RS256` and explicitly selected `RS384`; `RS512` and
+  RSA-PSS (`PS256`, `PS384`, `PS512`) are not supported. Ed25519 keys
+  support `Ed25519` (RFC 9864) and legacy `EdDSA` (the default for
+  compatibility); Ed448 is not supported.
 
 - client_assertion_private_key_kid:
 
@@ -364,10 +370,9 @@ OAuthClient(
   explicit values and inferred defaults must be included in that set.
   Supported values are `HS256`, `HS384`, `HS512` for client_secret_jwt
   and asymmetric algorithms supported for outbound signing (`RS256`,
-  `ES256`, `ES384`, `ES512`, and `Ed25519` or legacy `EdDSA` with
-  Ed25519 keys) for private keys. `RS384`, `RS512`, `PS256`, `PS384`,
-  and `PS512` are not currently supported for outbound client
-  assertions.
+  `RS384`, `ES256`, `ES384`, `ES512`, and `Ed25519` or legacy `EdDSA`
+  with Ed25519 keys) for private keys. `RS512`, `PS256`, `PS384`, and
+  `PS512` are not currently supported for outbound client assertions.
 
 - client_assertion_audience:
 
@@ -436,9 +441,9 @@ OAuthClient(
   private-key string, using RSA, EC, or Ed25519.
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   then defaults `dpop_require_access_token` to `TRUE`. Supported signing
-  algorithms are `RS256`, `ES256`, `ES384`, `ES512`, and `Ed25519` or
-  legacy `EdDSA` with Ed25519 keys; RSA-PSS and other RSA signing
-  algorithms are not supported for outgoing proofs. See
+  algorithms are `RS256`, `RS384`, `ES256`, `ES384`, `ES512`, and
+  `Ed25519` or legacy `EdDSA` with Ed25519 keys; RSA-PSS and other RSA
+  signing algorithms are not supported for outgoing proofs. See
   `dpop_signing_alg` and the [advanced security
   vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html).
 
@@ -453,10 +458,10 @@ OAuthClient(
   Optional JWT signing algorithm to use for DPoP proofs. When omitted, a
   compatible asymmetric default is selected based on the private key
   type/curve (for example `RS256`, `ES256`, `ES384`, or `ES512`, or
-  `EdDSA` for Ed25519). `RS384`, `RS512`, `PS256`, `PS384`, and `PS512`
-  are not currently supported for outbound DPoP proofs. If an explicit
-  value is provided but incompatible with the key, validation fails
-  early with a configuration error. When the provider advertises
+  `EdDSA` for Ed25519). `RS512`, `PS256`, `PS384`, and `PS512` are not
+  currently supported for outbound DPoP proofs. If an explicit value is
+  provided but incompatible with the key, validation fails early with a
+  configuration error. When the provider advertises
   `dpop_signing_alg_values_supported`, both explicit values and inferred
   defaults must be included in that set.
 
@@ -528,8 +533,8 @@ OAuthClient(
   `request_object_mode` uses a Request Object (`"request"` or
   `"request_uri"`). When omitted, shinyOAuth chooses `HS256` for
   HMAC-based signing or a compatible asymmetric default based on
-  `client_assertion_private_key` (for example `RS256`, `ES256`, `ES384`,
-  `ES512`, or `EdDSA` for Ed25519). `RS384`, `RS512`, `PS256`, `PS384`,
+  `client_assertion_private_key` (for example `RS256`, `RS384`, `ES256`,
+  `ES384`, `ES512`, or `EdDSA` for Ed25519). `RS512`, `PS256`, `PS384`,
   and `PS512` are not currently supported for outbound signed
   authorization requests.
 
@@ -674,6 +679,71 @@ OAuthClient(
   is recommended; it does not replace audience validation. This setting
   does not change JAR, JARM, ID token or DPoP types, or the OAuth form
   parameter `client_assertion_type`.
+
+- resource_bases:
+
+  Optional named character vector of approved API base URLs for
+  [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
+  and
+  [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md).
+  The default [`character()`](https://rdrr.io/r/base/character.html)
+  leaves the existing token/request APIs unchanged. Each resource ID
+  starts with a letter and contains letters, digits, `_` or `-` (at most
+  64 bytes). Up to 64 bases are supported. HTTPS is required except for
+  loopback development URLs. Requests through a connection stay within
+  the exact scheme, host, effective port and base path; redirects are
+  disabled. Bases exclude user information, query strings, fragments,
+  dot segments, repeated slashes, semicolon parameters and ambiguous
+  encoded characters. This is local request policy, not evidence of
+  token audience, and does not add the OAuth `resource` authorization
+  parameter.
+
+- required_scopes:
+
+  Optional requested scopes that every usable connection needs, default
+  [`character()`](https://rdrr.io/r/base/character.html). Other
+  requested scopes may be absent from a limited grant. Ordinary OAuth
+  clients compare literal scopes;
+  [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
+  selects SMART semantic comparison and also enforces these permissions
+  when validating token responses. Explicit refresh narrowing retains
+  these scopes.
+
+- label:
+
+  Optional display label used in connection summaries; defaults to the
+  provider name, with control characters replaced by spaces and
+  shortened to 128 UTF-8 bytes if needed. If the provider name is empty,
+  missing or not a single string, the default is `"OAuth provider"`.
+  Explicit labels must be non-empty strings of at most 128 bytes without
+  control characters. Labels contain no credentials or patient context.
+
+- authorization_method:
+
+  Browser method for sending the authorization request: `"GET"`
+  (default) or `"POST"`. Select POST only after confirming provider
+  support. It submits form fields instead of a long URL query. Use the
+  module's `request_login()` or
+  [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md);
+  URL-only helpers reject POST. This does not select the callback
+  `response_mode` or replace a provider's PAR or signed Request Object
+  requirements.
+
+- scope_policy:
+
+  Internal versioned scope policy. Leave the default for ordinary OAuth
+  clients. SMART adapters install their own policy, including required
+  permissions; these checks cannot be disabled by `scope_validation`.
+  This parameter is not an argument to
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+
+- smart:
+
+  Internal SMART configuration installed by
+  [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md).
+  Leave the empty default for ordinary clients. This is not an argument
+  to
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
 
 ## Details
 

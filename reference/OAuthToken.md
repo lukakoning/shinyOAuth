@@ -28,7 +28,9 @@ OAuthToken(
   id_token_validated = FALSE,
   original_id_token = NA_character_,
   extra_fields = list(),
-  initial_extra_fields = list()
+  initial_extra_fields = list(),
+  smart_context = list(),
+  original_granted_scopes = character(0)
 )
 ```
 
@@ -116,6 +118,20 @@ OAuthToken(
   on a new login. Defaults to an empty list for manually constructed
   tokens; refresh does not infer an initial response from
   `extra_fields`.
+
+- smart_context:
+
+  Internal interpreted SMART context. Empty for ordinary tokens;
+  populated only by SMART token processing. Use
+  [`smart_context()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+  on a connection to read it. Includes sensitive patient and identity
+  references.
+
+- original_granted_scopes:
+
+  Initial accepted SMART grant, preserved across refreshes to
+  distinguish unchanged grants from strict scope reductions. Empty for
+  ordinary OAuth tokens. Set by SMART token processing.
 
 ## Details
 

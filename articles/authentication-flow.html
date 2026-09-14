@@ -34,6 +34,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -373,14 +375,16 @@ available through
 must select one of the multi-server modes above. Distinct routes support
 legacy providers without issuer response parameters. Shared routes
 require <code>multi_issuer</code> with distinct configured issuers and
-RFC 9207 <code>iss</code> or a signed JARM response. For encrypted JARM
-on a shared route, supply an outer <code>iss</code> that matches the
-decrypted issuer, or use distinct routes. Issuer routing never replaces
-signature, transaction or browser-binding validation. The dispatcher
-redirects to a clean bridge URL before rendering the app. Nesting
-single-client wrappers does not provide this routing. Supply the same
-trusted <code>request_uri_resolver</code> used for single-provider
-deployments when running behind a proxy.</p>
+RFC 9207 <code>iss</code> or a signed JARM response. Encrypted JARM can
+share an ordinary registry route when an outer <code>iss</code>
+identifies one distinct configured issuer and matches the decrypted,
+signed response. Without that routing hint, use distinct callback
+routes. Issuer routing never replaces signature, transaction or
+browser-binding validation. The dispatcher redirects to a clean bridge
+URL before rendering the app. Nesting single-client wrappers does not
+provide this routing. Supply the same trusted
+<code>request_uri_resolver</code> used for single-provider deployments
+when running behind a proxy.</p>
 </div>
 </div>
 <div class="section level3">

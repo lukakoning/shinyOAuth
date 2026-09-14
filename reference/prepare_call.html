@@ -25,6 +25,8 @@ request. Pair it with handle_callback() to complete the code flow."></head><body
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -61,7 +63,10 @@ request. Pair it with <code><a href="handle_callback.html">handle_callback()</a>
 <span>  <span class="va">browser_token</span>,</span>
 <span>  request_uri_publisher <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  .requested_max_age <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  .defer_build <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  .defer_build <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  .transaction_context <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  .smart_launch <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  .authorization_request <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -95,6 +100,21 @@ the Shiny module for forced reauthentication.</p></dd>
 <dd><p>Internal flag returning prepared local state for async
 authorization work instead of completing the authorization URL.</p></dd>
 
+
+<dt id="arg--transaction-context">.transaction_context<a class="anchor" aria-label="anchor" href="#arg--transaction-context"></a></dt>
+<dd><p>Internal bounded manager context. Ordinary callers
+leave this <code>NULL</code>; managed state requires manager-aware consumption.</p></dd>
+
+
+<dt id="arg--smart-launch">.smart_launch<a class="anchor" aria-label="anchor" href="#arg--smart-launch"></a></dt>
+<dd><p>Internal per-transaction EHR launch handle supplied by
+the manager. Bound to the approved target and sealed transaction context.</p></dd>
+
+
+<dt id="arg--authorization-request">.authorization_request<a class="anchor" aria-label="anchor" href="#arg--authorization-request"></a></dt>
+<dd><p>Internal flag permitting a structured POST
+result for the module and <code><a href="prepare_authorization_request.html">prepare_authorization_request()</a></code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -111,7 +131,9 @@ to start login through the module, which manages both operations and the
 reactive session state.</p>
 <p>The helper records one-time state and creates any required PKCE and nonce
 values. Custom callers must preserve the browser binding and process the
-returning callback themselves.</p>
+returning callback themselves.
+For an explicitly configured POST client, use <code><a href="prepare_authorization_request.html">prepare_authorization_request()</a></code>
+instead. This URL-only helper rejects POST before storing a transaction.</p>
     </div>
 
     <div class="section level2">

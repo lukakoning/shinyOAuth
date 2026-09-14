@@ -44,6 +44,7 @@ address; switching between `localhost` and `127.0.0.1` can interrupt
 login.
 
 ``` r
+
 library(shiny)
 library(shinyOAuth)
 
@@ -141,6 +142,7 @@ The default is to start login automatically. To let users choose when to
 sign in, replace the example’s UI and server with:
 
 ``` r
+
 ui <- oauth_ui(fluidPage(
   actionButton("login", "Sign in"),
   actionButton("logout", "Sign out"),
@@ -177,6 +179,7 @@ example, add `tableOutput("repositories")` to the UI and this output to
 `server()`:
 
 ``` r
+
 output$repositories <- renderTable({
   req(auth$authenticated)
 
@@ -223,6 +226,7 @@ token.
 For a provider that returns a parameter named `custom_field`:
 
 ``` r
+
 # Inside reactive server code, after a successful login:
 token <- auth$token
 token@extra_fields$custom_field
@@ -260,6 +264,7 @@ service with a discovery URL, you can let shinyOAuth look up the
 service’s settings:
 
 ``` r
+
 provider <- oauth_provider_oidc_discover(
   issuer = "https://login.example.com"
 )
@@ -294,6 +299,7 @@ For a local Keycloak server using HTTP, opt in before creating the
 provider:
 
 ``` r
+
 options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
 provider <- oauth_provider_keycloak(
   base_url = "http://localhost:8080", realm = "shinyoauth"
@@ -321,6 +327,7 @@ This example constructs an OAuth-only public client with S256 PKCE and
 HTTPS:
 
 ``` r
+
 options(shinyOAuth.tls_min_version = "1.2") # Set before discovery or login.
 provider <- oauth_provider(
   name = "Example authorization server",
@@ -352,11 +359,11 @@ together, nor does it require OIDC metadata for an OAuth-only provider.
 The result records the draft, ruleset, package version, assessment time
 and operation scope. Its verdict has three meanings:
 
-| `configuration_compliant` | Meaning                                                                                                                                 |
-|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| `FALSE`                   | At least one applicable mandatory configuration check failed. This takes precedence over unknown findings.                              |
-| `NA`                      | No known mandatory failure, but at least one mandatory configuration prerequisite is unresolved. Provider-only assessments are partial. |
-| `TRUE`                    | Applicable mandatory checks in the recorded configuration scope passed. External behavior remains unverified.                           |
+| `configuration_compliant` | Meaning |
+|----|----|
+| `FALSE` | At least one applicable mandatory configuration check failed. This takes precedence over unknown findings. |
+| `NA` | No known mandatory failure, but at least one mandatory configuration prerequisite is unresolved. Provider-only assessments are partial. |
+| `TRUE` | Applicable mandatory checks in the recorded configuration scope passed. External behavior remains unverified. |
 
 Every finding has a stable ID, status, requirement strength, evidence
 source, remediation, reference and `affects_verdict` flag. Unmet
@@ -365,6 +372,7 @@ enabled PAR, required UserInfo and enabled introspection are included.
 Include optional operations explicitly:
 
 ``` r
+
 assessment <- check_oauth21(
   client,
   context = list(operations = c("introspection", "revocation"))
@@ -384,6 +392,7 @@ script may decide to block a known failure and separately flag
 unresolved prerequisites:
 
 ``` r
+
 if (identical(assessment$configuration_compliant, FALSE)) {
   stop("Resolve the mandatory configuration findings before deployment.")
 }
@@ -403,6 +412,148 @@ of that assurance after it has been established. It cannot supply
 missing local settings and is never treated as observed server evidence.
 S256 remains recommended.
 
+## Multiple authorization servers
+
+Create one client and module for each registration. Give each
+authorization server a distinct registered callback path and list the
+same clients in the UI wrapper. Module IDs alone do not distinguish
+browser callback routes.
+
+``` r
+
+redirects <- c("https://app.example/oauth/a", "https://app.example/oauth/b")
+# provider_a and provider_b are independently configured OAuth/OIDC providers.
+clients <- list(
+  auth_a = oauth_client(
+    provider_a, client_id = Sys.getenv("SITE_A_CLIENT_ID"),
+    client_secret = Sys.getenv("SITE_A_CLIENT_SECRET"),
+    redirect_uri = redirects[[1]], scopes = c("read"),
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirects
+  ),
+  auth_b = oauth_client(
+    provider_b, client_id = Sys.getenv("SITE_B_CLIENT_ID"),
+    client_secret = Sys.getenv("SITE_B_CLIENT_SECRET"),
+    redirect_uri = redirects[[2]], scopes = c("read"),
+    authorization_server_mode = "multi_redirect_uri",
+    authorization_server_redirect_uris = redirects
+  )
+)
+ui <- oauth_ui(fluidPage(
+  actionButton("connect_a", "Connect A"),
+  actionButton("connect_b", "Connect B")
+), clients = clients)
+server <- function(input, output, session) {
+  a <- oauth_module_server("auth_a", clients$auth_a, auto_redirect = FALSE)
+  b <- oauth_module_server("auth_b", clients$auth_b, auto_redirect = FALSE)
+  observeEvent(input$connect_a, a$request_login())
+  observeEvent(input$connect_b, b$request_login())
+}
+shinyApp(ui, server, uiPattern = ".*")
+```
+
+Register those exact redirect URIs with the respective services and
+configure the web host to serve the app at both paths. Shared routes
+require independent authorization-server identification (`multi_issuer`,
+using RFC 9207 or JARM); the static registry rejects multiple clients
+with the same issuer on one route. See [OAuth Security BCP section
+4.4.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2).
+
+This pattern routes multiple modules; it does not retain their
+credentials across navigation. Following the authorization redirect for
+B can end the Shiny session holding A. A new session starts with empty
+module credentials even if the clients share a pending-state store. To
+preserve authorizations across navigation, use the separate connection
+manager with browser or account retention. See [Keep and use multiple
+OAuth
+authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md)
+for a complete two-service example.
+
+For healthcare APIs, [Use SMART on FHIR from
+Shiny](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.md)
+shows discovery, client registration settings, patient requests and EHR
+launch using the same manager.
+
+Additional token fields are already available server-side. For example,
+`a$token@initial_extra_fields$patient` reads an initial SMART patient
+value, while `a$token@extra_fields` contains only the latest successful
+response’s extras. Refresh may omit `patient`. Neither list is validated
+identity data or evidence of permission to read a resource. Ordinary
+clients do not infer SMART discovery, launch handling, scope
+equivalence, or a FHIR destination from these fields. Keep the matching
+client, token and approved resource together when making requests, and
+keep raw context out of logs and session summaries.
+
+### Requests bound to a client and resource
+
+These optional helpers group the client, API address and current
+credentials used for a request. They are package API choices; OAuth and
+SMART on FHIR do not require these classes.
+
+| Object | What it represents | Example |
+|----|----|----|
+| `OAuthClient` | Registration settings and optional approved API addresses | Hospital A’s client ID, scopes and `https://a.example/fhir` |
+| `OAuthConnection` | Access to one Shiny session’s current credentials through that configuration | This session’s authorized requests to Hospital A |
+
+The client holds shared configuration, with no user’s token. A
+connection reads the current token for each request. The object refers
+to credentials that can change instead of keeping a token copy. The
+existing reactive token already updates on refresh; the connection adds
+client selection, API-address restrictions and session checks. It does
+not implement refresh or retention by itself.
+
+Set `resource_bases` on
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+outside `server()`, then create a connection for that client’s module
+inside `server()`:
+
+``` r
+
+client <- oauth_client(
+  provider, client_id = "registered-app",
+  redirect_uri = "https://app.example/callback", scopes = "read",
+  resource_bases = c(records = "https://api.example/v1"),
+  required_scopes = "read" # A subset of the requested scopes.
+)
+server <- function(input, output, session) {
+  auth <- oauth_module_server("auth", client)
+  connection <- oauth_connection(client, reactive(auth$token))
+  records <- reactive({
+    req(connection$is_usable())
+    connection$request("records", "records", query = list(limit = 20)) |>
+      httr2::resp_body_json()
+  })
+}
+```
+
+The reference reads the latest token after refresh and becomes unusable
+after logout, token expiry, or session end. A reference from another
+Shiny session cannot read its summary or make requests. This adapter
+still uses the legacy module’s lifecycle and does not retain credentials
+across navigation.
+
+`resource_bases` restricts the token’s destinations; it does not request
+an audience or prove an opaque token’s audience. Wire the token
+expression to the module using `client`. Resource indicators remain an
+explicit client setting ([RFC
+8707](https://www.rfc-editor.org/rfc/rfc8707.html)).
+
+Each request selects a resource ID and resolves a path against its full
+base. An absolute pagination or resource reference must stay within that
+base too. For example, `/v1-other` is outside `/v1`, even on the same
+hostname. Ambiguous path syntax is rejected before URL normalization,
+and redirects are disabled. General URL options cannot relax this
+policy. These comparisons use URI origin and path rules from [RFC
+3986](https://www.rfc-editor.org/rfc/rfc3986.html).
+
+Optional permissions can produce a limited connection. Declare an
+operation’s extra permissions with
+`$request(..., required_scopes = "write")`; the current grant must cover
+them. No generic mapping from API paths to OAuth scopes is assumed.
+`$summary()` contains the opaque connection ID, client label, local
+status, expiry, and resource IDs. It excludes credentials and raw
+context.
+
 ## Asynchronous execution
 
 By default, network work runs in the app’s R process. A slow provider
@@ -411,6 +562,7 @@ network work in background R processes, install `mirai` and `promises`,
 then configure workers before `server()`:
 
 ``` r
+
 mirai::daemons(2)
 shiny::onStop(function() mirai::daemons(0))
 
@@ -430,6 +582,7 @@ For an app using future instead of mirai, configure its worker plan
 before starting the server and release the workers when the app stops:
 
 ``` r
+
 future::plan(future::multisession, workers = 2)
 shiny::onStop(function() future::plan(future::sequential))
 

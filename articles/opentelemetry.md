@@ -20,6 +20,7 @@ Install `otelsdk`, then set these variables in a fresh R session before
 loading shinyOAuth or starting the app:
 
 ``` r
+
 # install.packages("otelsdk")
 Sys.setenv(
   OTEL_TRACES_EXPORTER = "console",
@@ -63,6 +64,7 @@ the data. Disable either signal without changing your app’s other
 telemetry:
 
 ``` r
+
 options(
   shinyOAuth.otel_logging_enabled = FALSE,
   shinyOAuth.otel_tracing_enabled = FALSE
@@ -114,6 +116,7 @@ The corresponding counts remain available, including
 include names in a controlled environment:
 
 ``` r
+
 options(shinyOAuth.otel_include_authorization_details = TRUE)
 ```
 

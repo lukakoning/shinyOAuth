@@ -31,6 +31,8 @@ identity checks when configured for an OIDC provider."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -232,10 +234,13 @@ supplied a value that did not pass validation.</p></li>
 token or one whose refresh failed. Resets after successful login,
 refresh, or logout.</p></li>
 </ul><p>The object also supplies:</p><ul><li><p><code>auth$request_login()</code>: start login. Waits for browser setup when needed
-and does nothing if the session is already authenticated.</p></li>
+and does nothing if the session is already authenticated. Uses a browser
+form when the client selects <code>authorization_method = "POST"</code>; the app's
+Content Security Policy <code>form-action</code> must permit the provider endpoint.</p></li>
 <li><p><code>auth$logout()</code>: clear the local login and attempt to revoke tokens when
 supported, following <code>async</code>. It does not sign out of the provider account.</p></li>
 <li><p><code>auth$build_auth_url()</code>: advanced helper for a custom login link.
+Rejects POST clients; use <code>request_login()</code> for their form submission.
 Creates pending login state as well as the URL, so retain the result for
 the link instead of rebuilding it on every UI update.
 Rotates and checks the browser binding before creating state. Returns a

@@ -29,6 +29,8 @@ depend on the provider. Keep access and refresh tokens out of the UI and logs.">
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
+    <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
     <li><a class="dropdown-item" href="../articles/authentication-flow.html">Authentication flow</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -75,7 +77,9 @@ depend on the provider. Keep access and refresh tokens out of the UI and logs.</
 <span>  id_token_validated <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  original_id_token <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  extra_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  initial_extra_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  initial_extra_fields <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  smart_context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  original_granted_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -161,6 +165,18 @@ list, including when the response contains no extra fields.</p></dd>
 successful authorization-code exchange. Preserved across refreshes and
 replaced on a new login. Defaults to an empty list for manually constructed
 tokens; refresh does not infer an initial response from <code>extra_fields</code>.</p></dd>
+
+
+<dt id="arg-smart-context">smart_context<a class="anchor" aria-label="anchor" href="#arg-smart-context"></a></dt>
+<dd><p>Internal interpreted SMART context. Empty for ordinary
+tokens; populated only by SMART token processing. Use <code><a href="smart_context.html">smart_context()</a></code> on
+a connection to read it. Includes sensitive patient and identity references.</p></dd>
+
+
+<dt id="arg-original-granted-scopes">original_granted_scopes<a class="anchor" aria-label="anchor" href="#arg-original-granted-scopes"></a></dt>
+<dd><p>Initial accepted SMART grant, preserved across
+refreshes to distinguish unchanged grants from strict scope reductions.
+Empty for ordinary OAuth tokens. Set by SMART token processing.</p></dd>
 
 </dl></div>
     <div class="section level2">

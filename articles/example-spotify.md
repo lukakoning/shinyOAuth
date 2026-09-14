@@ -41,6 +41,7 @@ Save this as `app.R`, run it, and open `http://127.0.0.1:8100` in a
 regular browser. After connecting Spotify, click **Load top tracks**.
 
 ``` r
+
 library(shiny)
 library(shinyOAuth)
 
@@ -113,6 +114,7 @@ with a bslib layout. It uses the same authentication setup as the
 example above.
 
 ``` r
+
 install.packages(c("bslib", "ggplot2", "DT", "purrr", "dplyr"))
 dashboard_file <- system.file(
   "examples", "spotify-dashboard.R", package = "shinyOAuth", mustWork = TRUE

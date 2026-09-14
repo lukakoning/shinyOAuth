@@ -93,8 +93,9 @@ select a multi-server defense. Shared routes require
 issuers. An RFC 9207 `iss` or signed JARM issuer selects the configured
 client; the complete callback is then verified before a bridge handle is
 stored. Encrypted JARM on a shared route requires an outer `iss`
-(verified against the decrypted response); otherwise use distinct
-routes. Do not nest wrappers to route multiple providers.
+identifying one distinct configured issuer. The decrypted, signed
+response must match it. Do not nest wrappers to route multiple
+providers.
 
 Without `id` and `client`, ordinary pages still render, but raw OAuth
 GET callbacks fail closed with a setup error. Earlier `oauth_ui(ui)`
