@@ -16,6 +16,7 @@
 #'   default `"/"`. Must begin and end with `/`. The wrapper inserts a document
 #'   base before scripts so Shiny dependencies load from the app root even on
 #'   nested callback pages. Do not supply a separate HTML `base` element.
+#'   Managed JAR Request Object URLs are also published beneath this path.
 #' @param launch_routes List of [smart_launch_route()] configurations, empty by
 #'   default. EHR entry requires browser retention and top-level navigation.
 #' @param additional_clients Optional named list of ordinary OAuth/OIDC clients
@@ -115,6 +116,7 @@ oauth_connections_ui <- function(
     connection_manager_document_base(callback_handler(req), app_base)
   }
   state <- manager$state
+  state$app_base <- app_base
   state$ui_bound <- TRUE
   ui <- function(req) {
     connection_manager_check(manager)

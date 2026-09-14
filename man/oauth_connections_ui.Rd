@@ -29,7 +29,8 @@ origin must match the manager's configured origin.}
 \item{app_base_path}{Public path at which the Shiny application is hosted,
 default \code{"/"}. Must begin and end with \code{/}. The wrapper inserts a document
 base before scripts so Shiny dependencies load from the app root even on
-nested callback pages. Do not supply a separate HTML \code{base} element.}
+nested callback pages. Do not supply a separate HTML \code{base} element.
+Managed JAR Request Object URLs are also published beneath this path.}
 
 \item{launch_routes}{List of \code{\link[=smart_launch_route]{smart_launch_route()}} configurations, empty by
 default. EHR entry requires browser retention and top-level navigation.}

@@ -129,7 +129,7 @@ oauth_connections_server <- function(
         manager$clients[[client_name]],
         auto_redirect = FALSE,
         async = async,
-        request_uri_base_url = manager$app_origin,
+        request_uri_base_url = manager$state$app_base,
         .managed = controller$hooks(client_name)
       )
     })
