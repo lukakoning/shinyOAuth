@@ -55,8 +55,12 @@ use the existing validated callback bridge and clean continuation.
 }
 \details{
 Raw GET and form POST callbacks never create or rotate an owner. A POST may
-lack a SameSite owner cookie; a managed continuation must carry a still-valid
-owner before credentials can be exchanged. A validated ordinary callback for
+lack a SameSite owner cookie. With Strict owner cookies, a validated callback
+first serves an inert same-origin document that navigates to the clean
+continuation, allowing the browser to send its existing cookie. The document
+does not establish an owner or exchange credentials. A managed continuation
+must carry a still-valid owner before credentials can be exchanged.
+A validated ordinary callback for
 \code{additional_clients} can establish a new empty manager owner independently.
 An invalid cookie on an ordinary
 page is cleared using an HTTP response and a same-origin redirect; the next

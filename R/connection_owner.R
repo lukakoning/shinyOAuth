@@ -13,6 +13,8 @@
 #'   activity. Must be at least `idle_timeout`.
 #' @param same_site Owner-cookie policy, `"Lax"` for top-level authorization
 #'   navigation or `"Strict"`. Embedded cross-site ownership is not supported.
+#'   With `"Strict"`, [oauth_connections_ui()] serves an intermediate same-origin
+#'   document after validating a callback, before checking the existing owner.
 #' @param allow_http_loopback Explicit development-only exception for HTTP on
 #'   localhost or a loopback address. Default `FALSE` requires HTTPS. The exception
 #'   cannot provide a Secure, host-prefixed owner cookie.

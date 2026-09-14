@@ -7,7 +7,8 @@ retention_fixture_app <- function(
   response_mode = "query",
   shared_issuer = FALSE,
   scope_narrowing = FALSE,
-  authorization_method = "GET"
+  authorization_method = "GET",
+  same_site = "Lax"
 ) {
   if (async) {
     mirai::daemons(2L)
@@ -52,6 +53,7 @@ retention_fixture_app <- function(
     owner = shinyOAuth::oauth_browser_owner(
       idle_timeout = idle_timeout,
       absolute_timeout = 1200,
+      same_site = same_site,
       allow_http_loopback = TRUE
     ),
     store = shinyOAuth::oauth_connection_store_memory(),
@@ -89,6 +91,7 @@ retention_fixture_app <- function(
   )
   sessions <- 0L
   post_owner_cookies <- logical()
+  callback_owner_cookies <- logical()
   server <- function(input, output, session) {
     sessions <<- sessions + 1L
     session_number <- sessions
@@ -214,7 +217,8 @@ retention_fixture_app <- function(
         result_revision = result_revision(),
         connections = health$connections(),
         errors = health$errors(),
-        post_owner_cookies = post_owner_cookies
+        post_owner_cookies = post_owner_cookies,
+        callback_owner_cookies = callback_owner_cookies
       ),
       auto_unbox = TRUE,
       null = "null"
@@ -222,6 +226,13 @@ retention_fixture_app <- function(
   }
   wrapped_ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager)
   ui <- function(req) {
+    if (startsWith(req$PATH_INFO, "/callback/") &&
+        (identical(req$REQUEST_METHOD, "POST") ||
+          grepl("(^[?]?|&)code=", req$QUERY_STRING))) {
+      callback_owner_cookies <<- c(callback_owner_cookies,
+        is.character(req$HTTP_COOKIE) &&
+          grepl("shinyOAuth-owner-", req$HTTP_COOKIE, fixed = TRUE))
+    }
     if (
       identical(req$REQUEST_METHOD, "POST") &&
         startsWith(req$PATH_INFO, "/callback/")

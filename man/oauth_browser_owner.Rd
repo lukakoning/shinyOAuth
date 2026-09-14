@@ -33,7 +33,9 @@ input event handler; connecting, explicit refresh and disconnect also count.}
 activity. Must be at least \code{idle_timeout}.}
 
 \item{same_site}{Owner-cookie policy, \code{"Lax"} for top-level authorization
-navigation or \code{"Strict"}. Embedded cross-site ownership is not supported.}
+navigation or \code{"Strict"}. Embedded cross-site ownership is not supported.
+With \code{"Strict"}, \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} serves an intermediate same-origin
+document after validating a callback, before checking the existing owner.}
 
 \item{allow_http_loopback}{Explicit development-only exception for HTTP on
 localhost or a loopback address. Default \code{FALSE} requires HTTPS. The exception

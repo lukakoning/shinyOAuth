@@ -30,8 +30,12 @@
 #' @return A request UI function for `shinyApp(..., uiPattern = ".*")`.
 #' @details
 #' Raw GET and form POST callbacks never create or rotate an owner. A POST may
-#' lack a SameSite owner cookie; a managed continuation must carry a still-valid
-#' owner before credentials can be exchanged. A validated ordinary callback for
+#' lack a SameSite owner cookie. With Strict owner cookies, a validated callback
+#' first serves an inert same-origin document that navigates to the clean
+#' continuation, allowing the browser to send its existing cookie. The document
+#' does not establish an owner or exchange credentials. A managed continuation
+#' must carry a still-valid owner before credentials can be exchanged.
+#' A validated ordinary callback for
 #' `additional_clients` can establish a new empty manager owner independently.
 #' An invalid cookie on an ordinary
 #' page is cleared using an HTTP response and a same-origin redirect; the next
@@ -137,7 +141,12 @@ oauth_connections_ui <- function(
         !identical(req[["REQUEST_METHOD"]], "GET") ||
         raw_callback
     ) {
-      return(handler(req))
+      response <- handler(req)
+      if (identical(manager$retention, "browser") &&
+          identical(manager$owner$same_site, "Strict")) {
+        response <- connection_manager_callback_document(response, uri, manager$app_origin)
+      }
+      return(response)
     }
     supplied_origin <- req[["HTTP_ORIGIN"]]
     if (
@@ -218,6 +227,32 @@ oauth_connections_ui <- function(
     "http_methods_supported"
   )
   ui
+}
+
+# A cross-site HTTP redirect chain withholds Strict cookies even on its final
+# same-origin hop. Commit a document before navigating to the bridge's opaque
+# continuation; the next request still has to prove the existing live owner.
+connection_manager_callback_document <- function(response, uri, origin) {
+  location <- response$headers$Location
+  if (is_valid_string(location) && startsWith(location, "?")) {
+    location <- paste0(sub("[?#].*$", "", uri), location)
+  }
+  if (is.null(response) || !isTRUE(response$status == 303L) ||
+      !connection_manager_same_origin(location, origin) ||
+      length(oauth_module_query_raw_values(url_raw_query(location), oauth_form_post_handle_param)) != 1L) {
+    return(response)
+  }
+  location <- htmltools::htmlEscape(location, attribute = TRUE)
+  shiny::httpResponse(200L, "text/html; charset=UTF-8", paste0(
+    '<!doctype html><html><head><meta name="referrer" content="no-referrer">',
+    '<meta http-equiv="refresh" content="0;url=', location, '">',
+    '<title>Continue authorization</title></head><body>',
+    '<a href="', location, '">Continue</a></body></html>'
+  ), headers = list(
+    "Cache-Control" = "no-store", "Pragma" = "no-cache",
+    "Referrer-Policy" = "no-referrer",
+    "Content-Security-Policy" = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+  ))
 }
 
 # Establish only whether this clean continuation belongs to an independent
