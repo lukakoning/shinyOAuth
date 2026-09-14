@@ -78,9 +78,31 @@ echo "[run-integration] Preparing TLS materials..." >&2
 # Invoke via bash so this works even when the executable bit is not preserved.
 "${BASH:-bash}" "$TLS_PREPARE_SCRIPT"
 
-# Start services
+# Registry timeouts can be transient. Retry only the pull, before containers or
+# tests start, and preserve the final Docker failure if all attempts fail.
+pull_keycloak() {
+  local attempt rc delay
+  for attempt in 1 2 3; do
+    echo "[run-integration] Pulling Keycloak image (attempt ${attempt}/3)..." >&2
+    if (cd "$COMPOSE_DIR" && docker compose pull --policy missing keycloak); then
+      return 0
+    else
+      rc=$?
+    fi
+    if [ "$attempt" -eq 3 ]; then
+      echo "[run-integration] Keycloak image pull failed after 3 attempts." >&2
+      return "$rc"
+    fi
+    delay=$((attempt * 5))
+    echo "[run-integration] Image pull failed; retrying in ${delay}s..." >&2
+    sleep "$delay"
+  done
+}
+pull_keycloak
+
+# Start services using the image obtained above, without another registry pull.
 echo "[run-integration] Starting Keycloak via docker compose..." >&2
-(cd "$COMPOSE_DIR" && docker compose up -d)
+(cd "$COMPOSE_DIR" && docker compose up -d --pull never)
 
 wait_for_discovery() {
   local discovery_url="$1"
