@@ -16,7 +16,7 @@ smart_client(
   client_assertion_private_key_kid = NULL,
   client_assertion_alg = "RS384",
   launch = c("standalone", "ehr"),
-  identity = c("none", "fhirUser"),
+  identity = c("none", "openid", "fhirUser"),
   allow_v1 = FALSE,
   response_mode = NULL,
   authorization_server_mode = "single",
@@ -71,7 +71,10 @@ metadata must support the selected algorithm. Other styles omit assertions.}
 
 \item{launch}{\code{"standalone"} or \code{"ehr"}, matching the registered app flow.}
 
-\item{identity}{\code{"none"} (default) or \code{"fhirUser"}. A validated \code{fhirUser}
+\item{identity}{\code{"none"} (default), \code{"openid"} for a validated OIDC subject, or
+\code{"fhirUser"} to also require the user's FHIR reference. \code{"openid"} does not
+interpret a \code{fhirUser} claim or populate \code{smart_context()$fhirUser}.
+A validated \code{fhirUser}
 claim may be an absolute URL or a supported resource instance reference
 relative to this client's FHIR base, such as \code{"Practitioner/example"} or
 \code{"Practitioner/example/_history/2"}. Versioned references retain their version.}
@@ -125,9 +128,10 @@ the resource ID \code{"fhir"}. Discovery does not register the app or grant acce
 }
 \details{
 This constructor selects SMART 2.2 scope rules, S256 PKCE and the exact FHIR
-base as the authorization request's \code{aud}. Identity is opt-in: \code{"fhirUser"}
-requests and requires \verb{openid fhirUser}, signed ID-token validation and nonce
-binding. \code{"none"} does not enable OIDC because an issuer happens to be present.
+base as the authorization request's \code{aud}. Identity is opt-in: \code{"openid"}
+requests and requires \code{openid}, signed ID-token validation and nonce binding.
+\code{"fhirUser"} additionally requests and requires the \code{fhirUser} scope and claim.
+\code{"none"} does not enable OIDC because an issuer happens to be present.
 A patient in context is independent of the authenticated user and local owner.
 
 Only direct authorization requests and query/form POST callbacks are currently

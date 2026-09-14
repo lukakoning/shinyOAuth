@@ -5,9 +5,10 @@
 #' the resource ID `"fhir"`. Discovery does not register the app or grant access.
 #'
 #' This constructor selects SMART 2.2 scope rules, S256 PKCE and the exact FHIR
-#' base as the authorization request's `aud`. Identity is opt-in: `"fhirUser"`
-#' requests and requires `openid fhirUser`, signed ID-token validation and nonce
-#' binding. `"none"` does not enable OIDC because an issuer happens to be present.
+#' base as the authorization request's `aud`. Identity is opt-in: `"openid"`
+#' requests and requires `openid`, signed ID-token validation and nonce binding.
+#' `"fhirUser"` additionally requests and requires the `fhirUser` scope and claim.
+#' `"none"` does not enable OIDC because an issuer happens to be present.
 #' A patient in context is independent of the authenticated user and local owner.
 #'
 #' Only direct authorization requests and query/form POST callbacks are currently
@@ -53,7 +54,10 @@
 #' @param client_assertion_alg `"RS384"` (default) or `"ES384"`; the key and server
 #'   metadata must support the selected algorithm. Other styles omit assertions.
 #' @param launch `"standalone"` or `"ehr"`, matching the registered app flow.
-#' @param identity `"none"` (default) or `"fhirUser"`. A validated `fhirUser`
+#' @param identity `"none"` (default), `"openid"` for a validated OIDC subject, or
+#'   `"fhirUser"` to also require the user's FHIR reference. `"openid"` does not
+#'   interpret a `fhirUser` claim or populate `smart_context()$fhirUser`.
+#'   A validated `fhirUser`
 #'   claim may be an absolute URL or a supported resource instance reference
 #'   relative to this client's FHIR base, such as `"Practitioner/example"` or
 #'   `"Practitioner/example/_history/2"`. Versioned references retain their version.
@@ -106,7 +110,7 @@ smart_client <- function(
   token_auth_style = c("public", "header", "private_key_jwt"),
   client_secret = character(), client_assertion_private_key = NULL,
   client_assertion_private_key_kid = NULL, client_assertion_alg = "RS384",
-  launch = c("standalone", "ehr"), identity = c("none", "fhirUser"),
+  launch = c("standalone", "ehr"), identity = c("none", "openid", "fhirUser"),
   allow_v1 = FALSE, response_mode = NULL,
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(),
@@ -160,12 +164,14 @@ smart_client <- function(
   if (identical(launch, "standalone") && "launch" %in% scopes) {
     err_config("Standalone SMART clients cannot request EHR launch scope")
   }
-  if (identical(identity, "fhirUser")) {
+  identity_scopes <- smart_identity_scopes(identity)
+  if (length(identity_scopes)) {
     require_capability("sso-openid-connect")
-    scopes <- union(scopes, c("openid", "fhirUser"))
-    required_scopes <- union(required_scopes, c("openid", "fhirUser"))
-  } else if (any(c("openid", "fhirUser") %in% scopes)) {
-    err_config("Identity scopes require identity = 'fhirUser'")
+    scopes <- union(scopes, identity_scopes)
+    required_scopes <- union(required_scopes, identity_scopes)
+  }
+  if (length(setdiff(intersect(c("openid", "fhirUser"), scopes), identity_scopes))) {
+    err_config("Identity scopes require a matching identity mode ('openid' or 'fhirUser')")
   }
   if (!length(scopes)) err_config("SMART authorization requires at least one requested scope")
   if (any(startsWith(scopes, "patient/"))) {
@@ -223,7 +229,7 @@ smart_client <- function(
   if (length(response_modes) && !(response_mode %||% "query") %in% response_modes) {
     err_config("SMART callback response mode is not advertised")
   }
-  oidc <- identical(identity, "fhirUser")
+  oidc <- !identical(identity, "none")
   provider <- oauth_provider(
     name = label, auth_url = metadata[["authorization_endpoint"]],
     token_url = metadata[["token_endpoint"]], issuer = metadata[["issuer"]] %||% NA_character_,
@@ -271,6 +277,10 @@ smart_client <- function(
 
 client_uses_smart <- function(client) length(client@smart) > 0L
 
+smart_identity_scopes <- function(identity) {
+  switch(identity, none = character(), openid = "openid", fhirUser = c("openid", "fhirUser"))
+}
+
 smart_assert_client_policy <- function(client) {
   problem <- smart_validate_client(client)
   if (!is.null(problem)) err_config(problem)
@@ -287,7 +297,7 @@ smart_validate_client <- function(client) {
       !identical(policy[["version"]], "2.2.0") ||
       !is_valid_string(policy[["fhir_base"]]) ||
       !is_valid_string(policy[["launch"]]) || !policy[["launch"]] %in% c("standalone", "ehr") ||
-      !is_valid_string(policy[["identity"]]) || !policy[["identity"]] %in% c("none", "fhirUser") ||
+      !is_valid_string(policy[["identity"]]) || !policy[["identity"]] %in% c("none", "openid", "fhirUser") ||
       !client_uses_smart_scopes(client)) return("OAuthClient: invalid SMART policy")
   online_policy <- policy[["online_access_policy"]] %||% "online_only"
   if (!is_valid_string(online_policy) || !online_policy %in% c("online_only", "allow_offline")) {
@@ -333,9 +343,9 @@ smart_validate_client <- function(client) {
       is_valid_string(client@mtls_client_cert_file)) {
     return("OAuthClient: unsupported SMART request composition")
   }
-  oidc <- identical(policy[["identity"]], "fhirUser")
+  oidc <- !identical(policy[["identity"]], "none")
   if (!identical(provider_uses_oidc(provider), oidc) ||
-      (oidc && !all(c("openid", "fhirUser") %in% client@required_scopes)) ||
+      !all(smart_identity_scopes(policy[["identity"]]) %in% client@required_scopes) ||
       !identical(provider@use_nonce, oidc) ||
       !identical(provider@id_token_validation, oidc) ||
       !identical(provider@id_token_required, oidc)) {
@@ -408,10 +418,14 @@ smart_validate_registration_policy <- function(client) {
   if (launch == "ehr" && !"launch" %in% scopes) err_config("SMART EHR clients require launch scope")
   if (launch == "standalone" && "launch" %in% scopes) err_config("Standalone SMART clients cannot request EHR launch scope")
   if (any(startsWith(scopes, "system/"))) err_config("SMART app launch does not support backend system scopes")
-  if (policy[["identity"]] == "fhirUser") {
+  identity_scopes <- smart_identity_scopes(policy[["identity"]])
+  if (length(identity_scopes)) {
     require_capability("sso-openid-connect")
-    if (!all(c("openid", "fhirUser") %in% scopes)) err_config("SMART identity scopes are required")
-  } else if (any(c("openid", "fhirUser") %in% scopes)) err_config("Identity scopes require identity = 'fhirUser'")
+    if (!all(identity_scopes %in% scopes)) err_config("SMART identity scopes are required")
+  }
+  if (length(setdiff(intersect(c("openid", "fhirUser"), scopes), identity_scopes))) {
+    err_config("Identity scopes require a matching identity mode ('openid' or 'fhirUser')")
+  }
   if (any(startsWith(scopes, "patient/"))) {
     require_capability("permission-patient")
     if (launch == "standalone" && !"launch/patient" %in% scopes) err_config("Standalone patient access requires launch/patient")
