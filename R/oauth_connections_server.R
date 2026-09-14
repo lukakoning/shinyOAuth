@@ -14,7 +14,8 @@
 #' @param refresh_lead_seconds Non-negative number of seconds before expiry used
 #'   for proactive refresh. Background checks never extend owner inactivity limits.
 #' @param refresh_check_interval Positive polling interval in milliseconds, at
-#'   least 100. Safely retryable automatic refresh failures wait at least 30 seconds;
+#'   least 100. Safely retryable automatic refresh failures wait at least 30 seconds
+#'   across all connections sharing the same refresh credential and registration;
 #'   an uncertain refresh requires reconnecting.
 #' @return A server-side list with:
 #'   * `connect(client_name)`: request a new authorization without discarding others.
@@ -217,8 +218,7 @@ oauth_connections_server <- function(
             !is.null(token) &&
             !is.na(token@expires_at) &&
             token@expires_at <= now + lead &&
-            is_valid_string(token@refresh_token) &&
-            now >= (controller$next_refresh[[record$stored$id]] %||% 0)
+            is_valid_string(token@refresh_token)
         ) {
           result <- tryCatch(
             controller$refresh(record$stored$id, async = async, touch = FALSE),

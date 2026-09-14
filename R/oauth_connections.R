@@ -799,6 +799,11 @@ connection_manager_controller <- function(manager, session) {
       resume <- function(...) refresh(id, async = TRUE, touch = touch, scopes = scopes)
       return(promises::then(outstanding$promise, resume, resume))
     }
+    # Automatic retries share the physical credential's cooldown across owners,
+    # records and sessions, including calls resumed after an in-flight failure.
+    if (!touch && as.numeric(Sys.time()) < (next_refresh[[credential]] %||% 0)) {
+      return(invisible(FALSE))
+    }
     # Validate before taking the refresh claim or sending any credentials.
     # After explicit narrowing, automatic calls retain the accepted grant.
     if (is.null(scopes) && isTRUE(record$refresh_scope_narrowed)) {
@@ -832,10 +837,10 @@ connection_manager_controller <- function(manager, session) {
       cleanup$finish()
     }
     on.exit(if (!deferred) release(), add = TRUE)
-    next_refresh[[id]] <- as.numeric(Sys.time()) + 30
+    next_refresh[[credential]] <- as.numeric(Sys.time()) + 30
     signal()
     fail <- function(error) {
-      next_refresh[[id]] <- as.numeric(Sys.time()) + 30
+      next_refresh[[credential]] <- as.numeric(Sys.time()) + 30
       outcome <- error[["refresh_credential_outcome"]] %||% "possibly_consumed"
       if (!outcome %in% c("not_consumed", "possibly_consumed", "consumed")) {
         outcome <- "possibly_consumed"
@@ -1082,8 +1087,7 @@ connection_manager_controller <- function(manager, session) {
     disconnect = disconnect,
     disconnect_all = disconnect_all,
     logout = logout,
-    end = end,
-    next_refresh = next_refresh
+    end = end
   )
 }
 

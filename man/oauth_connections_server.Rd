@@ -28,7 +28,8 @@ available. Otherwise the manager attempts refresh at expiry.}
 for proactive refresh. Background checks never extend owner inactivity limits.}
 
 \item{refresh_check_interval}{Positive polling interval in milliseconds, at
-least 100. Safely retryable automatic refresh failures wait at least 30 seconds;
+least 100. Safely retryable automatic refresh failures wait at least 30 seconds
+across all connections sharing the same refresh credential and registration;
 an uncertain refresh requires reconnecting.}
 }
 \value{
