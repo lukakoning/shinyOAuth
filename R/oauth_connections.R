@@ -581,7 +581,6 @@ connection_manager_controller <- function(manager, session) {
         fhir_base = launch$fhir_base,
         launch_digest = state_policy_value_digest(launch$launch)
       )
-      context$expires_at <- min(context$expires_at, launch$expires_at)
     }
     state$pending[[context$transaction]] <- list(
       context = context,

@@ -162,6 +162,72 @@ test_that("launch is consumed once and the handle belongs to one state transacti
   expect_length(f$manager$state$launches, 0L)
 })
 
+for (delay in c(121, 301)) test_that(paste("prepared EHR logins use the OAuth deadline", delay), {
+  clock <- new.env(parent = emptyenv())
+  clock$now <- as.numeric(Sys.time())
+  local_mocked_bindings(Sys.time = function() as.POSIXct(clock$now,
+    origin = "1970-01-01", tz = "UTC"), .package = "base")
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    httr2::response(url = req$url, status = 200L,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw(jsonlite::toJSON(list(access_token = "example-access",
+        token_type = "Bearer", expires_in = 300, scope = "patient/Patient.r launch",
+        patient = "example-patient"), auto_unbox = TRUE)))
+  })
+  f <- smart_launch_test_fixture()
+  response <- smart_launch_test_entry(f)
+  cookie <- sub(";.*$", "", response$headers[["Set-Cookie"]])
+  id <- sub("^.*=", "", response$headers$Location)
+  shiny::testServer(session = manager_test_session(cookie),
+    function(input, output, session) ctl <- connection_manager_controller(f$manager, session), {
+      ctl$resume_launch(id)
+      hooks <- ctl$hooks("hospital")
+      context <- hooks$prepare()
+      params <- hooks$parameters(context)
+      client <- f$manager$clients$hospital
+      browser <- valid_browser_token()
+      url <- prepare_call(client, browser, .transaction_context = context, .smart_launch = params$launch)
+      clock$now <- clock$now + delay
+      callback <- function() handle_callback_internal(client, code = "example-code",
+        payload = parse_query_param(url, "state"), browser_token = browser,
+        .transaction_context = authorization_context_json(context))
+      if (delay < client@state_payload_max_age) {
+        expect_true(hooks$validate(context))
+        token <- callback()
+        expect_no_error(hooks$accept(token, context, clock$now))
+        expect_length(ctl$records(), 1L)
+      } else {
+        expect_false(hooks$validate(context))
+        expect_error(callback(), class = "shinyOAuth_state_error")
+        expect_length(ctl$records(), 0L)
+      }
+    })
+})
+
+for (phase in c("entry", "queued", "prepared")) {
+  test_that(paste("unconsumed EHR parameters retain the short handoff deadline", phase), {
+    clock <- new.env(parent = emptyenv())
+    clock$now <- as.numeric(Sys.time())
+    local_mocked_bindings(Sys.time = function() as.POSIXct(clock$now,
+      origin = "1970-01-01", tz = "UTC"), .package = "base")
+    f <- smart_launch_test_fixture()
+    response <- smart_launch_test_entry(f)
+    cookie <- sub(";.*$", "", response$headers[["Set-Cookie"]])
+    id <- sub("^.*=", "", response$headers$Location)
+    shiny::testServer(session = manager_test_session(cookie),
+      function(input, output, session) ctl <- connection_manager_controller(f$manager, session), {
+        hooks <- ctl$hooks("hospital")
+        if (phase != "entry") ctl$resume_launch(id)
+        if (phase == "prepared") context <- hooks$prepare()
+        clock$now <- clock$now + 121
+        if (phase == "entry") expect_error(ctl$resume_launch(id), "unavailable")
+        if (phase == "queued") expect_error(hooks$prepare(), "unavailable")
+        if (phase == "prepared") expect_error(hooks$parameters(context), "unavailable")
+        expect_length(ctl$records(), 0L)
+      })
+  })
+}
+
 test_that("expired and foreign-owner handoffs cannot consume a launch", {
   f <- smart_launch_test_fixture()
   response <- smart_launch_test_entry(f)

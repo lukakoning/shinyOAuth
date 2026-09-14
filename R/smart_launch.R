@@ -20,7 +20,9 @@
 #'   A route cannot contain two registrations for the
 #'   same exact FHIR base; give those registrations separate launch routes.
 #' @param max_age Launch handoff lifetime in seconds, 30 to 300, default 120.
-#'   Owner expiry and OAuth state expiry can shorten this lifetime.
+#'   The handoff must be consumed and its authorization parameters prepared before
+#'   this deadline. Once prepared, login uses the client's `state_payload_max_age`,
+#'   bounded by owner expiry; the handoff deadline does not shorten consent time.
 #' @return A plain route configuration list, with no credentials or live state.
 #' @details
 #' The initial implementation supports top-level GET entry with browser retention
