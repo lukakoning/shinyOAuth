@@ -84,6 +84,11 @@ authorize those records again. Their identity and permissions are never
 replaced by another connection's response. Successful revocation also
 invalidates known copies of that credential. Distinct tokens may still share
 an upstream grant whose revocation effects the manager cannot predict.
+Retired credential digests survive connection replacement and expiry for at
+least the store's maximum age and the longest client state lifetime. A separate
+registry holds at most 10,000 digests or pending reservations. A full registry
+rejects refresh or skips remote revocation before sending credentials; it does
+not evict retirement evidence. Existing unrelated access remains usable.
 }
 \details{
 A manager is bound to one UI/server module ID and one public origin. Create

@@ -13,6 +13,11 @@
 #' replaced by another connection's response. Successful revocation also
 #' invalidates known copies of that credential. Distinct tokens may still share
 #' an upstream grant whose revocation effects the manager cannot predict.
+#' Retired credential digests survive connection replacement and expiry for at
+#' least the store's maximum age and the longest client state lifetime. A separate
+#' registry holds at most 10,000 digests or pending reservations. A full registry
+#' rejects refresh or skips remote revocation before sending credentials; it does
+#' not evict retirement evidence. Existing unrelated access remains usable.
 #'
 #' @param clients Non-empty named list of [OAuthClient] objects, at most 64.
 #'   Each client must configure non-empty `resource_bases`. Names select local
@@ -212,6 +217,7 @@ oauth_connections <- function(
   state$signals <- new.env(parent = emptyenv())
   state$cleanup <- new.env(parent = emptyenv())
   state$credential_records <- new.env(parent = emptyenv())
+  state$credential_retirements <- new.env(parent = emptyenv())
   state$credential_flights <- new.env(parent = emptyenv())
   manager <- new.env(parent = emptyenv())
   for (name in c(
@@ -374,6 +380,11 @@ connection_manager_revoke <- function(manager, client, token, deadline) {
     if (remaining <= 0) {
       return("not_attempted")
     }
+    keys <- connection_credential_keys(manager, client, token)
+    release <- tryCatch(connection_credential_reserve(manager, keys[which]),
+      error = function(...) NULL)
+    if (is.null(release)) return("not_attempted")
+    on.exit(release(), add = TRUE)
     settings <- capture_async_options()
     settings$shinyOAuth.timeout <- min(2, remaining)
     settings$shinyOAuth.retry_max_tries <- 1L
@@ -383,7 +394,6 @@ connection_manager_revoke <- function(manager, client, token, deadline) {
         {
           response <- revoke_token(client, token, which = which)
           if (isTRUE(response$revoked)) {
-            keys <- connection_credential_keys(manager, client, token)
             connection_credential_retire(manager, keys[which])
             "accepted"
           } else if (identical(response$supported, FALSE)) {
@@ -808,6 +818,8 @@ connection_manager_controller <- function(manager, session) {
     cleanup <- begin_cleanup(record$stored$client, id)
     deferred <- FALSE
     on.exit(if (!deferred) cleanup$finish(), add = TRUE)
+    release_retirement <- connection_credential_reserve(manager, list(refresh = credential))
+    on.exit(if (!deferred) release_retirement(), add = TRUE)
     claim <- store$begin_refresh(owner$id, id, record$stored$revision)
     if (is.null(claim)) {
       err_token("Connection refresh is already in progress or unavailable")
@@ -817,6 +829,7 @@ connection_manager_controller <- function(manager, session) {
     flights[[credential]] <- flight
     release <- function() {
       if (identical(flights[[credential]], flight)) rm(list = credential, envir = flights)
+      release_retirement()
       cleanup$finish()
     }
     on.exit(if (!deferred) release(), add = TRUE)

@@ -1,3 +1,90 @@
+test_that("a delayed authorization cannot reinstall a retired sole refresh credential", {
+  f <- manager_test_fixture()
+  calls <- 0L
+  local_mocked_bindings(refresh_token = function(...) {
+    calls <<- calls + 1L
+    manager_test_token("new-access", "new-refresh")
+  })
+  peer_session <- manager_test_session(manager_test_cookie(f))
+  withr::defer(peer_session$close())
+  shiny::testServer(session = manager_test_session(manager_test_cookie(f)),
+    function(input, output, session) {
+      ctl <- connection_manager_controller(f$manager, session)
+    }, {
+      a <- manager_test_accept(ctl)
+      peer <- shiny::withReactiveDomain(peer_session,
+        connection_manager_controller(f$manager, peer_session))
+      hooks <- peer$hooks("a")
+      context <- shiny::withReactiveDomain(peer_session, hooks$prepare())
+      expect_true(ctl$refresh(a))
+      expect_identical(ctl$read(a)$token@refresh_token, "new-refresh")
+      # Replacement and subsequent record expiry must not erase retirement.
+      records <- f$manager$state$credential_records
+      entry <- records[[a]]
+      entry$expires_at <- as.numeric(Sys.time()) - 1
+      records[[a]] <- entry
+      connection_credential_prune(f$manager)
+      expect_length(f$manager$state$credential_records, 0L)
+      shiny::withReactiveDomain(peer_session, {
+        expect_error(hooks$accept(manager_test_token(), context,
+          as.numeric(Sys.time()) - 100), "already retired")
+        expect_length(peer$records(), 0L)
+        peer$end()
+      })
+      expect_identical(calls, 1L)
+    })
+})
+
+test_that("retirement capacity is reserved before dispatch and never evicts evidence", {
+  f <- manager_test_fixture()
+  calls <- 0L
+  local_mocked_bindings(connection_credential_retirement_limit = function() 1L,
+    refresh_token = function(...) {
+      calls <<- calls + 1L
+      manager_test_token("new-access", "new-refresh")
+    }, revoke_token = function(...) stop("must not dispatch"))
+  shiny::testServer(session = manager_test_session(manager_test_cookie(f)),
+    function(input, output, session) {
+      ctl <- connection_manager_controller(f$manager, session)
+    }, {
+      a <- manager_test_accept(ctl)
+      b <- manager_test_accept(ctl, token = manager_test_token("other", "separate"))
+      expect_true(ctl$refresh(a))
+      expect_error(ctl$refresh(b), "retirement capacity")
+      expect_identical(calls, 1L)
+      expect_identical(ctl$read(b)$status, "active")
+      expect_identical(ctl$read(b)$token@access_token, "other")
+      expect_identical(ctl$disconnect(b)$remote,
+        list(refresh = "not_attempted", access = "not_attempted"))
+      expect_error(manager_test_accept(ctl), "already retired")
+      expect_length(f$manager$state$credential_retirements, 1L)
+    })
+})
+
+test_that("retirements outlive pending authorizations and overlapping reservations", {
+  f <- manager_test_fixture()
+  now <- Sys.time()
+  local_mocked_bindings(Sys.time = function() now, .package = "base")
+  keys <- connection_credential_keys(f$manager, f$manager$clients$a, manager_test_token())["refresh"]
+  release_a <- connection_credential_reserve(f$manager, keys)
+  release_b <- connection_credential_reserve(f$manager, keys)
+  connection_credential_retire(f$manager, keys)
+  now <- now + max(f$manager$store$max_age,
+    f$manager$clients$a@state_payload_max_age) + 1
+  release_a()
+  release_a()
+  connection_credential_prune(f$manager)
+  expect_true(connection_credential_unusable(f$manager, keys))
+  release_b()
+  connection_credential_prune(f$manager)
+  expect_false(connection_credential_unusable(f$manager, keys))
+  release_unused <- connection_credential_reserve(f$manager, keys)
+  release_unused()
+  expect_length(f$manager$state$credential_retirements, 0L)
+  connection_credential_reserve(f$manager, list(refresh = NULL))()
+  expect_length(f$manager$state$credential_retirements, 0L)
+})
+
 test_that("rotation disposes of known refresh aliases without merging authorizations", {
   f <- manager_test_fixture()
   seen <- character()
