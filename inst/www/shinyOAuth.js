@@ -220,7 +220,7 @@
     var encoded = new URLSearchParams();
     for (var i = 0; i < fields.length; i++) {
       var field = fields[i];
-      if (!field || typeof field.name !== 'string' || !field.name || field.name === '_charset_' ||
+      if (!field || typeof field.name !== 'string' || !field.name || /^_charset_$/i.test(field.name) ||
           typeof field.value !== 'string' || /[\r\n]/.test(field.name + field.value)) return;
       encoded.append(field.name, field.value);
     }

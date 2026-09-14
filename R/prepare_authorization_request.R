@@ -68,7 +68,7 @@ authorization_front_channel <- function(client, url, params) {
   unescaped <- c(32L, 42L, 45L, 46L, 48:57, 65:90, 95L, 97:122)
   form_size <- sum(ifelse(bytes %in% unescaped, 1L, 3L)) + max(0L, 2L * length(fields) - 1L)
   if (length(fields) > 256L || anyNA(text) || any(grepl("[\r\n]", text)) ||
-      "_charset_" %in% names(params) ||
+      "_charset_" %in% chartr("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", names(params)) ||
       form_size > 131072L) {
     err_config("Authorization POST exceeds form limits or contains newline characters")
   }

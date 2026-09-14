@@ -116,6 +116,7 @@ test_that("POST fails cleanly on conflicting fixed fields and form limits", {
   client <- make_test_client()
   client@authorization_method <- "POST"
   for (extra in list(list(login_hint = "line\nbreak"), list(`_charset_` = "provider-value"),
+      list(`_CHARSET_` = "provider-value"), list(`_cHaRsEt_` = "provider-value"),
       list(login_hint = strrep("x", 131073)), list(login_hint = strrep("~", 44000)),
       as.list(stats::setNames(rep("x", 257), paste0("extra", 1:257))))) {
     client@provider@extra_auth_params <- extra

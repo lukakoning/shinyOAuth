@@ -41,6 +41,8 @@ request.fields.forEach((field, i) => {
 for (const invalid of [null, {}, { ...request, method: 'GET' },
   { ...request, fields: [{ name: 'login_hint', value: 'line\nbreak' }] },
   { ...request, fields: [{ name: '_charset_', value: 'changed by browser' }] },
+  { ...request, fields: [{ name: '_CHARSET_', value: 'changed by browser' }] },
+  { ...request, fields: [{ name: '_cHaRsEt_', value: 'changed by browser' }] },
   { ...request, fields: [{ name: 'scope', value: 'x'.repeat(131073) }] },
   { ...request, fields: Array(257).fill({ name: 'resource', value: 'x' }) }]) {
   submitted = null;
