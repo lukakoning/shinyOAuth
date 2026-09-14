@@ -2,6 +2,17 @@ retention_chrome_start <- function() {
   # A cold Chrome launch can exceed chromote's ten-second default on CI.
   # Keep this bounded and local to startup; assertion timeouts stay unchanged.
   withr::local_options(chromote.timeout = max(30, getOption("chromote.timeout", 10)))
+  chrome <- tryCatch(
+    chromote::Chromote$new(),
+    error_stop_port_search = function(...) NULL
+  )
+  if (!is.null(chrome)) return(chrome)
+  # A stalled debugging port occasionally prevents a fresh CI browser from
+  # starting. Release the failed launch's processx finalizers before trying
+  # once more. Configuration errors and a second timeout still fail the test.
+  gc()
+  message("Chrome debugging port timed out; retrying browser startup once")
+  Sys.sleep(1)
   chromote::Chromote$new()
 }
 
