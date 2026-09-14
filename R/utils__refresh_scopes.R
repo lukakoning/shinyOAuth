@@ -11,8 +11,17 @@ refresh_scope_request <- function(client, token, scopes, required_scopes = chara
   covered <- function(requested, granted) {
     identical(client_scope_coverage(client, requested, granted)$status, "covered")
   }
+  configured <- effective_client_scopes(client)
+  # Retain accepted SMART persistence negotiation when narrowing permissions.
+  # Only extend this ceiling with explicit opt-in and a current offline grant.
+  if (client_uses_smart(client) &&
+      identical(client@smart[["online_access_policy"]], "allow_offline") &&
+      "online_access" %in% configured &&
+      "offline_access" %in% token@granted_scopes) {
+    configured <- union(configured, "offline_access")
+  }
   if (!covered(scopes, token@granted_scopes) ||
-      !covered(scopes, effective_client_scopes(client))) {
+      !covered(scopes, configured)) {
     err_token("Refresh scopes must be covered by the current grant and target configuration")
   }
   required_scopes <- normalize_scope_tokens(c(required_scopes, client@required_scopes))
