@@ -81,8 +81,9 @@
 #'
 #' @section DPoP note:
 #' DPoP proofs bind the current HTTP method and target URI (without query or
-#' fragment). Adding query parameters after [resource_req()] is fine, but
-#' changing the method, scheme, host, or path invalidates the proof.
+#' fragment). Use the `query` argument to preserve encoded resource paths;
+#' external URL modifiers can decode reserved path characters. Changing the
+#' method, scheme, host, or path invalidates the proof.
 #'
 #' @example inst/examples/client_bearer_req.R
 #'
@@ -385,6 +386,8 @@ prepare_client_bearer_request <- function(
     resource_hosts = resource_hosts
   )
 
+  req <- apply_client_bearer_query(req %||% httr2::request(target_url), query)
+
   req <- build_client_bearer_authorized_request(
     url = target_url,
     req = req,
@@ -399,7 +402,7 @@ prepare_client_bearer_request <- function(
   req <- finalize_client_bearer_request(
     req = req,
     headers = headers,
-    query = query,
+    query = NULL,
     follow_redirect = follow_redirect
   )
 
@@ -850,12 +853,37 @@ finalize_client_bearer_request <- function(
   req <- apply_client_bearer_headers(req, headers)
 
   if (is.list(query) && length(query) > 0L) {
-    query <- compact_list(query)
-    req <- do.call(httr2::req_url_query, c(list(req), query))
+    req <- apply_client_bearer_query(req, query)
   }
 
   validate_resource_token_transport(req)
   req
+}
+
+# Modify only the query component. httr2 URL reconstruction can decode escaped
+# reserved delimiters in the path, changing both routing and DPoP binding.
+apply_client_bearer_query <- function(req, query = NULL) {
+  if (!is.list(query) || length(query) == 0L) {
+    return(req)
+  }
+  url <- req[["url"]]
+  query_req <- httr2::request(paste0(
+    "https://query.invalid/?",
+    url_raw_query(url)
+  ))
+  query_req <- do.call(
+    httr2::req_url_query,
+    c(list(query_req), compact_list(query))
+  )
+  updated_query <- url_raw_query(query_req[["url"]])
+  httr2::req_url(
+    req,
+    paste0(
+      sub("[?#].*$", "", url),
+      if (nzchar(updated_query)) paste0("?", updated_query) else "",
+      sub("^[^#]*", "", url)
+    )
+  )
 }
 
 # Called after shaping, independently of URL host-policy opt-outs. All package

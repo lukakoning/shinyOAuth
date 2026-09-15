@@ -528,6 +528,66 @@ test_that("DPoP proofs and nonce caches preserve escaped path identity", {
   )
 })
 
+test_that("query shaping preserves resource paths on the wire and in DPoP proofs", {
+  skip_if_not_installed("webfakes")
+  app <- webfakes::new_app()
+  app[["use"]](function(req, res) {
+    res[["send_json"]](list(
+      url = req[["url"]],
+      proof = req[["get_header"]]("dpop")
+    ))
+  })
+  server <- webfakes::new_app_process(app)
+  on.exit(server[["stop"]](), add = TRUE)
+  client <- make_dpop_test_client(
+    make_test_provider(),
+    dpop_private_key = openssl::ec_keygen()
+  )
+  for (path in c("/a%2Fb", "/a%3Ab", "/a%3Bb")) {
+    url <- paste0(sub("/+$", "", server[["url"]]()), path)
+    for (type in c("Bearer", "DPoP")) {
+      token <- OAuthToken(access_token = "access-token", token_type = type)
+      sent <- character()
+      base_req <- httr2::request(paste0(url, "?existing=one%20two")) |>
+        httr2::req_options(
+          verbose = TRUE,
+          debugfunction = function(type, data) {
+            if (type == 2L) sent <<- c(sent, rawToChar(data))
+          }
+        )
+      args <- list(
+        token = token,
+        url = base_req[["url"]],
+        query = list(page = 1),
+        oauth_client = client
+      )
+      req <- do.call(resource_req, args) |>
+        httr2::req_options(
+          verbose = TRUE,
+          debugfunction = base_req[["options"]][["debugfunction"]]
+        )
+      expect_identical(sub("[?].*$", "", req[["url"]]), url)
+      expect_match(req[["url"]], "existing=one", fixed = TRUE)
+      args[["url"]] <- base_req
+      for (response in list(
+        httr2::req_perform(req),
+        do.call(perform_resource_req, args)
+      )) {
+        body <- httr2::resp_body_json(response)
+        if (identical(type, "DPoP")) {
+          expect_identical(
+            decode_dpop_payload(as.character(body[["proof"]]))[["htu"]],
+            url
+          )
+        }
+      }
+      # webfakes decodes its request URI; capture curl's actual request lines.
+      expect_length(sent, 2L)
+      expect_true(all(startsWith(sent, paste0("GET ", path, "?"))))
+    }
+  }
+})
+
 test_that("Keycloak DPoP verifiers independently reject decoded target paths", {
   path <- test_path(
     "..",

@@ -105,8 +105,9 @@ transport. Later request changes outside these helpers require a new check.
 \section{DPoP note}{
 
 DPoP proofs bind the current HTTP method and target URI (without query or
-fragment). Adding query parameters after \code{\link[=resource_req]{resource_req()}} is fine, but
-changing the method, scheme, host, or path invalidates the proof.
+fragment). Use the \code{query} argument to preserve encoded resource paths;
+external URL modifiers can decode reserved path characters. Changing the
+method, scheme, host, or path invalidates the proof.
 }
 
 \examples{

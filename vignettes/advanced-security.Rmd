@@ -685,8 +685,10 @@ reuse its nonce; token-server and resource-server nonces are kept separate.
 Retries of eligible API requests generate fresh proofs.
 
 `resource_req()` only builds the request. A DPoP proof is tied to its HTTP
-method and base URL, so do not change those after construction. Adding query
-parameters is allowed. Use `perform_resource_req()` to manage nonce retries.
+method and base URL, so do not change those after construction. Supply query
+parameters through the helper's `query` argument; external URL modifiers can
+decode reserved path characters and invalidate the proof. Use
+`perform_resource_req()` to manage nonce retries.
 
 ## Signature and encryption support
 
