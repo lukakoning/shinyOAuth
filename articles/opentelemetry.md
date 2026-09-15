@@ -244,8 +244,8 @@ differ between main-process and worker spans.
   `response_mode = "form_post.jwt"` POST callback is validated and
   bridged into Shiny
 - Represents: form POST envelope validation, JARM validation when
-  applicable, state payload validation, issuer validation, single-use
-  state consumption, and transient handle storage
+  applicable, state payload validation, issuer validation, pending-state
+  lookup, and transient handle storage
 - Main attributes:
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
@@ -254,6 +254,9 @@ differ between main-process and worker spans.
   - `oauth.response_mode = "form_post"` for plain form POST callbacks
   - `oauth.response_mode = "form_post.jwt"` for JARM POST callbacks
 - Notes:
+  - the POST bridge does not consume the logical login state; the
+    callback handler consumes it later, after validating the browser
+    binding and before exchanging the authorization code
   - after state decryption succeeds, the span receives the recovered
     `shinyoauth.trace_id`
   - invalid envelopes that cannot expose a trusted state value remain

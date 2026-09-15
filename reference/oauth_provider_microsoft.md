@@ -57,7 +57,9 @@ from Microsoft Graph.
 
 Setting `id_token_validation = FALSE` disables ID token and nonce checks
 and leaves OAuth plus profile retrieval. Keep the default for OIDC
-sign-in.
+sign-in. Tenant domains and other unrecognized tenant identifiers
+require this explicit opt-out; otherwise use the directory GUID to
+retain OIDC validation.
 
 ## Examples
 

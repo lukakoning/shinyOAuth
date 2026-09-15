@@ -46,5 +46,5 @@ oauth_provider_github()
 #>  @ use_nonce          : logi FALSE
 #>  @ extra_auth_params  : list()
 #>  @ extra_token_params : list()
-#>  @ extra_token_headers: list [1] (Accept)
+#>  @ extra_token_headers: list [1] ("Accept")
 ```

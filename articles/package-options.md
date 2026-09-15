@@ -218,6 +218,13 @@ options:
   responses. Authorization-code exchange and refresh are not
   automatically retried, apart from a single DPoP nonce challenge retry
 
+- `options(shinyOAuth.dpop_nonce_max_bytes = 4096L)` – maximum DPoP
+  nonce size in bytes. RFC 9449 sets no length limit; this local
+  resource limit is configurable from 1 to 65536 bytes and is propagated
+  to async workers. A response exceeding it raises a specific error
+  without exposing the nonce. Raise it if your provider legitimately
+  issues larger nonces
+
 - `options(shinyOAuth.retry_backoff_base = 0.5)` – base backoff in
   seconds used for exponential backoff with jitter
 

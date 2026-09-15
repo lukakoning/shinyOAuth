@@ -79,7 +79,10 @@ localhost or IP addresses.</p></li>
 </ul><p>Read identity information from the validated ID token's claims. Apple has
 no userinfo endpoint, so <code>userinfo_required</code> is <code>FALSE</code>. The one-time
 <code>user</code> payload that Apple may send with a form POST callback is not mapped
-into <code>token@userinfo</code>; do not rely on this helper to retrieve that payload.</p>
+into <code>token@userinfo</code>; do not rely on this helper to retrieve that payload.
+Apple's documented <code>email_verified</code> strings (<code>"true"</code> and <code>"false"</code>) are
+normalized to logical values in validated claims after signature and issuer
+verification. Other providers retain the standard JSON Boolean requirement.</p>
     </div>
 
     <div class="section level2">

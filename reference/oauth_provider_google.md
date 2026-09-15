@@ -53,7 +53,7 @@ oauth_provider_google()
 #>  @ token_auth_style   : chr "header"
 #>  @ use_pkce           : logi TRUE
 #>  @ use_nonce          : logi TRUE
-#>  @ extra_auth_params  : list [1] (access_type)
+#>  @ extra_auth_params  : list [1] ("access_type")
 #>  @ extra_token_params : list()
 #>  @ extra_token_headers: list()
 ```

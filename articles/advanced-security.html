@@ -760,9 +760,18 @@ handle a DPoP nonce challenge with one fresh-proof retry. Later requests
 to the same resource server can reuse its nonce; token-server and
 resource-server nonces are kept separate. Retries of eligible API
 requests generate fresh proofs.</p>
+<p>DPoP nonces must follow RFC 9449’s visible ASCII syntax. The package
+also applies a local 4096-byte limit to bound proof and cache sizes; the
+RFC itself sets no maximum length. Configure
+<code>options(shinyOAuth.dpop_nonce_max_bytes = 8192L)</code> for a
+provider issuing larger nonces (supported range: 1–65536 bytes). A
+response above the configured limit raises an explicit error without
+logging its nonce.</p>
 <p><code><a href="../reference/resource_req.html">resource_req()</a></code> only builds the request. A DPoP proof is
 tied to its HTTP method and base URL, so do not change those after
-construction. Adding query parameters is allowed. Use
+construction. Supply query parameters through the helper’s
+<code>query</code> argument; external URL modifiers can decode reserved
+path characters and invalidate the proof. Use
 <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to manage nonce retries.</p>
 </div>
 </div>

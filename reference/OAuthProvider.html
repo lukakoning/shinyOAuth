@@ -315,6 +315,9 @@ key configuration, including OAuth-only JARM providers.</p></dd>
 <code>cachem::cache_mem(max_age = 3600)</code>, an in-memory cache lasting one hour.
 A <code><a href="custom_cache.html">custom_cache()</a></code> can share keys across processes. Shorter lifetimes
 pick up changed keys sooner; longer lifetimes reduce network requests.
+HTTP cache directives can shorten this lifetime. Responses marked
+<code>no-store</code> are not retained, and <code>no-cache</code> responses are fetched again
+before reuse. Advertised freshness also accounts for <code>Age</code> and <code>Expires</code>.
 The package also attempts a rate-limited refresh when a key is missing
 or no longer verifies a signature.</p></dd>
 
@@ -364,7 +367,8 @@ and only the hostname part is used for matching. Takes precedence over
 JWTs. <code>NULL</code> inherits <code>allowed_algs</code> for manually configured providers.
 Discovery negotiates this independently against UserInfo metadata. Use a
 single algorithm to enforce the client's registered UserInfo signing choice.
-An empty vector rejects all signed UserInfo algorithms.</p></dd>
+An empty vector rejects all signed UserInfo algorithms.
+Unlabelled RSA keys follow the same binding policy as <code>allowed_algs</code>.</p></dd>
 
 
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>
@@ -378,6 +382,12 @@ require that you supply a <code>client_secret</code> and explicitly enable HMAC
 verification via the option <code>options(shinyOAuth.allow_hs = TRUE)</code>.
 Defaults to <code>c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")</code>,
 which intentionally excludes HS*.
+Each RSA verification key is bound to one algorithm: its JWK <code>alg</code>, if
+supplied, or the sole RSA algorithm in this allowlist. When several RSA
+algorithms are allowed, an unlabelled key is bound to <code>RS256</code> (and rejected
+if <code>RS256</code> is excluded). To use unlabelled keys with <code>RS384</code> or <code>RS512</code>,
+configure only that RSA algorithm. EC curves already select one supported
+algorithm; legacy <code>EdDSA</code> with an Ed25519 key uses the Ed25519 operation.
 Only include <code>HS*</code> if you are certain the <code>client_secret</code> is stored strictly
 server-side and is never shipped to, or derivable by, the browser or other
 untrusted environments.</p></dd>

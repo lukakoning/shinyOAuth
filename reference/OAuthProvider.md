@@ -289,9 +289,12 @@ OAuthProvider(
   hour. A
   [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
   can share keys across processes. Shorter lifetimes pick up changed
-  keys sooner; longer lifetimes reduce network requests. The package
-  also attempts a rate-limited refresh when a key is missing or no
-  longer verifies a signature.
+  keys sooner; longer lifetimes reduce network requests. HTTP cache
+  directives can shorten this lifetime. Responses marked `no-store` are
+  not retained, and `no-cache` responses are fetched again before reuse.
+  Advertised freshness also accounts for `Age` and `Expires`. The
+  package also attempts a rate-limited refresh when a key is missing or
+  no longer verifies a signature.
 
 - jwks_pins:
 
@@ -342,7 +345,8 @@ OAuthProvider(
   inherits `allowed_algs` for manually configured providers. Discovery
   negotiates this independently against UserInfo metadata. Use a single
   algorithm to enforce the client's registered UserInfo signing choice.
-  An empty vector rejects all signed UserInfo algorithms.
+  An empty vector rejects all signed UserInfo algorithms. Unlabelled RSA
+  keys follow the same binding policy as `allowed_algs`.
 
 - allowed_algs:
 
@@ -356,10 +360,16 @@ OAuthProvider(
   `client_secret` and explicitly enable HMAC verification via the option
   `options(shinyOAuth.allow_hs = TRUE)`. Defaults to
   `c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")`,
-  which intentionally excludes HS\*. Only include `HS*` if you are
-  certain the `client_secret` is stored strictly server-side and is
-  never shipped to, or derivable by, the browser or other untrusted
-  environments.
+  which intentionally excludes HS\*. Each RSA verification key is bound
+  to one algorithm: its JWK `alg`, if supplied, or the sole RSA
+  algorithm in this allowlist. When several RSA algorithms are allowed,
+  an unlabelled key is bound to `RS256` (and rejected if `RS256` is
+  excluded). To use unlabelled keys with `RS384` or `RS512`, configure
+  only that RSA algorithm. EC curves already select one supported
+  algorithm; legacy `EdDSA` with an Ed25519 key uses the Ed25519
+  operation. Only include `HS*` if you are certain the `client_secret`
+  is stored strictly server-side and is never shipped to, or derivable
+  by, the browser or other untrusted environments.
 
 - allowed_token_types:
 
