@@ -224,6 +224,34 @@ test_that("oauth_provider_microsoft with GUID tenant enables validation", {
   expect_true(p@userinfo_id_token_match)
 })
 
+test_that("Microsoft tenant inputs cannot silently disable OIDC validation", {
+  for (tenant in c("contoso.onmicrosoft.com", "unknown", "Common")) {
+    expect_error(
+      oauth_provider_microsoft(tenant = tenant),
+      "directory GUID",
+      class = "shinyOAuth_input_error"
+    )
+    expect_error(
+      oauth_provider_microsoft(tenant = tenant, id_token_validation = TRUE),
+      "directory GUID",
+      class = "shinyOAuth_input_error"
+    )
+  }
+  for (value in list(NA, "TRUE", 1, logical(), c(TRUE, FALSE))) {
+    expect_error(
+      oauth_provider_microsoft(id_token_validation = value),
+      "single non-missing logical",
+      class = "shinyOAuth_input_error"
+    )
+  }
+  provider <- oauth_provider_microsoft(
+    tenant = "contoso.onmicrosoft.com",
+    id_token_validation = FALSE
+  )
+  expect_false(provider@id_token_validation)
+  expect_false(provider@use_nonce)
+})
+
 test_that("oauth_provider_microsoft respects explicit id_token_validation override", {
   # Explicitly disable for GUID tenant
   guid <- "12345678-1234-1234-1234-123456789abc"

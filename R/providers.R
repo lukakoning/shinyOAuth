@@ -203,6 +203,8 @@ oauth_provider_google <- function(name = "google") {
 #'
 #' Setting `id_token_validation = FALSE` disables ID token and nonce checks and
 #' leaves OAuth plus profile retrieval. Keep the default for OIDC sign-in.
+#' Tenant domains and other unrecognized tenant identifiers require this
+#' explicit opt-out; otherwise use the directory GUID to retain OIDC validation.
 #'
 #' @param name Optional friendly name for the provider. Defaults to "microsoft"
 #' @param tenant Tenant identifier ("common", "organizations", "consumers",
@@ -228,10 +230,30 @@ oauth_provider_microsoft <- function(
   if (!is_valid_string(tenant)) {
     err_input("tenant must be a non-empty string")
   }
+  if (
+    !is.null(id_token_validation) &&
+      !(is.logical(id_token_validation) &&
+        length(id_token_validation) == 1L &&
+        !is.na(id_token_validation))
+  ) {
+    err_input(
+      "id_token_validation must be NULL or a single non-missing logical"
+    )
+  }
   consumer_tenant_guid <- "9188040d-6c67-4c5b-b112-36a304b66dad"
   tenant_independent_alias <- tenant %in% c("common", "organizations")
   consumer_alias <- identical(tenant, "consumers")
   is_guid <- is_guid_like(tenant)
+  if (
+    !(is_guid || tenant_independent_alias || consumer_alias) &&
+      !identical(id_token_validation, FALSE)
+  ) {
+    err_input(paste(
+      "Unrecognized Microsoft tenant: use a directory GUID or",
+      "common, organizations, or consumers for OIDC sign-in.",
+      "OAuth-only operation requires explicit id_token_validation = FALSE."
+    ))
+  }
   if (is.null(id_token_validation)) {
     id_token_validation <- is_guid || tenant_independent_alias || consumer_alias
   }
