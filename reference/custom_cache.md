@@ -38,22 +38,23 @@ custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
 
   A function(key) -\> any. Required.
 
-  Deletes the entry for `key`. When `$take()` is provided, `$remove()`
-  serves only as a best-effort cleanup and its return value is ignored.
-  When `$take()` is not provided, shinyOAuth falls back to `$get()` +
-  `$remove()` followed by a post-removal absence check via
-  `$get(key, missing = NA)`. In this fallback path the return value of
-  `$remove()` is not relied upon; the post-check is authoritative.
+  Deletes the entry for `key`. When `[["take"]]()` is provided,
+  `[["remove"]]()` serves only as a best-effort cleanup and its return
+  value is ignored. When `[["take"]]()` is not provided, shinyOAuth
+  falls back to `[["get"]]()` + `[["remove"]]()` followed by a
+  post-removal absence check via `[["get"]](key, missing = NA)`. In this
+  fallback path the return value of `[["remove"]]()` is not relied upon;
+  the post-check is authoritative.
 
 - take:
 
   A function(key, missing = NULL) -\> value. Optional.
 
   An atomic get-and-delete operation. When provided, shinyOAuth uses
-  `$take()` instead of separate `$get()` + `$remove()` calls to enforce
-  single-use state consumption. This prevents TOCTOU (time-of-check /
-  time-of-use) replay attacks in multi-worker deployments with shared
-  state stores.
+  `[["take"]]()` instead of separate `[["get"]]()` + `[["remove"]]()`
+  calls to enforce single-use state consumption. This prevents TOCTOU
+  (time-of-check / time-of-use) replay attacks in multi-worker
+  deployments with shared state stores.
 
   Should return the stored value and atomically remove the entry, or
   return the `missing` argument (default `NULL`) if the key is not
@@ -67,15 +68,15 @@ custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
   cache (like
   [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)),
   shinyOAuth will **error** at state consumption time because non-atomic
-  `$get()` + `$remove()` cannot guarantee single-use under concurrent
-  access in shared stores.
+  `[["get"]]()` + `[["remove"]]()` cannot guarantee single-use under
+  concurrent access in shared stores.
 
 - info:
 
   Function() -\> list(max_age = seconds, ...). Optional
 
-  TTL information from `$info()` is used to align browser cookie max age
-  in
+  TTL information from `[["info"]]()` is used to align browser cookie
+  max age in
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
 
 - set_if_absent:
@@ -99,8 +100,9 @@ custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
 
 ## Value
 
-An R6 object exposing cachem-like `$get/$set/$remove/$info` methods and
-the optional `$take` and `$set_if_absent` atomic methods.
+An R6 object exposing cachem-like
+`[["get"]]/[["set"]]/[["remove"]]/[["info"]]` methods and the optional
+`[["take"]]` and `[["set_if_absent"]]` atomic methods.
 
 ## Details
 

@@ -96,8 +96,8 @@ client_bearer_req(
   as a raw string. Supported values are `Bearer` and `DPoP`. Invalid or
   multi-valued inputs are rejected. When omitted, shinyOAuth preserves
   `OAuthToken@token_type`, and may infer `DPoP` from explicit
-  `OAuthToken@cnf$jkt` metadata. Raw access-token strings default to
-  `Bearer` unless you pass `token_type = "DPoP"` explicitly.
+  `OAuthToken@cnf[["jkt"]]` metadata. Raw access-token strings default
+  to `Bearer` unless you pass `token_type = "DPoP"` explicitly.
 
 - dpop_nonce:
 

@@ -18,10 +18,10 @@ smart_launch_route(path, clients, max_age = 120)
 - path:
 
   Absolute application path, such as `"/smart/launch"`. Register
-  `paste0(manager$app_origin, path)` with the EHR. It must be inside the
-  UI's `app_base_path` and distinct from every callback and other launch
-  route. Accepted percent-encoded unreserved characters are stored
-  decoded.
+  `paste0(manager[["app_origin"]], path)` with the EHR. It must be
+  inside the UI's `app_base_path` and distinct from every callback and
+  other launch route. Accepted percent-encoded unreserved characters are
+  stored decoded.
 
 - clients:
 

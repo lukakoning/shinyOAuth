@@ -79,8 +79,8 @@ pushed authorization request should be regenerated.
 
 In a Shiny app using
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
-call `auth$request_login()` to start login through the module, which
-manages both operations and the reactive session state.
+call `auth[["request_login"]]()` to start login through the module,
+which manages both operations and the reactive session state.
 
 The helper records one-time state and creates any required PKCE and
 nonce values. Custom callers must preserve the browser binding and

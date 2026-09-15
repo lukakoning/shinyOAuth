@@ -4,14 +4,14 @@ client/API configuration supplied by an OAuthClient. For example, a hospital
 connection selects that hospital's API address and reads the session's current
 token for each request. Create it inside server() with oauth_connection()
 or the connection(id) method of oauth_connections_server().
-Use $request() to call an approved API, $is_usable()
-to check local availability and $summary() for status without credentials."><meta property="og:description" content="Make API requests using a Shiny session's current OAuth credentials and the
+Use [[&quot;request&quot;]]() to call an approved API, [[&quot;is_usable&quot;]]()
+to check local availability and [[&quot;summary&quot;]]() for status without credentials."><meta property="og:description" content="Make API requests using a Shiny session's current OAuth credentials and the
 client/API configuration supplied by an OAuthClient. For example, a hospital
 connection selects that hospital's API address and reads the session's current
 token for each request. Create it inside server() with oauth_connection()
 or the connection(id) method of oauth_connections_server().
-Use $request() to call an approved API, $is_usable()
-to check local availability and $summary() for status without credentials."></head><body>
+Use [[&quot;request&quot;]]() to call an approved API, [[&quot;is_usable&quot;]]()
+to check local availability and [[&quot;summary&quot;]]() for status without credentials."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -61,8 +61,8 @@ client/API configuration supplied by an <a href="OAuthClient.html">OAuthClient</
 connection selects that hospital's API address and reads the session's current
 token for each request. Create it inside <code>server()</code> with <code><a href="oauth_connection.html">oauth_connection()</a></code>
 or the <code>connection(id)</code> method of <code><a href="oauth_connections_server.html">oauth_connections_server()</a></code>.
-Use <code>$request()</code> to call an approved API, <code>$is_usable()</code>
-to check local availability and <code>$summary()</code> for status without credentials.</p>
+Use <code>[["request"]]()</code> to call an approved API, <code>[["is_usable"]]()</code>
+to check local availability and <code>[["summary"]]()</code> for status without credentials.</p>
     </div>
 
 
@@ -76,12 +76,12 @@ These are optional shinyOAuth conveniences, not SMART on FHIR protocol objects.<
 <p>Each operation resolves the current credentials, so refresh and logout are
 reflected without replacing the reference. <code><a href="oauth_module_server.html">oauth_module_server()</a></code> owns the
 lifecycle of ordinary references; <code><a href="oauth_connections_server.html">oauth_connections_server()</a></code> owns managed
-references and supplies <code>$refresh()</code>. Every reference expires when its Shiny
+references and supplies <code>[["refresh"]]()</code>. Every reference expires when its Shiny
 session closes. A manager can retain the underlying grant across redirects;
 a new session obtains a new reference after verifying the local owner.</p>
-<p>Call <code>$is_usable()</code>, <code>$summary()</code> and <code>$request()</code> in the owning session's
-reactive context. If the connection cannot be resolved, <code>$is_usable()</code> returns
-<code>FALSE</code>; <code>$summary()</code> and <code>$request()</code> raise an error. The ID is read-only and
+<p>Call <code>[["is_usable"]]()</code>, <code>[["summary"]]()</code> and <code>[["request"]]()</code> in the owning session's
+reactive context. If the connection cannot be resolved, <code>[["is_usable"]]()</code> returns
+<code>FALSE</code>; <code>[["summary"]]()</code> and <code>[["request"]]()</code> raise an error. The ID is read-only and
 cloning is disabled. The class generator is internal; the public factories
 establish the session binding required by applications.
 Managed resource and status reads do not count as owner activity. Record user
@@ -157,7 +157,7 @@ coordinated refresh. Legacy session references leave this <code>NULL</code>.</p>
 <p>Check whether the current token is locally usable. This checks token
 presence, known unexpired lifetime and the client's required scopes.
 It does not refresh the token, contact the provider or guarantee remote
-authorization. Request-specific scopes are checked by <code>$request()</code>.</p><div class="section">
+authorization. Request-specific scopes are checked by <code>[["request"]]()</code>.</p><div class="section">
 <h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">is_usable</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
@@ -193,8 +193,10 @@ client's required scopes. SMART clients use semantic coverage.</p></dd>
 automatic refreshes and refreshes in another retained Shiny session)
 request the accepted scope limit. Widening requires a new authorization.
 This is a local connection policy: OAuth refresh-token scope itself is
-not reduced by requesting a narrower access token. Existing connections
-that have never selected narrowing continue to omit request scope.
+not reduced by requesting a narrower access token. Ordinary OAuth
+connections explicitly request their retained granted scopes when known,
+including when no explicit narrowing was selected. SMART omits request
+scope while its permissions equal the original launch grant.
 Providers may reject requested scopes; there is no retry without them.
 OIDC clients that require UserInfo must retain <code>openid</code>; narrowing that
 removes it is rejected before exchange. Include any additional scopes
@@ -270,7 +272,7 @@ the validated ID token before any requested profile fields are returned.</p></dd
 <h4 id="details-3">Details<a class="anchor" aria-label="anchor" href="#details-3"></a></h4>
 <p>Call inside the owning session's reactive context. The result contains
 sensitive identity data: select only what the application needs and keep
-it out of logs and generic status displays. <code>$summary()</code> and printing
+it out of logs and generic status displays. <code>[["summary"]]()</code> and printing
 continue to omit identity. Ordinary OAuth connections without validated
 OIDC identity cannot use this accessor.</p>
 <p>These are the last validated identity/profile snapshots; an OAuth refresh
@@ -417,11 +419,11 @@ redacted. This does not resolve the current token.</p><div class="section">
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">connection</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_connection.html">oauth_connection</a></span><span class="op">(</span><span class="va">client</span>, <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">output</span><span class="op">$</span><span class="va">status</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="va">connection</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span><span class="op">$</span><span class="va">status</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">connection</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_connection.html">oauth_connection</a></span><span class="op">(</span><span class="va">client</span>, <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">output</span><span class="op">[[</span><span class="st">"status"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="va">connection</span><span class="op">[[</span><span class="st">"summary"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">[[</span><span class="st">"status"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="va">records</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">connection</span><span class="op">$</span><span class="fu">is_usable</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    <span class="va">response</span> <span class="op">&lt;-</span> <span class="va">connection</span><span class="op">$</span><span class="fu">request</span><span class="op">(</span><span class="st">"api"</span>, <span class="st">"records"</span>, required_scopes <span class="op">=</span> <span class="st">"read"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">connection</span><span class="op">[[</span><span class="st">"is_usable"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="va">response</span> <span class="op">&lt;-</span> <span class="va">connection</span><span class="op">[[</span><span class="st">"request"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="st">"api"</span>, <span class="st">"records"</span>, required_scopes <span class="op">=</span> <span class="st">"read"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="va">response</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>

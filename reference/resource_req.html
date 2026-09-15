@@ -134,7 +134,7 @@ thumbprint carried on a raw JWT access-token string.</p></dd>
 is supplied as a raw string. Supported values are <code>Bearer</code> and <code>DPoP</code>.
 Invalid or multi-valued inputs are rejected. When omitted, shinyOAuth
 preserves <code>OAuthToken@token_type</code>, and may infer <code>DPoP</code> from explicit
-<code>OAuthToken@cnf$jkt</code> metadata. Raw access-token strings default to
+<code>OAuthToken@cnf[["jkt"]]</code> metadata. Raw access-token strings default to
 <code>Bearer</code> unless you pass <code>token_type = "DPoP"</code> explicitly.</p></dd>
 
 
@@ -190,7 +190,7 @@ changing the method, scheme, host, or path invalidates the proof.</p>
 <span class="r-in"><span><span class="co"># (code is not run because it requires a real token from user interaction)</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="co"># Inside reactive server code, after login has succeeded:</span></span></span>
-<span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span></span></span>
+<span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Recommended for most callers: build + perform in one step.</span></span></span>
 <span class="r-in"><span>  <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu"><a href="perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span></span>
@@ -221,7 +221,7 @@ changing the method, scheme, host, or path invalidates the proof.</p>
 <span class="r-in"><span>  <span class="co"># restrict HTTPS hosts unless a global allowed_hosts policy is configured.</span></span></span>
 <span class="r-in"><span>  <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu"><a href="perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="va">token</span>,</span></span>
-<span class="r-in"><span>    <span class="va">input</span><span class="op">$</span><span class="va">resource_url</span>,</span></span>
+<span class="r-in"><span>    <span class="va">input</span><span class="op">[[</span><span class="st">"resource_url"</span><span class="op">]</span><span class="op">]</span>,</span></span>
 <span class="r-in"><span>    resource_hosts <span class="op">=</span> <span class="st">"api.example.com"</span>,</span></span>
 <span class="r-in"><span>    follow_redirect <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>

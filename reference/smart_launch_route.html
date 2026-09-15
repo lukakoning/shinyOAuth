@@ -67,7 +67,7 @@ from OAuth callbacks: <code>iss</code> means the FHIR base only here. Both <code
 
 <dl><dt id="arg-path">path<a class="anchor" aria-label="anchor" href="#arg-path"></a></dt>
 <dd><p>Absolute application path, such as <code>"/smart/launch"</code>. Register
-<code>paste0(manager$app_origin, path)</code> with the EHR. It must be inside the UI's
+<code>paste0(manager[["app_origin"]], path)</code> with the EHR. It must be inside the UI's
 <code>app_base_path</code> and distinct from every callback and other launch route.
 Accepted percent-encoded unreserved characters are stored decoded.</p></dd>
 

@@ -14,7 +14,7 @@ redirects the browser to the provider, where the user signs in and
 authorizes the requested access. The provider returns an authorization
 code to the app’s registered `redirect_uri` (the callback URL).
 shinyOAuth exchanges this temporary code for tokens and completes the
-configured checks before setting `auth$authenticated = TRUE`.
+configured checks before setting `auth[["authenticated"]] = TRUE`.
 
 OpenID Connect (OIDC) adds identity verification to this flow through a
 signed ID token. OAuth-only integrations such as GitHub and Spotify
@@ -63,7 +63,7 @@ client-selected replacements. Starting a second login for the same
 module replaces the first pending binding. Private inputs are excluded
 from URL and server bookmarks, with a bookmark hook enforcing those
 exclusions again at serialization. Applications must not copy
-`auth$browser_token` into their own bookmark values or logs.
+`auth[["browser_token"]]` into their own bookmark values or logs.
 
 Wrap your UI in
 [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.html)
@@ -80,7 +80,7 @@ With `auto_redirect = TRUE`,
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
 starts authorization for an unauthenticated session. With
 `auto_redirect = FALSE`, the application starts it by calling
-`auth$request_login()`, for example from a button observer.
+`auth[["request_login"]]()`, for example from a button observer.
 
 ### 3. Build the authorization request
 
@@ -257,8 +257,8 @@ accepts direct code/state callbacks only.
 
 Even when the provider returns an error such as `access_denied`,
 shinyOAuth checks the login state before accepting that error as part of
-this session. Use `auth$error` and `auth$error_description` for
-diagnostics, and display an application-specific message in the UI.
+this session. Use `auth[["error"]]` and `auth[["error_description"]]`
+for diagnostics, and display an application-specific message in the UI.
 
 #### Browser binding and account validation
 
@@ -365,7 +365,7 @@ advertises support and the client sets
 certificate and mTLS endpoints for authorization-server requests, even
 if the client uses another `token_auth_style`. Before protected API or
 userinfo requests, it checks the token’s certificate thumbprint
-(`cnf$x5t#S256`) against the configured certificate. By default,
+(`cnf[["x5t#S256"]]`) against the configured certificate. By default,
 `mtls_require_observed_cnf = TRUE` requires this confirmation to be
 visible. For opaque tokens whose binding is enforced only by the
 servers, keep `mtls_certificate_bound_access_tokens = TRUE` and set
@@ -381,12 +381,12 @@ a token bound to that key, and later API requests need a matching proof.
 Configuring the key makes `dpop_require_access_token` default to `TRUE`,
 so a regular Bearer token does not satisfy the request.
 
-If visible binding data includes a key thumbprint (`cnf$jkt`), it must
-match the client’s key. `dpop_require_observed_cnf = TRUE` additionally
-requires binding data to be available; opaque tokens may need
-introspection for this. Binding data decoded from a JWT access token is
-observed payload data: shinyOAuth does not independently verify that
-access token’s signature. This distinction also applies to mTLS
+If visible binding data includes a key thumbprint (`cnf[["jkt"]]`), it
+must match the client’s key. `dpop_require_observed_cnf = TRUE`
+additionally requires binding data to be available; opaque tokens may
+need introspection for this. Binding data decoded from a JWT access
+token is observed payload data: shinyOAuth does not independently verify
+that access token’s signature. This distinction also applies to mTLS
 certificate thumbprints. See the [advanced
 guide](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.md)
 for binding policies and setup.
@@ -446,8 +446,8 @@ particular profile fields or values. `claims_validation` controls
 whether an unmet request raises a warning, stops login, or is ignored.
 When omitted, it defaults to `"warn"` if `claims` contains enforceable
 requirements and to `"none"` otherwise. Use `"strict"` when your app
-requires those fields or values. Checks on `claims$id_token` require
-validated ID token content.
+requires those fields or values. Checks on `claims[["id_token"]]`
+require validated ID token content.
 
 To require a particular login policy, such as multi-factor
 authentication (MFA), set `required_acr_values` to your provider’s
@@ -462,7 +462,7 @@ requirement.
 The module stores the validated token response in an
 [`OAuthToken`](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html)
 object. It still completes any configured introspection and UserInfo
-checks before making this the authenticated session’s `auth$token`.
+checks before making this the authenticated session’s `auth[["token"]]`.
 
 The object holds:
 
@@ -474,7 +474,7 @@ The object holds:
 - `id_token`, its decoded `id_token_claims`, and `id_token_validated`,
   which indicates whether the ID token has been verified.
 - `userinfo`, populated when profile fields are fetched in step 12. Your
-  app can then access them as `auth$token@userinfo`.
+  app can then access them as `auth[["token"]]@userinfo`.
 - `granted_scopes` and `granted_scopes_verified`, describing the
   permissions associated with the token and whether the token response
   explicitly confirmed them.
@@ -506,7 +506,7 @@ token. A failed required fetch stops login.
 With OIDC, this happens after ID token validation. When a validated ID
 token and userinfo are both available, their `sub` values must match.
 `userinfo_id_token_match = TRUE` also requires a validated ID token to
-be available for that comparison. Requests in `claims$userinfo` are
+be available for that comparison. Requests in `claims[["userinfo"]]` are
 checked according to `claims_validation`, as with the ID token claims in
 step 9.
 
@@ -538,9 +538,10 @@ token-server nonces are kept separately.
 ### 13. Mark the session as authenticated
 
 After all required checks pass, the module sets
-`auth$authenticated = TRUE` and exposes the token as `auth$token`. Your
-reactive code can now use `shiny::req(auth$authenticated)` before
-accessing the profile or making API requests on the user’s behalf.
+`auth[["authenticated"]] = TRUE` and exposes the token as
+`auth[["token"]]`. Your reactive code can now use
+`shiny::req(auth[["authenticated"]])` before accessing the profile or
+making API requests on the user’s behalf.
 
 Pass the token to
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html)
@@ -567,8 +568,8 @@ settings.
 
 The module can refresh access tokens before expiry when
 `refresh_proactively = TRUE` and a refresh token is available. A
-refreshed token replaces `auth$token`, so reactive code sees the new
-value. The provider can rotate refresh tokens; shinyOAuth keeps the
+refreshed token replaces `auth[["token"]]`, so reactive code sees the
+new value. The provider can rotate refresh tokens; shinyOAuth keeps the
 replacement when supplied. The replacement token gets a new expiry time,
 using the same fallback as in step 10 if `expires_in` is omitted.
 
@@ -612,15 +613,15 @@ again, but cannot require a fresh provider login.
 #### Expiry and refresh failures
 
 By default, expiry or refresh failure clears the token and makes
-`auth$authenticated` false. A refresh failure exposes
-`auth$error == "token_refresh_error"` and diagnostic details. With
+`auth[["authenticated"]]` false. A refresh failure exposes
+`auth[["error"]] == "token_refresh_error"` and diagnostic details. With
 `indefinite_session = TRUE`, the module keeps the token and
-authenticated state; `auth$token_stale` signals expiry or a failed
+authenticated state; `auth[["token_stale"]]` signals expiry or a failed
 refresh. The provider may still reject API calls with that token.
 
 ### 16. Logout and token revocation
 
-`auth$logout()` clears the local login and attempts to revoke both
+`auth[["logout"]]()` clears the local login and attempts to revoke both
 access and refresh tokens if the provider supports it. It does not end
 the user’s login session at the provider. `revoke_on_session_end = TRUE`
 also attempts revocation when the Shiny session ends and requires a

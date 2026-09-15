@@ -48,8 +48,8 @@ rules are a separate requirement.
 - `options(shinyOAuth.audit_include_http = FALSE)` – exclude HTTP
   request details from audit events (default: `TRUE`)
 - `options(shinyOAuth.audit_include_raw_session_token = TRUE)` – include
-  the raw `shiny_session$token` in native audit-hook payloads. By
-  default, hooks receive only `shiny_session$session_token_digest`
+  the raw `shiny_session[["token"]]` in native audit-hook payloads. By
+  default, hooks receive only `shiny_session[["session_token_digest"]]`
 - `options(shinyOAuth.audit_redact_http = FALSE)` – disable automatic
   redaction of sensitive data in audit events (default: `TRUE`). Debug
   only: raw mode can expose cookies, authorization headers, codes, state
@@ -255,11 +255,11 @@ options:
 ## State store
 
 - `options(shinyOAuth.allow_non_atomic_state_store = TRUE)` – allow a
-  shared state store without atomic `$take()` to use separate `$get()`
-  and `$remove()` calls. Default `FALSE`: such a store causes an error.
-  With `TRUE`, the package warns once and proceeds, but concurrent
-  requests may reuse a login entry. Use an atomic shared store for
-  production; see
+  shared state store without atomic `[["take"]]()` to use separate
+  `[["get"]]()` and `[["remove"]]()` calls. Default `FALSE`: such a
+  store causes an error. With `TRUE`, the package warns once and
+  proceeds, but concurrent requests may reuse a login entry. Use an
+  atomic shared store for production; see
   [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html).
 
 ## Size caps

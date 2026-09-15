@@ -3,8 +3,8 @@
 Combine one module's reactive token with its client and approved API
 addresses configured on
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
-Call `$request()` on the returned connection instead of assembling a
-token, client and URL for each request. It reads the reactive token
+Call `[["request"]]()` on the returned connection instead of assembling
+a token, client and URL for each request. It reads the reactive token
 again after refresh or logout and restricts requests to the configured
 APIs. This optional wrapper expires with its Shiny session; it does not
 implement refresh itself or retain credentials across redirects.
@@ -30,8 +30,8 @@ oauth_connection(client, token, session = shiny::getDefaultReactiveDomain())
 
   A Shiny reactive expression returning the current
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  or `NULL`, usually `shiny::reactive(auth$token)`. It must come from
-  the module using `client`. Supplying that association is trusted
+  or `NULL`, usually `shiny::reactive(auth[["token"]])`. It must come
+  from the module using `client`. Supplying that association is trusted
   server application wiring; a resource policy cannot prove an opaque
   token's audience.
 
@@ -43,8 +43,8 @@ oauth_connection(client, token, session = shiny::getDefaultReactiveDomain())
 
 An
 [OAuthConnection](https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.md)
-with `$id`, `$is_usable()`, `$summary()` and
-`$request(resource_id, path = "", query = NULL, method = "GET", required_scopes = character(), configure = NULL)`.
+with `[["id"]]`, `[["is_usable"]]()`, `[["summary"]]()` and
+`[["request"]](resource_id, path = "", query = NULL, method = "GET", required_scopes = character(), configure = NULL)`.
 Requests return
 [httr2](https://httr2.r-lib.org/reference/httr2-package.html) responses.
 `configure` can add a body and application headers; see
@@ -54,8 +54,8 @@ for its contract.
 ## Details
 
 Create the reference once inside `server()`. Access it only in that
-session's reactive context. `$summary()` excludes tokens, identity
-claims and extension context. `$is_usable()` checks local presence,
+session's reactive context. `[["summary"]]()` excludes tokens, identity
+claims and extension context. `[["is_usable"]]()` checks local presence,
 known expiry and required scopes; it cannot guarantee remote
 authorization. Unknown token expiry is unusable.
 
@@ -85,10 +85,10 @@ client <- oauth_client(provider, "registered-app",
   resource_bases = c(api = "https://api.example/v1"))
 # Inside server():
 auth <- oauth_module_server("auth", client)
-connection <- oauth_connection(client, shiny::reactive(auth$token))
+connection <- oauth_connection(client, shiny::reactive(auth[["token"]]))
 data <- shiny::reactive({
-  shiny::req(connection$is_usable())
-  connection$request("api", "records", required_scopes = "read")
+  shiny::req(connection[["is_usable"]]())
+  connection[["request"]]("api", "records", required_scopes = "read")
 })
 } # }
 ```

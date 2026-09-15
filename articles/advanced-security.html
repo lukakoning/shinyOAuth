@@ -338,9 +338,10 @@ of the OAuth client authentication method. Configuring certificate files
 alone does not enable certificate-bound token requests.</p>
 <p>The separate <code>mtls_require_observed_cnf</code> policy defaults
 to <code>TRUE</code>, preserving strict local assurance: shinyOAuth must
-observe <code>cnf$x5t#S256</code> in the token response, a JWT access
-token, or introspection and match it to the configured certificate. An
-opaque bound token without observable binding fails this policy.</p>
+observe <code>cnf[["x5t#S256"]]</code> in the token response, a JWT
+access token, or introspection and match it to the configured
+certificate. An opaque bound token without observable binding fails this
+policy.</p>
 <p>RFC 8705 also permits opaque tokens whose binding is known only to
 the authorization and resource servers. For that deployment, configure
 the certificate/key and provider capability as above, then use both
@@ -368,10 +369,11 @@ backend. Set <code>CURL_SSL_BACKEND=openssl</code> in
 <code>.Renviron</code> and restart R, or run
 <code>Sys.setenv(CURL_SSL_BACKEND = "openssl")</code> before loading
 curl, httr2, or shinyOAuth in a fresh session. Check
-<code>curl::curl_version()$ssl_version</code>: parenthesized backends
-are inactive alternatives. If OpenSSL is unavailable, install a curl
-build that provides it. shinyOAuth rejects an active Schannel backend
-for this PEM configuration before sending the request. See the <a href="https://curl.se/libcurl/c/CURLOPT_SSLCERT.html" class="external-link">libcurl
+<code>curl::curl_version()[["ssl_version"]]</code>: parenthesized
+backends are inactive alternatives. If OpenSSL is unavailable, install a
+curl build that provides it. shinyOAuth rejects an active Schannel
+backend for this PEM configuration before sending the request. See the
+<a href="https://curl.se/libcurl/c/CURLOPT_SSLCERT.html" class="external-link">libcurl
 certificate documentation</a>.</p>
 <p>If your provider uses dynamic client registration,
 <code><a href="../reference/oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code> can build the RFC 8705
@@ -604,8 +606,8 @@ setup. Here <code>client</code> has a registered
 <span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">status</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span><span class="op">)</span> <span class="st">"Signed in"</span> <span class="kw">else</span> <span class="st">"Waiting for login"</span></span>
+<span>  <span class="va">output</span><span class="op">[[</span><span class="st">"status"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"authenticated"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="st">"Signed in"</span> <span class="kw">else</span> <span class="st">"Waiting for login"</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
@@ -724,7 +726,7 @@ the authorization server and the API.</p>
 <code>Authorization</code> or <code>DPoP</code> headers manually:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
-<span>  <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
+<span>  <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span>,</span>
 <span>  <span class="st">"https://api.example.com/me"</span>,</span>
 <span>  <span class="co"># Lets shinyOAuth attach the DPoP proof and handle nonce challenges</span></span>
 <span>  oauth_client <span class="op">=</span> <span class="va">client</span></span>
@@ -734,16 +736,16 @@ the authorization server and the API.</p>
 </h3>
 <p>Supplying a DPoP key makes <code>dpop_require_access_token</code>
 default to <code>TRUE</code>: the provider must return a DPoP access
-token. If binding data is visible, its <code>cnf$jkt</code> key
+token. If binding data is visible, its <code>cnf[["jkt"]]</code> key
 thumbprint must match. For opaque tokens with no visible binding, enable
 <code>dpop_require_observed_cnf = TRUE</code> and arrange introspection
 if your deployment needs to confirm that binding locally.</p>
 <p>For certificate-bound tokens, the corresponding field is
-<code>cnf$x5t#S256</code>. The package checks it against the configured
-certificate before protected API and userinfo calls. A refreshed token
-needs fresh binding data from the new token or its introspection
-response; the old certificate thumbprint is not carried forward when the
-response omits it.</p>
+<code>cnf[["x5t#S256"]]</code>. The package checks it against the
+configured certificate before protected API and userinfo calls. A
+refreshed token needs fresh binding data from the new token or its
+introspection response; the old certificate thumbprint is not carried
+forward when the response omits it.</p>
 <p>Binding data read from a JWT access token is observed payload data;
 shinyOAuth does not independently verify that access token’s signature.
 Introspection can provide confirmation from the provider. The API must

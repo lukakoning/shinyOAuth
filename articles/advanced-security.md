@@ -296,7 +296,7 @@ does not enable certificate-bound token requests.
 
 The separate `mtls_require_observed_cnf` policy defaults to `TRUE`,
 preserving strict local assurance: shinyOAuth must observe
-`cnf$x5t#S256` in the token response, a JWT access token, or
+`cnf[["x5t#S256"]]` in the token response, a JWT access token, or
 introspection and match it to the configured certificate. An opaque
 bound token without observable binding fails this policy.
 
@@ -331,10 +331,11 @@ On Windows, separate PEM certificate/key files require curl’s OpenSSL
 backend. Set `CURL_SSL_BACKEND=openssl` in `.Renviron` and restart R, or
 run `Sys.setenv(CURL_SSL_BACKEND = "openssl")` before loading curl,
 httr2, or shinyOAuth in a fresh session. Check
-`curl::curl_version()$ssl_version`: parenthesized backends are inactive
-alternatives. If OpenSSL is unavailable, install a curl build that
-provides it. shinyOAuth rejects an active Schannel backend for this PEM
-configuration before sending the request. See the [libcurl certificate
+`curl::curl_version()[["ssl_version"]]`: parenthesized backends are
+inactive alternatives. If OpenSSL is unavailable, install a curl build
+that provides it. shinyOAuth rejects an active Schannel backend for this
+PEM configuration before sending the request. See the [libcurl
+certificate
 documentation](https://curl.se/libcurl/c/CURLOPT_SSLCERT.html).
 
 If your provider uses dynamic client registration,
@@ -582,8 +583,8 @@ ui <- oauth_form_post_ui(base_ui, id = "auth", client = client)
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
-  output$status <- shiny::renderText({
-    if (isTRUE(auth$authenticated)) "Signed in" else "Waiting for login"
+  output[["status"]] <- shiny::renderText({
+    if (isTRUE(auth[["authenticated"]])) "Signed in" else "Waiting for login"
   })
 }
 
@@ -719,7 +720,7 @@ After login, keep using the request helpers instead of adding
 ``` r
 
 resp <- perform_resource_req(
-  auth$token,
+  auth[["token"]],
   "https://api.example.com/me",
   # Lets shinyOAuth attach the DPoP proof and handle nonce challenges
   oauth_client = client
@@ -730,17 +731,17 @@ resp <- perform_resource_req(
 
 Supplying a DPoP key makes `dpop_require_access_token` default to
 `TRUE`: the provider must return a DPoP access token. If binding data is
-visible, its `cnf$jkt` key thumbprint must match. For opaque tokens with
-no visible binding, enable `dpop_require_observed_cnf = TRUE` and
+visible, its `cnf[["jkt"]]` key thumbprint must match. For opaque tokens
+with no visible binding, enable `dpop_require_observed_cnf = TRUE` and
 arrange introspection if your deployment needs to confirm that binding
 locally.
 
-For certificate-bound tokens, the corresponding field is `cnf$x5t#S256`.
-The package checks it against the configured certificate before
-protected API and userinfo calls. A refreshed token needs fresh binding
-data from the new token or its introspection response; the old
-certificate thumbprint is not carried forward when the response omits
-it.
+For certificate-bound tokens, the corresponding field is
+`cnf[["x5t#S256"]]`. The package checks it against the configured
+certificate before protected API and userinfo calls. A refreshed token
+needs fresh binding data from the new token or its introspection
+response; the old certificate thumbprint is not carried forward when the
+response omits it.
 
 Binding data read from a JWT access token is observed payload data;
 shinyOAuth does not independently verify that access token’s signature.

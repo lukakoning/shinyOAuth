@@ -133,9 +133,9 @@ registered address; switching between <code>localhost</code> and
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">greeting</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Hello,"</span>, <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span><span class="op">$</span><span class="va">login</span><span class="op">)</span></span>
+<span>  <span class="va">output</span><span class="op">[[</span><span class="st">"greeting"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"authenticated"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Hello,"</span>, <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span><span class="op">@</span><span class="va">userinfo</span><span class="op">[[</span><span class="st">"login"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
@@ -154,7 +154,7 @@ protocol settings; a provider helper such as
 <code>OAuthClient</code>, created with <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
 holds your app’s credentials, redirect URI, and requested scopes. After
 authentication, the module returns an <code>OAuthToken</code> as
-<code>auth$token</code>, containing tokens and available user
+<code>auth[["token"]]</code>, containing tokens and available user
 information.</p>
 <p>The <strong>redirect URI</strong>, also called the callback URL, is
 the address where the provider sends the browser back. Register it with
@@ -185,25 +185,27 @@ it inside <code>render*()</code>, <code><a href="https://rdrr.io/pkg/shiny/man/r
 values.</p>
 <ul>
 <li>
-<code>auth$authenticated</code> tells you whether login passed the
-configured checks.</li>
+<code>auth[["authenticated"]]</code> tells you whether login passed
+the configured checks.</li>
 <li>
-<code>auth$token@userinfo</code> contains the user’s profile, when
-fetched. Fields depend on the provider: GitHub uses <code>login</code>
-for the username.</li>
+<code>auth[["token"]]@userinfo</code> contains the user’s profile,
+when fetched. Fields depend on the provider: GitHub uses
+<code>login</code> for the username.</li>
 <li>
-<code>auth$error</code> and <code>auth$error_description</code>
-describe a failed login. Show a simple message to users and use <a href="audit-logging.html">audit logging</a> to investigate.</li>
+<code>auth[["error"]]</code> and
+<code>auth[["error_description"]]</code> describe a failed login. Show a
+simple message to users and use <a href="audit-logging.html">audit
+logging</a> to investigate.</li>
 </ul>
 <p>The token is an S7 object: access its properties with <code>@</code>,
-as in <code>auth$token@userinfo</code>. See <a href="https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html"><code>OAuthToken</code></a>
+as in <code>auth[["token"]]@userinfo</code>. See <a href="https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html"><code>OAuthToken</code></a>
 for the available properties.</p>
-<p>Use <code>req(auth$authenticated)</code> before server code reads
-private data or performs an action that requires login. Hiding a UI
-element alone does not protect the server code behind it. Your app must
-also check any access rules, such as which accounts or groups may view a
-report. A successful login by itself does not grant access to everything
-in your app.</p>
+<p>Use <code>req(auth[["authenticated"]])</code> before server code
+reads private data or performs an action that requires login. Hiding a
+UI element alone does not protect the server code behind it. Your app
+must also check any access rules, such as which accounts or groups may
+view a report. A successful login by itself does not grant access to
+everything in your app.</p>
 </div>
 <div class="section level2">
 <h2 id="manual-login-and-logout-buttons">Manual login and logout buttons<a class="anchor" aria-label="anchor" href="#manual-login-and-logout-buttons"></a>
@@ -220,21 +222,22 @@ to sign in, replace the example’s UI and server with:</p>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">login</span>, <span class="va">auth</span><span class="op">$</span><span class="fu">request_login</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">logout</span>, <span class="va">auth</span><span class="op">$</span><span class="fu">logout</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"login"</span><span class="op">]</span><span class="op">]</span>, <span class="va">auth</span><span class="op">[[</span><span class="st">"request_login"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"logout"</span><span class="op">]</span><span class="op">]</span>, <span class="va">auth</span><span class="op">[[</span><span class="st">"logout"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="va">output</span><span class="op">$</span><span class="va">status</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Signed in as"</span>, <span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">@</span><span class="va">userinfo</span><span class="op">$</span><span class="va">login</span><span class="op">)</span></span>
+<span>  <span class="va">output</span><span class="op">[[</span><span class="st">"status"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"authenticated"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Signed in as"</span>, <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span><span class="op">@</span><span class="va">userinfo</span><span class="op">[[</span><span class="st">"login"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span>    <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>      <span class="st">"You are signed out. Use Sign in to continue."</span></span>
 <span>    <span class="op">}</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><code>auth$logout()</code> clears the app’s local login and attempts
-to revoke its tokens if the provider supports revocation. It does not
-sign the user out of their GitHub, Google, or other provider account.
-The provider may therefore remember them on their next visit.</p>
+<p><code>auth[["logout"]]()</code> clears the app’s local login and
+attempts to revoke its tokens if the provider supports revocation. It
+does not sign the user out of their GitHub, Google, or other provider
+account. The provider may therefore remember them on their next
+visit.</p>
 </div>
 <div class="section level2">
 <h2 id="authenticated-api-requests">Authenticated API requests<a class="anchor" aria-label="anchor" href="#authenticated-api-requests"></a>
@@ -244,12 +247,12 @@ the authenticated user’s access token. For example, add
 <code>tableOutput("repositories")</code> to the UI and this output to
 <code>server()</code>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">output</span><span class="op">$</span><span class="va">repositories</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderTable.html" class="external-link">renderTable</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">authenticated</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">output</span><span class="op">[[</span><span class="st">"repositories"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderTable.html" class="external-link">renderTable</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"authenticated"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">repos</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
-<span>      <span class="va">auth</span><span class="op">$</span><span class="va">token</span>,</span>
+<span>      <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span>,</span>
 <span>      <span class="st">"https://api.github.com/user/repos"</span>,</span>
 <span>      query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>per_page <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span>    <span class="op">)</span></span>
@@ -271,8 +274,8 @@ app.</p>
 <h3 id="additional-token-response-fields">Additional token response fields<a class="anchor" aria-label="anchor" href="#additional-token-response-fields"></a>
 </h3>
 <p>Some providers return extra parameters alongside the access and ID
-tokens. Read these through <code>auth$token@extra_fields</code>, using
-the field names documented by your provider.</p>
+tokens. Read these through <code>auth[["token"]]@extra_fields</code>,
+using the field names documented by your provider.</p>
 <p><code>extra_fields</code> contains only the additional parameters
 from the latest successful token response. A successful refresh replaces
 the entire list, even if the provider returns no extra parameters. The
@@ -284,9 +287,9 @@ with the token.</p>
 <code>custom_field</code>:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Inside reactive server code, after a successful login:</span></span>
-<span><span class="va">token</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">$</span><span class="va">token</span></span>
-<span><span class="va">token</span><span class="op">@</span><span class="va">extra_fields</span><span class="op">$</span><span class="va">custom_field</span></span>
-<span><span class="va">token</span><span class="op">@</span><span class="va">initial_extra_fields</span><span class="op">$</span><span class="va">custom_field</span></span>
+<span><span class="va">token</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">token</span><span class="op">@</span><span class="va">extra_fields</span><span class="op">[[</span><span class="st">"custom_field"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">token</span><span class="op">@</span><span class="va">initial_extra_fields</span><span class="op">[[</span><span class="st">"custom_field"</span><span class="op">]</span><span class="op">]</span></span>
 <span></span>
 <span><span class="co"># Distinguish an absent field from one explicitly returned as null.</span></span>
 <span><span class="st">"custom_field"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">token</span><span class="op">@</span><span class="va">extra_fields</span><span class="op">)</span></span></code></pre></div>
@@ -336,9 +339,10 @@ not the settings of your individual registration.</p>
 OAuth 2.0 grants permission to call APIs using an <strong>access
 token</strong>. GitHub and Spotify use OAuth without OIDC; their helpers
 fetch profile information through their own APIs. With OIDC, read
-validated identity details from <code>auth$token@id_token_claims</code>
-and check <code>auth$token@id_token_validated</code>. An access token
-alone is not proof of identity. The <a href="authentication-flow.html">authentication guide</a> explains
+validated identity details from
+<code>auth[["token"]]@id_token_claims</code> and check
+<code>auth[["token"]]@id_token_validated</code>. An access token alone
+is not proof of identity. The <a href="authentication-flow.html">authentication guide</a> explains
 more.</p>
 <p>For a local Keycloak server using HTTP, opt in before creating the
 provider:</p>
@@ -358,7 +362,7 @@ does not relax OIDC discovery.</p>
 assessment of the authorization-code/refresh client role against <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16" class="external-link">OAuth
 2.1 draft 16</a>, published 3 September 2026. This is an Internet-Draft,
 not a published RFC. <code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> currently implements
-only that revision, with ruleset <code>1.0.0</code>. It makes no network
+only that revision, with ruleset <code>1.1.0</code>. It makes no network
 requests, creates no login state and never enables automatic
 enforcement. Existing provider examples and applications remain
 usable.</p>
@@ -381,8 +385,8 @@ and HTTPS:</p>
 <span>  scopes <span class="op">=</span> <span class="st">"read"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
-<span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span></span>
-<span><span class="va">assessment</span><span class="op">$</span><span class="va">checks</span></span></code></pre></div>
+<span><span class="va">assessment</span><span class="op">[[</span><span class="st">"configuration_compliant"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">assessment</span><span class="op">[[</span><span class="st">"checks"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
 <p>Choose credentials and endpoints to match your actual registration.
 Basic and body-secret authentication remain available; JWT
 authentication also supports the issuer-audience configuration described
@@ -440,10 +444,10 @@ options, objects or the runtime.</p>
 script may decide to block a known failure and separately flag
 unresolved prerequisites:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span>, <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">[[</span><span class="st">"configuration_compliant"</span><span class="op">]</span><span class="op">]</span>, <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Resolve the mandatory configuration findings before deployment."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">[[</span><span class="st">"configuration_compliant"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Review unresolved configuration prerequisites before deployment."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>S256 is the straightforward PKCE choice. Legacy <code>plain</code>
@@ -488,10 +492,10 @@ browser callback routes.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"connect_b"</span>, <span class="st">"Connect B"</span><span class="op">)</span></span>
 <span><span class="op">)</span>, clients <span class="op">=</span> <span class="va">clients</span><span class="op">)</span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth_a"</span>, <span class="va">clients</span><span class="op">$</span><span class="va">auth_a</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth_b"</span>, <span class="va">clients</span><span class="op">$</span><span class="va">auth_b</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">connect_a</span>, <span class="va">a</span><span class="op">$</span><span class="fu">request_login</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">connect_b</span>, <span class="va">b</span><span class="op">$</span><span class="fu">request_login</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth_a"</span>, <span class="va">clients</span><span class="op">[[</span><span class="st">"auth_a"</span><span class="op">]</span><span class="op">]</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth_b"</span>, <span class="va">clients</span><span class="op">[[</span><span class="st">"auth_b"</span><span class="op">]</span><span class="op">]</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"connect_a"</span><span class="op">]</span><span class="op">]</span>, <span class="va">a</span><span class="op">[[</span><span class="st">"request_login"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"connect_b"</span><span class="op">]</span><span class="op">]</span>, <span class="va">b</span><span class="op">[[</span><span class="st">"request_login"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
 <p>Register those exact redirect URIs with the respective services and
@@ -511,15 +515,16 @@ authorizations</a> for a complete two-service example.</p>
 from Shiny</a> shows discovery, client registration settings, patient
 requests and EHR launch using the same manager.</p>
 <p>Additional token fields are already available server-side. For
-example, <code>a$token@initial_extra_fields$patient</code> reads an
-initial SMART patient value, while <code>a$token@extra_fields</code>
-contains only the latest successful response’s extras. Refresh may omit
-<code>patient</code>. Neither list is validated identity data or
-evidence of permission to read a resource. Ordinary clients do not infer
-SMART discovery, launch handling, scope equivalence, or a FHIR
-destination from these fields. Keep the matching client, token and
-approved resource together when making requests, and keep raw context
-out of logs and session summaries.</p>
+example, <code>a[["token"]]@initial_extra_fields[["patient"]]</code>
+reads an initial SMART patient value, while
+<code>a[["token"]]@extra_fields</code> contains only the latest
+successful response’s extras. Refresh may omit <code>patient</code>.
+Neither list is validated identity data or evidence of permission to
+read a resource. Ordinary clients do not infer SMART discovery, launch
+handling, scope equivalence, or a FHIR destination from these fields.
+Keep the matching client, token and approved resource together when
+making requests, and keep raw context out of logs and session
+summaries.</p>
 <div class="section level3">
 <h3 id="requests-bound-to-a-client-and-resource">Requests bound to a client and resource<a class="anchor" aria-label="anchor" href="#requests-bound-to-a-client-and-resource"></a>
 </h3>
@@ -571,10 +576,10 @@ client’s module inside <code>server()</code>:</p>
 <span><span class="op">)</span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
-<span>  <span class="va">connection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_connection.html">oauth_connection</a></span><span class="op">(</span><span class="va">client</span>, <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="va">token</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">connection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_connection.html">oauth_connection</a></span><span class="op">(</span><span class="va">client</span>, <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">records</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">connection</span><span class="op">$</span><span class="fu">is_usable</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="va">connection</span><span class="op">$</span><span class="fu">request</span><span class="op">(</span><span class="st">"records"</span>, <span class="st">"records"</span>, query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">connection</span><span class="op">[[</span><span class="st">"is_usable"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="va">connection</span><span class="op">[[</span><span class="st">"request"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="st">"records"</span>, <span class="st">"records"</span>, query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>      <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -596,10 +601,10 @@ URL options cannot relax this policy. These comparisons use URI origin
 and path rules from <a href="https://www.rfc-editor.org/rfc/rfc3986.html" class="external-link">RFC 3986</a>.</p>
 <p>Optional permissions can produce a limited connection. Declare an
 operation’s extra permissions with
-<code>$request(..., required_scopes = "write")</code>; the current grant
-must cover them. No generic mapping from API paths to OAuth scopes is
-assumed. <code>$summary()</code> contains the opaque connection ID,
-client label, local status, expiry, and resource IDs. It excludes
+<code>[["request"]](..., required_scopes = "write")</code>; the current
+grant must cover them. No generic mapping from API paths to OAuth scopes
+is assumed. <code>[["summary"]]()</code> contains the opaque connection
+ID, client label, local status, expiry, and resource IDs. It excludes
 credentials and raw context.</p>
 </div>
 </div>
@@ -676,8 +681,8 @@ a login can start on one process and return to another, those processes
 need:</p>
 <ul>
 <li>A shared <code>state_store</code> with an atomic
-<code>$take()</code> operation: reading and deleting a pending login
-must happen as one indivisible operation.</li>
+<code>[["take"]]()</code> operation: reading and deleting a pending
+login must happen as one indivisible operation.</li>
 <li>The same secret <code>state_key</code>, so each process can read the
 encrypted login details. Supply at least 32 random bytes, stored in your
 deployment’s secret manager.</li>

@@ -107,7 +107,7 @@ client <- oauth_client(
   redirect_uri = "https://app.example/callback"
 )
 assessment <- check_oauth21(client)
-assessment$checks[assessment$checks$status != "pass", ]
+assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 #>                                   id         scope         status requirement
 #> 5       client_auth.asymmetric.token configuration not_applicable      SHOULD
 #> 6                 jwt_audience.token configuration not_applicable        MUST

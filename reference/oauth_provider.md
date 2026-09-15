@@ -258,7 +258,7 @@ userinfo[["sub"]]
 
   Extra parameters for token exchange. `scope` is reserved and cannot be
   unblocked. For explicit refresh scope narrowing use a managed
-  connection's `$refresh(scopes = ...)`. Configure login scopes on
+  connection's `[["refresh"]](scopes = ...)`. Configure login scopes on
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   instead.
 

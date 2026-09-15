@@ -16,7 +16,7 @@ client:
 ``` r
 
 options(shinyOAuth.audit_hook = function(event) {
-  cat(sprintf("[shinyOAuth] %s | %s\n", event$type, event$trace_id))
+  cat(sprintf("[shinyOAuth] %s | %s\n", event[["type"]], event[["trace_id"]]))
   str(event)
 })
 ```
@@ -62,9 +62,9 @@ When a Shiny session is available, `shiny_session` contains:
 
 The session context is a JSON-friendly list suitable for
 [`jsonlite::toJSON()`](https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html);
-the raw Shiny `session$request` object is not included. If
+the raw Shiny `session[["request"]]` object is not included. If
 `shinyOAuth.audit_include_raw_session_token = TRUE`, the raw session
-token is available as `shiny_session$token` in native hook events.
+token is available as `shiny_session[["token"]]` in native hook events.
 
 Fields ending in `_digest` allow matching without recording the original
 token or identifier. The package’s `trace_id` is separate from
@@ -81,7 +81,7 @@ HTTP context entirely:
 options(shinyOAuth.audit_include_http = FALSE)
 ```
 
-With this setting, `shiny_session$http` is `NULL`.
+With this setting, `shiny_session[["http"]]` is `NULL`.
 
 Outbound URLs retain only scheme and authority by default. To include
 safe route names in audit and OTel URLs and incoming HTTP context,
@@ -266,7 +266,7 @@ from the state store.
   `state_store_atomic_take`)
 - Notes: The flow aborts with an invalid state error. The
   `state_store_atomic_take` phase applies when using a store with an
-  atomic `$take()` method.
+  atomic `[["take"]]()` method.
 
 #### Event: `audit_state_store_removal_failed`
 
@@ -357,9 +357,33 @@ rather than on the high-level audit events.
 
 #### Event: `audit_logout`
 
-- When: `auth$logout()` is called on the module
+- When: `auth[["logout"]]()` is called on the module
 - Context: `provider`, `issuer`, `client_id_digest`, `reason` (default
   `manual_logout`)
+
+#### Event: `audit_connection_disconnected`
+
+Emitted once for each retained connection removed locally, after bounded
+remote cleanup. It is emitted even when revocation is disabled or fails.
+Context includes `owner_digest`, `connection_id_digest`, `retention`,
+`reason`, `local_outcome`, `revoke_requested`, `remote_refresh_outcome`,
+and `remote_access_outcome`. Reasons are `disconnect`, `disconnect_all`,
+`logout`, or `session_end`. Identifiers use the configured audit digest
+policy; credentials and raw identities are excluded. Remote outcomes
+describe the revocation attempt, not proof that the authorization server
+previously recognized a token.
+
+#### Event: `audit_connections_disconnected`
+
+Summarizes a completed local bulk removal, including an empty batch,
+with `owner_digest`, `connection_count`, `retention`, `reason`,
+`local_outcome`, and `revoke_requested`. Per-connection events describe
+remote outcomes. This event also covers logout and removal of
+session-only connections at session end; ending a Shiny session does not
+remove browser- or account-retained connections. The batch and
+per-connection events share a trace ID and are available to both the
+native audit hook and OpenTelemetry. Existing module logout events
+remain.
 
 #### Event: `audit_session_cleared`
 
@@ -558,7 +582,7 @@ payload because the logical state is unknown.
 
 #### Event: `audit_authenticated_changed`
 
-- When: the `$authenticated` reactive value changes (TRUE ↔︎ FALSE)
+- When: the `[["authenticated"]]` reactive value changes (TRUE ↔︎ FALSE)
 - Context: `provider`, `issuer`, `client_id_digest`, `authenticated`,
   `previous_authenticated`, `reason`
 - Reasons include: `login` (when becoming authenticated), or the error

@@ -3,9 +3,9 @@
 Ask the provider to invalidate an access or refresh token, for example
 when a user disconnects their account or your application disposes of
 stored credentials. The provider must support token revocation. The
-Shiny module calls this during logout; use `auth$logout()` to also clear
-its local session. Revocation does not end the user's login session at
-the provider.
+Shiny module calls this during logout; use `auth[["logout"]]()` to also
+clear its local session. Revocation does not end the user's login
+session at the provider.
 
 ## Usage
 
@@ -80,14 +80,14 @@ depend on it.
 #
 # The examples below require a real token from a completed login.
 # Inside a reactive expression in server(), after creating auth with
-# oauth_module_server() and confirming auth$authenticated:
+# oauth_module_server() and confirming auth[["authenticated"]]:
 if (interactive()) {
-  token <- auth$token
+  token <- auth[["token"]]
   user_info <- get_userinfo(client, token)
 
   # Requires an introspection endpoint. NA means activity is unknown.
   result <- introspect_token(client, token)
-  isTRUE(result$active)
+  isTRUE(result[["active"]])
 
   # Requires a refresh token. Keep the returned replacement.
   token <- refresh_token(client, token)

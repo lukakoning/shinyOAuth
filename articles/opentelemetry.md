@@ -461,7 +461,7 @@ differ between main-process and worker spans.
 
 #### Span: `shinyOAuth.logout`
 
-- When: when `auth$logout()` is called from the module
+- When: when `auth[["logout"]]()` is called from the module
 - Represents: best-effort token revocation kickoff, local token/session
   clear, browser-token reset, and logout audit emission
 - Main attributes:

@@ -113,6 +113,12 @@ refresh token is kept. Required userinfo is fetched again, and
 configured client introspection must succeed before the refreshed token
 is returned.
 
+For ordinary OAuth clients, refresh explicitly requests the token's
+retained `granted_scopes` when known. This preserves prior scope
+reductions and makes an omitted response `scope` refer to that requested
+set. Tokens without known scopes omit the request parameter. SMART uses
+its own original-grant rules.
+
 OIDC refresh responses may omit the ID token, in which case the original
 is kept. If a new ID token is returned, an original must be available
 and the subject, issuer, and audience must remain consistent, as must
@@ -157,14 +163,14 @@ with indefinite sessions.
 #
 # The examples below require a real token from a completed login.
 # Inside a reactive expression in server(), after creating auth with
-# oauth_module_server() and confirming auth$authenticated:
+# oauth_module_server() and confirming auth[["authenticated"]]:
 if (interactive()) {
-  token <- auth$token
+  token <- auth[["token"]]
   user_info <- get_userinfo(client, token)
 
   # Requires an introspection endpoint. NA means activity is unknown.
   result <- introspect_token(client, token)
-  isTRUE(result$active)
+  isTRUE(result[["active"]])
 
   # Requires a refresh token. Keep the returned replacement.
   token <- refresh_token(client, token)

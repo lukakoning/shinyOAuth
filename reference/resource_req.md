@@ -94,8 +94,8 @@ resource_req(
   as a raw string. Supported values are `Bearer` and `DPoP`. Invalid or
   multi-valued inputs are rejected. When omitted, shinyOAuth preserves
   `OAuthToken@token_type`, and may infer `DPoP` from explicit
-  `OAuthToken@cnf$jkt` metadata. Raw access-token strings default to
-  `Bearer` unless you pass `token_type = "DPoP"` explicitly.
+  `OAuthToken@cnf[["jkt"]]` metadata. Raw access-token strings default
+  to `Bearer` unless you pass `token_type = "DPoP"` explicitly.
 
 - dpop_nonce:
 
@@ -152,7 +152,7 @@ but changing the method, scheme, host, or path invalidates the proof.
 # (code is not run because it requires a real token from user interaction)
 if (interactive()) {
   # Inside reactive server code, after login has succeeded:
-  token <- auth$token
+  token <- auth[["token"]]
 
   # Recommended for most callers: build + perform in one step.
   response <- perform_resource_req(
@@ -183,7 +183,7 @@ if (interactive()) {
   # restrict HTTPS hosts unless a global allowed_hosts policy is configured.
   response <- perform_resource_req(
     token,
-    input$resource_url,
+    input[["resource_url"]],
     resource_hosts = "api.example.com",
     follow_redirect = FALSE
   )

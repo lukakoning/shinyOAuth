@@ -1,16 +1,16 @@
 # OAuthToken S7 class
 
 An `OAuthToken` holds credentials and user information returned after
-login. The Shiny module supplies it as `auth$token`, and
+login. The Shiny module supplies it as `auth[["token"]]`, and
 [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
 returns it for custom integrations. Pass it to
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
 to call an API, or to the token helpers for refresh, introspection, and
 revocation.
 
-Read properties with `@`, for example `auth$token@userinfo`. Profile
-fields depend on the provider. Keep access and refresh tokens out of the
-UI and logs.
+Read properties with `@`, for example `auth[["token"]]@userinfo`.
+Profile fields depend on the provider. Keep access and refresh tokens
+out of the UI and logs.
 
 ## Usage
 
@@ -161,10 +161,10 @@ the UI and logs.
 
 ``` r
 # Inside reactive server code, after a successful login:
-# auth$token@userinfo
-# auth$token@expires_at
-# auth$token@id_token_validated
-# auth$token@id_token_claims$sub
-# auth$token@extra_fields$custom_field
-# auth$token@initial_extra_fields$custom_field
+# auth[["token"]]@userinfo
+# auth[["token"]]@expires_at
+# auth[["token"]]@id_token_validated
+# auth[["token"]]@id_token_claims[["sub"]]
+# auth[["token"]]@extra_fields[["custom_field"]]
+# auth[["token"]]@initial_extra_fields[["custom_field"]]
 ```

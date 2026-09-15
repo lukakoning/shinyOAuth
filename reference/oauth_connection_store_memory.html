@@ -107,22 +107,22 @@ current owner session and generation before calling them. The opaque owner
 identifier scopes records and can survive session rotation; knowledge of an
 owner or connection ID does not authenticate a user.
 Records contain ciphertext only. Encryption keys stay with the manager, outside
-this adapter. Never expose these methods or credential imports as HTTP routes.</p><ul><li><p><code>$create(owner, id, transaction, client, fingerprint, sealed, expires_at)</code>
+this adapter. Never expose these methods or credential imports as HTTP routes.</p><ul><li><p><code>[["create"]](owner, id, transaction, client, fingerprint, sealed, expires_at)</code>
 returns a record with a new revision, or <code>NULL</code> for a duplicate connection/transaction.</p></li>
-<li><p><code>$read(owner, id)</code> returns the owner's record, or <code>NULL</code> when absent, expired,
+<li><p><code>[["read"]](owner, id)</code> returns the owner's record, or <code>NULL</code> when absent, expired,
 or owned by someone else. It includes the sealed envelope for internal use.</p></li>
-<li><p><code>$list(owner)</code> returns metadata lists without ciphertext or operation IDs.</p></li>
-<li><p><code>$begin_refresh(owner, id, revision)</code> claims an active record and returns its
+<li><p><code>[["list"]](owner)</code> returns metadata lists without ciphertext or operation IDs.</p></li>
+<li><p><code>[["begin_refresh"]](owner, id, revision)</code> claims an active record and returns its
 new revision and operation ID. A conflicting claim returns <code>NULL</code>.</p></li>
-<li><p><code>$commit_refresh(owner, id, operation, revision, sealed)</code> installs credentials
+<li><p><code>[["commit_refresh"]](owner, id, operation, revision, sealed)</code> installs credentials
 only for the current claim, returning the updated record or <code>NULL</code>.</p></li>
-<li><p><code>$fail_refresh(owner, id, operation, revision, outcome)</code> releases a claim only
+<li><p><code>[["fail_refresh"]](owner, id, operation, revision, outcome)</code> releases a claim only
 for <code>"not_consumed"</code>; <code>"possibly_consumed"</code> and <code>"consumed"</code> remove the old
 envelope and mark the record <code>"uncertain"</code>. Returns the record or <code>NULL</code>.</p></li>
-<li><p><code>$disconnect(owner, id, revision)</code> first installs a credential-free tombstone,
+<li><p><code>[["disconnect"]](owner, id, revision)</code> first installs a credential-free tombstone,
 then returns <code>list(record, previous)</code> for bounded remote cleanup. Conflicts
 return <code>NULL</code>; the caller must reload before retrying.</p></li>
-<li><p><code>$disconnect_owner(owner)</code> tombstones all of that owner's records and returns
+<li><p><code>[["disconnect_owner"]](owner)</code> tombstones all of that owner's records and returns
 the previous records for bounded cleanup. Other owners are unaffected.</p></li>
 </ul><p>Reads expire abandoned refresh claims before returning data. Tombstones and
 transaction IDs remain at least until the original absolute expiry so late completions

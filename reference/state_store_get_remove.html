@@ -80,11 +80,11 @@ calling from async workers that lack access to the reactive domain.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>When the store exposes an atomic <code>$take(key, missing)</code> method (see
+    <p>When the store exposes an atomic <code>[["take"]](key, missing)</code> method (see
 <code><a href="custom_cache.html">custom_cache()</a></code>), that path is used first so single-use semantics still
 hold under concurrent access.
-When <code>$take()</code> is unavailable, the function falls back to <code>$get()</code> +
-<code>$remove()</code> with a post-removal absence check.
+When <code>[["take"]]()</code> is unavailable, the function falls back to <code>[["get"]]()</code> +
+<code>[["remove"]]()</code> with a post-removal absence check.
 That fallback is safe for per-process caches such as <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code>.
 For shared stores it errors by default, because non-atomic get+remove cannot
 guarantee single-use semantics under concurrent access; operators may opt in

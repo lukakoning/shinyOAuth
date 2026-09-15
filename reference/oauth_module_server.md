@@ -47,7 +47,7 @@ oauth_module_server(
 - auto_redirect:
 
   If `TRUE` (default), start login automatically for unauthenticated
-  sessions. If `FALSE`, call `auth$request_login()` to start it.
+  sessions. If `FALSE`, call `auth[["request_login"]]()` to start it.
 
 - async:
 
@@ -170,45 +170,45 @@ A
 [`shiny::reactiveValues()`](https://rdrr.io/pkg/shiny/man/reactiveValues.html)
 object. If you assign it to `auth`, its main fields are:
 
-- `auth$authenticated`: `TRUE` when a token is present and the
+- `auth[["authenticated"]]`: `TRUE` when a token is present and the
   configured checks have passed, otherwise `FALSE`. With
   `indefinite_session = TRUE`, the flag stays true while a token is
   kept, including after refresh errors.
 
-- `auth$token`: an
+- `auth[["token"]]`: an
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md),
   or `NULL` before login or after clearing the session. Read properties
-  with `@`, for example `auth$token@userinfo`. Additional token response
-  parameters are available in `auth$token@extra_fields`;
-  `auth$token@initial_extra_fields` preserves the parameters from the
-  initial code exchange across refreshes.
+  with `@`, for example `auth[["token"]]@userinfo`. Additional token
+  response parameters are available in `auth[["token"]]@extra_fields`;
+  `auth[["token"]]@initial_extra_fields` preserves the parameters from
+  the initial code exchange across refreshes.
 
-- `auth$error`, `auth$error_description`: the error code and available
-  diagnostic detail. Use your own user-facing message; these fields can
-  include sensitive provider information.
+- `auth[["error"]]`, `auth[["error_description"]]`: the error code and
+  available diagnostic detail. Use your own user-facing message; these
+  fields can include sensitive provider information.
 
-- `auth$error_uri`: an optional provider help URL. Only absolute HTTPS
-  URLs on provider or explicitly allowed hosts are surfaced. Treat it as
-  untrusted navigation input. `NULL` means the provider omitted the URL
-  or supplied a value that did not pass validation.
+- `auth[["error_uri"]]`: an optional provider help URL. Only absolute
+  HTTPS URLs on provider or explicitly allowed hosts are surfaced. Treat
+  it as untrusted navigation input. `NULL` means the provider omitted
+  the URL or supplied a value that did not pass validation.
 
-- `auth$token_stale`: `TRUE` when an indefinite session keeps an expired
-  token or one whose refresh failed. Resets after successful login,
-  refresh, or logout.
+- `auth[["token_stale"]]`: `TRUE` when an indefinite session keeps an
+  expired token or one whose refresh failed. Resets after successful
+  login, refresh, or logout.
 
 The object also supplies:
 
-- `auth$request_login()`: start login. Waits for browser setup when
+- `auth[["request_login"]]()`: start login. Waits for browser setup when
   needed and does nothing if the session is already authenticated. Uses
   a browser form when the client selects
   `authorization_method = "POST"`; the app's Content Security Policy
   `form-action` must permit the provider endpoint.
 
-- `auth$logout()`: clear the local login and attempt to revoke tokens
-  when supported, following `async`. It does not sign out of the
+- `auth[["logout"]]()`: clear the local login and attempt to revoke
+  tokens when supported, following `async`. It does not sign out of the
   provider account.
 
-- `auth$build_auth_url()`: advanced helper for a custom login link.
+- `auth[["build_auth_url"]]()`: advanced helper for a custom login link.
   Rejects POST clients; use `request_login()` for their form submission.
   Creates pending login state as well as the URL, so retain the result
   for the link instead of rebuilding it on every UI update. Rotates and
@@ -224,18 +224,19 @@ The object also supplies:
   Shiny can process the browser acknowledgment. Do not return the
   pending promise from the observer itself.
 
-- `auth$has_browser_token()`: reports whether the browser token is
+- `auth[["has_browser_token"]]()`: reports whether the browser token is
   available. Use it before building a custom login URL; it does not
   report whether the user is authenticated.
 
-- `auth$set_browser_token()`: asks the browser to establish its binding
-  when missing. The token becomes available after the browser reports it
-  back to Shiny. An existing token is left unchanged.
+- `auth[["set_browser_token"]]()`: asks the browser to establish its
+  binding when missing. The token becomes available after the browser
+  reports it back to Shiny. An existing token is left unchanged.
 
-- `auth$clear_browser_token()`: clears the cookie, local record, and
-  reactive value, for example when resetting browser setup in a custom
-  integration. `request_login()` manages cookie setup automatically, and
-  `logout()` handles cookie rotation when ending a session.
+- `auth[["clear_browser_token"]]()`: clears the cookie, local record,
+  and reactive value, for example when resetting browser setup in a
+  custom integration. `request_login()` manages cookie setup
+  automatically, and `logout()` handles cookie rotation when ending a
+  session.
 
 Other fields manage the module internally and are not needed in app
 code.
@@ -243,10 +244,10 @@ code.
 ## Details
 
 Login starts automatically by default. Use `auto_redirect = FALSE` and
-`auth$request_login()` to start it from a button. Read
-`auth$authenticated` in reactive code, and use `req(auth$authenticated)`
-before server operations that require login. Your app must also enforce
-its own access rules.
+`auth[["request_login"]]()` to start it from a button. Read
+`auth[["authenticated"]]` in reactive code, and use
+`req(auth[["authenticated"]])` before server operations that require
+login. Your app must also enforce its own access rules.
 
 See the [usage
 vignette](https://lukakoning.github.io/shinyOAuth/articles/usage.html)
@@ -291,8 +292,8 @@ tab that started it. Starting another login in the same tab and module
 replaces that tab's pending binding. Pending logins must be restarted
 after upgrading from versions that used local storage. Private
 browser-binding inputs are excluded from Shiny bookmarks. Do not copy
-`auth$browser_token` into custom bookmark values, URLs, or logs. Treat
-the entire hostname as a trust boundary: cookies are shared across
+`auth[["browser_token"]]` into custom bookmark values, URLs, or logs.
+Treat the entire hostname as a trust boundary: cookies are shared across
 ports, even with `__Host-`, `Secure`, or `HttpOnly`. Use a dedicated
 hostname when other services are not trusted. The origin-scoped check
 prevents cookie adoption across ports, but co-hosted services can still
@@ -369,15 +370,15 @@ if (
       auto_redirect = TRUE
     )
 
-    output$login <- renderUI({
-      if (auth$authenticated) {
-        user_info <- auth$token@userinfo
+    output[["login"]] <- renderUI({
+      if (auth[["authenticated"]]) {
+        user_info <- auth[["token"]]@userinfo
         tagList(
-          tags$p("You are logged in!"),
-          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+          tags[["p"]]("You are logged in!"),
+          tags[["pre"]](paste(capture.output(str(user_info)), collapse = "\n"))
         )
       } else {
-        tags$p("You are not logged in.")
+        tags[["p"]]("You are not logged in.")
       }
     })
   }
@@ -410,22 +411,22 @@ if (
       auto_redirect = FALSE
     )
 
-    observeEvent(input$login_btn, {
-      auth$request_login()
+    observeEvent(input[["login_btn"]], {
+      auth[["request_login"]]()
     })
-    observeEvent(input$logout_btn, {
-      auth$logout()
+    observeEvent(input[["logout_btn"]], {
+      auth[["logout"]]()
     })
 
-    output$login <- renderUI({
-      if (auth$authenticated) {
-        user_info <- auth$token@userinfo
+    output[["login"]] <- renderUI({
+      if (auth[["authenticated"]]) {
+        user_info <- auth[["token"]]@userinfo
         tagList(
-          tags$p("You are logged in!"),
-          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+          tags[["p"]]("You are logged in!"),
+          tags[["pre"]](paste(capture.output(str(user_info)), collapse = "\n"))
         )
       } else {
-        tags$p("You are not logged in.")
+        tags[["p"]]("You are not logged in.")
       }
     })
   }
@@ -463,7 +464,7 @@ if (
     repository_error <- reactiveVal(FALSE)
 
     observe({
-      req(auth$authenticated)
+      req(auth[["authenticated"]])
 
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
@@ -471,7 +472,7 @@ if (
       repos_data <- tryCatch(
         {
           resp <- perform_resource_req(
-            auth$token,
+            auth[["token"]],
             "https://api.github.com/user/repos",
             query = list(per_page = 30)
           )
@@ -486,45 +487,45 @@ if (
     })
 
     # Render username + their repositories
-    output$ui <- renderUI({
-      if (isTRUE(auth$authenticated)) {
-        user_info <- auth$token@userinfo
+    output[["ui"]] <- renderUI({
+      if (isTRUE(auth[["authenticated"]])) {
+        user_info <- auth[["token"]]@userinfo
         repos <- repositories()
 
         return(tagList(
-          tags$p(paste("You are logged in as:", user_info$login)),
-          tags$h4("Your repositories:"),
+          tags[["p"]](paste("You are logged in as:", user_info[["login"]])),
+          tags[["h4"]]("Your repositories:"),
           if (repository_error()) {
-            tags$p("Could not load repositories.")
+            tags[["p"]]("Could not load repositories.")
           } else if (!is.null(repos) && length(repos) == 0) {
-            tags$p("No repositories returned.")
+            tags[["p"]]("No repositories returned.")
           } else if (!is.null(repos)) {
-            tags$ul(
+            tags[["ul"]](
               Map(
                 function(url, name) {
                   # Render names as text; accept only GitHub HTTPS links.
                   if (isTRUE(grepl("^https://github\\.com/", url))) {
-                    tags$li(tags$a(
+                    tags[["li"]](tags[["a"]](
                       href = url,
                       target = "_blank",
                       rel = "noopener noreferrer",
                       name
                     ))
                   } else {
-                    tags$li(name)
+                    tags[["li"]](name)
                   }
                 },
-                repos$html_url,
-                repos$full_name
+                repos[["html_url"]],
+                repos[["full_name"]]
               )
             )
           } else {
-            tags$p("Loading repositories...")
+            tags[["p"]]("Loading repositories...")
           }
         ))
       }
 
-      return(tags$p("You are not logged in."))
+      return(tags[["p"]]("You are not logged in."))
     })
   }
 

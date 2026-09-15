@@ -91,18 +91,18 @@ Should store the value under the given key.</p></dd>
 
 <dt id="arg-remove">remove<a class="anchor" aria-label="anchor" href="#arg-remove"></a></dt>
 <dd><p>A function(key) -&gt; any. Required.</p>
-<p>Deletes the entry for <code>key</code>. When <code>$take()</code> is provided, <code>$remove()</code> serves
+<p>Deletes the entry for <code>key</code>. When <code>[["take"]]()</code> is provided, <code>[["remove"]]()</code> serves
 only as a best-effort cleanup and its return value is ignored. When
-<code>$take()</code> is not provided, shinyOAuth falls back to
-<code>$get()</code> + <code>$remove()</code> followed by a post-removal absence check via
-<code>$get(key, missing = NA)</code>. In this fallback path the return value of
-<code>$remove()</code> is not relied upon; the post-check is authoritative.</p></dd>
+<code>[["take"]]()</code> is not provided, shinyOAuth falls back to
+<code>[["get"]]()</code> + <code>[["remove"]]()</code> followed by a post-removal absence check via
+<code>[["get"]](key, missing = NA)</code>. In this fallback path the return value of
+<code>[["remove"]]()</code> is not relied upon; the post-check is authoritative.</p></dd>
 
 
 <dt id="arg-take">take<a class="anchor" aria-label="anchor" href="#arg-take"></a></dt>
 <dd><p>A function(key, missing = NULL) -&gt; value. Optional.</p>
 <p>An atomic get-and-delete operation. When provided, shinyOAuth uses
-<code>$take()</code> instead of separate <code>$get()</code> + <code>$remove()</code> calls to enforce
+<code>[["take"]]()</code> instead of separate <code>[["get"]]()</code> + <code>[["remove"]]()</code> calls to enforce
 single-use state consumption. This prevents TOCTOU (time-of-check /
 time-of-use) replay attacks in multi-worker deployments with shared state
 stores.</p>
@@ -113,13 +113,13 @@ return the <code>missing</code> argument (default <code>NULL</code>) if the key 
 parameter for replay-safe state stores.</p>
 <p>When <code>take</code> is not provided and the state store is not a per-process cache
 (like <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code>), shinyOAuth will <strong>error</strong> at state
-consumption time because non-atomic <code>$get()</code> + <code>$remove()</code> cannot
+consumption time because non-atomic <code>[["get"]]()</code> + <code>[["remove"]]()</code> cannot
 guarantee single-use under concurrent access in shared stores.</p></dd>
 
 
 <dt id="arg-info">info<a class="anchor" aria-label="anchor" href="#arg-info"></a></dt>
 <dd><p>Function() -&gt; list(max_age = seconds, ...). Optional</p>
-<p>TTL information from <code>$info()</code> is used to align browser cookie max age in
+<p>TTL information from <code>[["info"]]()</code> is used to align browser cookie max age in
 <code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p></dd>
 
 
@@ -142,8 +142,8 @@ are consumed. Other state-store writes still use <code>set</code>.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An R6 object exposing cachem-like <code>$get/$set/$remove/$info</code> methods
-and the optional <code>$take</code> and <code>$set_if_absent</code> atomic methods.</p>
+    <p>An R6 object exposing cachem-like <code>[["get"]]/[["set"]]/[["remove"]]/[["info"]]</code> methods
+and the optional <code>[["take"]]</code> and <code>[["set_if_absent"]]</code> atomic methods.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

@@ -5,7 +5,7 @@ when fetching a profile on demand, reloading profile fields, or managing
 tokens outside the Shiny module. It returns the provider's profile as an
 R list. The Shiny module fetches and stores this information during
 login when `userinfo_required = TRUE`; that result is available as
-`auth$token@userinfo`.
+`auth[["token"]]@userinfo`.
 
 ## Usage
 
@@ -78,14 +78,14 @@ for configuration.
 #
 # The examples below require a real token from a completed login.
 # Inside a reactive expression in server(), after creating auth with
-# oauth_module_server() and confirming auth$authenticated:
+# oauth_module_server() and confirming auth[["authenticated"]]:
 if (interactive()) {
-  token <- auth$token
+  token <- auth[["token"]]
   user_info <- get_userinfo(client, token)
 
   # Requires an introspection endpoint. NA means activity is unknown.
   result <- introspect_token(client, token)
-  isTRUE(result$active)
+  isTRUE(result[["active"]])
 
   # Requires a refresh token. Keep the returned replacement.
   token <- refresh_token(client, token)

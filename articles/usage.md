@@ -66,9 +66,9 @@ ui <- oauth_ui(fluidPage(
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
 
-  output$greeting <- renderText({
-    req(auth$authenticated)
-    paste("Hello,", auth$token@userinfo$login)
+  output[["greeting"]] <- renderText({
+    req(auth[["authenticated"]])
+    paste("Hello,", auth[["token"]]@userinfo[["login"]])
   })
 }
 
@@ -88,7 +88,7 @@ helper such as
 creates it. An `OAuthClient`, created with
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
 holds your app’s credentials, redirect URI, and requested scopes. After
-authentication, the module returns an `OAuthToken` as `auth$token`,
+authentication, the module returns an `OAuthToken` as `auth[["token"]]`,
 containing tokens and available user information.
 
 The **redirect URI**, also called the callback URL, is the address where
@@ -115,23 +115,23 @@ available when the browser returns from login. Create the module inside
 [`reactive()`](https://rdrr.io/pkg/shiny/man/reactive.html), or
 `observe*()`, just as you would read other reactive values.
 
-- `auth$authenticated` tells you whether login passed the configured
-  checks.
-- `auth$token@userinfo` contains the user’s profile, when fetched.
+- `auth[["authenticated"]]` tells you whether login passed the
+  configured checks.
+- `auth[["token"]]@userinfo` contains the user’s profile, when fetched.
   Fields depend on the provider: GitHub uses `login` for the username.
-- `auth$error` and `auth$error_description` describe a failed login.
-  Show a simple message to users and use [audit
+- `auth[["error"]]` and `auth[["error_description"]]` describe a failed
+  login. Show a simple message to users and use [audit
   logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
   to investigate.
 
 The token is an S7 object: access its properties with `@`, as in
-`auth$token@userinfo`. See
+`auth[["token"]]@userinfo`. See
 [`OAuthToken`](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html)
 for the available properties.
 
-Use `req(auth$authenticated)` before server code reads private data or
-performs an action that requires login. Hiding a UI element alone does
-not protect the server code behind it. Your app must also check any
+Use `req(auth[["authenticated"]])` before server code reads private data
+or performs an action that requires login. Hiding a UI element alone
+does not protect the server code behind it. Your app must also check any
 access rules, such as which accounts or groups may view a report. A
 successful login by itself does not grant access to everything in your
 app.
@@ -152,12 +152,12 @@ ui <- oauth_ui(fluidPage(
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client, auto_redirect = FALSE)
 
-  observeEvent(input$login, auth$request_login())
-  observeEvent(input$logout, auth$logout())
+  observeEvent(input[["login"]], auth[["request_login"]]())
+  observeEvent(input[["logout"]], auth[["logout"]]())
 
-  output$status <- renderText({
-    if (isTRUE(auth$authenticated)) {
-      paste("Signed in as", auth$token@userinfo$login)
+  output[["status"]] <- renderText({
+    if (isTRUE(auth[["authenticated"]])) {
+      paste("Signed in as", auth[["token"]]@userinfo[["login"]])
     } else {
       "You are signed out. Use Sign in to continue."
     }
@@ -165,10 +165,10 @@ server <- function(input, output, session) {
 }
 ```
 
-`auth$logout()` clears the app’s local login and attempts to revoke its
-tokens if the provider supports revocation. It does not sign the user
-out of their GitHub, Google, or other provider account. The provider may
-therefore remember them on their next visit.
+`auth[["logout"]]()` clears the app’s local login and attempts to revoke
+its tokens if the provider supports revocation. It does not sign the
+user out of their GitHub, Google, or other provider account. The
+provider may therefore remember them on their next visit.
 
 ## Authenticated API requests
 
@@ -180,12 +180,12 @@ example, add `tableOutput("repositories")` to the UI and this output to
 
 ``` r
 
-output$repositories <- renderTable({
-  req(auth$authenticated)
+output[["repositories"]] <- renderTable({
+  req(auth[["authenticated"]])
 
   repos <- tryCatch({
     response <- perform_resource_req(
-      auth$token,
+      auth[["token"]],
       "https://api.github.com/user/repos",
       query = list(per_page = 10)
     )
@@ -212,8 +212,8 @@ for another complete app.
 ### Additional token response fields
 
 Some providers return extra parameters alongside the access and ID
-tokens. Read these through `auth$token@extra_fields`, using the field
-names documented by your provider.
+tokens. Read these through `auth[["token"]]@extra_fields`, using the
+field names documented by your provider.
 
 `extra_fields` contains only the additional parameters from the latest
 successful token response. A successful refresh replaces the entire
@@ -228,9 +228,9 @@ For a provider that returns a parameter named `custom_field`:
 ``` r
 
 # Inside reactive server code, after a successful login:
-token <- auth$token
-token@extra_fields$custom_field
-token@initial_extra_fields$custom_field
+token <- auth[["token"]]
+token@extra_fields[["custom_field"]]
+token@initial_extra_fields[["custom_field"]]
 
 # Distinguish an absent field from one explicitly returned as null.
 "custom_field" %in% names(token@extra_fields)
@@ -290,8 +290,9 @@ token** that shinyOAuth checks to identify the user. OAuth 2.0 grants
 permission to call APIs using an **access token**. GitHub and Spotify
 use OAuth without OIDC; their helpers fetch profile information through
 their own APIs. With OIDC, read validated identity details from
-`auth$token@id_token_claims` and check `auth$token@id_token_validated`.
-An access token alone is not proof of identity. The [authentication
+`auth[["token"]]@id_token_claims` and check
+`auth[["token"]]@id_token_validated`. An access token alone is not proof
+of identity. The [authentication
 guide](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
 explains more.
 
@@ -319,7 +320,7 @@ assessment of the authorization-code/refresh client role against [OAuth
 published 3 September 2026. This is an Internet-Draft, not a published
 RFC.
 [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-currently implements only that revision, with ruleset `1.0.0`. It makes
+currently implements only that revision, with ruleset `1.1.0`. It makes
 no network requests, creates no login state and never enables automatic
 enforcement. Existing provider examples and applications remain usable.
 
@@ -344,8 +345,8 @@ client <- oauth_client(
   scopes = "read"
 )
 assessment <- check_oauth21(client)
-assessment$configuration_compliant
-assessment$checks
+assessment[["configuration_compliant"]]
+assessment[["checks"]]
 ```
 
 Choose credentials and endpoints to match your actual registration.
@@ -393,10 +394,10 @@ unresolved prerequisites:
 
 ``` r
 
-if (identical(assessment$configuration_compliant, FALSE)) {
+if (identical(assessment[["configuration_compliant"]], FALSE)) {
   stop("Resolve the mandatory configuration findings before deployment.")
 }
-if (is.na(assessment$configuration_compliant)) {
+if (is.na(assessment[["configuration_compliant"]])) {
   message("Review unresolved configuration prerequisites before deployment.")
 }
 ```
@@ -444,10 +445,10 @@ ui <- oauth_ui(fluidPage(
   actionButton("connect_b", "Connect B")
 ), clients = clients)
 server <- function(input, output, session) {
-  a <- oauth_module_server("auth_a", clients$auth_a, auto_redirect = FALSE)
-  b <- oauth_module_server("auth_b", clients$auth_b, auto_redirect = FALSE)
-  observeEvent(input$connect_a, a$request_login())
-  observeEvent(input$connect_b, b$request_login())
+  a <- oauth_module_server("auth_a", clients[["auth_a"]], auto_redirect = FALSE)
+  b <- oauth_module_server("auth_b", clients[["auth_b"]], auto_redirect = FALSE)
+  observeEvent(input[["connect_a"]], a[["request_login"]]())
+  observeEvent(input[["connect_b"]], b[["request_login"]]())
 }
 shinyApp(ui, server, uiPattern = ".*")
 ```
@@ -475,14 +476,14 @@ shows discovery, client registration settings, patient requests and EHR
 launch using the same manager.
 
 Additional token fields are already available server-side. For example,
-`a$token@initial_extra_fields$patient` reads an initial SMART patient
-value, while `a$token@extra_fields` contains only the latest successful
-response’s extras. Refresh may omit `patient`. Neither list is validated
-identity data or evidence of permission to read a resource. Ordinary
-clients do not infer SMART discovery, launch handling, scope
-equivalence, or a FHIR destination from these fields. Keep the matching
-client, token and approved resource together when making requests, and
-keep raw context out of logs and session summaries.
+`a[["token"]]@initial_extra_fields[["patient"]]` reads an initial SMART
+patient value, while `a[["token"]]@extra_fields` contains only the
+latest successful response’s extras. Refresh may omit `patient`. Neither
+list is validated identity data or evidence of permission to read a
+resource. Ordinary clients do not infer SMART discovery, launch
+handling, scope equivalence, or a FHIR destination from these fields.
+Keep the matching client, token and approved resource together when
+making requests, and keep raw context out of logs and session summaries.
 
 ### Requests bound to a client and resource
 
@@ -517,10 +518,10 @@ client <- oauth_client(
 )
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
-  connection <- oauth_connection(client, reactive(auth$token))
+  connection <- oauth_connection(client, reactive(auth[["token"]]))
   records <- reactive({
-    req(connection$is_usable())
-    connection$request("records", "records", query = list(limit = 20)) |>
+    req(connection[["is_usable"]]())
+    connection[["request"]]("records", "records", query = list(limit = 20)) |>
       httr2::resp_body_json()
   })
 }
@@ -548,11 +549,11 @@ policy. These comparisons use URI origin and path rules from [RFC
 
 Optional permissions can produce a limited connection. Declare an
 operation’s extra permissions with
-`$request(..., required_scopes = "write")`; the current grant must cover
-them. No generic mapping from API paths to OAuth scopes is assumed.
-`$summary()` contains the opaque connection ID, client label, local
-status, expiry, and resource IDs. It excludes credentials and raw
-context.
+`[["request"]](..., required_scopes = "write")`; the current grant must
+cover them. No generic mapping from API paths to OAuth scopes is
+assumed. `[["summary"]]()` contains the opaque connection ID, client
+label, local status, expiry, and resource IDs. It excludes credentials
+and raw context.
 
 ## Asynchronous execution
 
@@ -633,8 +634,9 @@ The default configuration stores pending logins in one R process. If a
 login can start on one process and return to another, those processes
 need:
 
-- A shared `state_store` with an atomic `$take()` operation: reading and
-  deleting a pending login must happen as one indivisible operation.
+- A shared `state_store` with an atomic `[["take"]]()` operation:
+  reading and deleting a pending login must happen as one indivisible
+  operation.
 - The same secret `state_key`, so each process can read the encrypted
   login details. Supply at least 32 random bytes, stored in your
   deployment’s secret manager.

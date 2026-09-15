@@ -67,9 +67,9 @@ A list with fields:
 
 ## Details
 
-Read `result$active`: `TRUE` means active, `FALSE` means inactive, and
-`NA` means the result is unknown. Use `isTRUE(result$active)` if your
-code must require a definite confirmation.
+Read `result[["active"]]`: `TRUE` means active, `FALSE` means inactive,
+and `NA` means the result is unknown. Use `isTRUE(result[["active"]])`
+if your code must require a definite confirmation.
 
 Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 unusable response bodies return a descriptive `status`. The provider
@@ -93,14 +93,14 @@ the client's configured credentials and `token_auth_style`.
 #
 # The examples below require a real token from a completed login.
 # Inside a reactive expression in server(), after creating auth with
-# oauth_module_server() and confirming auth$authenticated:
+# oauth_module_server() and confirming auth[["authenticated"]]:
 if (interactive()) {
-  token <- auth$token
+  token <- auth[["token"]]
   user_info <- get_userinfo(client, token)
 
   # Requires an introspection endpoint. NA means activity is unknown.
   result <- introspect_token(client, token)
-  isTRUE(result$active)
+  isTRUE(result[["active"]])
 
   # Requires a refresh token. Keep the returned replacement.
   token <- refresh_token(client, token)

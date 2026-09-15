@@ -109,8 +109,8 @@ smart_client(
   `"none"` (default), `"openid"` for a validated OIDC subject, or
   `"fhirUser"` to also require the user's FHIR reference. `"openid"`
   does not interpret a `fhirUser` claim or populate
-  `smart_context()$fhirUser`. A validated `fhirUser` claim may be an
-  absolute URL or a supported resource instance reference relative to
+  `smart_context()[["fhirUser"]]`. A validated `fhirUser` claim may be
+  an absolute URL or a supported resource instance reference relative to
   this client's FHIR base, such as `"Practitioner/example"` or
   `"Practitioner/example/_history/2"`. Versioned references retain their
   version.
@@ -220,6 +220,6 @@ site <- smart_discover("https://ehr.example/fhir/R4")
 client <- smart_client(site, "registered-app", "https://app.example/callback",
   scopes = c("launch/patient", "patient/Patient.r"),
   required_scopes = "patient/Patient.r", token_auth_style = "public")
-client@smart$launch
+client@smart[["launch"]]
 } # }
 ```

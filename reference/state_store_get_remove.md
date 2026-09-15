@@ -35,12 +35,12 @@ Validated state-store value list. On failure this function raises
 
 ## Details
 
-When the store exposes an atomic `$take(key, missing)` method (see
+When the store exposes an atomic `[["take"]](key, missing)` method (see
 [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)),
 that path is used first so single-use semantics still hold under
-concurrent access. When `$take()` is unavailable, the function falls
-back to `$get()` + `$remove()` with a post-removal absence check. That
-fallback is safe for per-process caches such as
+concurrent access. When `[["take"]]()` is unavailable, the function
+falls back to `[["get"]]()` + `[["remove"]]()` with a post-removal
+absence check. That fallback is safe for per-process caches such as
 [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html).
 For shared stores it errors by default, because non-atomic get+remove
 cannot guarantee single-use semantics under concurrent access; operators

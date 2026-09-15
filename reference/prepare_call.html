@@ -126,7 +126,7 @@ authorization request should be regenerated.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>In a Shiny app using <code><a href="oauth_module_server.html">oauth_module_server()</a></code>, call <code>auth$request_login()</code>
+    <p>In a Shiny app using <code><a href="oauth_module_server.html">oauth_module_server()</a></code>, call <code>auth[["request_login"]]()</code>
 to start login through the module, which manages both operations and the
 reactive session state.</p>
 <p>The helper records one-time state and creates any required PKCE and nonce

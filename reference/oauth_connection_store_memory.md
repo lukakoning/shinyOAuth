@@ -59,37 +59,37 @@ Records contain ciphertext only. Encryption keys stay with the manager,
 outside this adapter. Never expose these methods or credential imports
 as HTTP routes.
 
-- `$create(owner, id, transaction, client, fingerprint, sealed, expires_at)`
+- `[["create"]](owner, id, transaction, client, fingerprint, sealed, expires_at)`
   returns a record with a new revision, or `NULL` for a duplicate
   connection/transaction.
 
-- `$read(owner, id)` returns the owner's record, or `NULL` when absent,
-  expired, or owned by someone else. It includes the sealed envelope for
-  internal use.
+- `[["read"]](owner, id)` returns the owner's record, or `NULL` when
+  absent, expired, or owned by someone else. It includes the sealed
+  envelope for internal use.
 
-- `$list(owner)` returns metadata lists without ciphertext or operation
-  IDs.
+- `[["list"]](owner)` returns metadata lists without ciphertext or
+  operation IDs.
 
-- `$begin_refresh(owner, id, revision)` claims an active record and
+- `[["begin_refresh"]](owner, id, revision)` claims an active record and
   returns its new revision and operation ID. A conflicting claim returns
   `NULL`.
 
-- `$commit_refresh(owner, id, operation, revision, sealed)` installs
-  credentials only for the current claim, returning the updated record
-  or `NULL`.
+- `[["commit_refresh"]](owner, id, operation, revision, sealed)`
+  installs credentials only for the current claim, returning the updated
+  record or `NULL`.
 
-- `$fail_refresh(owner, id, operation, revision, outcome)` releases a
-  claim only for `"not_consumed"`; `"possibly_consumed"` and
+- `[["fail_refresh"]](owner, id, operation, revision, outcome)` releases
+  a claim only for `"not_consumed"`; `"possibly_consumed"` and
   `"consumed"` remove the old envelope and mark the record
   `"uncertain"`. Returns the record or `NULL`.
 
-- `$disconnect(owner, id, revision)` first installs a credential-free
-  tombstone, then returns `list(record, previous)` for bounded remote
-  cleanup. Conflicts return `NULL`; the caller must reload before
-  retrying.
+- `[["disconnect"]](owner, id, revision)` first installs a
+  credential-free tombstone, then returns `list(record, previous)` for
+  bounded remote cleanup. Conflicts return `NULL`; the caller must
+  reload before retrying.
 
-- `$disconnect_owner(owner)` tombstones all of that owner's records and
-  returns the previous records for bounded cleanup. Other owners are
+- `[["disconnect_owner"]](owner)` tombstones all of that owner's records
+  and returns the previous records for bounded cleanup. Other owners are
   unaffected.
 
 Reads expire abandoned refresh claims before returning data. Tombstones

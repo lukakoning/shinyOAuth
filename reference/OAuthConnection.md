@@ -9,8 +9,9 @@ and reads the session's current token for each request. Create it inside
 [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
 or the `connection(id)` method of
 [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md).
-Use `$request()` to call an approved API, `$is_usable()` to check local
-availability and `$summary()` for status without credentials.
+Use `[["request"]]()` to call an approved API, `[["is_usable"]]()` to
+check local availability and `[["summary"]]()` for status without
+credentials.
 
 ## Details
 
@@ -27,20 +28,20 @@ are reflected without replacing the reference.
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
 owns the lifecycle of ordinary references;
 [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
-owns managed references and supplies `$refresh()`. Every reference
+owns managed references and supplies `[["refresh"]]()`. Every reference
 expires when its Shiny session closes. A manager can retain the
 underlying grant across redirects; a new session obtains a new reference
 after verifying the local owner.
 
-Call `$is_usable()`, `$summary()` and `$request()` in the owning
-session's reactive context. If the connection cannot be resolved,
-`$is_usable()` returns `FALSE`; `$summary()` and `$request()` raise an
-error. The ID is read-only and cloning is disabled. The class generator
-is internal; the public factories establish the session binding required
-by applications. Managed resource and status reads do not count as owner
-activity. Record user actions with the manager's `touch()` method in an
-input event handler; automatic reactive updates must not prolong an idle
-owner's session.
+Call `[["is_usable"]]()`, `[["summary"]]()` and `[["request"]]()` in the
+owning session's reactive context. If the connection cannot be resolved,
+`[["is_usable"]]()` returns `FALSE`; `[["summary"]]()` and
+`[["request"]]()` raise an error. The ID is read-only and cloning is
+disabled. The class generator is internal; the public factories
+establish the session binding required by applications. Managed resource
+and status reads do not count as owner activity. Record user actions
+with the manager's `touch()` method in an input event handler; automatic
+reactive updates must not prolong an idle owner's session.
 
 ## See also
 
@@ -131,7 +132,7 @@ A new `OAuthConnection` instance.
 Check whether the current token is locally usable. This checks token
 presence, known unexpired lifetime and the client's required scopes. It
 does not refresh the token, contact the provider or guarantee remote
-authorization. Request-specific scopes are checked by `$request()`.
+authorization. Request-specific scopes are checked by `[["request"]]()`.
 
 #### Usage
 
@@ -174,10 +175,12 @@ After explicit narrowing succeeds, subsequent refreshes (including
 automatic refreshes and refreshes in another retained Shiny session)
 request the accepted scope limit. Widening requires a new authorization.
 This is a local connection policy: OAuth refresh-token scope itself is
-not reduced by requesting a narrower access token. Existing connections
-that have never selected narrowing continue to omit request scope.
-Providers may reject requested scopes; there is no retry without them.
-OIDC clients that require UserInfo must retain `openid`; narrowing that
+not reduced by requesting a narrower access token. Ordinary OAuth
+connections explicitly request their retained granted scopes when known,
+including when no explicit narrowing was selected. SMART omits request
+scope while its permissions equal the original launch grant. Providers
+may reject requested scopes; there is no retry without them. OIDC
+clients that require UserInfo must retain `openid`; narrowing that
 removes it is rejected before exchange. Include any additional scopes
 needed by the provider's profile endpoint in the client's
 `required_scopes`.
@@ -274,9 +277,9 @@ token. This method never returns raw tokens or fetches profile data.
 
 Call inside the owning session's reactive context. The result contains
 sensitive identity data: select only what the application needs and keep
-it out of logs and generic status displays. `$summary()` and printing
-continue to omit identity. Ordinary OAuth connections without validated
-OIDC identity cannot use this accessor.
+it out of logs and generic status displays. `[["summary"]]()` and
+printing continue to omit identity. Ordinary OAuth connections without
+validated OIDC identity cannot use this accessor.
 
 These are the last validated identity/profile snapshots; an OAuth
 refresh can retain earlier ID-token claims and does not establish fresh
@@ -446,11 +449,11 @@ client <- oauth_client(
 )
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
-  connection <- oauth_connection(client, shiny::reactive(auth$token))
-  output$status <- shiny::renderText(connection$summary()$status)
+  connection <- oauth_connection(client, shiny::reactive(auth[["token"]]))
+  output[["status"]] <- shiny::renderText(connection[["summary"]]()[["status"]])
   records <- shiny::reactive({
-    shiny::req(connection$is_usable())
-    response <- connection$request("api", "records", required_scopes = "read")
+    shiny::req(connection[["is_usable"]]())
+    response <- connection[["request"]]("api", "records", required_scopes = "read")
     httr2::resp_body_json(response)
   })
 }

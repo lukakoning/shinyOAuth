@@ -248,7 +248,7 @@ OAuthClient(
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   uses `"warn"` if `claims` includes `essential = TRUE`, `value`, or
   `values` requirements, and `"none"` otherwise. Checks on
-  `claims$id_token` require ID token validation
+  `claims[["id_token"]]` require ID token validation
   (`id_token_validation = TRUE` or `use_nonce = TRUE`).
 
 - required_acr_values:
@@ -308,8 +308,8 @@ OAuthClient(
   `cachem::cache_mem(max_age = 300)` is suitable for one R process. For
   multiple app processes, supply a shared
   [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
-  with atomic `$take()` and use the same `state_key` on every process.
-  Plain
+  with atomic `[["take"]]()` and use the same `state_key` on every
+  process. Plain
   [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
   is unsafe for shared login state because its separate read and delete
   operations do not prevent simultaneous reuse. See
@@ -482,7 +482,7 @@ OAuthClient(
 - dpop_require_observed_cnf:
 
   Logical. When `TRUE`, shinyOAuth rejects `token_type = "DPoP"` access
-  tokens unless it can observe `cnf$jkt` locally, from the token
+  tokens unless it can observe `cnf[["jkt"]]` locally, from the token
   response, introspection, or optional JWT access-token inspection. Set
   `options(shinyOAuth.access_token_cnf = "opaque")` to disable
   access-token decoding for both DPoP and mTLS; the compatibility
@@ -637,15 +637,15 @@ OAuthClient(
 - mtls_require_observed_cnf:
 
   Logical, default `TRUE`. When
-  `mtls_certificate_bound_access_tokens = TRUE`, require `cnf$x5t#S256`
-  in the token response, JWT access token, or introspection and verify
-  that it matches the configured certificate. The default preserves
-  strict local assurance. Set `FALSE` for server-enforced opaque
-  bindings that the client cannot observe; this does not disable
-  certificate presentation or mTLS endpoint selection. Missing
-  confirmation is then allowed, but any observed confirmation is still
-  validated, including mismatches and conflicting claims. This flag does
-  not independently enable mTLS.
+  `mtls_certificate_bound_access_tokens = TRUE`, require
+  `cnf[["x5t#S256"]]` in the token response, JWT access token, or
+  introspection and verify that it matches the configured certificate.
+  The default preserves strict local assurance. Set `FALSE` for
+  server-enforced opaque bindings that the client cannot observe; this
+  does not disable certificate presentation or mTLS endpoint selection.
+  Missing confirmation is then allowed, but any observed confirmation is
+  still validated, including mismatches and conflicting claims. This
+  flag does not independently enable mTLS.
 
 - trusted_id_token_audiences:
 

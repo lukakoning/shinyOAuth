@@ -273,7 +273,7 @@ error.</p></li>
 unexpected values: <code>"warn"</code> continues with a warning, <code>"strict"</code> stops
 login, and <code>"none"</code> skips the check. When omitted, <code><a href="oauth_client.html">oauth_client()</a></code> uses
 <code>"warn"</code> if <code>claims</code> includes <code>essential = TRUE</code>, <code>value</code>, or <code>values</code>
-requirements, and <code>"none"</code> otherwise. Checks on <code>claims$id_token</code> require
+requirements, and <code>"none"</code> otherwise. Checks on <code>claims[["id_token"]]</code> require
 ID token validation (<code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>).</p></dd>
 
 
@@ -329,7 +329,7 @@ introspection responses.)</p></li>
 <dd><p>Storage for pending logins. The default
 <code>cachem::cache_mem(max_age = 300)</code> is suitable for one R process.
 For multiple app processes, supply a shared <code><a href="custom_cache.html">custom_cache()</a></code> with atomic
-<code>$take()</code> and use the same <code>state_key</code> on every process.
+<code>[["take"]]()</code> and use the same <code>state_key</code> on every process.
 Plain <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> is unsafe for shared login state because its
 separate read and delete operations do not prevent simultaneous reuse.
 See <code><a href="custom_cache.html">custom_cache()</a></code> for method and stored-value requirements.</p></dd>
@@ -490,7 +490,7 @@ to bind refresh tokens.</p></dd>
 
 <dt id="arg-dpop-require-observed-cnf">dpop_require_observed_cnf<a class="anchor" aria-label="anchor" href="#arg-dpop-require-observed-cnf"></a></dt>
 <dd><p>Logical. When <code>TRUE</code>, shinyOAuth rejects
-<code>token_type = "DPoP"</code> access tokens unless it can observe <code>cnf$jkt</code>
+<code>token_type = "DPoP"</code> access tokens unless it can observe <code>cnf[["jkt"]]</code>
 locally, from the token response, introspection, or optional JWT access-token
 inspection. Set <code>options(shinyOAuth.access_token_cnf = "opaque")</code> to disable
 access-token decoding for both DPoP and mTLS; the compatibility default
@@ -647,7 +647,7 @@ remaining <code>exp</code> window at validation time. Applies only when
 
 <dt id="arg-mtls-require-observed-cnf">mtls_require_observed_cnf<a class="anchor" aria-label="anchor" href="#arg-mtls-require-observed-cnf"></a></dt>
 <dd><p>Logical, default <code>TRUE</code>. When
-<code>mtls_certificate_bound_access_tokens = TRUE</code>, require <code>cnf$x5t#S256</code>
+<code>mtls_certificate_bound_access_tokens = TRUE</code>, require <code>cnf[["x5t#S256"]]</code>
 in the token response, JWT access token, or introspection and verify that
 it matches the configured certificate. The default preserves strict
 local assurance. Set <code>FALSE</code> for server-enforced opaque bindings that

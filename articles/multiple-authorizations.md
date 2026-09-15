@@ -122,7 +122,7 @@ clients <- list(a = client_a, b = client_b)
 
 `a` and `b` are app-local selectors, independent of the registered
 `client_id`. `api` names an approved resource within each client. For
-connection A, `$request("api", "records")` means
+connection A, `[["request"]]("api", "records")` means
 `https://api.a.example/v1/records`.
 
 The default callback policy gives each client a distinct route. Supply
@@ -170,11 +170,11 @@ sessions use the same configuration. This memory store supports **one R
 process** and does not survive an R restart. Stable keys alone do not
 make it persistent or share records between workers. Browser ownership
 also has idle and absolute expiry limits. Automatic refresh and API
-reads do not reset inactivity. Call `auth$touch()` from a user input
-event handler, as the Read handler below does, to count an application
-action as activity. Explicit refresh also counts as activity; the
-absolute expiry remains fixed. For an app with its own verified account
-login, see
+reads do not reset inactivity. Call `auth[["touch"]]()` from a user
+input event handler, as the Read handler below does, to count an
+application action as activity. Explicit refresh also counts as
+activity; the absolute expiry remains fixed. For an app with its own
+verified account login, see
 [`?oauth_account_owner`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
 and `retention = "account"`.
 
@@ -209,56 +209,56 @@ ui <- oauth_connections_ui(base_ui, "services", manager)
 
 server <- function(input, output, session) {
   auth <- oauth_connections_server("services", manager)
-  observeEvent(input$connect_a, auth$connect("a"))
-  observeEvent(input$connect_b, auth$connect("b"))
+  observeEvent(input[["connect_a"]], auth[["connect"]]("a"))
+  observeEvent(input[["connect_b"]], auth[["connect"]]("b"))
 
   observe({
-    rows <- auth$connections()
-    ids <- vapply(rows, function(x) x$connection_id, character(1))
+    rows <- auth[["connections"]]()
+    ids <- vapply(rows, function(x) x[["connection_id"]], character(1))
     labels <- vapply(seq_along(rows), function(i) {
-      paste(rows[[i]]$client_label, i, paste0("(", rows[[i]]$status, ")"))
+      paste(rows[[i]][["client_label"]], i, paste0("(", rows[[i]][["status"]], ")"))
     }, character(1))
-    selected <- isolate(input$connection_id)
+    selected <- isolate(input[["connection_id"]])
     if (!length(selected) || !selected %in% ids) selected <- head(ids, 1)
     updateSelectInput(session, "connection_id",
       choices = setNames(ids, labels), selected = selected)
   })
 
   selected_connection <- reactive({
-    rows <- auth$connections()
-    ids <- vapply(rows, function(x) x$connection_id, character(1))
-    req(input$connection_id, input$connection_id %in% ids)
-    auth$connection(input$connection_id)
+    rows <- auth[["connections"]]()
+    ids <- vapply(rows, function(x) x[["connection_id"]], character(1))
+    req(input[["connection_id"]], input[["connection_id"]] %in% ids)
+    auth[["connection"]](input[["connection_id"]])
   })
 
-  result <- eventReactive(input$read, {
-    auth$touch()
+  result <- eventReactive(input[["read"]], {
+    auth[["touch"]]()
     connection <- selected_connection()
-    req(connection$is_usable())
+    req(connection[["is_usable"]]())
     message <- tryCatch({
-      response <- connection$request(
+      response <- connection[["request"]](
         "api", "records", required_scopes = "records.read"
       )
       httr2::resp_check_status(response)
       # Parse the body here according to your API's schema.
       paste("Records request succeeded; HTTP", httr2::resp_status(response))
     }, error = function(e) "Could not read records. Check the connection and try again.")
-    list(connection_id = connection$id, message = message)
+    list(connection_id = connection[["id"]], message = message)
   })
 
-  output$result <- renderText({
+  output[["result"]] <- renderText({
     connection <- selected_connection()
-    req(connection$is_usable())
+    req(connection[["is_usable"]]())
     value <- result()
-    req(identical(value$connection_id, connection$id))
-    value$message
+    req(identical(value[["connection_id"]], connection[["id"]]))
+    value[["message"]]
   })
-  observeEvent(input$disconnect, {
-    auth$disconnect(selected_connection()$id)
+  observeEvent(input[["disconnect"]], {
+    auth[["disconnect"]](selected_connection()[["id"]])
   })
-  observeEvent(input$logout, auth$logout())
-  output$auth_error <- renderText({
-    if (length(auth$errors())) "Authorization is unavailable. Try connecting again."
+  observeEvent(input[["logout"]], auth[["logout"]]())
+  output[["auth_error"]] <- renderText({
+    if (length(auth[["errors"]]())) "Authorization is unavailable. Try connecting again."
   })
 }
 
@@ -290,12 +290,12 @@ this observer inside `server()`, after `selected_connection` is defined:
 
 ``` r
 
-observeEvent(input$write, {
-  auth$touch()
+observeEvent(input[["write"]], {
+  auth[["touch"]]()
   connection <- selected_connection()
-  req(connection$is_usable())
+  req(connection[["is_usable"]]())
   tryCatch({
-    response <- connection$request("api", "records/example", method = "PUT",
+    response <- connection[["request"]]("api", "records/example", method = "PUT",
       required_scopes = "records.write", configure = function(req) {
         req |>
           httr2::req_body_json(list(name = "Updated record")) |>
@@ -318,12 +318,12 @@ are also supported. The connection retains control of its destination,
 authentication and redirect policy. The write scope is optional for
 connecting, but required for this action.
 
-`OAuthConnection$request()` uses the existing
+`OAuthConnection[["request"]]()` uses the existing
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
 transport. It adds selection of the current owned credentials and checks
 the approved API base and required permissions. Existing code using
 `perform_resource_req(token, url)` remains supported. For a single
-existing module, `oauth_connection(client, reactive(auth$token))`
+existing module, `oauth_connection(client, reactive(auth[["token"]]))`
 supplies the optional wrapper without adding retention.
 
 `resource_bases` limits destinations, including absolute pagination
@@ -335,9 +335,9 @@ resource indicators explicitly when your provider requires them. See
 `required_scopes` on the client is the minimum for usable access.
 Requesting additional optional scopes can produce a `limited` connection
 if only some are granted. Supply an operation’s additional permissions
-in `$request()`; ordinary OAuth scope names are compared literally, and
-permissions are not inferred from the API path. A usable connection does
-not guarantee the API will accept every request.
+in `[["request"]]()`; ordinary OAuth scope names are compared literally,
+and permissions are not inferred from the API path. A usable connection
+does not guarantee the API will accept every request.
 
 If the provider issues a refresh token, the manager attempts refresh at
 expiry; `refresh_proactively = TRUE` on
@@ -347,8 +347,8 @@ observer:
 
 ``` r
 
-observeEvent(input$refresh, {
-  tryCatch(selected_connection()$refresh(), error = function(e) {
+observeEvent(input[["refresh"]], {
+  tryCatch(selected_connection()[["refresh"]](), error = function(e) {
     showNotification("Could not refresh. Connect again if access has ended.", type = "error")
   })
 })
@@ -362,9 +362,9 @@ needs worker setup and promise handling for explicit refresh; see
 Retention itself does not request a refresh token. OAuth refresh cannot
 expand the authorization’s scope ([RFC 6749, section
 6](https://www.rfc-editor.org/rfc/rfc6749.html#section-6)).
-`$refresh(scopes = ...)` can deliberately narrow a managed connection’s
-accepted permissions; getting broader access again requires a new
-authorization.
+`[["refresh"]](scopes = ...)` can deliberately narrow a managed
+connection’s accepted permissions; getting broader access again requires
+a new authorization.
 
 Disconnect immediately removes local usability. Remote token revocation
 is best effort and reported separately in the return value. This
@@ -384,13 +384,13 @@ policy](https://developers.google.com/identity/protocols/oauth2/web-server#token
 Repeated consent, distinct token strings, and local connection IDs do
 not prove independent upstream grants.
 
-The default `auth$disconnect(id)` requests remote revocation. To remove
-only the local connection, use `auth$disconnect(id, revoke = FALSE)`;
-those removed credentials remain valid remotely until expiry or
-provider-side revocation. Choose this deliberately using the provider’s
-documented behavior. Sibling connections can still report `active`
-locally after remote revocation: always handle API authorization
-failures and offer a new authorization.
+The default `auth[["disconnect"]](id)` requests remote revocation. To
+remove only the local connection, use
+`auth[["disconnect"]](id, revoke = FALSE)`; those removed credentials
+remain valid remotely until expiry or provider-side revocation. Choose
+this deliberately using the provider’s documented behavior. Sibling
+connections can still report `active` locally after remote revocation:
+always handle API authorization failures and offer a new authorization.
 
 ## Keep an ordinary OIDC login alongside SMART connections
 
@@ -399,9 +399,9 @@ explicitly in the owning server session:
 
 ``` r
 
-identity <- selected_connection()$identity(userinfo = c("name", "email"))
-# identity$id_token_claims contains only iss and sub by default.
-# identity$userinfo contains only the selected, previously fetched fields.
+identity <- selected_connection()[["identity"]](userinfo = c("name", "email"))
+# identity[["id_token_claims"]] contains only iss and sub by default.
+# identity[["userinfo"]] contains only the selected, previously fetched fields.
 ```
 
 This requires a usable connection with `openid` and a validated ID
@@ -439,8 +439,8 @@ ui <- oauth_connections_ui(base_ui, "health", manager,
 server <- function(input, output, session) {
   login <- oauth_module_server("login", login_client, auto_redirect = FALSE)
   health <- oauth_connections_server("health", manager)
-  observeEvent(input$sign_in, login$request_login())
-  observeEvent(input$connect_fhir, health$connect("fhir"))
+  observeEvent(input[["sign_in"]], login[["request_login"]]())
+  observeEvent(input[["connect_fhir"]], health[["connect"]]("fhir"))
 }
 shinyApp(ui, server, uiPattern = ".*")
 ```

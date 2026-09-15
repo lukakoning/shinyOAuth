@@ -87,7 +87,7 @@ logging system.</p>
 provider and client:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_hook <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"[shinyOAuth] %s | %s\n"</span>, <span class="va">event</span><span class="op">$</span><span class="va">type</span>, <span class="va">event</span><span class="op">$</span><span class="va">trace_id</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"[shinyOAuth] %s | %s\n"</span>, <span class="va">event</span><span class="op">[[</span><span class="st">"type"</span><span class="op">]</span><span class="op">]</span>, <span class="va">event</span><span class="op">[[</span><span class="st">"trace_id"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>Run your app and try signing in. You will see event names such as
@@ -139,10 +139,10 @@ by default.</li>
 </ul>
 <p>The session context is a JSON-friendly list suitable for
 <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html" class="external-link">jsonlite::toJSON()</a></code>; the raw Shiny
-<code>session$request</code> object is not included. If
+<code>session[["request"]]</code> object is not included. If
 <code>shinyOAuth.audit_include_raw_session_token = TRUE</code>, the raw
-session token is available as <code>shiny_session$token</code> in native
-hook events.</p>
+session token is available as <code>shiny_session[["token"]]</code> in
+native hook events.</p>
 <p>Fields ending in <code>_digest</code> allow matching without
 recording the original token or identifier. The package’s
 <code>trace_id</code> is separate from OpenTelemetry trace/span IDs;
@@ -156,7 +156,7 @@ client addresses. The raw Shiny session token is also omitted. To omit
 HTTP context entirely:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_include_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>With this setting, <code>shiny_session$http</code> is
+<p>With this setting, <code>shiny_session[["http"]]</code> is
 <code>NULL</code>.</p>
 <p>Outbound URLs retain only scheme and authority by default. To include
 safe route names in audit and OTel URLs and incoming HTTP context,
@@ -413,7 +413,7 @@ error)</li>
 <code>state_store_atomic_take</code>)</li>
 <li>Notes: The flow aborts with an invalid state error. The
 <code>state_store_atomic_take</code> phase applies when using a store
-with an atomic <code>$take()</code> method.</li>
+with an atomic <code>[["take"]]()</code> method.</li>
 </ul>
 </div>
 <div class="section level4">
@@ -572,11 +572,40 @@ paths</li>
 <h4 id="event-audit_logout">Event: <code>audit_logout</code><a class="anchor" aria-label="anchor" href="#event-audit_logout"></a>
 </h4>
 <ul>
-<li>When: <code>auth$logout()</code> is called on the module</li>
+<li>When: <code>auth[["logout"]]()</code> is called on the module</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>reason</code> (default
 <code>manual_logout</code>)</li>
 </ul>
+</div>
+<div class="section level4">
+<h4 id="event-audit_connection_disconnected">Event: <code>audit_connection_disconnected</code><a class="anchor" aria-label="anchor" href="#event-audit_connection_disconnected"></a>
+</h4>
+<p>Emitted once for each retained connection removed locally, after
+bounded remote cleanup. It is emitted even when revocation is disabled
+or fails. Context includes <code>owner_digest</code>,
+<code>connection_id_digest</code>, <code>retention</code>,
+<code>reason</code>, <code>local_outcome</code>,
+<code>revoke_requested</code>, <code>remote_refresh_outcome</code>, and
+<code>remote_access_outcome</code>. Reasons are <code>disconnect</code>,
+<code>disconnect_all</code>, <code>logout</code>, or
+<code>session_end</code>. Identifiers use the configured audit digest
+policy; credentials and raw identities are excluded. Remote outcomes
+describe the revocation attempt, not proof that the authorization server
+previously recognized a token.</p>
+</div>
+<div class="section level4">
+<h4 id="event-audit_connections_disconnected">Event: <code>audit_connections_disconnected</code><a class="anchor" aria-label="anchor" href="#event-audit_connections_disconnected"></a>
+</h4>
+<p>Summarizes a completed local bulk removal, including an empty batch,
+with <code>owner_digest</code>, <code>connection_count</code>,
+<code>retention</code>, <code>reason</code>, <code>local_outcome</code>,
+and <code>revoke_requested</code>. Per-connection events describe remote
+outcomes. This event also covers logout and removal of session-only
+connections at session end; ending a Shiny session does not remove
+browser- or account-retained connections. The batch and per-connection
+events share a trace ID and are available to both the native audit hook
+and OpenTelemetry. Existing module logout events remain.</p>
 </div>
 <div class="section level4">
 <h4 id="event-audit_session_cleared">Event: <code>audit_session_cleared</code><a class="anchor" aria-label="anchor" href="#event-audit_session_cleared"></a>
@@ -909,8 +938,8 @@ separately as <code>audit_token_revocation</code> events</li>
 <h4 id="event-audit_authenticated_changed">Event: <code>audit_authenticated_changed</code><a class="anchor" aria-label="anchor" href="#event-audit_authenticated_changed"></a>
 </h4>
 <ul>
-<li>When: the <code>$authenticated</code> reactive value changes (TRUE ↔︎
-FALSE)</li>
+<li>When: the <code>[["authenticated"]]</code> reactive value changes
+(TRUE ↔︎ FALSE)</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>authenticated</code>,
 <code>previous_authenticated</code>, <code>reason</code>

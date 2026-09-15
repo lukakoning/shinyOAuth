@@ -70,10 +70,32 @@
   strongly related functions together, move functions that fit a
   different topic better, and rename functions whose names do not
   clearly describe their behavior.
-- **List access**: For list-like objects, parsed JSON, request metadata,
-  and test fixtures, always use exact `[[...]]` access and `[[...]] <-`
-  writes instead of `$`; `[[` is already exact by default, so do not add
-  `exact = TRUE`.
+- **Exact member access**: Use `object[["field"]]` for reads and
+  `object[["field"]] <- value` for writes throughout
+  repository-maintained R code. This includes nested lists, parsed
+  JSON/JWT claims, request/response metadata, conditions, caches, test
+  fixtures, integration runners, examples, vignette chunks, and roxygen
+  examples. Use the same notation for environments, R6 methods, and
+  Shiny reactive values; retain `@` for S7 properties. For a dynamic
+  field name, use `object[[field_name]]` after validating the name as
+  needed.
+- **Partial matching is forbidden**: Never use `$` or indirect calls to
+  it for member access. A missing field must remain missing even if a
+  longer field name shares its prefix; validate required fields and
+  types explicitly. `[[` is exact by default, so do not add
+  `exact = TRUE`, and never set `exact = FALSE` or `exact = NA`. Do not
+  use [`pmatch()`](https://rdrr.io/r/base/pmatch.html) or
+  [`charmatch()`](https://rdrr.io/r/base/charmatch.html) to select
+  protocol fields. Attribute reads also require
+  `attr(object, "attribute", exact = TRUE)`; attribute assignment is
+  already exact.
+- **Enforce the rule**: Run the `exact-list-access` tests after changes.
+  Their parser-based check covers R source and R chunks in
+  documentation, including integration fixtures, and must not be
+  weakened to allow new partial access. Dollar signs used as regex
+  anchors, shell/JavaScript syntax, or literal diagnostic text are not R
+  member access. Regenerate `.Rd` files from roxygen sources instead of
+  editing generated documentation.
 - **Incidental cleanup**: When editing a file that contains pre-existing
   style violations unrelated to your change, leave them alone unless the
   user requests a cleanup; do not perform incidental refactors.
@@ -206,8 +228,8 @@
 - Async module tests reset `future::plan(future::sequential)` and use
   `poll_for_async()` helper to flush
   [`later::run_now()`](https://later.r-lib.org/reference/run_now.html)
-  and `session$flushReact()` until conditions are met; timeout/interval
-  configurable via `SHINYOAUTH_TEST_POLL_TIMEOUT` and
+  and `session[["flushReact"]]()` until conditions are met;
+  timeout/interval configurable via `SHINYOAUTH_TEST_POLL_TIMEOUT` and
   `SHINYOAUTH_TEST_POLL_INTERVAL` env vars.
 - Set `NOT_CRAN=true` environment variable to enable
   security/timing/webfakes tests that are skipped on CRAN (this is set
