@@ -4,7 +4,10 @@
 ## module-level revoke_on_session_end behavior.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 make_refresh_confidential_client <- function(
@@ -131,7 +134,11 @@ testthat::test_that("revoking a Keycloak refresh token blocks future refresh", {
   testthat::expect_true(isTRUE(login[["authenticated"]]))
   testthat::expect_true(nzchar(login[["token"]]@refresh_token %||% ""))
 
-  rev_result <- shinyOAuth::revoke_token(client, login[["token"]], which = "refresh")
+  rev_result <- shinyOAuth::revoke_token(
+    client,
+    login[["token"]],
+    which = "refresh"
+  )
   testthat::expect_true(isTRUE(rev_result[["supported"]]))
   testthat::expect_true(isTRUE(rev_result[["revoked"]]))
   testthat::expect_identical(rev_result[["status"]], "ok")

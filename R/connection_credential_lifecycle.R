@@ -6,14 +6,28 @@
 # response from one authorization to another.
 connection_credential_keys <- function(manager, client, token) {
   key <- function(value, type) {
-    if (!is_valid_string(value)) return(NULL)
-    raw_to_hex_lower(openssl::sha256(serialize(list(
-      type, client@provider@issuer, client@provider@token_url,
-      if (identical(type, "refresh")) client@client_id else NULL, value
-    ), NULL, version = 2), key = manager[["keys"]][["credentials"]]))
+    if (!is_valid_string(value)) {
+      return(NULL)
+    }
+    raw_to_hex_lower(openssl::sha256(
+      serialize(
+        list(
+          type,
+          client@provider@issuer,
+          client@provider@token_url,
+          if (identical(type, "refresh")) client@client_id else NULL,
+          value
+        ),
+        NULL,
+        version = 2
+      ),
+      key = manager[["keys"]][["credentials"]]
+    ))
   }
-  list(refresh = key(token@refresh_token, "refresh"),
-    access = key(token@access_token, "access"))
+  list(
+    refresh = key(token@refresh_token, "refresh"),
+    access = key(token@access_token, "access")
+  )
 }
 
 connection_credential_prune <- function(manager) {
@@ -40,10 +54,14 @@ connection_credential_unusable <- function(manager, keys) {
 
 connection_credential_retired <- function(manager, keys) {
   entries <- manager[["state"]][["credential_retirements"]]
-  keys[vapply(names(keys), function(type) {
-    key <- keys[[type]]
-    !is.null(key) && isTRUE(entries[[paste0(type, key)]][["retired"]])
-  }, logical(1))]
+  keys[vapply(
+    names(keys),
+    function(type) {
+      key <- keys[[type]]
+      !is.null(key) && isTRUE(entries[[paste0(type, key)]][["retired"]])
+    },
+    logical(1)
+  )]
 }
 
 # Reserve space before a remote operation can retire a credential. Reservations
@@ -67,43 +85,67 @@ connection_credential_reserve <- function(manager, keys) {
   connection_credential_retirements_prune(manager)
   entries <- manager[["state"]][["credential_retirements"]]
   keys <- Filter(Negate(is.null), keys)
-  ids <- vapply(names(keys), function(type) paste0(type, keys[[type]]), character(1))
-  if (length(entries) + sum(!ids %in% ls(entries, all.names = TRUE)) >
-      connection_credential_retirement_limit()) {
-    err_token("Credential retirement capacity reached; retry after existing records expire")
+  ids <- vapply(
+    names(keys),
+    function(type) paste0(type, keys[[type]]),
+    character(1)
+  )
+  if (
+    length(entries) + sum(!ids %in% ls(entries, all.names = TRUE)) >
+      connection_credential_retirement_limit()
+  ) {
+    err_token(
+      "Credential retirement capacity reached; retry after existing records expire"
+    )
   }
   for (id in ids) {
-    entry <- entries[[id]] %||% list(retired = FALSE, expires_at = 0, reservations = 0L)
+    entry <- entries[[id]] %||%
+      list(retired = FALSE, expires_at = 0, reservations = 0L)
     entry[["reservations"]] <- entry[["reservations"]] + 1L
     entries[[id]] <- entry
   }
   released <- FALSE
   function() {
-    if (released) return(invisible(NULL))
+    if (released) {
+      return(invisible(NULL))
+    }
     released <<- TRUE
     for (id in ids) {
       entry <- entries[[id]]
       entry[["reservations"]] <- entry[["reservations"]] - 1L
       if (entry[["reservations"]] == 0L && !entry[["retired"]]) {
         rm(list = id, envir = entries)
-      } else entries[[id]] <- entry
+      } else {
+        entries[[id]] <- entry
+      }
     }
     invisible(NULL)
   }
 }
 
 connection_credential_matches <- function(a, b) {
-  any(vapply(intersect(names(a), names(b)), function(type) {
-    !is.null(a[[type]]) && identical(a[[type]], b[[type]])
-  }, logical(1)))
+  any(vapply(
+    intersect(names(a), names(b)),
+    function(type) {
+      !is.null(a[[type]]) && identical(a[[type]], b[[type]])
+    },
+    logical(1)
+  ))
 }
 
 connection_credential_track <- function(manager, record, token) {
   entries <- manager[["state"]][["credential_records"]]
   entries[[record[["id"]]]] <- list(
-    owner = record[["owner"]], id = record[["id"]], expires_at = record[["expires_at"]],
-    keys = connection_credential_keys(manager, manager[["clients"]][[record[["client"]]]], token),
-    retired = list())
+    owner = record[["owner"]],
+    id = record[["id"]],
+    expires_at = record[["expires_at"]],
+    keys = connection_credential_keys(
+      manager,
+      manager[["clients"]][[record[["client"]]]],
+      token
+    ),
+    retired = list()
+  )
   invisible(NULL)
 }
 
@@ -112,11 +154,20 @@ connection_credential_retire <- function(manager, keys, except = NULL) {
   on.exit(release(), add = TRUE)
   # Include the longest pending authorization window even when it exceeds the
   # store lifetime. Active operation reservations prevent earlier pruning.
-  expires <- as.numeric(Sys.time()) + max(manager[["store"]][["max_age"]],
-    vapply(manager[["clients"]], function(client) client@state_payload_max_age, numeric(1)))
+  expires <- as.numeric(Sys.time()) +
+    max(
+      manager[["store"]][["max_age"]],
+      vapply(
+        manager[["clients"]],
+        function(client) client@state_payload_max_age,
+        numeric(1)
+      )
+    )
   retired <- manager[["state"]][["credential_retirements"]]
   for (type in names(keys)) {
-    if (is.null(keys[[type]])) next
+    if (is.null(keys[[type]])) {
+      next
+    }
     id <- paste0(type, keys[[type]])
     entry <- retired[[id]]
     entry[["retired"]] <- TRUE
@@ -126,7 +177,12 @@ connection_credential_retire <- function(manager, keys, except = NULL) {
   entries <- manager[["state"]][["credential_records"]]
   for (id in ls(entries, all.names = TRUE)) {
     entry <- entries[[id]]
-    if (identical(id, except) || !connection_credential_matches(entry[["keys"]], keys)) next
+    if (
+      identical(id, except) ||
+        !connection_credential_matches(entry[["keys"]], keys)
+    ) {
+      next
+    }
     # Publish invalidation before touching the store. Even a backend failure
     # cannot leave a known superseded copy usable through a later read.
     for (type in names(keys)) {
@@ -135,16 +191,28 @@ connection_credential_retire <- function(manager, keys, except = NULL) {
       }
     }
     entries[[id]] <- entry
-    try({
-      record <- manager[["store"]][["read"]](entry[["owner"]], id)
-      if (!is.null(record) && identical(record[["status"]], "active")) {
-        record <- manager[["store"]][["begin_refresh"]](entry[["owner"]], id, record[["revision"]])
-      }
-      if (!is.null(record) && identical(record[["status"]], "refreshing")) {
-        manager[["store"]][["fail_refresh"]](entry[["owner"]], id, record[["operation"]],
-          record[["revision"]], "possibly_consumed")
-      }
-    }, silent = TRUE)
+    try(
+      {
+        record <- manager[["store"]][["read"]](entry[["owner"]], id)
+        if (!is.null(record) && identical(record[["status"]], "active")) {
+          record <- manager[["store"]][["begin_refresh"]](
+            entry[["owner"]],
+            id,
+            record[["revision"]]
+          )
+        }
+        if (!is.null(record) && identical(record[["status"]], "refreshing")) {
+          manager[["store"]][["fail_refresh"]](
+            entry[["owner"]],
+            id,
+            record[["operation"]],
+            record[["revision"]],
+            "possibly_consumed"
+          )
+        }
+      },
+      silent = TRUE
+    )
     connection_manager_signal(manager, entry[["owner"]])
   }
   invisible(NULL)

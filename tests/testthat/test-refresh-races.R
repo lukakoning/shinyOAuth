@@ -79,7 +79,8 @@ testthat::test_that("proactive async refresh may trigger multiple attempts but s
           # Pump the event loop until we see an updated token or timeout
           deadline <- Sys.time() + 5
           while (
-            identical(values[["token"]]@access_token, "old") && Sys.time() < deadline
+            identical(values[["token"]]@access_token, "old") &&
+              Sys.time() < deadline
           ) {
             later::run_now(0.1)
             session[["flushReact"]]()

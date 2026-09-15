@@ -75,7 +75,10 @@ test_that("oauth_client_mtls_registration supports explicit SAN identifiers", {
       tls_client_auth_value = identifiers[[identifier]][["value"]]
     )
 
-    expect_identical(metadata[["token_endpoint_auth_method"]], "tls_client_auth")
+    expect_identical(
+      metadata[["token_endpoint_auth_method"]],
+      "tls_client_auth"
+    )
     expect_identical(
       metadata[[identifiers[[identifier]][["field"]]]],
       identifiers[[identifier]][["value"]]
@@ -273,7 +276,10 @@ test_that("oauth_client_mtls_registration builds inline self-signed jwks", {
   )
   expect_true(is.list(metadata[["jwks"]]))
   expect_silent(shinyOAuth:::validate_jwks(metadata[["jwks"]]))
-  expect_identical(as.vector(metadata[["jwks"]][["keys"]][[1]][["x5c"]])[[1]], leaf_der_b64)
+  expect_identical(
+    as.vector(metadata[["jwks"]][["keys"]][[1]][["x5c"]])[[1]],
+    leaf_der_b64
+  )
   expect_match(encoded, '"x5c":\\[')
   expect_false(any(
     names(metadata[["jwks"]][["keys"]][[1]]) %in%
@@ -328,7 +334,10 @@ test_that("self-signed registration requires and retains a leaf-first chain", {
     character(1),
     USE.NAMES = FALSE
   )
-  expect_identical(as.vector(metadata[["jwks"]][["keys"]][[1]][["x5c"]]), expected)
+  expect_identical(
+    as.vector(metadata[["jwks"]][["keys"]][[1]][["x5c"]]),
+    expected
+  )
 })
 
 test_that("real certificates cannot have their SAN type inferred from text", {

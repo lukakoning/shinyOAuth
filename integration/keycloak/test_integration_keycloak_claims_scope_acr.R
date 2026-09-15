@@ -4,7 +4,10 @@
 ## and required ACR enforcement against real Keycloak authorization-code tokens.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 make_validation_public_client <- function(

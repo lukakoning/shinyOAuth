@@ -65,9 +65,14 @@ prepare_call <- function(
 
   # Verify oauth_client
   S7::check_is_S7(oauth_client, OAuthClient)
-  if (!isTRUE(.defer_build) && !isTRUE(.authorization_request) &&
-      identical(oauth_client@authorization_method, "POST")) {
-    err_config("POST authorization requires prepare_authorization_request() or request_login(); prepare_call() returns a URL only")
+  if (
+    !isTRUE(.defer_build) &&
+      !isTRUE(.authorization_request) &&
+      identical(oauth_client@authorization_method, "POST")
+  ) {
+    err_config(
+      "POST authorization requires prepare_authorization_request() or request_login(); prepare_call() returns a URL only"
+    )
   }
   smart_prepare_launch(oauth_client, .transaction_context, .smart_launch)
   if (client_uses_smart(oauth_client) && !is.null(.requested_max_age)) {
@@ -178,7 +183,9 @@ prepare_call <- function(
           max_age = requested_max_age,
           provider = oauth_client@provider |> provider_fingerprint(),
           client_policy = state_client_policy_fingerprint(oauth_client),
-          transaction_context_digest = authorization_context_digest(transaction_context),
+          transaction_context_digest = authorization_context_digest(
+            transaction_context
+          ),
           issued_at = as.numeric(Sys.time()),
           trace_id = flow_trace_id,
           otel_login_span_headers = login_span_headers
@@ -187,7 +194,9 @@ prepare_call <- function(
 
         # Apply both callback and envelope budgets before persisting the login
         # or sending a PAR/Request Object. The finalizer rechecks freshness.
-        if (nchar(payload, type = "bytes") > oauth_callback_limits()[["state"]]) {
+        if (
+          nchar(payload, type = "bytes") > oauth_callback_limits()[["state"]]
+        ) {
           err_config(
             "Generated state exceeds shinyOAuth.callback_max_state_bytes; reduce login state or increase the callback limit within the state envelope limits.",
             context = list(phase = "prepare_call::state_size")
@@ -212,15 +221,18 @@ prepare_call <- function(
             oauth_client@state_store[["set"]](
               key = state_cache_key(state),
               value = state_store_seal(
-                c(list(
-                  browser_token = browser_token,
-                  pkce_code_verifier = pkce_code_verifier,
-                  nonce = nonce
-                ), if (!is.null(transaction_context)) {
+                c(
                   list(
-                    transaction_context = transaction_context
-                  )
-                }),
+                    browser_token = browser_token,
+                    pkce_code_verifier = pkce_code_verifier,
+                    nonce = nonce
+                  ),
+                  if (!is.null(transaction_context)) {
+                    list(
+                      transaction_context = transaction_context
+                    )
+                  }
+                ),
                 oauth_client,
                 state
               )
@@ -266,7 +278,9 @@ prepare_call <- function(
             redirect_uri = oauth_client@redirect_uri %||% NA_character_
           )
         )
-        if (!is.null(.smart_launch)) prepared[["build_args"]][[".smart_launch"]] <- .smart_launch
+        if (!is.null(.smart_launch)) {
+          prepared[["build_args"]][[".smart_launch"]] <- .smart_launch
+        }
         if (isTRUE(.defer_build)) {
           prepared
         } else {
@@ -534,7 +548,9 @@ build_authorization_params <- function(
   }
 
   # Drop NULLs before building query strings or form bodies.
-  if (!is.null(.smart_launch)) params[["launch"]] <- .smart_launch
+  if (!is.null(.smart_launch)) {
+    params[["launch"]] <- .smart_launch
+  }
   compact_list(params)
 }
 
@@ -738,7 +754,9 @@ attach_par_auth_url_metadata <- function(
   par_resp,
   issued_at = as.numeric(Sys.time())
 ) {
-  if ((!is_valid_string(auth_url) && !is.list(auth_url)) || !is.list(par_resp)) {
+  if (
+    (!is_valid_string(auth_url) && !is.list(auth_url)) || !is.list(par_resp)
+  ) {
     return(auth_url)
   }
 
@@ -1258,9 +1276,12 @@ handle_callback <- function(
   }
 
   callback_hint <- otel_callback_parent_hint(oauth_client, payload)
-  async_attr <- isTRUE(tryCatch(shiny_session[["is_async"]], error = function(...) {
-    NULL
-  })) ||
+  async_attr <- isTRUE(tryCatch(
+    shiny_session[["is_async"]],
+    error = function(...) {
+      NULL
+    }
+  )) ||
     isTRUE(get_async_session_context()[["is_async"]]) ||
     isTRUE(is_async_worker_context())
 
@@ -1490,10 +1511,18 @@ handle_callback_internal <- function(
       }
 
       state_record_verify_authorization_context(
-        state_store_values, payload[["transaction_context_digest"]]
+        state_store_values,
+        payload[["transaction_context_digest"]]
       )
-      if (!identical(state_store_values[["transaction_context"]], .transaction_context)) {
-        err_invalid_state("Managed authorization requires its verified transaction context")
+      if (
+        !identical(
+          state_store_values[["transaction_context"]],
+          .transaction_context
+        )
+      ) {
+        err_invalid_state(
+          "Managed authorization requires its verified transaction context"
+        )
       }
 
       # Verify browser token -------------------------------------------------------
@@ -1571,7 +1600,9 @@ handle_callback_internal <- function(
               expected_record = state_store_values,
               shiny_session = shiny_session,
               .transaction_context = .transaction_context,
-              .transaction_context_digest = payload[["transaction_context_digest"]]
+              .transaction_context_digest = payload[[
+                "transaction_context_digest"
+              ]]
             )
           },
           attributes = otel_client_attributes(
@@ -2177,17 +2208,23 @@ enforce_token_introspection_policy <- function(
     )
     intro_scope_raw <- raw[["scope"]] %||% NULL
     if ("scope" %in% names(raw)) {
-      validate_response_scope(intro_scope_raw, err_token,
+      validate_response_scope(
+        intro_scope_raw,
+        err_token,
         allow_empty = client_uses_smart_scopes(oauth_client)
       )
     }
     if (client_uses_smart_scopes(oauth_client)) {
       if (is.null(intro_scope_raw)) {
-        err_token("SMART introspection scope check requires an explicit scope string")
+        err_token(
+          "SMART introspection scope check requires an explicit scope string"
+        )
       }
       smart_verify_scope_grant(
         oauth_client,
-        normalize_scope_tokens(intro_scope_raw), TRUE, token@granted_scopes
+        normalize_scope_tokens(intro_scope_raw),
+        TRUE,
+        token@granted_scopes
       )
     }
 
@@ -2198,7 +2235,8 @@ enforce_token_introspection_policy <- function(
 
     if (
       !client_uses_smart_scopes(oauth_client) &&
-        !identical(scope_validation_mode, "none") && length(requested_scopes) > 0
+        !identical(scope_validation_mode, "none") &&
+        length(requested_scopes) > 0
     ) {
       if (is.null(intro_scope_raw)) {
         msg <- "Token introspection response missing scope; cannot validate requested scopes"
@@ -2221,7 +2259,9 @@ enforce_token_introspection_policy <- function(
       } else {
         intro_scopes <- normalize_scope_tokens(intro_scope_raw)
 
-        missing <- evaluate_scope_coverage(requested_scopes, intro_scopes)[["missing"]]
+        missing <- evaluate_scope_coverage(requested_scopes, intro_scopes)[[
+          "missing"
+        ]]
         if (length(missing) > 0) {
           msg <- paste0(
             "Introspected scopes missing requested entries: ",
@@ -2509,7 +2549,8 @@ swap_code_for_token_set <- function(
         )
       }
 
-      token_set <- parse_token_response(resp,
+      token_set <- parse_token_response(
+        resp,
         allow_empty_scope = client_uses_smart_scopes(client)
       )
 
@@ -2752,7 +2793,9 @@ verify_token_set <- function(
       # scope. Explicit empty scope values are rejected by the wire validator.
       if (client_uses_smart_scopes(client)) {
         smart_verify_scope_grant(
-          client, granted_scopes, is_refresh,
+          client,
+          granted_scopes,
+          is_refresh,
           prior_granted_scopes
         )
       } else if (
@@ -2760,7 +2803,9 @@ verify_token_set <- function(
           length(requested_scopes) > 0 &&
           !scope_is_omitted
       ) {
-        missing <- evaluate_scope_coverage(requested_scopes, granted_scopes)[["missing"]]
+        missing <- evaluate_scope_coverage(requested_scopes, granted_scopes)[[
+          "missing"
+        ]]
         if (length(missing) > 0) {
           msg <- paste0(
             "Granted scopes missing requested entries: ",
@@ -3340,11 +3385,12 @@ compare_refresh_id_token_continuity <- function(
     }
   }
   if (
-    "nonce" %in% names(new_payload) &&
+    "nonce" %in%
+      names(new_payload) &&
       (!is.character(new_payload[["nonce"]]) ||
-       length(new_payload[["nonce"]]) != 1L ||
-       is.na(new_payload[["nonce"]]) ||
-       !identical(new_payload[["nonce"]], original_nonce))
+        length(new_payload[["nonce"]]) != 1L ||
+        is.na(new_payload[["nonce"]]) ||
+        !identical(new_payload[["nonce"]], original_nonce))
   ) {
     err_id_token(
       "Refresh returned an ID token with nonce that does not match the original (OIDC 12.2)"

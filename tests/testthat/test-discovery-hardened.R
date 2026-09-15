@@ -495,7 +495,9 @@ testthat::test_that("discovery rejects non-JSON content-type", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
   app[["get"]]("/.well-known/openid-configuration", function(req, res) {
-    res[["set_status"]](200)[["set_header"]]("content-type", "text/plain")[["send"]]("ok")
+    res[["set_status"]](200)[["set_header"]]("content-type", "text/plain")[[
+      "send"
+    ]]("ok")
   })
   srv <- webfakes::local_app_process(app)
   issuer <- sub("/$", "", srv[["url"]]())
@@ -513,7 +515,10 @@ testthat::test_that("discovery rejects JSON-like but invalid content-types", {
   app <- webfakes::new_app()
   app[["get"]]("/.well-known/openid-configuration", function(req, res) {
     issuer_url <- paste0("http://", req[["get_header"]]("host"))
-    res[["set_status"]](200)[["set_header"]]("content-type", "application/jsonp")[["send"]](
+    res[["set_status"]](200)[["set_header"]](
+      "content-type",
+      "application/jsonp"
+    )[["send"]](
       paste0(
         '{"issuer":"',
         issuer_url,

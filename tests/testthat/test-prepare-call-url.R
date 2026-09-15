@@ -116,20 +116,34 @@ test_that("prepare_call validates configured authorization query against generat
 })
 
 test_that("fixed DPoP thumbprints must agree with the active key and occur once", {
-  client <- oauth_client(make_test_provider(), "abc", client_secret = "",
-                         redirect_uri = "http://localhost:8100", scopes = character(),
-                         dpop_private_key = openssl::ec_keygen())
+  client <- oauth_client(
+    make_test_provider(),
+    "abc",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(),
+    dpop_private_key = openssl::ec_keygen()
+  )
   thumbprint <- client_dpop_jkt(client)
-  client@provider@auth_url <- paste0("https://example.com/auth?dpop%5fjkt=", thumbprint)
+  client@provider@auth_url <- paste0(
+    "https://example.com/auth?dpop%5fjkt=",
+    thumbprint
+  )
   url <- prepare_call(client, valid_browser_token())
   fields <- decode_form_pairs(url_raw_query(url))
   expect_equal(sum(names(fields) == "dpop_jkt"), 1L)
   expect_identical(fields[["dpop_jkt"]], thumbprint)
   client@provider@auth_url <- "https://example.com/auth?dpop_jkt=stale"
-  expect_error(prepare_call(client, valid_browser_token()), "conflicts with managed")
-  expect_error({
-    client@provider@auth_url <- "https://example.com/auth?dpop_jkt=a&dpop%5fjkt=a"
-  }, "repeated managed")
+  expect_error(
+    prepare_call(client, valid_browser_token()),
+    "conflicts with managed"
+  )
+  expect_error(
+    {
+      client@provider@auth_url <- "https://example.com/auth?dpop_jkt=a&dpop%5fjkt=a"
+    },
+    "repeated managed"
+  )
 })
 
 test_that("PAR and JAR outer requests share authorization query composition", {

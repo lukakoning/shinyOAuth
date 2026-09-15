@@ -4,12 +4,17 @@ testthat::test_that("the sandbox serves local R4 metadata and synthetic patients
   metadata <- smart_sandbox_json(paste0(urls[["raw_fhir"]], "/metadata"))
   testthat::expect_identical(metadata[["resourceType"]], "CapabilityStatement")
   testthat::expect_identical(metadata[["fhirVersion"]], "4.0.1")
-  patients <- smart_sandbox_json(paste0(urls[["raw_fhir"]], "/Patient?_count=1"))
+  patients <- smart_sandbox_json(paste0(
+    urls[["raw_fhir"]],
+    "/Patient?_count=1"
+  ))
   testthat::expect_identical(patients[["resourceType"]], "Bundle")
   testthat::expect_gte(length(patients[["entry"]]), 1L)
   patient <- patients[["entry"]][[1]][["resource"]]
   testthat::expect_identical(patient[["resourceType"]], "Patient")
-  testthat::expect_true(is.character(patient[["id"]]) && nzchar(patient[["id"]]))
+  testthat::expect_true(
+    is.character(patient[["id"]]) && nzchar(patient[["id"]])
+  )
 })
 
 testthat::test_that("SMART metadata and its FHIR proxy resolve to the local stack", {
@@ -46,12 +51,16 @@ testthat::test_that("SMART metadata and its FHIR proxy resolve to the local stac
     list("S256")
   )
   testthat::expect_true(
-    "private_key_jwt" %in% unlist(smart[["token_endpoint_auth_methods_supported"]])
+    "private_key_jwt" %in%
+      unlist(smart[["token_endpoint_auth_methods_supported"]])
   )
   # SSO advertisement makes issuer and jwks_uri mandatory. This checks
   # discovery/key availability, not an ID-token or client-assertion exchange.
   testthat::expect_identical(smart[["issuer"]], urls[["fhir"]])
-  testthat::expect_identical(smart[["jwks_uri"]], paste0(urls[["launcher"]], "/keys"))
+  testthat::expect_identical(
+    smart[["jwks_uri"]],
+    paste0(urls[["launcher"]], "/keys")
+  )
   keys <- smart_sandbox_json(smart[["jwks_uri"]])[["keys"]]
   testthat::expect_gte(length(keys), 1L)
   testthat::expect_true(all(vapply(

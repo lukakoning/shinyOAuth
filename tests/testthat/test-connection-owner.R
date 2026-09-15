@@ -24,7 +24,10 @@ test_that("owner factories validate and retain explicit capacity limits", {
     )
   }
   expect_identical(oauth_browser_owner()[["max_entries"]], 1000L)
-  expect_identical(oauth_browser_owner(max_entries = 2000L)[["max_entries"]], 2000L)
+  expect_identical(
+    oauth_browser_owner(max_entries = 2000L)[["max_entries"]],
+    2000L
+  )
   expect_identical(account(2500L)[["max_entries"]], 2500L)
   for (limit in list(NULL, NA_real_, Inf, 0, -1, 1.5, c(1, 2), "1000")) {
     expect_s3_class(
@@ -41,8 +44,14 @@ test_that("owner factories validate and retain explicit capacity limits", {
 test_that("browser owner sessions require server state and bind generations", {
   f <- owner_test_sessions()
   created <- f[["registry"]][["create"]]()
-  expect_identical(f[["registry"]][["resolve"]](created[["cookie"]]), created[["owner"]])
-  expect_identical(f[["registry"]][["validate"]](created[["owner"]]), created[["owner"]])
+  expect_identical(
+    f[["registry"]][["resolve"]](created[["cookie"]]),
+    created[["owner"]]
+  )
+  expect_identical(
+    f[["registry"]][["validate"]](created[["owner"]]),
+    created[["owner"]]
+  )
   expect_null(f[["registry"]][["resolve"]](random_urlsafe(43L)))
   expect_null(f[["registry"]][["resolve"]](created[["owner"]][["id"]]))
   other <- f[["registry"]][["create"]]()
@@ -51,16 +60,28 @@ test_that("browser owner sessions require server state and bind generations", {
   expect_null(f[["registry"]][["validate"]](wrong_generation))
   rotated <- f[["registry"]][["rotate"]](created[["owner"]])
   expect_identical(rotated[["owner"]][["id"]], created[["owner"]][["id"]])
-  expect_identical(rotated[["owner"]][["expires_at"]], created[["owner"]][["expires_at"]])
-  expect_false(identical(rotated[["owner"]][["generation"]], created[["owner"]][["generation"]]))
+  expect_identical(
+    rotated[["owner"]][["expires_at"]],
+    created[["owner"]][["expires_at"]]
+  )
+  expect_false(identical(
+    rotated[["owner"]][["generation"]],
+    created[["owner"]][["generation"]]
+  ))
   expect_null(f[["registry"]][["resolve"]](created[["cookie"]]))
   expect_null(f[["registry"]][["validate"]](created[["owner"]]))
-  expect_identical(f[["registry"]][["resolve"]](rotated[["cookie"]]), rotated[["owner"]])
+  expect_identical(
+    f[["registry"]][["resolve"]](rotated[["cookie"]]),
+    rotated[["owner"]]
+  )
   expect_false(f[["registry"]][["revoke"]](created[["owner"]]))
   expect_true(f[["registry"]][["revoke"]](rotated[["owner"]]))
   expect_null(f[["registry"]][["resolve"]](rotated[["cookie"]]))
   expect_null(f[["registry"]][["validate"]](rotated[["owner"]]))
-  expect_identical(f[["registry"]][["resolve"]](other[["cookie"]]), other[["owner"]])
+  expect_identical(
+    f[["registry"]][["resolve"]](other[["cookie"]]),
+    other[["owner"]]
+  )
 })
 
 test_that("idle and absolute expiry remain authoritative after activity and rotation", {
@@ -68,7 +89,10 @@ test_that("idle and absolute expiry remain authoritative after activity and rota
   idle <- f[["registry"]][["create"]]()
   active <- f[["registry"]][["create"]]()
   f[["time"]][["now"]] <- 1009
-  expect_type(f[["registry"]][["resolve"]](active[["cookie"]], touch = TRUE), "list")
+  expect_type(
+    f[["registry"]][["resolve"]](active[["cookie"]], touch = TRUE),
+    "list"
+  )
   f[["time"]][["now"]] <- 1010
   expect_null(f[["registry"]][["resolve"]](idle[["cookie"]]))
   expect_null(f[["registry"]][["validate"]](idle[["owner"]]))
@@ -76,7 +100,10 @@ test_that("idle and absolute expiry remain authoritative after activity and rota
   rotated <- f[["registry"]][["rotate"]](active[["owner"]])
   expect_identical(rotated[["owner"]][["expires_at"]], 1030)
   f[["time"]][["now"]] <- 1027
-  expect_type(f[["registry"]][["resolve"]](rotated[["cookie"]], touch = TRUE), "list")
+  expect_type(
+    f[["registry"]][["resolve"]](rotated[["cookie"]], touch = TRUE),
+    "list"
+  )
   f[["time"]][["now"]] <- 1030
   expect_null(f[["registry"]][["resolve"]](rotated[["cookie"]]))
   expect_error(f[["registry"]][["rotate"]](rotated[["owner"]]), "unavailable")
@@ -97,7 +124,9 @@ test_that("owner cookie attributes are separate from transaction binding cookies
   expect_false(grepl("Domain=|Max-Age=", header))
   expect_identical(
     connection_owner_cookie_read(
-      list(HTTP_COOKIE = paste0("other=value; ", name, "=", created[["cookie"]])),
+      list(
+        HTTP_COOKIE = paste0("other=value; ", name, "=", created[["cookie"]])
+      ),
       name
     ),
     created[["cookie"]]
@@ -139,14 +168,22 @@ test_that("owner cookie attributes are separate from transaction binding cookies
   )
   expect_false(identical(
     name,
-    connection_owner_cookie_name("https://app.example:8443", "health", f[["policy"]])
+    connection_owner_cookie_name(
+      "https://app.example:8443",
+      "health",
+      f[["policy"]]
+    )
   ))
   expect_false(identical(
     name,
     connection_owner_cookie_name("https://app.example", "other", f[["policy"]])
   ))
   expect_error(
-    connection_owner_cookie_name("http://localhost:8100", "health", f[["policy"]]),
+    connection_owner_cookie_name(
+      "http://localhost:8100",
+      "health",
+      f[["policy"]]
+    ),
     "HTTPS"
   )
   dev <- oauth_browser_owner(allow_http_loopback = TRUE)
@@ -189,11 +226,17 @@ test_that("owner capacity is bounded without invalidating live sessions", {
   f <- owner_test_sessions(1L)
   created <- f[["registry"]][["create"]]()
   expect_error(f[["registry"]][["create"]](), "capacity")
-  expect_identical(f[["registry"]][["resolve"]](created[["cookie"]]), created[["owner"]])
+  expect_identical(
+    f[["registry"]][["resolve"]](created[["cookie"]]),
+    created[["owner"]]
+  )
   f[["time"]][["now"]] <- 1010
   next_owner <- f[["registry"]][["create"]]()
   expect_null(f[["registry"]][["resolve"]](created[["cookie"]]))
-  expect_identical(f[["registry"]][["resolve"]](next_owner[["cookie"]]), next_owner[["owner"]])
+  expect_identical(
+    f[["registry"]][["resolve"]](next_owner[["cookie"]]),
+    next_owner[["owner"]]
+  )
 })
 
 test_that("account owners revalidate trusted local identity and authentication age", {
@@ -344,7 +387,10 @@ test_that("expired account generations cannot be re-enrolled", {
   owner <- f[["registry"]][["establish"]](NULL)
   for (at in c(1009, 1018, 1027)) {
     f[["state"]][["now"]] <- at
-    expect_identical(f[["registry"]][["validate"]](owner, NULL, touch = TRUE), owner)
+    expect_identical(
+      f[["registry"]][["validate"]](owner, NULL, touch = TRUE),
+      owner
+    )
   }
   f[["state"]][["now"]] <- 1030
   expect_null(f[["registry"]][["resolve"]](NULL))
@@ -389,8 +435,14 @@ test_that("failed cookie rotation leaves the existing browser session usable", {
     }
     strrep("a", n)
   })
-  expect_error(f[["registry"]][["rotate"]](owner[["owner"]]), "randomness unavailable")
-  expect_identical(f[["registry"]][["resolve"]](owner[["cookie"]]), owner[["owner"]])
+  expect_error(
+    f[["registry"]][["rotate"]](owner[["owner"]]),
+    "randomness unavailable"
+  )
+  expect_identical(
+    f[["registry"]][["resolve"]](owner[["cookie"]]),
+    owner[["owner"]]
+  )
 })
 
 test_that("owner state and identifiers are specific to deployment and namespace", {

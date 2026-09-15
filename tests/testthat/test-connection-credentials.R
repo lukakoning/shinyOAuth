@@ -1,5 +1,8 @@
 test_that("encrypted credential schemas retain token continuity without live objects", {
-  client <- connection_test_client(make_test_client(), c(api = "https://api.example/v1"))
+  client <- connection_test_client(
+    make_test_client(),
+    c(api = "https://api.example/v1")
+  )
   signing_key <- openssl::rsa_keygen()
   initial_id <- jose::jwt_encode_sig(
     jose::jwt_claim(sub = "synthetic-subject", iat = 1000),
@@ -33,12 +36,23 @@ test_that("encrypted credential schemas retain token continuity without live obj
   sealed <- connection_credentials_seal(token, owner, id, client, key, 1000)
   expect_false(grepl("synthetic", sealed, fixed = TRUE))
   restored <- connection_credentials_open(sealed, owner, id, client, key)
-  expect_identical(connection_credentials_open(sealed, owner, id, client, key,
-    expected_fingerprint = connection_client_fingerprint(client))[["token"]]@access_token,
-    token@access_token)
+  expect_identical(
+    connection_credentials_open(
+      sealed,
+      owner,
+      id,
+      client,
+      key,
+      expected_fingerprint = connection_client_fingerprint(client)
+    )[["token"]]@access_token,
+    token@access_token
+  )
   expect_identical(restored[["authenticated_at"]], 1000L)
   for (field in connection_token_fields) {
-    expect_identical(S7::prop(restored[["token"]], field), S7::prop(token, field))
+    expect_identical(
+      S7::prop(restored[["token"]], field),
+      S7::prop(token, field)
+    )
   }
   expect_false(identical(
     sealed,
@@ -63,9 +77,17 @@ test_that("encrypted credential schemas retain token continuity without live obj
     "unavailable or incompatible"
   )
   changed <- connection_test_client(client, c(api = "https://api.example/v2"))
-  expect_error(connection_credentials_open(sealed, owner, id, client, key,
-    expected_fingerprint = connection_client_fingerprint(changed)),
-    "unavailable or incompatible")
+  expect_error(
+    connection_credentials_open(
+      sealed,
+      owner,
+      id,
+      client,
+      key,
+      expected_fingerprint = connection_client_fingerprint(changed)
+    ),
+    "unavailable or incompatible"
+  )
   expect_error(
     connection_credentials_open(sealed, owner, id, changed, key),
     "unavailable or incompatible"
@@ -90,11 +112,19 @@ test_that("plain-data encoding preserves vector shapes and rejects executable ob
     array = c("one", "two"),
     named = c(a = 1L, b = NA_integer_),
     logical = c(TRUE, FALSE, NA),
-    double = c(1.25, 1789064672.1234567,
+    double = c(
+      1.25,
+      1789064672.1234567,
       # Decimal round-trips can move these timestamps by one ULP on Apple ARM.
       1789412683 + seq_len(64) * 2^-22,
-      .Machine[["double.xmin"]], .Machine[["double.xmin"]] * .Machine[["double.eps"]],
-      .Machine[["double.xmax"]], NA_real_, Inf, -Inf, NaN)
+      .Machine[["double.xmin"]],
+      .Machine[["double.xmin"]] * .Machine[["double.eps"]],
+      .Machine[["double.xmax"]],
+      NA_real_,
+      Inf,
+      -Inf,
+      NaN
+    )
   )
   json <- jsonlite::toJSON(
     connection_data_encode(value),
@@ -145,7 +175,10 @@ test_that("restoration rejects changed transport policy and sender keys", {
   )
   sealed <- connection_credentials_seal(token, owner, id, client, key, 1000)
   client@dpop_private_key <- openssl::rsa_keygen()
-  replacement <- connection_test_client(client, c(api = "https://api.example/v1"))
+  replacement <- connection_test_client(
+    client,
+    c(api = "https://api.example/v1")
+  )
   expect_error(
     connection_credentials_open(sealed, owner, id, replacement, key),
     "unavailable or incompatible"

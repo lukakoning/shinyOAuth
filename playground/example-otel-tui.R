@@ -151,7 +151,11 @@ server <- function(input, output, session) {
       has_token = !is.null(auth[["token"]]),
       error = auth[["error"]],
       has_error_description = !is.null(auth[["error_description"]]),
-      expires_at = if (!is.null(auth[["token"]])) auth[["token"]]@expires_at else NULL
+      expires_at = if (!is.null(auth[["token"]])) {
+        auth[["token"]]@expires_at
+      } else {
+        NULL
+      }
     )
   })
 

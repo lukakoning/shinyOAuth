@@ -1,7 +1,10 @@
 ## Integration tests: live Keycloak JWKS key rotation
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 keycloak_base_url <- function() {

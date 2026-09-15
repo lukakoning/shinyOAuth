@@ -77,7 +77,11 @@ test_that("app handlers serve independent handles once without rendering UI", {
     120
   )
   bad <- request(future)
-  bad[["QUERY_STRING"]] <- paste(bad[["QUERY_STRING"]], bad[["QUERY_STRING"]], sep = "&")
+  bad[["QUERY_STRING"]] <- paste(
+    bad[["QUERY_STRING"]],
+    bad[["QUERY_STRING"]],
+    sep = "&"
+  )
   expect_identical(handler(bad)[["status"]], 400L)
   other <- client
   other@client_id <- "other-client"
@@ -119,14 +123,20 @@ test_that("shared Request Object stores require and use atomic take", {
     REQUEST_METHOD = "HEAD",
     QUERY_STRING = oauth_callback_uri_query(url)
   )
-  expect_identical(shiny_request_object_http_handler(req, client)[["status"]], 200L)
+  expect_identical(
+    shiny_request_object_http_handler(req, client)[["status"]],
+    200L
+  )
   expect_identical(takes, 0L)
   req[["REQUEST_METHOD"]] <- "GET"
   expect_identical(
     shiny_request_object_http_handler(req, client)[["content"]],
     "fixture"
   )
-  expect_identical(shiny_request_object_http_handler(req, client)[["status"]], 410L)
+  expect_identical(
+    shiny_request_object_http_handler(req, client)[["status"]],
+    410L
+  )
   expect_identical(takes, 2L)
   store[["take"]] <- NULL
   client@state_store <- store

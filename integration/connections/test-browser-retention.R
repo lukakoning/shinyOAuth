@@ -9,11 +9,21 @@ for (index in seq_len(nrow(cases))) {
   testthat::test_that(
     paste("two-site browser retention", response_mode, "async =", async),
     {
-      f <- retention_browser_setup(async, response_mode,
-        provider_factory = function(site, callback) retention_fixture_provider(site, callback,
-          authorization_method = authorization_method),
-        app_args = list(authorization_method = authorization_method))
-      retention_evidence_env[["chrome"]] <- f[["chrome"]][["Browser"]][["getVersion"]]()[["product"]]
+      f <- retention_browser_setup(
+        async,
+        response_mode,
+        provider_factory = function(site, callback) {
+          retention_fixture_provider(
+            site,
+            callback,
+            authorization_method = authorization_method
+          )
+        },
+        app_args = list(authorization_method = authorization_method)
+      )
+      retention_evidence_env[["chrome"]] <- f[["chrome"]][["Browser"]][[
+        "getVersion"
+      ]]()[["product"]]
       browser <- f[["browser"]]
       initial <- retention_browser_snapshot(browser)
       testthat::expect_length(initial[["connections"]], 0L)
@@ -70,7 +80,11 @@ for (index in seq_len(nrow(cases))) {
       }
       testthat::expect_gt(both[["session"]], a[["session"]])
       testthat::expect_setequal(
-        vapply(both[["connections"]], function(row) row[["client_label"]], character(1)),
+        vapply(
+          both[["connections"]],
+          function(row) row[["client_label"]],
+          character(1)
+        ),
         c("Site a", "Site b")
       )
       first_id <- a[["connections"]][[1L]][["connection_id"]]
@@ -86,7 +100,11 @@ for (index in seq_len(nrow(cases))) {
       retention_browser_action(browser, "read_b", "b:1")
       for (site in c("a", "b")) {
         retention_browser_action(browser, paste0("refresh_", site), "refreshed")
-        retention_browser_action(browser, paste0("read_", site), paste0(site, ":2"))
+        retention_browser_action(
+          browser,
+          paste0("read_", site),
+          paste0(site, ":2")
+        )
       }
       rotated <- retention_browser_snapshot(browser)
       testthat::expect_setequal(
@@ -95,10 +113,19 @@ for (index in seq_len(nrow(cases))) {
           function(row) row[["connection_id"]],
           character(1)
         ),
-        vapply(both[["connections"]], function(row) row[["connection_id"]], character(1))
+        vapply(
+          both[["connections"]],
+          function(row) row[["connection_id"]],
+          character(1)
+        )
       )
-      cookies <- browser[["Network"]][["getCookies"]](urls = list(f[["origin"]]))[["cookies"]]
-      owner_cookies <- Filter(function(cookie) isTRUE(cookie[["httpOnly"]]), cookies)
+      cookies <- browser[["Network"]][["getCookies"]](
+        urls = list(f[["origin"]])
+      )[["cookies"]]
+      owner_cookies <- Filter(
+        function(cookie) isTRUE(cookie[["httpOnly"]]),
+        cookies
+      )
       testthat::expect_length(owner_cookies, 1L)
       testthat::expect_identical(owner_cookies[[1L]][["sameSite"]], "Lax")
       testthat::expect_false(grepl(
@@ -133,8 +160,14 @@ for (index in seq_len(nrow(cases))) {
       })
       for (site in c("a", "b")) {
         testthat::expect_identical(metrics[[site]][["exchanges"]], 1L)
-        testthat::expect_identical(metrics[[site]][["authorization_posts"]], if (authorization_method == "POST") 1L else 0L)
-        testthat::expect_identical(metrics[[site]][["authorization_gets"]], if (authorization_method == "GET") 1L else 0L)
+        testthat::expect_identical(
+          metrics[[site]][["authorization_posts"]],
+          if (authorization_method == "POST") 1L else 0L
+        )
+        testthat::expect_identical(
+          metrics[[site]][["authorization_gets"]],
+          if (authorization_method == "GET") 1L else 0L
+        )
         testthat::expect_identical(metrics[[site]][["refreshes"]], 1L)
         testthat::expect_gte(metrics[[site]][["requests"]], 2L)
       }

@@ -5,7 +5,10 @@
 ## mismatched issuers before it consumes state or exchanges the code.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 expect_callback_issuer_support <- function(prov, client) {

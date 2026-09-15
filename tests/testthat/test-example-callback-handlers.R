@@ -59,7 +59,9 @@ test_that("deployment apps bridge callbacks behind their configured public origi
     for (invalid in c("", "not-a-uri")) {
       withr::with_envvar(c(OAUTH_REDIRECT_URI = invalid), {
         env <- new.env(parent = globalenv())
-        app <- source(file.path(root, "integration", file), local = env)[["value"]]
+        app <- source(file.path(root, "integration", file), local = env)[[
+          "value"
+        ]]
         req[["PATH_INFO"]] <- "/"
         req[["QUERY_STRING"]] <- ""
         page <- app[["httpHandler"]](req)

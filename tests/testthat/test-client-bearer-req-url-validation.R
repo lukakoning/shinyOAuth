@@ -183,8 +183,17 @@ test_that("resource helpers reject invalid check_url before attaching credential
     .package = "shinyOAuth"
   )
   invalid <- list(
-    NULL, logical(), NA, c(TRUE, FALSE), "TRUE", "FALSE", 0, 1,
-    list(TRUE), list(FALSE), NA_character_
+    NULL,
+    logical(),
+    NA,
+    c(TRUE, FALSE),
+    "TRUE",
+    "FALSE",
+    0,
+    1,
+    list(TRUE),
+    list(FALSE),
+    NA_character_
   )
   for (helper in list(resource_req, perform_resource_req)) {
     targets <- list("https://api.example.com/data")

@@ -164,7 +164,11 @@ for (case in cases) {
     {
       maybe_skip_keycloak()
       if (!isTRUE(case[["include"]]())) {
-        testthat::skip(paste("Skipping", case[["name"]], "— prerequisites not met"))
+        testthat::skip(paste(
+          "Skipping",
+          case[["name"]],
+          "— prerequisites not met"
+        ))
       }
 
       prov <- make_provider(case[["style"]])

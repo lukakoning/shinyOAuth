@@ -1,7 +1,10 @@
 ## Integration tests: Keycloak JWT-secured authorization responses (JARM)
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 .jarm_jwks_public_base_url <- function(port) {
@@ -22,7 +25,10 @@ if (!exists("make_provider", mode = "function")) {
   testthat::skip_if_not_installed("callr")
   testthat::skip_if_not_installed("webfakes")
 
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key[["pubkey"]]), simplifyVector = FALSE)
+  jwk <- jsonlite::fromJSON(
+    jose::write_jwk(key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
   jwk[["kid"]] <- "jarm-enc-1"
   jwk[["use"]] <- "enc"
   jwk[["alg"]] <- "RSA-OAEP"
@@ -103,7 +109,8 @@ extract_jarm_response <- function(login_result) {
     !keycloak_nonempty_string(response) &&
       is.list(login_result[["form_post_fields"]])
   ) {
-    response <- login_result[["form_post_fields"]][["response"]] %||% NA_character_
+    response <- login_result[["form_post_fields"]][["response"]] %||%
+      NA_character_
   }
 
   if (!keycloak_nonempty_string(response)) {
@@ -229,7 +236,9 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
         "RS256"
       )
       testthat::expect_match(
-        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)[["payload_raw"]]),
+        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)[[
+          "payload_raw"
+        ]]),
         '"code"[[:space:]]*:',
         perl = TRUE
       )
@@ -332,7 +341,10 @@ testthat::test_that("Keycloak signed jwt alias happy path", {
 
   setup <- create_signed_jarm_fixture("shiny-jarm-jwt-alias")
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
@@ -373,7 +385,9 @@ testthat::test_that("Keycloak signed jwt alias happy path", {
         "RS256"
       )
       testthat::expect_match(
-        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)[["payload_raw"]]),
+        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)[[
+          "payload_raw"
+        ]]),
         '"code"[[:space:]]*:',
         perl = TRUE
       )
@@ -400,12 +414,18 @@ testthat::test_that("Keycloak query.jwt clients reject direct query callbacks wi
 
   setup <- create_signed_jarm_fixture("shiny-jarm-direct-query")
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
   prov <- make_provider()
-  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
+  client <- make_signed_jarm_public_client(
+    prov,
+    setup[["fixture"]][["client_id"]]
+  )
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -588,12 +608,18 @@ testthat::test_that("Keycloak query.jwt replay is rejected after state consumpti
 
   setup <- create_signed_jarm_fixture("shiny-jarm-replay")
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
   prov <- make_provider()
-  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
+  client <- make_signed_jarm_public_client(
+    prov,
+    setup[["fixture"]][["client_id"]]
+  )
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -646,12 +672,18 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: missing code_verifier
 
   setup <- create_signed_jarm_fixture("shiny-jarm-pkce-missing")
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
   prov <- make_provider()
-  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
+  client <- make_signed_jarm_public_client(
+    prov,
+    setup[["fixture"]][["client_id"]]
+  )
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -713,12 +745,18 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: wrong code_verifier",
 
   setup <- create_signed_jarm_fixture("shiny-jarm-pkce-wrong")
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
   prov <- make_provider()
-  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
+  client <- make_signed_jarm_public_client(
+    prov,
+    setup[["fixture"]][["client_id"]]
+  )
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -792,12 +830,18 @@ testthat::test_that("Keycloak PAR happy path preserves query.jwt callbacks", {
 
   setup <- create_signed_jarm_fixture("shiny-jarm-par")
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
   prov <- make_provider(use_par = TRUE)
-  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
+  client <- make_signed_jarm_public_client(
+    prov,
+    setup[["fixture"]][["client_id"]]
+  )
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
@@ -858,7 +902,10 @@ testthat::test_that("Keycloak currently rejects signed request-object + query.jw
     service_accounts_enabled = TRUE
   )
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 

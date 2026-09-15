@@ -1,7 +1,10 @@
 ## Attack vector: DPoP-protected resource token replay and key mismatch
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 if (!exists("start_dpop_protected_resource", mode = "function")) {
   source(file.path(

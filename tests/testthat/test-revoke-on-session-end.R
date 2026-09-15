@@ -55,7 +55,11 @@ testthat::test_that("revoke_on_session_end calls revoke_token when session ends"
   testthat::expect_true("refresh" %in% which_values)
   testthat::expect_true("access" %in% which_values)
 
-  async_values <- vapply(revoke_calls, function(x) isTRUE(x[["async"]]), logical(1))
+  async_values <- vapply(
+    revoke_calls,
+    function(x) isTRUE(x[["async"]]),
+    logical(1)
+  )
   testthat::expect_true(!any(async_values))
 })
 
@@ -139,7 +143,11 @@ testthat::test_that("revoke_on_session_end uses async only when module async = T
   )
 
   testthat::expect_length(revoke_calls, 2)
-  async_values <- vapply(revoke_calls, function(x) isTRUE(x[["async"]]), logical(1))
+  async_values <- vapply(
+    revoke_calls,
+    function(x) isTRUE(x[["async"]]),
+    logical(1)
+  )
   testthat::expect_true(all(async_values))
 })
 
@@ -393,7 +401,9 @@ testthat::test_that("revoke_on_session_end emits audit event", {
     shinyOAuth:::string_digest(session_token)
   )
   testthat::expect_null((ev[["shiny_session"]] %||% list())[["token"]])
-  testthat::expect_false(isTRUE((ev[["shiny_session"]] %||% list())[["is_async"]]))
+  testthat::expect_false(isTRUE((ev[["shiny_session"]] %||% list())[[
+    "is_async"
+  ]]))
 })
 
 testthat::test_that("session_ended event is emitted even without revoke_on_session_end", {
@@ -441,7 +451,9 @@ testthat::test_that("session_ended event is emitted even without revoke_on_sessi
   idx <- match("audit_session_ended", types)
   ev <- audit_events[[idx]]
   testthat::expect_true(isTRUE(ev[["was_authenticated"]]))
-  testthat::expect_false(isTRUE((ev[["shiny_session"]] %||% list())[["is_async"]]))
+  testthat::expect_false(isTRUE((ev[["shiny_session"]] %||% list())[[
+    "is_async"
+  ]]))
 })
 
 testthat::test_that("authenticated_changed event is emitted on token set", {

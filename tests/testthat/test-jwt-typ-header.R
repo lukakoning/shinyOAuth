@@ -8,7 +8,11 @@ test_that("validate_id_token rejects JWTs with invalid typ header", {
   rsa <- openssl::rsa_keygen(bits = 2048)
   priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
-  pub_jwk <- list(kty = priv_jwk[["kty"]], n = priv_jwk[["n"]], e = priv_jwk[["e"]])
+  pub_jwk <- list(
+    kty = priv_jwk[["kty"]],
+    n = priv_jwk[["n"]],
+    e = priv_jwk[["e"]]
+  )
   pub_jwk[["kid"]] <- "rsa-typ-1"
 
   prov <- oauth_provider(

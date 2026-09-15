@@ -1,7 +1,10 @@
 ## Integration tests: live Keycloak RFC 8707 resource-indicator behavior
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 make_resource_indicator_client <- function(prov, resource) {
@@ -44,7 +47,11 @@ resource_indicator_login_via_module <- function(client) {
       if (inherits(login, "try-error")) {
         result <<- list(
           auth_url = auth_url,
-          login_error = conditionMessage(attr(login, "condition", exact = TRUE)),
+          login_error = conditionMessage(attr(
+            login,
+            "condition",
+            exact = TRUE
+          )),
           authenticated = FALSE,
           error = values[["error"]],
           error_description = values[["error_description"]],
@@ -266,7 +273,10 @@ testthat::test_that("audience-mapped Keycloak token is usable at an authenticate
   testthat::expect_identical(httr2::resp_status(ok_resp), 200L)
   testthat::expect_true(isTRUE(ok_body[["ok"]]))
   testthat::expect_identical(ok_body[["audience"]], resource)
-  testthat::expect_identical(ok_body[["sub"]], result[["token"]]@userinfo[["sub"]])
+  testthat::expect_identical(
+    ok_body[["sub"]],
+    result[["token"]]@userinfo[["sub"]]
+  )
 
   bad_resp <- perform_resource_audience_request(
     protected[["url"]],

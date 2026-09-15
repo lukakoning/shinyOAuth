@@ -43,7 +43,12 @@ test_that("managed callback checks browser and live owner without consuming stat
   auth <- prepare_authorization(client, browser, f[["context"]])
   payload <- state_payload_decrypt_validate(client, auth[["state"]])
   record <- state_store_get(client, payload[["state"]])
-  checked <- oauth_module_managed_context(f[["hooks"]], client, auth[["state"]], browser)
+  checked <- oauth_module_managed_context(
+    f[["hooks"]],
+    client,
+    auth[["state"]],
+    browser
+  )
   expect_identical(checked[["json"]], record[["transaction_context"]])
   expect_identical(checked[["data"]][["owner"]], f[["context"]][["owner"]])
   expect_identical(state_store_get(client, payload[["state"]]), record)
@@ -117,7 +122,10 @@ test_that("managed login commits through its hook and leaves legacy credentials 
       }
       expect_length(f[["accepted"]], 2L)
       expect_identical(exchanges, 2L)
-      expect_identical(f[["accepted"]][[1L]][["token"]]@access_token, "synthetic-managed")
+      expect_identical(
+        f[["accepted"]][[1L]][["token"]]@access_token,
+        "synthetic-managed"
+      )
       expect_true(is.finite(f[["accepted"]][[1L]][["authenticated_at"]]))
       expect_length(f[["discarded"]], 0L)
     }
@@ -154,7 +162,10 @@ for (response in c("code=ok", "error=access_denied")) {
           f[["valid"]] <- FALSE
           values[[".process_query"]](paste0("?", response, "&state=", state))
           session[["flushReact"]]()
-          expect_identical(state_store_get(client, payload[["state"]]), original)
+          expect_identical(
+            state_store_get(client, payload[["state"]]),
+            original
+          )
           expect_identical(exchanges, 0L)
           expect_length(f[["accepted"]], 0L)
           expect_length(f[["discarded"]], 0L)
@@ -245,11 +256,14 @@ test_that("async managed login carries only context data and rechecks before com
   cleanup_discarded <- 0L
   f[["hooks"]][["begin_cleanup"]] <- function(context) {
     expect_identical(context, f[["context"]])
-    list(discard = function(token) {
-      cleanup_discarded <<- cleanup_discarded + 1L
-    }, finish = function() {
-      cleanup_finished <<- cleanup_finished + 1L
-    })
+    list(
+      discard = function(token) {
+        cleanup_discarded <<- cleanup_discarded + 1L
+      },
+      finish = function() {
+        cleanup_finished <<- cleanup_finished + 1L
+      }
+    )
   }
   local_mocked_bindings(
     prepare_client_for_worker = function(client) client,

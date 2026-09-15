@@ -48,7 +48,10 @@ test_that("authorization names are omitted from real spans unless explicitly ena
 test_that("worker telemetry gates reset stale authorization-detail opt-ins", {
   withr::local_options(shinyOAuth.otel_include_authorization_details = NULL)
   gates <- capture_async_otel_option_gates()
-  expect_identical(gates[["shinyOAuth.otel_include_authorization_details"]], FALSE)
+  expect_identical(
+    gates[["shinyOAuth.otel_include_authorization_details"]],
+    FALSE
+  )
   withr::with_options(
     list(shinyOAuth.otel_include_authorization_details = TRUE),
     {

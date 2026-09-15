@@ -1,7 +1,10 @@
 ## Browser E2E: callback URL/title cleanup after real Keycloak login
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 testthat::test_that("browser callback cleanup removes OAuth parameters from URL and title", {

@@ -57,15 +57,24 @@ test_that("GET callback bridges accept prefixed Shiny queries in either paramete
     for (prefix in c("", "?")) {
       for (state_first in c(FALSE, TRUE)) {
         case <- make_get_bridge_case(kind)
-        parts <- strsplit(case[["req"]][["QUERY_STRING"]], "&", fixed = TRUE)[[1L]]
+        parts <- strsplit(case[["req"]][["QUERY_STRING"]], "&", fixed = TRUE)[[
+          1L
+        ]]
         if (state_first) {
           first <- startsWith(parts, "state=") | startsWith(parts, "response=")
           parts <- c(parts[first], parts[!first])
         }
-        case[["req"]][["QUERY_STRING"]] <- paste0(prefix, paste(parts, collapse = "&"))
+        case[["req"]][["QUERY_STRING"]] <- paste0(
+          prefix,
+          paste(parts, collapse = "&")
+        )
         ui <- oauth_ui(shiny::fluidPage(), "auth", case[["client"]])
         response <- ui(case[["req"]])
-        expect_identical(response[["status"]], 303L, info = response[["content"]])
+        expect_identical(
+          response[["status"]],
+          303L,
+          info = response[["content"]]
+        )
         continuation <- response[["headers"]][["Location"]]
         expect_match(continuation, "tenant=one")
         expect_match(continuation, "shinyOAuth_form_post=")
@@ -107,20 +116,31 @@ test_that("GET code, error and JARM callbacks redirect before application render
     handle <- parse_query_param(location, "shinyOAuth_form_post", decode = TRUE)
     payload <- oauth_form_post_store_take(case[["client"]], "auth", handle)
     expect_identical(payload[["transport"]], "query")
-    expect_identical(payload[["type"]], if (kind == "jarm") "response" else kind)
+    expect_identical(
+      payload[["type"]],
+      if (kind == "jarm") "response" else kind
+    )
     expect_error(
       oauth_form_post_store_take(case[["client"]], "auth", handle),
       class = "shinyOAuth_state_error"
     )
-    state_payload <- state_payload_decrypt_validate(case[["client"]], case[["state"]])
-    expect_true(is.list(state_store_get(case[["client"]], state_payload[["state"]])))
+    state_payload <- state_payload_decrypt_validate(
+      case[["client"]],
+      case[["state"]]
+    )
+    expect_true(is.list(state_store_get(
+      case[["client"]],
+      state_payload[["state"]]
+    )))
   }
 })
 
 test_that("GET bridge handles resume through browser-bound module validation", {
   for (kind in c("code", "error", "jarm")) {
     case <- make_get_bridge_case(kind)
-    response <- oauth_ui(shiny::fluidPage(), "auth", case[["client"]])(case[["req"]])
+    response <- oauth_ui(shiny::fluidPage(), "auth", case[["client"]])(case[[
+      "req"
+    ]])
     local_mocked_bindings(
       swap_code_for_token_set = function(...) {
         list(
@@ -161,7 +181,9 @@ test_that("GET bridge handles resume through browser-bound module validation", {
 test_that("GET bridge callbacks retain the browser-binding check", {
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
   case <- make_get_bridge_case("code")
-  response <- oauth_ui(shiny::fluidPage(), "auth", case[["client"]])(case[["req"]])
+  response <- oauth_ui(shiny::fluidPage(), "auth", case[["client"]])(case[[
+    "req"
+  ]])
   local_mocked_bindings(
     swap_code_for_token_set = function(...) stop("must not exchange"),
     .package = "shinyOAuth"
@@ -203,7 +225,11 @@ test_that("unconfigured, invalid and wrong-route GET callbacks never render the 
   case <- make_get_bridge_case("code")
   ui <- oauth_ui(render, "auth", case[["client"]])
   req <- case[["req"]]
-  req[["QUERY_STRING"]] <- sub("tenant=one", "tenant=two", req[["QUERY_STRING"]])
+  req[["QUERY_STRING"]] <- sub(
+    "tenant=one",
+    "tenant=two",
+    req[["QUERY_STRING"]]
+  )
   expect_identical(ui(req)[["status"]], 400L)
   req <- case[["req"]]
   req[["QUERY_STRING"]] <- paste0(req[["QUERY_STRING"]], "&code=duplicate")
@@ -245,7 +271,9 @@ test_that("application scripts observe only clean GET bridge URLs in a browser",
       for (header in names(response[["headers"]])) {
         res[["set_header"]](header, response[["headers"]][[header]])
       }
-      res[["set_status"]](response[["status"]])[["set_type"]](response[["content_type"]])[["send"]](
+      res[["set_status"]](response[["status"]])[["set_type"]](response[[
+        "content_type"
+      ]])[["send"]](
         response[["content"]]
       )
     })
@@ -253,9 +281,14 @@ test_that("application scripts observe only clean GET bridge URLs in a browser",
     browser <- chromote::ChromoteSession[["new"]]()
     withr::defer(browser[["close"]](), envir = environment())
     loaded <- browser[["Page"]][["loadEventFired"]](wait_ = FALSE)
-    browser[["Page"]][["navigate"]](srv[["url"]](paste0("/?", case[["req"]][["QUERY_STRING"]])))
+    browser[["Page"]][["navigate"]](srv[["url"]](paste0(
+      "/?",
+      case[["req"]][["QUERY_STRING"]]
+    )))
     browser[["wait_for"]](loaded)
-    observed <- browser[["Runtime"]][["evaluate"]]("window.appSaw")[["result"]][["value"]]
+    observed <- browser[["Runtime"]][["evaluate"]]("window.appSaw")[[
+      "result"
+    ]][["value"]]
     expect_identical(observed, bridge[["headers"]][["Location"]])
     expect_false(grepl(
       "SYNTHETIC|response=|code=|state=|error=|unregistered",

@@ -59,18 +59,41 @@ oauth_connections_ui <- function(
   clients <- manager[["clients"]]
   names(clients) <- shiny::NS(id)(names(clients))
   if (!is.list(additional_clients) || length(additional_clients) > 64L) {
-    err_config("additional_clients must be a named list of at most 64 ordinary clients")
+    err_config(
+      "additional_clients must be a named list of at most 64 ordinary clients"
+    )
   }
   if (length(additional_clients)) {
-    additional_clients <- oauth_callback_registry(additional_clients, mark_ui = FALSE)
+    additional_clients <- oauth_callback_registry(
+      additional_clients,
+      mark_ui = FALSE
+    )
     for (client in additional_clients) {
-      if (!connection_manager_same_origin(client@redirect_uri, manager[["app_origin"]])) {
-        err_config("Additional callbacks must use the configured application origin")
+      if (
+        !connection_manager_same_origin(
+          client@redirect_uri,
+          manager[["app_origin"]]
+        )
+      ) {
+        err_config(
+          "Additional callbacks must use the configured application origin"
+        )
       }
-      if (any(vapply(clients, function(managed) {
-        identical(oauth_callback_route(client@redirect_uri), oauth_callback_route(managed@redirect_uri))
-      }, logical(1)))) {
-        err_config("Additional clients require callback routes distinct from managed clients")
+      if (
+        any(vapply(
+          clients,
+          function(managed) {
+            identical(
+              oauth_callback_route(client@redirect_uri),
+              oauth_callback_route(managed@redirect_uri)
+            )
+          },
+          logical(1)
+        ))
+      ) {
+        err_config(
+          "Additional clients require callback routes distinct from managed clients"
+        )
       }
     }
     clients <- c(clients, additional_clients)
@@ -111,10 +134,19 @@ oauth_connections_ui <- function(
     base_ui,
     clients = clients,
     request_uri_resolver = resolver,
-    allow_shared_issuer = identical(manager[["callback_policy"]], "shared_routes"),
-    select_client = if (identical(manager[["callback_policy"]], "shared_routes")) {
-      function(candidates, payload) connection_router_select(manager, candidates, payload)
-    } else NULL
+    allow_shared_issuer = identical(
+      manager[["callback_policy"]],
+      "shared_routes"
+    ),
+    select_client = if (
+      identical(manager[["callback_policy"]], "shared_routes")
+    ) {
+      function(candidates, payload) {
+        connection_router_select(manager, candidates, payload)
+      }
+    } else {
+      NULL
+    }
   )
   handler <- function(req) {
     connection_manager_document_base(callback_handler(req), app_base)
@@ -130,10 +162,21 @@ oauth_connections_ui <- function(
         "Request does not match the configured application origin."
       ))
     }
-    launch_response <- smart_launch_http(req, uri, manager, launch_routes, app_base, handler)
-    if (!is.null(launch_response)) return(launch_response)
+    launch_response <- smart_launch_http(
+      req,
+      uri,
+      manager,
+      launch_routes,
+      app_base,
+      handler
+    )
+    if (!is.null(launch_response)) {
+      return(launch_response)
+    }
     rejected <- oauth_http_query_guard(req)
-    if (!is.null(rejected)) return(rejected)
+    if (!is.null(rejected)) {
+      return(rejected)
+    }
     query <- req[["QUERY_STRING"]] %||% ""
     raw_callback <- oauth_get_query_is_callback(query)
     if (
@@ -142,9 +185,15 @@ oauth_connections_ui <- function(
         raw_callback
     ) {
       response <- handler(req)
-      if (identical(manager[["retention"]], "browser") &&
-          identical(manager[["owner"]][["same_site"]], "Strict")) {
-        response <- connection_manager_callback_document(response, uri, manager[["app_origin"]])
+      if (
+        identical(manager[["retention"]], "browser") &&
+          identical(manager[["owner"]][["same_site"]], "Strict")
+      ) {
+        response <- connection_manager_callback_document(
+          response,
+          uri,
+          manager[["app_origin"]]
+        )
       }
       return(response)
     }
@@ -168,7 +217,8 @@ oauth_connections_ui <- function(
           oauth_form_post_handle_param
         )) >
           0L
-        ordinary_continuation <- is.null(owner) && continuation &&
+        ordinary_continuation <- is.null(owner) &&
+          continuation &&
           connection_ordinary_continuation(query, uri, additional_clients)
         if (is.null(owner) && continuation && !ordinary_continuation) {
           return(oauth_get_setup_error(
@@ -238,50 +288,96 @@ connection_manager_callback_document <- function(response, uri, origin) {
   if (is_valid_string(location) && startsWith(location, "?")) {
     location <- paste0(sub("[?#].*$", "", uri), location)
   }
-  if (is.null(response) || !isTRUE(response[["status"]] == 303L) ||
+  if (
+    is.null(response) ||
+      !isTRUE(response[["status"]] == 303L) ||
       !connection_manager_same_origin(location, origin) ||
-      length(oauth_module_query_raw_values(url_raw_query(location), oauth_form_post_handle_param)) != 1L) {
+      length(oauth_module_query_raw_values(
+        url_raw_query(location),
+        oauth_form_post_handle_param
+      )) !=
+        1L
+  ) {
     return(response)
   }
   location <- htmltools::htmlEscape(location, attribute = TRUE)
-  shiny::httpResponse(200L, "text/html; charset=UTF-8", paste0(
-    '<!doctype html><html><head><meta name="referrer" content="no-referrer">',
-    '<meta http-equiv="refresh" content="0;url=', location, '">',
-    '<title>Continue authorization</title></head><body>',
-    '<a href="', location, '">Continue</a></body></html>'
-  ), headers = list(
-    "Cache-Control" = "no-store", "Pragma" = "no-cache",
-    "Referrer-Policy" = "no-referrer",
-    "Content-Security-Policy" = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'"
-  ))
+  shiny::httpResponse(
+    200L,
+    "text/html; charset=UTF-8",
+    paste0(
+      '<!doctype html><html><head><meta name="referrer" content="no-referrer">',
+      '<meta http-equiv="refresh" content="0;url=',
+      location,
+      '">',
+      '<title>Continue authorization</title></head><body>',
+      '<a href="',
+      location,
+      '">Continue</a></body></html>'
+    ),
+    headers = list(
+      "Cache-Control" = "no-store",
+      "Pragma" = "no-cache",
+      "Referrer-Policy" = "no-referrer",
+      "Content-Security-Policy" = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+    )
+  )
 }
 
 # Establish only whether this clean continuation belongs to an independent
 # configured module. Read and validate its candidate without consuming it;
 # the module must still prove its browser binding and consume state once.
 connection_ordinary_continuation <- function(query, uri, clients) {
-  if (!length(clients)) return(FALSE)
-  tryCatch({
-    fields <- decode_form_pairs(query, "Connection continuation")
-    selected <- fields[names(fields) %in% c(oauth_form_post_id_param, oauth_form_post_handle_param)]
-    if (length(selected) != 2L || anyDuplicated(names(selected))) return(FALSE)
-    id <- selected[[oauth_form_post_id_param]]
-    handle <- selected[[oauth_form_post_handle_param]]
-    if (!is_valid_string(id) || !id %in% names(clients)) return(FALSE)
-    client <- clients[[id]]
-    if (!oauth_callback_route_matches(paste0(sub("[?#].*$", "", uri), "?", query), client@redirect_uri)) return(FALSE)
-    key <- oauth_form_post_cache_key(id, handle, client)
-    sealed <- state_store_backend_call(client@state_store[["get"]](key, missing = NULL), "form_post_store_get")
-    payload <- oauth_form_post_unseal_payload(client, id, handle, sealed)
-    oauth_form_post_validate_handle_freshness(client, payload)
-    payload <- oauth_form_post_validate_payload(payload, client = client)
-    state <- payload[["state"]] %||% payload[["normalized_response"]][["state"]]
-    validated <- state_payload_decrypt_validate(client, state, audit_success = FALSE)
-    if (!is.null(validated[["transaction_context_digest"]])) return(FALSE)
-    record <- state_store_get(client, validated[["state"]])
-    state_record_verify_authorization_context(record, NULL)
-    TRUE
-  }, error = function(...) FALSE)
+  if (!length(clients)) {
+    return(FALSE)
+  }
+  tryCatch(
+    {
+      fields <- decode_form_pairs(query, "Connection continuation")
+      selected <- fields[
+        names(fields) %in%
+          c(oauth_form_post_id_param, oauth_form_post_handle_param)
+      ]
+      if (length(selected) != 2L || anyDuplicated(names(selected))) {
+        return(FALSE)
+      }
+      id <- selected[[oauth_form_post_id_param]]
+      handle <- selected[[oauth_form_post_handle_param]]
+      if (!is_valid_string(id) || !id %in% names(clients)) {
+        return(FALSE)
+      }
+      client <- clients[[id]]
+      if (
+        !oauth_callback_route_matches(
+          paste0(sub("[?#].*$", "", uri), "?", query),
+          client@redirect_uri
+        )
+      ) {
+        return(FALSE)
+      }
+      key <- oauth_form_post_cache_key(id, handle, client)
+      sealed <- state_store_backend_call(
+        client@state_store[["get"]](key, missing = NULL),
+        "form_post_store_get"
+      )
+      payload <- oauth_form_post_unseal_payload(client, id, handle, sealed)
+      oauth_form_post_validate_handle_freshness(client, payload)
+      payload <- oauth_form_post_validate_payload(payload, client = client)
+      state <- payload[["state"]] %||%
+        payload[["normalized_response"]][["state"]]
+      validated <- state_payload_decrypt_validate(
+        client,
+        state,
+        audit_success = FALSE
+      )
+      if (!is.null(validated[["transaction_context_digest"]])) {
+        return(FALSE)
+      }
+      record <- state_store_get(client, validated[["state"]])
+      state_record_verify_authorization_context(record, NULL)
+      TRUE
+    },
+    error = function(...) FALSE
+  )
 }
 
 connection_manager_document_base <- function(response, app_base) {

@@ -58,11 +58,14 @@ test_that("login preserves provider extras separately from token metadata", {
   expect_true("encounter" %in% names(token@extra_fields))
   expect_null(token@extra_fields[["encounter"]])
   expect_identical(token@extra_fields[["need_patient_banner"]], FALSE)
-  expect_identical(token@extra_fields[["fhirContext"]], list(list(
-    reference = "Observation/example",
-    codes = list("one", "two"),
-    optional = NULL
-  )))
+  expect_identical(
+    token@extra_fields[["fhirContext"]],
+    list(list(
+      reference = "Observation/example",
+      codes = list("one", "two"),
+      optional = NULL
+    ))
+  )
   expect_identical(
     token@extra_fields[["authorization_details"]][[1]][["locations"]],
     list("https://example.com/fhir")
@@ -71,17 +74,31 @@ test_that("login preserves provider extras separately from token metadata", {
     token@extra_fields[["https://example.com/custom"]],
     list(enabled = TRUE)
   )
-  expect_false(any(c(
-    "access_token", "refresh_token", "token_type", "id_token",
-    "expires_in", "scope", "cnf"
-  ) %in% names(token@extra_fields)))
+  expect_false(any(
+    c(
+      "access_token",
+      "refresh_token",
+      "token_type",
+      "id_token",
+      "expires_in",
+      "scope",
+      "cnf"
+    ) %in%
+      names(token@extra_fields)
+  ))
   expect_true(token@extra_fields[["id_token_validated"]])
   expect_true(token@extra_fields[[".id_token_validated"]])
   expect_false(token@id_token_validated)
   expect_identical(token@userinfo, list())
-  expect_identical(token@granted_scopes, c("launch/patient", "patient/Patient.r"))
+  expect_identical(
+    token@granted_scopes,
+    c("launch/patient", "patient/Patient.r")
+  )
   expect_true(token@granted_scopes_verified)
-  expect_identical(token@extra_fields[["extra_fields"]][["patient"]], "nested-id")
+  expect_identical(
+    token@extra_fields[["extra_fields"]][["patient"]],
+    "nested-id"
+  )
   expect_identical(
     token@extra_fields[["initial_extra_fields"]][["patient"]],
     "nested-initial-id"
@@ -140,10 +157,18 @@ test_that("refresh replaces extras while retaining the original launch context",
         url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
-        body = charToRaw(jsonlite::toJSON(c(
-          list(access_token = "next-access", token_type = "Bearer", expires_in = 3600),
-          response_extras
-        ), auto_unbox = TRUE, null = "null"))
+        body = charToRaw(jsonlite::toJSON(
+          c(
+            list(
+              access_token = "next-access",
+              token_type = "Bearer",
+              expires_in = 3600
+            ),
+            response_extras
+          ),
+          auto_unbox = TRUE,
+          null = "null"
+        ))
       )
     },
     .package = "shinyOAuth"
@@ -196,7 +221,12 @@ test_that("rejected refresh cannot publish replacement extra fields", {
       )
     },
     introspect_token = function(...) {
-      list(supported = TRUE, status = "ok", active = FALSE, raw = list(active = FALSE))
+      list(
+        supported = TRUE,
+        status = "ok",
+        active = FALSE,
+        raw = list(active = FALSE)
+      )
     },
     .package = "shinyOAuth"
   )
@@ -227,14 +257,25 @@ test_that("the module exposes extras and clears them with the login session", {
   )
   shiny::testServer(
     oauth_module_server,
-    args = list(id = "auth", client = make_test_client(), auto_redirect = FALSE, async = FALSE),
+    args = list(
+      id = "auth",
+      client = make_test_client(),
+      auto_redirect = FALSE,
+      async = FALSE
+    ),
     expr = {
       state <- parse_query_param(values[["build_auth_url"]](), "state")
       values[[".process_query"]](paste0("?code=first&state=", state))
       session[["flushReact"]]()
       expect_true(values[["authenticated"]])
-      expect_identical(values[["token"]]@extra_fields[["patient"]], "first-patient")
-      expect_identical(values[["token"]]@initial_extra_fields[["patient"]], "first-patient")
+      expect_identical(
+        values[["token"]]@extra_fields[["patient"]],
+        "first-patient"
+      )
+      expect_identical(
+        values[["token"]]@initial_extra_fields[["patient"]],
+        "first-patient"
+      )
 
       values[["logout"]]()
       session[["flushReact"]]()
@@ -259,11 +300,20 @@ test_that("the module exposes extras and clears them with the login session", {
 test_that("token printing redacts additional parameter names and values", {
   token <- OAuthToken(
     access_token = "example-access",
-    extra_fields = list(`private-field-name` = list(patient = "private-patient")),
+    extra_fields = list(
+      `private-field-name` = list(patient = "private-patient")
+    ),
     initial_extra_fields = list(patient = "private-initial-patient")
   )
   for (output in c(format(token), capture.output(print(token)))) {
-    expect_false(grepl("private-field-name|private-patient|private-initial-patient", output))
+    expect_false(grepl(
+      "private-field-name|private-patient|private-initial-patient",
+      output
+    ))
   }
-  expect_match(paste(format(token), collapse = "\n"), "extra_fields", fixed = TRUE)
+  expect_match(
+    paste(format(token), collapse = "\n"),
+    "extra_fields",
+    fixed = TRUE
+  )
 })

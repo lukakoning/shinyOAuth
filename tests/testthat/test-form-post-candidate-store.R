@@ -247,7 +247,9 @@ test_that("sibling cleanup preserves other transactions sharing a partition", {
     "missing or already consumed"
   )
   expect_identical(
-    shinyOAuth:::oauth_form_post_store_take(client, "auth", handles[[2L]])[["code"]],
+    shinyOAuth:::oauth_form_post_store_take(client, "auth", handles[[2L]])[[
+      "code"
+    ]],
     states[[2L]]
   )
 })

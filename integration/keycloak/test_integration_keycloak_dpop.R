@@ -1,7 +1,10 @@
 ## Integration tests: Keycloak DPoP token issuance, userinfo, and refresh
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 perform_dpop_login <- function(
@@ -228,7 +231,10 @@ testthat::test_that("Keycloak DPoP auth-code flow binds tokens and protects user
   userinfo <- shinyOAuth::get_userinfo(client, login[["token"]])
 
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo[["sub"]], login[["token"]]@userinfo[["sub"]])
+  testthat::expect_identical(
+    userinfo[["sub"]],
+    login[["token"]]@userinfo[["sub"]]
+  )
   testthat::expect_true(isTRUE(prov@use_pkce))
 
   missing_proof_resp <- perform_raw_userinfo_request(

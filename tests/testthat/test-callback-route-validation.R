@@ -60,19 +60,41 @@ test_that("callback routes preserve escaped reserved path characters", {
   for (path in c("/cb%2Fa", "/cb%3Aa", "/cb%3Ba")) {
     registered <- paste0("https://app.example", path)
     expect_true(oauth_callback_route_matches(registered, registered))
-    expect_false(oauth_callback_route_matches(utils::URLdecode(registered), registered))
-    expect_false(oauth_callback_route_matches(registered, utils::URLdecode(registered)))
+    expect_false(oauth_callback_route_matches(
+      utils::URLdecode(registered),
+      registered
+    ))
+    expect_false(oauth_callback_route_matches(
+      registered,
+      utils::URLdecode(registered)
+    ))
   }
 })
 
 test_that("HTTP callback bridge rejects a decoded route without consuming state", {
-  client <- make_mixup_route_client("escaped", "https://as.example",
-                                    "https://app.example/cb%2Fa", "client")
-  state <- parse_query_param(prepare_call(client, valid_browser_token()), "state", decode = TRUE)
+  client <- make_mixup_route_client(
+    "escaped",
+    "https://as.example",
+    "https://app.example/cb%2Fa",
+    "client"
+  )
+  state <- parse_query_param(
+    prepare_call(client, valid_browser_token()),
+    "state",
+    decode = TRUE
+  )
   ui <- oauth_ui(shiny::fluidPage("callback"), "auth", client)
-  req <- list(REQUEST_METHOD = "GET", rook.url_scheme = "https",
-              HTTP_HOST = "app.example", PATH_INFO = "/cb/a", SCRIPT_NAME = "",
-              QUERY_STRING = httr2::url_query_build(list(code = "synthetic-code", state = state)))
+  req <- list(
+    REQUEST_METHOD = "GET",
+    rook.url_scheme = "https",
+    HTTP_HOST = "app.example",
+    PATH_INFO = "/cb/a",
+    SCRIPT_NAME = "",
+    QUERY_STRING = httr2::url_query_build(list(
+      code = "synthetic-code",
+      state = state
+    ))
+  )
   expect_identical(ui(req)[["status"]], 400L)
   req[["PATH_INFO"]] <- "/cb%2Fa"
   expect_identical(ui(req)[["status"]], 303L)

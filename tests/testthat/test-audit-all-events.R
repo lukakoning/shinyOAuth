@@ -155,7 +155,9 @@ testthat::test_that("representative real producers emit required audit events", 
         session[["setInputs"]](shinyOAuth_sid = "abc")
         session[["flushReact"]]()
         # Simulate a browser cookie/webcrypto error -> triggers audit_browser_cookie_error
-        session[["setInputs"]](shinyOAuth_cookie_error = "webcrypto_unavailable")
+        session[["setInputs"]](
+          shinyOAuth_cookie_error = "webcrypto_unavailable"
+        )
         session[["flushReact"]]()
       }
     )
@@ -308,7 +310,8 @@ testthat::test_that("representative real producers emit required audit events", 
     transaction
   )[[1L]]
   testthat::expect_true(
-    is.character(validation[["state_digest"]]) && nzchar(validation[["state_digest"]])
+    is.character(validation[["state_digest"]]) &&
+      nzchar(validation[["state_digest"]])
   )
 })
 

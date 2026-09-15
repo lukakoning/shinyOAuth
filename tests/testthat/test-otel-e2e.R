@@ -108,7 +108,10 @@ otel_e2e("HTTP transport exceptions use condition classification", {
 })
 
 otel_named_spans <- function(traces, name) {
-  Filter(function(span) identical(span[["name"]] %||% NA_character_, name), traces)
+  Filter(
+    function(span) identical(span[["name"]] %||% NA_character_, name),
+    traces
+  )
 }
 
 otel_log_attr_value <- function(attributes, key) {
@@ -286,7 +289,10 @@ otel_e2e("with_otel_span creates span with ok status on success", {
   })
   testthat::expect_identical(r[["value"]], 42)
   testthat::expect_true("shinyOAuth.test.ok" %in% names(r[["traces"]]))
-  testthat::expect_identical(r[["traces"]][["shinyOAuth.test.ok"]][["status"]], "ok")
+  testthat::expect_identical(
+    r[["traces"]][["shinyOAuth.test.ok"]][["status"]],
+    "ok"
+  )
 })
 
 otel_e2e("with_otel_span marks span as error on failure", {
@@ -313,7 +319,10 @@ otel_e2e("with_otel_span records user-supplied attributes", {
     )
   })
   s <- r[["traces"]][["shinyOAuth.test.attrs"]]
-  testthat::expect_identical(s[["attributes"]][["oauth.provider.name"]], "github")
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.provider.name"]],
+    "github"
+  )
   testthat::expect_identical(s[["attributes"]][["oauth.phase"]], "test")
 })
 
@@ -406,14 +415,23 @@ otel_e2e("prepare_call emits login.request span with attributes", {
   s <- r[["traces"]][["shinyOAuth.login.request"]]
   testthat::expect_false(is.null(s))
   testthat::expect_identical(s[["status"]], "ok")
-  testthat::expect_identical(s[["attributes"]][["oauth.provider.name"]], "example")
-  testthat::expect_identical(s[["attributes"]][["oauth.phase"]], "login.request")
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.provider.name"]],
+    "example"
+  )
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.phase"]],
+    "login.request"
+  )
   testthat::expect_null(s[["attributes"]][["oauth.scopes.requested"]])
   testthat::expect_identical(
     as.integer(s[["attributes"]][["oauth.scopes.requested_count"]]),
     3L
   )
-  testthat::expect_identical(s[["attributes"]][["oauth.claims.requested"]], TRUE)
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.claims.requested"]],
+    TRUE
+  )
   testthat::expect_null(s[["attributes"]][["oauth.claims.targets"]])
   testthat::expect_identical(
     as.integer(s[["attributes"]][["oauth.claims.targets_count"]]),
@@ -432,7 +450,9 @@ otel_e2e("prepare_call emits login.request span with attributes", {
     as.integer(s[["attributes"]][["oauth.extra_auth_params_count"]]),
     2L
   )
-  testthat::expect_true(nzchar(s[["attributes"]][["shinyoauth.trace_id"]] %||% ""))
+  testthat::expect_true(nzchar(
+    s[["attributes"]][["shinyoauth.trace_id"]] %||% ""
+  ))
 })
 
 otel_e2e("prepare_call emits PAR spans when PAR is used", {
@@ -476,8 +496,14 @@ otel_e2e("prepare_call emits PAR spans when PAR is used", {
   testthat::expect_identical(par_span[["parent"]], login_span[["span_id"]])
   testthat::expect_identical(par_span[["trace_id"]], login_span[["trace_id"]])
   testthat::expect_identical(par_http_span[["parent"]], par_span[["span_id"]])
-  testthat::expect_identical(par_http_span[["trace_id"]], par_span[["trace_id"]])
-  testthat::expect_identical(par_span[["attributes"]][["oauth.phase"]], "login.par")
+  testthat::expect_identical(
+    par_http_span[["trace_id"]],
+    par_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    par_span[["attributes"]][["oauth.phase"]],
+    "login.par"
+  )
   testthat::expect_identical(
     as.integer(par_http_span[["attributes"]][["http.response.status_code"]]),
     201L
@@ -654,8 +680,14 @@ otel_e2e("prepare_call roots itself and callback parents to login span", {
 
   testthat::expect_identical(login_span[["parent"]], "0000000000000000")
   testthat::expect_identical(callback_span[["parent"]], login_span[["span_id"]])
-  testthat::expect_identical(callback_span[["trace_id"]], login_span[["trace_id"]])
-  testthat::expect_false(identical(login_span[["parent"]], outer_login[["span_id"]]))
+  testthat::expect_identical(
+    callback_span[["trace_id"]],
+    login_span[["trace_id"]]
+  )
+  testthat::expect_false(identical(
+    login_span[["parent"]],
+    outer_login[["span_id"]]
+  ))
   testthat::expect_false(identical(
     callback_span[["parent"]],
     outer_callback[["span_id"]]
@@ -697,7 +729,10 @@ otel_e2e("handle_callback span captures callback flow attributes", {
     as.integer(s[["attributes"]][["oauth.introspect_elements_count"]]),
     2L
   )
-  testthat::expect_identical(s[["attributes"]][["oauth.userinfo.required"]], TRUE)
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.userinfo.required"]],
+    TRUE
+  )
   testthat::expect_identical(
     s[["attributes"]][["oauth.userinfo.id_token_match_required"]],
     TRUE
@@ -1017,8 +1052,14 @@ otel_e2e("get_userinfo sync exports filtered audit logs correlated with span", {
   }
 
   userinfo_log <- userinfo_logs[[1L]]
-  testthat::expect_identical(userinfo_log[["trace_id"]], userinfo_span[["trace_id"]])
-  testthat::expect_identical(userinfo_log[["span_id"]], userinfo_span[["span_id"]])
+  testthat::expect_identical(
+    userinfo_log[["trace_id"]],
+    userinfo_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    userinfo_log[["span_id"]],
+    userinfo_span[["span_id"]]
+  )
   testthat::expect_identical(
     otel_log_attribute(userinfo_log, "oauth.status"),
     "ok"
@@ -1072,7 +1113,10 @@ otel_e2e("token.exchange span captures request and response attributes", {
   })
 
   s <- r[["traces"]][["shinyOAuth.token.exchange"]]
-  testthat::expect_identical(s[["attributes"]][["oauth.client_auth_style"]], "body")
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.client_auth_style"]],
+    "body"
+  )
   testthat::expect_identical(
     as.integer(s[["attributes"]][["oauth.extra_token_params_count"]]),
     1L
@@ -1082,19 +1126,28 @@ otel_e2e("token.exchange span captures request and response attributes", {
     1L
   )
   testthat::expect_identical(s[["attributes"]][["oauth.token_type"]], "Bearer")
-  testthat::expect_identical(s[["attributes"]][["oauth.received_id_token"]], TRUE)
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.received_id_token"]],
+    TRUE
+  )
   testthat::expect_identical(
     s[["attributes"]][["oauth.received_refresh_token"]],
     TRUE
   )
   testthat::expect_null(s[["attributes"]][["oauth.scopes.granted"]])
-  testthat::expect_identical(s[["attributes"]][["oauth.expires_in_present"]], TRUE)
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.expires_in_present"]],
+    TRUE
+  )
   testthat::expect_identical(
     s[["attributes"]][["oauth.expires_in_synthesized"]],
     FALSE
   )
   testthat::expect_identical(s[["attributes"]][["oauth.scope.present"]], TRUE)
-  testthat::expect_identical(s[["attributes"]][["shiny.session.is_async"]], TRUE)
+  testthat::expect_identical(
+    s[["attributes"]][["shiny.session.is_async"]],
+    TRUE
+  )
 })
 
 otel_e2e("token.exchange span captures sender-constraint inference attributes", {
@@ -1179,9 +1232,18 @@ otel_e2e("token.verify span captures validation decision attributes", {
   })
 
   s <- r[["traces"]][["shinyOAuth.token.verify"]]
-  testthat::expect_identical(s[["attributes"]][["oauth.id_token.required"]], TRUE)
-  testthat::expect_identical(s[["attributes"]][["oauth.id_token.present"]], TRUE)
-  testthat::expect_identical(s[["attributes"]][["oauth.id_token.validated"]], TRUE)
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.id_token.required"]],
+    TRUE
+  )
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.id_token.present"]],
+    TRUE
+  )
+  testthat::expect_identical(
+    s[["attributes"]][["oauth.id_token.validated"]],
+    TRUE
+  )
   testthat::expect_identical(s[["attributes"]][["oauth.nonce.required"]], TRUE)
   testthat::expect_identical(
     s[["attributes"]][["oauth.scope.validation_mode"]],
@@ -1203,7 +1265,10 @@ otel_e2e("token.verify span captures validation decision attributes", {
     1L
   )
   testthat::expect_identical(s[["attributes"]][["oauth.refresh_flow"]], FALSE)
-  testthat::expect_identical(s[["attributes"]][["shiny.session.is_async"]], TRUE)
+  testthat::expect_identical(
+    s[["attributes"]][["shiny.session.is_async"]],
+    TRUE
+  )
 })
 
 otel_e2e("token.verify exports final decision attributes once", {
@@ -1346,7 +1411,9 @@ otel_e2e("userinfo HTTP response attributes stay on HTTP child span", {
     http_span[["attributes"]][["http.response.content_type"]],
     "application/json"
   )
-  testthat::expect_null(parent_span[["attributes"]][["http.response.status_code"]])
+  testthat::expect_null(parent_span[["attributes"]][[
+    "http.response.status_code"
+  ]])
   testthat::expect_identical(
     parent_span[["attributes"]][["oauth.userinfo.jwt_required"]],
     FALSE
@@ -1431,7 +1498,10 @@ otel_e2e("userinfo spans capture sender-constraint details", {
   parent_span <- r[["traces"]][["shinyOAuth.userinfo"]]
   http_span <- r[["traces"]][["shinyOAuth.userinfo.http"]]
 
-  testthat::expect_identical(parent_span[["attributes"]][["oauth.dpop.bound"]], TRUE)
+  testthat::expect_identical(
+    parent_span[["attributes"]][["oauth.dpop.bound"]],
+    TRUE
+  )
   testthat::expect_identical(
     parent_span[["attributes"]][["oauth.dpop.token_type_inferred"]],
     TRUE
@@ -1448,7 +1518,9 @@ otel_e2e("userinfo HTTP span records mTLS endpoint alias selection", {
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
 
   prov <- oauth_provider(
     name = "example",
@@ -1507,7 +1579,10 @@ otel_e2e("userinfo HTTP span records mTLS endpoint alias selection", {
   parent_span <- r[["traces"]][["shinyOAuth.userinfo"]]
   http_span <- r[["traces"]][["shinyOAuth.userinfo.http"]]
 
-  testthat::expect_identical(parent_span[["attributes"]][["oauth.mtls.bound"]], TRUE)
+  testthat::expect_identical(
+    parent_span[["attributes"]][["oauth.mtls.bound"]],
+    TRUE
+  )
   testthat::expect_identical(
     http_span[["attributes"]][["oauth.mtls.endpoint_alias"]],
     "userinfo_endpoint"
@@ -1644,7 +1719,9 @@ otel_e2e("revoke_token sync emits revoke + HTTP child span", {
     )
   })
   testthat::expect_true("shinyOAuth.token.revoke" %in% names(r[["traces"]]))
-  testthat::expect_true("shinyOAuth.token.revoke.http" %in% names(r[["traces"]]))
+  testthat::expect_true(
+    "shinyOAuth.token.revoke.http" %in% names(r[["traces"]])
+  )
   testthat::expect_identical(
     r[["traces"]][["shinyOAuth.token.revoke"]][["status"]],
     "ok"
@@ -1662,7 +1739,9 @@ otel_e2e("revoke_token sync emits revoke + HTTP child span", {
     0L
   )
   testthat::expect_identical(
-    r[["traces"]][["shinyOAuth.token.revoke"]][["attributes"]][["oauth.token.which"]],
+    r[["traces"]][["shinyOAuth.token.revoke"]][["attributes"]][[
+      "oauth.token.which"
+    ]],
     "access"
   )
 })
@@ -1798,11 +1877,15 @@ otel_e2e("refresh_token sync emits span hierarchy", {
     "oauth.scopes.granted"
   ]])
   testthat::expect_identical(
-    r[["traces"]][["shinyOAuth.refresh"]][["attributes"]][["oauth.expires_in_present"]],
+    r[["traces"]][["shinyOAuth.refresh"]][["attributes"]][[
+      "oauth.expires_in_present"
+    ]],
     TRUE
   )
   testthat::expect_identical(
-    r[["traces"]][["shinyOAuth.refresh"]][["attributes"]][["oauth.scope.present"]],
+    r[["traces"]][["shinyOAuth.refresh"]][["attributes"]][[
+      "oauth.scope.present"
+    ]],
     TRUE
   )
 })

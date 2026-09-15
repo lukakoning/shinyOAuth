@@ -54,7 +54,10 @@ test_that("token exchange does not follow redirects", {
   app[["post"]]("/token", function(req, res) {
     # Return a 302 redirect to a different endpoint
     res[["set_status"]](302)
-    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["set_header"]](
+      "Location",
+      paste0(req[["protocol"]], "://", req[["host"]], "/evil")
+    )
     res[["send"]]("")
   })
   app[["post"]]("/evil", function(req, res) {
@@ -129,7 +132,10 @@ test_that("token refresh does not follow redirects", {
   app <- webfakes::new_app()
   app[["post"]]("/token", function(req, res) {
     res[["set_status"]](307)
-    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["set_header"]](
+      "Location",
+      paste0(req[["protocol"]], "://", req[["host"]], "/evil")
+    )
     res[["send"]]("")
   })
   app[["post"]]("/evil", function(req, res) {
@@ -198,7 +204,10 @@ test_that("userinfo fetch does not follow redirects", {
   app <- webfakes::new_app()
   app[["get"]]("/userinfo", function(req, res) {
     res[["set_status"]](302)
-    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["set_header"]](
+      "Location",
+      paste0(req[["protocol"]], "://", req[["host"]], "/evil")
+    )
     res[["send"]]("")
   })
   app[["get"]]("/evil", function(req, res) {
@@ -252,7 +261,10 @@ test_that("token introspection does not follow redirects", {
   app <- webfakes::new_app()
   app[["post"]]("/introspect", function(req, res) {
     res[["set_status"]](302)
-    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["set_header"]](
+      "Location",
+      paste0(req[["protocol"]], "://", req[["host"]], "/evil")
+    )
     res[["send"]]("")
   })
   app[["post"]]("/evil", function(req, res) {
@@ -315,7 +327,10 @@ test_that("token revocation does not follow redirects", {
   app <- webfakes::new_app()
   app[["post"]]("/revoke", function(req, res) {
     res[["set_status"]](307)
-    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["set_header"]](
+      "Location",
+      paste0(req[["protocol"]], "://", req[["host"]], "/evil")
+    )
     res[["send"]]("")
   })
   app[["post"]]("/evil", function(req, res) {
@@ -380,7 +395,10 @@ test_that("OIDC discovery does not follow redirects", {
   app <- webfakes::new_app()
   app[["get"]]("/.well-known/openid-configuration", function(req, res) {
     res[["set_status"]](302)
-    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["set_header"]](
+      "Location",
+      paste0(req[["protocol"]], "://", req[["host"]], "/evil")
+    )
     res[["send"]]("")
   })
   app[["get"]]("/evil", function(req, res) {
@@ -388,8 +406,18 @@ test_that("OIDC discovery does not follow redirects", {
     res[["send_json"]](
       object = list(
         issuer = paste0(req[["protocol"]], "://", req[["host"]]),
-        authorization_endpoint = paste0(req[["protocol"]], "://", req[["host"]], "/auth"),
-        token_endpoint = paste0(req[["protocol"]], "://", req[["host"]], "/token"),
+        authorization_endpoint = paste0(
+          req[["protocol"]],
+          "://",
+          req[["host"]],
+          "/auth"
+        ),
+        token_endpoint = paste0(
+          req[["protocol"]],
+          "://",
+          req[["host"]],
+          "/token"
+        ),
         jwks_uri = paste0(req[["protocol"]], "://", req[["host"]], "/jwks")
       ),
       auto_unbox = TRUE

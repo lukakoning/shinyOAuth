@@ -159,7 +159,8 @@ connection_owner_origin <- function(origin, policy) {
   parsed <- resource_binding_components(origin, base = TRUE)
   if (
     parsed[["path"]] != "/" ||
-      (parsed[["scheme"]] != "https" && !isTRUE(policy[["allow_http_loopback"]]))
+      (parsed[["scheme"]] != "https" &&
+        !isTRUE(policy[["allow_http_loopback"]]))
   ) {
     err_config("Owner origin must be HTTPS without a path, query or fragment")
   }
@@ -266,7 +267,8 @@ connection_browser_sessions <- function(
   clock = function() as.numeric(Sys.time())
 ) {
   if (
-    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy[["mode"]], "browser")
+    !inherits(policy, "OAuthOwnerPolicy") ||
+      !identical(policy[["mode"]], "browser")
   ) {
     err_config("Browser sessions require a browser owner policy")
   }
@@ -311,7 +313,8 @@ connection_browser_sessions <- function(
       return(NULL)
     }
     if (
-      at >= record[["expires_at"]] || at >= record[["last_seen"]] + policy[["idle_timeout"]]
+      at >= record[["expires_at"]] ||
+        at >= record[["last_seen"]] + policy[["idle_timeout"]]
     ) {
       expire(id)
       return(NULL)
@@ -331,7 +334,10 @@ connection_browser_sessions <- function(
       return(NULL)
     }
     record <- current(owner[["id"]])
-    if (is.null(record) || !identical(record[["generation"]], owner[["generation"]])) {
+    if (
+      is.null(record) ||
+        !identical(record[["generation"]], owner[["generation"]])
+    ) {
       return(NULL)
     }
     snapshot(current(owner[["id"]], touch))
@@ -417,7 +423,8 @@ connection_account_identity <- function(
   clock = function() as.numeric(Sys.time())
 ) {
   if (
-    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy[["mode"]], "account")
+    !inherits(policy, "OAuthOwnerPolicy") ||
+      !identical(policy[["mode"]], "account")
   ) {
     err_config("Account ownership requires an account owner policy")
   }
@@ -539,7 +546,8 @@ connection_account_sessions <- function(
   clock = function() as.numeric(Sys.time())
 ) {
   if (
-    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy[["mode"]], "account")
+    !inherits(policy, "OAuthOwnerPolicy") ||
+      !identical(policy[["mode"]], "account")
   ) {
     err_config("Account sessions require an account owner policy")
   }
@@ -601,9 +609,13 @@ connection_account_sessions <- function(
     if (!identical(record[["id"]], verified[["id"]])) {
       err_token("Owner session is unavailable")
     }
-    record[["expires_at"]] <- min(record[["expires_at"]], verified[["expires_at"]])
+    record[["expires_at"]] <- min(
+      record[["expires_at"]],
+      verified[["expires_at"]]
+    )
     if (
-      at >= record[["expires_at"]] || at >= record[["last_seen"]] + policy[["idle_timeout"]]
+      at >= record[["expires_at"]] ||
+        at >= record[["last_seen"]] + policy[["idle_timeout"]]
     ) {
       record[["retired"]] <- TRUE
     }
@@ -637,7 +649,11 @@ connection_account_sessions <- function(
       return(FALSE)
     }
     record <- records[[owner[["generation"]]]]
-    if (is.null(record) || !identical(record[["id"]], owner[["id"]]) || record[["retired"]]) {
+    if (
+      is.null(record) ||
+        !identical(record[["id"]], owner[["id"]]) ||
+        record[["retired"]]
+    ) {
       return(FALSE)
     }
     record[["retired"]] <- TRUE

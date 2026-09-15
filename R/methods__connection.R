@@ -65,7 +65,9 @@ oauth_connection <- function(
   owner <- connection_session_root(session)
   current <- connection_session_root(shiny::getDefaultReactiveDomain())
   if (
-    is.null(owner) || !identical(owner, current) || isTRUE(owner[["isClosed"]]())
+    is.null(owner) ||
+      !identical(owner, current) ||
+      isTRUE(owner[["isClosed"]]())
   ) {
     err_config("Connections must be created in their owning Shiny session")
   }
@@ -111,21 +113,29 @@ connection_record_summary <- function(record, id) {
     connection_id = id,
     client_label = record[["client"]]@label,
     status = connection_record_status(record),
-    expires_at = if (is.null(record[["token"]])) NA_real_ else record[["token"]]@expires_at,
+    expires_at = if (is.null(record[["token"]])) {
+      NA_real_
+    } else {
+      record[["token"]]@expires_at
+    },
     resource_ids = names(record[["client"]]@resource_bases)
   )
 }
 
 connection_record_status <- function(record) {
-  if (!is.null(record[["status"]]) && !identical(record[["status"]], "active")) {
+  if (
+    !is.null(record[["status"]]) && !identical(record[["status"]], "active")
+  ) {
     return(record[["status"]])
   }
   token <- record[["token"]]
   if (is.null(token)) {
     return("disconnected")
   }
-  if (client_uses_smart_scopes(record[["client"]]) &&
-    !isTRUE(token@granted_scopes_verified)) {
+  if (
+    client_uses_smart_scopes(record[["client"]]) &&
+      !isTRUE(token@granted_scopes_verified)
+  ) {
     return("insufficient_scope")
   }
   expires <- token@expires_at
@@ -204,32 +214,42 @@ connection_record_request <- function(
   ) {
     err_token("Current grant does not cover this operation")
   }
-  tryCatch({
-    if (!is.null(configure)) {
-      if (!is.function(configure)) err_input("configure must be a function")
-      template <- httr2::request(url)
-      request <- configure(template)
-      if (!inherits(request, "httr2_request")) {
-        err_input("configure must return an httr2 request")
+  tryCatch(
+    {
+      if (!is.null(configure)) {
+        if (!is.function(configure)) {
+          err_input("configure must be a function")
+        }
+        template <- httr2::request(url)
+        request <- configure(template)
+        if (!inherits(request, "httr2_request")) {
+          err_input("configure must return an httr2 request")
+        }
+        unchanged <- request
+        unchanged[c("body", "headers")] <- template[c("body", "headers")]
+        if (
+          !identical(unchanged, template) ||
+            any(
+              tolower(names(request[["headers"]])) %in%
+                c("authorization", "dpop", "host", "proxy-authorization")
+            )
+        ) {
+          err_input(
+            "configure may only change the body and application headers"
+          )
+        }
+        url <- request
       }
-      unchanged <- request
-      unchanged[c("body", "headers")] <- template[c("body", "headers")]
-      if (!identical(unchanged, template) || any(tolower(names(request[["headers"]])) %in%
-          c("authorization", "dpop", "host", "proxy-authorization"))) {
-        err_input("configure may only change the body and application headers")
-      }
-      url <- request
-    }
-    perform_resource_req(
-      record[["token"]],
-      url,
-      method = method,
-      query = query,
-      oauth_client = record[["client"]],
-      check_url = TRUE,
-      follow_redirect = FALSE
-    )
-  },
+      perform_resource_req(
+        record[["token"]],
+        url,
+        method = method,
+        query = query,
+        oauth_client = record[["client"]],
+        check_url = TRUE,
+        follow_redirect = FALSE
+      )
+    },
     error = function(e) {
       # Transport conditions can contain a resource path, query or response body.
       # Do not expose those details through the connection's public error surface.

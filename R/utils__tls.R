@@ -73,15 +73,27 @@ req_apply_tls_policy <- function(req) {
   local_minimum <- req[["shinyOAuth_tls_minimum"]]
   if (!is.null(local_minimum)) {
     checked <- resolve_tls_policy(minimum = local_minimum)
-    if (!is.null(checked[["problem"]])) err_config(checked[["problem"]])
-    minimum <- if (identical(minimum, "1.3") || identical(local_minimum, "1.3")) "1.3" else "1.2"
+    if (!is.null(checked[["problem"]])) {
+      err_config(checked[["problem"]])
+    }
+    minimum <- if (
+      identical(minimum, "1.3") || identical(local_minimum, "1.3")
+    ) {
+      "1.3"
+    } else {
+      "1.2"
+    }
   }
-  policy <- resolve_tls_policy(minimum = minimum, request_options = req[["options"]] %||% list())
+  policy <- resolve_tls_policy(
+    minimum = minimum,
+    request_options = req[["options"]] %||% list()
+  )
   if (!is.null(policy[["problem"]])) {
     err_config(policy[["problem"]])
   }
   if (
-    is.null(policy[["minimum"]]) || !grepl("^https://", req[["url"]], ignore.case = TRUE)
+    is.null(policy[["minimum"]]) ||
+      !grepl("^https://", req[["url"]], ignore.case = TRUE)
   ) {
     return(req)
   }
@@ -99,7 +111,9 @@ req_apply_tls_policy <- function(req) {
 }
 
 client_tls_minimum <- function(client = NULL) {
-  if (is.null(client) || !client_uses_smart(client)) return(NULL)
+  if (is.null(client) || !client_uses_smart(client)) {
+    return(NULL)
+  }
   smart_assert_client_policy(client)
   "1.2"
 }

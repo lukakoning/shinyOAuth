@@ -9,7 +9,10 @@ test_that("origin records are required, expire, rotate and fail closed", {
     stdout = TRUE,
     stderr = TRUE
   )
-  expect_null(attr(output, "status", exact = TRUE), info = paste(output, collapse = "\n"))
+  expect_null(
+    attr(output, "status", exact = TRUE),
+    info = paste(output, collapse = "\n")
+  )
 })
 
 test_that("unavailable origin storage stops login before state creation", {

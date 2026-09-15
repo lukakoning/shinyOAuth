@@ -1528,7 +1528,9 @@ otel_span_context_from_headers <- function(otel_headers) {
     return(NULL)
   }
 
-  if (!isTRUE(tryCatch(parent_ctx[["is_valid"]](), error = function(...) FALSE))) {
+  if (
+    !isTRUE(tryCatch(parent_ctx[["is_valid"]](), error = function(...) FALSE))
+  ) {
     return(NULL)
   }
 

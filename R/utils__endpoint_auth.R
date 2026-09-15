@@ -195,11 +195,13 @@ resolve_endpoint_auth_method <- function(
   )
   if (length(methods) && !method %in% methods) {
     if (
-      is.null(override[["token_auth_style"]]) && "client_secret_basic" %in% methods
+      is.null(override[["token_auth_style"]]) &&
+        "client_secret_basic" %in% methods
     ) {
       style <- "header"
     } else if (
-      is.null(override[["token_auth_style"]]) && "client_secret_post" %in% methods
+      is.null(override[["token_auth_style"]]) &&
+        "client_secret_post" %in% methods
     ) {
       style <- "body"
     } else {
@@ -309,7 +311,9 @@ endpoint_auth_client <- function(client, endpoint) {
   }
   changes[["provider"]] <- provider
   changes[["endpoint_auth"]] <- list()
-  if (client_uses_smart(client) && endpoint %in% c("introspection", "revocation")) {
+  if (
+    client_uses_smart(client) && endpoint %in% c("introspection", "revocation")
+  ) {
     # SMART app-launch constraints govern the token endpoint. These temporary
     # authentication settings follow the separate endpoint's registration.
     # Request transport and response validation still use the original client.

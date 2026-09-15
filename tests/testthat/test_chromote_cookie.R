@@ -77,7 +77,10 @@ testthat::test_that("browser cookie test environment can launch Chrome", {
 
   testthat::expect_true(
     probe[["ok"]],
-    info = paste0("Unable to launch Chrome through chromote: ", probe[["message"]])
+    info = paste0(
+      "Unable to launch Chrome through chromote: ",
+      probe[["message"]]
+    )
   )
 })
 
@@ -238,7 +241,9 @@ get_browser_cookie <- function(app, name) {
     return(NULL)
   }
   name <- paste0(name, "-", binding_id)
-  cookies <- app[["get_chromote_session"]]()[["Network"]][["getAllCookies"]]()[["cookies"]]
+  cookies <- app[["get_chromote_session"]]()[["Network"]][["getAllCookies"]]()[[
+    "cookies"
+  ]]
   matches <- Filter(function(cookie) identical(cookie[["name"]], name), cookies)
   if (length(matches) == 0) {
     return(NULL)

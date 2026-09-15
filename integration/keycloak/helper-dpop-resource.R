@@ -203,10 +203,15 @@ local_select_candidate_jwks <- function(jwks, header_alg, kid = NULL) {
 local_dpop_target_uri <- function(url) {
   # Independent oracle: split the wire URI without decoding its path. Do not use
   # the package normalizer or the same parse/rebuild round trip as the client.
-  parts <- regmatches(url, regexec(
-    "^(https?)://([^/?#]+)([^?#]*)(?:[?#].*)?$",
-    url, ignore.case = TRUE, perl = TRUE
-  ))[[1L]]
+  parts <- regmatches(
+    url,
+    regexec(
+      "^(https?)://([^/?#]+)([^?#]*)(?:[?#].*)?$",
+      url,
+      ignore.case = TRUE,
+      perl = TRUE
+    )
+  )[[1L]]
   if (length(parts) != 4L) {
     stop("dpop_target_uri_invalid", call. = FALSE)
   }

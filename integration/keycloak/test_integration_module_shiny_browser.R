@@ -166,7 +166,11 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
       if (is.null(auth[["token"]])) {
         return("{}")
       }
-      jsonlite::toJSON(auth[["token"]]@userinfo, auto_unbox = TRUE, null = "null")
+      jsonlite::toJSON(
+        auth[["token"]]@userinfo,
+        auto_unbox = TRUE,
+        null = "null"
+      )
     })
   }
 

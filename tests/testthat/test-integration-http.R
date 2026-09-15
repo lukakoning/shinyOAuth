@@ -6,7 +6,10 @@ test_that("token exchange HTTP error surfaces as shinyOAuth_http_error", {
   app[["post"]]("/token", function(req, res) {
     res[["status"]] <- 400
     res[["set_type"]]("application/json")
-    res[["send"]](jsonlite::toJSON(list(error = "invalid_grant"), auto_unbox = TRUE))
+    res[["send"]](jsonlite::toJSON(
+      list(error = "invalid_grant"),
+      auto_unbox = TRUE
+    ))
   })
 
   srv <- webfakes::local_app_process(app)
@@ -141,7 +144,10 @@ test_that("userinfo success populates token userinfo when required", {
     )
   })
   app[["get"]]("/userinfo", function(req, res) {
-    res[["send_json"]](object = list(sub = "u-1", name = "Test"), auto_unbox = TRUE)
+    res[["send_json"]](
+      object = list(sub = "u-1", name = "Test"),
+      auto_unbox = TRUE
+    )
   })
   srv <- webfakes::local_app_process(app)
   base <- srv[["url"]]()

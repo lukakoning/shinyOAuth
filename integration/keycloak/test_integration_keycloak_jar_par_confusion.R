@@ -14,7 +14,10 @@
 ## from duplicate-parameter precedence.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 attacker_outer_redirect_uri <- "http://localhost:3000/attacker"
@@ -246,7 +249,10 @@ expect_jar_outer_params_do_not_override <- function(client) {
         info = login[["callback_url"]] %||% "<no callback>"
       )
       testthat::expect_false(
-        startsWith(login[["callback_url"]] %||% "", attacker_outer_redirect_uri),
+        startsWith(
+          login[["callback_url"]] %||% "",
+          attacker_outer_redirect_uri
+        ),
         info = login[["callback_url"]] %||% "<no callback>"
       )
       testthat::expect_identical(login[["state_payload"]], payload[["state"]])
@@ -266,9 +272,13 @@ expect_jar_outer_params_do_not_override <- function(client) {
         decode = TRUE
       )))
       testthat::expect_true(
-        is.character(state[["entry"]][["nonce"]]) && nzchar(state[["entry"]][["nonce"]])
+        is.character(state[["entry"]][["nonce"]]) &&
+          nzchar(state[["entry"]][["nonce"]])
       )
-      testthat::expect_identical(payload[["nonce"]], state[["entry"]][["nonce"]])
+      testthat::expect_identical(
+        payload[["nonce"]],
+        state[["entry"]][["nonce"]]
+      )
       testthat::expect_identical(
         payload[["code_challenge"]],
         original_challenge
@@ -334,12 +344,16 @@ expect_par_outer_params_do_not_override <- function(client, expected_resource) {
         attacker_outer_state
       ))
       testthat::expect_true(
-        is.character(state[["entry"]][["nonce"]]) && nzchar(state[["entry"]][["nonce"]])
+        is.character(state[["entry"]][["nonce"]]) &&
+          nzchar(state[["entry"]][["nonce"]])
       )
       testthat::expect_true(
         is.character(original_challenge) && nzchar(original_challenge)
       )
-      testthat::expect_false(identical(state[["entry"]][["nonce"]], attacker_outer_nonce))
+      testthat::expect_false(identical(
+        state[["entry"]][["nonce"]],
+        attacker_outer_nonce
+      ))
       testthat::expect_false(
         identical(original_challenge, attacker_outer_code_challenge)
       )
@@ -366,7 +380,8 @@ expect_par_outer_params_do_not_override <- function(client, expected_resource) {
         which = "access"
       )
       token_aud <- normalize_claim_values(
-        decode_compact_jwt_payload(values[["token"]]@access_token)[["aud"]] %||% NULL
+        decode_compact_jwt_payload(values[["token"]]@access_token)[["aud"]] %||%
+          NULL
       )
       intros_aud <- normalize_claim_values(intros[["raw"]][["aud"]] %||% NULL)
 
@@ -417,7 +432,10 @@ testthat::test_that("tampered JAR outer parameters still authenticate using the 
       )
 
       testthat::expect_true(
-        startsWith(tampered_login[["callback_url"]] %||% "", client@redirect_uri),
+        startsWith(
+          tampered_login[["callback_url"]] %||% "",
+          client@redirect_uri
+        ),
         info = tampered_login[["callback_url"]] %||% "<no callback>"
       )
       testthat::expect_true(is.na(parse_query_param(
@@ -500,7 +518,10 @@ testthat::test_that("Keycloak PAR-required client rejects direct authorization r
       )
 
       if (inherits(result, "try-error")) {
-        testthat::expect_s3_class(attr(result, "condition", exact = TRUE), "condition")
+        testthat::expect_s3_class(
+          attr(result, "condition", exact = TRUE),
+          "condition"
+        )
       } else {
         code <- result[["code"]] %||% NA_character_
         testthat::expect_false(

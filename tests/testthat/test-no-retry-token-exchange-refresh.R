@@ -206,7 +206,10 @@ test_that("token exchange hits server exactly once (webfakes)", {
   app[["locals"]][["attempts"]] <- 0
   # First request succeeds but simulates a slow 500 to show no retry
   app[["post"]]("/token", function(req, res) {
-    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][["attempts"]] + 1
+    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][[
+      "attempts"
+    ]] +
+      1
     # Always return 500 — a retrying client would hit this twice
     res[["set_status"]](500)
     res[["set_type"]]("application/json")
@@ -254,7 +257,10 @@ test_that("idempotent request retries 500 as before (webfakes control)", {
   app <- webfakes::new_app()
   app[["locals"]][["attempts"]] <- 0
   app[["get"]]("/flaky", function(req, res) {
-    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][["attempts"]] + 1
+    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][[
+      "attempts"
+    ]] +
+      1
     res[["set_status"]](500)
     res[["set_type"]]("text/plain")
     res[["send"]]("error")

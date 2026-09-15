@@ -9,7 +9,10 @@
 #   5. Verifying the refreshed token still works against live UserInfo
 
 if (!exists("keycloak_submit_browser_login", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 testthat::test_that("proactive refresh keeps session alive with short-lived tokens", {

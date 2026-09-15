@@ -106,7 +106,9 @@ account_fixture_app <- function(
     ) {
       return(response(400L, "Invalid login form"))
     }
-    body <- shiny::parseQueryString(rawToChar(req[["rook.input"]][["read"]](size)))
+    body <- shiny::parseQueryString(rawToChar(req[["rook.input"]][["read"]](
+      size
+    )))
     if (
       !setequal(names(body), c("username", "password")) ||
         !body[["username"]] %in% names(passwords) ||
@@ -142,12 +144,24 @@ account_fixture_app <- function(
     base <- providers[[site]]
     if (!is.null(smart_registrations)) {
       registration <- smart_registrations[[site]]
-      return(shinyOAuth::smart_client(shinyOAuth::smart_discover(registration[["fhir_base"]]),
-        client_id = registration[["client_id"]], redirect_uri = paste0(origin, "/callback/", site),
-        scopes = c("launch/patient", "patient/Patient.rs", "user/Practitioner.r", "offline_access"),
+      return(shinyOAuth::smart_client(
+        shinyOAuth::smart_discover(registration[["fhir_base"]]),
+        client_id = registration[["client_id"]],
+        redirect_uri = paste0(origin, "/callback/", site),
+        scopes = c(
+          "launch/patient",
+          "patient/Patient.rs",
+          "user/Practitioner.r",
+          "offline_access"
+        ),
         required_scopes = c("patient/Patient.r", "user/Practitioner.r"),
-        launch = "standalone", identity = "fhirUser", token_auth_style = "public", label = site,
-        authorization_server_mode = "multi_redirect_uri", authorization_server_redirect_uris = callbacks))
+        launch = "standalone",
+        identity = "fhirUser",
+        token_auth_style = "public",
+        label = site,
+        authorization_server_mode = "multi_redirect_uri",
+        authorization_server_redirect_uris = callbacks
+      ))
     }
     provider <- shinyOAuth::oauth_provider(
       name = site,
@@ -280,8 +294,12 @@ account_fixture_app <- function(
               patient <- httr2::resp_body_json(shinyOAuth::smart_patient(conn))
               user <- httr2::resp_body_json(shinyOAuth::smart_fhir_user(conn))
               expected <- smart_registrations[[selected]]
-              stopifnot(identical(patient[["resourceType"]], "Patient"), identical(patient[["id"]], expected[["patient"]]),
-                identical(user[["resourceType"]], "Practitioner"), identical(user[["id"]], expected[["practitioner"]]))
+              stopifnot(
+                identical(patient[["resourceType"]], "Patient"),
+                identical(patient[["id"]], expected[["patient"]]),
+                identical(user[["resourceType"]], "Practitioner"),
+                identical(user[["id"]], expected[["practitioner"]])
+              )
               return(paste0(selected, ":patient"))
             }
             body <- httr2::resp_body_json(connection(selected)[["request"]](
@@ -351,7 +369,9 @@ account_fixture_app <- function(
     if (req[["PATH_INFO"]] %in% c("/local/login", "/local/logout")) {
       return(local_auth(req))
     }
-    if (!startsWith(req[["PATH_INFO"]], "/callback/") && is.null(identity(req))) {
+    if (
+      !startsWith(req[["PATH_INFO"]], "/callback/") && is.null(identity(req))
+    ) {
       return(login_page())
     }
     wrapped(req)

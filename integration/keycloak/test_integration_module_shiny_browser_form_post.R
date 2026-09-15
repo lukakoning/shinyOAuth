@@ -1,7 +1,10 @@
 ## Browser E2E: form_post response mode against a live Keycloak realm
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 .read_form_post_browser_state <- function(drv) {
@@ -90,7 +93,10 @@ if (!exists("make_provider", mode = "function")) {
   testthat::skip_if_not_installed("callr")
   testthat::skip_if_not_installed("webfakes")
 
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key[["pubkey"]]), simplifyVector = FALSE)
+  jwk <- jsonlite::fromJSON(
+    jose::write_jwk(key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
   jwk[["kid"]] <- "form-post-jarm-enc-1"
   jwk[["use"]] <- "enc"
   jwk[["alg"]] <- "RSA-OAEP"

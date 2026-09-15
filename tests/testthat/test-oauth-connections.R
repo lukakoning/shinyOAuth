@@ -22,9 +22,15 @@ connection_test_headers <- function(req) {
 
 test_that("optional API configuration belongs to the existing OAuthClient", {
   provider <- make_test_provider()
-  client <- oauth_client(provider, "abc", redirect_uri = "https://app.example/callback",
-    scopes = c("read", "write"), resource_bases = c(api = "https://api.example/v1/"),
-    required_scopes = "read", label = "Example API")
+  client <- oauth_client(
+    provider,
+    "abc",
+    redirect_uri = "https://app.example/callback",
+    scopes = c("read", "write"),
+    resource_bases = c(api = "https://api.example/v1/"),
+    required_scopes = "read",
+    label = "Example API"
+  )
   expect_true(S7::S7_inherits(client, OAuthClient))
   expect_identical(client@resource_bases, c(api = "https://api.example/v1"))
   expect_identical(client@required_scopes, "read")
@@ -43,7 +49,10 @@ test_that("optional API configuration belongs to the existing OAuthClient", {
   changed@resource_bases <- c(api = "https://api.example/v2")
   expect_false(identical(connection_client_fingerprint(changed), original))
   expect_error(client@required_scopes <- "admin", "Required scopes")
-  expect_error(client@resource_bases <- c(api = "https://api.example/v1/../other"), "ambiguous")
+  expect_error(
+    client@resource_bases <- c(api = "https://api.example/v1/../other"),
+    "ambiguous"
+  )
   expect_error(client@label <- "", "label")
 })
 
@@ -52,13 +61,27 @@ test_that("ordinary clients can omit connection configuration and use existing h
   expect_identical(client@resource_bases, character())
   expect_identical(client@required_scopes, character())
   expect_identical(client@label, client@provider@name)
-  request <- resource_req(connection_test_token(scopes = "read"),
-    "https://api.example/records", oauth_client = client)
-  expect_identical(connection_test_headers(request)[["authorization"]], "Bearer synthetic-access")
-  expect_error(oauth_connections(list(api = client), "https://app.example"), "resource_bases")
-  expect_error(oauth_connections(list(client), "https://app.example"), "named list")
-  expect_false(any(c("oauth_target", "smart_target", "OAuthConnectionRef") %in%
-    getNamespaceExports("shinyOAuth")))
+  request <- resource_req(
+    connection_test_token(scopes = "read"),
+    "https://api.example/records",
+    oauth_client = client
+  )
+  expect_identical(
+    connection_test_headers(request)[["authorization"]],
+    "Bearer synthetic-access"
+  )
+  expect_error(
+    oauth_connections(list(api = client), "https://app.example"),
+    "resource_bases"
+  )
+  expect_error(
+    oauth_connections(list(client), "https://app.example"),
+    "named list"
+  )
+  expect_false(any(
+    c("oauth_target", "smart_target", "OAuthConnectionRef") %in%
+      getNamespaceExports("shinyOAuth")
+  ))
 })
 
 test_that("each session connection uses its own current credentials and complete base", {
@@ -94,9 +117,14 @@ test_that("each session connection uses its own current credentials and complete
       expect_s3_class(a, "OAuthConnection")
       expect_false(identical(a[["id"]], b[["id"]]))
       base_request <- a[["request"]]("api", query = list(page = 2))
-      expect_identical(base_request[["url"]], "https://api.example/site-a/v1?page=2")
-      expect_identical(connection_test_headers(base_request)[["authorization"]],
-        "Bearer synthetic-a")
+      expect_identical(
+        base_request[["url"]],
+        "https://api.example/site-a/v1?page=2"
+      )
+      expect_identical(
+        connection_test_headers(base_request)[["authorization"]],
+        "Bearer synthetic-a"
+      )
       expect_false(base_request[["options"]][["followlocation"]])
       req_a <- a[["request"]]("api", "records", query = list(page = 2))
       req_b <- b[["request"]]("api", "records")
@@ -115,10 +143,15 @@ test_that("each session connection uses its own current credentials and complete
         "Bearer synthetic-b"
       )
       expect_false(req_a[["options"]][["followlocation"]])
-      expect_error(a[["request"]]("api", req_b[["url"]]), "approved base|ambiguous")
+      expect_error(
+        a[["request"]]("api", req_b[["url"]]),
+        "approved base|ambiguous"
+      )
       source_a(connection_test_token("synthetic-a-rotated"))
       expect_identical(
-        connection_test_headers(a[["request"]]("api", "records"))[["authorization"]],
+        connection_test_headers(a[["request"]]("api", "records"))[[
+          "authorization"
+        ]],
         "Bearer synthetic-a-rotated"
       )
       source_b(NULL)
@@ -144,7 +177,10 @@ test_that("references reject a foreign session and become unavailable when the o
   foreign <- shiny::MockShinySession[["new"]]()
   withr::defer(owner[["close"]]())
   withr::defer(foreign[["close"]]())
-  client <- connection_test_client(make_test_client(), c(api = "https://api.example/v1"))
+  client <- connection_test_client(
+    make_test_client(),
+    c(api = "https://api.example/v1")
+  )
   source <- shiny::reactive(connection_test_token())
   connection <- shiny::withReactiveDomain(
     owner,
@@ -209,7 +245,10 @@ test_that("required and optional operations use current scope evidence and expir
         expect_error(connection[["request"]]("api", "records"), "not usable")
       }
       source(connection_test_token(scopes = "write"))
-      expect_identical(connection[["summary"]]()[["status"]], "insufficient_scope")
+      expect_identical(
+        connection[["summary"]]()[["status"]],
+        "insufficient_scope"
+      )
       expect_false(connection[["is_usable"]]())
       expect_identical(calls, 1L)
     }
@@ -285,8 +324,14 @@ test_that("connection requests retain the configured mTLS certificate and bindin
     "GET",
     "read"
   )
-  expect_identical(request[["options"]][["sslcert"]], client@mtls_client_cert_file)
-  expect_identical(request[["options"]][["sslkey"]], client@mtls_client_key_file)
+  expect_identical(
+    request[["options"]][["sslcert"]],
+    client@mtls_client_cert_file
+  )
+  expect_identical(
+    request[["options"]][["sslkey"]],
+    client@mtls_client_key_file
+  )
   token@cnf <- list(`x5t#S256` = "LmpH6Yik2-D3dSsZpdndcwKkN1PcMYHtR5S6wXbUvDQ")
   expect_error(
     connection_record_request(
@@ -309,7 +354,9 @@ test_that("live connection requests send matching credentials and never follow r
     res[["send"]](req[["get_header"]]("authorization"))
   })
   app[["get"]]("/a/v1/next", function(req, res) {
-    res[["set_status"]](302L)[["set_header"]]("Location", "/b/v1/records")[["send"]]("")
+    res[["set_status"]](302L)[["set_header"]]("Location", "/b/v1/records")[[
+      "send"
+    ]]("")
   })
   app[["get"]]("/b/v1/records", function(req, res) {
     app[["locals"]][["b_requests"]] <- app[["locals"]][["b_requests"]] + 1L

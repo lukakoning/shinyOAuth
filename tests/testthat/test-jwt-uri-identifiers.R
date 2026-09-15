@@ -35,7 +35,10 @@ test_that("client assertions and JAR preserve URI identifiers", {
       )
     )
     expect_identical(parse_jwt_payload(jar)[["iss"]], client@client_id)
-    expect_identical(parse_jwt_payload(jar)[["aud"]], "urn:example:authorization")
+    expect_identical(
+      parse_jwt_payload(jar)[["aud"]],
+      "urn:example:authorization"
+    )
   }
   for (bad in c("bad:has space", "1scheme:value", "urn:bad%xx")) {
     expect_error(outbound_jwt_claim(list(iss = bad)), "Invalid URI")

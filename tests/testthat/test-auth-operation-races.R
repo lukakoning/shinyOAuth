@@ -92,7 +92,10 @@ testthat::test_that("logout invalidates pending refresh and releases its flag", 
             expires_at = as.numeric(Sys.time()) + 3600
           )
           values[["error"]] <- NULL
-          poll_for_async(function() isTRUE(values[["refresh_in_progress"]]), session)
+          poll_for_async(
+            function() isTRUE(values[["refresh_in_progress"]]),
+            session
+          )
 
           values[["logout"]]()
           testthat::expect_false(isTRUE(values[["refresh_in_progress"]]))
@@ -154,7 +157,10 @@ testthat::test_that("old refresh failure cannot clear a replacement login", {
             expires_at = as.numeric(Sys.time()) + 3600
           )
           values[["error"]] <- NULL
-          poll_for_async(function() isTRUE(values[["refresh_in_progress"]]), session)
+          poll_for_async(
+            function() isTRUE(values[["refresh_in_progress"]]),
+            session
+          )
 
           values[["logout"]]()
           values[["browser_token"]] <- "__SKIPPED__"
@@ -220,7 +226,10 @@ testthat::test_that("refresh completion requires the same source token", {
             refresh_token = "source-refresh",
             expires_at = as.numeric(Sys.time()) + 3600
           )
-          poll_for_async(function() isTRUE(values[["refresh_in_progress"]]), session)
+          poll_for_async(
+            function() isTRUE(values[["refresh_in_progress"]]),
+            session
+          )
 
           values[["token"]] <- OAuthToken(
             access_token = "replacement",

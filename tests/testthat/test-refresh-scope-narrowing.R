@@ -1,42 +1,81 @@
 narrowing_client <- function(scopes = c("read", "write"), smart = FALSE) {
   client <- make_test_client(scopes = scopes, use_nonce = FALSE)
   client@scope_validation <- "none"
-  if (smart) S7::props(client) <- list(
-    scope_policy = list(profile = "smart", version = 1L, allow_v1 = FALSE),
-    required_scopes = scopes[[1L]])
+  if (smart) {
+    S7::props(client) <- list(
+      scope_policy = list(profile = "smart", version = 1L, allow_v1 = FALSE),
+      required_scopes = scopes[[1L]]
+    )
+  }
   client
 }
 
 narrowing_token <- function(scopes = c("read", "write")) {
-  OAuthToken(access_token = "synthetic-before", refresh_token = "synthetic-refresh",
-    token_type = "Bearer", expires_at = as.numeric(Sys.time()) + 3600,
-    granted_scopes = scopes, granted_scopes_verified = TRUE,
-    initial_extra_fields = list(marker = "initial"))
+  OAuthToken(
+    access_token = "synthetic-before",
+    refresh_token = "synthetic-refresh",
+    token_type = "Bearer",
+    expires_at = as.numeric(Sys.time()) + 3600,
+    granted_scopes = scopes,
+    granted_scopes_verified = TRUE,
+    initial_extra_fields = list(marker = "initial")
+  )
 }
 
 narrowing_response <- function(req, scope = "read", rotate = TRUE) {
-  body <- list(access_token = "synthetic-after", token_type = "Bearer", expires_in = 3600)
-  if (!is.null(scope)) body[["scope"]] <- scope
-  if (rotate) body[["refresh_token"]] <- "synthetic-rotated"
-  httr2::response(url = req[["url"]], status = 200L,
+  body <- list(
+    access_token = "synthetic-after",
+    token_type = "Bearer",
+    expires_in = 3600
+  )
+  if (!is.null(scope)) {
+    body[["scope"]] <- scope
+  }
+  if (rotate) {
+    body[["refresh_token"]] <- "synthetic-rotated"
+  }
+  httr2::response(
+    url = req[["url"]],
+    status = 200L,
     headers = list("content-type" = "application/json"),
-    body = charToRaw(jsonlite::toJSON(body, auto_unbox = TRUE)))
+    body = charToRaw(jsonlite::toJSON(body, auto_unbox = TRUE))
+  )
 }
 
 narrowing_manager <- function() {
   client <- narrowing_client()
   client@redirect_uri <- "https://app.example/callback"
-  client <- connection_test_client(client, c(api = "https://api.example/v1"), "read")
-  manager <- oauth_connections(list(a = client), "https://app.example", retention = "browser",
-    owner = oauth_browser_owner(), store = oauth_connection_store_memory(),
-    keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
-  ui <- oauth_connections_ui(shiny::fluidPage("Refresh narrowing"), "health", manager)
+  client <- connection_test_client(
+    client,
+    c(api = "https://api.example/v1"),
+    "read"
+  )
+  manager <- oauth_connections(
+    list(a = client),
+    "https://app.example",
+    retention = "browser",
+    owner = oauth_browser_owner(),
+    store = oauth_connection_store_memory(),
+    keys = list(
+      credentials = openssl::rand_bytes(32),
+      owner = openssl::rand_bytes(32)
+    )
+  )
+  ui <- oauth_connections_ui(
+    shiny::fluidPage("Refresh narrowing"),
+    "health",
+    manager
+  )
   list(manager = manager, ui = ui)
 }
 
 narrowing_accept <- function(controller) {
   hooks <- controller[["hooks"]]("a")
-  hooks[["accept"]](narrowing_token(), hooks[["prepare"]](), as.numeric(Sys.time()) - 60)
+  hooks[["accept"]](
+    narrowing_token(),
+    hooks[["prepare"]](),
+    as.numeric(Sys.time()) - 60
+  )
   controller[["records"]]()[[1L]][["stored"]][["id"]]
 }
 
@@ -45,35 +84,63 @@ test_that("explicit narrowing validates syntax, grant, configuration and require
   token <- narrowing_token()
   request <- refresh_scope_request(client, token, "read read", "read")
   expect_identical(request, list(scopes = "read", required_scopes = "read"))
-  for (scopes in list(character(), "", NA_character_, list("read"), 1, "bad\\scope", strrep("x", 8193))) {
+  for (scopes in list(
+    character(),
+    "",
+    NA_character_,
+    list("read"),
+    1,
+    "bad\\scope",
+    strrep("x", 8193)
+  )) {
     expect_error(refresh_scope_request(client, token, scopes, "read"))
   }
   expect_error(refresh_scope_request(client, token, "admin", "read"), "covered")
-  expect_error(refresh_scope_request(client, token, "write", "read"), "required")
-  expect_error(refresh_scope_request(client, narrowing_token("read"), c("read", "write")), "covered")
-  expect_error(refresh_scope_request(client, narrowing_token(c("read", "admin")), "admin"), "configuration")
-  expect_error(validate_refresh_scope_request(client, token, list(scopes = "read")), "internal")
+  expect_error(
+    refresh_scope_request(client, token, "write", "read"),
+    "required"
+  )
+  expect_error(
+    refresh_scope_request(client, narrowing_token("read"), c("read", "write")),
+    "covered"
+  )
+  expect_error(
+    refresh_scope_request(client, narrowing_token(c("read", "admin")), "admin"),
+    "configuration"
+  )
+  expect_error(
+    validate_refresh_scope_request(client, token, list(scopes = "read")),
+    "internal"
+  )
 })
 
-for (omitted in c(FALSE, TRUE)) test_that(paste("scope request controls explicit and omitted responses", omitted), {
-  client <- narrowing_client()
-  client@scope_validation <- "strict"
-  token <- narrowing_token()
-  seen <- NULL
-  local_mocked_bindings(req_with_retry = function(req, ...) {
-    seen <<- req[["body"]][["data"]]
-    narrowing_response(req, if (omitted) NULL else "read")
-  })
-  result <- refresh_token_dispatch(client, token,
-    scope_request = refresh_scope_request(client, token, "read", "read"))
-  expect_identical(as.character(seen[["scope"]]), "read")
-  expect_identical(as.character(seen[["grant_type"]]), "refresh_token")
-  expect_identical(result@granted_scopes, "read")
-  expect_identical(result@granted_scopes_verified, !omitted)
-  expect_identical(result@refresh_token, "synthetic-rotated")
-  expect_identical(result@initial_extra_fields, token@initial_extra_fields)
-  expect_setequal(effective_client_scopes(client), c("read", "write"))
-})
+for (omitted in c(FALSE, TRUE)) {
+  test_that(
+    paste("scope request controls explicit and omitted responses", omitted),
+    {
+      client <- narrowing_client()
+      client@scope_validation <- "strict"
+      token <- narrowing_token()
+      seen <- NULL
+      local_mocked_bindings(req_with_retry = function(req, ...) {
+        seen <<- req[["body"]][["data"]]
+        narrowing_response(req, if (omitted) NULL else "read")
+      })
+      result <- refresh_token_dispatch(
+        client,
+        token,
+        scope_request = refresh_scope_request(client, token, "read", "read")
+      )
+      expect_identical(as.character(seen[["scope"]]), "read")
+      expect_identical(as.character(seen[["grant_type"]]), "refresh_token")
+      expect_identical(result@granted_scopes, "read")
+      expect_identical(result@granted_scopes_verified, !omitted)
+      expect_identical(result@refresh_token, "synthetic-rotated")
+      expect_identical(result@initial_extra_fields, token@initial_extra_fields)
+      expect_setequal(effective_client_scopes(client), c("read", "write"))
+    }
+  )
+}
 
 test_that("generic refresh explicitly requests its retained grant", {
   client <- narrowing_client()
@@ -84,26 +151,44 @@ test_that("generic refresh explicitly requests its retained grant", {
     narrowing_response(req, NULL)
   })
   result <- refresh_token(client, token)
-  expect_identical(utils::URLdecode(as.character(seen[["scope"]])), "read write")
+  expect_identical(
+    utils::URLdecode(as.character(seen[["scope"]])),
+    "read write"
+  )
   expect_identical(result@granted_scopes, token@granted_scopes)
   expect_false(result@granted_scopes_verified)
 })
 
-for (rotate in c(FALSE, TRUE)) test_that(paste("generic refresh preserves reductions with omitted scope", rotate), {
-  client <- narrowing_client()
-  requests <- list()
-  local_mocked_bindings(req_with_retry = function(req, ...) {
-    requests[[length(requests) + 1L]] <<- req[["body"]][["data"]]
-    narrowing_response(req, if (length(requests) == 1L) "read" else NULL, rotate)
-  })
-  first <- refresh_token(client, narrowing_token())
-  second <- refresh_token(client, unserialize(serialize(first, NULL)))
-  expect_identical(utils::URLdecode(as.character(requests[[1L]][["scope"]])), "read write")
-  expect_identical(as.character(requests[[2L]][["scope"]]), "read")
-  expect_identical(as.character(requests[[2L]][["refresh_token"]]), first@refresh_token)
-  expect_identical(second@granted_scopes, "read")
-  expect_false(second@granted_scopes_verified)
-})
+for (rotate in c(FALSE, TRUE)) {
+  test_that(
+    paste("generic refresh preserves reductions with omitted scope", rotate),
+    {
+      client <- narrowing_client()
+      requests <- list()
+      local_mocked_bindings(req_with_retry = function(req, ...) {
+        requests[[length(requests) + 1L]] <<- req[["body"]][["data"]]
+        narrowing_response(
+          req,
+          if (length(requests) == 1L) "read" else NULL,
+          rotate
+        )
+      })
+      first <- refresh_token(client, narrowing_token())
+      second <- refresh_token(client, unserialize(serialize(first, NULL)))
+      expect_identical(
+        utils::URLdecode(as.character(requests[[1L]][["scope"]])),
+        "read write"
+      )
+      expect_identical(as.character(requests[[2L]][["scope"]]), "read")
+      expect_identical(
+        as.character(requests[[2L]][["refresh_token"]]),
+        first@refresh_token
+      )
+      expect_identical(second@granted_scopes, "read")
+      expect_false(second@granted_scopes_verified)
+    }
+  )
+}
 
 test_that("generic refresh without scope evidence omits the request parameter", {
   seen <- NULL
@@ -117,16 +202,37 @@ test_that("generic refresh without scope evidence omits the request parameter", 
 })
 
 test_that("OIDC narrowing retains permission for required UserInfo before exchange", {
-  provider <- oauth_provider(name = "OIDC", issuer = "https://id.example",
-    auth_url = "https://id.example/authorize", token_url = "https://id.example/token",
-    userinfo_url = "https://id.example/userinfo", token_auth_style = "public")
-  client <- oauth_client(provider, "app", redirect_uri = "https://app.example/callback",
-    scopes = c("openid", "profile", "records.read"), required_scopes = "records.read")
+  provider <- oauth_provider(
+    name = "OIDC",
+    issuer = "https://id.example",
+    auth_url = "https://id.example/authorize",
+    token_url = "https://id.example/token",
+    userinfo_url = "https://id.example/userinfo",
+    token_auth_style = "public"
+  )
+  client <- oauth_client(
+    provider,
+    "app",
+    redirect_uri = "https://app.example/callback",
+    scopes = c("openid", "profile", "records.read"),
+    required_scopes = "records.read"
+  )
   token <- narrowing_token(client@scopes)
   requests <- 0L
-  local_mocked_bindings(req_with_retry = function(...) { requests <<- requests + 1L })
-  expect_error(refresh_token_dispatch(client, token,
-    scope_request = list(scopes = "records.read", required_scopes = "records.read")), "retain openid")
+  local_mocked_bindings(req_with_retry = function(...) {
+    requests <<- requests + 1L
+  })
+  expect_error(
+    refresh_token_dispatch(
+      client,
+      token,
+      scope_request = list(
+        scopes = "records.read",
+        required_scopes = "records.read"
+      )
+    ),
+    "retain openid"
+  )
   expect_identical(requests, 0L)
   request <- refresh_scope_request(client, token, c("openid", "records.read"))
   expect_setequal(request[["required_scopes"]], c("openid", "records.read"))
@@ -134,19 +240,38 @@ test_that("OIDC narrowing retains permission for required UserInfo before exchan
   provider@userinfo_id_token_match <- FALSE
   provider@userinfo_required <- FALSE
   client@provider <- provider
-  expect_identical(refresh_scope_request(client, token, "records.read")[["scopes"]], "records.read")
+  expect_identical(
+    refresh_scope_request(client, token, "records.read")[["scopes"]],
+    "records.read"
+  )
 })
 
 test_that("automatic SMART refresh retains server reductions across sessions", {
   clock <- new.env(parent = emptyenv())
   clock[["now"]] <- Sys.time()
   local_mocked_bindings(Sys.time = function() clock[["now"]], .package = "base")
-  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
-    scopes = "user/Patient.rs", required_scopes = "user/Patient.r")
-  manager <- oauth_connections(list(a = client), "https://app.example", retention = "browser",
-    owner = oauth_browser_owner(), store = oauth_connection_store_memory(),
-    keys = list(credentials = openssl::rand_bytes(32), owner = openssl::rand_bytes(32)))
-  f <- list(manager = manager, ui = oauth_connections_ui(shiny::fluidPage(), "health", manager))
+  client <- smart_client(
+    smart_client_fixture(),
+    "example",
+    "https://app.example/callback",
+    scopes = "user/Patient.rs",
+    required_scopes = "user/Patient.r"
+  )
+  manager <- oauth_connections(
+    list(a = client),
+    "https://app.example",
+    retention = "browser",
+    owner = oauth_browser_owner(),
+    store = oauth_connection_store_memory(),
+    keys = list(
+      credentials = openssl::rand_bytes(32),
+      owner = openssl::rand_bytes(32)
+    )
+  )
+  f <- list(
+    manager = manager,
+    ui = oauth_connections_ui(shiny::fluidPage(), "health", manager)
+  )
   cookie <- manager_test_cookie(f)
   kept <- new.env(parent = emptyenv())
   requests <- list()
@@ -160,38 +285,79 @@ test_that("automatic SMART refresh retains server reductions across sessions", {
   }
   shiny::testServer(server, session = manager_test_session(cookie), {
     hooks <- controller[["hooks"]]("a")
-    original <- smart_update_token_context(client, narrowing_token(client@scopes))
+    original <- smart_update_token_context(
+      client,
+      narrowing_token(client@scopes)
+    )
     hooks[["accept"]](original, hooks[["prepare"]](), as.numeric(Sys.time()))
     kept[["id"]] <- controller[["records"]]()[[1L]][["stored"]][["id"]]
     expect_identical(controller[["refresh"]](kept[["id"]]), TRUE)
     expect_null(requests[[1L]][["scope"]])
-    expect_identical(controller[["read"]](kept[["id"]])[["token"]]@refresh_token, "synthetic-refresh")
-    expect_identical(controller[["read"]](kept[["id"]])[["token"]]@original_granted_scopes, client@scopes)
-    expect_setequal(controller[["read"]](kept[["id"]])[["token"]]@granted_scopes, strsplit(reduced, " ")[[1L]])
+    expect_identical(
+      controller[["read"]](kept[["id"]])[["token"]]@refresh_token,
+      "synthetic-refresh"
+    )
+    expect_identical(
+      controller[["read"]](kept[["id"]])[["token"]]@original_granted_scopes,
+      client@scopes
+    )
+    expect_setequal(
+      controller[["read"]](kept[["id"]])[["token"]]@granted_scopes,
+      strsplit(reduced, " ")[[1L]]
+    )
   })
   shiny::testServer(server, session = manager_test_session(cookie), {
-    expect_identical(controller[["refresh"]](kept[["id"]], touch = FALSE), FALSE)
+    expect_identical(
+      controller[["refresh"]](kept[["id"]], touch = FALSE),
+      FALSE
+    )
     expect_length(requests, 1L)
     clock[["now"]] <- clock[["now"]] + 30
     expect_identical(controller[["refresh"]](kept[["id"]], touch = FALSE), TRUE)
-    expect_setequal(strsplit(utils::URLdecode(as.character(requests[[2L]][["scope"]])), " ")[[1L]], strsplit(reduced, " ")[[1L]])
-    expect_identical(as.character(requests[[2L]][["refresh_token"]]), "synthetic-refresh")
-    expect_identical(controller[["read"]](kept[["id"]])[["token"]]@refresh_token, "synthetic-refresh")
+    expect_setequal(
+      strsplit(utils::URLdecode(as.character(requests[[2L]][["scope"]])), " ")[[
+        1L
+      ]],
+      strsplit(reduced, " ")[[1L]]
+    )
+    expect_identical(
+      as.character(requests[[2L]][["refresh_token"]]),
+      "synthetic-refresh"
+    )
+    expect_identical(
+      controller[["read"]](kept[["id"]])[["token"]]@refresh_token,
+      "synthetic-refresh"
+    )
   })
 })
 
 test_that("automatic SMART refresh handles unsolicited grants and empty limits", {
-  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
-    scopes = "user/Patient.r", required_scopes = character())
-  token <- smart_update_token_context(client, narrowing_token(c("user/Patient.rs", "custom")))
+  client <- smart_client(
+    smart_client_fixture(),
+    "example",
+    "https://app.example/callback",
+    scopes = "user/Patient.r",
+    required_scopes = character()
+  )
+  token <- smart_update_token_context(
+    client,
+    narrowing_token(c("user/Patient.rs", "custom"))
+  )
   calls <- 0L
   seen <- NULL
   local_mocked_bindings(req_with_retry = function(req, ...) {
     calls <<- calls + 1L
     seen <<- req[["body"]][["data"]][["scope"]]
-    narrowing_response(req, paste(token@granted_scopes, collapse = " "), rotate = FALSE)
+    narrowing_response(
+      req,
+      paste(token@granted_scopes, collapse = " "),
+      rotate = FALSE
+    )
   })
-  expect_setequal(refresh_token(client, token)@granted_scopes, token@granted_scopes)
+  expect_setequal(
+    refresh_token(client, token)@granted_scopes,
+    token@granted_scopes
+  )
   expect_null(seen)
   token@granted_scopes <- character()
   error <- tryCatch(refresh_token(client, token), error = identity)
@@ -201,58 +367,118 @@ test_that("automatic SMART refresh handles unsolicited grants and empty limits",
 })
 
 test_that("SMART refresh omits semantically unchanged scope and preserves the launch baseline", {
-  client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
-    scopes = "user/Patient.rs", required_scopes = "user/Patient.r")
-  token <- smart_update_token_context(client, narrowing_token("user/Patient.rs"))
-  request <- refresh_scope_request(client, token, c("user/Patient.r", "user/Patient.s"))
+  client <- smart_client(
+    smart_client_fixture(),
+    "example",
+    "https://app.example/callback",
+    scopes = "user/Patient.rs",
+    required_scopes = "user/Patient.r"
+  )
+  token <- smart_update_token_context(
+    client,
+    narrowing_token("user/Patient.rs")
+  )
+  request <- refresh_scope_request(
+    client,
+    token,
+    c("user/Patient.r", "user/Patient.s")
+  )
   expect_null(smart_refresh_request_scopes(client, token, request))
   token@granted_scopes <- "user/Patient.r"
-  expect_identical(smart_refresh_request_scopes(client, token), "user/Patient.r")
+  expect_identical(
+    smart_refresh_request_scopes(client, token),
+    "user/Patient.r"
+  )
   expect_identical(token@original_granted_scopes, "user/Patient.rs")
 })
 
-for (scope in c("read write", "admin", "write")) test_that(paste("requested limit is enforced before UserInfo", scope), {
-  client <- narrowing_client()
-  client@provider@userinfo_url <- "https://example.com/userinfo"
-  client@provider@userinfo_required <- TRUE
-  token <- narrowing_token()
-  userinfo <- 0L
-  local_mocked_bindings(req_with_retry = function(req, ...) narrowing_response(req, scope),
-    get_userinfo = function(...) { userinfo <<- userinfo + 1L; list() })
-  error <- tryCatch(refresh_token_dispatch(client, token,
-    scope_request = refresh_scope_request(client, token, "read", "read")), error = identity)
-  expect_s3_class(error, "shinyOAuth_token_error")
-  expect_identical(error[["refresh_credential_outcome"]], "consumed")
-  expect_identical(userinfo, 0L)
-  expect_identical(token@access_token, "synthetic-before")
-})
+for (scope in c("read write", "admin", "write")) {
+  test_that(paste("requested limit is enforced before UserInfo", scope), {
+    client <- narrowing_client()
+    client@provider@userinfo_url <- "https://example.com/userinfo"
+    client@provider@userinfo_required <- TRUE
+    token <- narrowing_token()
+    userinfo <- 0L
+    local_mocked_bindings(
+      req_with_retry = function(req, ...) narrowing_response(req, scope),
+      get_userinfo = function(...) {
+        userinfo <<- userinfo + 1L
+        list()
+      }
+    )
+    error <- tryCatch(
+      refresh_token_dispatch(
+        client,
+        token,
+        scope_request = refresh_scope_request(client, token, "read", "read")
+      ),
+      error = identity
+    )
+    expect_s3_class(error, "shinyOAuth_token_error")
+    expect_identical(error[["refresh_credential_outcome"]], "consumed")
+    expect_identical(userinfo, 0L)
+    expect_identical(token@access_token, "synthetic-before")
+  })
+}
 
 test_that("introspection cannot restore permissions outside the requested limit", {
   client <- narrowing_client()
   client@provider@introspection_url <- "https://example.com/introspect"
   token <- narrowing_token()
-  local_mocked_bindings(req_with_retry = function(req, ...) narrowing_response(req),
-    introspect_token = function(...) list(supported = TRUE, active = TRUE, raw = list(scope = "read write")))
-  expect_error(refresh_token_dispatch(client, token, introspect = TRUE,
-    scope_request = refresh_scope_request(client, token, "read", "read")), "scope")
+  local_mocked_bindings(
+    req_with_retry = function(req, ...) narrowing_response(req),
+    introspect_token = function(...) {
+      list(supported = TRUE, active = TRUE, raw = list(scope = "read write"))
+    }
+  )
+  expect_error(
+    refresh_token_dispatch(
+      client,
+      token,
+      introspect = TRUE,
+      scope_request = refresh_scope_request(client, token, "read", "read")
+    ),
+    "scope"
+  )
 })
 
 test_that("SMART narrowing uses interaction coverage and keeps explicit response evidence", {
-  client <- narrowing_client(c("patient/Patient.r", "patient/*.rs"), smart = TRUE)
+  client <- narrowing_client(
+    c("patient/Patient.r", "patient/*.rs"),
+    smart = TRUE
+  )
   token <- narrowing_token(c("patient/Patient.r", "patient/Observation.rs"))
   scopes <- c("patient/Patient.r", "patient/Observation.r")
   request <- refresh_scope_request(client, token, scopes, "patient/Patient.r")
   expect_setequal(request[["scopes"]], scopes)
   expect_error(refresh_scope_request(client, token, "patient/*.r"), "covered")
-  expect_error(refresh_scope_request(client, token, "patient/Observation.r"), "required")
-  expect_error(refresh_scope_request(client, token, c("patient/Patient.r", "patient/Observation.rr")), "covered")
-  local_mocked_bindings(req_with_retry = function(req, ...) narrowing_response(req, paste(scopes, collapse = " ")))
+  expect_error(
+    refresh_scope_request(client, token, "patient/Observation.r"),
+    "required"
+  )
+  expect_error(
+    refresh_scope_request(
+      client,
+      token,
+      c("patient/Patient.r", "patient/Observation.rr")
+    ),
+    "covered"
+  )
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    narrowing_response(req, paste(scopes, collapse = " "))
+  })
   result <- refresh_token_dispatch(client, token, scope_request = request)
   expect_setequal(result@granted_scopes, scopes)
   expect_true(result@granted_scopes_verified)
   expect_no_error(validate_refresh_scope_grant(client, scopes, request))
-  expect_error(validate_refresh_scope_grant(client, token@granted_scopes, request), "scope limit")
-  expect_error(resolve_granted_scope_state(NULL, request[["scopes"]], smart = TRUE), "explicit scope")
+  expect_error(
+    validate_refresh_scope_grant(client, token@granted_scopes, request),
+    "scope limit"
+  )
+  expect_error(
+    resolve_granted_scope_state(NULL, request[["scopes"]], smart = TRUE),
+    "explicit scope"
+  )
 })
 
 test_that("encrypted narrowing policy survives sessions and prevents widening before a claim", {
@@ -270,24 +496,42 @@ test_that("encrypted narrowing policy survives sessions and prevents widening be
   shiny::testServer(server, session = manager_test_session(cookie), {
     kept[["id"]] <- narrowing_accept(controller)
     before <- controller[["read"]](kept[["id"]])
-    expect_error(controller[["refresh"]](kept[["id"]], scopes = "write"), "required")
+    expect_error(
+      controller[["refresh"]](kept[["id"]], scopes = "write"),
+      "required"
+    )
     expect_length(requests, 0L)
-    expect_identical(controller[["read"]](kept[["id"]])[["stored"]][["revision"]], before[["stored"]][["revision"]])
+    expect_identical(
+      controller[["read"]](kept[["id"]])[["stored"]][["revision"]],
+      before[["stored"]][["revision"]]
+    )
     expect_true(controller[["refresh"]](kept[["id"]], scopes = "read"))
     after <- controller[["read"]](kept[["id"]])
     expect_true(after[["refresh_scope_narrowed"]])
     expect_identical(after[["authenticated_at"]], before[["authenticated_at"]])
-    expect_identical(after[["stored"]][["expires_at"]], before[["stored"]][["expires_at"]])
+    expect_identical(
+      after[["stored"]][["expires_at"]],
+      before[["stored"]][["expires_at"]]
+    )
     expect_null(after[["stored"]][["refresh_scope_narrowed"]])
-    expect_error(controller[["refresh"]](kept[["id"]], scopes = c("read", "write")), "covered")
+    expect_error(
+      controller[["refresh"]](kept[["id"]], scopes = c("read", "write")),
+      "covered"
+    )
     expect_length(requests, 1L)
-    expect_identical(controller[["read"]](kept[["id"]])[["stored"]][["revision"]], after[["stored"]][["revision"]])
+    expect_identical(
+      controller[["read"]](kept[["id"]])[["stored"]][["revision"]],
+      after[["stored"]][["revision"]]
+    )
   })
   shiny::testServer(server, session = manager_test_session(cookie), {
     expect_true(controller[["read"]](kept[["id"]])[["refresh_scope_narrowed"]])
     expect_true(controller[["refresh"]](kept[["id"]], touch = FALSE))
     expect_identical(as.character(requests[[2L]][["scope"]]), "read")
-    expect_identical(controller[["read"]](kept[["id"]])[["token"]]@granted_scopes, "read")
+    expect_identical(
+      controller[["read"]](kept[["id"]])[["token"]]@granted_scopes,
+      "read"
+    )
   })
 })
 
@@ -296,33 +540,52 @@ test_that("provider rejection never retries without scope or activates a failed 
   calls <- 0L
   local_mocked_bindings(req_with_retry = function(req, ...) {
     calls <<- calls + 1L
-    stop(refresh_outcome_error(simpleError("provider declined requested permissions"), "not_consumed"))
+    stop(refresh_outcome_error(
+      simpleError("provider declined requested permissions"),
+      "not_consumed"
+    ))
   })
-  shiny::testServer(function(input, output, session) {
-    controller <- connection_manager_controller(f[["manager"]], session)
-  }, session = manager_test_session(manager_test_cookie(f)), {
-    id <- narrowing_accept(controller)
-    expect_error(controller[["refresh"]](id, scopes = "read"), "Connection refresh failed")
-    expect_identical(calls, 1L)
-    row <- controller[["read"]](id)
-    expect_identical(row[["status"]], "active")
-    expect_false(row[["refresh_scope_narrowed"]])
-    expect_setequal(row[["token"]]@granted_scopes, c("read", "write"))
-  })
+  shiny::testServer(
+    function(input, output, session) {
+      controller <- connection_manager_controller(f[["manager"]], session)
+    },
+    session = manager_test_session(manager_test_cookie(f)),
+    {
+      id <- narrowing_accept(controller)
+      expect_error(
+        controller[["refresh"]](id, scopes = "read"),
+        "Connection refresh failed"
+      )
+      expect_identical(calls, 1L)
+      row <- controller[["read"]](id)
+      expect_identical(row[["status"]], "active")
+      expect_false(row[["refresh_scope_narrowed"]])
+      expect_setequal(row[["token"]]@granted_scopes, c("read", "write"))
+    }
+  )
 })
 
 test_that("a rejected rotated grant makes the connection uncertain", {
   f <- narrowing_manager()
-  local_mocked_bindings(req_with_retry = function(req, ...) narrowing_response(req, "read write"))
-  shiny::testServer(function(input, output, session) {
-    controller <- connection_manager_controller(f[["manager"]], session)
-  }, session = manager_test_session(manager_test_cookie(f)), {
-    id <- narrowing_accept(controller)
-    expect_error(controller[["refresh"]](id, scopes = "read"), "Connection refresh failed")
-    expect_identical(controller[["read"]](id)[["status"]], "uncertain")
-    expect_null(controller[["read"]](id)[["token"]])
-    expect_error(controller[["refresh"]](id), "current state")
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    narrowing_response(req, "read write")
   })
+  shiny::testServer(
+    function(input, output, session) {
+      controller <- connection_manager_controller(f[["manager"]], session)
+    },
+    session = manager_test_session(manager_test_cookie(f)),
+    {
+      id <- narrowing_accept(controller)
+      expect_error(
+        controller[["refresh"]](id, scopes = "read"),
+        "Connection refresh failed"
+      )
+      expect_identical(controller[["read"]](id)[["status"]], "uncertain")
+      expect_null(controller[["read"]](id)[["token"]])
+      expect_error(controller[["refresh"]](id), "current state")
+    }
+  )
 })
 
 test_that("different pending scope requests cannot join one refresh flight", {
@@ -332,10 +595,30 @@ test_that("different pending scope requests cannot join one refresh flight", {
   deferred <- promises::promise(function(resolve, reject) finish <<- resolve)
   local_mocked_bindings(refresh_token_impl = function(...) deferred)
   request <- refresh_scope_request(client, token, "read")
-  p <- refresh_token_dispatch(client, token, async = TRUE, scope_request = request)
-  expect_identical(refresh_token_dispatch(client, token, async = TRUE, scope_request = request), p)
-  expect_error(refresh_token_dispatch(client, token, async = TRUE,
-    scope_request = refresh_scope_request(client, token, "write")), "different")
+  p <- refresh_token_dispatch(
+    client,
+    token,
+    async = TRUE,
+    scope_request = request
+  )
+  expect_identical(
+    refresh_token_dispatch(
+      client,
+      token,
+      async = TRUE,
+      scope_request = request
+    ),
+    p
+  )
+  expect_error(
+    refresh_token_dispatch(
+      client,
+      token,
+      async = TRUE,
+      scope_request = refresh_scope_request(client, token, "write")
+    ),
+    "different"
+  )
   expect_error(refresh_token(client, token, async = TRUE), "different")
   finish(narrowing_token("read"))
   done <- FALSE
@@ -349,26 +632,34 @@ test_that("disconnect prevents a pending narrowed grant from being installed", {
   finish <- NULL
   revoked <- 0L
   local_mocked_bindings(
-    refresh_token_dispatch = function(...) promises::promise(function(resolve, reject) finish <<- resolve),
+    refresh_token_dispatch = function(...) {
+      promises::promise(function(resolve, reject) finish <<- resolve)
+    },
     revoke_token = function(...) {
       revoked <<- revoked + 1L
       list(supported = TRUE, revoked = TRUE)
     }
   )
-  shiny::testServer(function(input, output, session) {
-    controller <- connection_manager_controller(f[["manager"]], session)
-  }, session = manager_test_session(manager_test_cookie(f)), {
-    id <- narrowing_accept(controller)
-    failure <- NULL
-    promises::catch(controller[["refresh"]](id, async = TRUE, scopes = "read"),
-      function(error) failure <<- error)
-    expect_identical(controller[["read"]](id)[["status"]], "refreshing")
-    controller[["disconnect"]](id, FALSE)
-    finish(narrowing_token("read"))
-    poll_for_async(function() !is.null(failure), session)
-    expect_s3_class(failure, "shinyOAuth_token_error")
-    expect_identical(controller[["read"]](id)[["status"]], "disconnected")
-    expect_null(controller[["read"]](id)[["token"]])
-    expect_identical(revoked, 0L)
-  })
+  shiny::testServer(
+    function(input, output, session) {
+      controller <- connection_manager_controller(f[["manager"]], session)
+    },
+    session = manager_test_session(manager_test_cookie(f)),
+    {
+      id <- narrowing_accept(controller)
+      failure <- NULL
+      promises::catch(
+        controller[["refresh"]](id, async = TRUE, scopes = "read"),
+        function(error) failure <<- error
+      )
+      expect_identical(controller[["read"]](id)[["status"]], "refreshing")
+      controller[["disconnect"]](id, FALSE)
+      finish(narrowing_token("read"))
+      poll_for_async(function() !is.null(failure), session)
+      expect_s3_class(failure, "shinyOAuth_token_error")
+      expect_identical(controller[["read"]](id)[["status"]], "disconnected")
+      expect_null(controller[["read"]](id)[["token"]])
+      expect_identical(revoked, 0L)
+    }
+  )
 })

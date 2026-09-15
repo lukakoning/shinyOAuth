@@ -19,7 +19,9 @@ for (index in seq_len(nrow(cases))) {
         app_function = "account_fixture_app",
         https = TRUE
       )
-      retention_evidence_env[["chrome"]] <- f[["chrome"]][["Browser"]][["getVersion"]]()[["product"]]
+      retention_evidence_env[["chrome"]] <- f[["chrome"]][["Browser"]][[
+        "getVersion"
+      ]]()[["product"]]
       browser <- f[["browser"]]
       cleanup_env <- environment()
       navigate <- function(tab) {
@@ -150,7 +152,9 @@ for (index in seq_len(nrow(cases))) {
       testthat::expect_identical(metrics("a")[["exchanges"]], 0L)
       navigate(browser)
       testthat::expect_length(login(browser, "alice")[["connections"]], 0L)
-      cookies <- browser[["Network"]][["getCookies"]](urls = list(f[["origin"]]))[["cookies"]]
+      cookies <- browser[["Network"]][["getCookies"]](
+        urls = list(f[["origin"]])
+      )[["cookies"]]
       local_cookies <- Filter(
         function(cookie) identical(cookie[["name"]], "__Host-fixture-account"),
         cookies

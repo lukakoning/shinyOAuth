@@ -5,7 +5,10 @@
 ## not issue an authorization code for downgraded or malformed PKCE requests.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 drop_query_param <- function(url, name) {

@@ -10,11 +10,12 @@
 # scopes nor infers a profile from their spelling. Unknown profiles fail closed;
 # SMART reports indeterminate coverage for unsupported syntax or implication.
 evaluate_scope_coverage <- function(
-    requested,
-    granted,
-    profile = "oauth",
-    version = 1L,
-    allow_v1 = FALSE) {
+  requested,
+  granted,
+  profile = "oauth",
+  version = 1L,
+  allow_v1 = FALSE
+) {
   if (identical(profile, "smart") && identical(version, 1L)) {
     return(smart_scope_coverage(requested, granted, allow_v1))
   }
@@ -37,7 +38,10 @@ evaluate_scope_coverage <- function(
 # An omitted scope is handled by callers; only SMART accepts an explicit empty
 # grant (SMART 2.2 scopes-and-launch-context, wildcard grant examples).
 validate_response_scope <- function(
-    scope, signal_error = err_parse, allow_empty = FALSE) {
+  scope,
+  signal_error = err_parse,
+  allow_empty = FALSE
+) {
   if (
     !is.character(scope) ||
       length(scope) != 1L ||
@@ -186,11 +190,12 @@ normalize_scope_tokens <- function(scopes) {
 #' @keywords internal
 #' @noRd
 resolve_granted_scope_state <- function(
-    token_scope,
-    requested_scopes,
-    is_refresh = FALSE,
-    previous_granted_scopes = NULL,
-    smart = FALSE) {
+  token_scope,
+  requested_scopes,
+  is_refresh = FALSE,
+  previous_granted_scopes = NULL,
+  smart = FALSE
+) {
   requested_scopes <- normalize_scope_tokens(requested_scopes)
   previous_granted_scopes <- normalize_scope_tokens(previous_granted_scopes)
 
@@ -277,20 +282,22 @@ ensure_openid_scope <- function(scopes, provider, warn = TRUE) {
 
   provider_name <- provider@name %||% "(unnamed)"
 
-  if (warn) warn_pkg(
-    "Missing `openid` scope for OIDC provider",
-    c(
-      "!" = paste0(
-        "Provider ",
-        provider_name,
-        " uses OIDC, but `openid` was not in the requested scopes."
+  if (warn) {
+    warn_pkg(
+      "Missing `openid` scope for OIDC provider",
+      c(
+        "!" = paste0(
+          "Provider ",
+          provider_name,
+          " uses OIDC, but `openid` was not in the requested scopes."
+        ),
+        "i" = "Auto-prepending `openid` to scopes per OIDC Core \u00a73.1.2.1.",
+        "i" = "Add `openid` to your `oauth_client(scopes = ...)` to silence this warning."
       ),
-      "i" = "Auto-prepending `openid` to scopes per OIDC Core \u00a73.1.2.1.",
-      "i" = "Add `openid` to your `oauth_client(scopes = ...)` to silence this warning."
-    ),
-    .frequency = "once",
-    .frequency_id = "shinyOAuth_missing_openid_scope"
-  )
+      .frequency = "once",
+      .frequency_id = "shinyOAuth_missing_openid_scope"
+    )
+  }
 
   c("openid", scopes)
 }

@@ -56,7 +56,10 @@ testthat::test_that("invalid shinyOAuth_sid input is rejected and regeneration a
       # Server should not accept this as a browser_token
       testthat::expect_null(values[["browser_token"]])
       # Module did not set a fatal error; this is auto-repaired
-      testthat::expect_false(identical(values[["error"]], "browser_cookie_error"))
+      testthat::expect_false(identical(
+        values[["error"]],
+        "browser_cookie_error"
+      ))
     }
   )
 })

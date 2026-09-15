@@ -1,12 +1,16 @@
 retention_chrome_start <- function() {
   # A cold Chrome launch can exceed chromote's ten-second default on CI.
   # Keep this bounded and local to startup; assertion timeouts stay unchanged.
-  withr::local_options(chromote.timeout = max(30, getOption("chromote.timeout", 10)))
+  withr::local_options(
+    chromote.timeout = max(30, getOption("chromote.timeout", 10))
+  )
   chrome <- tryCatch(
     chromote::Chromote[["new"]](),
     error_stop_port_search = function(...) NULL
   )
-  if (!is.null(chrome)) return(chrome)
+  if (!is.null(chrome)) {
+    return(chrome)
+  }
   # A stalled debugging port occasionally prevents a fresh CI browser from
   # starting. Release the failed launch's processx finalizers before trying
   # once more. Configuration errors and a second timeout still fail the test.
@@ -22,7 +26,10 @@ retention_chrome_close <- function(chrome) {
   # cannot produce an unhandled promise error after the test has completed.
   process <- chrome[["get_browser"]]()[["get_process"]]()
   if (process[["is_alive"]]()) {
-    tryCatch(chrome[["Browser"]][["close"]](timeout_ = 2), error = function(...) NULL)
+    tryCatch(
+      chrome[["Browser"]][["close"]](timeout_ = 2),
+      error = function(...) NULL
+    )
     process[["wait"]](timeout = 2000)
     if (process[["is_alive"]]()) {
       process[["kill"]]()
@@ -150,7 +157,9 @@ retention_browser_setup <- function(
 ) {
   port <- httpuv::randomPort()
   if (https) {
-    python <- Sys.which(if (.Platform[["OS.type"]] == "windows") "py" else "python3")
+    python <- Sys.which(
+      if (.Platform[["OS.type"]] == "windows") "py" else "python3"
+    )
     if (!nzchar(python)) {
       stop("The account browser gate requires Python 3")
     }
@@ -226,13 +235,21 @@ retention_browser_setup <- function(
   }
   if (https_providers) {
     stopifnot(https, !shared_issuer)
-    source(file.path(retention_root, "integration/smart/helper-inferno.R"), local = TRUE)
+    source(
+      file.path(retention_root, "integration/smart/helper-inferno.R"),
+      local = TRUE
+    )
     bases <- lapply(providers, function(provider) {
       upstream <- as.integer(httr2::url_parse(provider[["url"]]())[["port"]])
       inferno_tls(retention_root, upstream, .env = .env)[["origin"]]
     })
-    withr::local_envvar(CURL_CA_BUNDLE = file.path(retention_root,
-      "integration/keycloak/tls/ca-cert.pem"), .local_envir = .env)
+    withr::local_envvar(
+      CURL_CA_BUNDLE = file.path(
+        retention_root,
+        "integration/keycloak/tls/ca-cert.pem"
+      ),
+      .local_envir = .env
+    )
   }
   app_file <- normalizePath(file.path(
     retention_root,
@@ -255,7 +272,9 @@ retention_browser_setup <- function(
       Sys.setenv(CURL_SSL_BACKEND = "openssl")
       # mirai starts fresh R processes: carry the selected callr library paths
       # into those processes as well as the Shiny parent.
-      Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform[["path.sep"]]))
+      Sys.setenv(
+        R_LIBS = paste(.libPaths(), collapse = .Platform[["path.sep"]])
+      )
       source(app_file, local = TRUE)
       args <- list(origin, bases, async, response_mode = response_mode)
       if (shared_issuer) {
@@ -314,7 +333,9 @@ retention_browser_setup <- function(
   chrome <- retention_chrome_start()
   withr::defer(retention_chrome_close(chrome), envir = .env)
   new_browser <- function(chrome_instance = chrome) {
-    context <- chrome_instance[["Target"]][["createBrowserContext"]]()[["browserContextId"]]
+    context <- chrome_instance[["Target"]][["createBrowserContext"]]()[[
+      "browserContextId"
+    ]]
     target <- chrome_instance[["Target"]][["createTarget"]](
       "about:blank",
       browserContextId = context

@@ -425,7 +425,9 @@ shiny_request_object_http_handler <- function(req, client) {
         content_type = result[["headers"]][["Content-Type"]],
         content = result[["body"]],
         headers = c(
-          as.list(result[["headers"]][names(result[["headers"]]) != "Content-Type"]),
+          as.list(result[["headers"]][
+            names(result[["headers"]]) != "Content-Type"
+          ]),
           list("Referrer-Policy" = "no-referrer")
         )
       )

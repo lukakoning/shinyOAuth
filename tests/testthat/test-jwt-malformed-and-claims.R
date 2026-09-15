@@ -629,7 +629,10 @@ test_that("verify_jws_signature_no_time enforces exact JOSE ECDSA signature widt
   for (case in alg_cases) {
     key <- try(openssl::ec_keygen(curve = case[["curve"]]), silent = TRUE)
     if (inherits(key, "try-error")) {
-      testthat::skip(paste("EC key generation not supported for", case[["curve"]]))
+      testthat::skip(paste(
+        "EC key generation not supported for",
+        case[["curve"]]
+      ))
     }
 
     jwt <- jose::jwt_encode_sig(

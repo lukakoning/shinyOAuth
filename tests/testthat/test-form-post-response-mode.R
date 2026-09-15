@@ -605,7 +605,10 @@ test_that("oauth_form_post_ui audits issuer failures at the POST boundary", {
     event[["expected_issuer_digest"]],
     string_digest(cli@provider@issuer)
   )
-  expect_identical(event[["callback_issuer_digest"]], string_digest(received_issuer))
+  expect_identical(
+    event[["callback_issuer_digest"]],
+    string_digest(received_issuer)
+  )
   expect_false(identical(
     event[["expected_issuer_digest"]],
     event[["callback_issuer_digest"]]
@@ -750,7 +753,9 @@ test_that("oauth_form_post_ui hides internal callback POST failures", {
       value
     }
   )
-  login_state <- shinyOAuth:::state_decrypt_gcm(enc_state, cli@state_key)[["state"]]
+  login_state <- shinyOAuth:::state_decrypt_gcm(enc_state, cli@state_key)[[
+    "state"
+  ]]
   for (key in stored_keys) {
     assign(
       key,
@@ -787,7 +792,9 @@ test_that("oauth_form_post_ui injects shinyOAuth dependency for GET UIs", {
   rendered_ui <- ui(req)
   expect_identical(rendered_ui[["headers"]][["Referrer-Policy"]], "no-referrer")
   expect_identical(
-    length(gregexpr('src="[^"]*/shinyOAuth.js"', rendered_ui[["content"]])[[1]]),
+    length(gregexpr('src="[^"]*/shinyOAuth.js"', rendered_ui[["content"]])[[
+      1
+    ]]),
     1L
   )
   expect_identical(count_referrer_meta(rendered_ui[["content"]]), 1L)
@@ -813,7 +820,9 @@ test_that("oauth_form_post_ui does not duplicate existing helper output", {
   rendered_ui <- ui(req)
   expect_identical(rendered_ui[["headers"]][["Referrer-Policy"]], "no-referrer")
   expect_identical(
-    length(gregexpr('src="[^"]*/shinyOAuth.js"', rendered_ui[["content"]])[[1]]),
+    length(gregexpr('src="[^"]*/shinyOAuth.js"', rendered_ui[["content"]])[[
+      1
+    ]]),
     1L
   )
   expect_identical(count_referrer_meta(rendered_ui[["content"]]), 1L)
@@ -975,7 +984,10 @@ test_that("oauth_module_server revalidates cached form_post error state against 
       session[["flushReact"]]()
 
       expect_identical(values[["error"]], "invalid_state")
-      expect_match(values[["error_description"]] %||% "", "client policy mismatch")
+      expect_match(
+        values[["error_description"]] %||% "",
+        "client policy mismatch"
+      )
       expect_false(isTRUE(values[["authenticated"]]))
     }
   )
@@ -1080,7 +1092,9 @@ test_that("form_post browser-token rejection preserves login state", {
   wrong_browser_token <- paste(rep("cd", 64), collapse = "")
   url <- prepare_call(cli, browser_token = good_browser_token)
   enc_state <- parse_query_param(url, "state")
-  decoded_state <- shiny::parseQueryString(paste0("?state=", enc_state))[["state"]]
+  decoded_state <- shiny::parseQueryString(paste0("?state=", enc_state))[[
+    "state"
+  ]]
   decoded_state <- shiny::parseQueryString(paste0(
     "?state=",
     enc_state
@@ -1913,7 +1927,9 @@ test_that("repeated POSTs have bounded independent candidates and consumed state
     expect_lte(length(cli@state_store[["keys"]]()), 9L)
   }
   expect_length(cli@state_store[["keys"]](), 9L)
-  handle <- shiny::parseQueryString(first[["headers"]][["Location"]])[["shinyOAuth_form_post"]]
+  handle <- shiny::parseQueryString(first[["headers"]][["Location"]])[[
+    "shinyOAuth_form_post"
+  ]]
   expect_error(
     shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle),
     "handle mismatch"
@@ -1982,7 +1998,10 @@ test_that("maximum accepted callback fields survive the form-post bridge", {
       decode = TRUE
     )
     fields[["state"]] <- state
-    fields[["iss"]] <- paste0("https://example.com/", strrep("i", limits[["iss"]] - 20))
+    fields[["iss"]] <- paste0(
+      "https://example.com/",
+      strrep("i", limits[["iss"]] - 20)
+    )
     response <- ui(make_form_post_req(body = httr2::url_query_build(fields)))
     expect_identical(response[["status"]], 303L)
     handle <- parse_query_param(

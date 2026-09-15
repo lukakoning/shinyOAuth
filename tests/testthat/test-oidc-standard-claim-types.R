@@ -15,7 +15,10 @@ test_that("ID tokens and both UserInfo formats preserve standard claim types", {
     scopes = "openid"
   )
   key <- openssl::rsa_keygen()
-  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = FALSE)
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
   local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)))
   response <- NULL
   local_mocked_bindings(req_with_retry = function(...) response)

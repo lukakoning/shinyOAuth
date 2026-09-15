@@ -250,12 +250,18 @@ oauth_token_validate <- function(self) {
     )
   }
 
-  original_scope_error <- tryCatch({
-    validate_scopes(self@original_granted_scopes)
-    NULL
-  }, error = function(e) conditionMessage(e))
+  original_scope_error <- tryCatch(
+    {
+      validate_scopes(self@original_granted_scopes)
+      NULL
+    },
+    error = function(e) conditionMessage(e)
+  )
   if (!is.null(original_scope_error)) {
-    return(paste0("OAuthToken: invalid original_granted_scopes: ", original_scope_error))
+    return(paste0(
+      "OAuthToken: invalid original_granted_scopes: ",
+      original_scope_error
+    ))
   }
   granted_scopes <- self@granted_scopes
   if (!is.character(granted_scopes)) {

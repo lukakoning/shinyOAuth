@@ -15,11 +15,13 @@ test_that("discovery and JWKS endpoint conditions withhold private URL details",
     id_token_signing_alg_values_supported = list("RS256")
   )
   local_mocked_bindings(
-    .discover_fetch_response = function(...) httr2::response(
-      status_code = 200L,
-      headers = list("content-type" = "application/json"),
-      body = charToRaw(jsonlite::toJSON(metadata, auto_unbox = TRUE))
-    )
+    .discover_fetch_response = function(...) {
+      httr2::response(
+        status_code = 200L,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(jsonlite::toJSON(metadata, auto_unbox = TRUE))
+      )
+    }
   )
   provider <- make_test_provider(use_nonce = TRUE)
   provider@jwks_uri <- paste0(issuer, "/private-tenant?api_key=query-secret")
@@ -33,7 +35,8 @@ test_that("discovery and JWKS endpoint conditions withhold private URL details",
       }
     )
     discovery_error <- tryCatch(
-      oauth_provider_oidc_discover(issuer), error = identity
+      oauth_provider_oidc_discover(issuer),
+      error = identity
     )
     expect_s3_class(discovery_error, "shinyOAuth_config_error")
     expect_match(conditionMessage(discovery_error), "must use HTTPS")
@@ -93,16 +96,25 @@ test_that("token type and introspection client conditions bound exposed values",
       }
     )
     token_error <- tryCatch(
-      verify_token_set(client, list(
-        access_token = "access", token_type = received, expires_in = 300
-      ), nonce = NULL),
+      verify_token_set(
+        client,
+        list(
+          access_token = "access",
+          token_type = received,
+          expires_in = 300
+        ),
+        nonce = NULL
+      ),
       error = identity
     )
     introspection_error <- tryCatch(
       enforce_token_introspection_policy(
         client,
-        OAuthToken(access_token = "access", token_type = "Bearer",
-                   expires_at = as.numeric(Sys.time()) + 300),
+        OAuthToken(
+          access_token = "access",
+          token_type = "Bearer",
+          expires_at = as.numeric(Sys.time()) + 300
+        ),
         list(supported = TRUE, active = TRUE, raw = list(client_id = received))
       ),
       error = identity
@@ -111,7 +123,10 @@ test_that("token type and introspection client conditions bound exposed values",
     expect_identical(introspection_error[["context"]][["claim"]], "client_id")
     for (error in list(token_error, introspection_error)) {
       expect_s3_class(error, "shinyOAuth_token_error")
-      expect_match(error[["context"]][["received_claim_digest"]], "^[a-f0-9]{64}$")
+      expect_match(
+        error[["context"]][["received_claim_digest"]],
+        "^[a-f0-9]{64}$"
+      )
       message <- conditionMessage(error)
       expect_lt(nchar(message, type = "bytes"), 1500)
       if (expose) {

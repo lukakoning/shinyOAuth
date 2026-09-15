@@ -53,7 +53,9 @@ for (already_resolved in c(FALSE, TRUE)) {
           )
           later::run_now()
           expect_null(result)
-          session[["setInputs"]](shinyOAuth_cookie_ack = list(requestId = fresh_id))
+          session[["setInputs"]](
+            shinyOAuth_cookie_ack = list(requestId = fresh_id)
+          )
           poll_for_async(function() !is.null(result), session)
           expect_true(is_valid_string(result))
           expect_identical(values[["browser_token"]], fresh_token)

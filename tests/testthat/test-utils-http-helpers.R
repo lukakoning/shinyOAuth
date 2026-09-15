@@ -323,7 +323,10 @@ test_that("parse_token_response parses json and form encoded bodies", {
     headers = list("content-type" = "application/x-www-form-urlencoded"),
     body = charToRaw("access_token=abc&scope=read")
   )
-  expect_equal(shinyOAuth:::parse_token_response(json_resp)[["access_token"]], "abc")
+  expect_equal(
+    shinyOAuth:::parse_token_response(json_resp)[["access_token"]],
+    "abc"
+  )
   expect_equal(shinyOAuth:::parse_token_response(form_resp)[["scope"]], "read")
 })
 
@@ -550,7 +553,10 @@ test_that("req_with_retry returns 401 response immediately (no retry)", {
   app <- webfakes::new_app()
   app[["locals"]][["attempts"]] <- 0
   app[["get"]]("/unauthorized", function(req, res) {
-    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][["attempts"]] + 1
+    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][[
+      "attempts"
+    ]] +
+      1
     res[["set_status"]](401)
     res[["set_type"]]("text/plain")
     res[["send"]]("Unauthorized")
@@ -587,7 +593,10 @@ test_that("req_with_retry retries 503 and returns last response", {
   app <- webfakes::new_app()
   app[["locals"]][["attempts"]] <- 0
   app[["get"]]("/unavailable", function(req, res) {
-    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][["attempts"]] + 1
+    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][[
+      "attempts"
+    ]] +
+      1
     res[["set_status"]](503)
     res[["set_type"]]("text/plain")
     res[["send"]]("Service Unavailable")
@@ -631,7 +640,10 @@ test_that("req_with_retry succeeds on retry after transient 500", {
   app <- webfakes::new_app()
   app[["locals"]][["attempts"]] <- 0
   app[["get"]]("/flaky", function(req, res) {
-    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][["attempts"]] + 1
+    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][[
+      "attempts"
+    ]] +
+      1
     if (req[["app"]][["locals"]][["attempts"]] < 2) {
       res[["set_status"]](500)
       res[["set_type"]]("text/plain")

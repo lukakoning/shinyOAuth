@@ -4,7 +4,10 @@
 ## authorization request, and still complete the public-client PKCE code flow.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 testthat::test_that("Keycloak discovery keeps local HTTP PAR under the standard host policy", {

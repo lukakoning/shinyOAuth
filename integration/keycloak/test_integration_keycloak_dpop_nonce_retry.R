@@ -1,7 +1,10 @@
 ## Integration tests: DPoP resource nonce retry with a real Keycloak token
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 if (!exists("verify_signed_access_token", mode = "function")) {
   source(file.path(

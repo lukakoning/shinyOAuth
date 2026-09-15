@@ -64,11 +64,18 @@ run_strict_as <- function(alg) {
   browser <- strrep("ab", 64)
   get <- function(url) {
     if (is.list(url)) {
-      fields <- stats::setNames(lapply(url[["fields"]], `[[`, "value"),
-        vapply(url[["fields"]], `[[`, "", "name"))
+      fields <- stats::setNames(
+        lapply(url[["fields"]], `[[`, "value"),
+        vapply(url[["fields"]], `[[`, "", "name")
+      )
       testthat::expect_identical(url[["method"]], "POST")
-      request <- do.call(httr2::req_body_form, c(list(httr2::request(url[["url"]])), fields))
-    } else request <- httr2::request(url)
+      request <- do.call(
+        httr2::req_body_form,
+        c(list(httr2::request(url[["url"]])), fields)
+      )
+    } else {
+      request <- httr2::request(url)
+    }
     request |>
       httr2::req_options(
         cainfo = file.path(root, "ca.pem"),
@@ -128,167 +135,187 @@ run_strict_as <- function(alg) {
   first <- get(url)
   testthat::expect_identical(httr2::resp_status(first), 302L)
   replay <- get(url)
-  testthat::expect_identical(httr2::resp_body_json(replay)[["reason"]], "jar_replay")
+  testthat::expect_identical(
+    httr2::resp_body_json(replay)[["reason"]],
+    "jar_replay"
+  )
 
-  for (authorization_method in c("GET", "POST")) for (mode in c(
-    "dpop",
-    "dpop-par",
-    "mtls",
-    "mtls-par",
-    "jarm",
-    "jwt-legacy",
-    "jwt-legacy-par",
-    "jwt-oauth21",
-    "jwt-oauth21-par"
-  )) {
-    configured <- client
-    jwt_profile <- startsWith(mode, "jwt-")
-    if (jwt_profile) {
-      profile <- if (grepl("oauth21", mode)) "oauth21" else "legacy"
-      configured@provider@issuer_thus_oidc <- FALSE
-      configured@provider@token_auth_style <- "private_key_jwt"
-      configured@client_assertion_alg <- alg
-      configured@provider@token_endpoint_auth_signing_alg_values_supported <- alg
-      configured@scopes <- paste0("jwt-", profile)
-      configured@provider@introspection_url <- paste0(
-        issuer,
-        "/",
-        profile,
-        "/introspect"
-      )
-      configured@provider@revocation_url <- paste0(
-        issuer,
-        "/",
-        profile,
-        "/revoke"
-      )
-      if (profile == "oauth21") {
-        configured@client_assertion_audience <- issuer
-        configured@client_assertion_typ <- "client-authentication+jwt"
-      }
-    }
-    if (grepl("dpop", mode)) {
-      configured@dpop_private_key <- openssl::ec_keygen("P-256")
-      configured@dpop_require_access_token <- TRUE
-    }
-    if (grepl("mtls", mode)) {
-      configured@scopes <- c("openid", "mtls")
-      S7::props(configured) <- list(
-        mtls_client_cert_file = file.path(root, "client.pem"),
-        mtls_client_key_file = file.path(root, "client-key.pem"),
-        mtls_client_ca_file = file.path(root, "ca.pem")
-      )
-      configured@provider@token_auth_style <- "tls_client_auth"
-      configured@provider@mtls_client_certificate_bound_access_tokens <- TRUE
-      configured@mtls_certificate_bound_access_tokens <- TRUE
-    }
-    if (grepl("par", mode)) {
-      configured@provider@par_url <- paste0(issuer, "/par")
-    }
-    if (mode == "jarm") {
-      configured@response_mode <- "query.jwt"
-      configured@jarm_signed_response_alg <- alg
-    }
-    if (jwt_profile) {
-      assessment <- shinyOAuth::check_oauth21(
-        configured,
-        context = list(operations = c("introspection", "revocation"))
-      )
-      testthat::expect_identical(
-        assessment[["configuration_compliant"]],
-        profile == "oauth21"
-      )
-    }
-    configured@authorization_method <- authorization_method
-    url <- if (authorization_method == "POST") {
-      shinyOAuth::prepare_authorization_request(configured, browser_token = browser)
-    } else shinyOAuth::prepare_call(configured, browser_token = browser)
-    response <- get(url)
-    testthat::expect_identical(httr2::resp_status(response), 302L, info = mode)
-    testthat::expect_identical(httr2::resp_header(response, "x-fixture-authorization-method"), authorization_method)
-    callback <- query(httr2::resp_header(response, "location"))
-    if (mode != "jarm" && !jwt_profile) {
-      state <- shinyOAuth:::state_payload_decrypt_validate(
-        configured,
-        callback[["state"]]
-      )
-      saved <- shinyOAuth:::state_store_get(configured, state[["state"]])
-      unbound <- httr2::request(paste0(issuer, "/token")) |>
-        httr2::req_options(cainfo = file.path(root, "ca.pem")) |>
-        httr2::req_body_form(
-          grant_type = "authorization_code",
-          client_id = "client",
-          code = callback[["code"]],
-          redirect_uri = configured@redirect_uri,
-          code_verifier = saved[["pkce_code_verifier"]]
-        ) |>
-        httr2::req_error(is_error = function(resp) FALSE) |>
-        httr2::req_perform()
-      testthat::expect_identical(httr2::resp_status(unbound), 400L)
-      testthat::expect_identical(
-        httr2::resp_body_json(unbound)[["reason"]],
-        if (grepl("dpop", mode)) "dpop_required" else "mtls_certificate"
-      )
-    }
-    if (mode == "jarm") {
-      token <- NULL
-      shiny::testServer(
-        shinyOAuth::oauth_module_server,
-        args = list(id = "auth", client = configured, auto_redirect = FALSE),
-        {
-          session[["setInputs"]](shinyOAuth_sid = browser)
-          values[[".process_query"]](paste0("?", httr2::url_query_build(callback)))
-          session[["flushReact"]]()
-          testthat::expect_null(values[["error"]])
-          token <<- values[["token"]]
+  for (authorization_method in c("GET", "POST")) {
+    for (mode in c(
+      "dpop",
+      "dpop-par",
+      "mtls",
+      "mtls-par",
+      "jarm",
+      "jwt-legacy",
+      "jwt-legacy-par",
+      "jwt-oauth21",
+      "jwt-oauth21-par"
+    )) {
+      configured <- client
+      jwt_profile <- startsWith(mode, "jwt-")
+      if (jwt_profile) {
+        profile <- if (grepl("oauth21", mode)) "oauth21" else "legacy"
+        configured@provider@issuer_thus_oidc <- FALSE
+        configured@provider@token_auth_style <- "private_key_jwt"
+        configured@client_assertion_alg <- alg
+        configured@provider@token_endpoint_auth_signing_alg_values_supported <- alg
+        configured@scopes <- paste0("jwt-", profile)
+        configured@provider@introspection_url <- paste0(
+          issuer,
+          "/",
+          profile,
+          "/introspect"
+        )
+        configured@provider@revocation_url <- paste0(
+          issuer,
+          "/",
+          profile,
+          "/revoke"
+        )
+        if (profile == "oauth21") {
+          configured@client_assertion_audience <- issuer
+          configured@client_assertion_typ <- "client-authentication+jwt"
         }
+      }
+      if (grepl("dpop", mode)) {
+        configured@dpop_private_key <- openssl::ec_keygen("P-256")
+        configured@dpop_require_access_token <- TRUE
+      }
+      if (grepl("mtls", mode)) {
+        configured@scopes <- c("openid", "mtls")
+        S7::props(configured) <- list(
+          mtls_client_cert_file = file.path(root, "client.pem"),
+          mtls_client_key_file = file.path(root, "client-key.pem"),
+          mtls_client_ca_file = file.path(root, "ca.pem")
+        )
+        configured@provider@token_auth_style <- "tls_client_auth"
+        configured@provider@mtls_client_certificate_bound_access_tokens <- TRUE
+        configured@mtls_certificate_bound_access_tokens <- TRUE
+      }
+      if (grepl("par", mode)) {
+        configured@provider@par_url <- paste0(issuer, "/par")
+      }
+      if (mode == "jarm") {
+        configured@response_mode <- "query.jwt"
+        configured@jarm_signed_response_alg <- alg
+      }
+      if (jwt_profile) {
+        assessment <- shinyOAuth::check_oauth21(
+          configured,
+          context = list(operations = c("introspection", "revocation"))
+        )
+        testthat::expect_identical(
+          assessment[["configuration_compliant"]],
+          profile == "oauth21"
+        )
+      }
+      configured@authorization_method <- authorization_method
+      url <- if (authorization_method == "POST") {
+        shinyOAuth::prepare_authorization_request(
+          configured,
+          browser_token = browser
+        )
+      } else {
+        shinyOAuth::prepare_call(configured, browser_token = browser)
+      }
+      response <- get(url)
+      testthat::expect_identical(
+        httr2::resp_status(response),
+        302L,
+        info = mode
       )
-    } else {
-      token <- shinyOAuth:::handle_callback(
-        configured,
-        code = callback[["code"]],
-        payload = callback[["state"]],
-        browser_token = browser,
-        iss = callback[["iss"]]
+      testthat::expect_identical(
+        httr2::resp_header(response, "x-fixture-authorization-method"),
+        authorization_method
       )
-    }
-    testthat::expect_true(
-      S7::S7_inherits(token, shinyOAuth::OAuthToken),
-      info = mode
-    )
-    testthat::expect_identical(
-      token@token_type,
-      if (grepl("dpop", mode)) "DPoP" else "Bearer"
-    )
-    testthat::expect_gt(token@expires_at, as.numeric(Sys.time()))
-    if (jwt_profile) {
-      refreshed <- shinyOAuth::refresh_token(configured, token, async = FALSE)
-      testthat::expect_false(identical(
-        refreshed@refresh_token,
-        token@refresh_token
-      ))
+      callback <- query(httr2::resp_header(response, "location"))
+      if (mode != "jarm" && !jwt_profile) {
+        state <- shinyOAuth:::state_payload_decrypt_validate(
+          configured,
+          callback[["state"]]
+        )
+        saved <- shinyOAuth:::state_store_get(configured, state[["state"]])
+        unbound <- httr2::request(paste0(issuer, "/token")) |>
+          httr2::req_options(cainfo = file.path(root, "ca.pem")) |>
+          httr2::req_body_form(
+            grant_type = "authorization_code",
+            client_id = "client",
+            code = callback[["code"]],
+            redirect_uri = configured@redirect_uri,
+            code_verifier = saved[["pkce_code_verifier"]]
+          ) |>
+          httr2::req_error(is_error = function(resp) FALSE) |>
+          httr2::req_perform()
+        testthat::expect_identical(httr2::resp_status(unbound), 400L)
+        testthat::expect_identical(
+          httr2::resp_body_json(unbound)[["reason"]],
+          if (grepl("dpop", mode)) "dpop_required" else "mtls_certificate"
+        )
+      }
+      if (mode == "jarm") {
+        token <- NULL
+        shiny::testServer(
+          shinyOAuth::oauth_module_server,
+          args = list(id = "auth", client = configured, auto_redirect = FALSE),
+          {
+            session[["setInputs"]](shinyOAuth_sid = browser)
+            values[[".process_query"]](paste0(
+              "?",
+              httr2::url_query_build(callback)
+            ))
+            session[["flushReact"]]()
+            testthat::expect_null(values[["error"]])
+            token <<- values[["token"]]
+          }
+        )
+      } else {
+        token <- shinyOAuth:::handle_callback(
+          configured,
+          code = callback[["code"]],
+          payload = callback[["state"]],
+          browser_token = browser,
+          iss = callback[["iss"]]
+        )
+      }
       testthat::expect_true(
-        shinyOAuth::introspect_token(
-          configured,
-          refreshed,
-          async = FALSE
-        )[["active"]]
+        S7::S7_inherits(token, shinyOAuth::OAuthToken),
+        info = mode
       )
-      testthat::expect_true(
-        shinyOAuth::revoke_token(
-          configured,
-          refreshed,
-          which = "access",
-          async = FALSE
-        )[["revoked"]]
+      testthat::expect_identical(
+        token@token_type,
+        if (grepl("dpop", mode)) "DPoP" else "Bearer"
       )
-      testthat::expect_false(
-        shinyOAuth::introspect_token(
-          configured,
-          refreshed,
-          async = FALSE
-        )[["active"]]
-      )
+      testthat::expect_gt(token@expires_at, as.numeric(Sys.time()))
+      if (jwt_profile) {
+        refreshed <- shinyOAuth::refresh_token(configured, token, async = FALSE)
+        testthat::expect_false(identical(
+          refreshed@refresh_token,
+          token@refresh_token
+        ))
+        testthat::expect_true(
+          shinyOAuth::introspect_token(
+            configured,
+            refreshed,
+            async = FALSE
+          )[["active"]]
+        )
+        testthat::expect_true(
+          shinyOAuth::revoke_token(
+            configured,
+            refreshed,
+            which = "access",
+            async = FALSE
+          )[["revoked"]]
+        )
+        testthat::expect_false(
+          shinyOAuth::introspect_token(
+            configured,
+            refreshed,
+            async = FALSE
+          )[["active"]]
+        )
+      }
     }
   }
 }

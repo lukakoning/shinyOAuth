@@ -11,7 +11,10 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token rejection", {
@@ -99,7 +102,8 @@ testthat::test_that("Nonce tamper: removed nonce from state store", {
       # Remove the nonce from the state store entry
       ss <- get_state_store_entry(client, url)
       testthat::expect_true(
-        is.character(ss[["entry"]][["nonce"]]) && nzchar(ss[["entry"]][["nonce"]])
+        is.character(ss[["entry"]][["nonce"]]) &&
+          nzchar(ss[["entry"]][["nonce"]])
       )
 
       set_state_store_entry(
@@ -167,7 +171,10 @@ testthat::test_that("Nonce replay: nonce from flow 1 injected into flow 2", {
       # Replace flow 2's nonce with the captured nonce from flow 1
       ss2 <- get_state_store_entry(client2, url2)
       # Ensure flow 2's nonce is different (they're random)
-      testthat::expect_false(identical(ss2[["entry"]][["nonce"]], captured_nonce))
+      testthat::expect_false(identical(
+        ss2[["entry"]][["nonce"]],
+        captured_nonce
+      ))
 
       set_state_store_entry(
         client2,

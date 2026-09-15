@@ -45,7 +45,10 @@ test_that("refresh failures report the renewal credential lifecycle", {
   for (scenario in names(expected)) {
     error <- tryCatch(refresh_token(client, previous), error = identity)
     expect_s3_class(error, "error")
-    expect_identical(error[["refresh_credential_outcome"]], expected[[scenario]])
+    expect_identical(
+      error[["refresh_credential_outcome"]],
+      expected[[scenario]]
+    )
     expect_identical(previous@access_token, "previous")
     expect_identical(previous@refresh_token, "previous-refresh")
   }

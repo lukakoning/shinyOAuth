@@ -58,7 +58,9 @@ test_that("real tabs and same-origin applications retain independent pending bin
     )
     if (!is.null(token)) {
       payload[["token"]] <- token
-      if (!clear) payload[["requestId"]] <- paste0("request-", substr(token, 1L, 1L))
+      if (!clear) {
+        payload[["requestId"]] <- paste0("request-", substr(token, 1L, 1L))
+      }
     }
     evaluate(
       browser,

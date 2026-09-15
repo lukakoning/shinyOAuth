@@ -157,8 +157,14 @@ for (style in c("body", "public", "private_key_jwt")) {
           c("token", "userinfo", "introspect", "revoke", "par")
         )
         for (req in captured) {
-          expect_identical(req[["options"]][["sslcert"]], client@mtls_client_cert_file)
-          expect_identical(req[["options"]][["sslkey"]], client@mtls_client_key_file)
+          expect_identical(
+            req[["options"]][["sslcert"]],
+            client@mtls_client_cert_file
+          )
+          expect_identical(
+            req[["options"]][["sslkey"]],
+            client@mtls_client_key_file
+          )
           if (endsWith(req[["url"]], "/userinfo")) {
             next
           }
@@ -187,8 +193,14 @@ for (style in c("body", "public", "private_key_jwt")) {
             "https://resource.example.com/api",
             oauth_client = client
           )
-          expect_identical(req[["options"]][["sslcert"]], client@mtls_client_cert_file)
-          expect_identical(req[["options"]][["sslkey"]], client@mtls_client_key_file)
+          expect_identical(
+            req[["options"]][["sslcert"]],
+            client@mtls_client_cert_file
+          )
+          expect_identical(
+            req[["options"]][["sslkey"]],
+            client@mtls_client_key_file
+          )
         }
         metadata <- oauth_client_mtls_registration(client)
         expect_true(metadata[["tls_client_certificate_bound_access_tokens"]])
@@ -216,7 +228,9 @@ test_that("opaque mode permits absent confirmation but still rejects observed in
         `x5t#S256` = "Jh1awHGgMhtt6QD4R1LEuvmKJQeSaFR6xPaGVuD5C88"
       )
       if (surface %in% c("jwt", "conflict")) {
-        invalid[["access_token"]] <- build_dummy_jwt(list(cnf = invalid[["cnf"]]))
+        invalid[["access_token"]] <- build_dummy_jwt(list(
+          cnf = invalid[["cnf"]]
+        ))
         invalid[["cnf"]] <- if (surface == "jwt") {
           NULL
         } else {
@@ -280,7 +294,10 @@ test_that("opaque login and refresh validate any confirmation returned by intros
     },
     req_with_retry = function(req, ...) {
       expect_identical(req[["url"]], "https://example.com/mtls/introspect")
-      expect_identical(req[["options"]][["sslcert"]], client@mtls_client_cert_file)
+      expect_identical(
+        req[["options"]][["sslcert"]],
+        client@mtls_client_cert_file
+      )
       introspections <<- introspections + 1L
       payload <- list(active = TRUE)
       if (!is.null(confirmation)) {

@@ -40,15 +40,22 @@ testthat::test_that("browser fixtures resolve the active transaction and restore
   )
   drv <- shinytest2::AppDriver[["new"]](app, load_timeout = 15000)
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
-  drv[["wait_for_js"]]("document.getElementById('binding').innerText.length === 128")
+  drv[["wait_for_js"]](
+    "document.getElementById('binding').innerText.length === 128"
+  )
   initial <- drv[["get_value"]](output = "binding")
   cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   snapshot <- snapshot_browser_binding(drv, cookie)
-  testthat::expect_false(jsonlite::fromJSON(snapshot[["record"]])[["transaction"]])
+  testthat::expect_false(jsonlite::fromJSON(snapshot[["record"]])[[
+    "transaction"
+  ]])
   testthat::expect_false(identical(cookie[["value"]], initial))
   drv[["click"]]("clear")
   drv[["click"]]("set")
-  testthat::expect_false(identical(drv[["get_value"]](output = "binding"), initial))
+  testthat::expect_false(identical(
+    drv[["get_value"]](output = "binding"),
+    initial
+  ))
   restore_browser_binding(drv, snapshot)
   drv[["click"]]("set")
   testthat::expect_identical(drv[["get_value"]](output = "binding"), initial)
@@ -58,16 +65,23 @@ testthat::test_that("browser fixtures resolve the active transaction and restore
   )
 
   drv[["click"]]("prepare")
-  drv[["wait_for_js"]]("document.getElementById('auth_url').innerText.length > 0")
+  drv[["wait_for_js"]](
+    "document.getElementById('auth_url').innerText.length > 0"
+  )
   current <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_false(is.null(current))
   testthat::expect_false(identical(current[["name"]], cookie[["name"]]))
   # Preparing a login removes its idle predecessor once the new marker is ready.
   testthat::expect_null(get_browser_cookie(drv, cookie[["name"]]))
-  active <- jsonlite::fromJSON(snapshot_browser_binding(drv, current)[["record"]])
+  active <- jsonlite::fromJSON(snapshot_browser_binding(drv, current)[[
+    "record"
+  ]])
   testthat::expect_true(active[["transaction"]])
   testthat::expect_identical(active[["cookie"]], current[["value"]])
-  testthat::expect_identical(active[["token"]], drv[["get_value"]](output = "binding"))
+  testthat::expect_identical(
+    active[["token"]],
+    drv[["get_value"]](output = "binding")
+  )
 
   # A pending predecessor must survive, and the helper must select the new marker.
   first_auth_url <- drv[["get_value"]](output = "auth_url")
@@ -88,7 +102,10 @@ testthat::test_that("browser fixtures resolve the active transaction and restore
   )
   testthat::expect_true(active[["transaction"]])
   testthat::expect_identical(active[["cookie"]], next_cookie[["value"]])
-  testthat::expect_identical(active[["token"]], drv[["get_value"]](output = "binding"))
+  testthat::expect_identical(
+    active[["token"]],
+    drv[["get_value"]](output = "binding")
+  )
   testthat::expect_null(find_browser_token_cookie(
     drv,
     "auth",

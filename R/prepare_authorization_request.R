@@ -35,13 +35,24 @@
 #'   documented in [prepare_call()]. The result contains transient authorization
 #'   data: do not log it or expose it to other browser sessions.
 #' @export
-prepare_authorization_request <- function(oauth_client, browser_token,
-  request_uri_publisher = NULL) {
-  result <- prepare_call(oauth_client, browser_token, request_uri_publisher,
-    .authorization_request = TRUE)
-  if (is.list(result)) return(result)
+prepare_authorization_request <- function(
+  oauth_client,
+  browser_token,
+  request_uri_publisher = NULL
+) {
+  result <- prepare_call(
+    oauth_client,
+    browser_token,
+    request_uri_publisher,
+    .authorization_request = TRUE
+  )
+  if (is.list(result)) {
+    return(result)
+  }
   request <- list(method = "GET", url = as.character(result), fields = list())
-  for (name in names(attributes(result))) attr(request, name) <- attr(result, name, exact = TRUE)
+  for (name in names(attributes(result))) {
+    attr(request, name) <- attr(result, name, exact = TRUE)
+  }
   request
 }
 
@@ -52,12 +63,17 @@ authorization_front_channel <- function(client, url, params) {
     return(authorization_url_append(url, params))
   }
   resolved <- authorization_query_resolution(url, params)
-  if (!is.null(resolved[["problem"]])) err_config(resolved[["problem"]])
+  if (!is.null(resolved[["problem"]])) {
+    err_config(resolved[["problem"]])
+  }
   params <- resolved[["params"]]
   fields <- list()
   for (i in seq_along(params)) {
     for (value in as.character(params[[i]])) {
-      fields[[length(fields) + 1L]] <- list(name = names(params)[[i]], value = value)
+      fields[[length(fields) + 1L]] <- list(
+        name = names(params)[[i]],
+        value = value
+      )
     }
   }
   text <- unlist(fields, use.names = FALSE)
@@ -66,11 +82,23 @@ authorization_front_channel <- function(client, url, params) {
   # main process cannot accept a form that the browser's size check rejects.
   bytes <- as.integer(charToRaw(enc2utf8(paste(text, collapse = ""))))
   unescaped <- c(32L, 42L, 45L, 46L, 48:57, 65:90, 95L, 97:122)
-  form_size <- sum(ifelse(bytes %in% unescaped, 1L, 3L)) + max(0L, 2L * length(fields) - 1L)
-  if (length(fields) > 256L || anyNA(text) || any(grepl("[\r\n]", text)) ||
-      "_charset_" %in% chartr("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz", names(params)) ||
-      form_size > 131072L) {
-    err_config("Authorization POST exceeds form limits or contains newline characters")
+  form_size <- sum(ifelse(bytes %in% unescaped, 1L, 3L)) +
+    max(0L, 2L * length(fields) - 1L)
+  if (
+    length(fields) > 256L ||
+      anyNA(text) ||
+      any(grepl("[\r\n]", text)) ||
+      "_charset_" %in%
+        chartr(
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+          "abcdefghijklmnopqrstuvwxyz",
+          names(params)
+        ) ||
+      form_size > 131072L
+  ) {
+    err_config(
+      "Authorization POST exceeds form limits or contains newline characters"
+    )
   }
   list(method = "POST", url = url, fields = fields)
 }

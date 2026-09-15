@@ -669,13 +669,17 @@ state_client_policy_fingerprint <- function(client) {
   if (client_uses_smart_scopes(client)) {
     components[["scope_policy"]] <- client@scope_policy
   }
-  if (client_uses_smart(client)) components[["smart"]] <- client@smart
+  if (client_uses_smart(client)) {
+    components[["smart"]] <- client@smart
+  }
   if (length(client@resource_bases)) {
     bases <- normalize_resource_bases(client@resource_bases)
     components[["resource_bases"]] <- as.list(bases[sort(names(bases))])
   }
   if (length(client@required_scopes)) {
-    components[["required_scopes"]] <- normalize_scope_tokens(client@required_scopes)
+    components[["required_scopes"]] <- normalize_scope_tokens(
+      client@required_scopes
+    )
   }
   state_policy_digest(components)
 }
@@ -1455,11 +1459,18 @@ state_store_consume_checked <- function(
   .transaction_context = NULL,
   .transaction_context_digest = NULL
 ) {
-  state_record_verify_authorization_context(expected_record, .transaction_context_digest)
+  state_record_verify_authorization_context(
+    expected_record,
+    .transaction_context_digest
+  )
   # The future manager supplies the exact context only after validating its
   # intended owner and generation. Legacy callbacks cannot consume managed state.
-  if (!identical(expected_record[["transaction_context"]], .transaction_context)) {
-    err_invalid_state("Managed authorization requires its verified transaction context")
+  if (
+    !identical(expected_record[["transaction_context"]], .transaction_context)
+  ) {
+    err_invalid_state(
+      "Managed authorization requires its verified transaction context"
+    )
   }
   expected_digest <- state_store_record_digest(expected_record, client)
   consumed <- state_store_get_remove(

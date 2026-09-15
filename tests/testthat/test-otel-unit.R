@@ -660,7 +660,10 @@ testthat::test_that("otel_emit_log uses error severity for error events", {
 
   testthat::expect_length(log_calls, 1L)
   testthat::expect_identical(log_calls[[1]][["severity"]], "error")
-  testthat::expect_identical(log_calls[[1]][["msg"]], "audit_token_exchange_error")
+  testthat::expect_identical(
+    log_calls[[1]][["msg"]],
+    "audit_token_exchange_error"
+  )
 })
 
 testthat::test_that("otel_emit_log uses status-aware severity for multi-outcome events", {
@@ -840,7 +843,10 @@ testthat::test_that("otel_note_error only exposes exception.message when enabled
   )
 
   testthat::expect_true(length(set_status_calls) >= 1L)
-  testthat::expect_identical(set_status_calls[[1]][["description"]], "simpleError")
+  testthat::expect_identical(
+    set_status_calls[[1]][["description"]],
+    "simpleError"
+  )
 })
 
 # ===========================================================================

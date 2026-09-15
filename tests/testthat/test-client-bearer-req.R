@@ -535,7 +535,9 @@ test_that("prebuilt body requests consistently infer POST", {
     testthat::local_mocked_bindings(
       req_with_retry = function(req, idempotent = TRUE) {
         seen[["method"]] <- req[["method"]]
-        seen[["wire_method"]] <- httr2::req_dry_run(req, quiet = TRUE)[["method"]]
+        seen[["wire_method"]] <- httr2::req_dry_run(req, quiet = TRUE)[[
+          "method"
+        ]]
         seen[["idempotent"]] <- idempotent
         httr2::response(
           url = as.character(req[["url"]]),

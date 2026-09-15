@@ -189,7 +189,10 @@ test_that("state_store_get_remove errors on missing required fields", {
   # Entry missing only browser_token
   st2 <- "partial-fields-state"
   key2 <- shinyOAuth:::state_cache_key(st2)
-  client@state_store[["set"]](key2, list(pkce_code_verifier = "cv", nonce = "n"))
+  client@state_store[["set"]](
+    key2,
+    list(pkce_code_verifier = "cv", nonce = "n")
+  )
 
   expect_error(
     shinyOAuth:::state_store_get_remove(client, st2),

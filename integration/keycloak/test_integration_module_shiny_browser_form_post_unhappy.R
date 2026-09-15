@@ -1,7 +1,10 @@
 ## Browser E2E: form_post unhappy and attacker paths against Keycloak-backed apps
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 .make_form_post_browser_client <- function(app_port) {
@@ -594,9 +597,15 @@ if (!exists("make_provider", mode = "function")) {
     "form_post"
   )
   testthat::expect_true(is.list(login[["form_post_fields"]]))
-  testthat::expect_true(keycloak_nonempty_string(login[["form_post_fields"]][["code"]]))
-  testthat::expect_true(keycloak_nonempty_string(login[["form_post_fields"]][["state"]]))
-  testthat::expect_true(keycloak_nonempty_string(login[["form_post_fields"]][["iss"]]))
+  testthat::expect_true(keycloak_nonempty_string(login[["form_post_fields"]][[
+    "code"
+  ]]))
+  testthat::expect_true(keycloak_nonempty_string(login[["form_post_fields"]][[
+    "state"
+  ]]))
+  testthat::expect_true(keycloak_nonempty_string(login[["form_post_fields"]][[
+    "iss"
+  ]]))
   testthat::expect_true(startsWith(login[["callback_url"]], redirect_uri))
 
   login[["form_post_fields"]]
@@ -1487,7 +1496,10 @@ testthat::test_that("browser form_post.jwt callbacks with tampered browser cooki
     prefix = "shiny-form-post-jarm-csrf"
   )
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
@@ -1576,7 +1588,10 @@ testthat::test_that("browser form_post.jwt direct callbacks are rejected before 
     prefix = "shiny-form-post-jarm-direct"
   )
   on.exit(
-    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup[["admin_token"]],
+      id = setup[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
@@ -1677,7 +1692,10 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected without consum
     prefix = "shiny-form-post-jarm-swap-a"
   )
   on.exit(
-    keycloak_delete_client(setup_a[["admin_token"]], id = setup_a[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup_a[["admin_token"]],
+      id = setup_a[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
   setup_b <- .create_form_post_jarm_browser_fixture(
@@ -1685,7 +1703,10 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected without consum
     prefix = "shiny-form-post-jarm-swap-b"
   )
   on.exit(
-    keycloak_delete_client(setup_b[["admin_token"]], id = setup_b[["fixture"]][["id"]]),
+    keycloak_delete_client(
+      setup_b[["admin_token"]],
+      id = setup_b[["fixture"]][["id"]]
+    ),
     add = TRUE
   )
 
@@ -1697,7 +1718,10 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected without consum
     client_id = setup_a[["fixture"]][["client_id"]],
     module_id = "auth_a"
   )
-  on.exit(try(app_process_a[["process"]][["kill"]](), silent = TRUE), add = TRUE)
+  on.exit(
+    try(app_process_a[["process"]][["kill"]](), silent = TRUE),
+    add = TRUE
+  )
   .wait_for_form_post_jarm_browser_app(app_process_a, port_a)
 
   app_process_b <- .start_form_post_jarm_browser_app(
@@ -1708,7 +1732,10 @@ testthat::test_that("swapped form_post.jwt callbacks are rejected without consum
     client_id = setup_b[["fixture"]][["client_id"]],
     module_id = "auth_b"
   )
-  on.exit(try(app_process_b[["process"]][["kill"]](), silent = TRUE), add = TRUE)
+  on.exit(
+    try(app_process_b[["process"]][["kill"]](), silent = TRUE),
+    add = TRUE
+  )
   .wait_for_form_post_jarm_browser_app(app_process_b, port_b)
 
   drv_a <- shinytest2::AppDriver[["new"]](

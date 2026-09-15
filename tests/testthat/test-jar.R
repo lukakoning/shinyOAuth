@@ -1037,7 +1037,10 @@ test_that("JAR encryption recovers from a rotated key with a throttled refresh",
   encrypted <- parse_query_param(url, "request", decode = TRUE)
   decrypted <- jwe_compact_decrypt(encrypted, new_key)
   expect_identical(decrypted[["header"]][["kid"]], "new")
-  expect_identical(parse_jwt_payload(decrypted[["plaintext"]])[["client_id"]], "abc")
+  expect_identical(
+    parse_jwt_payload(decrypted[["plaintext"]])[["client_id"]],
+    "abc"
+  )
   expect_identical(refreshes, 1L)
   # A persistent cache/key miss must not trigger unbounded fetches.
   expect_error(
@@ -1806,7 +1809,13 @@ test_that("max_age uses its canonical name across authorization transports", {
     .package = "shinyOAuth"
   )
   for (spelling in c("max_age", "MAX_AGE", " Max_Age ")) {
-    for (transport in c("query", "par", "request", "request_par", "request_uri")) {
+    for (transport in c(
+      "query",
+      "par",
+      "request",
+      "request_par",
+      "request_uri"
+    )) {
       uses_par <- transport %in% c("par", "request_par")
       mode <- if (transport %in% c("query", "par")) {
         "parameters"
@@ -1830,15 +1839,25 @@ test_that("max_age uses its canonical name across authorization transports", {
           "https://client.example.com/request-object"
         }
       )
-      fields <- if (uses_par) pushed else shiny::parseQueryString(sub("^[^?]*[?]", "", url))
+      fields <- if (uses_par) {
+        pushed
+      } else {
+        shiny::parseQueryString(sub("^[^?]*[?]", "", url))
+      }
       if (mode == "request") {
         fields <- shinyOAuth:::parse_jwt_payload(fields[["request"]])
       } else if (mode == "request_uri") {
         fields <- shinyOAuth:::parse_jwt_payload(published)
       }
-      expect_identical(names(fields)[tolower(trimws(names(fields))) == "max_age"], "max_age")
+      expect_identical(
+        names(fields)[tolower(trimws(names(fields))) == "max_age"],
+        "max_age"
+      )
       expect_equal(as.numeric(fields[["max_age"]]), 300)
-      state <- shinyOAuth:::state_decrypt_gcm(fields[["state"]], key = client@state_key)
+      state <- shinyOAuth:::state_decrypt_gcm(
+        fields[["state"]],
+        key = client@state_key
+      )
       expect_equal(state[["max_age"]], 300)
     }
   }

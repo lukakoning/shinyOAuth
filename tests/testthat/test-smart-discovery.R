@@ -112,7 +112,10 @@ test_that("SMART OAuth-only metadata does not acquire OIDC or registration defau
 
 test_that("SMART SSO requires its own exact issuer and signing-key URL", {
   metadata <- smart_discovery_fixture()
-  metadata[["capabilities"]] <- c(metadata[["capabilities"]], "sso-openid-connect")
+  metadata[["capabilities"]] <- c(
+    metadata[["capabilities"]],
+    "sso-openid-connect"
+  )
   for (field in c("issuer", "jwks_uri")) {
     value <- metadata
     value[["issuer"]] <- "https://login.example/tenant/"
@@ -135,7 +138,10 @@ test_that("SMART SSO requires its own exact issuer and signing-key URL", {
     metadata,
     endpoint_hosts = c("EHR.EXAMPLE", "login.example", "keys.example")
   )
-  expect_identical(result[["metadata"]][["issuer"]], "https://login.example/tenant/")
+  expect_identical(
+    result[["metadata"]][["issuer"]],
+    "https://login.example/tenant/"
+  )
   expect_identical(result[["metadata"]][["jwks_uri"]], metadata[["jwks_uri"]])
   expect_null(result[["metadata"]][["userinfo_endpoint"]])
   # SMART metadata is not an OIDC discovery document and has no such defaults.
@@ -257,10 +263,16 @@ test_that("SMART asymmetric advertisements require the specified methods and alg
       class = "shinyOAuth_parse_error"
     )
   }
-  metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list("RS256")
+  metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list(
+    "RS256"
+  )
   expect_error(smart_discovery_read(metadata), "RS384 or ES384")
-  metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list("RS384")
-  metadata[["token_endpoint_auth_methods_supported"]] <- list("client_secret_basic")
+  metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list(
+    "RS384"
+  )
+  metadata[["token_endpoint_auth_methods_supported"]] <- list(
+    "client_secret_basic"
+  )
   expect_error(smart_discovery_read(metadata), "private_key_jwt")
 })
 
@@ -271,9 +283,16 @@ test_that("SMART optional recognized fields reject invalid present values", {
     "token_endpoint_auth_methods_supported",
     "token_endpoint_auth_signing_alg_values_supported"
   )) {
-    invalid <- list(NULL, "value", list(" value "), list("a\nb"),
-      structure(list(), names = character()))
-    if (!field %in% c("scopes_supported", "token_endpoint_auth_methods_supported")) {
+    invalid <- list(
+      NULL,
+      "value",
+      list(" value "),
+      list("a\nb"),
+      structure(list(), names = character())
+    )
+    if (
+      !field %in% c("scopes_supported", "token_endpoint_auth_methods_supported")
+    ) {
       invalid <- c(invalid, list(list()))
     }
     for (bad in invalid) {
@@ -292,10 +311,15 @@ test_that("SMART optional recognized fields reject invalid present values", {
 })
 
 test_that("empty discovery arrays preserve JSON type and public registration support", {
-  for (field in c("scopes_supported", "token_endpoint_auth_methods_supported")) {
+  for (field in c(
+    "scopes_supported",
+    "token_endpoint_auth_methods_supported"
+  )) {
     metadata <- smart_client_fixture()[["metadata"]]
-    metadata[["capabilities"]] <- as.list(setdiff(unlist(metadata[["capabilities"]]),
-      "client-confidential-asymmetric"))
+    metadata[["capabilities"]] <- as.list(setdiff(
+      unlist(metadata[["capabilities"]]),
+      "client-confidential-asymmetric"
+    ))
     metadata[[field]] <- NULL
     base <- as.character(jsonlite::toJSON(metadata, auto_unbox = TRUE))
     for (wire in c("[]", "{}", "null", '"value"', '[null]', '[{}]')) {
@@ -303,15 +327,32 @@ test_that("empty discovery arrays preserve JSON type and public registration sup
       if (wire == "[]") {
         site <- smart_discovery_read(body = body)
         expect_identical(site[["metadata"]][[field]], list())
-        expect_identical(smart_discovery_array(site[["metadata"]], field), character())
-        expect_no_error(smart_client(site, "example", "https://app.example/callback",
-          scopes = "user/Patient.r"))
+        expect_identical(
+          smart_discovery_array(site[["metadata"]], field),
+          character()
+        )
+        expect_no_error(smart_client(
+          site,
+          "example",
+          "https://app.example/callback",
+          scopes = "user/Patient.r"
+        ))
         if (field == "token_endpoint_auth_methods_supported") {
-          expect_error(smart_client(site, "example", "https://app.example/callback",
-            scopes = "user/Patient.r", token_auth_style = "header",
-            client_secret = "example-secret"), "method is not advertised")
+          expect_error(
+            smart_client(
+              site,
+              "example",
+              "https://app.example/callback",
+              scopes = "user/Patient.r",
+              token_auth_style = "header",
+              client_secret = "example-secret"
+            ),
+            "method is not advertised"
+          )
         }
-      } else expect_error(smart_discovery_read(body = body), field)
+      } else {
+        expect_error(smart_discovery_read(body = body), field)
+      }
     }
   }
 })
@@ -321,12 +362,20 @@ test_that("empty arrays cannot remove mandatory SMART capabilities and algorithm
   # Conditional presence does not make the non-exhaustive scope list exhaustive.
   metadata[["scopes_supported"]] <- list()
   expect_no_error(smart_discovery_read(metadata))
-  for (field in c("code_challenge_methods_supported", "grant_types_supported",
-      "capabilities", "response_types_supported", "token_endpoint_auth_methods_supported",
-      "token_endpoint_auth_signing_alg_values_supported")) {
+  for (field in c(
+    "code_challenge_methods_supported",
+    "grant_types_supported",
+    "capabilities",
+    "response_types_supported",
+    "token_endpoint_auth_methods_supported",
+    "token_endpoint_auth_signing_alg_values_supported"
+  )) {
     changed <- metadata
     changed[[field]] <- list()
-    expect_error(smart_discovery_read(changed), class = "shinyOAuth_parse_error")
+    expect_error(
+      smart_discovery_read(changed),
+      class = "shinyOAuth_parse_error"
+    )
   }
 })
 
@@ -456,7 +505,10 @@ test_that("SMART HTTP exceptions are explicit and confined to loopback", {
       endpoint_hosts = policy,
       allow_http_loopback = TRUE
     )
-    expect_identical(result[["metadata"]][["token_endpoint"]], metadata[["token_endpoint"]])
+    expect_identical(
+      result[["metadata"]][["token_endpoint"]],
+      metadata[["token_endpoint"]]
+    )
   }
 })
 

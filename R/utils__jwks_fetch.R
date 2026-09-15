@@ -231,14 +231,18 @@ fetch_authorization_server_metadata <- function(issuer, tls_minimum = NULL) {
 fetch_client_jwks <- function(client, ...) {
   args <- list(...)
   minimum <- client_tls_minimum(client)
-  if (!is.null(minimum)) args[["tls_minimum"]] <- minimum
+  if (!is.null(minimum)) {
+    args[["tls_minimum"]] <- minimum
+  }
   do.call(fetch_jwks, args)
 }
 
 force_refresh_client_jwks <- function(client, ...) {
   args <- list(...)
   minimum <- client_tls_minimum(client)
-  if (!is.null(minimum)) args[["tls_minimum"]] <- minimum
+  if (!is.null(minimum)) {
+    args[["tls_minimum"]] <- minimum
+  }
   do.call(force_refresh_provider_jwks, args)
 }
 
@@ -390,7 +394,9 @@ fetch_jwks <- function(
     )
     if (inherits(ok, "try-error")) {
       # Evict incompatible/invalid cached entry and continue to refetch
-      if (!is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])) {
+      if (
+        !is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])
+      ) {
         jwks_cache[["remove"]](cache_key)
       }
     } else {
@@ -410,14 +416,20 @@ fetch_jwks <- function(
           silent = TRUE
         )
         if (inherits(issuer_ok, "try-error")) {
-          if (!is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])) {
+          if (
+            !is.null(jwks_cache[["remove"]]) &&
+              is.function(jwks_cache[["remove"]])
+          ) {
             jwks_cache[["remove"]](cache_key)
           }
         } else {
           if (isTRUE(cached_jwks_source_valid(entry))) {
             return(entry[["jwks"]])
           }
-          if (!is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])) {
+          if (
+            !is.null(jwks_cache[["remove"]]) &&
+              is.function(jwks_cache[["remove"]])
+          ) {
             jwks_cache[["remove"]](cache_key)
           }
         }
@@ -425,7 +437,10 @@ fetch_jwks <- function(
         if (isTRUE(cached_jwks_source_valid(entry))) {
           return(entry[["jwks"]])
         }
-        if (!is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])) {
+        if (
+          !is.null(jwks_cache[["remove"]]) &&
+            is.function(jwks_cache[["remove"]])
+        ) {
           jwks_cache[["remove"]](cache_key)
         }
       }
@@ -436,8 +451,11 @@ fetch_jwks <- function(
     discovery_issuer <- issuer
     jwks_uri <- jwks_uri_override
   } else {
-    metadata <- if (is.null(tls_minimum)) fetch_authorization_server_metadata(issuer) else
+    metadata <- if (is.null(tls_minimum)) {
+      fetch_authorization_server_metadata(issuer)
+    } else {
       fetch_authorization_server_metadata(issuer, tls_minimum = tls_minimum)
+    }
     disc <- metadata[["document"]]
     discovery_issuer <- validate_discovery_issuer(
       issuer_input = issuer,
@@ -451,7 +469,10 @@ fetch_jwks <- function(
   }
   if (!is_ok_host(jwks_uri)) {
     err_config(c(
-      protocol_diagnostic_message("jwks_uri is not in an allowed host", jwks_uri),
+      protocol_diagnostic_message(
+        "jwks_uri is not in an allowed host",
+        jwks_uri
+      ),
       "i" = "See `?is_ok_host` to configure allowed hosts"
     ))
   }
@@ -657,7 +678,9 @@ force_refresh_provider_jwks <- function(
     pin_mode = pin_mode,
     provider = provider
   )
-  if (!is.null(tls_minimum)) args[["tls_minimum"]] <- tls_minimum
+  if (!is.null(tls_minimum)) {
+    args[["tls_minimum"]] <- tls_minimum
+  }
   do.call(fetch_jwks, args)
 }
 
@@ -796,7 +819,9 @@ jwks_cache_key <- function(
   key <- paste0(ih, "x", ch)
   if (!is.null(tls_minimum)) {
     policy <- resolve_tls_policy(minimum = tls_minimum)
-    if (!is.null(policy[["problem"]])) err_config(policy[["problem"]])
+    if (!is.null(policy[["problem"]])) {
+      err_config(policy[["problem"]])
+    }
     key <- paste0(key, "tls", gsub(".", "", tls_minimum, fixed = TRUE))
   }
   key

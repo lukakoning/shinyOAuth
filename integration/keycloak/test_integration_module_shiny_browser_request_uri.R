@@ -1,7 +1,10 @@
 ## Integration test: Browser E2E request_uri flow against Keycloak
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 .request_uri_public_base_url <- function(app_port) {
@@ -180,8 +183,12 @@ if (!exists("make_provider", mode = "function")) {
       source("integration/keycloak/helper-keycloak.R")
 
       parsed_public_base <- httr2::url_parse(public_base_url)
-      public_scheme <- tolower(as.character(parsed_public_base[["scheme"]] %||% ""))
-      public_host <- tolower(as.character(parsed_public_base[["hostname"]] %||% ""))
+      public_scheme <- tolower(as.character(
+        parsed_public_base[["scheme"]] %||% ""
+      ))
+      public_host <- tolower(as.character(
+        parsed_public_base[["hostname"]] %||% ""
+      ))
       public_port <- suppressWarnings(as.integer(parsed_public_base[["port"]]))
       if (
         identical(public_scheme, "https") &&
@@ -445,7 +452,10 @@ if (!exists("make_provider", mode = "function")) {
         output[["state_store_count"]] <- shiny::renderText({
           # Count logical login state (SHA-256 keys), excluding Request Objects
           # and callback bridge entries that share this store.
-          as.character(sum(grepl("^[a-f0-9]{64}$", client@state_store[["keys"]]())))
+          as.character(sum(grepl(
+            "^[a-f0-9]{64}$",
+            client@state_store[["keys"]]()
+          )))
         })
 
         output[["auth_url"]] <- shiny::renderText({
@@ -999,7 +1009,10 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
     "error_description: <none>",
     fixed = TRUE
   )
-  testthat::expect_identical(trimws(final_state[["state_store_count"]] %||% ""), "0")
+  testthat::expect_identical(
+    trimws(final_state[["state_store_count"]] %||% ""),
+    "0"
+  )
 
   user_info <- .read_request_uri_user_info(drv)
   testthat::expect_null(user_info[["preferred_username"]])
@@ -1221,7 +1234,10 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
     "oauth-authz-req+jwt"
   )
   testthat::expect_identical(request_object_meta[["header"]][["cty"]], "JWT")
-  testthat::expect_identical(request_object_meta[["header"]][["alg"]], "RSA-OAEP")
+  testthat::expect_identical(
+    request_object_meta[["header"]][["alg"]],
+    "RSA-OAEP"
+  )
   testthat::expect_identical(
     request_object_meta[["header"]][["enc"]],
     "A256CBC-HS512"
@@ -1514,9 +1530,18 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     redirect_uri = app_url_b
   )
 
-  swapped_for_a <- .replace_callback_base_url(login_b[["callback_url"]], app_url_a)
-  legit_for_a <- .replace_callback_base_url(login_a[["callback_url"]], app_url_a)
-  legit_for_b <- .replace_callback_base_url(login_b[["callback_url"]], app_url_b)
+  swapped_for_a <- .replace_callback_base_url(
+    login_b[["callback_url"]],
+    app_url_a
+  )
+  legit_for_a <- .replace_callback_base_url(
+    login_a[["callback_url"]],
+    app_url_a
+  )
+  legit_for_b <- .replace_callback_base_url(
+    login_b[["callback_url"]],
+    app_url_b
+  )
 
   .navigate_browser_to_url(drv_a, swapped_for_a)
   # The GET bridge rejects foreign state before rendering the Shiny app.

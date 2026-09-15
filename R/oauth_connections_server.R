@@ -142,7 +142,9 @@ oauth_connections_server <- function(
       {
         tryCatch(
           {
-            client_name <- controller[["resume_launch"]](input[["smart_launch"]])
+            client_name <- controller[["resume_launch"]](input[[
+              "smart_launch"
+            ]])
             launch_error(NULL)
             modules[[client_name]][["request_login"]]()
           },
@@ -206,7 +208,10 @@ oauth_connections_server <- function(
       lifecycle(list(
         available = !is.null(rows),
         records = lapply(rows, function(record) {
-          list(id = record[["stored"]][["id"]], status = connection_record_status(record))
+          list(
+            id = record[["stored"]][["id"]],
+            status = connection_record_status(record)
+          )
         })
       ))
       for (record in rows) {
@@ -221,7 +226,11 @@ oauth_connections_server <- function(
             is_valid_string(token@refresh_token)
         ) {
           result <- tryCatch(
-            controller[["refresh"]](record[["stored"]][["id"]], async = async, touch = FALSE),
+            controller[["refresh"]](
+              record[["stored"]][["id"]],
+              async = async,
+              touch = FALSE
+            ),
             error = function(...) NULL
           )
           if (inherits(result, "promise")) {
@@ -236,7 +245,12 @@ oauth_connections_server <- function(
         if (!is_valid_string(client_name) || !client_name %in% names(modules)) {
           err_input("Unknown connection client")
         }
-        if (identical(manager[["clients"]][[client_name]]@smart[["launch"]], "ehr")) {
+        if (
+          identical(
+            manager[["clients"]][[client_name]]@smart[["launch"]],
+            "ehr"
+          )
+        ) {
           launch_error("fresh_ehr_launch_required")
           return(invisible(FALSE))
         }

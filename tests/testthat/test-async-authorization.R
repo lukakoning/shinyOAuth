@@ -38,7 +38,10 @@ test_that("async authorization retains main-process state and discards stale res
         })
         key <- work[["args"]][["prepared"]][["state_key"]]
         expect_false(is.null(cli@state_store[["get"]](key, missing = NULL)))
-        expect_false(identical(work[["args"]][["worker"]]@state_store, cli@state_store))
+        expect_false(identical(
+          work[["args"]][["worker"]]@state_store,
+          cli@state_store
+        ))
         if (action == "logout") {
           values[["logout"]]()
         }
@@ -114,7 +117,10 @@ test_that("async Request Objects publish only after returning to the owning sess
         promises::then(values[["build_auth_url"]](), function(value) {
           answer <<- value
         })
-        built <- eval(work[["expr"]], list2env(work[["args"]], parent = globalenv()))
+        built <- eval(
+          work[["expr"]],
+          list2env(work[["args"]], parent = globalenv())
+        )
         expect_identical(published, 0L)
         expect_true(is.character(built[["request_object"]]))
         if (logout) {
@@ -194,7 +200,10 @@ test_that("async JARM defers signatures and preserves state until valid completi
         if (logout) {
           values[["logout"]]()
         }
-        work[["resolve"]](eval(work[["expr"]], list2env(work[["args"]], parent = globalenv())))
+        work[["resolve"]](eval(
+          work[["expr"]],
+          list2env(work[["args"]], parent = globalenv())
+        ))
         poll_for_async(function() !is.null(values[["error"]]), session)
         session[["flushReact"]]()
         expect_identical(signatures, 1L)
@@ -284,9 +293,15 @@ for (backend in c("mirai", "future")) {
           answer <<- value
         })
         poll_for_async(function() !is.null(answer), session)
-        expect_true(is.null(values[["error"]]), info = values[["error_description"]])
+        expect_true(
+          is.null(values[["error"]]),
+          info = values[["error_description"]]
+        )
         expect_match(answer, "request_uri")
-        expect_false(identical(attr(answer, "worker_pid", exact = TRUE), Sys.getpid()))
+        expect_false(identical(
+          attr(answer, "worker_pid", exact = TRUE),
+          Sys.getpid()
+        ))
         expect_type(attr(answer, "worker_pid", exact = TRUE), "integer")
       }
     )

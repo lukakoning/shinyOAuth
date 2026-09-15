@@ -152,7 +152,9 @@ test_that("a disclosed binding cannot select login state or validate a swapped c
     load_timeout = 15000
   )
   on.exit(stop_test_app_driver(app), add = TRUE)
-  app[["wait_for_js"]]("document.getElementById('binding').innerText.length === 128")
+  app[["wait_for_js"]](
+    "document.getElementById('binding').innerText.length === 128"
+  )
   previous <- app[["get_value"]](output = "binding")
   # Hold delivery of the new binding; all values here belong to this local
   # fixture. No IdP authorization or token exchange is needed for rejection.

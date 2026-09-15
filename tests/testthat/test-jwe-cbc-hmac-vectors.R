@@ -119,9 +119,18 @@ test_that("CBC-HMAC modes match the RFC 7518 Appendix B known answers", {
       rand_bytes = function(n) if (n == 16L) iv else vector[["cek"]],
       .package = "openssl"
     )
-    compact <- jwe_compact_encrypt(plaintext, rsa_key[["pubkey"]], "RSA-OAEP", enc)
+    compact <- jwe_compact_encrypt(
+      plaintext,
+      rsa_key[["pubkey"]],
+      "RSA-OAEP",
+      enc
+    )
     parts <- jwe_compact_parts(compact)
-    expect_identical(parts[["ciphertext_raw"]], vector[["ciphertext"]], info = enc)
+    expect_identical(
+      parts[["ciphertext_raw"]],
+      vector[["ciphertext"]],
+      info = enc
+    )
     expect_identical(parts[["iv_raw"]], iv, info = enc)
     expect_identical(
       openssl::rsa_decrypt(parts[["encrypted_key_raw"]], rsa_key, oaep = TRUE),

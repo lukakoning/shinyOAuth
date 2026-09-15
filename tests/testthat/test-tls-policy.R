@@ -5,7 +5,10 @@ test_that("TLS defaults remain unchanged and explicit minima preserve stronger c
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   expect_identical(add_req_defaults(req)[["options"]][["sslversion"]], 6L)
   stronger <- httr2::req_options(req, sslversion = 7L, cainfo = "custom-ca.pem")
-  expect_identical(req_apply_tls_policy(stronger)[["options"]][["sslversion"]], 7L)
+  expect_identical(
+    req_apply_tls_policy(stronger)[["options"]][["sslversion"]],
+    7L
+  )
   expect_identical(
     req_apply_tls_policy(stronger)[["options"]][["cainfo"]],
     "custom-ca.pem"
@@ -17,7 +20,9 @@ test_that("TLS defaults remain unchanged and explicit minima preserve stronger c
     bitwOr(6L, maximum)
   )
   expect_null(
-    req_apply_tls_policy(httr2::request("http://localhost"))[["options"]][["sslversion"]]
+    req_apply_tls_policy(httr2::request("http://localhost"))[["options"]][[
+      "sslversion"
+    ]]
   )
   withr::local_options(list(shinyOAuth.tls_min_version = "1.3"))
   expect_identical(

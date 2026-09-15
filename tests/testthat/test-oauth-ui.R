@@ -42,7 +42,9 @@ test_that("callback asset requests send no Referer in a real browser", {
   app[["locals"]][["html"]] <- response[["content"]]
   app[["locals"]][["policy"]] <- response[["headers"]][["Referrer-Policy"]]
   app[["get"]]("/", function(req, res) {
-    res[["set_header"]]("Referrer-Policy", app[["locals"]][["policy"]])[["set_type"]](
+    res[["set_header"]]("Referrer-Policy", app[["locals"]][["policy"]])[[
+      "set_type"
+    ]](
       "text/html"
     )[["send"]](app[["locals"]][["html"]])
   })
@@ -63,7 +65,9 @@ test_that("callback asset requests send no Referer in a real browser", {
   loaded <- browser[["Page"]][["loadEventFired"]](wait_ = FALSE)
   browser[["Page"]][["navigate"]](srv[["url"]]("/?theme=light"))
   browser[["wait_for"]](loaded)
-  observed <- browser[["Runtime"]][["evaluate"]]("window.probeReferrer")[["result"]][["value"]]
+  observed <- browser[["Runtime"]][["evaluate"]]("window.probeReferrer")[[
+    "result"
+  ]][["value"]]
   expect_identical(observed, "")
 })
 # shinyOAuth-browser-suite

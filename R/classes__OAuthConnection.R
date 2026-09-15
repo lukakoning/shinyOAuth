@@ -68,9 +68,14 @@ OAuthConnection <- R6::R6Class(
         err_token("Connection is unavailable")
       })
       valid <- tryCatch(
-        is.list(record) && identical(record[["client"]], private[[".client"]]) &&
-          identical(connection_client_fingerprint(record[["client"]]), private[[".fingerprint"]]) &&
-          (is.null(record[["token"]]) || S7::S7_inherits(record[["token"]], OAuthToken)),
+        is.list(record) &&
+          identical(record[["client"]], private[[".client"]]) &&
+          identical(
+            connection_client_fingerprint(record[["client"]]),
+            private[[".fingerprint"]]
+          ) &&
+          (is.null(record[["token"]]) ||
+            S7::S7_inherits(record[["token"]], OAuthToken)),
         error = function(...) FALSE
       )
       if (!valid) {
@@ -126,7 +131,8 @@ OAuthConnection <- R6::R6Class(
     #'   connection, otherwise `FALSE`, including when resolution fails.
     is_usable = function() {
       tryCatch(
-        connection_record_status(private[["record"]]()) %in% c("active", "limited"),
+        connection_record_status(private[["record"]]()) %in%
+          c("active", "limited"),
         error = function(...) FALSE
       )
     },
@@ -160,7 +166,11 @@ OAuthConnection <- R6::R6Class(
       if (!is.function(private[[".refresh"]])) {
         err_config("This connection uses oauth_module_server() for refresh")
       }
-      if (is.null(scopes)) private[[".refresh"]]() else private[[".refresh"]](scopes = scopes)
+      if (is.null(scopes)) {
+        private[[".refresh"]]()
+      } else {
+        private[[".refresh"]](scopes = scopes)
+      }
     },
     #' @description
     #' Resolve the current connection and return status information without
@@ -221,32 +231,49 @@ OAuthConnection <- R6::R6Class(
     identity = function(claims = c("iss", "sub"), userinfo = character()) {
       record <- private[["record"]]()
       token <- record[["token"]]
-      if (!connection_record_status(record) %in% c("active", "limited") ||
+      if (
+        !connection_record_status(record) %in% c("active", "limited") ||
           !provider_uses_oidc(record[["client"]]@provider) ||
           !isTRUE(token@id_token_validated) ||
-          !"openid" %in% token@granted_scopes) {
+          !"openid" %in% token@granted_scopes
+      ) {
         err_token("Connection has no usable validated OIDC identity")
       }
       for (fields in list(claims, userinfo)) {
-        if (!is.character(fields) || anyNA(fields) || !all(nzchar(fields)) ||
-            anyDuplicated(fields)) {
-          err_input("Identity field selections must be distinct non-empty names")
+        if (
+          !is.character(fields) ||
+            anyNA(fields) ||
+            !all(nzchar(fields)) ||
+            anyDuplicated(fields)
+        ) {
+          err_input(
+            "Identity field selections must be distinct non-empty names"
+          )
         }
       }
       verified <- token@id_token_claims
-      if (!is_valid_string(verified[["iss"]]) || !is_valid_string(verified[["sub"]])) {
+      if (
+        !is_valid_string(verified[["iss"]]) ||
+          !is_valid_string(verified[["sub"]])
+      ) {
         err_token("Connection has no usable validated OIDC identity")
       }
       profile <- token@userinfo
-      if (length(userinfo) && length(profile) &&
-          !identical(profile[["sub"]], verified[["sub"]])) {
+      if (
+        length(userinfo) &&
+          length(profile) &&
+          !identical(profile[["sub"]], verified[["sub"]])
+      ) {
         err_token("UserInfo is not bound to the validated OIDC identity")
       }
       select <- function(values, fields) {
         fields <- intersect(fields, names(values))
         if (!length(fields)) list() else values[fields]
       }
-      list(id_token_claims = select(verified, claims), userinfo = select(profile, userinfo))
+      list(
+        id_token_claims = select(verified, claims),
+        userinfo = select(profile, userinfo)
+      )
     },
     #' @description
     #' Resolve the current token and perform an authenticated request within a

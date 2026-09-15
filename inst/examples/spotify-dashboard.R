@@ -73,7 +73,11 @@ spotify_avatar <- function(images) {
   if (is.null(url)) {
     return(NULL)
   }
-  htmltools::tags[["img"]](src = url, class = "profile-avatar", alt = "User avatar")
+  htmltools::tags[["img"]](
+    src = url,
+    class = "profile-avatar",
+    alt = "User avatar"
+  )
 }
 
 # Configure provider and client for Spotify
@@ -643,7 +647,9 @@ server <- function(input, output, session) {
 
     avatar <- spotify_avatar(user_info[["images"]])
 
-    display_name <- user_info[["display_name"]] %||% user_info[["id"]] %||% "<unknown>"
+    display_name <- user_info[["display_name"]] %||%
+      user_info[["id"]] %||%
+      "<unknown>"
 
     followers_badge <- NULL
     if (
@@ -757,7 +763,8 @@ server <- function(input, output, session) {
         list(
           name = artists_df[["name"]][1] %||% "—",
           genres = if (
-            !is.null(artists_df[["genres"]][1]) && nzchar(artists_df[["genres"]][1])
+            !is.null(artists_df[["genres"]][1]) &&
+              nzchar(artists_df[["genres"]][1])
           ) {
             artists_df[["genres"]][1]
           } else {
@@ -812,8 +819,13 @@ server <- function(input, output, session) {
     last_track_name <- if (!is.null(last_play)) last_play[["track"]] else "—"
     last_track_details <- if (!is.null(last_play)) {
       parts <- c(last_play[["artist"]] %||% "—")
-      if (!is.null(last_play[["played_at"]]) && !is.na(last_play[["played_at"]])) {
-        parts <- c(parts, format(last_play[["played_at"]], "%b %d • %H:%M", tz = ""))
+      if (
+        !is.null(last_play[["played_at"]]) && !is.na(last_play[["played_at"]])
+      ) {
+        parts <- c(
+          parts,
+          format(last_play[["played_at"]], "%b %d • %H:%M", tz = "")
+        )
       }
       paste(parts, collapse = "  |  ")
     } else {
@@ -866,7 +878,11 @@ server <- function(input, output, session) {
     # Calculate play counts from recent plays
     recent_df <- safe_df(recent())
     if (!is.null(recent_df)) {
-      recent_df[["key"]] <- paste0(recent_df[["track"]], " — ", recent_df[["artist"]])
+      recent_df[["key"]] <- paste0(
+        recent_df[["track"]],
+        " — ",
+        recent_df[["artist"]]
+      )
       df[["key"]] <- paste0(df[["name"]], " — ", df[["artist"]])
       play_counts <- table(recent_df[["key"]])
       df[["plays"]] <- vapply(
@@ -887,7 +903,11 @@ server <- function(input, output, session) {
     df <- df[keep, , drop = FALSE]
 
     df <- df[, c("name", "artist", "album", "plays", "popularity")]
-    df[["plays"]] <- ifelse(df[["plays"]] > 0, sprintf("🔁 %d", df[["plays"]]), "—")
+    df[["plays"]] <- ifelse(
+      df[["plays"]] > 0,
+      sprintf("🔁 %d", df[["plays"]]),
+      "—"
+    )
     df[["popularity"]] <- ifelse(
       is.na(df[["popularity"]]),
       "—",
@@ -1036,7 +1056,10 @@ server <- function(input, output, session) {
       counts_df[order(counts_df[["plays"]], decreasing = TRUE), ],
       10L
     )
-    counts_df[["artist"]] <- factor(counts_df[["artist"]], levels = rev(counts_df[["artist"]]))
+    counts_df[["artist"]] <- factor(
+      counts_df[["artist"]],
+      levels = rev(counts_df[["artist"]])
+    )
 
     x_lab <- if (isTRUE(use_fallback)) "Popularity" else "Plays (last 50)"
 
@@ -1084,7 +1107,10 @@ server <- function(input, output, session) {
     ) {
       pct <- max(
         0,
-        min(100, round(playing[["progress_ms"]] / playing[["duration_ms"]] * 100))
+        min(
+          100,
+          round(playing[["progress_ms"]] / playing[["duration_ms"]] * 100)
+        )
       )
     }
 
@@ -1105,7 +1131,11 @@ server <- function(input, output, session) {
 
     time_label <- span(
       class = "small text-muted",
-      paste(format_ms(playing[["progress_ms"]]), "/", format_ms(playing[["duration_ms"]]))
+      paste(
+        format_ms(playing[["progress_ms"]]),
+        "/",
+        format_ms(playing[["duration_ms"]])
+      )
     )
 
     tagList(
@@ -1120,7 +1150,10 @@ server <- function(input, output, session) {
         },
         div(
           div(class = "fw-semibold", playing[["track"]]),
-          div(class = "text-muted", paste(playing[["artist"]], "•", playing[["album"]]))
+          div(
+            class = "text-muted",
+            paste(playing[["artist"]], "•", playing[["album"]])
+          )
         )
       ),
       progress_bar,

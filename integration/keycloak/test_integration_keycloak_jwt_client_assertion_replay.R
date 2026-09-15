@@ -1,7 +1,10 @@
 ## Integration tests: JWT client-assertion replay against live Keycloak
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 build_raw_par_params <- function(client) {
@@ -66,7 +69,8 @@ build_prepared_client_assertion_request <- function(
     context = context
   )
 
-  client_assertion <- prepared[["params"]][["client_assertion"]] %||% NA_character_
+  client_assertion <- prepared[["params"]][["client_assertion"]] %||%
+    NA_character_
   assertion_payload <- if (keycloak_nonempty_string(client_assertion)) {
     shinyOAuth:::parse_jwt_payload(client_assertion)
   } else {
@@ -74,7 +78,10 @@ build_prepared_client_assertion_request <- function(
   }
 
   list(
-    req = do.call(httr2::req_body_form, c(list(prepared[["req"]]), prepared[["params"]])),
+    req = do.call(
+      httr2::req_body_form,
+      c(list(prepared[["req"]]), prepared[["params"]])
+    ),
     client_assertion = client_assertion,
     assertion_payload = assertion_payload
   )
@@ -113,7 +120,8 @@ expect_distinct_client_assertion_jti <- function(
   second_request
 ) {
   first_jti <- first_request[["assertion_payload"]][["jti"]] %||% NA_character_
-  second_jti <- second_request[["assertion_payload"]][["jti"]] %||% NA_character_
+  second_jti <- second_request[["assertion_payload"]][["jti"]] %||%
+    NA_character_
 
   testthat::expect_true(keycloak_nonempty_string(first_jti))
   testthat::expect_true(keycloak_nonempty_string(second_jti))

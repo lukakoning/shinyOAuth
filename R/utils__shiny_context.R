@@ -48,7 +48,9 @@ get_current_shiny_request <- function() {
   # Accessing session[["request"]] under shiny::testServer emits warnings because
   # the Rook request is not fully simulated. We only need a best-effort read,
   # so silence those warnings to keep tests/CI noise-free.
-  req <- suppressWarnings(tryCatch(sess[["request"]], error = function(...) NULL))
+  req <- suppressWarnings(tryCatch(sess[["request"]], error = function(...) {
+    NULL
+  }))
   if (is.null(req)) {
     return(NULL)
   }

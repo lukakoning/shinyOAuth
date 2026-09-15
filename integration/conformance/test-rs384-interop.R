@@ -72,7 +72,11 @@ testthat::test_that("RS384 interoperates with Python cryptography in both direct
       timeout = 30000,
       error_on_status = FALSE
     )
-    testthat::expect_identical(oracle[["status"]], 0L, info = oracle[["stderr"]])
+    testthat::expect_identical(
+      oracle[["status"]],
+      0L,
+      info = oracle[["stderr"]]
+    )
     if (oracle[["status"]] != 0L) {
       stop("Independent RS384 oracle failed")
     }

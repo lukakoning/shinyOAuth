@@ -335,8 +335,11 @@ method(format, OAuthToken) <- function(x, ...) {
       initial_extra_fields = x@initial_extra_fields
     ),
     secret_fields = c(
-      "access_token", "refresh_token", "id_token",
-      "extra_fields", "initial_extra_fields"
+      "access_token",
+      "refresh_token",
+      "id_token",
+      "extra_fields",
+      "initial_extra_fields"
     )
   )
 }

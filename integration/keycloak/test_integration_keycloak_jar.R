@@ -1,7 +1,10 @@
 ## Integration tests: Keycloak JWT-secured authorization requests (JAR)
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 query_param_names <- function(url) {

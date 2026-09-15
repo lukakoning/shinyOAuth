@@ -142,7 +142,10 @@ test_that("get_userinfo audit normalizes custom selector output", {
   result <- get_userinfo(cli, token = "access-token")
   expect_equal(result[["id"]], 12345)
 
-  ui_events <- Filter(function(e) identical(e[["type"]], "audit_userinfo"), events)
+  ui_events <- Filter(
+    function(e) identical(e[["type"]], "audit_userinfo"),
+    events
+  )
   expect_length(ui_events, 1L)
   expect_identical(ui_events[[1L]][["status"]], "ok")
   expect_identical(

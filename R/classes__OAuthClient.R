@@ -743,10 +743,22 @@ OAuthClient <- S7::new_class(
       default = "JWT"
     ),
     # Append new properties to preserve the public positional constructor.
-    resource_bases = S7::new_property(S7::class_character, default = character()),
-    required_scopes = S7::new_property(S7::class_character, default = character()),
-    label = S7::new_property(S7::class_character, default = quote(default_client_label(provider))),
-    authorization_method = S7::new_property(S7::class_character, default = "GET"),
+    resource_bases = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    required_scopes = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
+    label = S7::new_property(
+      S7::class_character,
+      default = quote(default_client_label(provider))
+    ),
+    authorization_method = S7::new_property(
+      S7::class_character,
+      default = "GET"
+    ),
     # Internal, versioned policy selected by SMART clients. A generic client
     # retains literal scopes and RFC 6749 omission behavior.
     scope_policy = S7::new_property(S7::class_list, default = list()),
@@ -1122,7 +1134,11 @@ oauth_client <- function(
     endpoint_auth = endpoint_auth,
     redirect_uri = redirect_uri,
     scopes = scopes,
-    resource_bases = if (length(resource_bases)) normalize_resource_bases(resource_bases) else resource_bases,
+    resource_bases = if (length(resource_bases)) {
+      normalize_resource_bases(resource_bases)
+    } else {
+      resource_bases
+    },
     required_scopes = normalize_scope_tokens(required_scopes),
     label = label,
     response_mode = response_mode,
@@ -1422,8 +1438,10 @@ oauth_client_validate <- function(self) {
       paste(sQuote(authorization_server_modes), collapse = ", ")
     ))
   }
-  if (!is_valid_string(self@authorization_method) ||
-      !self@authorization_method %in% c("GET", "POST")) {
+  if (
+    !is_valid_string(self@authorization_method) ||
+      !self@authorization_method %in% c("GET", "POST")
+  ) {
     return("OAuthClient: authorization_method must be GET or POST")
   }
   response_mode_info <- resolve_auth_response_mode(
@@ -2963,9 +2981,13 @@ oauth_client_validate <- function(self) {
     return(scope_policy_error)
   }
   connection_error <- validate_client_resources(self)
-  if (!is.null(connection_error)) return(connection_error)
+  if (!is.null(connection_error)) {
+    return(connection_error)
+  }
   smart_error <- smart_validate_client(self)
-  if (!is.null(smart_error)) return(smart_error)
+  if (!is.null(smart_error)) {
+    return(smart_error)
+  }
   if (
     !is_valid_string(self@scope_validation) ||
       !self@scope_validation %in% c("strict", "warn", "none")

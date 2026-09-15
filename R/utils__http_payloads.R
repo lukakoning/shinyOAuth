@@ -38,7 +38,8 @@ parse_token_response <- function(resp, allow_empty_scope = FALSE) {
 
   # Some providers include charset, e.g. application/json; charset=utf-8.
   if (identical(content_type, "application/json")) {
-    return(parse_token_response_json(body,
+    return(parse_token_response_json(
+      body,
       resp = resp,
       allow_empty_scope = allow_empty_scope
     ))
@@ -80,8 +81,13 @@ parse_token_response <- function(resp, allow_empty_scope = FALSE) {
 #' @noRd
 token_response_extra_fields <- function(token_response) {
   represented_fields <- c(
-    "access_token", "token_type", "refresh_token", "id_token",
-    "expires_in", "scope", "cnf"
+    "access_token",
+    "token_type",
+    "refresh_token",
+    "id_token",
+    "expires_in",
+    "scope",
+    "cnf"
   )
   extra_fields <- token_response[!names(token_response) %in% represented_fields]
   if (!length(extra_fields)) {
@@ -105,8 +111,13 @@ token_response_extra_fields <- function(token_response) {
 #' @return Parsed JSON value, normalized by `normalize_token_response_json()`.
 #' @keywords internal
 #' @noRd
-parse_token_response_json <- function(body, resp = NULL, allow_empty_scope = FALSE) {
-  parsed <- try_parse_token_response_json(body,
+parse_token_response_json <- function(
+  body,
+  resp = NULL,
+  allow_empty_scope = FALSE
+) {
+  parsed <- try_parse_token_response_json(
+    body,
     resp = resp,
     allow_empty_scope = allow_empty_scope
   )
@@ -133,7 +144,11 @@ parse_token_response_json <- function(body, resp = NULL, allow_empty_scope = FAL
 #'   `is_object` indicating whether the payload used a top-level JSON object.
 #' @keywords internal
 #' @noRd
-try_parse_token_response_json <- function(body, resp = NULL, allow_empty_scope = FALSE) {
+try_parse_token_response_json <- function(
+  body,
+  resp = NULL,
+  allow_empty_scope = FALSE
+) {
   reject_duplicate_json_object_members(body, "Token response JSON")
   is_object <- json_text_is_object(body)
 
@@ -229,7 +244,8 @@ parse_token_response_form <- function(body, allow_empty_scope = FALSE) {
 #' @keywords internal
 #' @noRd
 parse_lenient_token_response <- function(body, allow_empty_scope = FALSE) {
-  parsed_json <- try_parse_token_response_json(body,
+  parsed_json <- try_parse_token_response_json(
+    body,
     allow_empty_scope = allow_empty_scope
   )
   if (isTRUE(parsed_json[["ok"]])) {

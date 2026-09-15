@@ -6,7 +6,10 @@
 ## verified subject and userinfo claims exposed by the token.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
@@ -224,7 +227,8 @@ testthat::test_that("browser login CSRF exposes the substituted subject for app-
     fixed = TRUE
   )
   testthat::expect_true(
-    is.character(browser_state[["auth_url"]]) && nzchar(browser_state[["auth_url"]])
+    is.character(browser_state[["auth_url"]]) &&
+      nzchar(browser_state[["auth_url"]])
   )
 
   login <- perform_login_form_as(

@@ -586,9 +586,13 @@ dpop_target_uri <- function(url) {
     hostname <- paste0("[", hostname, "]")
   }
   port <- parsed[["port"]]
-  paste0(parsed[["scheme"]], "://", hostname,
-         if (!is.null(port) && nzchar(port)) paste0(":", port) else "",
-         url_raw_path(url))
+  paste0(
+    parsed[["scheme"]],
+    "://",
+    hostname,
+    if (!is.null(port) && nzchar(port)) paste0(":", port) else "",
+    url_raw_path(url)
+  )
 }
 
 #' Compute the DPoP access-token hash
@@ -853,7 +857,10 @@ parse_http_auth_challenges <- function(value) {
         current_challenge[["param_parts"]] <- trimws(scheme_fields[[3]])
       }
     } else if (!is.null(current_challenge)) {
-      current_challenge[["param_parts"]] <- c(current_challenge[["param_parts"]], part)
+      current_challenge[["param_parts"]] <- c(
+        current_challenge[["param_parts"]],
+        part
+      )
     }
   }
   if (!is.null(current_challenge)) {

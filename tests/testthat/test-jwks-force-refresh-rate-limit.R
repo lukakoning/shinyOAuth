@@ -8,7 +8,11 @@ test_that("Unknown kid triggers at most one forced JWKS refresh per interval", {
   rsa <- openssl::rsa_keygen(bits = 2048)
   priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
-  pub_jwk <- list(kty = priv_jwk[["kty"]], n = priv_jwk[["n"]], e = priv_jwk[["e"]])
+  pub_jwk <- list(
+    kty = priv_jwk[["kty"]],
+    n = priv_jwk[["n"]],
+    e = priv_jwk[["e"]]
+  )
   pub_jwk[["kid"]] <- "rsa-1"
 
   # Configure provider/client with an in-memory jwks_cache so the rate-limit state persists

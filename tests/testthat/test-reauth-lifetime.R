@@ -189,7 +189,10 @@ testthat::test_that("validated auth_time starts the reauthentication lifetime", 
       )
 
       testthat::expect_identical(values[["auth_started_at"]], auth_time)
-      testthat::expect_identical(values[["token"]]@access_token, "with-auth-time")
+      testthat::expect_identical(
+        values[["token"]]@access_token,
+        "with-auth-time"
+      )
     }
   )
 })

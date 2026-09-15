@@ -76,7 +76,9 @@ test_that("fetched key_ops arrays are usable and malformed arrays fail closed", 
     )
   })
   app[["get"]]("/jwks", function(req, res) {
-    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](jwks_json)
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
+      jwks_json
+    )
   })
   server <- webfakes::local_app_process(app)
   issuer <- sub("/$", "", server[["url"]]())
@@ -352,7 +354,10 @@ test_that("fetch_jwks evicts poisoned cache on pin mismatch even if refetch fail
     simplifyVector = FALSE
   )
   bad_jwks <- list(keys = list(bad_rsa))
-  cache[["set"]](ckey, list(jwks = bad_jwks, fetched_at = as.numeric(Sys.time())))
+  cache[["set"]](
+    ckey,
+    list(jwks = bad_jwks, fetched_at = as.numeric(Sys.time()))
+  )
 
   # Now call fetch_jwks: it should notice the pin mismatch and evict the cache entry
   expect_error(

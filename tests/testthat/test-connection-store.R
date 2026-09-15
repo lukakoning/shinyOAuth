@@ -41,7 +41,10 @@ test_that("connection stores isolate owners and reserve transaction identity", {
     "sealed_original",
     paste(capture.output(print(f[["store"]])), collapse = "")
   ))
-  expect_error(f[["store"]][["read"]]("untrusted-input", f[["id"]]), "identifier")
+  expect_error(
+    f[["store"]][["read"]]("untrusted-input", f[["id"]]),
+    "identifier"
+  )
   expect_error(oauth_connection_store_memory(max_age = Inf), "positive finite")
   expect_error(oauth_connection_store_memory(max_entries = 1.5), "whole number")
   expect_error(f[["create"]](expires_at = 1101), "store lifetime")
@@ -50,11 +53,23 @@ test_that("connection stores isolate owners and reserve transaction identity", {
 test_that("refresh claims coordinate sessions and commit only the winning operation", {
   f <- store_test_fixture()
   original <- f[["create"]]()
-  claim <- f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], original[["revision"]])
+  claim <- f[["store"]][["begin_refresh"]](
+    f[["owner"]],
+    f[["id"]],
+    original[["revision"]]
+  )
   expect_identical(claim[["status"]], "refreshing")
   expect_gt(claim[["revision"]], original[["revision"]])
-  expect_null(f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], original[["revision"]]))
-  expect_null(f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], claim[["revision"]]))
+  expect_null(f[["store"]][["begin_refresh"]](
+    f[["owner"]],
+    f[["id"]],
+    original[["revision"]]
+  ))
+  expect_null(f[["store"]][["begin_refresh"]](
+    f[["owner"]],
+    f[["id"]],
+    claim[["revision"]]
+  ))
   expect_null(f[["store"]][["commit_refresh"]](
     f[["owner"]],
     f[["id"]],
@@ -94,7 +109,11 @@ test_that("uncertain refresh outcomes never release old credentials for retry", 
   for (outcome in c("not_consumed", "possibly_consumed", "consumed")) {
     f <- store_test_fixture()
     record <- f[["create"]]()
-    claim <- f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], record[["revision"]])
+    claim <- f[["store"]][["begin_refresh"]](
+      f[["owner"]],
+      f[["id"]],
+      record[["revision"]]
+    )
     result <- f[["store"]][["fail_refresh"]](
       f[["owner"]],
       f[["id"]],
@@ -105,16 +124,31 @@ test_that("uncertain refresh outcomes never release old credentials for retry", 
     if (outcome == "not_consumed") {
       expect_identical(result[["status"]], "active")
       expect_identical(result[["sealed"]], record[["sealed"]])
-      expect_type(f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], result[["revision"]]), "list")
+      expect_type(
+        f[["store"]][["begin_refresh"]](
+          f[["owner"]],
+          f[["id"]],
+          result[["revision"]]
+        ),
+        "list"
+      )
     } else {
       expect_identical(result[["status"]], "uncertain")
       expect_null(result[["sealed"]])
-      expect_null(f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], result[["revision"]]))
+      expect_null(f[["store"]][["begin_refresh"]](
+        f[["owner"]],
+        f[["id"]],
+        result[["revision"]]
+      ))
     }
   }
   f <- store_test_fixture()
   record <- f[["create"]]()
-  claim <- f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], record[["revision"]])
+  claim <- f[["store"]][["begin_refresh"]](
+    f[["owner"]],
+    f[["id"]],
+    record[["revision"]]
+  )
   f[["time"]][["now"]] <- 1011
   abandoned <- f[["store"]][["read"]](f[["owner"]], f[["id"]])
   expect_identical(abandoned[["status"]], "uncertain")
@@ -126,7 +160,11 @@ test_that("uncertain refresh outcomes never release old credentials for retry", 
     claim[["revision"]],
     "sealed_late"
   ))
-  expect_null(f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], abandoned[["revision"]]))
+  expect_null(f[["store"]][["begin_refresh"]](
+    f[["owner"]],
+    f[["id"]],
+    abandoned[["revision"]]
+  ))
 })
 
 test_that("disconnect and owner logout prevent late refresh completion", {
@@ -135,10 +173,26 @@ test_that("disconnect and owner logout prevent late refresh completion", {
   other_owner <- strrep("d", 32)
   other_id <- strrep("e", 32)
   other <- f[["create"]](other_owner, other_id)
-  claim <- f[["store"]][["begin_refresh"]](f[["owner"]], f[["id"]], record[["revision"]])
-  expect_null(f[["store"]][["disconnect"]](other_owner, f[["id"]], claim[["revision"]]))
-  expect_null(f[["store"]][["disconnect"]](f[["owner"]], f[["id"]], record[["revision"]]))
-  removed <- f[["store"]][["disconnect"]](f[["owner"]], f[["id"]], claim[["revision"]])
+  claim <- f[["store"]][["begin_refresh"]](
+    f[["owner"]],
+    f[["id"]],
+    record[["revision"]]
+  )
+  expect_null(f[["store"]][["disconnect"]](
+    other_owner,
+    f[["id"]],
+    claim[["revision"]]
+  ))
+  expect_null(f[["store"]][["disconnect"]](
+    f[["owner"]],
+    f[["id"]],
+    record[["revision"]]
+  ))
+  removed <- f[["store"]][["disconnect"]](
+    f[["owner"]],
+    f[["id"]],
+    claim[["revision"]]
+  )
   expect_identical(removed[["record"]][["status"]], "disconnected")
   expect_null(removed[["record"]][["sealed"]])
   expect_identical(removed[["previous"]][["sealed"]], "sealed_original")
@@ -152,17 +206,27 @@ test_that("disconnect and owner logout prevent late refresh completion", {
   expect_null(f[["create"]]())
   expect_identical(f[["store"]][["read"]](other_owner, other_id), other)
   expect_null(
-    f[["store"]][["disconnect"]](f[["owner"]], f[["id"]], removed[["record"]][["revision"]])[["previous"]]
+    f[["store"]][["disconnect"]](
+      f[["owner"]],
+      f[["id"]],
+      removed[["record"]][["revision"]]
+    )[["previous"]]
   )
   f[["store"]][["disconnect_owner"]](other_owner)
-  expect_identical(f[["store"]][["read"]](other_owner, other_id)[["status"]], "disconnected")
+  expect_identical(
+    f[["store"]][["read"]](other_owner, other_id)[["status"]],
+    "disconnected"
+  )
 })
 
 test_that("expiry, deduplication and capacity do not resurrect or evict credentials", {
   f <- store_test_fixture(max_entries = 1L)
   record <- f[["create"]](expires_at = 1005)
   expect_error(
-    f[["create"]](connection_id = strrep("d", 32), transaction = strrep("e", 32)),
+    f[["create"]](
+      connection_id = strrep("d", 32),
+      transaction = strrep("e", 32)
+    ),
     "capacity"
   )
   expect_identical(f[["store"]][["read"]](f[["owner"]], f[["id"]]), record)
@@ -172,7 +236,11 @@ test_that("expiry, deduplication and capacity do not resurrect or evict credenti
   f[["time"]][["now"]] <- 1101
   replacement <- f[["create"]](expires_at = 1200)
   expect_gt(replacement[["revision"]], record[["revision"]])
-  expect_null(f[["store"]][["disconnect"]](f[["owner"]], f[["id"]], record[["revision"]]))
+  expect_null(f[["store"]][["disconnect"]](
+    f[["owner"]],
+    f[["id"]],
+    record[["revision"]]
+  ))
   expect_identical(f[["store"]][["read"]](f[["owner"]], f[["id"]]), replacement)
 })
 
@@ -180,7 +248,9 @@ test_that("memory stores reject a different worker process", {
   f <- store_test_fixture()
   result <- callr::r(
     function(store, owner, id) {
-      tryCatch(store[["read"]](owner, id), error = function(e) conditionMessage(e))
+      tryCatch(store[["read"]](owner, id), error = function(e) {
+        conditionMessage(e)
+      })
     },
     args = list(store = f[["store"]], owner = f[["owner"]], id = f[["id"]])
   )

@@ -49,13 +49,21 @@ testthat::test_that("SMART discovery validates real HTTP fixtures before accepti
   documents[["missing"]] <- minimal
   documents[["missing"]][["grant_types_supported"]] <- NULL
   documents[["plain"]] <- minimal
-  documents[["plain"]][["code_challenge_methods_supported"]] <- list("S256", "plain")
+  documents[["plain"]][["code_challenge_methods_supported"]] <- list(
+    "S256",
+    "plain"
+  )
   documents[["sso"]] <- minimal
-  documents[["sso"]][["capabilities"]] <- c(minimal[["capabilities"]], "sso-openid-connect")
+  documents[["sso"]][["capabilities"]] <- c(
+    minimal[["capabilities"]],
+    "sso-openid-connect"
+  )
   documents[["relative"]] <- minimal
   documents[["relative"]][["token_endpoint"]] <- "/token"
   documents[["offhost"]] <- minimal
-  documents[["offhost"]][["token_endpoint"]] <- "https://unapproved.example/token"
+  documents[["offhost"]][[
+    "token_endpoint"
+  ]] <- "https://unapproved.example/token"
   documents <- lapply(documents, jsonlite::toJSON, auto_unbox = TRUE)
   documents[["duplicate"]] <- '{"token_endpoint":"one","token_endpoint":"two"}'
   documents[["oversized"]] <- paste(rep("x", 2048L), collapse = "")
@@ -66,9 +74,12 @@ testthat::test_that("SMART discovery validates real HTTP fixtures before accepti
   app[["get"]](
     "/:scenario/fhir/R4/.well-known/smart-configuration",
     function(req, res) {
-      req[["app"]][["locals"]][["credential_headers"]] <- req[["app"]][["locals"]][["credential_headers"]] ||
+      req[["app"]][["locals"]][["credential_headers"]] <- req[["app"]][[
+        "locals"
+      ]][["credential_headers"]] ||
         any(
-          tolower(names(req[["headers"]])) %in% c("authorization", "cookie", "dpop")
+          tolower(names(req[["headers"]])) %in%
+            c("authorization", "cookie", "dpop")
         )
       scenario <- req[["params"]][["scenario"]]
       if (scenario == "redirect") {
@@ -77,13 +88,18 @@ testthat::test_that("SMART discovery validates real HTTP fixtures before accepti
           "/redirect-target"
         )[["send"]](""))
       }
-      res[["set_type"]]("application/json")[["send"]](req[["app"]][["locals"]][["documents"]][[
+      res[["set_type"]]("application/json")[["send"]](req[["app"]][["locals"]][[
+        "documents"
+      ]][[
         scenario
       ]])
     }
   )
   app[["get"]]("/redirect-target", function(req, res) {
-    req[["app"]][["locals"]][["redirect_hits"]] <- req[["app"]][["locals"]][["redirect_hits"]] + 1L
+    req[["app"]][["locals"]][["redirect_hits"]] <- req[["app"]][["locals"]][[
+      "redirect_hits"
+    ]] +
+      1L
     res[["send"]]("Unexpected follow")
   })
   app[["get"]]("/metrics", function(req, res) {

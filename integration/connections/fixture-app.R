@@ -33,13 +33,27 @@ retention_fixture_app <- function(
       client_id = site,
       client_secret = "",
       scopes = if (scope_narrowing) c("read", "write") else "read",
-      redirect_uri = paste0(origin, "/callback/", if (shared_issuer) "shared" else site),
+      redirect_uri = paste0(
+        origin,
+        "/callback/",
+        if (shared_issuer) "shared" else site
+      ),
       state_key = openssl::rand_bytes(32),
       response_mode = response_mode,
       authorization_method = authorization_method,
-      authorization_server_mode = if (shared_issuer) "multi_issuer" else "multi_redirect_uri",
-      authorization_server_redirect_uris = if (shared_issuer) character() else callbacks,
-      resource_bases = c(api = paste0(base, "/api", if (shared_issuer) paste0("/", site))),
+      authorization_server_mode = if (shared_issuer) {
+        "multi_issuer"
+      } else {
+        "multi_redirect_uri"
+      },
+      authorization_server_redirect_uris = if (shared_issuer) {
+        character()
+      } else {
+        callbacks
+      },
+      resource_bases = c(
+        api = paste0(base, "/api", if (shared_issuer) paste0("/", site))
+      ),
       required_scopes = "read",
       label = paste("Site", site)
     )
@@ -71,18 +85,23 @@ retention_fixture_app <- function(
     shiny::actionButton("cross_resource", "Try B path with A connection"),
     shiny::actionButton("refresh_a", "Refresh A"),
     shiny::actionButton("refresh_b", "Refresh B"),
-    if (scope_narrowing) shiny::tagList(
-      shiny::actionButton("narrow_a", "Narrow A to read"),
-      shiny::actionButton("widen_a", "Try to restore write"),
-      shiny::actionButton("drop_required", "Try to drop required read"),
-      shiny::actionButton("write_a", "Write A"),
-      shiny::actionButton("write_b", "Write B")
-    ),
+    if (scope_narrowing) {
+      shiny::tagList(
+        shiny::actionButton("narrow_a", "Narrow A to read"),
+        shiny::actionButton("widen_a", "Try to restore write"),
+        shiny::actionButton("drop_required", "Try to drop required read"),
+        shiny::actionButton("write_a", "Write A"),
+        shiny::actionButton("write_b", "Write B")
+      )
+    },
     shiny::actionButton("disconnect_b", "Disconnect B"),
     shiny::textInput("selected_id", "Connection ID"),
     shiny::actionButton("read_selected", "Read selected connection"),
     shiny::actionButton("refresh_selected", "Refresh selected connection"),
-    shiny::actionButton("disconnect_selected", "Disconnect selected connection locally"),
+    shiny::actionButton(
+      "disconnect_selected",
+      "Disconnect selected connection locally"
+    ),
     shiny::actionButton("logout", "Log out"),
     shiny::textInput("probe_id", "Connection ID for isolation check"),
     shiny::actionButton("probe", "Check access"),
@@ -159,21 +178,40 @@ retention_fixture_app <- function(
             if (inherits(value, "promise")) value else "refreshed"
           })
         )
-        shiny::observeEvent(input[[paste0("write_", selected)]], perform(function() {
-          response <- health[["connection"]](id_for(selected))[["request"]]("api", "records",
-            method = "POST", required_scopes = "write")
-          paste0(httr2::resp_body_json(response)[["site"]], ":written")
-        }))
+        shiny::observeEvent(
+          input[[paste0("write_", selected)]],
+          perform(function() {
+            response <- health[["connection"]](id_for(selected))[["request"]](
+              "api",
+              "records",
+              method = "POST",
+              required_scopes = "write"
+            )
+            paste0(httr2::resp_body_json(response)[["site"]], ":written")
+          })
+        )
       })
     }
-    for (action in c("narrow_a", "widen_a", "drop_required")) local({
-      selected_action <- action
-      scopes <- switch(selected_action, narrow_a = "read", widen_a = c("read", "write"), drop_required = "write")
-      shiny::observeEvent(input[[selected_action]], perform(function() {
-        value <- health[["connection"]](id_for("a"))[["refresh"]](scopes = scopes)
-        if (inherits(value, "promise")) value else "refreshed"
-      }))
-    })
+    for (action in c("narrow_a", "widen_a", "drop_required")) {
+      local({
+        selected_action <- action
+        scopes <- switch(
+          selected_action,
+          narrow_a = "read",
+          widen_a = c("read", "write"),
+          drop_required = "write"
+        )
+        shiny::observeEvent(
+          input[[selected_action]],
+          perform(function() {
+            value <- health[["connection"]](id_for("a"))[["refresh"]](
+              scopes = scopes
+            )
+            if (inherits(value, "promise")) value else "refreshed"
+          })
+        )
+      })
+    }
     shiny::observeEvent(
       input[["disconnect_b"]],
       perform(function() {
@@ -182,23 +220,38 @@ retention_fixture_app <- function(
       })
     )
     shiny::observeEvent(input[["logout"]], health[["logout"]]())
-    shiny::observeEvent(input[["read_selected"]], perform(function() {
-      response <- health[["connection"]](input[["selected_id"]])[["request"]]("api", "records")
-      body <- httr2::resp_body_json(response)
-      paste(body[["site"]], body[["account"]], body[["revision"]], sep = ":")
-    }))
-    shiny::observeEvent(input[["refresh_selected"]], perform(function() {
-      value <- health[["connection"]](input[["selected_id"]])[["refresh"]]()
-      if (inherits(value, "promise")) value else "refreshed"
-    }))
-    shiny::observeEvent(input[["disconnect_selected"]], perform(function() {
-      health[["disconnect"]](input[["selected_id"]], revoke = FALSE)
-      "disconnected"
-    }))
-    shiny::observeEvent(input[["cross_resource"]], perform(function() {
-      health[["connection"]](id_for("a"))[["request"]]("api", "../b/records")
-      "unexpected access"
-    }))
+    shiny::observeEvent(
+      input[["read_selected"]],
+      perform(function() {
+        response <- health[["connection"]](input[["selected_id"]])[["request"]](
+          "api",
+          "records"
+        )
+        body <- httr2::resp_body_json(response)
+        paste(body[["site"]], body[["account"]], body[["revision"]], sep = ":")
+      })
+    )
+    shiny::observeEvent(
+      input[["refresh_selected"]],
+      perform(function() {
+        value <- health[["connection"]](input[["selected_id"]])[["refresh"]]()
+        if (inherits(value, "promise")) value else "refreshed"
+      })
+    )
+    shiny::observeEvent(
+      input[["disconnect_selected"]],
+      perform(function() {
+        health[["disconnect"]](input[["selected_id"]], revoke = FALSE)
+        "disconnected"
+      })
+    )
+    shiny::observeEvent(
+      input[["cross_resource"]],
+      perform(function() {
+        health[["connection"]](id_for("a"))[["request"]]("api", "../b/records")
+        "unexpected access"
+      })
+    )
     shiny::observeEvent(
       input[["probe"]],
       perform(function() {
@@ -226,12 +279,16 @@ retention_fixture_app <- function(
   }
   wrapped_ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager)
   ui <- function(req) {
-    if (startsWith(req[["PATH_INFO"]], "/callback/") &&
+    if (
+      startsWith(req[["PATH_INFO"]], "/callback/") &&
         (identical(req[["REQUEST_METHOD"]], "POST") ||
-          grepl("(^[?]?|&)code=", req[["QUERY_STRING"]]))) {
-      callback_owner_cookies <<- c(callback_owner_cookies,
+          grepl("(^[?]?|&)code=", req[["QUERY_STRING"]]))
+    ) {
+      callback_owner_cookies <<- c(
+        callback_owner_cookies,
         is.character(req[["HTTP_COOKIE"]]) &&
-          grepl("shinyOAuth-owner-", req[["HTTP_COOKIE"]], fixed = TRUE))
+          grepl("shinyOAuth-owner-", req[["HTTP_COOKIE"]], fixed = TRUE)
+      )
     }
     if (
       identical(req[["REQUEST_METHOD"]], "POST") &&

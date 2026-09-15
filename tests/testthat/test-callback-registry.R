@@ -1,4 +1,9 @@
-registry_test_clients <- function(shared = FALSE, jarm = FALSE, post = FALSE, encrypted = FALSE) {
+registry_test_clients <- function(
+  shared = FALSE,
+  jarm = FALSE,
+  post = FALSE,
+  encrypted = FALSE
+) {
   redirects <- if (shared) {
     rep("https://app.example/callback", 2L)
   } else {
@@ -39,7 +44,11 @@ registry_test_clients <- function(shared = FALSE, jarm = FALSE, post = FALSE, en
       jarm_signed_response_alg = if (jarm) "HS256" else NULL,
       jarm_encrypted_response_alg = if (encrypted) "RSA-OAEP" else NULL,
       jarm_encrypted_response_enc = if (encrypted) "A128CBC-HS256" else NULL,
-      jarm_decryption_private_key = if (encrypted) openssl::rsa_keygen(2048) else NULL
+      jarm_decryption_private_key = if (encrypted) {
+        openssl::rsa_keygen(2048)
+      } else {
+        NULL
+      }
     )
   })
   stats::setNames(clients, c("auth_a", "auth_b"))
@@ -93,9 +102,13 @@ for (shared in c(FALSE, TRUE)) {
               )
             }
             if (encrypted) {
-              fields[["response"]] <- jwe_compact_encrypt(fields[["response"]],
-                client@jarm_decryption_private_key[["pubkey"]], alg = "RSA-OAEP",
-                enc = "A128CBC-HS256", cty = "JWT")
+              fields[["response"]] <- jwe_compact_encrypt(
+                fields[["response"]],
+                client@jarm_decryption_private_key[["pubkey"]],
+                alg = "RSA-OAEP",
+                enc = "A128CBC-HS256",
+                cty = "JWT"
+              )
               if (shared) fields[["iss"]] <- client@provider@issuer
             }
             encoded <- httr2::url_query_build(fields)
@@ -111,7 +124,11 @@ for (shared in c(FALSE, TRUE)) {
               req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
             }
             response <- ui(req)
-            expect_identical(response[["status"]], 303L, info = response[["content"]])
+            expect_identical(
+              response[["status"]],
+              303L,
+              info = response[["content"]]
+            )
             expect_identical(rendered, 0L)
             expect_identical(
               response[["headers"]][["Referrer-Policy"]],
@@ -162,7 +179,10 @@ for (shared in c(FALSE, TRUE)) {
                 )
               }
               session[["flushReact"]]()
-              expect_true(auth[[id]][["authenticated"]], info = auth[[id]][["error"]])
+              expect_true(
+                auth[[id]][["authenticated"]],
+                info = auth[[id]][["error"]]
+              )
             }
             expect_true(all(vapply(
               auth,
@@ -177,38 +197,94 @@ for (shared in c(FALSE, TRUE)) {
 }
 
 for (post in c(FALSE, TRUE)) {
-  test_that(paste("shared encrypted registry validates the outer routing issuer", post), {
-    clients <- registry_test_clients(shared = TRUE, jarm = TRUE, post = post, encrypted = TRUE)
-    client <- clients[[1L]]
-    ui <- if (post) oauth_form_post_ui(shiny::fluidPage("App"), clients = clients) else
-      oauth_ui(shiny::fluidPage("App"), clients = clients)
-    state <- parse_query_param(prepare_call(client, valid_browser_token()), "state", decode = TRUE)
-    encrypted <- function(issuer = client@provider@issuer) {
-      signed <- jose::jwt_encode_hmac(jose::jwt_claim(iss = issuer, aud = client@client_id,
-        exp = as.numeric(Sys.time()) + 60, code = "example-code", state = state), client@client_secret)
-      jwe_compact_encrypt(signed, client@jarm_decryption_private_key[["pubkey"]],
-        alg = "RSA-OAEP", enc = "A128CBC-HS256", cty = "JWT")
-    }
-    request <- function(fields) {
-      encoded <- httr2::url_query_build(fields)
-      req <- list(REQUEST_METHOD = if (post) "POST" else "GET", PATH_INFO = "/callback",
-        QUERY_STRING = if (post) "" else encoded, rook.url_scheme = "https", HTTP_HOST = "app.example")
-      if (post) {
-        req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
-        req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
+  test_that(
+    paste("shared encrypted registry validates the outer routing issuer", post),
+    {
+      clients <- registry_test_clients(
+        shared = TRUE,
+        jarm = TRUE,
+        post = post,
+        encrypted = TRUE
+      )
+      client <- clients[[1L]]
+      ui <- if (post) {
+        oauth_form_post_ui(shiny::fluidPage("App"), clients = clients)
+      } else {
+        oauth_ui(shiny::fluidPage("App"), clients = clients)
       }
-      ui(req)
+      state <- parse_query_param(
+        prepare_call(client, valid_browser_token()),
+        "state",
+        decode = TRUE
+      )
+      encrypted <- function(issuer = client@provider@issuer) {
+        signed <- jose::jwt_encode_hmac(
+          jose::jwt_claim(
+            iss = issuer,
+            aud = client@client_id,
+            exp = as.numeric(Sys.time()) + 60,
+            code = "example-code",
+            state = state
+          ),
+          client@client_secret
+        )
+        jwe_compact_encrypt(
+          signed,
+          client@jarm_decryption_private_key[["pubkey"]],
+          alg = "RSA-OAEP",
+          enc = "A128CBC-HS256",
+          cty = "JWT"
+        )
+      }
+      request <- function(fields) {
+        encoded <- httr2::url_query_build(fields)
+        req <- list(
+          REQUEST_METHOD = if (post) "POST" else "GET",
+          PATH_INFO = "/callback",
+          QUERY_STRING = if (post) "" else encoded,
+          rook.url_scheme = "https",
+          HTTP_HOST = "app.example"
+        )
+        if (post) {
+          req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
+          req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
+        }
+        ui(req)
+      }
+      local_mocked_bindings(
+        swap_code_for_token_set = function(...) stop("Unexpected exchange"),
+        .package = "shinyOAuth"
+      )
+      response <- encrypted()
+      expect_identical(request(list(response = response))[["status"]], 400L)
+      expect_identical(
+        request(list(response = response, iss = "https://unknown.example"))[[
+          "status"
+        ]],
+        400L
+      )
+      expect_identical(
+        request(list(
+          response = response,
+          iss = clients[[2L]]@provider@issuer
+        ))[["status"]],
+        400L
+      )
+      expect_identical(
+        request(list(
+          response = encrypted(clients[[2L]]@provider@issuer),
+          iss = client@provider@issuer
+        ))[["status"]],
+        400L
+      )
+      expect_identical(
+        request(list(response = response, iss = client@provider@issuer))[[
+          "status"
+        ]],
+        303L
+      )
     }
-    local_mocked_bindings(swap_code_for_token_set = function(...) stop("Unexpected exchange"),
-      .package = "shinyOAuth")
-    response <- encrypted()
-    expect_identical(request(list(response = response))[["status"]], 400L)
-    expect_identical(request(list(response = response, iss = "https://unknown.example"))[["status"]], 400L)
-    expect_identical(request(list(response = response, iss = clients[[2L]]@provider@issuer))[["status"]], 400L)
-    expect_identical(request(list(response = encrypted(clients[[2L]]@provider@issuer),
-      iss = client@provider@issuer))[["status"]], 400L)
-    expect_identical(request(list(response = response, iss = client@provider@issuer))[["status"]], 303L)
-  })
+  )
 }
 
 test_that("registry early rejections emit one sanitized routing event and error span", {
@@ -263,7 +339,10 @@ test_that("registry early rejections emit one sanitized routing event and error 
     expect_length(events, 1L)
     expect_identical(routing[[1L]][["reason"]], reason)
     expect_identical(routing[[1L]][["phase"]], "callback_registry_routing")
-    expect_identical(routing[[1L]][["shiny_session"]][["http"]][["host"]], "app.example")
+    expect_identical(
+      routing[[1L]][["shiny_session"]][["http"]][["host"]],
+      "app.example"
+    )
     expect_null(routing[[1L]][["provider"]])
     expect_null(routing[[1L]][["issuer"]])
     span <- record[["traces"]][["shinyOAuth.callback.route"]]
@@ -274,7 +353,10 @@ test_that("registry early rejections emit one sanitized routing event and error 
       "callback_registry_routing"
     )
     expect_null(span[["attributes"]][["oauth.provider.name"]])
-    expect_false(any(grepl("SENTINEL", unlist(list(events, span[["attributes"]])))))
+    expect_false(any(grepl(
+      "SENTINEL",
+      unlist(list(events, span[["attributes"]]))
+    )))
   }
 })
 

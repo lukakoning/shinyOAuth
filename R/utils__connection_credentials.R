@@ -205,7 +205,10 @@ connection_data_decode <- function(node) {
         integer = suppressWarnings(as.integer(text)),
         double = suppressWarnings({
           numbers <- as.numeric(text)
-          hex <- grepl("^[+-]?0[xX][[:xdigit:]]+(\\.[[:xdigit:]]*)?[pP][+-]?[0-9]+$", text)
+          hex <- grepl(
+            "^[+-]?0[xX][[:xdigit:]]+(\\.[[:xdigit:]]*)?[pP][+-]?[0-9]+$",
+            text
+          )
           # R's direct hex parser can underflow tiny values. Parse the fraction
           # first, then scale by a power of two to retain subnormal values too.
           fraction <- sub("[pP].*$", "p0", text[hex])
@@ -217,7 +220,11 @@ connection_data_decode <- function(node) {
       if (
         node[["kind"]] %in%
           c("integer", "double") &&
-          any(!absent & is.na(value) & !(node[["kind"]] == "double" & text == "NaN"))
+          any(
+            !absent &
+              is.na(value) &
+              !(node[["kind"]] == "double" & text == "NaN")
+          )
       ) {
         bad()
       }
@@ -261,7 +268,9 @@ connection_credentials_seal <- function(
   )
   # Omitted for existing records. This local policy flag does not claim that
   # the authorization server reduced the refresh token's original grant.
-  if (refresh_scope_narrowed) payload[["refresh_scope_narrowed"]] <- TRUE
+  if (refresh_scope_narrowed) {
+    payload[["refresh_scope_narrowed"]] <- TRUE
+  }
   json <- jsonlite::toJSON(
     payload,
     auto_unbox = TRUE,
@@ -274,12 +283,20 @@ connection_credentials_seal <- function(
   state_encrypt_gcm(payload, connection_credential_key(key))
 }
 
-connection_credentials_open <- function(sealed, owner, id, client, key,
-                                        expected_fingerprint = NULL) {
+connection_credentials_open <- function(
+  sealed,
+  owner,
+  id,
+  client,
+  key,
+  expected_fingerprint = NULL
+) {
   derived_key <- connection_credential_key(key)
   binding <- connection_credential_binding(owner, id, client)
-  if (!is.null(expected_fingerprint) &&
-      !identical(binding[["fingerprint"]], expected_fingerprint)) {
+  if (
+    !is.null(expected_fingerprint) &&
+      !identical(binding[["fingerprint"]], expected_fingerprint)
+  ) {
     err_token("Connection credentials are unavailable or incompatible")
   }
   tryCatch(
@@ -295,8 +312,19 @@ connection_credentials_open <- function(sealed, owner, id, client, key,
         )
       )
       if (
-        !(identical(names(payload), c("binding", "authenticated_at", "credentials")) ||
-          (identical(names(payload), c("binding", "authenticated_at", "credentials", "refresh_scope_narrowed")) &&
+        !(identical(
+          names(payload),
+          c("binding", "authenticated_at", "credentials")
+        ) ||
+          (identical(
+            names(payload),
+            c(
+              "binding",
+              "authenticated_at",
+              "credentials",
+              "refresh_scope_narrowed"
+            )
+          ) &&
             identical(payload[["refresh_scope_narrowed"]], TRUE))) ||
           !identical(payload[["binding"]], binding) ||
           !is.numeric(payload[["authenticated_at"]]) ||

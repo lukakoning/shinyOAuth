@@ -772,7 +772,8 @@ parse_url_components <- function(url, label = "url") {
 
   if (inherits(parsed, "try-error")) {
     err_config(protocol_diagnostic_message(
-      sprintf("Could not parse %s", label), url
+      sprintf("Could not parse %s", label),
+      url
     ))
   }
 
@@ -783,7 +784,8 @@ parse_url_components <- function(url, label = "url") {
 
   if (!nzchar(host)) {
     err_config(protocol_diagnostic_message(
-      sprintf("%s does not include a hostname", label), url
+      sprintf("%s does not include a hostname", label),
+      url
     ))
   }
 

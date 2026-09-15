@@ -1,7 +1,10 @@
 ## Integration tests: signed UserInfo JWTs from live Keycloak
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 make_userinfo_jwt_client <- function(prov) {
@@ -105,6 +108,9 @@ testthat::test_that("Keycloak signed UserInfo JWT is verified and subject-bound"
   )
 
   fetched <- shinyOAuth::get_userinfo(client, result[["token"]])
-  testthat::expect_identical(fetched[["sub"]], result[["token"]]@userinfo[["sub"]])
+  testthat::expect_identical(
+    fetched[["sub"]],
+    result[["token"]]@userinfo[["sub"]]
+  )
   testthat::expect_identical(fetched[["email"]], "alice@example.com")
 })

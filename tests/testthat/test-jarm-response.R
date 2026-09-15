@@ -49,7 +49,10 @@ make_jarm_test_client <- function(
 }
 
 make_jarm_public_jwk <- function(key, kid = "sig-1", use = "sig") {
-  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = TRUE)
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(key[["pubkey"]]),
+    simplifyVector = TRUE
+  )
   jwk[["kid"]] <- kid
   jwk[["use"]] <- use
   jwk
@@ -1791,7 +1794,10 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
 
           expect_false(isTRUE(values[["authenticated"]]))
           expect_identical(values[["error"]], "invalid_callback_query")
-          expect_match(values[["error_description"]] %||% "", "must not be combined")
+          expect_match(
+            values[["error_description"]] %||% "",
+            "must not be combined"
+          )
           expect_length(client@state_store[["keys"]](), 1L)
           expect_length(cleared, 1L)
           expect_true(isTRUE(cleared[[1L]][["dropResponse"]]))
@@ -2011,7 +2017,10 @@ test_that("oauth_module_server rejects direct query callbacks for query.jwt clie
 
           expect_false(isTRUE(values[["authenticated"]]))
           expect_identical(values[["error"]], "invalid_callback_query")
-          expect_match(values[["error_description"]] %||% "", "response parameter")
+          expect_match(
+            values[["error_description"]] %||% "",
+            "response parameter"
+          )
           expect_length(client@state_store[["keys"]](), 1L)
         }
       )
@@ -2204,7 +2213,10 @@ test_that("oauth_module_server rejects form_post.jwt handles mixed with compact 
       session[["flushReact"]]()
 
       expect_identical(values[["error"]], "invalid_callback_query")
-      expect_match(values[["error_description"]] %||% "", "must not be combined")
+      expect_match(
+        values[["error_description"]] %||% "",
+        "must not be combined"
+      )
       expect_false(isTRUE(values[["authenticated"]]))
     }
   )
@@ -3128,7 +3140,10 @@ test_that("oauth_module_server exposes one encrypted query.jwt decryption failur
             ))
             session[["flushReact"]]()
 
-            expect_false(isTRUE(values[["authenticated"]]), info = case[["label"]])
+            expect_false(
+              isTRUE(values[["authenticated"]]),
+              info = case[["label"]]
+            )
             expect_identical(
               values[["error"]],
               "invalid_state",
@@ -3790,7 +3805,10 @@ test_that("oauth_form_post_ui emits one audit event for invalid inner-state form
     events
   )
   expect_length(reject_events, 1L)
-  expect_identical(reject_events[[1L]][["phase"]] %||% NULL, "payload_validation")
+  expect_identical(
+    reject_events[[1L]][["phase"]] %||% NULL,
+    "payload_validation"
+  )
 })
 
 test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
@@ -4184,7 +4202,10 @@ test_that("oauth_module_server rejects bridged form_post.jwt callbacks after JAR
 
           expect_false(isTRUE(values[["authenticated"]]))
           expect_identical(values[["error"]], "invalid_state")
-          expect_match(values[["error_description"]] %||% "", "JARM payload expired")
+          expect_match(
+            values[["error_description"]] %||% "",
+            "JARM payload expired"
+          )
           expect_identical(fetch_calls, 1L)
         }
       )
@@ -4276,7 +4297,10 @@ test_that("oauth_module_server rechecks pending query.jwt callbacks after JARM e
           )
 
           expect_identical(values[["error"]], "invalid_state")
-          expect_match(values[["error_description"]] %||% "", "JARM payload expired")
+          expect_match(
+            values[["error_description"]] %||% "",
+            "JARM payload expired"
+          )
           expect_null(values[["pending_callback"]])
           expect_false(isTRUE(values[["authenticated"]]))
         }
@@ -4572,7 +4596,9 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
           expect_identical(exchanged_codes, character(0))
           expect_false(any(vapply(
             events,
-            function(e) identical(e[["type"]], "audit_callback_validation_success"),
+            function(e) {
+              identical(e[["type"]], "audit_callback_validation_success")
+            },
             logical(1)
           )))
 
@@ -4609,7 +4635,9 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
           expect_length(client@state_store[["keys"]](), 0L)
           expect_true(any(vapply(
             events,
-            function(e) identical(e[["type"]], "audit_callback_validation_success"),
+            function(e) {
+              identical(e[["type"]], "audit_callback_validation_success")
+            },
             logical(1)
           )))
         }

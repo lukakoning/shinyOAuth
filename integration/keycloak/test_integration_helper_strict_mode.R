@@ -1,5 +1,8 @@
 if (!exists("keycloak_skip_or_fail", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 testthat::test_that("strict integration mode turns infrastructure skips into failures", {

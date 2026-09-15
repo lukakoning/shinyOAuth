@@ -1,7 +1,10 @@
 # Full authorization-code flow against Keycloak using JWT client authentication
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 cases <- list(
@@ -27,7 +30,11 @@ for (case in cases) {
       testthat::skip_if_not_installed("xml2")
       testthat::skip_if_not_installed("rvest")
       if (!isTRUE(case[["include"]]())) {
-        testthat::skip(paste("Skipping", case[["name"]], "— prerequisites not met"))
+        testthat::skip(paste(
+          "Skipping",
+          case[["name"]],
+          "— prerequisites not met"
+        ))
       }
 
       local_test_options()
@@ -46,7 +53,8 @@ for (case in cases) {
             is.character(res[["callback_url"]]) && nzchar(res[["callback_url"]])
           )
           testthat::expect_true(
-            is.character(res[["state_payload"]]) && nzchar(res[["state_payload"]])
+            is.character(res[["state_payload"]]) &&
+              nzchar(res[["state_payload"]])
           )
 
           values[[".process_query"]](callback_query(res))

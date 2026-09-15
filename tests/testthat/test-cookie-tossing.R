@@ -9,5 +9,8 @@ test_that("HTTPS browser bindings ignore sibling-domain cookies at every path", 
     stdout = TRUE,
     stderr = TRUE
   )
-  expect_null(attr(output, "status", exact = TRUE), info = paste(output, collapse = "\n"))
+  expect_null(
+    attr(output, "status", exact = TRUE),
+    info = paste(output, collapse = "\n")
+  )
 })

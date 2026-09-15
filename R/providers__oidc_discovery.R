@@ -825,9 +825,13 @@ oauth_provider_oidc_discover <- function(
   valid <- is.list(value) &&
     length(value) > 0L &&
     is.null(names(value)) &&
-    all(vapply(value, function(item) {
-      is_valid_string(item) && nzchar(trimws(item))
-    }, logical(1)))
+    all(vapply(
+      value,
+      function(item) {
+        is_valid_string(item) && nzchar(trimws(item))
+      },
+      logical(1)
+    ))
 
   if (!valid) {
     err_parse(

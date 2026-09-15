@@ -48,7 +48,10 @@ local({
     )
   }
 
-  integration_library_path <- paste(.libPaths(), collapse = .Platform[["path.sep"]])
+  integration_library_path <- paste(
+    .libPaths(),
+    collapse = .Platform[["path.sep"]]
+  )
   Sys.setenv(
     R_LIBS = integration_library_path,
     R_LIBS_USER = integration_library_path

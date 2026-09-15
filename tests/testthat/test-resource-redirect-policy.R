@@ -22,7 +22,9 @@ test_that("per-call redirect policy takes precedence over global and input polic
       }
     }
     expect_false(
-      resource_req("fixture", "https://example.com")[["options"]][["followlocation"]]
+      resource_req("fixture", "https://example.com")[["options"]][[
+        "followlocation"
+      ]]
     )
   }
   for (bad in list(NA, c(TRUE, FALSE), "FALSE", 1)) {

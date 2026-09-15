@@ -40,7 +40,8 @@ testthat::test_that("manual login flow yields authenticated TRUE on success", {
       testthat::expect_false(is.null(token))
       session[["flushReact"]]()
       testthat::expect_true(
-        is.logical(values[["authenticated"]]) && isTRUE(values[["authenticated"]])
+        is.logical(values[["authenticated"]]) &&
+          isTRUE(values[["authenticated"]])
       )
       testthat::expect_null(values[["error"]])
       testthat::expect_null(values[["error_description"]])
@@ -96,7 +97,9 @@ testthat::test_that("manual build_auth_url keeps PAR lifetime metadata", {
         attr(url, "shinyOAuth.par_expires_at", exact = TRUE),
         "POSIXct"
       )
-      testthat::expect_true(attr(url, "shinyOAuth.par_expires_at", exact = TRUE) > Sys.time())
+      testthat::expect_true(
+        attr(url, "shinyOAuth.par_expires_at", exact = TRUE) > Sys.time()
+      )
     }
   )
 })
@@ -1410,7 +1413,10 @@ testthat::test_that("callback_max_query_bytes option is enforced", {
         }
       )
       testthat::expect_identical(values[["error"]], "invalid_callback_query")
-      testthat::expect_match(values[["error_description"]] %||% "", "query string")
+      testthat::expect_match(
+        values[["error_description"]] %||% "",
+        "query string"
+      )
       testthat::expect_null(values[["token"]])
 
       # Large enough cap allows the normal flow to proceed

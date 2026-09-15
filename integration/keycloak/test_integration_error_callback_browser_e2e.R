@@ -5,7 +5,10 @@
 ## cleanup, and cookie metadata inspection via Chromote.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 make_error_callback_browser_app <- function(
@@ -531,7 +534,9 @@ testthat::test_that("browser authorization error callbacks preserve state on iss
     "error: issuer_mismatch",
     fixed = TRUE
   )
-  testthat::expect_false(isTRUE(mismatch_state[["browser_state"]][["authenticated"]]))
+  testthat::expect_false(isTRUE(mismatch_state[["browser_state"]][[
+    "authenticated"
+  ]]))
 
   navigate_browser_to_url(drv, valid_error_url)
   valid_auth_state <- wait_for_error_state_transition(
@@ -543,9 +548,14 @@ testthat::test_that("browser authorization error callbacks preserve state on iss
   cleaned <- wait_for_callback_cleanup(drv)
 
   testthat::expect_match(valid_auth_state, "error: access_denied", fixed = TRUE)
-  testthat::expect_false(isTRUE(valid_state[["browser_state"]][["authenticated"]]))
+  testthat::expect_false(isTRUE(valid_state[["browser_state"]][[
+    "authenticated"
+  ]]))
   testthat::expect_false(isTRUE(valid_state[["browser_state"]][["has_token"]]))
-  testthat::expect_identical(valid_state[["browser_state"]][["error"]], "access_denied")
+  testthat::expect_identical(
+    valid_state[["browser_state"]][["error"]],
+    "access_denied"
+  )
   testthat::expect_null(valid_state[["browser_state"]][["error_description"]])
   testthat::expect_identical(
     valid_state[["browser_state"]][["error_uri"]],
@@ -579,7 +589,10 @@ testthat::test_that("browser authorization error callbacks preserve state on iss
     "error: invalid_state",
     fixed = TRUE
   )
-  testthat::expect_identical(replay_state[["browser_state"]][["error"]], "invalid_state")
+  testthat::expect_identical(
+    replay_state[["browser_state"]][["error"]],
+    "invalid_state"
+  )
 })
 
 testthat::test_that("browser authorization error callback rejects unbound state", {
@@ -653,7 +666,10 @@ testthat::test_that("browser authorization error callback rejects unbound state"
   browser_state <- read_error_callback_browser_state(drv)
 
   testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
-  testthat::expect_identical(browser_state[["browser_state"]][["error"]], "invalid_state")
+  testthat::expect_identical(
+    browser_state[["browser_state"]][["error"]],
+    "invalid_state"
+  )
   testthat::expect_match(
     browser_state[["browser_state"]][["error_description"]] %||% "",
     "state",
@@ -720,7 +736,11 @@ testthat::test_that("browser authorization error callback fails closed when the 
 
   testthat::expect_false(is.null(cookie))
 
-  state <- parse_query_param(initial_state[["auth_url"]], "state", decode = TRUE)
+  state <- parse_query_param(
+    initial_state[["auth_url"]],
+    "state",
+    decode = TRUE
+  )
 
   clear_browser_cookie(drv, cookie[["name"]], path = cookie[["path"]] %||% "/")
   drv[["wait_for_idle"]](250)
@@ -742,7 +762,10 @@ testthat::test_that("browser authorization error callback fails closed when the 
   browser_state <- read_error_callback_browser_state(drv)
 
   testthat::expect_match(auth_state, "error: invalid_state", fixed = TRUE)
-  testthat::expect_identical(browser_state[["browser_state"]][["error"]], "invalid_state")
+  testthat::expect_identical(
+    browser_state[["browser_state"]][["error"]],
+    "invalid_state"
+  )
   testthat::expect_match(
     browser_state[["browser_state"]][["error_description"]] %||% "",
     "browser token|state",

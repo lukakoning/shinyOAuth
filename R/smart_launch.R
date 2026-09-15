@@ -59,13 +59,23 @@
 #' }
 #' @export
 smart_launch_route <- function(path, clients, max_age = 120) {
-  if (!is_valid_string(path) || !startsWith(path, "/") ||
-      nchar(path, type = "bytes") > 8192L || grepl("[?#[:space:][:cntrl:]]", path) ||
-      !is.character(clients) || !length(clients) || length(clients) > 64L ||
-      anyNA(clients) || anyDuplicated(clients) ||
+  if (
+    !is_valid_string(path) ||
+      !startsWith(path, "/") ||
+      nchar(path, type = "bytes") > 8192L ||
+      grepl("[?#[:space:][:cntrl:]]", path) ||
+      !is.character(clients) ||
+      !length(clients) ||
+      length(clients) > 64L ||
+      anyNA(clients) ||
+      anyDuplicated(clients) ||
       !all(grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", clients)) ||
-      !is.numeric(max_age) || length(max_age) != 1L ||
-      !is.finite(max_age) || max_age < 30 || max_age > 300) {
+      !is.numeric(max_age) ||
+      length(max_age) != 1L ||
+      !is.finite(max_age) ||
+      max_age < 30 ||
+      max_age > 300
+  ) {
     err_config("Invalid SMART launch route configuration")
   }
   # This is a path, not a network destination. A placeholder authority would
@@ -77,10 +87,18 @@ smart_launch_route <- function(path, clients, max_age = 120) {
 
 smart_launch_parameter <- "shinyOAuth_smart_launch"
 
-smart_launch_routes_validate <- function(routes, manager, app_base_path,
-                                         callback_clients = manager[["clients"]]) {
-  if (!is.list(routes) || length(routes) > 32L) err_config("Invalid SMART launch routes")
-  if (!length(routes)) return(invisible(NULL))
+smart_launch_routes_validate <- function(
+  routes,
+  manager,
+  app_base_path,
+  callback_clients = manager[["clients"]]
+) {
+  if (!is.list(routes) || length(routes) > 32L) {
+    err_config("Invalid SMART launch routes")
+  }
+  if (!length(routes)) {
+    return(invisible(NULL))
+  }
   if (!identical(manager[["retention"]], "browser")) {
     err_config("SMART EHR launch currently requires browser retention")
   }
@@ -88,61 +106,93 @@ smart_launch_routes_validate <- function(routes, manager, app_base_path,
     err_config("SMART top-level launch requires a Lax browser owner cookie")
   }
   paths <- character()
-  callbacks <- vapply(callback_clients, function(client) {
-    resource_binding_components(client@redirect_uri)[["path"]]
-  }, character(1))
+  callbacks <- vapply(
+    callback_clients,
+    function(client) {
+      resource_binding_components(client@redirect_uri)[["path"]]
+    },
+    character(1)
+  )
   for (route in routes) {
-    if (!is.list(route) || !setequal(names(route), c("path", "clients", "max_age"))) {
+    if (
+      !is.list(route) ||
+        !setequal(names(route), c("path", "clients", "max_age"))
+    ) {
       err_config("Use smart_launch_route() to configure EHR entry")
     }
     canonical <- do.call(smart_launch_route, route)
     if (!identical(route[["path"]], canonical[["path"]])) {
       err_config("Use smart_launch_route() to canonicalize EHR entry paths")
     }
-    if (!startsWith(route[["path"]], app_base_path) || route[["path"]] %in% c(paths, callbacks, app_base_path)) {
-      err_config("SMART launch paths must be distinct from callbacks and inside the app")
+    if (
+      !startsWith(route[["path"]], app_base_path) ||
+        route[["path"]] %in% c(paths, callbacks, app_base_path)
+    ) {
+      err_config(
+        "SMART launch paths must be distinct from callbacks and inside the app"
+      )
     }
     paths <- c(paths, route[["path"]])
-    bases <- vapply(route[["clients"]], function(id) {
-      client <- manager[["clients"]][[id]]
-      if (is.null(client) || !identical(client@smart[["launch"]], "ehr")) {
-        err_config("SMART launch routes require configured EHR clients")
-      }
-      client@smart[["fhir_base"]]
-    }, character(1))
-    if (anyDuplicated(bases)) err_config("SMART launch route has ambiguous FHIR-base registrations")
+    bases <- vapply(
+      route[["clients"]],
+      function(id) {
+        client <- manager[["clients"]][[id]]
+        if (is.null(client) || !identical(client@smart[["launch"]], "ehr")) {
+          err_config("SMART launch routes require configured EHR clients")
+        }
+        client@smart[["fhir_base"]]
+      },
+      character(1)
+    )
+    if (anyDuplicated(bases)) {
+      err_config("SMART launch route has ambiguous FHIR-base registrations")
+    }
   }
   invisible(NULL)
 }
 
 smart_launch_query <- function(query, continuation = FALSE) {
-  if (!is.character(query) || length(query) != 1L || is.na(query) ||
+  if (
+    !is.character(query) ||
+      length(query) != 1L ||
+      is.na(query) ||
       nchar(query, type = "bytes") > 8192L ||
-      grepl("%(?![0-9A-Fa-f]{2})", query, perl = TRUE)) {
+      grepl("%(?![0-9A-Fa-f]{2})", query, perl = TRUE)
+  ) {
     err_input("Invalid SMART launch query")
   }
   reject_duplicate_form_encoded_members(query, "SMART launch query")
   fields <- httr2::url_query_parse(gsub("+", "%20", query, fixed = TRUE))
   expected <- if (continuation) smart_launch_parameter else c("iss", "launch")
-  if (!setequal(names(fields), expected) || length(fields) != length(expected) ||
-      !all(vapply(fields, is_valid_string, logical(1)))) {
+  if (
+    !setequal(names(fields), expected) ||
+      length(fields) != length(expected) ||
+      !all(vapply(fields, is_valid_string, logical(1)))
+  ) {
     err_input("SMART launch requires its exact scalar parameters")
   }
   if (continuation) {
     if (!grepl("^[A-Za-z0-9_-]{32}$", fields[[smart_launch_parameter]])) {
       err_input("Invalid SMART continuation")
     }
-  } else if (nchar(fields[["iss"]], type = "bytes") > 2048L ||
+  } else if (
+    nchar(fields[["iss"]], type = "bytes") > 2048L ||
       nchar(fields[["launch"]], type = "bytes") > 2048L ||
-      !grepl("^[!-~]+$", fields[["launch"]])) {
+      !grepl("^[!-~]+$", fields[["launch"]])
+  ) {
     err_input("Invalid SMART launch parameter size or syntax")
   }
   fields
 }
 
 smart_launch_key <- function(manager) {
-  as.raw(openssl::sha256(charToRaw(paste0("shinyOAuth/smart-launch/v1/", manager[["state"]][["id"]])),
-    key = manager[["keys"]][["credentials"]]))
+  as.raw(openssl::sha256(
+    charToRaw(paste0(
+      "shinyOAuth/smart-launch/v1/",
+      manager[["state"]][["id"]]
+    )),
+    key = manager[["keys"]][["credentials"]]
+  ))
 }
 
 smart_launch_prune <- function(manager) {
@@ -155,125 +205,251 @@ smart_launch_prune <- function(manager) {
 
 smart_launch_open <- function(manager, entry, owner, expected_id = NULL) {
   record <- state_decrypt_gcm(entry[["sealed"]], smart_launch_key(manager))
-  if (!identical(record[["purpose"]], "smart-launch-v1") ||
+  if (
+    !identical(record[["purpose"]], "smart-launch-v1") ||
       !identical(record[["owner"]], owner[["id"]]) ||
       !identical(record[["generation"]], owner[["generation"]]) ||
       (!is.null(expected_id) && !identical(record[["id"]], expected_id)) ||
-      !is.numeric(record[["expires_at"]]) || length(record[["expires_at"]]) != 1L ||
-      record[["expires_at"]] <= as.numeric(Sys.time())) {
+      !is.numeric(record[["expires_at"]]) ||
+      length(record[["expires_at"]]) != 1L ||
+      record[["expires_at"]] <= as.numeric(Sys.time())
+  ) {
     err_token("SMART launch is unavailable")
   }
   client <- manager[["clients"]][[record[["client"]]]]
-  if (is.null(client) || !identical(client@smart[["launch"]], "ehr") ||
+  if (
+    is.null(client) ||
+      !identical(client@smart[["launch"]], "ehr") ||
       !identical(record[["fhir_base"]], client@smart[["fhir_base"]]) ||
-      !identical(record[["fingerprint"]], connection_client_fingerprint(client))) {
+      !identical(record[["fingerprint"]], connection_client_fingerprint(client))
+  ) {
     err_token("SMART launch client changed")
   }
   record
 }
 
 smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
-  if (!length(routes)) return(NULL)
-  path <- tryCatch(resource_binding_components(uri)[["path"]], error = function(...) NULL)
-  if (is.null(path)) return(oauth_get_setup_error("Invalid SMART application path."))
+  if (!length(routes)) {
+    return(NULL)
+  }
+  path <- tryCatch(
+    resource_binding_components(uri)[["path"]],
+    error = function(...) NULL
+  )
+  if (is.null(path)) {
+    return(oauth_get_setup_error("Invalid SMART application path."))
+  }
   matches <- Filter(function(route) identical(route[["path"]], path), routes)
   query <- req[["QUERY_STRING"]] %||% ""
-  continuation <- length(oauth_module_query_raw_values(query, smart_launch_parameter)) > 0L
-  if (!length(matches) && !continuation) return(NULL)
-  tryCatch({
-    if (!identical(req[["REQUEST_METHOD"]], "GET") ||
-        identical(req[["HTTP_SEC_FETCH_DEST"]], "iframe")) {
-      err_input("SMART EHR entry requires top-level GET navigation")
-    }
-    smart_launch_prune(manager)
-    owners <- manager[["state"]][["owners"]]
-    cookie <- connection_owner_cookie_read(req, owners[["cookie_name"]])
-    owner <- owners[["resolve"]](cookie)
-    if (length(matches)) {
-      fields <- smart_launch_query(query)
-      route <- matches[[1L]]
-      ids <- Filter(function(id) identical(manager[["clients"]][[id]]@smart[["fhir_base"]], fields[["iss"]]),
-        route[["clients"]])
-      if (length(ids) != 1L) err_input("SMART launch FHIR base is not approved")
-      # Apply one owner quota across all routes before allocating a ticket.
-      # Reject new work without replacing another pending tab's continuation.
-      if (!is.null(owner) && sum(vapply(as.list(manager[["state"]][["launches"]]),
-          function(entry) identical(entry[["owner"]], owner[["id"]]), logical(1))) >= 8L) {
-        err_token("SMART launch owner capacity reached")
+  continuation <- length(oauth_module_query_raw_values(
+    query,
+    smart_launch_parameter
+  )) >
+    0L
+  if (!length(matches) && !continuation) {
+    return(NULL)
+  }
+  tryCatch(
+    {
+      if (
+        !identical(req[["REQUEST_METHOD"]], "GET") ||
+          identical(req[["HTTP_SEC_FETCH_DEST"]], "iframe")
+      ) {
+        err_input("SMART EHR entry requires top-level GET navigation")
       }
-      if (length(manager[["state"]][["launches"]]) >= 1000L) err_token("SMART launch capacity reached")
-      headers <- list("Cache-Control" = "no-store", "Referrer-Policy" = "no-referrer")
-      if (is.null(owner)) {
-        created <- owners[["create"]]()
-        owner <- owners[["resolve"]](created[["cookie"]])
-        headers[["Set-Cookie"]] <- connection_owner_cookie_header(owners[["cookie_name"]],
-          created[["cookie"]], manager[["app_origin"]], manager[["owner"]])
+      smart_launch_prune(manager)
+      owners <- manager[["state"]][["owners"]]
+      cookie <- connection_owner_cookie_read(req, owners[["cookie_name"]])
+      owner <- owners[["resolve"]](cookie)
+      if (length(matches)) {
+        fields <- smart_launch_query(query)
+        route <- matches[[1L]]
+        ids <- Filter(
+          function(id) {
+            identical(
+              manager[["clients"]][[id]]@smart[["fhir_base"]],
+              fields[["iss"]]
+            )
+          },
+          route[["clients"]]
+        )
+        if (length(ids) != 1L) {
+          err_input("SMART launch FHIR base is not approved")
+        }
+        # Apply one owner quota across all routes before allocating a ticket.
+        # Reject new work without replacing another pending tab's continuation.
+        if (
+          !is.null(owner) &&
+            sum(vapply(
+              as.list(manager[["state"]][["launches"]]),
+              function(entry) identical(entry[["owner"]], owner[["id"]]),
+              logical(1)
+            )) >=
+              8L
+        ) {
+          err_token("SMART launch owner capacity reached")
+        }
+        if (length(manager[["state"]][["launches"]]) >= 1000L) {
+          err_token("SMART launch capacity reached")
+        }
+        headers <- list(
+          "Cache-Control" = "no-store",
+          "Referrer-Policy" = "no-referrer"
+        )
+        if (is.null(owner)) {
+          created <- owners[["create"]]()
+          owner <- owners[["resolve"]](created[["cookie"]])
+          headers[["Set-Cookie"]] <- connection_owner_cookie_header(
+            owners[["cookie_name"]],
+            created[["cookie"]],
+            manager[["app_origin"]],
+            manager[["owner"]]
+          )
+        }
+        id <- random_urlsafe(32)
+        client <- manager[["clients"]][[ids[[1L]]]]
+        expires <- min(
+          owner[["expires_at"]],
+          as.numeric(Sys.time()) + route[["max_age"]]
+        )
+        record <- list(
+          purpose = "smart-launch-v1",
+          id = id,
+          owner = owner[["id"]],
+          generation = owner[["generation"]],
+          client = ids[[1L]],
+          fhir_base = fields[["iss"]],
+          launch = fields[["launch"]],
+          fingerprint = connection_client_fingerprint(client),
+          expires_at = expires
+        )
+        entries <- manager[["state"]][["launches"]]
+        entries[[id]] <- list(
+          expires_at = expires,
+          owner = owner[["id"]],
+          sealed = state_encrypt_gcm(record, smart_launch_key(manager))
+        )
+        headers[["Location"]] <- paste0(
+          app_base,
+          "?",
+          smart_launch_parameter,
+          "=",
+          id
+        )
+        return(shiny::httpResponse(303L, "text/plain", "", headers = headers))
       }
-      id <- random_urlsafe(32)
-      client <- manager[["clients"]][[ids[[1L]]]]
-      expires <- min(owner[["expires_at"]], as.numeric(Sys.time()) + route[["max_age"]])
-      record <- list(purpose = "smart-launch-v1", id = id, owner = owner[["id"]],
-        generation = owner[["generation"]], client = ids[[1L]], fhir_base = fields[["iss"]],
-        launch = fields[["launch"]], fingerprint = connection_client_fingerprint(client),
-        expires_at = expires)
-      entries <- manager[["state"]][["launches"]]
-      entries[[id]] <- list(expires_at = expires, owner = owner[["id"]],
-        sealed = state_encrypt_gcm(record, smart_launch_key(manager)))
-      headers[["Location"]] <- paste0(app_base, "?", smart_launch_parameter, "=", id)
-      return(shiny::httpResponse(303L, "text/plain", "", headers = headers))
+      fields <- smart_launch_query(query, continuation = TRUE)
+      id <- fields[[smart_launch_parameter]]
+      if (
+        is.null(owner) ||
+          !identical(path, resource_binding_components(app_base)[["path"]])
+      ) {
+        err_token("SMART launch owner is unavailable")
+      }
+      entry <- manager[["state"]][["launches"]][[id]]
+      if (is.null(entry)) {
+        err_token("SMART launch is unavailable")
+      }
+      smart_launch_open(manager, entry, owner, id)
+      clean <- if (is.environment(req)) {
+        list2env(as.list(req, all.names = TRUE), parent = parent.env(req))
+      } else {
+        req
+      }
+      clean[["QUERY_STRING"]] <- ""
+      clean[["REQUEST_URI"]] <- resource_binding_components(app_base)[["path"]]
+      response <- handler(clean)
+      if (
+        is.null(response) ||
+          !isTRUE(response[["status"]] == 200L) ||
+          !grepl("^text/html", response[["content_type"]], ignore.case = TRUE)
+      ) {
+        err_token("SMART launch continuation requires application HTML")
+      }
+      marker <- as.character(htmltools::tags[["meta"]](
+        name = "shinyOAuth-smart-launch",
+        content = id,
+        `data-input` = shiny::NS(manager[["state"]][["id"]])("smart_launch"),
+        `data-url` = app_base
+      ))
+      if (
+        !is.character(response[["content"]]) ||
+          length(response[["content"]]) != 1L ||
+          !grepl("</body>", response[["content"]], fixed = TRUE) ||
+          !grepl(
+            "<head\\b[^>]*>",
+            response[["content"]],
+            perl = TRUE,
+            ignore.case = TRUE
+          )
+      ) {
+        err_token("SMART continuation requires a complete HTML document")
+      }
+      # Put inert data before every dependency, so the external helper can clean
+      # history and subscribe before Shiny connects, including under strict CSP.
+      response[["content"]] <- sub(
+        "(<head\\b[^>]*>)",
+        paste0("\\1", marker),
+        response[["content"]],
+        perl = TRUE,
+        ignore.case = TRUE
+      )
+      response[["headers"]] <- response[["headers"]][
+        !tolower(names(response[["headers"]])) %in%
+          c(
+            "content-length",
+            "etag",
+            "content-md5",
+            "cache-control",
+            "referrer-policy"
+          )
+      ]
+      response[["headers"]] <- c(
+        response[["headers"]],
+        list(
+          "Cache-Control" = "no-store",
+          "Referrer-Policy" = "no-referrer",
+          "Content-Security-Policy" = "frame-ancestors 'none'"
+        )
+      )
+      response
+    },
+    error = function(...) {
+      oauth_get_setup_error(
+        "SMART launch could not be validated; start a fresh EHR launch."
+      )
     }
-    fields <- smart_launch_query(query, continuation = TRUE)
-    id <- fields[[smart_launch_parameter]]
-    if (is.null(owner) || !identical(path, resource_binding_components(app_base)[["path"]])) {
-      err_token("SMART launch owner is unavailable")
-    }
-    entry <- manager[["state"]][["launches"]][[id]]
-    if (is.null(entry)) err_token("SMART launch is unavailable")
-    smart_launch_open(manager, entry, owner, id)
-    clean <- if (is.environment(req)) {
-      list2env(as.list(req, all.names = TRUE), parent = parent.env(req))
-    } else req
-    clean[["QUERY_STRING"]] <- ""
-    clean[["REQUEST_URI"]] <- resource_binding_components(app_base)[["path"]]
-    response <- handler(clean)
-    if (is.null(response) || !isTRUE(response[["status"]] == 200L) ||
-        !grepl("^text/html", response[["content_type"]], ignore.case = TRUE)) {
-      err_token("SMART launch continuation requires application HTML")
-    }
-    marker <- as.character(htmltools::tags[["meta"]](name = "shinyOAuth-smart-launch",
-      content = id, `data-input` = shiny::NS(manager[["state"]][["id"]])("smart_launch"),
-      `data-url` = app_base))
-    if (!is.character(response[["content"]]) || length(response[["content"]]) != 1L ||
-        !grepl("</body>", response[["content"]], fixed = TRUE) ||
-        !grepl("<head\\b[^>]*>", response[["content"]], perl = TRUE, ignore.case = TRUE)) {
-      err_token("SMART continuation requires a complete HTML document")
-    }
-    # Put inert data before every dependency, so the external helper can clean
-    # history and subscribe before Shiny connects, including under strict CSP.
-    response[["content"]] <- sub("(<head\\b[^>]*>)", paste0("\\1", marker),
-      response[["content"]], perl = TRUE, ignore.case = TRUE)
-    response[["headers"]] <- response[["headers"]][!tolower(names(response[["headers"]])) %in%
-      c("content-length", "etag", "content-md5", "cache-control", "referrer-policy")]
-    response[["headers"]] <- c(response[["headers"]],
-      list("Cache-Control" = "no-store", "Referrer-Policy" = "no-referrer",
-        "Content-Security-Policy" = "frame-ancestors 'none'"))
-    response
-  }, error = function(...) oauth_get_setup_error("SMART launch could not be validated; start a fresh EHR launch."))
+  )
 }
 
 smart_prepare_launch <- function(client, context, launch) {
   if (!client_uses_smart(client)) {
-    if (!is.null(launch)) err_config("Launch parameters require a SMART client")
+    if (!is.null(launch)) {
+      err_config("Launch parameters require a SMART client")
+    }
     return(invisible(NULL))
   }
   smart_assert_client_policy(client)
   if (identical(client@smart[["launch"]], "standalone")) {
-    if (!is.null(launch)) err_config("Standalone SMART clients cannot reuse EHR launch handles")
-  } else if (!is_valid_string(launch) || nchar(launch, type = "bytes") > 2048L ||
+    if (!is.null(launch)) {
+      err_config("Standalone SMART clients cannot reuse EHR launch handles")
+    }
+  } else if (
+    !is_valid_string(launch) ||
+      nchar(launch, type = "bytes") > 2048L ||
       !grepl("^[!-~]+$", launch) ||
-      !identical(context[["smart"]][["fhir_base"]], client@smart[["fhir_base"]]) ||
-      !identical(context[["smart"]][["launch_digest"]], state_policy_value_digest(launch))) {
-    err_config("SMART EHR clients require a fresh registered launch transaction")
+      !identical(
+        context[["smart"]][["fhir_base"]],
+        client@smart[["fhir_base"]]
+      ) ||
+      !identical(
+        context[["smart"]][["launch_digest"]],
+        state_policy_value_digest(launch)
+      )
+  ) {
+    err_config(
+      "SMART EHR clients require a fresh registered launch transaction"
+    )
   }
   invisible(NULL)
 }

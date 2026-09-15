@@ -20,12 +20,18 @@ test_that("decoded gzip budgets are enforced before full accumulation", {
   app[["locals"]][["small"]] <- gzip(charToRaw("small response"))
   app[["locals"]][["clear"]] <- clear
   app[["get"]]("/large", function(req, res) {
-    res[["set_header"]]("Content-Encoding", "gzip")[["send"]](app[["locals"]][["large"]])
+    res[["set_header"]]("Content-Encoding", "gzip")[["send"]](app[["locals"]][[
+      "large"
+    ]])
   })
   app[["get"]]("/small", function(req, res) {
-    res[["set_header"]]("Content-Encoding", "gzip")[["send"]](app[["locals"]][["small"]])
+    res[["set_header"]]("Content-Encoding", "gzip")[["send"]](app[["locals"]][[
+      "small"
+    ]])
   })
-  app[["get"]]("/plain", function(req, res) res[["send"]](app[["locals"]][["clear"]]))
+  app[["get"]]("/plain", function(req, res) {
+    res[["send"]](app[["locals"]][["clear"]])
+  })
   srv <- webfakes::local_app_process(app)
   before <- list.files(tempdir(), pattern = "^shinyOAuth-response-")
   err <- tryCatch(
@@ -36,7 +42,11 @@ test_that("decoded gzip budgets are enforced before full accumulation", {
   # The error records only budget + sentinel, rather than the 2 MiB plaintext.
   expect_equal(err[["context"]][["body_bytes"]], 4097L)
   expect_error(
-    perform_resource_req("synthetic", srv[["url"]]("/plain"), idempotent = FALSE),
+    perform_resource_req(
+      "synthetic",
+      srv[["url"]]("/plain"),
+      idempotent = FALSE
+    ),
     class = "shinyOAuth_parse_error"
   )
   resp <- perform_resource_req("synthetic", srv[["url"]]("/small"))

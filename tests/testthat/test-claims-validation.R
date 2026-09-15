@@ -464,10 +464,14 @@ test_that("validate_essential_claims: 'strict' mode errors on mismatched request
 })
 
 test_that("exact claim values compare objects independently of member order", {
-  requested <- list(address = list(country = "NL", locality = "Amsterdam"),
-                    entries = list(list(id = 1, active = TRUE), list(id = 2)))
-  equivalent <- list(entries = list(list(active = TRUE, id = 1), list(id = 2)),
-                     address = list(locality = "Amsterdam", country = "NL"))
+  requested <- list(
+    address = list(country = "NL", locality = "Amsterdam"),
+    entries = list(list(id = 1, active = TRUE), list(id = 2))
+  )
+  equivalent <- list(
+    entries = list(list(active = TRUE, id = 1), list(id = 2)),
+    address = list(locality = "Amsterdam", country = "NL")
+  )
   for (target in c("id_token", "userinfo")) {
     for (mode in c("strict", "warn")) {
       client <- make_test_client(
@@ -475,19 +479,27 @@ test_that("exact claim values compare objects independently of member order", {
         claims = setNames(list(list(custom = list(value = requested))), target),
         claims_validation = mode
       )
-      expect_no_warning(validate_essential_claims(client, list(custom = equivalent), target))
+      expect_no_warning(validate_essential_claims(
+        client,
+        list(custom = equivalent),
+        target
+      ))
       client@claims_validation <- "strict"
       different <- equivalent
       different[["entries"]] <- rev(different[["entries"]])
-      expect_error(validate_essential_claims(client, list(custom = different), target),
-                    "Requested claim values not satisfied")
+      expect_error(
+        validate_essential_claims(client, list(custom = different), target),
+        "Requested claim values not satisfied"
+      )
     }
   }
   for (different in list("1", TRUE, list(1), list(value = 1), NULL)) {
     expect_false(claim_matches_requested_values(different, list(1)))
   }
-  expect_true(claim_matches_requested_values(list(list(b = 2, a = 1)),
-                                             list(list(list(a = 1, b = 2)))))
+  expect_true(claim_matches_requested_values(
+    list(list(b = 2, a = 1)),
+    list(list(list(a = 1, b = 2)))
+  ))
 })
 
 test_that("claim mismatch diagnostics redact ID token and UserInfo values", {

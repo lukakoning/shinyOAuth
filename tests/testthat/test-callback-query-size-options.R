@@ -154,9 +154,15 @@ test_that("callback and JARM field budgets share one resolver and honor override
     code = strrep("a", 8192)
   )
   expect_equal(oauth_callback_limits()[["code"]], 8192)
-  expect_identical(validate_jarm_claims(client, claims)[["code"]], claims[["code"]])
+  expect_identical(
+    validate_jarm_claims(client, claims)[["code"]],
+    claims[["code"]]
+  )
   query <- paste0("code=", claims[["code"]], "&state=state")
-  expect_identical(oauth_form_post_parse_body(query)[["code"]], claims[["code"]])
+  expect_identical(
+    oauth_form_post_parse_body(query)[["code"]],
+    claims[["code"]]
+  )
   withr::local_options(list(shinyOAuth.callback_max_code_bytes = 4096))
   expect_error(validate_jarm_claims(client, claims), "maximum length")
   expect_error(oauth_form_post_parse_body(query), "maximum length")
@@ -188,7 +194,10 @@ test_that("HTTP entrypoints reject oversized queries before any scanning", {
     .package = "shinyOAuth"
   )
   ui <- oauth_ui(function(...) stop("UI must not render"), "auth", client)
-  registry_ui <- oauth_ui(function(...) stop("UI must not render"), clients = list(auth = client))
+  registry_ui <- oauth_ui(
+    function(...) stop("UI must not render"),
+    clients = list(auth = client)
+  )
   entrypoints <- list(
     shiny::shinyApp(ui, function(...) {})[["httpHandler"]],
     registry_ui,

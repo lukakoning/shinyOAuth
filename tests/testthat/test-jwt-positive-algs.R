@@ -28,7 +28,11 @@ for (test_alg in c("Ed25519", "EdDSA", "RS256")) {
       rsa <- openssl::rsa_keygen(bits = 2048)
       priv_jwk_json <- write_test_jwk(rsa)
       priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
-      pub_jwk <- list(kty = priv_jwk[["kty"]], n = priv_jwk[["n"]], e = priv_jwk[["e"]])
+      pub_jwk <- list(
+        kty = priv_jwk[["kty"]],
+        n = priv_jwk[["n"]],
+        e = priv_jwk[["e"]]
+      )
       pub_jwk[["kid"]] <- "rsa-1"
     }
 
@@ -186,7 +190,11 @@ test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
   rsa <- openssl::rsa_keygen(bits = 2048)
   priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
-  pub_jwk <- list(kty = priv_jwk[["kty"]], n = priv_jwk[["n"]], e = priv_jwk[["e"]])
+  pub_jwk <- list(
+    kty = priv_jwk[["kty"]],
+    n = priv_jwk[["n"]],
+    e = priv_jwk[["e"]]
+  )
   pub_jwk[["kid"]] <- "rsa-wide-1"
   base <- "http://localhost"
 

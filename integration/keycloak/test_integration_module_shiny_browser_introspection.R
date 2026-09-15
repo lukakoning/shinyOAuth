@@ -125,7 +125,11 @@
       if (is.null(auth[["token"]])) {
         return("{}")
       }
-      jsonlite::toJSON(auth[["token"]]@userinfo, auto_unbox = TRUE, null = "null")
+      jsonlite::toJSON(
+        auth[["token"]]@userinfo,
+        auto_unbox = TRUE,
+        null = "null"
+      )
     })
   }
 
@@ -231,7 +235,10 @@ testthat::test_that("Shiny module E2E with login-time introspection succeeds", {
   testthat::expect_identical(
     res[["error_description"]],
     "<none>",
-    info = paste0("Login had error_description. auth_state:\n", res[["auth_state"]])
+    info = paste0(
+      "Login had error_description. auth_state:\n",
+      res[["auth_state"]]
+    )
   )
 
   user_info <- jsonlite::fromJSON(res[["user_info"]])

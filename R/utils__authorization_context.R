@@ -149,7 +149,10 @@ prepare_authorization <- function(
       )
     },
     error = function(e) {
-      try(client@state_store[["remove"]](prepared[["state_key"]]), silent = TRUE)
+      try(
+        client@state_store[["remove"]](prepared[["state_key"]]),
+        silent = TRUE
+      )
       stop(e)
     }
   )

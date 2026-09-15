@@ -5,8 +5,14 @@ test_that("structured authorization preserves exact state and ordinary wire sema
     prepared[["state"]],
     parse_query_param(prepared[["url"]], "state", TRUE)
   )
-  expect_identical(parse_query_param(prepared[["url"]], "scope", TRUE), "read write")
-  payload <- shinyOAuth:::state_payload_decrypt_validate(client, prepared[["state"]])
+  expect_identical(
+    parse_query_param(prepared[["url"]], "scope", TRUE),
+    "read write"
+  )
+  payload <- shinyOAuth:::state_payload_decrypt_validate(
+    client,
+    prepared[["state"]]
+  )
   expect_null(payload[["transaction_context_digest"]])
   expect_identical(
     prepared[["state_key"]],
@@ -58,7 +64,9 @@ test_that("managed context is bound to each transaction without changing its cli
       client,
       first_payload[["state"]],
       first_record,
-      .transaction_context_digest = first_payload[["transaction_context_digest"]]
+      .transaction_context_digest = first_payload[[
+        "transaction_context_digest"
+      ]]
     ),
     "verified transaction context"
   )
@@ -72,7 +80,9 @@ test_that("managed context is bound to each transaction without changing its cli
       first_payload[["state"]],
       first_record,
       .transaction_context = first_record[["transaction_context"]],
-      .transaction_context_digest = first_payload[["transaction_context_digest"]]
+      .transaction_context_digest = first_payload[[
+        "transaction_context_digest"
+      ]]
     ),
     first_record
   )
@@ -89,7 +99,10 @@ test_that("changed context fails before legacy callback exchange", {
     valid_browser_token(),
     list(target = "site-a")
   )
-  payload <- shinyOAuth:::state_payload_decrypt_validate(client, prepared[["state"]])
+  payload <- shinyOAuth:::state_payload_decrypt_validate(
+    client,
+    prepared[["state"]]
+  )
   record <- shinyOAuth:::state_store_get(client, payload[["state"]])
   calls <- 0L
   local_mocked_bindings(
@@ -185,10 +198,16 @@ test_that("external managed context is sealed and failed publication removes pen
     valid_browser_token(),
     list(target = "site-a", owner = "synthetic-owner")
   )
-  expect_identical(names(memory[["get"]](prepared[["state_key"]])), "sealed_state_record")
+  expect_identical(
+    names(memory[["get"]](prepared[["state_key"]])),
+    "sealed_state_record"
+  )
   expect_false(grepl(
     "synthetic-owner",
-    paste(capture.output(str(memory[["get"]](prepared[["state_key"]]))), collapse = "")
+    paste(
+      capture.output(str(memory[["get"]](prepared[["state_key"]]))),
+      collapse = ""
+    )
   ))
   before <- memory[["keys"]]()
   local_mocked_bindings(

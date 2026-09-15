@@ -122,7 +122,9 @@ test_that("prepare_call pushes authorization params and redirects with request_u
     attr(auth_url, "shinyOAuth.par_expires_at", exact = TRUE),
     "POSIXct"
   )
-  expect_true(attr(auth_url, "shinyOAuth.par_expires_at", exact = TRUE) > Sys.time())
+  expect_true(
+    attr(auth_url, "shinyOAuth.par_expires_at", exact = TRUE) > Sys.time()
+  )
   expect_false(grepl("[?&]state=", auth_url))
   expect_false(grepl("[?&]redirect_uri=", auth_url))
   expect_false(grepl("[?&]code_challenge=", auth_url))
@@ -787,7 +789,8 @@ test_that("client_secret_jwt PAR request sends client assertion and omits secret
     "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
   )
   expect_true(
-    is.character(captured[["client_assertion"]]) && nzchar(captured[["client_assertion"]])
+    is.character(captured[["client_assertion"]]) &&
+      nzchar(captured[["client_assertion"]])
   )
   expect_false("client_secret" %in% names(captured))
 })
@@ -973,7 +976,10 @@ test_that("PAR JWT client assertions target par_url by default and allow audienc
   payload_override <- shinyOAuth:::parse_jwt_payload(
     captured_override[["client_assertion"]]
   )
-  expect_identical(payload_override[["aud"]], "https://example.com/custom-par-aud")
+  expect_identical(
+    payload_override[["aud"]],
+    "https://example.com/custom-par-aud"
+  )
 })
 
 test_that("PAR JWT client assertions prefer issuer when available", {
@@ -1056,7 +1062,10 @@ test_that("PAR expiry metadata preserves lifetimes beyond integer range", {
     list(request_uri = "urn:example:par", expires_in = lifetime),
     issued_at = 1000
   )
-  expect_identical(attr(url, "shinyOAuth.par_expires_in", exact = TRUE), lifetime)
+  expect_identical(
+    attr(url, "shinyOAuth.par_expires_in", exact = TRUE),
+    lifetime
+  )
   expect_equal(
     as.numeric(attr(url, "shinyOAuth.par_expires_at", exact = TRUE)),
     1000 + lifetime

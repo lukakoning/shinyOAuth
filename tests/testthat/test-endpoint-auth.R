@@ -84,7 +84,9 @@ test_that("private-key endpoint policy checks the explicitly selected algorithm"
   )
   auth <- endpoint_auth_client(client, "introspection")
   expect_identical(
-    parse_jwt_header(build_client_assertion(auth, "https://example.com"))[["alg"]],
+    parse_jwt_header(build_client_assertion(auth, "https://example.com"))[[
+      "alg"
+    ]],
     "ES384"
   )
   client@provider@endpoint_auth_metadata <- list(
@@ -111,8 +113,12 @@ test_that("discovery preserves independent authentication metadata and omission 
   doc[["revocation_endpoint"]] <- paste0(issuer, "/revoke")
   doc[["token_endpoint_auth_methods_supported"]] <- list("private_key_jwt")
   doc[["token_endpoint_auth_signing_alg_values_supported"]] <- list("RS256")
-  doc[["introspection_endpoint_auth_methods_supported"]] <- list("client_secret_jwt")
-  doc[["introspection_endpoint_auth_signing_alg_values_supported"]] <- list("HS512")
+  doc[["introspection_endpoint_auth_methods_supported"]] <- list(
+    "client_secret_jwt"
+  )
+  doc[["introspection_endpoint_auth_signing_alg_values_supported"]] <- list(
+    "HS512"
+  )
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
@@ -271,9 +277,14 @@ test_that("endpoint JWT algorithms, audiences and retry assertions are independe
     body_mode = "form"
   )
   retried <- req[["shinyOAuth_prepare_attempt"]](req, 2L)
-  expect_false(identical(retried[["body"]][["data"]][["client_assertion"]], jwt))
+  expect_false(identical(
+    retried[["body"]][["data"]][["client_assertion"]],
+    jwt
+  ))
   expect_identical(
-    parse_jwt_payload(retried[["body"]][["data"]][["client_assertion"]])[["aud"]],
+    parse_jwt_payload(retried[["body"]][["data"]][["client_assertion"]])[[
+      "aud"
+    ]],
     "https://example.com/inspect-audience"
   )
   expect_identical(
@@ -282,7 +293,9 @@ test_that("endpoint JWT algorithms, audiences and retry assertions are independe
   )
   expect_error(
     {
-      client@endpoint_auth[["introspection"]][["client_assertion_alg"]] <- "HS256"
+      client@endpoint_auth[["introspection"]][[
+        "client_assertion_alg"
+      ]] <- "HS256"
       endpoint_auth_client(client, "introspection")
     },
     "not supported"
@@ -297,17 +310,27 @@ test_that("endpoint RSA defaults are stable as advertised algorithms expand", {
   client@provider@revocation_url <- "https://example.com/revoke"
   for (endpoint in c("introspection", "revocation")) {
     for (algs in list(c("RS384", "RS256"), c("RS256", "RS384"), "RS384")) {
-      client@provider@endpoint_auth_metadata <- setNames(list(list(
-        methods = "private_key_jwt", signing_algs = algs
-      )), endpoint)
+      client@provider@endpoint_auth_metadata <- setNames(
+        list(list(
+          methods = "private_key_jwt",
+          signing_algs = algs
+        )),
+        endpoint
+      )
       auth <- endpoint_auth_client(client, endpoint)
       expected <- if ("RS256" %in% algs) "RS256" else "RS384"
       jwt <- build_client_assertion(auth, "https://example.com")
       expect_identical(parse_jwt_header(jwt)[["alg"]], expected)
       expect_true(is.na(client@client_assertion_alg))
     }
-    client@endpoint_auth <- setNames(list(list(client_assertion_alg = "RS384")), endpoint)
-    expect_identical(endpoint_auth_client(client, endpoint)@client_assertion_alg, "RS384")
+    client@endpoint_auth <- setNames(
+      list(list(client_assertion_alg = "RS384")),
+      endpoint
+    )
+    expect_identical(
+      endpoint_auth_client(client, endpoint)@client_assertion_alg,
+      "RS384"
+    )
     client@endpoint_auth <- list()
   }
 })

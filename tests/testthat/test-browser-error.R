@@ -22,7 +22,11 @@ test_that("browser errors use bounded known codes and are reported once", {
           strrep("secret", 10000)
         )
       )
-      expect_match(values[["error_description"]], "error: unknown.", fixed = TRUE)
+      expect_match(
+        values[["error_description"]],
+        "error: unknown.",
+        fixed = TRUE
+      )
       expect_identical(events[[1]][["reason"]], "unknown")
       session[["setInputs"]](shinyOAuth_cookie_error = "webcrypto_unavailable")
       expect_length(events, 1L)

@@ -38,7 +38,9 @@ test_that("token exchange uses mTLS alias, client certificate options, and clien
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
 
   provider <- oauth_provider(
     name = "example",
@@ -165,7 +167,9 @@ test_that("public clients use mTLS token aliases when they explicitly request ce
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
 
   provider <- oauth_provider(
     name = "example",
@@ -301,7 +305,9 @@ test_that("requested certificate-bound login can backfill cnf from introspection
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
 
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
   provider <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
@@ -517,7 +523,9 @@ test_that("PAR JWT client assertions keep the issuer audience on mTLS aliases", 
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/par")
   expect_identical(
-    shinyOAuth:::parse_jwt_payload(captured_form[["client_assertion"]])[["aud"]],
+    shinyOAuth:::parse_jwt_payload(captured_form[["client_assertion"]])[[
+      "aud"
+    ]],
     provider@issuer
   )
   expect_identical(
@@ -590,7 +598,9 @@ test_that("refresh token uses mTLS alias and preserves confirmation claims", {
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
 
   provider <- oauth_provider(
     name = "example",
@@ -689,7 +699,9 @@ test_that("refresh token derives confirmation claims from JWT access tokens", {
     expires_at = as.numeric(Sys.time()) + 60,
     userinfo = list()
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
   jwt_access_token <- build_mtls_access_jwt(list(
     cnf = list(`x5t#S256` = thumbprint)
   ))
@@ -782,7 +794,9 @@ test_that("refresh uses the mTLS token alias when the client explicitly requests
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
 
   provider <- oauth_provider(
     name = "example",
@@ -903,7 +917,9 @@ test_that("requested certificate-bound refresh can backfill cnf from introspecti
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
 
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
   provider <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
@@ -977,7 +993,9 @@ test_that("requested certificate-bound refresh rejects stale prior cnf after int
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
 
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[[
+    "cert_file"
+  ]])
   provider <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
@@ -1364,7 +1382,10 @@ test_that("client bearer requests honor cnf in raw JWT access tokens", {
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
   expect_identical(req[["options"]][["sslcert"]], files[["cert_file"]])
   expect_identical(req[["options"]][["sslkey"]], files[["key_file"]])
-  expect_identical(dry[["headers"]][["authorization"]], paste("Bearer", raw_token))
+  expect_identical(
+    dry[["headers"]][["authorization"]],
+    paste("Bearer", raw_token)
+  )
 })
 
 test_that("userinfo uses mTLS alias and client certificate for certificate-bound tokens", {
@@ -1558,8 +1579,14 @@ test_that("handle_callback preserves certificate-bound context for automatic use
         captured_req[["url"]],
         "https://example.com/mtls/userinfo"
       )
-      expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
-      expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
+      expect_identical(
+        captured_req[["options"]][["sslcert"]],
+        files[["cert_file"]]
+      )
+      expect_identical(
+        captured_req[["options"]][["sslkey"]],
+        files[["key_file"]]
+      )
       expect_identical(token@userinfo[["sub"]], "user-123")
       expect_identical(token@cnf[["x5t#S256"]], cert_thumbprint)
     }
@@ -1828,8 +1855,14 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
       "https://example.com/mtls/revoke"
     )
   )
-  expect_identical(captured_reqs[[1]][["options"]][["sslcert"]], files[["cert_file"]])
-  expect_identical(captured_reqs[[2]][["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(
+    captured_reqs[[1]][["options"]][["sslcert"]],
+    files[["cert_file"]]
+  )
+  expect_identical(
+    captured_reqs[[2]][["options"]][["sslcert"]],
+    files[["cert_file"]]
+  )
 })
 
 test_that("certificate binding requires the transport certificate first in PEM bundles", {

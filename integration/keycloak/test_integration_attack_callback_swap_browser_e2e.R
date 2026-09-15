@@ -7,7 +7,10 @@
 ## does not isolate browser-session binding within one deployed client.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 make_callback_swap_browser_app <- function(client, title, module_id) {
@@ -75,7 +78,11 @@ make_callback_swap_browser_app <- function(client, title, module_id) {
       if (is.null(auth[["token"]])) {
         return("{}")
       }
-      jsonlite::toJSON(auth[["token"]]@userinfo, auto_unbox = TRUE, null = "null")
+      jsonlite::toJSON(
+        auth[["token"]]@userinfo,
+        auto_unbox = TRUE,
+        null = "null"
+      )
     })
   }
 

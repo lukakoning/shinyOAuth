@@ -78,7 +78,11 @@ make_eddsa_signed_jwt <- function(
     ".",
     shinyOAuth:::base64url_encode(charToRaw(as.character(payload_json)))
   )
-  secret <- if (!is.null(keypair[["key"]])) keypair[["key"]] else keypair[["secretkey"]]
+  secret <- if (!is.null(keypair[["key"]])) {
+    keypair[["key"]]
+  } else {
+    keypair[["secretkey"]]
+  }
   sig <- sodium::sig_sign(charToRaw(signing_input), secret)
 
   paste0(signing_input, ".", shinyOAuth:::base64url_encode(sig))
@@ -86,7 +90,10 @@ make_eddsa_signed_jwt <- function(
 
 test_that("JSON and signed JWT UserInfo preserve types through claim policy", {
   key <- openssl::rsa_keygen(2048)
-  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = FALSE)
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
   jwk[["kid"]] <- "type-parity"
   cli <- make_test_client(use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
@@ -629,7 +636,10 @@ test_that("get_userinfo rejects b64=false with or without crit", {
 test_that("required signed UserInfo time claims reject JSON null", {
   key <- openssl::rsa_keygen(2048)
   kid <- "kid-null-required-times"
-  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = TRUE)
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(key[["pubkey"]]),
+    simplifyVector = TRUE
+  )
   jwk[["kid"]] <- kid
   jwk[["use"]] <- "sig"
   jwt_body <- NULL

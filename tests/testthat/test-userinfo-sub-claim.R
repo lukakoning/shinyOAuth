@@ -35,7 +35,10 @@ test_that("get_userinfo rejects JSON response missing sub for OIDC provider", {
     regexp = "sub.*claim"
   )
 
-  ui_events <- Filter(function(e) identical(e[["type"]], "audit_userinfo"), events)
+  ui_events <- Filter(
+    function(e) identical(e[["type"]], "audit_userinfo"),
+    events
+  )
   expect_true(any(vapply(
     ui_events,
     function(e) identical(e[["status"]], "userinfo_missing_sub"),
@@ -136,7 +139,10 @@ test_that("get_userinfo rejects direct OAuthToken calls with mismatched sub", {
     regexp = "does not match"
   )
 
-  ui_events <- Filter(function(e) identical(e[["type"]], "audit_userinfo"), events)
+  ui_events <- Filter(
+    function(e) identical(e[["type"]], "audit_userinfo"),
+    events
+  )
   statuses <- vapply(
     ui_events,
     function(e) e[["status"]] %||% NA_character_,
@@ -292,7 +298,10 @@ test_that("get_userinfo rejects signed JWT missing sub for OIDC provider", {
     regexp = "sub.*claim"
   )
 
-  ui_events <- Filter(function(e) identical(e[["type"]], "audit_userinfo"), events)
+  ui_events <- Filter(
+    function(e) identical(e[["type"]], "audit_userinfo"),
+    events
+  )
   expect_true(any(vapply(
     ui_events,
     function(e) identical(e[["status"]], "userinfo_jwt_missing_sub"),

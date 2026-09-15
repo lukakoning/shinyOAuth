@@ -57,7 +57,9 @@ test_that("state_store_get_remove catches non-cache_mem store without $take", {
 
   # Wrapper cache without [["take"]]() — non-cache_mem shared store must error
   wrapper <- list(
-    get = function(key, missing = NULL) backing[["get"]](key, missing = missing),
+    get = function(key, missing = NULL) {
+      backing[["get"]](key, missing = missing)
+    },
     set = function(key, value) backing[["set"]](key, value),
     remove = function(key) TRUE,
     info = function() list(max_age = 300)

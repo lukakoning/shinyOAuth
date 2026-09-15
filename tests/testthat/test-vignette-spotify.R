@@ -110,7 +110,10 @@ test_that("DT escaping covers adversarial Spotify metadata", {
 
   widget <- DT::datatable(metadata, rownames = FALSE, escape = TRUE)
 
-  expect_identical(attr(widget[["x"]][["options"]], "escapeIdx", exact = TRUE), "true")
+  expect_identical(
+    attr(widget[["x"]][["options"]], "escapeIdx", exact = TRUE),
+    "true"
+  )
 })
 
 test_that("Spotify dashboard loads and transforms data in a fresh R process", {

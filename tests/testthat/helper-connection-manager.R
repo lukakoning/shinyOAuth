@@ -1,16 +1,38 @@
-manager_test_request <- function(cookie = NULL, method = "GET", path = "/", query = "") {
-  list(REQUEST_METHOD = method, PATH_INFO = path, SCRIPT_NAME = "", QUERY_STRING = query,
-    HTTP_HOST = "app.example", "rook.url_scheme" = "https", HTTP_COOKIE = cookie)
+manager_test_request <- function(
+  cookie = NULL,
+  method = "GET",
+  path = "/",
+  query = ""
+) {
+  list(
+    REQUEST_METHOD = method,
+    PATH_INFO = path,
+    SCRIPT_NAME = "",
+    QUERY_STRING = query,
+    HTTP_HOST = "app.example",
+    "rook.url_scheme" = "https",
+    HTTP_COOKIE = cookie
+  )
 }
 
 manager_test_session <- function(cookie = NULL) {
   session_env <- new.env(parent = asNamespace("shiny"))
-  session_env[["request_data"]] <- list(HTTP_ORIGIN = "https://app.example", HTTP_COOKIE = cookie)
-  R6::R6Class(inherit = shiny::MockShinySession, portable = FALSE, lock_objects = FALSE,
-    parent_env = session_env, active = list(request = function(value) {
-      if (!missing(value)) request_data <<- value
+  session_env[["request_data"]] <- list(
+    HTTP_ORIGIN = "https://app.example",
+    HTTP_COOKIE = cookie
+  )
+  R6::R6Class(
+    inherit = shiny::MockShinySession,
+    portable = FALSE,
+    lock_objects = FALSE,
+    parent_env = session_env,
+    active = list(request = function(value) {
+      if (!missing(value)) {
+        request_data <<- value
+      }
       request_data
-    }))[["new"]]()
+    })
+  )[["new"]]()
 }
 
 manager_test_cookie <- function(f) {
@@ -18,8 +40,11 @@ manager_test_cookie <- function(f) {
   sub(";.*$", "", response[["headers"]][["Set-Cookie"]])
 }
 
-manager_test_fixture <- function(retention = "browser", owner = NULL,
-                                 api_origin = "https://api.example") {
+manager_test_fixture <- function(
+  retention = "browser",
+  owner = NULL,
+  api_origin = "https://api.example"
+) {
   redirects <- paste0("https://app.example/callback/", c("a", "b"))
   clients <- lapply(c("a", "b"), function(id) {
     client <- oauth_client(

@@ -1,8 +1,12 @@
 # A registry selects only preconfigured clients. Issuer values are routing
 # hints; the selected bridge still verifies issuer, state and JARM, and the
 # module still verifies the browser binding before consuming logical state.
-oauth_callback_registry <- function(clients, allow_shared_issuer = FALSE, mark_ui = TRUE,
-                                    allow_shared_encrypted = TRUE) {
+oauth_callback_registry <- function(
+  clients,
+  allow_shared_issuer = FALSE,
+  mark_ui = TRUE,
+  allow_shared_encrypted = TRUE
+) {
   if (
     !is.list(clients) ||
       !length(clients) ||
@@ -46,10 +50,16 @@ oauth_callback_registry <- function(clients, allow_shared_issuer = FALSE, mark_u
               "Shared callback routes require multi_issuer clients with distinct issuers."
             )
           }
-          if ((!allow_shared_encrypted || identical(first@provider@issuer, second@provider@issuer)) && (
-            !is.null(resolve_authorization_response_encryption_config(first)) ||
-              !is.null(resolve_authorization_response_encryption_config(second))
-          )) {
+          if (
+            (!allow_shared_encrypted ||
+              identical(first@provider@issuer, second@provider@issuer)) &&
+              (!is.null(resolve_authorization_response_encryption_config(
+                first
+              )) ||
+                !is.null(resolve_authorization_response_encryption_config(
+                  second
+                )))
+          ) {
             err_config("Encrypted JARM requires distinct callback routes")
           }
         }
@@ -95,9 +105,16 @@ oauth_registry_rejection <- function(req, reason, message) {
   )
 }
 
-oauth_registry_http_handler <- function(req, clients, request_uri_resolver, select_client = NULL) {
+oauth_registry_http_handler <- function(
+  req,
+  clients,
+  request_uri_resolver,
+  select_client = NULL
+) {
   query_error <- oauth_http_query_guard(req)
-  if (!is.null(query_error)) return(query_error)
+  if (!is.null(query_error)) {
+    return(query_error)
+  }
   # Hosted Request Objects have independent, client-bound handles. Missing
   # handles in another client's store do not consume the requested object.
   if (
@@ -190,7 +207,9 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver, sele
           oauth_form_post_parse_body(body, limits)
         }
         issuer <- payload[["iss"]]
-        if (!is_valid_string(issuer) && identical(payload[["type"]], "response")) {
+        if (
+          !is_valid_string(issuer) && identical(payload[["type"]], "response")
+        ) {
           issuer <- parse_jwt_payload_or_null(payload[["response"]])[["iss"]]
         }
         if (!is_valid_string(issuer)) {

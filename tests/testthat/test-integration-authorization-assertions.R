@@ -53,6 +53,9 @@ test_that("negative authorization assertions require specific protocol evidence"
     sub("/callback", "/elsewhere", callback)
   )) {
     response[["callback_url"]] <- url
-    expect_failure(integration[["expect_no_authorization_code"]](auth, redirect))
+    expect_failure(integration[["expect_no_authorization_code"]](
+      auth,
+      redirect
+    ))
   }
 })

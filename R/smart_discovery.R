@@ -231,7 +231,8 @@ smart_discovery_array <- function(metadata, field, required = FALSE) {
     return(character())
   }
   value <- metadata[[field]]
-  allow_empty <- field %in% c("scopes_supported", "token_endpoint_auth_methods_supported")
+  allow_empty <- field %in%
+    c("scopes_supported", "token_endpoint_auth_methods_supported")
   if (
     !is.list(value) ||
       (!allow_empty && !length(value)) ||
@@ -252,7 +253,9 @@ smart_discovery_array <- function(metadata, field, required = FALSE) {
     err_parse(paste0(
       "SMART ",
       field,
-      " must be a ", if (!allow_empty) "non-empty ", "JSON array of non-empty strings"
+      " must be a ",
+      if (!allow_empty) "non-empty ",
+      "JSON array of non-empty strings"
     ))
   }
   as.character(unlist(value, use.names = FALSE))

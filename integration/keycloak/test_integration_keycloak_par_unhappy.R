@@ -1,7 +1,10 @@
 ## Integration tests: Keycloak PAR unhappy paths
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 build_par_auth_url <- function(client) {
@@ -277,7 +280,10 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
 
       if (identical(rejected[["kind"]], "callback")) {
         replay_callback <- rejected[["callback"]]
-        replay_state <- parse_query_param(replay_callback[["callback_url"]], "state")
+        replay_state <- parse_query_param(
+          replay_callback[["callback_url"]],
+          "state"
+        )
         replay_iss <- parse_query_param(
           replay_callback[["callback_url"]],
           "iss",

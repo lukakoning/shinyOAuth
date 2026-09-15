@@ -151,7 +151,8 @@ validate_id_token <- function(
           "EdDSA"
         )
     ) {
-      jwks <- fetch_client_jwks(client,
+      jwks <- fetch_client_jwks(
+        client,
         issuer,
         jwks_cache,
         pins = pins,
@@ -190,7 +191,8 @@ validate_id_token <- function(
             ))
           ) {
             did_force_refresh <- TRUE
-            jwks <- fetch_client_jwks(client,
+            jwks <- fetch_client_jwks(
+              client,
               issuer,
               jwks_cache,
               force_refresh = TRUE,
@@ -237,7 +239,8 @@ validate_id_token <- function(
       # and retry with only the newly selected candidates.
       verified_key <- verify_jwt_with_jwks(id_token, keys, alg)
       if (is.null(verified_key) && !isTRUE(did_force_refresh)) {
-        refreshed_jwks <- force_refresh_client_jwks(client,
+        refreshed_jwks <- force_refresh_client_jwks(
+          client,
           issuer,
           jwks_cache,
           pins = pins,
@@ -528,7 +531,9 @@ validate_id_token <- function(
   }
   if ("at_hash" %in% names(payload)) {
     if (!is_valid_string(payload[["at_hash"]])) {
-      err_id_token("at_hash claim must be a single non-empty string when present")
+      err_id_token(
+        "at_hash claim must be a single non-empty string when present"
+      )
     }
     if (!is_valid_string(expected_access_token)) {
       err_id_token(

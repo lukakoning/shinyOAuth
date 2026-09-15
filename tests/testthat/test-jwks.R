@@ -7,7 +7,13 @@ make_public_rsa_jwk <- function(bits = 2048, kid = "k1") {
 make_public_ec_jwk <- function(curve = "P-256", kid = "k2") {
   key <- openssl::ec_keygen(curve = curve)
   jwk <- jsonlite::fromJSON(write_test_jwk(key), simplifyVector = TRUE)
-  list(kty = jwk[["kty"]], crv = jwk[["crv"]], x = jwk[["x"]], y = jwk[["y"]], kid = kid)
+  list(
+    kty = jwk[["kty"]],
+    crv = jwk[["crv"]],
+    x = jwk[["x"]],
+    y = jwk[["y"]],
+    kid = kid
+  )
 }
 
 test_that("validate_jwks enforces structure and pins", {

@@ -198,7 +198,9 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
         c("authorization", "proxy-authorization")
     )
   ) {
-    method[["problem"]] <- "Configured headers conflict with managed client authentication"
+    method[[
+      "problem"
+    ]] <- "Configured headers conflict with managed client authentication"
   }
   fixed <- tryCatch(decode_form_pairs(url_raw_query(url)), error = function(e) {
     NULL
@@ -209,7 +211,9 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
         names(fixed) %in% c("client_secret", "client_assertion", "access_token")
       )
   ) {
-    method[["problem"]] <- "Endpoint query contains malformed or conflicting credential parameters"
+    method[[
+      "problem"
+    ]] <- "Endpoint query contains malformed or conflicting credential parameters"
   }
   list(
     style = style,
@@ -283,7 +287,10 @@ oauth21_authorization_settings <- function(client) {
   ) {
     return(list(status = "fail", redirect_uri = client@redirect_uri))
   }
-  resolved <- authorization_query_resolution(provider@auth_url, merged[["params"]])
+  resolved <- authorization_query_resolution(
+    provider@auth_url,
+    merged[["params"]]
+  )
   fixed <- tryCatch(
     decode_form_pairs(url_raw_query(provider@auth_url)),
     error = function(e) list()

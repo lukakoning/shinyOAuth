@@ -115,7 +115,8 @@ oauth_connections <- function(
       )
   } else {
     if (
-      !inherits(owner, "OAuthOwnerPolicy") || !identical(owner[["mode"]], retention)
+      !inherits(owner, "OAuthOwnerPolicy") ||
+        !identical(owner[["mode"]], retention)
     ) {
       err_config("Retained connections require the matching local owner policy")
     }
@@ -358,7 +359,12 @@ connection_manager_revoke <- function(manager, client, token, deadline) {
   }
   unchanged <- tryCatch(
     {
-      index <- which(vapply(manager[["clients"]], identical, logical(1), client))
+      index <- which(vapply(
+        manager[["clients"]],
+        identical,
+        logical(1),
+        client
+      ))
       if (
         !length(index) ||
           !identical(
@@ -381,9 +387,13 @@ connection_manager_revoke <- function(manager, client, token, deadline) {
       return("not_attempted")
     }
     keys <- connection_credential_keys(manager, client, token)
-    release <- tryCatch(connection_credential_reserve(manager, keys[which]),
-      error = function(...) NULL)
-    if (is.null(release)) return("not_attempted")
+    release <- tryCatch(
+      connection_credential_reserve(manager, keys[which]),
+      error = function(...) NULL
+    )
+    if (is.null(release)) {
+      return("not_attempted")
+    }
     on.exit(release(), add = TRUE)
     settings <- capture_async_options()
     settings[["shinyOAuth.timeout"]] <- min(2, remaining)
@@ -557,7 +567,11 @@ connection_manager_controller <- function(manager, session) {
       client = client_name,
       fingerprint = connection_client_fingerprint(client),
       retention = manager[["retention"]],
-      owner = if (manager[["retention"]] == "shiny") "shiny" else verified[["id"]],
+      owner = if (manager[["retention"]] == "shiny") {
+        "shiny"
+      } else {
+        verified[["id"]]
+      },
       generation = if (manager[["retention"]] == "shiny") {
         "shiny"
       } else {
@@ -636,8 +650,15 @@ connection_manager_controller <- function(manager, session) {
     }
     client <- client_for(context[["client"]])
     connection_credential_prune(manager)
-    if (connection_credential_unusable(manager, connection_credential_keys(manager, client, token))) {
-      err_token("Authorization returned a credential already retired by this manager")
+    if (
+      connection_credential_unusable(
+        manager,
+        connection_credential_keys(manager, client, token)
+      )
+    ) {
+      err_token(
+        "Authorization returned a credential already retired by this manager"
+      )
     }
     id <- random_urlsafe(32L)
     sealed <- connection_credentials_seal(
@@ -703,7 +724,10 @@ connection_manager_controller <- function(manager, session) {
     } else {
       keys <- connection_credential_keys(manager, client, value[["token"]])
       if (connection_credential_unusable(manager, keys)) {
-        connection_credential_retire(manager, connection_credential_retired(manager, keys))
+        connection_credential_retire(
+          manager,
+          connection_credential_retired(manager, keys)
+        )
         result[["status"]] <- "uncertain"
         result[["stored"]] <- store[["read"]](owner[["id"]], record[["id"]])
         return(result)
@@ -752,7 +776,9 @@ connection_manager_controller <- function(manager, session) {
     state[["cleanup"]][[key]] <- intent
     list(
       discard = function(token) {
-        if (isTRUE(intent[["revoke"]])) discard(client_name, token)
+        if (isTRUE(intent[["revoke"]])) {
+          discard(client_name, token)
+        }
         invisible(NULL)
       },
       finish = function() {
@@ -766,8 +792,11 @@ connection_manager_controller <- function(manager, session) {
   mark_cleanup <- function(revoke, connection = NULL) {
     for (key in ls(state[["cleanup"]], all.names = TRUE)) {
       intent <- state[["cleanup"]][[key]]
-      if (identical(intent[["owner"]], owner[["id"]]) && !intent[["removed"]] &&
-          (is.null(connection) || identical(intent[["connection"]], connection))) {
+      if (
+        identical(intent[["owner"]], owner[["id"]]) &&
+          !intent[["removed"]] &&
+          (is.null(connection) || identical(intent[["connection"]], connection))
+      ) {
         intent[["revoke"]] <- revoke
         intent[["removed"]] <- TRUE
       }
@@ -781,27 +810,39 @@ connection_manager_controller <- function(manager, session) {
       }
     }
     record <- read(id, touch)
-    if (!identical(record[["status"]], "active") || is.null(record[["token"]])) {
+    if (
+      !identical(record[["status"]], "active") || is.null(record[["token"]])
+    ) {
       err_token("Connection cannot be refreshed in its current state")
     }
     if (!is_valid_string(record[["token"]]@refresh_token)) {
       err_token("Connection has no refresh credential")
     }
-    credential <- connection_credential_keys(manager, record[["client"]], record[["token"]])[["refresh"]]
+    credential <- connection_credential_keys(
+      manager,
+      record[["client"]],
+      record[["token"]]
+    )[["refresh"]]
     flights <- state[["credential_flights"]]
     outstanding <- flights[[credential]]
     if (!is.null(outstanding)) {
       if (!isTRUE(async) || is.null(outstanding[["promise"]])) {
-        err_token("Shared credential refresh is in progress; await its completion")
+        err_token(
+          "Shared credential refresh is in progress; await its completion"
+        )
       }
       # Re-read after completion. A queued call must never capture and later
       # dispatch the old token snapshot, even if the earlier call failed.
-      resume <- function(...) refresh(id, async = TRUE, touch = touch, scopes = scopes)
+      resume <- function(...) {
+        refresh(id, async = TRUE, touch = touch, scopes = scopes)
+      }
       return(promises::then(outstanding[["promise"]], resume, resume))
     }
     # Automatic retries share the physical credential's cooldown across owners,
     # records and sessions, including calls resumed after an in-flight failure.
-    if (!touch && as.numeric(Sys.time()) < (next_refresh[[credential]] %||% 0)) {
+    if (
+      !touch && as.numeric(Sys.time()) < (next_refresh[[credential]] %||% 0)
+    ) {
       return(invisible(FALSE))
     }
     # Validate before taking the refresh claim or sending any credentials.
@@ -822,9 +863,16 @@ connection_manager_controller <- function(manager, session) {
     cleanup <- begin_cleanup(record[["stored"]][["client"]], id)
     deferred <- FALSE
     on.exit(if (!deferred) cleanup[["finish"]](), add = TRUE)
-    release_retirement <- connection_credential_reserve(manager, list(refresh = credential))
+    release_retirement <- connection_credential_reserve(
+      manager,
+      list(refresh = credential)
+    )
     on.exit(if (!deferred) release_retirement(), add = TRUE)
-    claim <- store[["begin_refresh"]](owner[["id"]], id, record[["stored"]][["revision"]])
+    claim <- store[["begin_refresh"]](
+      owner[["id"]],
+      id,
+      record[["stored"]][["revision"]]
+    )
     if (is.null(claim)) {
       err_token("Connection refresh is already in progress or unavailable")
     }
@@ -832,7 +880,9 @@ connection_manager_controller <- function(manager, session) {
     flight[["expires_at"]] <- claim[["operation_expires_at"]]
     flights[[credential]] <- flight
     release <- function() {
-      if (identical(flights[[credential]], flight)) rm(list = credential, envir = flights)
+      if (identical(flights[[credential]], flight)) {
+        rm(list = credential, envir = flights)
+      }
       release_retirement()
       cleanup[["finish"]]()
     }
@@ -877,7 +927,9 @@ connection_manager_controller <- function(manager, session) {
           }
           # A key file or process policy may have changed while HTTP was pending.
           client_for(claim[["client"]])
-          if (connection_credential_unusable(manager, list(refresh = credential))) {
+          if (
+            connection_credential_unusable(manager, list(refresh = credential))
+          ) {
             err_token("Shared refresh credential is no longer usable")
           }
           sealed <- connection_credentials_seal(
@@ -892,9 +944,19 @@ connection_manager_controller <- function(manager, session) {
           if (is.null(verify_owner(require_session = FALSE))) {
             err_token("Connection owner is unavailable")
           }
-          if (!identical(credential,
-              connection_credential_keys(manager, record[["client"]], token)[["refresh"]])) {
-            connection_credential_retire(manager, list(refresh = credential), except = id)
+          if (
+            !identical(
+              credential,
+              connection_credential_keys(manager, record[["client"]], token)[[
+                "refresh"
+              ]]
+            )
+          ) {
+            connection_credential_retire(
+              manager,
+              list(refresh = credential),
+              except = id
+            )
           }
           installed <- store[["commit_refresh"]](
             owner[["id"]],
@@ -939,26 +1001,63 @@ connection_manager_controller <- function(manager, session) {
       succeed(result)
     }
   }
-  cleanup_records <- function(previous, revoke, reason = "disconnect", batch = FALSE) {
+  cleanup_records <- function(
+    previous,
+    revoke,
+    reason = "disconnect",
+    batch = FALSE
+  ) {
     # Local removal has already committed. Record it even when remote cleanup
     # cannot finish; never expose credentials, raw owner IDs or connection IDs.
     trace_id <- resolve_trace_id(NULL)
     owner_digest <- string_digest(owner[["id"]])
-    if (batch) on.exit(audit_event("connections_disconnected", context = list(
-      owner_digest = owner_digest, connection_count = sum(!vapply(previous, is.null, logical(1))),
-      retention = manager[["retention"]], reason = reason, local_outcome = "disconnected",
-      revoke_requested = revoke
-    ), trace_id = trace_id), add = TRUE)
+    if (batch) {
+      on.exit(
+        audit_event(
+          "connections_disconnected",
+          context = list(
+            owner_digest = owner_digest,
+            connection_count = sum(!vapply(previous, is.null, logical(1))),
+            retention = manager[["retention"]],
+            reason = reason,
+            local_outcome = "disconnected",
+            revoke_requested = revoke
+          ),
+          trace_id = trace_id
+        ),
+        add = TRUE
+      )
+    }
     deadline <- as.numeric(Sys.time()) + 10
     lapply(previous, function(record) {
       remote <- "not_requested"
-      if (!is.null(record)) on.exit(audit_event("connection_disconnected", context = list(
-        owner_digest = owner_digest, connection_id_digest = string_digest(record[["id"]]),
-        retention = manager[["retention"]], reason = reason, local_outcome = "disconnected",
-        revoke_requested = revoke,
-        remote_refresh_outcome = if (is.list(remote)) remote[["refresh"]] else remote,
-        remote_access_outcome = if (is.list(remote)) remote[["access"]] else remote
-      ), trace_id = trace_id), add = TRUE)
+      if (!is.null(record)) {
+        on.exit(
+          audit_event(
+            "connection_disconnected",
+            context = list(
+              owner_digest = owner_digest,
+              connection_id_digest = string_digest(record[["id"]]),
+              retention = manager[["retention"]],
+              reason = reason,
+              local_outcome = "disconnected",
+              revoke_requested = revoke,
+              remote_refresh_outcome = if (is.list(remote)) {
+                remote[["refresh"]]
+              } else {
+                remote
+              },
+              remote_access_outcome = if (is.list(remote)) {
+                remote[["access"]]
+              } else {
+                remote
+              }
+            ),
+            trace_id = trace_id
+          ),
+          add = TRUE
+        )
+      }
       if (revoke && !is.null(record)) {
         remote <- list(refresh = "not_attempted", access = "not_attempted")
         opened <- tryCatch(
@@ -1029,7 +1128,9 @@ connection_manager_controller <- function(manager, session) {
     cleanup_records(previous, revoke, reason = "logout", batch = TRUE)
   }
   end <- function() {
-    if (ended) return(invisible(NULL))
+    if (ended) {
+      return(invisible(NULL))
+    }
     ended <<- TRUE
     active <<- FALSE
     on.exit(subscription[["release"]](), add = TRUE)
@@ -1048,7 +1149,9 @@ connection_manager_controller <- function(manager, session) {
       prepare = function() prepare(client_name),
       prepared = if (identical(manager[["callback_policy"]], "shared_routes")) {
         function(prepared, context) {
-          if (!validate(context) || !identical(context[["client"]], client_name)) {
+          if (
+            !validate(context) || !identical(context[["client"]], client_name)
+          ) {
             err_token("Managed authorization owner is unavailable")
           }
           connection_router_register(manager, client_name, context, prepared)
@@ -1085,7 +1188,9 @@ connection_manager_controller <- function(manager, session) {
       accept = accept,
       cancel = cancel,
       begin_cleanup = function(context) {
-        if (!validate(context) || !identical(context[["client"]], client_name)) {
+        if (
+          !validate(context) || !identical(context[["client"]], client_name)
+        ) {
           err_token("Managed authorization owner is unavailable")
         }
         begin_cleanup(client_name)

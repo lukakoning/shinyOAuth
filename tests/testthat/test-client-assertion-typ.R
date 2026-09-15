@@ -53,7 +53,10 @@ test_that("typed issuer-audience assertions reach each endpoint and retry", {
             parse_jwt_header(jwt)[["typ"]],
             "client-authentication+jwt"
           )
-          expect_identical(parse_jwt_payload(jwt)[["aud"]], client@provider@issuer)
+          expect_identical(
+            parse_jwt_payload(jwt)[["aud"]],
+            client@provider@issuer
+          )
           expect_identical(
             fields[["client_assertion_type"]],
             "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"

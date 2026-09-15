@@ -148,7 +148,11 @@ testthat::test_that("introspect_token rejects legacy active values", {
   for (body in bodies) {
     result <- introspect_token(cli, t, async = FALSE)
     testthat::expect_identical(result[["active"]], NA, info = body)
-    testthat::expect_identical(result[["status"]], "invalid_active", info = body)
+    testthat::expect_identical(
+      result[["status"]],
+      "invalid_active",
+      info = body
+    )
   }
 })
 

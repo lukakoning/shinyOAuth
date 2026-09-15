@@ -1,7 +1,10 @@
 ## Integration tests: RFC 8705 mTLS client auth and certificate-bound tokens
 
 if (!exists("make_mtls_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 perform_mtls_module_login <- function(
@@ -92,7 +95,10 @@ testthat::test_that("strict OIDC validation and mTLS work across the token lifec
     get_mtls_endpoint_url(client@provider, "userinfo_endpoint"),
     oauth_client = client
   )
-  testthat::expect_identical(httr2::resp_body_json(response)[["sub"]], ui[["sub"]])
+  testthat::expect_identical(
+    httr2::resp_body_json(response)[["sub"]],
+    ui[["sub"]]
+  )
   revoked <- shinyOAuth::revoke_token(
     client,
     refreshed,
@@ -320,7 +326,8 @@ build_prepared_mtls_par_request <- function(
     context = "pushed_authorization_request"
   )
 
-  client_assertion <- prepared[["params"]][["client_assertion"]] %||% NA_character_
+  client_assertion <- prepared[["params"]][["client_assertion"]] %||%
+    NA_character_
   assertion_payload <- if (keycloak_nonempty_string(client_assertion)) {
     shinyOAuth:::parse_jwt_payload(client_assertion)
   } else {
@@ -417,7 +424,10 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
 
   userinfo <- shinyOAuth::get_userinfo(client, login[["token"]])
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo[["sub"]], login[["token"]]@userinfo[["sub"]])
+  testthat::expect_identical(
+    userinfo[["sub"]],
+    login[["token"]]@userinfo[["sub"]]
+  )
 
   no_cert_resp <- raw_mtls_userinfo_request(
     client,
@@ -497,7 +507,10 @@ testthat::test_that("Keycloak can issue certificate-bound tokens for a public cl
 
   userinfo <- shinyOAuth::get_userinfo(client, login[["token"]])
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo[["sub"]], login[["token"]]@userinfo[["sub"]])
+  testthat::expect_identical(
+    userinfo[["sub"]],
+    login[["token"]]@userinfo[["sub"]]
+  )
 
   no_cert_resp <- raw_mtls_userinfo_request(
     client,

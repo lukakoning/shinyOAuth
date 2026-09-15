@@ -92,7 +92,10 @@ testthat::test_that("async login failure surfaces error and keeps authenticated 
   app[["post"]]("/token", function(req, res) {
     res[["set_status"]](400L)
     res[["set_type"]]("application/json")
-    res[["send_json"]](list(error = "invalid_grant", error_description = "bad code"))
+    res[["send_json"]](list(
+      error = "invalid_grant",
+      error_description = "bad code"
+    ))
   })
   # Also serve /auth so the provider URL validates (never actually called)
   app[["get"]]("/auth", function(req, res) {
@@ -161,7 +164,11 @@ testthat::test_that("async login failure surfaces error and keeps authenticated 
       # catch-handler should propagate the error back to values[["error."]]
       values[[".process_query"]](paste0("?code=bad&state=", enc))
       # Allow more time for real cross-process async resolution
-      poll_for_async(function() !is.null(values[["error"]]), session, timeout = 15)
+      poll_for_async(
+        function() !is.null(values[["error"]]),
+        session,
+        timeout = 15
+      )
 
       testthat::expect_identical(values[["error"]], "token_exchange_error")
       testthat::expect_match(

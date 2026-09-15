@@ -672,11 +672,15 @@ claims_request_target_has_enforceable_requirements <- function(
 #' @noRd
 canonicalize_claim_value <- function(value) {
   sort_objects <- function(x) {
-    if (!is.list(x)) return(x)
+    if (!is.list(x)) {
+      return(x)
+    }
     x[] <- lapply(x, sort_objects)
     # JSON arrays have no member names and retain their order. Sort object
     # members recursively so serialization order does not affect equality.
-    if (!is.null(names(x))) x <- x[order(names(x), method = "radix")]
+    if (!is.null(names(x))) {
+      x <- x[order(names(x), method = "radix")]
+    }
     x
   }
   encoded <- tryCatch(

@@ -3,7 +3,10 @@
 # the main R process and a real mirai worker process.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 testthat::test_that("Shiny module async audit: events from main & worker processes logged to file", {
@@ -323,7 +326,10 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     )
     testthat::expect_false(
       identical(as.integer(sess[["process_id"]]), as.integer(main_pid)),
-      info = paste0("Async event ran in the main process. Type: ", evt[["type"]])
+      info = paste0(
+        "Async event ran in the main process. Type: ",
+        evt[["type"]]
+      )
     )
     testthat::expect_identical(
       as.integer(evt[[".hook_pid"]]),

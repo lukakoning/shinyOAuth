@@ -91,12 +91,21 @@ otel_exported_spans <- function(path) {
     for (resource_span in otel_null_coalesce(doc[["resourceSpans"]], list())) {
       process_id <- suppressWarnings(as.integer(
         otel_export_attr_value(
-          otel_null_coalesce(resource_span[["resource"]][["attributes"]], list()),
+          otel_null_coalesce(
+            resource_span[["resource"]][["attributes"]],
+            list()
+          ),
           "process.pid"
         )
       ))
-      for (scope_span in otel_null_coalesce(resource_span[["scopeSpans"]], list())) {
-        scope_name <- otel_null_coalesce(scope_span[["scope"]][["name"]], NA_character_)
+      for (scope_span in otel_null_coalesce(
+        resource_span[["scopeSpans"]],
+        list()
+      )) {
+        scope_name <- otel_null_coalesce(
+          scope_span[["scope"]][["name"]],
+          NA_character_
+        )
         for (span in otel_null_coalesce(scope_span[["spans"]], list())) {
           spans[[length(spans) + 1L]] <- list(
             name = otel_null_coalesce(span[["name"]], NA_character_),
@@ -178,7 +187,10 @@ expect_unique_span_attributes <- function(span, keys) {
 
 expect_no_duplicate_span_attributes <- function(span, keys) {
   for (key in keys) {
-    testthat::expect_lte(length(otel_attr_values(span[["attributes"]], key)), 1L)
+    testthat::expect_lte(
+      length(otel_attr_values(span[["attributes"]], key)),
+      1L
+    )
   }
 }
 
@@ -206,15 +218,27 @@ otel_exported_logs <- function(path) {
   logs <- list()
   for (doc in docs) {
     for (resource_log in otel_null_coalesce(doc[["resourceLogs"]], list())) {
-      for (scope_log in otel_null_coalesce(resource_log[["scopeLogs"]], list())) {
-        scope_name <- otel_null_coalesce(scope_log[["scope"]][["name"]], NA_character_)
-        for (log_record in otel_null_coalesce(scope_log[["logRecords"]], list())) {
+      for (scope_log in otel_null_coalesce(
+        resource_log[["scopeLogs"]],
+        list()
+      )) {
+        scope_name <- otel_null_coalesce(
+          scope_log[["scope"]][["name"]],
+          NA_character_
+        )
+        for (log_record in otel_null_coalesce(
+          scope_log[["logRecords"]],
+          list()
+        )) {
           logs[[length(logs) + 1L]] <- list(
             body = otel_null_coalesce(
               otel_null_coalesce(log_record[["body"]], list())[["stringValue"]],
               NA_character_
             ),
-            trace_id = otel_null_coalesce(log_record[["traceId"]], NA_character_),
+            trace_id = otel_null_coalesce(
+              log_record[["traceId"]],
+              NA_character_
+            ),
             span_id = otel_null_coalesce(log_record[["spanId"]], NA_character_),
             scope_name = scope_name,
             attributes = otel_null_coalesce(log_record[["attributes"]], list())
@@ -277,7 +301,9 @@ expect_async_operation_spans <- function(
     operation_spans
   )
   worker_operation <- Filter(
-    function(span) identical(span[["process_id"]], worker_span[[1L]][["process_id"]]),
+    function(span) {
+      identical(span[["process_id"]], worker_span[[1L]][["process_id"]])
+    },
     operation_spans
   )
 
@@ -326,7 +352,10 @@ expect_async_operation_spans <- function(
     )
   }
   testthat::expect_false(
-    identical(main_operation[[1L]][["process_id"]], worker_span[[1L]][["process_id"]])
+    identical(
+      main_operation[[1L]][["process_id"]],
+      worker_span[[1L]][["process_id"]]
+    )
   )
 
   list(
@@ -602,7 +631,10 @@ otel_async_daemon("async parent/worker span propagation via real mirai daemon", 
     app_trace_id
   )
   testthat::expect_false(
-    identical(parent_span[[1L]][["process_id"]], worker_span[[1L]][["process_id"]])
+    identical(
+      parent_span[[1L]][["process_id"]],
+      worker_span[[1L]][["process_id"]]
+    )
   )
 })
 
@@ -716,10 +748,22 @@ otel_async_daemon("async parent/worker propagation survives stale worker tracing
 
   testthat::expect_identical(worker_pid, poison_pid)
   testthat::expect_identical(worker_span[["process_id"]], poison_pid)
-  testthat::expect_identical(worker_span[["trace_id"]], parent_span[["trace_id"]])
-  testthat::expect_identical(child_span[["trace_id"]], parent_span[["trace_id"]])
-  testthat::expect_identical(worker_span[["parent_span_id"]], parent_span[["span_id"]])
-  testthat::expect_identical(child_span[["parent_span_id"]], worker_span[["span_id"]])
+  testthat::expect_identical(
+    worker_span[["trace_id"]],
+    parent_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    child_span[["trace_id"]],
+    parent_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    worker_span[["parent_span_id"]],
+    parent_span[["span_id"]]
+  )
+  testthat::expect_identical(
+    child_span[["parent_span_id"]],
+    worker_span[["span_id"]]
+  )
 })
 
 otel_async_daemon("async error propagation exports error parent and worker spans from a real mirai daemon", {
@@ -816,8 +860,14 @@ otel_async_daemon("async error propagation exports error parent and worker spans
   parent_span <- parent_span[[1L]]
   worker_span <- worker_span[[1L]]
 
-  testthat::expect_identical(parent_span[["trace_id"]], worker_span[["trace_id"]])
-  testthat::expect_identical(worker_span[["parent_span_id"]], parent_span[["span_id"]])
+  testthat::expect_identical(
+    parent_span[["trace_id"]],
+    worker_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    worker_span[["parent_span_id"]],
+    parent_span[["span_id"]]
+  )
   testthat::expect_true(otel_span_status_is_error(parent_span))
   testthat::expect_true(otel_span_status_is_error(worker_span))
   testthat::expect_true(otel_span_has_event(parent_span, "exception"))
@@ -966,7 +1016,9 @@ otel_async_daemon("async module callback/login success exports correct main and 
 
   app <- webfakes::new_app()
   app[["post"]]("/par", function(req, res) {
-    par_body <- rawToChar(if (is.null(req[[".body"]])) raw() else req[[".body"]])
+    par_body <- rawToChar(
+      if (is.null(req[[".body"]])) raw() else req[[".body"]]
+    )
     par_state <- sub("(^|.*&)state=([^&]*).*$", "\\2", par_body)
     if (identical(par_state, par_body)) {
       par_state <- NA_character_
@@ -1046,7 +1098,11 @@ otel_async_daemon("async module callback/login success exports correct main and 
       testthat::expect_true(is.character(enc) && nzchar(enc))
 
       values[[".process_query"]](paste0("?code=ok&state=", enc))
-      poll_for_async(function() !is.null(values[["token"]]), session, timeout = 15)
+      poll_for_async(
+        function() !is.null(values[["token"]]),
+        session,
+        timeout = 15
+      )
       poll_for_async(
         function() isTRUE(values[["authenticated"]]),
         session,
@@ -1152,8 +1208,14 @@ otel_async_daemon("async module callback/login success exports correct main and 
     preparation_worker[[1L]][["span_id"]]
   )
   testthat::expect_false(identical(par_span[["process_id"]], Sys.getpid()))
-  testthat::expect_identical(par_http_span[["trace_id"]], par_span[["trace_id"]])
-  testthat::expect_identical(par_http_span[["parent_span_id"]], par_span[["span_id"]])
+  testthat::expect_identical(
+    par_http_span[["trace_id"]],
+    par_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    par_http_span[["parent_span_id"]],
+    par_span[["span_id"]]
+  )
   testthat::expect_identical(
     otel_span_attribute(par_span, "oauth.phase"),
     "login.par"
@@ -1162,10 +1224,22 @@ otel_async_daemon("async module callback/login success exports correct main and 
     as.integer(otel_span_attribute(par_http_span, "http.response.status_code")),
     201L
   )
-  testthat::expect_identical(callback_span[["trace_id"]], login_span[["trace_id"]])
-  testthat::expect_identical(callback_span[["parent_span_id"]], login_span[["span_id"]])
-  testthat::expect_identical(worker_span[["trace_id"]], callback_span[["trace_id"]])
-  testthat::expect_identical(worker_span[["parent_span_id"]], callback_span[["span_id"]])
+  testthat::expect_identical(
+    callback_span[["trace_id"]],
+    login_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    callback_span[["parent_span_id"]],
+    login_span[["span_id"]]
+  )
+  testthat::expect_identical(
+    worker_span[["trace_id"]],
+    callback_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    worker_span[["parent_span_id"]],
+    callback_span[["span_id"]]
+  )
   testthat::expect_identical(
     token_exchange_span[["parent_span_id"]],
     worker_span[["span_id"]]
@@ -1177,7 +1251,10 @@ otel_async_daemon("async module callback/login success exports correct main and 
 
   for (span in list(state_payload_span, state_store_span)) {
     testthat::expect_identical(span[["trace_id"]], callback_span[["trace_id"]])
-    testthat::expect_identical(span[["parent_span_id"]], callback_span[["span_id"]])
+    testthat::expect_identical(
+      span[["parent_span_id"]],
+      callback_span[["span_id"]]
+    )
     testthat::expect_identical(span[["process_id"]], Sys.getpid())
     testthat::expect_identical(
       otel_span_attribute(span, "shiny.session.is_async"),
@@ -1314,7 +1391,11 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
       testthat::expect_true(is.character(enc) && nzchar(enc))
 
       values[[".process_query"]](paste0("?code=ok&state=", enc))
-      poll_for_async(function() !is.null(values[["token"]]), session, timeout = 15)
+      poll_for_async(
+        function() !is.null(values[["token"]]),
+        session,
+        timeout = 15
+      )
       poll_for_async(
         function() isTRUE(values[["authenticated"]]),
         session,
@@ -1422,8 +1503,14 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
     )
   )
 
-  testthat::expect_identical(userinfo_span[["trace_id"]], worker_span[["trace_id"]])
-  testthat::expect_identical(userinfo_span[["parent_span_id"]], worker_span[["span_id"]])
+  testthat::expect_identical(
+    userinfo_span[["trace_id"]],
+    worker_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    userinfo_span[["parent_span_id"]],
+    worker_span[["span_id"]]
+  )
   testthat::expect_identical(
     userinfo_http_span[["parent_span_id"]],
     userinfo_span[["span_id"]]
@@ -1440,7 +1527,10 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
     callback_received_log[["trace_id"]],
     worker_span[["trace_id"]]
   )
-  testthat::expect_identical(callback_received_log[["span_id"]], worker_span[["span_id"]])
+  testthat::expect_identical(
+    callback_received_log[["span_id"]],
+    worker_span[["span_id"]]
+  )
   testthat::expect_true(is.character(otel_log_attribute(
     callback_received_log,
     "code_digest"
@@ -1460,12 +1550,24 @@ otel_async_daemon("async callback exports worker userinfo spans and logs from a 
     "browser_token"
   ))
 
-  testthat::expect_identical(login_success_log[["trace_id"]], worker_span[["trace_id"]])
-  testthat::expect_identical(login_success_log[["span_id"]], worker_span[["span_id"]])
+  testthat::expect_identical(
+    login_success_log[["trace_id"]],
+    worker_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    login_success_log[["span_id"]],
+    worker_span[["span_id"]]
+  )
   testthat::expect_null(otel_log_attribute(login_success_log, "refresh_token"))
 
-  testthat::expect_identical(userinfo_log[["trace_id"]], worker_span[["trace_id"]])
-  testthat::expect_identical(userinfo_log[["span_id"]], userinfo_span[["span_id"]])
+  testthat::expect_identical(
+    userinfo_log[["trace_id"]],
+    worker_span[["trace_id"]]
+  )
+  testthat::expect_identical(
+    userinfo_log[["span_id"]],
+    userinfo_span[["span_id"]]
+  )
   testthat::expect_identical(
     otel_log_attribute(userinfo_log, "oauth.status"),
     "ok"
@@ -1693,8 +1795,14 @@ otel_async_daemon("refresh_token async exports logs correlated with spans from a
   testthat::expect_true(any(vapply(
     refresh_logs,
     function(log_record) {
-      identical(log_record[["trace_id"]], span_tree[["worker_operation"]][["trace_id"]]) &&
-        identical(log_record[["span_id"]], span_tree[["worker_operation"]][["span_id"]])
+      identical(
+        log_record[["trace_id"]],
+        span_tree[["worker_operation"]][["trace_id"]]
+      ) &&
+        identical(
+          log_record[["span_id"]],
+          span_tree[["worker_operation"]][["span_id"]]
+        )
     },
     logical(1)
   )))

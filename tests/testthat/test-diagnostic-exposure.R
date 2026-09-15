@@ -18,7 +18,10 @@ test_that("claim conditions redact values and bound explicitly exposed details",
       )
       expect_s3_class(error, "shinyOAuth_userinfo_error")
       expect_identical(error[["context"]][["claim"]], claim)
-      expect_match(error[["context"]][["expected_claim_digest"]], "^[a-f0-9]{64}$")
+      expect_match(
+        error[["context"]][["expected_claim_digest"]],
+        "^[a-f0-9]{64}$"
+      )
       expect_false(identical(
         error[["context"]][["expected_claim_digest"]],
         error[["context"]][["received_claim_digest"]]
@@ -63,7 +66,10 @@ test_that("required ACR conditions apply the diagnostic exposure policy", {
     required_acr_values = c("private-expected-acr", "private-alternative-acr")
   )
   key <- openssl::rsa_keygen()
-  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = FALSE)
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
   local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)))
   for (expose in c(FALSE, TRUE)) {
     local_options(shinyOAuth.expose_error_body = expose)
@@ -92,7 +98,10 @@ test_that("required ACR conditions apply the diagnostic exposure policy", {
       )
       expect_s3_class(error, "shinyOAuth_id_token_error")
       expect_identical(error[["context"]][["claim"]], "acr")
-      expect_match(error[["context"]][["expected_claim_digest"]], "^[a-f0-9]{64}$")
+      expect_match(
+        error[["context"]][["expected_claim_digest"]],
+        "^[a-f0-9]{64}$"
+      )
       if (expose) {
         expect_match(
           conditionMessage(error),

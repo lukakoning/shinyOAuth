@@ -45,9 +45,16 @@ resource_binding_path <- function(path) {
   # Use one spelling for literal and escaped UTF-8 without changing reserved
   # path characters. Escaped delimiters have already been rejected above.
   bytes <- as.integer(charToRaw(enc2utf8(path)))
-  paste0(vapply(bytes, function(byte) {
-    if (byte >= 128L) sprintf("%%%02X", byte) else rawToChar(as.raw(byte))
-  }, character(1)), collapse = "")
+  paste0(
+    vapply(
+      bytes,
+      function(byte) {
+        if (byte >= 128L) sprintf("%%%02X", byte) else rawToChar(as.raw(byte))
+      },
+      character(1)
+    ),
+    collapse = ""
+  )
 }
 
 resource_binding_components <- function(
@@ -165,7 +172,9 @@ resolve_bound_resource <- function(base, reference = "") {
   ) {
     resource_binding_error()
   }
-  if (!nzchar(reference)) return(approved[["url"]])
+  if (!nzchar(reference)) {
+    return(approved[["url"]])
+  }
   if (grepl("^[A-Za-z][A-Za-z0-9+.-]*:", reference)) {
     candidate <- reference
   } else if (startsWith(reference, "/")) {

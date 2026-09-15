@@ -141,7 +141,10 @@ testthat::test_that("error response with state waits for browser_token before va
       testthat::expect_null(values[["error"]])
       testthat::expect_null(values[["error_description"]])
       testthat::expect_type(values[["pending_callback"]], "list")
-      testthat::expect_identical(values[["pending_callback"]][["type"]], "error")
+      testthat::expect_identical(
+        values[["pending_callback"]][["type"]],
+        "error"
+      )
       testthat::expect_identical(
         values[["pending_callback"]][["error_uri"]],
         "https://example.com/help/access_denied"
@@ -222,7 +225,10 @@ testthat::test_that("error response with mismatched browser_token is rejected as
       session[["flushReact"]]()
 
       testthat::expect_type(values[["pending_callback"]], "list")
-      testthat::expect_identical(values[["pending_callback"]][["type"]], "error")
+      testthat::expect_identical(
+        values[["pending_callback"]][["type"]],
+        "error"
+      )
 
       still_present <- cli@state_store[["get"]](key, missing = NULL)
       testthat::expect_false(is.null(still_present))
@@ -358,7 +364,9 @@ testthat::test_that("error response with invalid state is rejected as invalid_st
     ),
     expr = {
       # Simulate error with garbage/tampered state
-      values[[".process_query"]]("?error=invalid_request&state=garbage_state_value")
+      values[[".process_query"]](
+        "?error=invalid_request&state=garbage_state_value"
+      )
       session[["flushReact"]]()
 
       testthat::expect_identical(values[["error"]], "invalid_state")

@@ -1420,7 +1420,10 @@ oauth_provider_validate <- function(self) {
   ) {
     return("OAuthProvider: jwks_cache$set must accept (key, value)")
   }
-  if (!is.null(self@jwks_cache[["remove"]]) && is.function(self@jwks_cache[["remove"]])) {
+  if (
+    !is.null(self@jwks_cache[["remove"]]) &&
+      is.function(self@jwks_cache[["remove"]])
+  ) {
     jrm_formals <- try(formals(self@jwks_cache[["remove"]]), silent = TRUE)
     jrm_args <- if (!inherits(jrm_formals, "try-error")) {
       names(jrm_formals)
@@ -1437,7 +1440,10 @@ oauth_provider_validate <- function(self) {
     !is.null(self@jwks_cache[["set_if_absent"]]) &&
       is.function(self@jwks_cache[["set_if_absent"]])
   ) {
-    jsia_formals <- try(formals(self@jwks_cache[["set_if_absent"]]), silent = TRUE)
+    jsia_formals <- try(
+      formals(self@jwks_cache[["set_if_absent"]]),
+      silent = TRUE
+    )
     jsia_args <- if (!inherits(jsia_formals, "try-error")) {
       names(jsia_formals)
     } else {

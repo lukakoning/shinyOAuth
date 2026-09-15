@@ -3,7 +3,10 @@
 ## Positive enforcement is tested independently in integration/conformance.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
+  source(file.path(
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
+    "helper-keycloak.R"
+  ))
 }
 
 valid_browser_token <- function() {
@@ -171,7 +174,10 @@ testthat::test_that("Keycloak replays the same signed request object but shinyOA
 
   testthat::expect_true(nzchar(first_login[["code"]] %||% ""))
   testthat::expect_true(nzchar(second_login[["code"]] %||% ""))
-  testthat::expect_false(identical(first_login[["code"]], second_login[["code"]]))
+  testthat::expect_false(identical(
+    first_login[["code"]],
+    second_login[["code"]]
+  ))
 
   first_token <- complete_jar_callback(client, first_login, browser_token)
   testthat::expect_true(S7::S7_inherits(first_token, shinyOAuth::OAuthToken))

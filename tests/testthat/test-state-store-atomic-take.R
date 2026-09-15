@@ -336,7 +336,9 @@ test_that("fallback post-check catches no-op remove (exact TOCTOU vector)", {
   backing[["set"]](key, ssv)
 
   noop_store <- list(
-    get = function(key, missing = NULL) backing[["get"]](key, missing = missing),
+    get = function(key, missing = NULL) {
+      backing[["get"]](key, missing = missing)
+    },
     set = function(key, value) backing[["set"]](key, value),
     # remove() does nothing but returns TRUE (the vulnerability)
     remove = function(key) TRUE,

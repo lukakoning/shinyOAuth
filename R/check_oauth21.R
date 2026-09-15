@@ -332,7 +332,9 @@ check_oauth21 <- function(
   runtime <- curl::curl_version()
   old_wolf <- grepl("wolfSSL", runtime[["ssl_version"]], ignore.case = TRUE) &&
     utils::compareVersion(runtime[["version"]], "8.10.0") < 0L
-  tls_ok <- if (!is.null(tls[["problem"]]) || (!is.null(tls[["minimum"]]) && old_wolf)) {
+  tls_ok <- if (
+    !is.null(tls[["problem"]]) || (!is.null(tls[["minimum"]]) && old_wolf)
+  ) {
     FALSE
   } else if (
     !is.null(tls[["minimum"]]) ||
@@ -369,7 +371,8 @@ check_oauth21 <- function(
 
   pkce <- isTRUE(provider@use_pkce)
   s256 <- pkce && identical(normalize_pkce_method(provider@pkce_method), "S256")
-  confidential <- has_client && isTRUE(auth_settings[["token"]][["confidential"]])
+  confidential <- has_client &&
+    isTRUE(auth_settings[["token"]][["confidential"]])
   exception_local <- confidential &&
     oidc &&
     isTRUE(provider@use_nonce) &&
@@ -488,7 +491,10 @@ check_oauth21 <- function(
       "parameters.token",
       status(
         is.null(token_params[["problem"]]) &&
-          identical(token_params[["params"]][["redirect_uri"]], client@redirect_uri)
+          identical(
+            token_params[["params"]][["redirect_uri"]],
+            client@redirect_uri
+          )
       ),
       "Token parameter overrides must preserve the code transaction and its redirect URI.",
       "Keep transaction parameters managed and retain the registered redirect URI.",
@@ -775,7 +781,10 @@ print.shinyOAuth_oauth21_assessment <- function(x, ...) {
   cat("Scope: ", x[["assessment_scope"]], "\n", sep = "")
   cat(
     "Unmet recommendations: ",
-    sum(x[["checks"]][["requirement"]] == "SHOULD" & x[["checks"]][["status"]] == "fail"),
+    sum(
+      x[["checks"]][["requirement"]] == "SHOULD" &
+        x[["checks"]][["status"]] == "fail"
+    ),
     "; unknown external/request checks: ",
     sum(
       x[["checks"]][["scope"]] %in%

@@ -9,7 +9,10 @@ test_that("browser acknowledgment follows cookie expiry, deletion and blocking",
     stdout = TRUE,
     stderr = TRUE
   )
-  expect_null(attr(output, "status", exact = TRUE), info = paste(output, collapse = "\n"))
+  expect_null(
+    attr(output, "status", exact = TRUE),
+    info = paste(output, collapse = "\n")
+  )
 })
 
 test_that("new login state waits for the current browser cookie acknowledgment", {
@@ -38,7 +41,10 @@ test_that("new login state waits for the current browser cookie acknowledgment",
       session[["flushReact"]]()
       expect_null(result)
       session[["setInputs"]](
-        shinyOAuth_cookie_ack = list(requestId = browser_ack[["id"]], token = old)
+        shinyOAuth_cookie_ack = list(
+          requestId = browser_ack[["id"]],
+          token = old
+        )
       )
       later::run_now()
       session[["flushReact"]]()

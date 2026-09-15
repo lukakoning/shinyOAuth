@@ -28,7 +28,10 @@ expect_form_post_candidate_isolation <- function(
   second <- post_candidate(c(final_fields, list(state = state)))
   expect_identical(first[["status"]], 303L)
   expect_identical(second[["status"]], 303L)
-  expect_false(identical(first[["headers"]][["Location"]], second[["headers"]][["Location"]]))
+  expect_false(identical(
+    first[["headers"]][["Location"]],
+    second[["headers"]][["Location"]]
+  ))
   first_handle <- parse_query_param(
     first[["headers"]][["Location"]],
     "shinyOAuth_form_post",
@@ -71,7 +74,10 @@ expect_form_post_candidate_isolation <- function(
       expect_match(values[["error_description"]], "Browser token mismatch")
     })
     expect_identical(exchanges, 0L)
-    expect_silent(shinyOAuth:::state_store_get(client, state_payload[["state"]]))
+    expect_silent(shinyOAuth:::state_store_get(
+      client,
+      state_payload[["state"]]
+    ))
     expect_false(is.null(client@state_store[["get"]](
       shinyOAuth:::oauth_form_post_cache_key("auth", second_handle, client),
       missing = NULL
