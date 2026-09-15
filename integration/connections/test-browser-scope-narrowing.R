@@ -47,8 +47,8 @@ for (index in seq_len(nrow(cases))) {
       retention_browser_action(browser, "read_a", "a:3")
     }
     retention_browser_action(browser, "refresh_b", "refreshed")
-    testthat::expect_identical(metrics("b")$scoped_refreshes, 0L)
-    testthat::expect_identical(metrics("b")$omitted_refreshes, 1L)
+    testthat::expect_identical(metrics("b")$scoped_refreshes, 1L)
+    testthat::expect_identical(metrics("b")$omitted_refreshes, 0L)
     retention_browser_action(browser, "write_b", "b:written")
     testthat::expect_identical(metrics("b")$writes, 1L)
     testthat::expect_identical(metrics("a")$writes, 1L)

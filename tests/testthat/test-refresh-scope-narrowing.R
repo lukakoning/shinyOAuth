@@ -75,7 +75,7 @@ for (omitted in c(FALSE, TRUE)) test_that(paste("scope request controls explicit
   expect_setequal(effective_client_scopes(client), c("read", "write"))
 })
 
-test_that("legacy refresh still omits scope and carries its previous grant", {
+test_that("generic refresh explicitly requests its retained grant", {
   client <- narrowing_client()
   token <- narrowing_token()
   seen <- NULL
@@ -84,9 +84,36 @@ test_that("legacy refresh still omits scope and carries its previous grant", {
     narrowing_response(req, NULL)
   })
   result <- refresh_token(client, token)
-  expect_false("scope" %in% names(seen))
+  expect_identical(utils::URLdecode(as.character(seen$scope)), "read write")
   expect_identical(result@granted_scopes, token@granted_scopes)
   expect_false(result@granted_scopes_verified)
+})
+
+for (rotate in c(FALSE, TRUE)) test_that(paste("generic refresh preserves reductions with omitted scope", rotate), {
+  client <- narrowing_client()
+  requests <- list()
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    requests[[length(requests) + 1L]] <<- req$body$data
+    narrowing_response(req, if (length(requests) == 1L) "read" else NULL, rotate)
+  })
+  first <- refresh_token(client, narrowing_token())
+  second <- refresh_token(client, unserialize(serialize(first, NULL)))
+  expect_identical(utils::URLdecode(as.character(requests[[1L]]$scope)), "read write")
+  expect_identical(as.character(requests[[2L]]$scope), "read")
+  expect_identical(as.character(requests[[2L]]$refresh_token), first@refresh_token)
+  expect_identical(second@granted_scopes, "read")
+  expect_false(second@granted_scopes_verified)
+})
+
+test_that("generic refresh without scope evidence omits the request parameter", {
+  seen <- NULL
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    seen <<- req$body$data
+    narrowing_response(req, "read")
+  })
+  result <- refresh_token(narrowing_client(), narrowing_token(character()))
+  expect_false("scope" %in% names(seen))
+  expect_identical(result@granted_scopes, "read")
 })
 
 test_that("OIDC narrowing retains permission for required UserInfo before exchange", {
