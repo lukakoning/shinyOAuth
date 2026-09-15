@@ -94,30 +94,7 @@ dpop_nonce_cache_key <- function(
 
   request_kind <- match.arg(request_kind)
 
-  parsed <- try(httr2::url_parse(url), silent = TRUE)
-  if (inherits(parsed, "try-error")) {
-    return(NA_character_)
-  }
-  parsed[["query"]] <- NULL
-  parsed[["fragment"]] <- NULL
-  parsed[["path"]] <- parsed[["path"]] %||% "/"
-  parsed[["scheme"]] <- tolower(parsed[["scheme"]] %||% "")
-  parsed[["hostname"]] <- tolower(
-    parsed[["hostname"]] %||% ""
-  )
-
-  port <- as.character(parsed[["port"]] %||% "")
-  if (
-    identical(parsed[["scheme"]], "https") &&
-      identical(port, "443")
-  ) {
-    parsed[["port"]] <- NULL
-  }
-  if (identical(parsed[["scheme"]], "http") && identical(port, "80")) {
-    parsed[["port"]] <- NULL
-  }
-
-  server_uri <- try(httr2::url_build(parsed), silent = TRUE)
+  server_uri <- try(dpop_target_uri(url), silent = TRUE)
   if (inherits(server_uri, "try-error") || !is_valid_string(server_uri)) {
     return(NA_character_)
   }
@@ -602,7 +579,16 @@ dpop_target_uri <- function(url) {
     parsed[["port"]] <- NULL
   }
 
-  httr2::url_build(parsed)
+  # url_parse() decodes the path, and url_build() can turn an escaped reserved
+  # delimiter into a literal one. Retain the wire path for RFC 9449 binding.
+  hostname <- parsed[["hostname"]]
+  if (grepl(":", hostname, fixed = TRUE) && !startsWith(hostname, "[")) {
+    hostname <- paste0("[", hostname, "]")
+  }
+  port <- parsed[["port"]]
+  paste0(parsed[["scheme"]], "://", hostname,
+         if (!is.null(port) && nzchar(port)) paste0(":", port) else "",
+         url_raw_path(url))
 }
 
 #' Compute the DPoP access-token hash
