@@ -27,7 +27,30 @@ client_has_dpop <- function(client) {
 # is conservatively limited to the same endpoint. Bound the cache by
 # age and entry count so long-lived apps do not accumulate unbounded state.
 dpop_nonce_cache <- cachem::cache_mem(max_age = 300, max_n = 256, evict = "lru")
-dpop_nonce_max_bytes <- 512L
+
+#' Resolve the local DPoP nonce resource limit
+#'
+#' RFC 9449 specifies nonce syntax but no maximum length. Operators can raise
+#' this implementation limit for their provider without unbounded cache growth.
+#' @return Maximum nonce length in bytes.
+#' @keywords internal
+#' @noRd
+dpop_nonce_max_bytes <- function() {
+  limit <- getOption("shinyOAuth.dpop_nonce_max_bytes", 4096L)
+  if (
+    !is.numeric(limit) ||
+      length(limit) != 1L ||
+      !is.finite(limit) ||
+      limit < 1 ||
+      limit > 65536 ||
+      limit != floor(limit)
+  ) {
+    err_config(
+      "shinyOAuth.dpop_nonce_max_bytes must be an integer from 1 to 65536"
+    )
+  }
+  as.integer(limit)
+}
 
 #' Normalize a DPoP nonce value
 #'
@@ -45,7 +68,7 @@ normalize_dpop_nonce <- function(nonce) {
   }
 
   nonce <- as.character(nonce[[1]])
-  if (!nzchar(nonce) || nchar(nonce, type = "bytes") > dpop_nonce_max_bytes) {
+  if (!nzchar(nonce) || nchar(nonce, type = "bytes") > dpop_nonce_max_bytes()) {
     return(NA_character_)
   }
 
@@ -647,7 +670,7 @@ build_dpop_proof <- function(
       paste(
         "DPoP nonce must be a single RFC 9449 nonce using visible ASCII",
         "without spaces, double quotes, or backslashes, and no more than",
-        dpop_nonce_max_bytes,
+        dpop_nonce_max_bytes(),
         "bytes"
       )
     )
@@ -775,7 +798,17 @@ resp_get_dpop_nonce <- function(resp) {
   if (inherits(nonce, "try-error")) {
     return(NA_character_)
   }
-
+  if (
+    is_valid_string(nonce) &&
+      nchar(nonce, type = "bytes") > dpop_nonce_max_bytes()
+  ) {
+    err_token(paste0(
+      "DPoP-Nonce response header exceeds the configured ",
+      "shinyOAuth.dpop_nonce_max_bytes limit (",
+      dpop_nonce_max_bytes(),
+      " bytes)"
+    ))
+  }
   normalize_dpop_nonce(as.character(nonce)[1])
 }
 

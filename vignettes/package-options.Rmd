@@ -155,6 +155,7 @@ you can unblock them using the following options:
   (discovery, JWKS, token exchange, userinfo). Increase if your provider/network is slow. Values beyond
   curl's supported timeout range are capped
 - `options(shinyOAuth.retry_max_tries = 3L)` – maximum attempts for retryable requests after network errors or HTTP 408, 429, or 5xx responses. Authorization-code exchange and refresh are not automatically retried, apart from a single DPoP nonce challenge retry
+- `options(shinyOAuth.dpop_nonce_max_bytes = 4096L)` – maximum DPoP nonce size in bytes. RFC 9449 sets no length limit; this local resource limit is configurable from 1 to 65536 bytes and is propagated to async workers. A response exceeding it raises a specific error without exposing the nonce. Raise it if your provider legitimately issues larger nonces
 - `options(shinyOAuth.retry_backoff_base = 0.5)` – base backoff in seconds used for exponential backoff with jitter
 - `options(shinyOAuth.retry_backoff_cap = 5)` – per‑attempt cap on backoff seconds (before jitter)
 - `options(shinyOAuth.retry_after_cap = 60)` – maximum synchronous sleep in seconds for a server-provided `Retry-After` value; this is separate from the client-side backoff cap

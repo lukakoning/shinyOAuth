@@ -712,6 +712,7 @@ test_that("build_dpop_proof rejects invalid nonce syntax", {
 })
 
 test_that("resp_get_dpop_nonce enforces RFC 9449 syntax and size bounds", {
+  local_options(shinyOAuth.dpop_nonce_max_bytes = NULL)
   valid_resp <- httr2::response(
     url = "https://example.com/token",
     status = 400,
@@ -734,7 +735,7 @@ test_that("resp_get_dpop_nonce enforces RFC 9449 syntax and size bounds", {
     url = "https://example.com/token",
     status = 400,
     headers = list(
-      "dpop-nonce" = paste(rep("a", 513L), collapse = "")
+      "dpop-nonce" = paste(rep("a", 4097L), collapse = "")
     ),
     body = charToRaw("{}")
   )
@@ -742,7 +743,24 @@ test_that("resp_get_dpop_nonce enforces RFC 9449 syntax and size bounds", {
   expect_identical(shinyOAuth:::resp_get_dpop_nonce(valid_resp), "nonce-1")
   expect_true(is.na(shinyOAuth:::resp_get_dpop_nonce(invalid_space_resp)))
   expect_true(is.na(shinyOAuth:::resp_get_dpop_nonce(invalid_backslash_resp)))
-  expect_true(is.na(shinyOAuth:::resp_get_dpop_nonce(oversized_resp)))
+  expect_error(
+    shinyOAuth:::resp_get_dpop_nonce(oversized_resp),
+    "DPoP-Nonce response header exceeds.*4096 bytes",
+    class = "shinyOAuth_token_error"
+  )
+  local_options(shinyOAuth.dpop_nonce_max_bytes = 8192L)
+  expect_identical(
+    shinyOAuth:::resp_get_dpop_nonce(oversized_resp),
+    oversized_resp[["headers"]][["dpop-nonce"]]
+  )
+  for (limit in list(NA, Inf, "8192", 0, -1, 1.5, 65537, c(1, 2))) {
+    local_options(shinyOAuth.dpop_nonce_max_bytes = limit)
+    expect_error(
+      shinyOAuth:::resp_get_dpop_nonce(valid_resp),
+      "must be an integer",
+      class = "shinyOAuth_config_error"
+    )
+  }
 })
 
 test_that("DPoP nonce challenges require the RFC status and error shape", {
@@ -1313,6 +1331,7 @@ test_that("DPoP nonce cache is bounded by age and entry count", {
 })
 
 test_that("swap_code_for_token_set retries DPoP nonce challenges once", {
+  server_nonce <- paste(rep("n", 4096L), collapse = "")
   state <- new.env(parent = emptyenv())
   state[["count"]] <- 0L
   state[["first_has_nonce"]] <- NA
@@ -1357,7 +1376,7 @@ test_that("swap_code_for_token_set retries DPoP nonce challenges once", {
           headers = list(
             "content-type" = "application/json",
             "www-authenticate" = 'DPoP error="use_dpop_nonce"',
-            "dpop-nonce" = "nonce-1"
+            "dpop-nonce" = server_nonce
           ),
           body = charToRaw('{"error":"use_dpop_nonce"}')
         ))
@@ -1387,7 +1406,7 @@ test_that("swap_code_for_token_set retries DPoP nonce challenges once", {
   expect_identical(token_set[["token_type"]], "DPoP")
   expect_identical(state[["count"]], 2L)
   expect_false(isTRUE(state[["first_has_nonce"]]))
-  expect_identical(state[["second_nonce"]], "nonce-1")
+  expect_identical(state[["second_nonce"]], server_nonce)
 })
 
 test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce challenges", {
