@@ -771,9 +771,8 @@ parse_url_components <- function(url, label = "url") {
   parsed <- try(httr2::url_parse(url), silent = TRUE)
 
   if (inherits(parsed, "try-error")) {
-    err_config(c(
-      "x" = sprintf("Could not parse %s", label),
-      "!" = sprintf("Value: '%s'", url)
+    err_config(protocol_diagnostic_message(
+      sprintf("Could not parse %s", label), url
     ))
   }
 
@@ -783,9 +782,8 @@ parse_url_components <- function(url, label = "url") {
   host <- host_normalize_idna(host)
 
   if (!nzchar(host)) {
-    err_config(c(
-      "x" = sprintf("%s does not include a hostname", label),
-      "!" = sprintf("Value: '%s'", url)
+    err_config(protocol_diagnostic_message(
+      sprintf("%s does not include a hostname", label), url
     ))
   }
 

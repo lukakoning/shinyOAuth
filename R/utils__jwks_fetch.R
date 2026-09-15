@@ -451,8 +451,7 @@ fetch_jwks <- function(
   }
   if (!is_ok_host(jwks_uri)) {
     err_config(c(
-      "x" = "jwks_uri is not in an allowed host",
-      "!" = paste0("Value: ", jwks_uri),
+      protocol_diagnostic_message("jwks_uri is not in an allowed host", jwks_uri),
       "i" = "See `?is_ok_host` to configure allowed hosts"
     ))
   }

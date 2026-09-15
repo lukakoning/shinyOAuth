@@ -796,8 +796,7 @@ oauth_provider_oidc_discover <- function(
   }
 
   message <- c(
-    "x" = paste(label, "must use HTTPS"),
-    "i" = paste0("Got: ", url),
+    protocol_diagnostic_message(paste(label, "must use HTTPS"), url),
     "i" = paste(
       "For loopback development only, set",
       "options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)."

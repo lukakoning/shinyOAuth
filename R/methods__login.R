@@ -2153,10 +2153,13 @@ enforce_token_introspection_policy <- function(
     if (
       !identical(as.character(cid)[1], as.character(oauth_client@client_id)[1])
     ) {
-      err_token(c(
-        "x" = "Token introspection client_id does not match configured client_id",
-        "!" = paste0("Got: ", as.character(cid)[1])
-      ))
+      err_claim_validation(
+        "Token introspection client_id does not match configured client_id",
+        claim = "client_id",
+        expected = oauth_client@client_id,
+        received = cid,
+        error = err_token
+      )
     }
   }
 
@@ -3109,14 +3112,13 @@ verify_token_type_allowlist <- function(client, token_set) {
   if (length(allowed_vec) > 0) {
     allowed <- tolower(as.character(allowed_vec))
     if (!tolower(tt) %in% allowed) {
-      err_token(c(
-        "x" = "Unsupported token_type received",
-        "!" = paste0("Got: ", tt),
-        "i" = paste0(
-          "Expected one of: ",
-          paste(unique(allowed_vec), collapse = ", ")
-        )
-      ))
+      err_claim_validation(
+        "Unsupported token_type received",
+        claim = "token_type",
+        expected = unique(allowed_vec),
+        received = tt,
+        error = err_token
+      )
     }
   }
 
