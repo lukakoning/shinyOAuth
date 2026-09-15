@@ -201,33 +201,21 @@ local_select_candidate_jwks <- function(jwks, header_alg, kid = NULL) {
 }
 
 local_dpop_target_uri <- function(url) {
-  parsed <- try(httr2::url_parse(url), silent = TRUE)
-  if (inherits(parsed, "try-error")) {
+  # Independent oracle: split the wire URI without decoding its path. Do not use
+  # the package normalizer or the same parse/rebuild round trip as the client.
+  parts <- regmatches(url, regexec(
+    "^(https?)://([^/?#]+)([^?#]*)(?:[?#].*)?$",
+    url, ignore.case = TRUE, perl = TRUE
+  ))[[1L]]
+  if (length(parts) != 4L) {
     stop("dpop_target_uri_invalid", call. = FALSE)
   }
-
-  parsed[["query"]] <- NULL
-  parsed[["fragment"]] <- NULL
-  parsed[["scheme"]] <- tolower(parsed[["scheme"]] %||% "")
-  parsed[["hostname"]] <- tolower(
-    parsed[["hostname"]] %||% ""
-  )
-
-  port <- as.character(parsed[["port"]] %||% "")
-  if (
-    identical(parsed[["scheme"]], "https") &&
-      identical(port, "443")
-  ) {
-    parsed[["port"]] <- NULL
-  }
-  if (
-    identical(parsed[["scheme"]], "http") &&
-      identical(port, "80")
-  ) {
-    parsed[["port"]] <- NULL
-  }
-
-  httr2::url_build(parsed)
+  scheme <- tolower(parts[[2L]])
+  authority <- tolower(parts[[3L]])
+  default_port <- if (scheme == "https") ":443$" else ":80$"
+  authority <- sub(default_port, "", authority)
+  path <- if (nzchar(parts[[4L]])) parts[[4L]] else "/"
+  paste0(scheme, "://", authority, path)
 }
 
 local_dpop_access_token_hash <- function(access_token) {
@@ -524,7 +512,7 @@ verify_dpop_proof <- function(
     stop("dpop_htm_mismatch", call. = FALSE)
   }
 
-  expected_htu <- shinyOAuth:::dpop_target_uri(req_url)
+  expected_htu <- local_dpop_target_uri(req_url)
   if (!identical(payload[["htu"]] %||% NA_character_, expected_htu)) {
     stop("dpop_htu_mismatch", call. = FALSE)
   }

@@ -498,6 +498,48 @@ test_that("dpop_target_uri normalizes scheme and host case and strips default po
   )
 })
 
+test_that("DPoP proofs and nonce caches preserve escaped path identity", {
+  client <- make_dpop_test_client(
+    make_test_provider(), dpop_private_key = openssl::ec_keygen()
+  )
+  token <- OAuthToken(access_token = "access-token", token_type = "DPoP")
+  paths <- c("/a%2Fb", "/a%2fb", "/a%3Ab", "/a%3Bb", "/%7Euser")
+  for (path in paths) {
+    url <- paste0("https://resource.example", path)
+    req <- resource_req(token, url, oauth_client = client)
+    expect_identical(req$url, url)
+    expect_identical(decode_dpop_payload(req$headers$DPoP)$htu, url)
+    expect_false(identical(
+      dpop_nonce_cache_key(client, url, "resource"),
+      dpop_nonce_cache_key(client, utils::URLdecode(url), "resource")
+    ))
+  }
+  expect_identical(dpop_target_uri("https://resource.example?x=1"),
+                   "https://resource.example/")
+  expect_identical(dpop_target_uri("https://[::1]:443/a%2Fb?q=1#f"),
+                   "https://[::1]/a%2Fb")
+})
+
+test_that("Keycloak DPoP verifiers independently reject decoded target paths", {
+  path <- test_path("..", "..", "integration", "keycloak", "helper-dpop-resource.R")
+  skip_if_not(file.exists(path), "Keycloak helper not included in source package")
+  helper <- new.env(parent = globalenv())
+  sys.source(path, envir = helper)
+  client <- make_dpop_test_client(
+    make_test_provider(), dpop_private_key = openssl::ec_keygen()
+  )
+  url <- "https://resource.example/a%2Fb"
+  for (verify in list(helper$verify_dpop_proof_independent, helper$verify_dpop_proof)) {
+    proof <- build_dpop_proof(client, "GET", url, access_token = "access-token")
+    expect_no_error(verify(proof, "GET", url, "access-token", FALSE, new.env()))
+    wrong <- build_dpop_proof(client, "GET", "https://resource.example/a/b",
+                              access_token = "access-token")
+    expect_error(verify(wrong, "GET", url, "access-token", FALSE, new.env()), "dpop_htu_mismatch")
+  }
+  expect_identical(helper$local_dpop_target_uri("HTTPS://[::1]:443/a%2Fb?q=1#f"),
+                   "https://[::1]/a%2Fb")
+})
+
 test_that("build_dpop_proof creates a signed proof with bound claims", {
   key <- openssl::rsa_keygen()
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)

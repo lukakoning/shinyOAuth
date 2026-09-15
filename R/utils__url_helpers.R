@@ -116,6 +116,14 @@ url_append_query_params <- function(url, params) {
 
 ## 1.3 Normalize and validate issuer or endpoint URLs --------------------------
 
+# Extract the escaped path without decoding reserved delimiters. Callers validate
+# the absolute URL first; an empty HTTP path denotes the root resource.
+url_raw_path <- function(url) {
+  path <- sub("^[A-Za-z][A-Za-z0-9+.-]*://[^/?#]*", "", url)
+  path <- sub("[?#].*$", "", path)
+  if (nzchar(path)) path else "/"
+}
+
 url_raw_query <- function(url) {
   base <- sub("#.*$", "", url)
   if (!grepl("?", base, fixed = TRUE)) {
