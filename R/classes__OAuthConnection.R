@@ -145,8 +145,10 @@ OAuthConnection <- R6::R6Class(
     #' automatic refreshes and refreshes in another retained Shiny session)
     #' request the accepted scope limit. Widening requires a new authorization.
     #' This is a local connection policy: OAuth refresh-token scope itself is
-    #' not reduced by requesting a narrower access token. Existing connections
-    #' that have never selected narrowing continue to omit request scope.
+    #' not reduced by requesting a narrower access token. Ordinary OAuth
+    #' connections explicitly request their retained granted scopes when known,
+    #' including when no explicit narrowing was selected. SMART omits request
+    #' scope while its permissions equal the original launch grant.
     #' Providers may reject requested scopes; there is no retry without them.
     #' OIDC clients that require UserInfo must retain `openid`; narrowing that
     #' removes it is rejected before exchange. Include any additional scopes

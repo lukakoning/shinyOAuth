@@ -676,6 +676,11 @@ introspect_token <- function(
 #' token is kept. Required userinfo is fetched again, and configured client
 #' introspection must succeed before the refreshed token is returned.
 #'
+#' For ordinary OAuth clients, refresh explicitly requests the token's retained
+#' `granted_scopes` when known. This preserves prior scope reductions and makes
+#' an omitted response `scope` refer to that requested set. Tokens without known
+#' scopes omit the request parameter. SMART uses its own original-grant rules.
+#'
 #' OIDC refresh responses may omit the ID token, in which case the original is
 #' kept. If a new ID token is returned, an original must be available and the
 #' subject, issuer, and audience must remain consistent, as must `auth_time`
@@ -769,7 +774,7 @@ refresh_token <- function(
 }
 
 # The manager supplies an explicit, validated scope request. Legacy refresh
-# calls keep their original public interface. Generic OAuth calls omit scope;
+# calls keep their original public interface. Generic OAuth retains known scopes;
 # SMART refreshes explicitly request a limit only after the grant narrows.
 refresh_token_dispatch <- function(
   oauth_client,
@@ -997,6 +1002,7 @@ refresh_token_impl <- function(
             token@id_token
           }
 
+          requested_scopes <- scope_request$scopes
           params <- list(
             grant_type = "refresh_token",
             refresh_token = token@refresh_token
@@ -1004,8 +1010,16 @@ refresh_token_impl <- function(
           if (client_uses_smart(oauth_client)) {
             scopes <- smart_refresh_request_scopes(oauth_client, token, scope_request)
             if (!is.null(scopes)) params$scope <- paste(scopes, collapse = " ")
-          } else if (!is.null(scope_request)) {
-            params$scope <- paste(scope_request$scopes, collapse = " ")
+          } else {
+            # RFC 6749 section 6: omitting scope requests the original refresh
+            # grant, which can exceed the preceding access-token grant. Request
+            # the retained scope explicitly so omitted responses are unambiguous.
+            requested_scopes <- scope_request$scopes %||% token@granted_scopes
+            if (length(requested_scopes)) {
+              params$scope <- paste(requested_scopes, collapse = " ")
+            } else {
+              requested_scopes <- NULL
+            }
           }
           if (length(oauth_client@resource) > 0) {
             params[["resource"]] <- oauth_client@resource
@@ -1211,8 +1225,8 @@ refresh_token_impl <- function(
             is_refresh = TRUE,
             original_id_token = original_id_token,
             refresh_request_started_at = token_request_started_at,
-            requested_scopes = scope_request$scopes,
-            prior_granted_scopes = scope_request$scopes %||% token@granted_scopes,
+            requested_scopes = requested_scopes,
+            prior_granted_scopes = requested_scopes %||% token@granted_scopes,
             shiny_session = shiny_session,
             defer_certificate_binding = defer_certificate_binding,
             introspection_pending = isTRUE(effective_introspect)
@@ -1293,7 +1307,7 @@ refresh_token_impl <- function(
               oauth_client = oauth_client,
               token = refreshed_token,
               introspection_result = intro_res,
-              requested_scopes = scope_request$scopes %||% effective_client_scopes(oauth_client),
+              requested_scopes = requested_scopes %||% effective_client_scopes(oauth_client),
               phase = "refresh_token",
               token_response_cnf = token_set[["cnf"]],
               expires_in_missing = is.null(token_set[["expires_in"]]),

@@ -30,8 +30,10 @@ successful commit.
   explicitly request the current accepted scopes. If the server grants an even
   smaller acceptable set, that becomes the next limit. Other connections and
   the client's shared configuration retain their settings.
-- Connections that have never selected narrowing still omit request `scope`.
-  The existing standalone `refresh_token()` interface keeps its behavior.
+- Ordinary OAuth connections explicitly request their retained granted scopes
+  when known, including when no explicit narrowing was selected. SMART omits
+  request `scope` while its permissions equal the original launch grant.
+  Standalone `refresh_token()` uses the same scope-preservation policy.
   `extra_token_params$scope` remains reserved; use the managed method.
 - A provider response that exceeds the requested limit or drops required scopes
   is rejected before UserInfo or credential installation. SMART still requires

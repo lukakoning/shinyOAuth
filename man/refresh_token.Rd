@@ -81,6 +81,11 @@ The provider may replace the refresh token too; otherwise the old refresh
 token is kept. Required userinfo is fetched again, and configured client
 introspection must succeed before the refreshed token is returned.
 
+For ordinary OAuth clients, refresh explicitly requests the token's retained
+\code{granted_scopes} when known. This preserves prior scope reductions and makes
+an omitted response \code{scope} refer to that requested set. Tokens without known
+scopes omit the request parameter. SMART uses its own original-grant rules.
+
 OIDC refresh responses may omit the ID token, in which case the original is
 kept. If a new ID token is returned, an original must be available and the
 subject, issuer, and audience must remain consistent, as must \code{auth_time}
