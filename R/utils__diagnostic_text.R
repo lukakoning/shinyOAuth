@@ -62,7 +62,34 @@ sanitize_event_diagnostics <- function(event) {
   )
   for (i in seq_along(event)) {
     field <- names(event)[i] %||% ""
-    if (field %in% detail_fields) {
+    if (identical(field, "jwt_alg")) {
+      # This field comes from an unverified JOSE header, not a trusted enum.
+      known <- c(
+        "none",
+        "HS256",
+        "HS384",
+        "HS512",
+        "RS256",
+        "RS384",
+        "RS512",
+        "PS256",
+        "PS384",
+        "PS512",
+        "ES256",
+        "ES384",
+        "ES512",
+        "EdDSA",
+        "Ed25519",
+        "Ed448"
+      )
+      event[i] <- list(
+        if (is_valid_string(event[[i]]) && event[[i]] %in% known) {
+          event[[i]]
+        } else {
+          "unknown"
+        }
+      )
+    } else if (field %in% detail_fields) {
       event[i] <- list(
         if (allow_expose_error_body()) {
           sanitize_diagnostic_text(event[[i]])

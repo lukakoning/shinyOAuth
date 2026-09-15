@@ -113,7 +113,7 @@ validate_id_token <- function(
     "none"
   )
   if (!(alg %in% supported_algs)) {
-    err_id_token(paste0("Unsupported JWT alg: ", alg))
+    err_id_token(protocol_diagnostic_message("Unsupported JWT alg", alg))
   }
   if (!isTRUE(skip_signature) && !(alg %in% allowed_algs)) {
     err_id_token(paste0(

@@ -635,10 +635,9 @@ decode_userinfo_jwt <- function(
       extra = list(jwt_alg = alg)
     )
     err_userinfo(c(
-      "x" = paste0(
-        "UserInfo JWT algorithm '",
-        alg,
-        "' is not in provider's allowed asymmetric algorithms"
+      protocol_diagnostic_message(
+        "UserInfo JWT algorithm is not in provider's allowed asymmetric algorithms",
+        alg
       ),
       "i" = paste0(
         "Allowed algorithms: ",
