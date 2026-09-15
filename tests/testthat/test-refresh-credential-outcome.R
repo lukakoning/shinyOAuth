@@ -45,7 +45,7 @@ test_that("refresh failures report the renewal credential lifecycle", {
   for (scenario in names(expected)) {
     error <- tryCatch(refresh_token(client, previous), error = identity)
     expect_s3_class(error, "error")
-    expect_identical(error$refresh_credential_outcome, expected[[scenario]])
+    expect_identical(error[["refresh_credential_outcome"]], expected[[scenario]])
     expect_identical(previous@access_token, "previous")
     expect_identical(previous@refresh_token, "previous-refresh")
   }
@@ -54,7 +54,7 @@ test_that("refresh failures report the renewal credential lifecycle", {
     .package = "shinyOAuth"
   )
   error <- tryCatch(refresh_token(client, previous), error = identity)
-  expect_identical(error$refresh_credential_outcome, "not_consumed")
+  expect_identical(error[["refresh_credential_outcome"]], "not_consumed")
 })
 
 test_that("refresh lifecycle errors survive async dispatch and replay", {
@@ -93,10 +93,10 @@ test_that("refresh lifecycle errors survive async dispatch and replay", {
     later::run_now(0.01)
   }
   expect_s3_class(error, "error")
-  expect_identical(error$refresh_credential_outcome, "consumed")
+  expect_identical(error[["refresh_credential_outcome"]], "consumed")
   expect_match(conditionMessage(error), "candidate validation failed")
   expect_identical(
-    unserialize(serialize(error, NULL))$refresh_credential_outcome,
+    unserialize(serialize(error, NULL))[["refresh_credential_outcome"]],
     "consumed"
   )
 })
@@ -137,29 +137,29 @@ for (async in c(FALSE, TRUE)) {
             refresh_proactively = TRUE
           ),
           {
-            values$token <- OAuthToken(
+            values[["token"]] <- OAuthToken(
               access_token = "previous",
               refresh_token = "previous-refresh",
               expires_at = as.numeric(Sys.time()) + 30
             )
             for (i in seq_len(10L)) {
-              session$flushReact()
+              session[["flushReact"]]()
               later::run_now(0)
             }
-            expect_identical(values$token@access_token, "previous")
+            expect_identical(values[["token"]]@access_token, "previous")
             expect_identical(
-              values$token@refresh_token,
+              values[["token"]]@refresh_token,
               if (outcome == "not_consumed") {
                 "previous-refresh"
               } else {
                 NA_character_
               }
             )
-            expect_true(values$token_stale)
-            expect_false(values$refresh_in_progress)
+            expect_true(values[["token_stale"]])
+            expect_false(values[["refresh_in_progress"]])
             if (outcome != "not_consumed") {
-              values$refresh_next_attempt_at <- 0
-              session$flushReact()
+              values[["refresh_next_attempt_at"]] <- 0
+              session[["flushReact"]]()
               expect_identical(calls, 1L)
             }
           }

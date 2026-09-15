@@ -22,7 +22,7 @@ test_that("discovery negotiates ID token and UserInfo algorithms independently",
       )
     },
     fetch_jwks = function(...) {
-      list(keys = list(jsonlite::fromJSON(write_test_jwk(key$pubkey))))
+      list(keys = list(jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]))))
     },
     req_with_retry = function(...) {
       httr2::response(
@@ -46,7 +46,7 @@ test_that("discovery negotiates ID token and UserInfo algorithms independently",
     client_secret = "secret",
     redirect_uri = "http://localhost:8100"
   )
-  expect_identical(get_userinfo(cli, token = "opaque")$sub, "user")
+  expect_identical(get_userinfo(cli, token = "opaque")[["sub"]], "user")
   expect_error(
     shinyOAuth:::validate_id_token(cli, jwt),
     class = "shinyOAuth_id_token_error"

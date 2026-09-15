@@ -29,7 +29,7 @@ oauth21_validate_context <- function(context) {
       call. = FALSE
     )
   }
-  operations <- context$operations
+  operations <- context[["operations"]]
   if (
     !is.null(operations) &&
       (!is.character(operations) ||
@@ -42,8 +42,8 @@ oauth21_validate_context <- function(context) {
     )
   }
   if (
-    !is.null(context$nonce_exception) &&
-      !is_scalar_logical(context$nonce_exception)
+    !is.null(context[["nonce_exception"]]) &&
+      !is_scalar_logical(context[["nonce_exception"]])
   ) {
     stop(
       "context$nonce_exception must be a single non-NA logical",
@@ -54,8 +54,8 @@ oauth21_validate_context <- function(context) {
 }
 
 oauth21_verdict <- function(checks) {
-  mandatory <- checks$status[
-    checks$affects_verdict & checks$status != "not_applicable"
+  mandatory <- checks[["status"]][
+    checks[["affects_verdict"]] & checks[["status"]] != "not_applicable"
   ]
   if ("fail" %in% mandatory) {
     return(FALSE)
@@ -85,11 +85,11 @@ oauth21_test_bypass_active <- function(option, development) {
 oauth21_https <- function(url) {
   parts <- oauth21_url_parts(url)
   !is.null(parts) &&
-    identical(tolower(parts$scheme %||% ""), "https") &&
-    is_valid_string(parts$hostname) &&
-    !nzchar(parts$username %||% "") &&
-    !nzchar(parts$password %||% "") &&
-    !nzchar(parts$fragment %||% "")
+    identical(tolower(parts[["scheme"]] %||% ""), "https") &&
+    is_valid_string(parts[["hostname"]]) &&
+    !nzchar(parts[["username"]] %||% "") &&
+    !nzchar(parts[["password"]] %||% "") &&
+    !nzchar(parts[["fragment"]] %||% "")
 }
 
 oauth21_redirect_ok <- function(url) {
@@ -98,12 +98,12 @@ oauth21_redirect_ok <- function(url) {
   }
   parts <- oauth21_url_parts(url)
   !is.null(parts) &&
-    identical(tolower(parts$scheme %||% ""), "http") &&
-    tolower(parts$hostname %||% "") %in%
+    identical(tolower(parts[["scheme"]] %||% ""), "http") &&
+    tolower(parts[["hostname"]] %||% "") %in%
       c("localhost", "127.0.0.1", "::1", "[::1]") &&
-    !nzchar(parts$username %||% "") &&
-    !nzchar(parts$password %||% "") &&
-    !nzchar(parts$fragment %||% "")
+    !nzchar(parts[["username"]] %||% "") &&
+    !nzchar(parts[["password"]] %||% "") &&
+    !nzchar(parts[["fragment"]] %||% "")
 }
 
 oauth21_endpoint_settings <- function(client, provider, endpoint) {
@@ -117,7 +117,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
       if (!is.null(client)) S7::prop(client, name) else NULL
   }
   method <- resolve_endpoint_auth_method(provider, endpoint, override)
-  style <- method$style
+  style <- method[["style"]]
   cert <- is_valid_string(effective("mtls_client_cert_file")) &&
     is_valid_string(effective("mtls_client_key_file"))
   bound <- !is.null(client) &&
@@ -150,7 +150,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     advertised <- if (endpoint %in% c("token", "par")) {
       provider@token_endpoint_auth_signing_alg_values_supported
     } else {
-      provider@endpoint_auth_metadata[[endpoint]]$signing_algs
+      provider@endpoint_auth_metadata[[endpoint]][["signing_algs"]]
     }
     candidates <- if (nzchar(alg)) {
       alg
@@ -190,7 +190,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
   headers <- if (endpoint == "token") {
     provider@extra_token_headers
   } else {
-    override$extra_headers
+    override[["extra_headers"]]
   }
   if (
     any(
@@ -198,7 +198,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
         c("authorization", "proxy-authorization")
     )
   ) {
-    method$problem <- "Configured headers conflict with managed client authentication"
+    method[["problem"]] <- "Configured headers conflict with managed client authentication"
   }
   fixed <- tryCatch(decode_form_pairs(url_raw_query(url)), error = function(e) {
     NULL
@@ -209,7 +209,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
         names(fixed) %in% c("client_secret", "client_assertion", "access_token")
       )
   ) {
-    method$problem <- "Endpoint query contains malformed or conflicting credential parameters"
+    method[["problem"]] <- "Endpoint query contains malformed or conflicting credential parameters"
   }
   list(
     style = style,
@@ -217,7 +217,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     credentials = credentials,
     mtls = mtls,
     mtls_backend = mtls_backend,
-    problem = method$problem,
+    problem = method[["problem"]],
     confidential = !style %in% c("public") &&
       !(style == "body" && !has_secret) &&
       !identical(credentials, FALSE),
@@ -231,7 +231,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
 oauth21_authorization_settings <- function(client) {
   provider <- client@provider
   mode <- resolve_oauth_client_response_mode(client)
-  extra <- mode$extra_auth_params
+  extra <- mode[["extra_auth_params"]]
   scopes <- as_scope_tokens(client@scopes)
   if (provider_uses_oidc(provider) && !"openid" %in% scopes) {
     scopes <- c("openid", scopes)
@@ -244,7 +244,7 @@ oauth21_authorization_settings <- function(client) {
     code_challenge_method = if (isTRUE(provider@use_pkce)) {
       normalize_pkce_method(provider@pkce_method)
     },
-    response_mode = mode$explicit_mode,
+    response_mode = mode[["explicit_mode"]],
     resource = if (length(client@resource)) client@resource,
     claims = if (is.list(client@claims)) {
       jsonlite::toJSON(client@claims, auto_unbox = TRUE, null = "null")
@@ -256,8 +256,8 @@ oauth21_authorization_settings <- function(client) {
     }
   ))
   max_age <- inspect_auth_max_age(extra)
-  if (length(max_age$index) == 1L) {
-    extra[[max_age$index]] <- max_age$value
+  if (length(max_age[["index"]]) == 1L) {
+    extra[[max_age[["index"]]]] <- max_age[["value"]]
   }
   merged <- oauth_extra_params_resolution(params, extra)
   blocked <- c("redirect_uri", "scope", "claims")
@@ -276,14 +276,14 @@ oauth21_authorization_settings <- function(client) {
     setdiff(blocked, unblocked)
   )
   if (
-    !is.null(mode$error) ||
-      !is.null(max_age$error) ||
-      !is.null(merged$problem) ||
+    !is.null(mode[["error"]]) ||
+      !is.null(max_age[["error"]]) ||
+      !is.null(merged[["problem"]]) ||
       length(conflicts)
   ) {
     return(list(status = "fail", redirect_uri = client@redirect_uri))
   }
-  resolved <- authorization_query_resolution(provider@auth_url, merged$params)
+  resolved <- authorization_query_resolution(provider@auth_url, merged[["params"]])
   fixed <- tryCatch(
     decode_form_pairs(url_raw_query(provider@auth_url)),
     error = function(e) list()
@@ -298,7 +298,7 @@ oauth21_authorization_settings <- function(client) {
   )
   unresolved <- any(names(fixed) %in% dynamic) ||
     any(
-      setdiff(names(fixed), names(merged$params)) %in%
+      setdiff(names(fixed), names(merged[["params"]])) %in%
         c(
           "response_mode",
           "max_age",
@@ -308,12 +308,12 @@ oauth21_authorization_settings <- function(client) {
         )
     )
   # A selected redirect override must still agree with the callback transaction.
-  redirect <- merged$params$redirect_uri
+  redirect <- merged[["params"]][["redirect_uri"]]
   conflict <- !identical(redirect, client@redirect_uri) ||
     (provider_uses_oidc(provider) &&
-      !"openid" %in% as_scope_tokens(merged$params$scope))
+      !"openid" %in% as_scope_tokens(merged[["params"]][["scope"]]))
   list(
-    status = if (!is.null(resolved$problem) || conflict) {
+    status = if (!is.null(resolved[["problem"]]) || conflict) {
       "fail"
     } else if (unresolved) {
       "unknown"

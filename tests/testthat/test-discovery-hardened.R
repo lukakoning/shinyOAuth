@@ -8,10 +8,10 @@ testthat::test_that("discovery allows loopback HTTP with development opt-in", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
 
-  app$get("/.well-known/openid-configuration", function(req, res) {
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
     # issuer host for this test is 127.0.0.1 (no need to match port; validation uses hostname)
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -28,7 +28,7 @@ testthat::test_that("discovery allows loopback HTTP with development opt-in", {
   })
 
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   prov <- NULL
   testthat::expect_no_error({
@@ -39,9 +39,9 @@ testthat::test_that("discovery allows loopback HTTP with development opt-in", {
 
   # Relative endpoint should be rejected
   app2 <- webfakes::new_app()
-  app2$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app2[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -57,7 +57,7 @@ testthat::test_that("discovery allows loopback HTTP with development opt-in", {
     )
   })
   srv2 <- webfakes::local_app_process(app2)
-  issuer2 <- sub("/$", "", srv2$url())
+  issuer2 <- sub("/$", "", srv2[["url"]]())
   testthat::expect_error(
     oauth_provider_oidc_discover(issuer = issuer2),
     class = "shinyOAuth_config_error"
@@ -65,9 +65,9 @@ testthat::test_that("discovery allows loopback HTTP with development opt-in", {
 
   # Secure endpoints on another host are valid distributed-provider metadata.
   app3 <- webfakes::new_app()
-  app3$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app3[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -83,7 +83,7 @@ testthat::test_that("discovery allows loopback HTTP with development opt-in", {
     )
   })
   srv3 <- webfakes::local_app_process(app3)
-  issuer3 <- sub("/$", "", srv3$url())
+  issuer3 <- sub("/$", "", srv3[["url"]]())
   distributed_provider <- oauth_provider_oidc_discover(issuer = issuer3)
   testthat::expect_identical(
     distributed_provider@token_url,
@@ -174,9 +174,9 @@ testthat::test_that("discovery enforces JWKS host pinning early", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -192,7 +192,7 @@ testthat::test_that("discovery enforces JWKS host pinning early", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   testthat::expect_error(
     oauth_provider_oidc_discover(
@@ -292,9 +292,9 @@ testthat::test_that("discovery always requires jwks_uri", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -310,7 +310,7 @@ testthat::test_that("discovery always requires jwks_uri", {
   })
 
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   testthat::expect_error(
     oauth_provider_oidc_discover(issuer = issuer),
@@ -334,9 +334,9 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -352,7 +352,7 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   withr::local_options(list(
     shinyOAuth.allowed_hosts = c("127.0.0.1", "api.example.com")
@@ -396,15 +396,15 @@ testthat::test_that("discovery allows separate-host mTLS aliases by default", {
   )
 
   testthat::expect_identical(
-    prov@mtls_endpoint_aliases$token_endpoint,
+    prov@mtls_endpoint_aliases[["token_endpoint"]],
     "https://mtls.example.com/token"
   )
   testthat::expect_identical(
-    prov@mtls_endpoint_aliases$introspection_endpoint,
+    prov@mtls_endpoint_aliases[["introspection_endpoint"]],
     "https://mtls.example.com/introspect"
   )
   testthat::expect_identical(
-    prov@mtls_endpoint_aliases$revocation_endpoint,
+    prov@mtls_endpoint_aliases[["revocation_endpoint"]],
     "https://mtls.example.com/revoke"
   )
 })
@@ -443,15 +443,15 @@ testthat::test_that("discovery allows separate-host mTLS aliases when allowed_ho
   )
 
   testthat::expect_identical(
-    prov@mtls_endpoint_aliases$token_endpoint,
+    prov@mtls_endpoint_aliases[["token_endpoint"]],
     "https://mtls.example.com/token"
   )
   testthat::expect_identical(
-    prov@mtls_endpoint_aliases$introspection_endpoint,
+    prov@mtls_endpoint_aliases[["introspection_endpoint"]],
     "https://mtls.example.com/introspect"
   )
   testthat::expect_identical(
-    prov@mtls_endpoint_aliases$revocation_endpoint,
+    prov@mtls_endpoint_aliases[["revocation_endpoint"]],
     "https://mtls.example.com/revoke"
   )
 })
@@ -494,11 +494,11 @@ testthat::test_that("discovery rejects non-JSON content-type", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    res$set_status(200)$set_header("content-type", "text/plain")$send("ok")
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    res[["set_status"]](200)[["set_header"]]("content-type", "text/plain")[["send"]]("ok")
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   testthat::expect_error(
     oauth_provider_oidc_discover(issuer = issuer),
@@ -511,9 +511,9 @@ testthat::test_that("discovery rejects JSON-like but invalid content-types", {
   testthat::skip_on_cran()
 
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_header("content-type", "application/jsonp")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_header"]]("content-type", "application/jsonp")[["send"]](
       paste0(
         '{"issuer":"',
         issuer_url,
@@ -526,7 +526,7 @@ testthat::test_that("discovery rejects JSON-like but invalid content-types", {
   srv <- webfakes::local_app_process(app)
 
   testthat::expect_error(
-    oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url())),
+    oauth_provider_oidc_discover(issuer = sub("/$", "", srv[["url"]]())),
     class = "shinyOAuth_parse_error",
     regexp = "not JSON"
   )
@@ -537,9 +537,9 @@ testthat::test_that("discovery rejects duplicate issuer members", {
   testthat::skip_on_cran()
 
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       paste0(
         '{"issuer":"',
         issuer_url,
@@ -554,7 +554,7 @@ testthat::test_that("discovery rejects duplicate issuer members", {
   srv <- webfakes::local_app_process(app)
 
   testthat::expect_error(
-    oauth_provider_oidc_discover(issuer = sub("/$", "", srv$url())),
+    oauth_provider_oidc_discover(issuer = sub("/$", "", srv[["url"]]())),
     class = "shinyOAuth_parse_error",
     regexp = "duplicate member name"
   )
@@ -564,9 +564,9 @@ testthat::test_that("discovery errors when S256 is not advertised and plain is n
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -583,7 +583,7 @@ testthat::test_that("discovery errors when S256 is not advertised and plain is n
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   testthat::expect_error(
     oauth_provider_oidc_discover(issuer = issuer, use_pkce = TRUE),
@@ -596,9 +596,9 @@ testthat::test_that("discovery rejects invalid explicit pkce_method values", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -615,7 +615,7 @@ testthat::test_that("discovery rejects invalid explicit pkce_method values", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   testthat::expect_error(
     oauth_provider_oidc_discover(
@@ -632,9 +632,9 @@ testthat::test_that("discovery allows explicit plain PKCE downgrade when adverti
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -651,7 +651,7 @@ testthat::test_that("discovery allows explicit plain PKCE downgrade when adverti
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   prov <- oauth_provider_oidc_discover(
     issuer = issuer,
@@ -666,9 +666,9 @@ testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -686,7 +686,7 @@ testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   # userinfo_signing_alg_values_supported advertises provider *capability*,
   # not that every client receives signed JWTs. Discovery must not auto-enable.
@@ -698,9 +698,9 @@ testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -718,7 +718,7 @@ testthat::test_that("discovery does NOT auto-enable userinfo_signed_jwt_required
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   prov <- oauth_provider_oidc_discover(issuer = issuer)
   testthat::expect_false(prov@userinfo_signed_jwt_required)
@@ -728,9 +728,9 @@ testthat::test_that("discovery does NOT auto-enable when field absent", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -747,7 +747,7 @@ testthat::test_that("discovery does NOT auto-enable when field absent", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   prov <- oauth_provider_oidc_discover(issuer = issuer)
   testthat::expect_false(prov@userinfo_signed_jwt_required)
@@ -757,9 +757,9 @@ testthat::test_that("discovery respects explicit userinfo_signed_jwt_required = 
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    issuer_url <- paste0("http://", req$get_header("host"))
-    res$set_status(200)$set_type("application/json")$send(
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    issuer_url <- paste0("http://", req[["get_header"]]("host"))
+    res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
       jsonlite::toJSON(
         list(
           issuer = issuer_url,
@@ -777,7 +777,7 @@ testthat::test_that("discovery respects explicit userinfo_signed_jwt_required = 
     )
   })
   srv <- webfakes::local_app_process(app)
-  issuer <- sub("/$", "", srv$url())
+  issuer <- sub("/$", "", srv[["url"]]())
 
   prov <- oauth_provider_oidc_discover(
     issuer = issuer,

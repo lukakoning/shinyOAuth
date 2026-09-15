@@ -558,7 +558,7 @@ oauth_provider_oidc_discover <- function(
   resp <- try(req_with_retry(req), silent = TRUE)
 
   if (inherits(resp, "try-error")) {
-    cnd <- attr(resp, "condition")
+    cnd <- attr(resp, "condition", exact = TRUE)
     while (!is.null(cnd) && !is.null(cnd[["parent"]])) {
       cnd <- cnd[["parent"]]
     }

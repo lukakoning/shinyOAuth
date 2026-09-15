@@ -590,7 +590,7 @@ oauth_form_post_read_body <- function(req, max_bytes) {
     )
   }
   read_bytes <- max_bytes + 1
-  if (read_bytes > .Machine$integer.max) {
+  if (read_bytes > .Machine[["integer.max"]]) {
     err_form_post_http(
       "OAuth form_post callback body limit is invalid.",
       status = 500L
@@ -613,11 +613,11 @@ oauth_form_post_read_body <- function(req, max_bytes) {
   }
 
   input <- req[["rook.input"]]
-  if (is.null(input) || !is.function(input$read)) {
+  if (is.null(input) || !is.function(input[["read"]])) {
     err_form_post_http("OAuth form_post callback body is unavailable.")
   }
 
-  body_raw <- input$read(as.integer(read_bytes))
+  body_raw <- input[["read"]](as.integer(read_bytes))
   if (!is.raw(body_raw)) {
     err_form_post_http("OAuth form_post callback body was not raw bytes.")
   }
@@ -875,10 +875,10 @@ oauth_form_post_envelope_limits <- function() {
     16 * 1024^2,
     6 *
       (2 *
-        max(limits$form_post_body, limits$query) +
-        limits$state +
-        limits$form_post_id +
-        limits$form_post_handle) +
+        max(limits[["form_post_body"]], limits[["query"]]) +
+        limits[["state"]] +
+        limits[["form_post_id"]] +
+        limits[["form_post_handle"]]) +
       4096
   )
   ct_b64 <- 4 * ceiling(ct / 3)
@@ -1124,7 +1124,7 @@ oauth_form_post_candidate_slot <- function(client, state, id) {
     slots,
     function(slot) {
       sealed <- state_store_backend_call(
-        client@state_store$get(
+        client@state_store[["get"]](
           oauth_form_post_slot_key(slot, namespace),
           missing = NULL
         ),
@@ -1161,11 +1161,11 @@ oauth_form_post_store_remove_siblings <- function(client, state, id = NULL) {
       tryCatch(
         {
           key <- oauth_form_post_slot_key(slot, namespace)
-          sealed <- client@state_store$get(key, missing = NULL)
+          sealed <- client@state_store[["get"]](key, missing = NULL)
           envelope <- oauth_form_post_candidate_envelope(client, sealed)
           candidate_state <- envelope[["payload"]][["state_payload"]][["state"]]
           if (identical(candidate_state, state)) {
-            client@state_store$remove(key)
+            client@state_store[["remove"]](key)
           }
         },
         error = function(e) NULL
@@ -1224,7 +1224,7 @@ oauth_form_post_store_set <- function(client, id, payload) {
   storage_state <- logical_state %||% payload[["state"]] %||% random_urlsafe(32)
   slot <- oauth_form_post_candidate_slot(client, storage_state, id)
   store <- client@state_store
-  if (is.function(store$set_if_absent)) {
+  if (is.function(store[["set_if_absent"]])) {
     # Atomic insert avoids overwriting a concurrent writer. With no CAS
     # replacement API, preserve occupied slots and rely on their short TTL.
     slots <- oauth_form_post_candidate_slots(storage_state)
@@ -1243,7 +1243,7 @@ oauth_form_post_store_set <- function(client, id, payload) {
         client_state_store_max_age(client)
       )
       claimed <- state_store_backend_call(
-        store$set_if_absent(key, sealed, ttl = ttl),
+        store[["set_if_absent"]](key, sealed, ttl = ttl),
         "form_post_store_set"
       )
       if (isTRUE(claimed)) return(handle)
@@ -1258,7 +1258,7 @@ oauth_form_post_store_set <- function(client, id, payload) {
   sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
 
   tryCatch(
-    client@state_store$set(key, sealed_payload),
+    client@state_store[["set"]](key, sealed_payload),
     error = function(e) {
       err_invalid_state(
         sprintf(
@@ -1293,18 +1293,18 @@ oauth_form_post_store_take <- function(client, id, handle) {
   # taken envelope below too: another worker can replace this slot between
   # the read and take. Such a race must fail, never substitute its payload.
   existing <- state_store_backend_call(
-    store$get(key, missing = NULL),
+    store[["get"]](key, missing = NULL),
     "form_post_store_get"
   )
   if (!is.null(existing)) {
     oauth_form_post_unseal_payload(client, id, handle, existing)
   }
 
-  has_take <- !is.null(store$take) && is.function(store$take)
+  has_take <- !is.null(store[["take"]]) && is.function(store[["take"]])
   payload <- NULL
   if (has_take) {
     payload <- tryCatch(
-      store$take(key, missing = NULL),
+      store[["take"]](key, missing = NULL),
       error = function(e) {
         err_invalid_state(
           sprintf(
@@ -1330,7 +1330,7 @@ oauth_form_post_store_take <- function(client, id, handle) {
     }
 
     payload <- tryCatch(
-      store$get(key, missing = NULL),
+      store[["get"]](key, missing = NULL),
       error = function(e) {
         err_invalid_state(
           sprintf(
@@ -1345,8 +1345,8 @@ oauth_form_post_store_take <- function(client, id, handle) {
     missing_sentinel <- new.env(parent = emptyenv())
     tryCatch(
       {
-        store$remove(key)
-        post <- store$get(key, missing = missing_sentinel)
+        store[["remove"]](key)
+        post <- store[["get"]](key, missing = missing_sentinel)
         remove_succeeded <- identical(post, missing_sentinel)
       },
       error = function(e) {

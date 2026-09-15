@@ -54,7 +54,7 @@ normalize_jwk_key_ops <- function(value) {
 #' keys whose JWK `alg` matches the JWT header algorithm when provided. Used
 #' before JWT signature verification begins.
 #'
-#' @param jwks_or_keys A JWKS list (with $keys) or a normalized list of JWKs
+#' @param jwks_or_keys A JWKS list (with `jwks_or_keys[["keys"]]`) or a normalized list of JWKs
 #' @param header_alg Optional JWT header alg (character)
 #' @param kid Optional key id to restrict candidates to
 #' @param pins Optional character vector of JWK thumbprints (base64url, RFC 7638)
@@ -302,7 +302,7 @@ jwk_to_pubkey <- function(jwk) {
     return(openssl::read_ed25519_pubkey(public_bytes))
   }
   # RFC 7517 requires ignoring unrecognized members. Give jose only exact
-  # public parameters: its partial $d lookup can mistake extensions such as
+  # public parameters: its partial member lookup for `d` can mistake extensions such as
   # "description" for private key material. Keep the original JWK for selection
   # metadata and pinning in the caller.
   public_jwk <- if (identical(kty, "RSA")) {

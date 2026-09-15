@@ -14,9 +14,9 @@ test_that("negative authorization assertions propagate infrastructure errors", {
     "Parser failed"
   )) {
     error <- simpleError(message)
-    integration$perform_login_form <- function(...) stop(error)
+    integration[["perform_login_form"]] <- function(...) stop(error)
     observed <- tryCatch(
-      integration$expect_no_authorization_code(
+      integration[["expect_no_authorization_code"]](
         "https://example.test/auth?state=test-state",
         "https://example.test/callback"
       ),
@@ -36,14 +36,14 @@ test_that("negative authorization assertions require specific protocol evidence"
     "error_description=Missing%20parameter%3A%20code_challenge"
   )
   response <- list(code = NA_character_, callback_url = callback)
-  integration$perform_login_form <- function(...) response
-  expect_success(integration$expect_no_authorization_code(auth, redirect))
-  response$callback_url <- paste0(
+  integration[["perform_login_form"]] <- function(...) response
+  expect_success(integration[["expect_no_authorization_code"]](auth, redirect))
+  response[["callback_url"]] <- paste0(
     redirect,
     "?error=invalid_request&state=test-state&",
     "error_description=Invalid+parameter%3A+code+challenge+method+is+not+matching+the+configured+one"
   )
-  expect_success(integration$expect_no_authorization_code(auth, redirect))
+  expect_success(integration[["expect_no_authorization_code"]](auth, redirect))
   for (url in c(
     redirect,
     sub("invalid_request", "server_error", callback),
@@ -52,7 +52,7 @@ test_that("negative authorization assertions require specific protocol evidence"
     paste0(callback, "&code=unexpected"),
     sub("/callback", "/elsewhere", callback)
   )) {
-    response$callback_url <- url
-    expect_failure(integration$expect_no_authorization_code(auth, redirect))
+    response[["callback_url"]] <- url
+    expect_failure(integration[["expect_no_authorization_code"]](auth, redirect))
   }
 })

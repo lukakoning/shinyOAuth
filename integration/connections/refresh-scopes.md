@@ -6,8 +6,8 @@ their existing semantic scope rules to the same operation.
 
 ```r
 # Inside the Shiny session, using the result of oauth_connections_server():
-connection <- connections$connection(connection_id)
-connection$refresh(scopes = "read")
+connection <- connections[["connection"]](connection_id)
+connection[["refresh"]](scopes = "read")
 ```
 
 Use scope names from your approved client. For example, `read` can replace
@@ -26,7 +26,7 @@ successful commit.
 - Keep the client's required scopes. Widening or dropping required permissions
   fails before taking the store's refresh claim or sending credentials.
 - After success, the encrypted connection record remembers that narrowing was
-  selected. Later `$refresh()` calls, automatic refreshes and restored sessions
+  selected. Later `[["refresh"]]()` calls, automatic refreshes and restored sessions
   explicitly request the current accepted scopes. If the server grants an even
   smaller acceptable set, that becomes the next limit. Other connections and
   the client's shared configuration retain their settings.
@@ -34,7 +34,7 @@ successful commit.
   when known, including when no explicit narrowing was selected. SMART omits
   request `scope` while its permissions equal the original launch grant.
   Standalone `refresh_token()` uses the same scope-preservation policy.
-  `extra_token_params$scope` remains reserved; use the managed method.
+  `extra_token_params[["scope"]]` remains reserved; use the managed method.
 - A provider response that exceeds the requested limit or drops required scopes
   is rejected before UserInfo or credential installation. SMART still requires
   explicit returned scope. For ordinary OAuth, an omitted response scope means

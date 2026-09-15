@@ -25,7 +25,7 @@ client <- shinyOAuth::smart_client(
 ```
 
 Add the client to the existing connection manager and call its normal
-`connect()` method. In a single-module app, call `auth$request_login()`.
+`connect()` method. In a single-module app, call `auth[["request_login"]]()`.
 Both paths submit the browser form automatically. Allow the provider's
 authorization endpoint in the application's CSP `form-action` directive.
 The current SMART deployment still requires top-level navigation.
@@ -42,7 +42,7 @@ DOM properties or escaped HTML, with form method POST and
 `application/x-www-form-urlencoded`. See the
 [generated API help](../../man/prepare_authorization_request.Rd). Do not perform
 this user-facing authorization step as an R HTTP request: the user needs their
-browser login session. `prepare_call()` and `auth$build_auth_url()` remain
+browser login session. `prepare_call()` and `auth[["build_auth_url"]]()` remain
 URL-only helpers and reject a POST client before creating login state.
 
 ## What stays bound to the login attempt

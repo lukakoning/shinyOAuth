@@ -25,10 +25,10 @@ ui <- fluidPage(
   h3("shinyOAuth + Keycloak (Docker)"),
   actionButton("login_btn", "Login"),
   actionButton("logout_btn", "Logout"),
-  tags$hr(),
+  tags[["hr"]](),
   h4("Auth state"),
   verbatimTextOutput("auth_state"),
-  tags$hr(),
+  tags[["hr"]](),
   h4("User info"),
   verbatimTextOutput("user_info")
 )
@@ -38,29 +38,29 @@ ui <- oauth_ui(ui, id = "auth", client = client)
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
 
-  observeEvent(input$login_btn, ignoreInit = TRUE, {
-    auth$request_login()
+  observeEvent(input[["login_btn"]], ignoreInit = TRUE, {
+    auth[["request_login"]]()
   })
-  observeEvent(input$logout_btn, ignoreInit = TRUE, {
-    auth$logout()
+  observeEvent(input[["logout_btn"]], ignoreInit = TRUE, {
+    auth[["logout"]]()
   })
 
-  output$auth_state <- renderText({
+  output[["auth_state"]] <- renderText({
     paste(
       "authenticated:",
-      isTRUE(auth$authenticated),
+      isTRUE(auth[["authenticated"]]),
       "has_token:",
-      !is.null(auth$token),
+      !is.null(auth[["token"]]),
       "error:",
-      if (!is.null(auth$error)) auth$error else "<none>"
+      if (!is.null(auth[["error"]])) auth[["error"]] else "<none>"
     )
   })
 
-  output$user_info <- renderPrint({
-    if (is.null(auth$token)) {
+  output[["user_info"]] <- renderPrint({
+    if (is.null(auth[["token"]])) {
       return("<not logged in>")
     }
-    auth$token@userinfo
+    auth[["token"]]@userinfo
   })
 }
 

@@ -3,7 +3,7 @@
 # the main R process and a real mirai worker process.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("Shiny module async audit: events from main & worker processes logged to file", {
@@ -37,8 +37,8 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   # The hook writes one JSON object per line with process metadata
   audit_hook <- function(event) {
     # Add process ID where the hook executed for verification
-    event$.hook_pid <- Sys.getpid()
-    event$.hook_time <- as.character(Sys.time())
+    event[[".hook_pid"]] <- Sys.getpid()
+    event[[".hook_time"]] <- as.character(Sys.time())
 
     line <- jsonlite::toJSON(
       event,
@@ -87,12 +87,12 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     shinyOAuth:::async_dispatch(
       expr = quote({
         .ns <- asNamespace("shinyOAuth")
-        .ns$with_async_options(captured_options, {
+        .ns[["with_async_options"]](captured_options, {
           # Keep both jobs active long enough for the dispatcher to assign
           # them to separate daemons before the concurrent writes begin.
           Sys.sleep(0.25)
           for (index in seq_len(20L)) {
-            .ns$audit_event(
+            .ns[["audit_event"]](
               "test_concurrent_writer_probe",
               context = list(flow = flow, index = index)
             )
@@ -133,43 +133,43 @@ testthat::test_that("Shiny module async audit: events from main & worker process
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client, async = TRUE),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       testthat::expect_true(is.character(url) && nzchar(url))
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
       testthat::expect_true(
-        is.character(res$callback_url) && nzchar(res$callback_url)
+        is.character(res[["callback_url"]]) && nzchar(res[["callback_url"]])
       )
       testthat::expect_true(
-        is.character(res$state_payload) && nzchar(res$state_payload)
+        is.character(res[["state_payload"]]) && nzchar(res[["state_payload"]])
       )
 
-      values$.process_query(callback_query(res))
+      values[[".process_query"]](callback_query(res))
 
       # Allow promise handlers to run for async token exchange
       # Wait for both token AND authenticated to be set (async may take time)
       deadline <- Sys.time() + 15
       while (
-        (!isTRUE(values$authenticated) || is.null(values$token)) &&
+        (!isTRUE(values[["authenticated"]]) || is.null(values[["token"]])) &&
           Sys.time() < deadline
       ) {
         later::run_now(0.05)
-        session$flushReact()
+        session[["flushReact"]]()
         Sys.sleep(0.02)
       }
 
       # 5) Assertions: authenticated with a token
       testthat::expect_true(
-        isTRUE(values$authenticated),
+        isTRUE(values[["authenticated"]]),
         info = paste0(
           "Expected authenticated=TRUE. error=",
-          values$error %||% "<NULL>",
+          values[["error"]] %||% "<NULL>",
           ", error_description=",
-          values$error_description %||% "<NULL>"
+          values[["error_description"]] %||% "<NULL>"
         )
       )
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token))
+      testthat::expect_null(values[["error"]])
+      testthat::expect_false(is.null(values[["token"]]))
+      testthat::expect_true(nzchar(values[["token"]]@access_token))
 
       # Give audit hooks a bit more time to flush to file
       Sys.sleep(0.5)
@@ -252,22 +252,22 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   # Check for is_async marker in shiny_session
   async_events <- Filter(
     function(e) {
-      sess <- e$shiny_session
+      sess <- e[["shiny_session"]]
       if (is.null(sess)) {
         return(FALSE)
       }
-      isTRUE(sess$is_async)
+      isTRUE(sess[["is_async"]])
     },
     events
   )
 
   sync_events <- Filter(
     function(e) {
-      sess <- e$shiny_session
+      sess <- e[["shiny_session"]]
       if (is.null(sess)) {
         return(TRUE)
       } # Events without session context treated as sync
-      isFALSE(sess$is_async) || is.null(sess$is_async)
+      isFALSE(sess[["is_async"]]) || is.null(sess[["is_async"]])
     },
     events
   )
@@ -289,21 +289,21 @@ testthat::test_that("Shiny module async audit: events from main & worker process
 
   # The redirect_issued event should be from main process (sync)
   redirect_events <- Filter(
-    function(e) identical(e$type, "audit_redirect_issued"),
+    function(e) identical(e[["type"]], "audit_redirect_issued"),
     events
   )
   testthat::expect_true(length(redirect_events) > 0)
   # Check that redirect event is NOT marked as async
   for (evt in redirect_events) {
     testthat::expect_false(
-      isTRUE((evt$shiny_session %||% list())$is_async),
+      isTRUE((evt[["shiny_session"]] %||% list())[["is_async"]]),
       info = "audit_redirect_issued should be from main process (not async)"
     )
   }
 
   # Token exchange should be from an async worker when using async=TRUE.
   token_exchange_events <- Filter(
-    function(e) identical(e$type, "audit_token_exchange"),
+    function(e) identical(e[["type"]], "audit_token_exchange"),
     events
   )
   testthat::expect_true(length(token_exchange_events) > 0)
@@ -315,31 +315,31 @@ testthat::test_that("Shiny module async audit: events from main & worker process
 
   cat("\n=== Async worker verification ===\n")
   for (evt in async_events) {
-    sess <- evt$shiny_session
+    sess <- evt[["shiny_session"]]
     testthat::expect_identical(
-      as.integer(sess$main_process_id),
+      as.integer(sess[["main_process_id"]]),
       as.integer(main_pid),
-      info = paste0("Incorrect main process ID. Type: ", evt$type)
+      info = paste0("Incorrect main process ID. Type: ", evt[["type"]])
     )
     testthat::expect_false(
-      identical(as.integer(sess$process_id), as.integer(main_pid)),
-      info = paste0("Async event ran in the main process. Type: ", evt$type)
+      identical(as.integer(sess[["process_id"]]), as.integer(main_pid)),
+      info = paste0("Async event ran in the main process. Type: ", evt[["type"]])
     )
     testthat::expect_identical(
-      as.integer(evt$.hook_pid),
-      as.integer(sess$process_id),
+      as.integer(evt[[".hook_pid"]]),
+      as.integer(sess[["process_id"]]),
       info = paste0(
         "Audit hook and worker process IDs differ. Type: ",
-        evt$type
+        evt[["type"]]
       )
     )
     cat(
       "Event:",
-      evt$type,
+      evt[["type"]],
       "| main_pid:",
-      sess$main_process_id,
+      sess[["main_process_id"]],
       "| worker_pid:",
-      sess$process_id,
+      sess[["process_id"]],
       "\n"
     )
   }
@@ -347,12 +347,12 @@ testthat::test_that("Shiny module async audit: events from main & worker process
   # 10) Verify all events have required base fields
   for (evt in events) {
     testthat::expect_true(
-      !is.null(evt$type),
+      !is.null(evt[["type"]]),
       info = "Every event should have a type"
     )
     testthat::expect_true(
-      !is.null(evt$trace_id),
-      info = paste0("Event should have trace_id. Type: ", evt$type)
+      !is.null(evt[["trace_id"]]),
+      info = paste0("Event should have trace_id. Type: ", evt[["type"]])
     )
   }
 

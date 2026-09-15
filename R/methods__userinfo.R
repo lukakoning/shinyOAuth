@@ -15,7 +15,7 @@
 #' fetching a profile on demand, reloading profile fields, or managing tokens
 #' outside the Shiny module. It returns the provider's profile as an R list.
 #' The Shiny module fetches and stores this information during login when
-#' `userinfo_required = TRUE`; that result is available as `auth$token@userinfo`.
+#' `userinfo_required = TRUE`; that result is available as `auth[["token"]]@userinfo`.
 #'
 #' @details
 #' The provider must have a `userinfo_url`: the OpenID Connect (OIDC) UserInfo
@@ -229,7 +229,7 @@ get_userinfo <- function(
           )
         }
         if (inherits(ui, "try-error")) {
-          parser_error <- attr(ui, "condition")
+          parser_error <- attr(ui, "condition", exact = TRUE)
           if (
             is_jwt_response &&
               inherits(parser_error, "shinyOAuth_userinfo_error")
@@ -552,7 +552,7 @@ decode_userinfo_jwt <- function(
       context = safe_parse_failure_context(
         jwt_str,
         "userinfo_jwt_header",
-        attr(header, "condition")
+        attr(header, "condition", exact = TRUE)
       )
     )
   }
@@ -781,7 +781,7 @@ decode_userinfo_jwt <- function(
         context = safe_parse_failure_context(
           jwt_str,
           "userinfo_jwt_payload",
-          attr(claims, "condition")
+          attr(claims, "condition", exact = TRUE)
         )
       )
     }

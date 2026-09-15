@@ -7,7 +7,7 @@ dir.create(browser_library)
 invisible(processx::run(
   file.path(
     R.home("bin"),
-    if (.Platform$OS.type == "windows") "R.exe" else "R"
+    if (.Platform[["OS.type"]] == "windows") "R.exe" else "R"
   ),
   c("CMD", "INSTALL", paste0("--library=", browser_library), "."),
   echo = FALSE
@@ -38,7 +38,7 @@ local({
     filter = paste0("^(", paste(filters, collapse = "|"), ")$"),
     stop_on_failure = TRUE
   )
-  if (any(as.data.frame(results)$skipped)) {
+  if (any(as.data.frame(results)[["skipped"]])) {
     stop(
       "Browser suite requires zero skipped tests; inspect browser/dependency setup"
     )

@@ -1,7 +1,7 @@
 ## Integration tests: signed UserInfo JWTs from live Keycloak
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 make_userinfo_jwt_client <- function(prov) {
@@ -21,15 +21,15 @@ userinfo_jwt_login_via_module <- function(client) {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
       result <<- list(
-        authenticated = isTRUE(values$authenticated),
-        error = values$error,
-        error_description = values$error_description,
-        token = values$token
+        authenticated = isTRUE(values[["authenticated"]]),
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        token = values[["token"]]
       )
     }
   )
@@ -71,7 +71,7 @@ testthat::test_that("Keycloak signed UserInfo JWT is verified and subject-bound"
   id_payload <- shinyOAuth:::parse_jwt_payload(result[["token"]]@id_token)
   testthat::expect_identical(
     result[["token"]]@userinfo[["sub"]],
-    id_payload$sub
+    id_payload[["sub"]]
   )
 
   raw_resp <- httr2::request(prov@userinfo_url) |>
@@ -93,7 +93,7 @@ testthat::test_that("Keycloak signed UserInfo JWT is verified and subject-bound"
   header <- shinyOAuth:::parse_jwt_header(jwt)
   payload <- shinyOAuth:::parse_jwt_payload(jwt)
 
-  testthat::expect_identical(toupper(header$alg), "RS256")
+  testthat::expect_identical(toupper(header[["alg"]]), "RS256")
   testthat::expect_identical(payload[["iss"]], prov@issuer)
   testthat::expect_true(userinfo_jwt_aud_includes(
     payload[["aud"]],
@@ -105,6 +105,6 @@ testthat::test_that("Keycloak signed UserInfo JWT is verified and subject-bound"
   )
 
   fetched <- shinyOAuth::get_userinfo(client, result[["token"]])
-  testthat::expect_identical(fetched$sub, result[["token"]]@userinfo[["sub"]])
-  testthat::expect_identical(fetched$email, "alice@example.com")
+  testthat::expect_identical(fetched[["sub"]], result[["token"]]@userinfo[["sub"]])
+  testthat::expect_identical(fetched[["email"]], "alice@example.com")
 })

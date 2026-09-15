@@ -44,22 +44,22 @@ oauth_module_managed_context <- function(
   } else {
     state_payload_revalidate(client, payload, audit_success = FALSE)
   }
-  record <- record %||% state_store_get(client, payload$state)
+  record <- record %||% state_store_get(client, payload[["state"]])
   validate_browser_token(browser_token)
-  if (!constant_time_compare(record$browser_token, browser_token)) {
+  if (!constant_time_compare(record[["browser_token"]], browser_token)) {
     err_invalid_state("Browser token mismatch")
   }
   state_record_verify_authorization_context(
     record,
-    payload$transaction_context_digest
+    payload[["transaction_context_digest"]]
   )
-  json <- record$transaction_context
+  json <- record[["transaction_context"]]
   if (!is_valid_string(json)) {
     err_invalid_state("Managed callback requires its authorization context")
   }
   context <- jsonlite::fromJSON(json, simplifyVector = FALSE)
   authorization_context_json(context)
-  if (!isTRUE(hooks$validate(context))) {
+  if (!isTRUE(hooks[["validate"]](context))) {
     err_invalid_state("Managed authorization owner is unavailable")
   }
   list(json = json, data = context)

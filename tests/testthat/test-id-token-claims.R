@@ -69,11 +69,11 @@ test_that("id_token_claims decodes standard claims", {
   )
   decoded <- tok@id_token_claims
   expect_type(decoded, "list")
-  expect_identical(decoded$iss, "https://issuer.example.com")
-  expect_identical(decoded$sub, "user123")
-  expect_identical(decoded$aud, "client-id")
-  expect_equal(decoded$iat, now)
-  expect_equal(decoded$exp, now + 3600)
+  expect_identical(decoded[["iss"]], "https://issuer.example.com")
+  expect_identical(decoded[["sub"]], "user123")
+  expect_identical(decoded[["aud"]], "client-id")
+  expect_equal(decoded[["iat"]], now)
+  expect_equal(decoded[["exp"]], now + 3600)
 })
 
 test_that("id_token_claims surfaces acr, amr, auth_time", {
@@ -97,9 +97,9 @@ test_that("id_token_claims surfaces acr, amr, auth_time", {
     id_token = id_token
   )
   decoded <- tok@id_token_claims
-  expect_identical(decoded$acr, "urn:mace:incommon:iap:silver")
-  expect_identical(decoded$amr, list("pwd", "otp"))
-  expect_equal(decoded$auth_time, now - 60)
+  expect_identical(decoded[["acr"]], "urn:mace:incommon:iap:silver")
+  expect_identical(decoded[["amr"]], list("pwd", "otp"))
+  expect_equal(decoded[["auth_time"]], now - 60)
 })
 
 test_that("id_token_claims is read-only (assignment errors)", {
@@ -133,10 +133,10 @@ test_that("id_token_claims updates when id_token changes", {
   jwt2 <- jose::jwt_encode_sig(claims2, key = key)
 
   tok <- OAuthToken(access_token = "at", id_token = jwt1)
-  expect_identical(tok@id_token_claims$sub, "user-A")
+  expect_identical(tok@id_token_claims[["sub"]], "user-A")
 
   tok@id_token <- jwt2
-  expect_identical(tok@id_token_claims$sub, "user-B")
+  expect_identical(tok@id_token_claims[["sub"]], "user-B")
 })
 
 # --- id_token_validated tests ------------------------------------------------
@@ -226,7 +226,7 @@ test_that("id_token_validated is independent of id_token_claims", {
     id_token_validated = FALSE
   )
   expect_false(tok_unvalidated@id_token_validated)
-  expect_identical(tok_unvalidated@id_token_claims$sub, "user123")
+  expect_identical(tok_unvalidated@id_token_claims[["sub"]], "user123")
 
   # Validated: claims also decode
   tok_validated <- OAuthToken(
@@ -235,7 +235,7 @@ test_that("id_token_validated is independent of id_token_claims", {
     id_token_validated = TRUE
   )
   expect_true(tok_validated@id_token_validated)
-  expect_identical(tok_validated@id_token_claims$sub, "user123")
+  expect_identical(tok_validated@id_token_claims[["sub"]], "user123")
 })
 
 test_that("verify_token_set keeps id_token_validated FALSE when signature is skipped", {

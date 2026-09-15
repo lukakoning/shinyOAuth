@@ -1,7 +1,7 @@
 ## Integration tests: live Keycloak currently rejects dynamic mTLS + JAR
 
 if (!exists("make_mtls_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 query_param_names <- function(url) {
@@ -39,10 +39,10 @@ make_mtls_jar_provider <- function(use_par = FALSE, encrypted = FALSE) {
   )
 
   if (isTRUE(encrypted)) {
-    provider_args$request_object_encryption_alg_values_supported <- c(
+    provider_args[["request_object_encryption_alg_values_supported"]] <- c(
       "RSA-OAEP"
     )
-    provider_args$request_object_encryption_enc_values_supported <- c(
+    provider_args[["request_object_encryption_enc_values_supported"]] <- c(
       "A256CBC-HS512"
     )
   }
@@ -98,8 +98,8 @@ testthat::test_that("Keycloak currently rejects dynamic signed mTLS plus JAR at 
   fixture <- create_mtls_jar_fixture(encrypted = FALSE)
   on.exit(
     keycloak_delete_client(
-      fixture$admin_token,
-      id = fixture$fixture$id
+      fixture[["admin_token"]],
+      id = fixture[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -107,7 +107,7 @@ testthat::test_that("Keycloak currently rejects dynamic signed mTLS plus JAR at 
   provider <- make_mtls_jar_provider(use_par = FALSE, encrypted = FALSE)
   client <- make_dynamic_mtls_jar_client(
     provider = provider,
-    client_id = fixture$fixture$client_id,
+    client_id = fixture[["fixture"]][["client_id"]],
     encrypted = FALSE
   )
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
@@ -136,8 +136,8 @@ testthat::test_that("Keycloak currently rejects dynamic encrypted mTLS plus JAR 
   fixture <- create_mtls_jar_fixture(encrypted = TRUE)
   on.exit(
     keycloak_delete_client(
-      fixture$admin_token,
-      id = fixture$fixture$id
+      fixture[["admin_token"]],
+      id = fixture[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -145,7 +145,7 @@ testthat::test_that("Keycloak currently rejects dynamic encrypted mTLS plus JAR 
   provider <- make_mtls_jar_provider(use_par = FALSE, encrypted = TRUE)
   client <- make_dynamic_mtls_jar_client(
     provider = provider,
-    client_id = fixture$fixture$client_id,
+    client_id = fixture[["fixture"]][["client_id"]],
     encrypted = TRUE
   )
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
@@ -174,8 +174,8 @@ testthat::test_that("Keycloak currently rejects dynamic signed mTLS plus JAR thr
   fixture <- create_mtls_jar_fixture(encrypted = FALSE)
   on.exit(
     keycloak_delete_client(
-      fixture$admin_token,
-      id = fixture$fixture$id
+      fixture[["admin_token"]],
+      id = fixture[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -183,7 +183,7 @@ testthat::test_that("Keycloak currently rejects dynamic signed mTLS plus JAR thr
   provider <- make_mtls_jar_provider(use_par = TRUE, encrypted = FALSE)
   client <- make_dynamic_mtls_jar_client(
     provider = provider,
-    client_id = fixture$fixture$client_id,
+    client_id = fixture[["fixture"]][["client_id"]],
     encrypted = FALSE
   )
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
@@ -208,8 +208,8 @@ testthat::test_that("Keycloak currently rejects dynamic encrypted mTLS plus JAR 
   fixture <- create_mtls_jar_fixture(encrypted = TRUE)
   on.exit(
     keycloak_delete_client(
-      fixture$admin_token,
-      id = fixture$fixture$id
+      fixture[["admin_token"]],
+      id = fixture[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -217,7 +217,7 @@ testthat::test_that("Keycloak currently rejects dynamic encrypted mTLS plus JAR 
   provider <- make_mtls_jar_provider(use_par = TRUE, encrypted = TRUE)
   client <- make_dynamic_mtls_jar_client(
     provider = provider,
-    client_id = fixture$fixture$client_id,
+    client_id = fixture[["fixture"]][["client_id"]],
     encrypted = TRUE
   )
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")

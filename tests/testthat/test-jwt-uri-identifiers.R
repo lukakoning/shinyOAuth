@@ -12,12 +12,12 @@ test_that("client assertions and JAR preserve URI identifiers", {
     } else {
       jose::jwt_decode_sig(
         jwt,
-        pubkey = as.list(client@client_assertion_private_key)$pubkey
+        pubkey = as.list(client@client_assertion_private_key)[["pubkey"]]
       )
     }
-    expect_identical(claims$iss, client@client_id)
-    expect_identical(claims$sub, client@client_id)
-    expect_identical(claims$aud, client@client_assertion_audience)
+    expect_identical(claims[["iss"]], client@client_id)
+    expect_identical(claims[["sub"]], client@client_id)
+    expect_identical(claims[["aud"]], client@client_assertion_audience)
     client@request_object_audience <- "urn:example:authorization"
     client@request_object_mode <- "request"
     client@request_object_signing_alg <- if (style == "client_secret_jwt") {
@@ -34,8 +34,8 @@ test_that("client assertions and JAR preserve URI identifiers", {
         state = "state"
       )
     )
-    expect_identical(parse_jwt_payload(jar)$iss, client@client_id)
-    expect_identical(parse_jwt_payload(jar)$aud, "urn:example:authorization")
+    expect_identical(parse_jwt_payload(jar)[["iss"]], client@client_id)
+    expect_identical(parse_jwt_payload(jar)[["aud"]], "urn:example:authorization")
   }
   for (bad in c("bad:has space", "1scheme:value", "urn:bad%xx")) {
     expect_error(outbound_jwt_claim(list(iss = bad)), "Invalid URI")

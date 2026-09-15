@@ -71,12 +71,12 @@ test_that("state is stored under hashed lowercase-hex cache key", {
 
   # Compute expected cache key and assert it exists and is lowercase-hex
   expected_key <- shinyOAuth:::state_cache_key(raw_state)
-  keys <- client@state_store$keys()
+  keys <- client@state_store[["keys"]]()
   expect_true(expected_key %in% keys)
   expect_match(expected_key, "^[0-9a-f]+$")
 
   # And the stored value round-trips using the derived key
-  val <- client@state_store$get(expected_key, missing = NULL)
+  val <- client@state_store[["get"]](expected_key, missing = NULL)
   expect_type(val, "list")
   expect_true(all(
     c("browser_token", "pkce_code_verifier", "nonce") %in% names(val)

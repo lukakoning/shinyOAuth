@@ -58,7 +58,7 @@ oauth_callback_registry <- function(clients, allow_shared_issuer = FALSE, mark_u
   }
   for (id in if (mark_ui) names(clients) else character()) {
     if (
-      resolve_oauth_client_response_mode(clients[[id]])$mode %in%
+      resolve_oauth_client_response_mode(clients[[id]])[["mode"]] %in%
         c("form_post", "form_post.jwt")
     ) {
       mark_form_post_ui_called(id, clients[[id]])
@@ -109,7 +109,7 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver, sele
     response <- NULL
     for (client in clients) {
       response <- shiny_request_object_http_handler(req, client)
-      if (!is.null(response) && response$status != 410L) return(response)
+      if (!is.null(response) && response[["status"]] != 410L) return(response)
     }
     return(response)
   }
@@ -159,7 +159,7 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver, sele
       candidates <- candidates[vapply(
         candidates,
         function(client) {
-          resolve_oauth_client_response_mode(client)$mode %in%
+          resolve_oauth_client_response_mode(client)[["mode"]] %in%
             c(transport, paste0(transport, ".jwt"))
         },
         logical(1)
@@ -186,12 +186,12 @@ oauth_registry_http_handler <- function(req, clients, request_uri_resolver, sele
           )
         } else {
           oauth_form_post_validate_content_type(req)
-          body <- oauth_form_post_read_body(req, limits$form_post_body)
+          body <- oauth_form_post_read_body(req, limits[["form_post_body"]])
           oauth_form_post_parse_body(body, limits)
         }
         issuer <- payload[["iss"]]
-        if (!is_valid_string(issuer) && identical(payload$type, "response")) {
-          issuer <- parse_jwt_payload_or_null(payload$response)[["iss"]]
+        if (!is_valid_string(issuer) && identical(payload[["type"]], "response")) {
+          issuer <- parse_jwt_payload_or_null(payload[["response"]])[["iss"]]
         }
         if (!is_valid_string(issuer)) {
           return(oauth_registry_rejection(

@@ -1,7 +1,7 @@
 ## Integration tests: Keycloak JWT-secured authorization responses (JARM)
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 .jarm_jwks_public_base_url <- function(port) {
@@ -22,10 +22,10 @@ if (!exists("make_provider", mode = "function")) {
   testthat::skip_if_not_installed("callr")
   testthat::skip_if_not_installed("webfakes")
 
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey), simplifyVector = FALSE)
-  jwk$kid <- "jarm-enc-1"
-  jwk$use <- "enc"
-  jwk$alg <- "RSA-OAEP"
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key[["pubkey"]]), simplifyVector = FALSE)
+  jwk[["kid"]] <- "jarm-enc-1"
+  jwk[["use"]] <- "enc"
+  jwk[["alg"]] <- "RSA-OAEP"
   jwks_json <- jsonlite::toJSON(
     list(keys = list(jwk)),
     auto_unbox = TRUE,
@@ -33,9 +33,9 @@ if (!exists("make_provider", mode = "function")) {
   )
 
   app <- webfakes::new_app()
-  app$get("/jwks", function(req, res) {
-    res$set_type("application/json")
-    res$send(jwks_json)
+  app[["get"]]("/jwks", function(req, res) {
+    res[["set_type"]]("application/json")
+    res[["send"]](jwks_json)
   })
 
   process <- webfakes::new_app_process(
@@ -45,13 +45,13 @@ if (!exists("make_provider", mode = "function")) {
     start = TRUE,
     auto_start = FALSE
   )
-  stdout <- process$.access_log %||% NA_character_
-  stderr <- process$.error_log %||% NA_character_
+  stdout <- process[[".access_log"]] %||% NA_character_
+  stderr <- process[[".error_log"]] %||% NA_character_
 
   local_jwks_url <- paste0("http://127.0.0.1:", as.integer(port), "/jwks")
   deadline <- Sys.time() + 5
   repeat {
-    if (!identical(process$get_state(), "live")) {
+    if (!identical(process[["get_state"]](), "live")) {
       stop(
         paste(
           "JARM JWKS server exited before it was reachable.",
@@ -89,7 +89,7 @@ if (!exists("make_provider", mode = "function")) {
 
   list(
     process = process,
-    stop = function() process$stop(),
+    stop = function() process[["stop"]](),
     stdout = stdout,
     stderr = stderr,
     jwks_url = paste0(sub("/+$", "", public_base_url), "/jwks")
@@ -97,18 +97,18 @@ if (!exists("make_provider", mode = "function")) {
 }
 
 extract_jarm_response <- function(login_result) {
-  response <- login_result$response %||% NA_character_
+  response <- login_result[["response"]] %||% NA_character_
 
   if (
     !keycloak_nonempty_string(response) &&
-      is.list(login_result$form_post_fields)
+      is.list(login_result[["form_post_fields"]])
   ) {
-    response <- login_result$form_post_fields$response %||% NA_character_
+    response <- login_result[["form_post_fields"]][["response"]] %||% NA_character_
   }
 
   if (!keycloak_nonempty_string(response)) {
     response <- parse_query_param(
-      login_result$callback_url %||% NA_character_,
+      login_result[["callback_url"]] %||% NA_character_,
       "response",
       decode = TRUE
     )
@@ -184,7 +184,7 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
     )
   )
   on.exit(
-    keycloak_delete_client(admin_token, id = fixture$id),
+    keycloak_delete_client(admin_token, id = fixture[["id"]]),
     add = TRUE
   )
 
@@ -199,7 +199,7 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
 
   client <- shinyOAuth::oauth_client(
     provider = prov,
-    client_id = fixture$client_id,
+    client_id = fixture[["client_id"]],
     client_secret = "",
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
@@ -211,7 +211,7 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_identical(
         parse_query_param(auth_url, "response_mode", decode = TRUE),
@@ -222,27 +222,27 @@ testthat::test_that("Keycloak signed query.jwt happy path", {
       response_jwt <- extract_jarm_response(login)
 
       testthat::expect_true(keycloak_nonempty_string(response_jwt))
-      testthat::expect_false(grepl("[?&]code=", login$callback_url))
-      testthat::expect_false(grepl("[?&]state=", login$callback_url))
+      testthat::expect_false(grepl("[?&]code=", login[["callback_url"]]))
+      testthat::expect_false(grepl("[?&]state=", login[["callback_url"]]))
       testthat::expect_identical(
-        shinyOAuth:::parse_jwt_header(response_jwt)$alg,
+        shinyOAuth:::parse_jwt_header(response_jwt)[["alg"]],
         "RS256"
       )
       testthat::expect_match(
-        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)$payload_raw),
+        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)[["payload_raw"]]),
         '"code"[[:space:]]*:',
         perl = TRUE
       )
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -281,7 +281,7 @@ testthat::test_that("Keycloak signed query.jwt live flow exercises duplicate iss
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
       response_jwt <- extract_jarm_response(login)
       payload_raw <- rawToChar(
@@ -306,19 +306,19 @@ testthat::test_that("Keycloak signed query.jwt live flow exercises duplicate iss
         regexp = "JARM payload could not be parsed"
       )
       testthat::expect_identical(
-        strict_error$context$phase,
+        strict_error[["context"]][["phase"]],
         "jarm_payload"
       )
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -332,7 +332,7 @@ testthat::test_that("Keycloak signed jwt alias happy path", {
 
   setup <- create_signed_jarm_fixture("shiny-jarm-jwt-alias")
   on.exit(
-    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
     add = TRUE
   )
 
@@ -347,7 +347,7 @@ testthat::test_that("Keycloak signed jwt alias happy path", {
 
   client <- make_signed_jarm_public_client(
     prov,
-    setup$fixture$client_id,
+    setup[["fixture"]][["client_id"]],
     response_mode = "jwt"
   )
 
@@ -355,7 +355,7 @@ testthat::test_that("Keycloak signed jwt alias happy path", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_identical(
         parse_query_param(auth_url, "response_mode", decode = TRUE),
@@ -366,27 +366,27 @@ testthat::test_that("Keycloak signed jwt alias happy path", {
       response_jwt <- extract_jarm_response(login)
 
       testthat::expect_true(keycloak_nonempty_string(response_jwt))
-      testthat::expect_false(grepl("[?&]code=", login$callback_url))
-      testthat::expect_false(grepl("[?&]state=", login$callback_url))
+      testthat::expect_false(grepl("[?&]code=", login[["callback_url"]]))
+      testthat::expect_false(grepl("[?&]state=", login[["callback_url"]]))
       testthat::expect_identical(
-        shinyOAuth:::parse_jwt_header(response_jwt)$alg,
+        shinyOAuth:::parse_jwt_header(response_jwt)[["alg"]],
         "RS256"
       )
       testthat::expect_match(
-        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)$payload_raw),
+        rawToChar(shinyOAuth:::jwt_compact_parts(response_jwt)[["payload_raw"]]),
         '"code"[[:space:]]*:',
         perl = TRUE
       )
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -400,56 +400,56 @@ testthat::test_that("Keycloak query.jwt clients reject direct query callbacks wi
 
   setup <- create_signed_jarm_fixture("shiny-jarm-direct-query")
   on.exit(
-    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
     add = TRUE
   )
 
   prov <- make_provider()
-  client <- make_signed_jarm_public_client(prov, setup$fixture$client_id)
+  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       enc_state <- parse_query_param(auth_url, "state", decode = TRUE)
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
       testthat::expect_true(keycloak_nonempty_string(extract_jarm_response(
         login
       )))
-      testthat::expect_length(client@state_store$keys(), 1L)
+      testthat::expect_length(client@state_store[["keys"]](), 1L)
 
-      values$.process_query(paste0(
+      values[[".process_query"]](paste0(
         "?code=attacker-code",
         "&state=",
         utils::URLencode(enc_state, reserved = TRUE),
         "&iss=",
         utils::URLencode(client@provider@issuer, reserved = TRUE)
       ))
-      session$flushReact()
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "invalid_callback_query")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "invalid_callback_query")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "response parameter"
       )
-      testthat::expect_length(client@state_store$keys(), 1L)
+      testthat::expect_length(client@state_store[["keys"]](), 1L)
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -482,7 +482,7 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
     port = jwks_port,
     public_base_url = public_base_url
   )
-  on.exit(try(jwks_server$stop(), silent = TRUE), add = TRUE)
+  on.exit(try(jwks_server[["stop"]](), silent = TRUE), add = TRUE)
 
   admin_token <- keycloak_admin_token()
   fixture <- keycloak_create_client(
@@ -493,7 +493,7 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
       attributes = list(
         "pkce.code.challenge.method" = "S256",
         "use.jwks.url" = "true",
-        "jwks.url" = jwks_server$jwks_url,
+        "jwks.url" = jwks_server[["jwks_url"]],
         "authorization.signed.response.alg" = "RS256",
         "authorization.encrypted.response.alg" = "RSA-OAEP",
         "authorization.encrypted.response.enc" = "A256CBC-HS512"
@@ -501,7 +501,7 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
     )
   )
   on.exit(
-    keycloak_delete_client(admin_token, id = fixture$id),
+    keycloak_delete_client(admin_token, id = fixture[["id"]]),
     add = TRUE
   )
 
@@ -524,7 +524,7 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
 
   client <- shinyOAuth::oauth_client(
     provider = prov,
-    client_id = fixture$client_id,
+    client_id = fixture[["client_id"]],
     client_secret = "",
     redirect_uri = "http://localhost:3000/callback",
     scopes = c("openid"),
@@ -539,7 +539,7 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_identical(
         parse_query_param(auth_url, "response_mode", decode = TRUE),
@@ -551,8 +551,8 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
       outer <- shinyOAuth:::jwe_compact_parts(response_jwe)
 
       testthat::expect_true(keycloak_nonempty_string(response_jwe))
-      testthat::expect_false(grepl("[?&]code=", login$callback_url))
-      testthat::expect_false(grepl("[?&]state=", login$callback_url))
+      testthat::expect_false(grepl("[?&]code=", login[["callback_url"]]))
+      testthat::expect_false(grepl("[?&]state=", login[["callback_url"]]))
       testthat::expect_length(
         strsplit(response_jwe, ".", fixed = TRUE)[[1]],
         5L
@@ -566,15 +566,15 @@ testthat::test_that("Keycloak encrypted query.jwt happy path", {
         "A256CBC-HS512"
       )
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -588,18 +588,18 @@ testthat::test_that("Keycloak query.jwt replay is rejected after state consumpti
 
   setup <- create_signed_jarm_fixture("shiny-jarm-replay")
   on.exit(
-    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
     add = TRUE
   )
 
   prov <- make_provider()
-  client <- make_signed_jarm_public_client(prov, setup$fixture$client_id)
+  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state_info <- get_state_info(client, auth_url)
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
       query <- callback_query(login)
@@ -608,31 +608,31 @@ testthat::test_that("Keycloak query.jwt replay is rejected after state consumpti
         login
       )))
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
       expect_state_store_entry_consumed(client, state_info)
 
-      values$logout()
-      session$flushReact()
-      values$browser_token <- "__SKIPPED__"
+      values[["logout"]]()
+      session[["flushReact"]]()
+      values[["browser_token"]] <- "__SKIPPED__"
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )
@@ -646,27 +646,27 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: missing code_verifier
 
   setup <- create_signed_jarm_fixture("shiny-jarm-pkce-missing")
   on.exit(
-    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
     add = TRUE
   )
 
   prov <- make_provider()
-  client <- make_signed_jarm_public_client(prov, setup$fixture$client_id)
+  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state <- get_state_store_entry(client, auth_url)
-      orig <- state$entry
+      orig <- state[["entry"]]
 
-      client@state_store$set(
-        key = state$info$key,
+      client@state_store[["set"]](
+        key = state[["info"]][["key"]],
         value = list(
-          browser_token = orig$browser_token,
+          browser_token = orig[["browser_token"]],
           pkce_code_verifier = NULL,
-          nonce = orig$nonce
+          nonce = orig[["nonce"]]
         )
       )
 
@@ -677,29 +677,29 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: missing code_verifier
         login
       )))
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "Invalid OAuth state",
         fixed = TRUE
       )
-      testthat::expect_null(values$token)
+      testthat::expect_null(values[["token"]])
       expect_state_store_entry_consumed(client, state)
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )
@@ -713,21 +713,21 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: wrong code_verifier",
 
   setup <- create_signed_jarm_fixture("shiny-jarm-pkce-wrong")
   on.exit(
-    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
     add = TRUE
   )
 
   prov <- make_provider()
-  client <- make_signed_jarm_public_client(prov, setup$fixture$client_id)
+  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state <- get_state_store_entry(client, auth_url)
-      orig <- state$entry
-      new_verifier <- orig$pkce_code_verifier
+      orig <- state[["entry"]]
+      new_verifier <- orig[["pkce_code_verifier"]]
 
       for (i in 1:5) {
         candidate <- paste0(
@@ -740,12 +740,12 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: wrong code_verifier",
         }
       }
 
-      client@state_store$set(
-        key = state$info$key,
+      client@state_store[["set"]](
+        key = state[["info"]][["key"]],
         value = list(
-          browser_token = orig$browser_token,
+          browser_token = orig[["browser_token"]],
           pkce_code_verifier = new_verifier,
-          nonce = orig$nonce
+          nonce = orig[["nonce"]]
         )
       )
 
@@ -756,29 +756,29 @@ testthat::test_that("Keycloak query.jwt PKCE unhappy path: wrong code_verifier",
         login
       )))
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "token_exchange_error")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "HTTP request failed",
         fixed = TRUE
       )
-      testthat::expect_null(values$token)
+      testthat::expect_null(values[["token"]])
       expect_state_store_entry_consumed(client, state)
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )
@@ -792,18 +792,18 @@ testthat::test_that("Keycloak PAR happy path preserves query.jwt callbacks", {
 
   setup <- create_signed_jarm_fixture("shiny-jarm-par")
   on.exit(
-    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
     add = TRUE
   )
 
   prov <- make_provider(use_par = TRUE)
-  client <- make_signed_jarm_public_client(prov, setup$fixture$client_id)
+  client <- make_signed_jarm_public_client(prov, setup[["fixture"]][["client_id"]])
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_match(auth_url, "[?&]request_uri=")
 
@@ -811,18 +811,18 @@ testthat::test_that("Keycloak PAR happy path preserves query.jwt callbacks", {
       response_jwt <- extract_jarm_response(login)
 
       testthat::expect_true(keycloak_nonempty_string(response_jwt))
-      testthat::expect_false(grepl("[?&]code=", login$callback_url))
-      testthat::expect_false(grepl("[?&]state=", login$callback_url))
+      testthat::expect_false(grepl("[?&]code=", login[["callback_url"]]))
+      testthat::expect_false(grepl("[?&]state=", login[["callback_url"]]))
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -858,14 +858,14 @@ testthat::test_that("Keycloak currently rejects signed request-object + query.jw
     service_accounts_enabled = TRUE
   )
   on.exit(
-    keycloak_delete_client(setup$admin_token, id = setup$fixture$id),
+    keycloak_delete_client(setup[["admin_token"]], id = setup[["fixture"]][["id"]]),
     add = TRUE
   )
 
   prov <- make_provider(token_auth_style = "private_key_jwt")
   client <- make_signed_jarm_public_client(
     provider = prov,
-    client_id = setup$fixture$client_id,
+    client_id = setup[["fixture"]][["client_id"]],
     client_assertion_private_key = private_key,
     client_assertion_private_key_kid = NA_character_,
     request_object_mode = "request",
@@ -876,7 +876,7 @@ testthat::test_that("Keycloak currently rejects signed request-object + query.jw
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state_info <- get_state_info(client, auth_url)
       request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
       payload <- decode_compact_jwt_payload(request_jwt)
@@ -908,8 +908,8 @@ testthat::test_that("Keycloak currently rejects signed request-object + query.jw
         ignore.case = TRUE
       )
       expect_state_store_entry_present(client, state_info)
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_null(values$token)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["token"]])
     }
   )
 })

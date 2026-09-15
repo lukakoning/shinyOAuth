@@ -38,7 +38,7 @@ test_that("OIDC discovery requires its mandatory string-array metadata", {
   )
   for (value in malformed_values) {
     metadata <- strict_oidc_metadata()
-    metadata$response_types_supported <- value
+    metadata[["response_types_supported"]] <- value
 
     expect_error(
       shinyOAuth:::.discover_validate_required_metadata(metadata),
@@ -51,7 +51,7 @@ test_that("OIDC discovery requires its mandatory string-array metadata", {
 
 test_that("OIDC discovery requires the capabilities used by this client", {
   metadata <- strict_oidc_metadata()
-  metadata$response_types_supported <- list("id_token")
+  metadata[["response_types_supported"]] <- list("id_token")
   expect_error(
     shinyOAuth:::.discover_validate_required_metadata(metadata),
     class = "shinyOAuth_parse_error",
@@ -60,7 +60,7 @@ test_that("OIDC discovery requires the capabilities used by this client", {
   )
 
   metadata <- strict_oidc_metadata()
-  metadata$id_token_signing_alg_values_supported <- list("ES256")
+  metadata[["id_token_signing_alg_values_supported"]] <- list("ES256")
   expect_error(
     shinyOAuth:::.discover_validate_required_metadata(metadata),
     class = "shinyOAuth_parse_error",
@@ -114,7 +114,7 @@ test_that("OIDC discovery always requires jwks_uri", {
 
   expect_error(
     oauth_provider_oidc_discover(
-      issuer = metadata$issuer,
+      issuer = metadata[["issuer"]],
       id_token_validation = FALSE,
       use_nonce = FALSE
     ),
@@ -126,7 +126,7 @@ test_that("OIDC discovery always requires jwks_uri", {
 
 test_that("OIDC discovery negotiates from validated algorithm metadata", {
   metadata <- strict_oidc_metadata()
-  metadata$id_token_signing_alg_values_supported <- list("RS256", "ES256")
+  metadata[["id_token_signing_alg_values_supported"]] <- list("RS256", "ES256")
 
   testthat::local_mocked_bindings(
     .discover_fetch_response = function(req, issuer) {
@@ -137,7 +137,7 @@ test_that("OIDC discovery negotiates from validated algorithm metadata", {
   )
 
   provider <- oauth_provider_oidc_discover(
-    issuer = metadata$issuer,
+    issuer = metadata[["issuer"]],
     allowed_algs = c("ES256", "EdDSA")
   )
 

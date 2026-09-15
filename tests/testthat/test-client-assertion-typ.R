@@ -36,26 +36,26 @@ test_that("typed issuer-audience assertions reach each endpoint and retry", {
     seen <- character()
     testthat::local_mocked_bindings(
       req_with_retry = function(req, ...) {
-        seen <<- c(seen, req$url)
+        seen <<- c(seen, req[["url"]])
         assertions <- character()
         for (attempt in 1:2) {
-          current <- req$shinyOAuth_prepare_attempt(req, attempt)
-          fields <- if (current$body$type == "form") {
-            lapply(current$body$data, function(value) {
+          current <- req[["shinyOAuth_prepare_attempt"]](req, attempt)
+          fields <- if (current[["body"]][["type"]] == "form") {
+            lapply(current[["body"]][["data"]], function(value) {
               utils::URLdecode(as.character(value))
             })
           } else {
-            decode_form_pairs(rawToChar(current$body$data))
+            decode_form_pairs(rawToChar(current[["body"]][["data"]]))
           }
-          jwt <- fields$client_assertion
+          jwt <- fields[["client_assertion"]]
           assertions <- c(assertions, jwt)
           expect_identical(
-            parse_jwt_header(jwt)$typ,
+            parse_jwt_header(jwt)[["typ"]],
             "client-authentication+jwt"
           )
-          expect_identical(parse_jwt_payload(jwt)$aud, client@provider@issuer)
+          expect_identical(parse_jwt_payload(jwt)[["aud"]], client@provider@issuer)
           expect_identical(
-            fields$client_assertion_type,
+            fields[["client_assertion_type"]],
             "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
           )
           if (style == "client_secret_jwt") {
@@ -68,24 +68,24 @@ test_that("typed issuer-audience assertions reach each endpoint and retry", {
           } else {
             expect_true(verify_jws_signature_no_time(
               jwt,
-              client@client_assertion_private_key$pubkey,
+              client@client_assertion_private_key[["pubkey"]],
               "ES256"
             ))
           }
         }
         expect_false(identical(
-          parse_jwt_payload(assertions[[1]])$jti,
-          parse_jwt_payload(assertions[[2]])$jti
+          parse_jwt_payload(assertions[[1]])[["jti"]],
+          parse_jwt_payload(assertions[[2]])[["jti"]]
         ))
-        body <- if (grepl("/par$", req$url)) {
+        body <- if (grepl("/par$", req[["url"]])) {
           '{"request_uri":"urn:example:par","expires_in":60}'
-        } else if (grepl("/introspect$", req$url)) {
+        } else if (grepl("/introspect$", req[["url"]])) {
           '{"active":true}'
         } else {
           '{"access_token":"access","token_type":"Bearer","expires_in":3600}'
         }
         httr2::response(
-          status = if (grepl("/par$", req$url)) 201 else 200,
+          status = if (grepl("/par$", req[["url"]])) 201 else 200,
           headers = list("content-type" = "application/json"),
           body = charToRaw(body)
         )
@@ -114,7 +114,7 @@ test_that("legacy assertion defaults and per-endpoint overrides remain independe
     parse_jwt_header(build_client_assertion(
       client,
       client@provider@token_url
-    ))$typ,
+    ))[["typ"]],
     "JWT"
   )
   expect_identical(
@@ -144,9 +144,9 @@ test_that("legacy assertion defaults and per-endpoint overrides remain independe
     list(),
     resolved,
     "par"
-  )$params$client_assertion
-  expect_identical(parse_jwt_header(jwt)$typ, "client-authentication+jwt")
-  expect_identical(parse_jwt_payload(jwt)$aud, client@provider@issuer)
+  )[["params"]][["client_assertion"]]
+  expect_identical(parse_jwt_header(jwt)[["typ"]], "client-authentication+jwt")
+  expect_identical(parse_jwt_payload(jwt)[["aud"]], client@provider@issuer)
   expect_identical(client@client_assertion_typ, "JWT")
   expect_false(identical(before, state_client_policy_fingerprint(client)))
   client@client_assertion_typ <- "client-authentication+jwt"
@@ -167,7 +167,7 @@ test_that("assertion typ validation applies to helper, raw and endpoint configur
     "bad\ntype",
     "bad type"
   )) {
-    args$client_assertion_typ <- value
+    args[["client_assertion_typ"]] <- value
     expect_error(do.call(OAuthClient, args), "client_assertion_typ")
     expect_error(
       make_typed_assertion_client(client_assertion_typ = value),

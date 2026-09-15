@@ -20,23 +20,23 @@ testthat::test_that("expired token marks token_stale in indefinite_session", {
         expires_at = as.numeric(Sys.time()) - 5,
         id_token = NA_character_
       )
-      values$token <- t
-      session$flushReact()
+      values[["token"]] <- t
+      session[["flushReact"]]()
       # In indefinite_session mode we keep token but mark stale
-      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
       testthat::expect_true(
-        is.logical(values$token_stale) && isTRUE(values$token_stale)
+        is.logical(values[["token_stale"]]) && isTRUE(values[["token_stale"]])
       )
 
       # A fresh successful login should reset the flag
-      values$token <- OAuthToken(
+      values[["token"]] <- OAuthToken(
         access_token = "fresh",
         refresh_token = NA_character_,
         expires_at = as.numeric(Sys.time()) + 3600,
         id_token = NA_character_
       )
-      session$flushReact()
-      testthat::expect_false(isTRUE(values$token_stale))
+      session[["flushReact"]]()
+      testthat::expect_false(isTRUE(values[["token_stale"]]))
     }
   )
 })

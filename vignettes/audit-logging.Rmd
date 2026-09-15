@@ -20,7 +20,7 @@ Put this near the top of `app.R`, before creating the provider and client:
 
 ```{r, eval = FALSE}
 options(shinyOAuth.audit_hook = function(event) {
-  cat(sprintf("[shinyOAuth] %s | %s\n", event$type, event$trace_id))
+  cat(sprintf("[shinyOAuth] %s | %s\n", event[["type"]], event[["trace_id"]]))
   str(event)
 })
 ```
@@ -60,9 +60,9 @@ When a Shiny session is available, `shiny_session` contains:
 - `http`: a summary with request method, host, and scheme by default.
 
 The session context is a JSON-friendly list suitable for `jsonlite::toJSON()`;
-the raw Shiny `session$request` object is not included. If
+the raw Shiny `session[["request"]]` object is not included. If
 `shinyOAuth.audit_include_raw_session_token = TRUE`, the raw session token is
-available as `shiny_session$token` in native hook events.
+available as `shiny_session[["token"]]` in native hook events.
 
 Fields ending in `_digest` allow matching without recording the original
 token or identifier. The package's `trace_id` is separate from OpenTelemetry
@@ -77,7 +77,7 @@ The raw Shiny session token is also omitted. To omit HTTP context entirely:
 options(shinyOAuth.audit_include_http = FALSE)
 ```
 
-With this setting, `shiny_session$http` is `NULL`.
+With this setting, `shiny_session[["http"]]` is `NULL`.
 
 Outbound URLs retain only scheme and authority by default. To include safe route
 names in audit and OTel URLs and incoming HTTP context, configure
@@ -223,7 +223,7 @@ These events identify failures when reading or removing a pending login from the
 
 - When: retrieving the single-use state entry from the configured `state_store` fails (missing, malformed, or underlying cache error)
 - Context: `provider`, `issuer`, `client_id_digest`, `state_digest`, `error_class`, `phase` (`state_store_lookup` or `state_store_atomic_take`)
-- Notes: The flow aborts with an invalid state error. The `state_store_atomic_take` phase applies when using a store with an atomic `$take()` method.
+- Notes: The flow aborts with an invalid state error. The `state_store_atomic_take` phase applies when using a store with an atomic `[["take"]]()` method.
 
 #### Event: `audit_state_store_removal_failed`
 
@@ -292,7 +292,7 @@ the high-level audit events.
 
 #### Event: `audit_logout`
 
-- When: `auth$logout()` is called on the module
+- When: `auth[["logout"]]()` is called on the module
 - Context: `provider`, `issuer`, `client_id_digest`, `reason` (default `manual_logout`)
 
 #### Event: `audit_connection_disconnected`
@@ -446,7 +446,7 @@ unknown.
 
 #### Event: `audit_authenticated_changed`
 
-- When: the `$authenticated` reactive value changes (TRUE ↔ FALSE)
+- When: the `[["authenticated"]]` reactive value changes (TRUE ↔ FALSE)
 - Context: `provider`, `issuer`, `client_id_digest`, `authenticated`, `previous_authenticated`, `reason`
 - Reasons include: `login` (when becoming authenticated), or the error code/state that caused de-authentication (e.g., `token_expired`, `logged_out`, `token_cleared`)
 

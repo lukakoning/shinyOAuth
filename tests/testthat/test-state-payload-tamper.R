@@ -7,11 +7,11 @@ test_that("tampered state payload fails AES-GCM auth during callback", {
   # Tamper inside the sealed JSON (flip one base64url char in tg field)
   raw <- shinyOAuth:::base64url_decode_raw(enc)
   obj <- jsonlite::fromJSON(rawToChar(raw), simplifyVector = TRUE)
-  tg <- obj$tg
+  tg <- obj[["tg"]]
   pos <- if (nchar(tg) >= 1) 1 else stop("unexpected tg")
   ch <- substr(tg, pos, pos)
   substr(tg, pos, pos) <- if (ch == "A") "B" else "A"
-  obj$tg <- tg
+  obj[["tg"]] <- tg
   tampered <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
     obj,
     auto_unbox = TRUE

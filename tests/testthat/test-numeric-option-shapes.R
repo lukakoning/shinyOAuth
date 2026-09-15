@@ -32,6 +32,6 @@ test_that("malformed assertion TTL options fall back to two minutes", {
     withr::local_options(shinyOAuth.client_assertion_ttl = value)
     jwt <- build_client_assertion(client, client@provider@token_url)
     claims <- parse_jwt_payload(jwt)
-    expect_equal(claims$exp - claims$iat, 120)
+    expect_equal(claims[["exp"]] - claims[["iat"]], 120)
   }
 })

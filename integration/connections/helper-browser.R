@@ -3,7 +3,7 @@ retention_chrome_start <- function() {
   # Keep this bounded and local to startup; assertion timeouts stay unchanged.
   withr::local_options(chromote.timeout = max(30, getOption("chromote.timeout", 10)))
   chrome <- tryCatch(
-    chromote::Chromote$new(),
+    chromote::Chromote[["new"]](),
     error_stop_port_search = function(...) NULL
   )
   if (!is.null(chrome)) return(chrome)
@@ -13,36 +13,36 @@ retention_chrome_start <- function() {
   gc()
   message("Chrome debugging port timed out; retrying browser startup once")
   Sys.sleep(1)
-  chromote::Chromote$new()
+  chromote::Chromote[["new"]]()
 }
 
 retention_chrome_close <- function(chrome) {
   # Chromote 0.5.1 close() discards an asynchronous Browser.close promise.
   # Await our own request and process exit first, so a lost shutdown reply
   # cannot produce an unhandled promise error after the test has completed.
-  process <- chrome$get_browser()$get_process()
-  if (process$is_alive()) {
-    tryCatch(chrome$Browser$close(timeout_ = 2), error = function(...) NULL)
-    process$wait(timeout = 2000)
-    if (process$is_alive()) {
-      process$kill()
-      process$wait(timeout = 2000)
+  process <- chrome[["get_browser"]]()[["get_process"]]()
+  if (process[["is_alive"]]()) {
+    tryCatch(chrome[["Browser"]][["close"]](timeout_ = 2), error = function(...) NULL)
+    process[["wait"]](timeout = 2000)
+    if (process[["is_alive"]]()) {
+      process[["kill"]]()
+      process[["wait"]](timeout = 2000)
     }
   }
-  if (process$is_alive()) {
+  if (process[["is_alive"]]()) {
     stop("Fixture Chrome did not stop")
   }
   # The process is confirmed dead; websocket's close event can still be queued.
-  tryCatch(chrome$close(wait = FALSE), error = function(...) NULL)
+  tryCatch(chrome[["close"]](wait = FALSE), error = function(...) NULL)
   invisible(NULL)
 }
 
 retention_browser_value <- function(browser, expression) {
-  result <- browser$Runtime$evaluate(expression, returnByValue = TRUE)
-  if (!is.null(result$exceptionDetails)) {
+  result <- browser[["Runtime"]][["evaluate"]](expression, returnByValue = TRUE)
+  if (!is.null(result[["exceptionDetails"]])) {
     return(NULL)
   }
-  result$result$value
+  result[["result"]][["value"]]
 }
 
 retention_browser_wait <- function(
@@ -120,7 +120,7 @@ retention_browser_result <- function(browser, value) {
 # Wait for this action to complete, even when successive operations return the
 # same text. Reading an old result can otherwise batch later clicks together.
 retention_browser_action <- function(browser, id, value) {
-  before <- retention_browser_snapshot(browser)$result_revision
+  before <- retention_browser_snapshot(browser)[["result_revision"]]
   stopifnot(is.numeric(before), length(before) == 1L)
   retention_browser_click(browser, id)
   retention_browser_wait(
@@ -128,8 +128,8 @@ retention_browser_action <- function(browser, id, value) {
     function() {
       snapshot <- retention_browser_snapshot(browser)
       !is.null(snapshot) &&
-        snapshot$result_revision > before &&
-        identical(snapshot$result, value)
+        snapshot[["result_revision"]] > before &&
+        identical(snapshot[["result"]], value)
     },
     paste("completed action", id, "with result", value)
   )
@@ -150,11 +150,11 @@ retention_browser_setup <- function(
 ) {
   port <- httpuv::randomPort()
   if (https) {
-    python <- Sys.which(if (.Platform$OS.type == "windows") "py" else "python3")
+    python <- Sys.which(if (.Platform[["OS.type"]] == "windows") "py" else "python3")
     if (!nzchar(python)) {
       stop("The account browser gate requires Python 3")
     }
-    proxy <- processx::process$new(
+    proxy <- processx::process[["new"]](
       python,
       c(
         file.path(retention_root, "integration/connections/tls-proxy.py"),
@@ -169,17 +169,17 @@ retention_browser_setup <- function(
       stderr = "|",
       supervise = TRUE
     )
-    withr::defer(proxy$kill(), envir = .env)
-    app_args$listen_port <- port
+    withr::defer(proxy[["kill"]](), envir = .env)
+    app_args[["listen_port"]] <- port
     deadline <- Sys.time() + 10
     repeat {
-      proxy$poll_io(100)
-      published <- proxy$read_output_lines(n = 1L)
+      proxy[["poll_io"]](100)
+      published <- proxy[["read_output_lines"]](n = 1L)
       if (length(published)) {
         break
       }
-      if (!proxy$is_alive() || Sys.time() >= deadline) {
-        stop("Account TLS fixture did not start: ", proxy$read_error())
+      if (!proxy[["is_alive"]]() || Sys.time() >= deadline) {
+        stop("Account TLS fixture did not start: ", proxy[["read_error"]]())
       }
     }
     port <- as.integer(published)
@@ -207,7 +207,7 @@ retention_browser_setup <- function(
           paste0(origin, "/callback/", site)
         )
       }
-      withr::defer(provider$stop(), envir = .env)
+      withr::defer(provider[["stop"]](), envir = .env)
       provider
     }
   )
@@ -217,7 +217,7 @@ retention_browser_setup <- function(
     sub(
       "127.0.0.1",
       "localhost",
-      sub("/$", "", provider$url()),
+      sub("/$", "", provider[["url"]]()),
       fixed = TRUE
     )
   })
@@ -228,8 +228,8 @@ retention_browser_setup <- function(
     stopifnot(https, !shared_issuer)
     source(file.path(retention_root, "integration/smart/helper-inferno.R"), local = TRUE)
     bases <- lapply(providers, function(provider) {
-      upstream <- as.integer(httr2::url_parse(provider$url())$port)
-      inferno_tls(retention_root, upstream, .env = .env)$origin
+      upstream <- as.integer(httr2::url_parse(provider[["url"]]())[["port"]])
+      inferno_tls(retention_root, upstream, .env = .env)[["origin"]]
     })
     withr::local_envvar(CURL_CA_BUNDLE = file.path(retention_root,
       "integration/keycloak/tls/ca-cert.pem"), .local_envir = .env)
@@ -255,14 +255,14 @@ retention_browser_setup <- function(
       Sys.setenv(CURL_SSL_BACKEND = "openssl")
       # mirai starts fresh R processes: carry the selected callr library paths
       # into those processes as well as the Shiny parent.
-      Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep))
+      Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform[["path.sep"]]))
       source(app_file, local = TRUE)
       args <- list(origin, bases, async, response_mode = response_mode)
       if (shared_issuer) {
-        args$shared_issuer <- TRUE
+        args[["shared_issuer"]] <- TRUE
       }
       if (scope_narrowing) {
-        args$scope_narrowing <- TRUE
+        args[["scope_narrowing"]] <- TRUE
       }
       args <- c(args, app_args)
       do.call(get(app_function), args)
@@ -283,7 +283,7 @@ retention_browser_setup <- function(
     stdout = tempfile("private-app-", tmpdir = log_dir),
     stderr = tempfile("private-app-", tmpdir = log_dir)
   )
-  withr::defer(process$kill(), envir = .env)
+  withr::defer(process[["kill"]](), envir = .env)
   deadline <- Sys.time() + 30
   repeat {
     ready <- tryCatch(
@@ -296,17 +296,17 @@ retention_browser_setup <- function(
             ssl_verifyhost = if (https) 0L else 2L
           )
         )
-        response$status_code == 200L
+        response[["status_code"]] == 200L
       },
       error = function(...) FALSE
     )
     if (ready) {
       break
     }
-    if (!process$is_alive() || Sys.time() >= deadline) {
+    if (!process[["is_alive"]]() || Sys.time() >= deadline) {
       stop(
         "Retention fixture did not start; process stderr: ",
-        process$get_error_file()
+        process[["get_error_file"]]()
       )
     }
     Sys.sleep(0.1)
@@ -314,18 +314,18 @@ retention_browser_setup <- function(
   chrome <- retention_chrome_start()
   withr::defer(retention_chrome_close(chrome), envir = .env)
   new_browser <- function(chrome_instance = chrome) {
-    context <- chrome_instance$Target$createBrowserContext()$browserContextId
-    target <- chrome_instance$Target$createTarget(
+    context <- chrome_instance[["Target"]][["createBrowserContext"]]()[["browserContextId"]]
+    target <- chrome_instance[["Target"]][["createTarget"]](
       "about:blank",
       browserContextId = context
-    )$targetId
-    browser <- chromote::ChromoteSession$new(
+    )[["targetId"]]
+    browser <- chromote::ChromoteSession[["new"]](
       parent = chrome_instance,
       targetId = target
     )
-    withr::defer(browser$close(), envir = .env)
+    withr::defer(browser[["close"]](), envir = .env)
     if (https) {
-      browser$Security$setIgnoreCertificateErrors(ignore = TRUE)
+      browser[["Security"]][["setIgnoreCertificateErrors"]](ignore = TRUE)
     }
     # Navigate from the initial blank document without waiting for a CDP
     # Page.navigate acknowledgement. The following wait requires actual app

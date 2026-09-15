@@ -15,13 +15,13 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
       scopes = c(if (launch == "standalone") "launch/patient", "patient/Patient.rs", "user/Practitioner.r", "offline_access", extra_scopes),
       required_scopes = c("patient/Patient.r", "user/Practitioner.r"),
       launch = launch, identity = "fhirUser", label = paste("Site", site),
-      token_auth_style = registration$style, response_mode = response_mode, authorization_method = authorization_method,
+      token_auth_style = registration[["style"]], response_mode = response_mode, authorization_method = authorization_method,
       authorization_server_mode = "multi_redirect_uri", authorization_server_redirect_uris = callbacks)
-    if (registration$style == "header") args$client_secret <- registration$secret
-    if (registration$style == "private_key_jwt") {
-      args$client_assertion_private_key <- openssl::read_key(registration$private_pem)
-      args$client_assertion_private_key_kid <- "fixture-client"
-      args$client_assertion_alg <- registration$assertion_alg
+    if (registration[["style"]] == "header") args[["client_secret"]] <- registration[["secret"]]
+    if (registration[["style"]] == "private_key_jwt") {
+      args[["client_assertion_private_key"]] <- openssl::read_key(registration[["private_pem"]])
+      args[["client_assertion_private_key_kid"]] <- "fixture-client"
+      args[["client_assertion_alg"]] <- registration[["assertion_alg"]]
     }
     do.call(shinyOAuth::smart_client, args)
   })
@@ -55,9 +55,9 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
       revision(shiny::isolate(revision()) + 1L)
     }
     connection <- function(site) {
-      rows <- Filter(function(row) identical(row$client_label, paste("Site", site)), health$connections())
+      rows <- Filter(function(row) identical(row[["client_label"]], paste("Site", site)), health[["connections"]]())
       if (!length(rows)) stop("Unavailable")
-      health$connection(rows[[1L]]$connection_id)
+      health[["connection"]](rows[[1L]][["connection_id"]])
     }
     perform <- function(fn) {
       value <- tryCatch(fn(), error = function(...) "unavailable")
@@ -67,53 +67,53 @@ smart_profile_app <- function(origin, providers, async = FALSE, response_mode = 
     }
     for (site in c("a", "b")) local({
       selected <- site
-      shiny::observeEvent(input[[paste0("connect_", selected)]], health$connect(selected))
-      shiny::observeEvent(input[[paste0("refresh_", selected)]], perform(function() connection(selected)$refresh()))
+      shiny::observeEvent(input[[paste0("connect_", selected)]], health[["connect"]](selected))
+      shiny::observeEvent(input[[paste0("refresh_", selected)]], perform(function() connection(selected)[["refresh"]]()))
       shiny::observeEvent(input[[paste0("read_", selected)]], perform(function() {
         conn <- connection(selected)
         ctx <- shinyOAuth::smart_context(conn)
         body <- httr2::resp_body_json(shinyOAuth::smart_patient(conn))
-        stopifnot(identical(body$id, ctx$patient), !identical(ctx$patient, sub("^Practitioner/", "", ctx$fhirUser)))
-        paste0(body$fixture_site, ":", body$fixture_revision, ":context-", ctx$revision)
+        stopifnot(identical(body[["id"]], ctx[["patient"]]), !identical(ctx[["patient"]], sub("^Practitioner/", "", ctx[["fhirUser"]])))
+        paste0(body[["fixture_site"]], ":", body[["fixture_revision"]], ":context-", ctx[["revision"]])
       }))
       shiny::observeEvent(input[[paste0("user_", selected)]], perform(function() {
         body <- httr2::resp_body_json(shinyOAuth::smart_fhir_user(connection(selected)))
-        stopifnot(identical(body$resourceType, "Practitioner"), identical(body$id, paste0("clinician-", selected)))
-        paste0(body$fixture_site, ":user")
+        stopifnot(identical(body[["resourceType"]], "Practitioner"), identical(body[["id"]], paste0("clinician-", selected)))
+        paste0(body[["fixture_site"]], ":user")
       }))
       shiny::observeEvent(input[[paste0("search_", selected)]], perform(function() {
-        response <- connection(selected)$request("fhir", "Patient", required_scopes = "patient/Patient.s")
-        stopifnot(identical(httr2::resp_body_json(response)$resourceType, "Bundle"))
+        response <- connection(selected)[["request"]]("fhir", "Patient", required_scopes = "patient/Patient.s")
+        stopifnot(identical(httr2::resp_body_json(response)[["resourceType"]], "Bundle"))
         paste0(selected, ":search")
       }))
     })
     limited <- c("patient/Patient.r", "user/Practitioner.r", "offline_access", "openid", "fhirUser")
-    shiny::observeEvent(input$narrow_a, perform(function() connection("a")$refresh(scopes = limited)))
-    shiny::observeEvent(input$widen_a, perform(function() connection("a")$refresh(scopes = c(limited, "patient/Patient.s"))))
-    shiny::observeEvent(input$disconnect_b, health$disconnect(connection("b")$summary()$connection_id, revoke = FALSE))
-    shiny::observeEvent(input$disconnect_a, health$disconnect(connection("a")$summary()$connection_id, revoke = FALSE))
-    shiny::observeEvent(input$logout, health$logout(revoke = FALSE))
-    shiny::observeEvent(input$check_context, perform(function() {
+    shiny::observeEvent(input[["narrow_a"]], perform(function() connection("a")[["refresh"]](scopes = limited)))
+    shiny::observeEvent(input[["widen_a"]], perform(function() connection("a")[["refresh"]](scopes = c(limited, "patient/Patient.s"))))
+    shiny::observeEvent(input[["disconnect_b"]], health[["disconnect"]](connection("b")[["summary"]]()[["connection_id"]], revoke = FALSE))
+    shiny::observeEvent(input[["disconnect_a"]], health[["disconnect"]](connection("a")[["summary"]]()[["connection_id"]], revoke = FALSE))
+    shiny::observeEvent(input[["logout"]], health[["logout"]](revoke = FALSE))
+    shiny::observeEvent(input[["check_context"]], perform(function() {
       ctx <- shinyOAuth::smart_context(connection("a"))
-      stopifnot(!is.null(expected_context), identical(ctx$patient, expected_context$patient),
-        identical(ctx$encounter, expected_context$encounter), identical(ctx$revision, expected_context$revision),
-        isTRUE(ctx$need_patient_banner))
+      stopifnot(!is.null(expected_context), identical(ctx[["patient"]], expected_context[["patient"]]),
+        identical(ctx[["encounter"]], expected_context[["encounter"]]), identical(ctx[["revision"]], expected_context[["revision"]]),
+        isTRUE(ctx[["need_patient_banner"]]))
       "context:ok"
     }))
-    output$result <- shiny::renderText(result())
-    output$snapshot <- shiny::renderText(jsonlite::toJSON(list(session = number,
-      connections = health$connections(), errors = health$errors(), result = result(),
+    output[["result"]] <- shiny::renderText(result())
+    output[["snapshot"]] <- shiny::renderText(jsonlite::toJSON(list(session = number,
+      connections = health[["connections"]](), errors = health[["errors"]](), result = result(),
       result_revision = revision()), auto_unbox = TRUE, null = "null"))
   }
   routes <- if (launch == "ehr") list(shinyOAuth::smart_launch_route("/launch", c("a", "b"))) else list()
   ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager, launch_routes = routes,
     request_uri_resolver = function(req) {
       url <- httr2::url_parse(origin)
-      stopifnot(identical(req$HTTP_HOST, paste0(url$hostname, ":", url$port)))
-      paste0(origin, req$PATH_INFO,
-        if (nzchar(req$QUERY_STRING)) paste0("?", req$QUERY_STRING))
+      stopifnot(identical(req[["HTTP_HOST"]], paste0(url[["hostname"]], ":", url[["port"]])))
+      paste0(origin, req[["PATH_INFO"]],
+        if (nzchar(req[["QUERY_STRING"]])) paste0("?", req[["QUERY_STRING"]]))
     })
   shiny::runApp(shiny::shinyApp(ui, server, uiPattern = ".*"), host = "127.0.0.1",
-    port = if (is.null(listen_port)) as.integer(httr2::url_parse(origin)$port) else listen_port,
+    port = if (is.null(listen_port)) as.integer(httr2::url_parse(origin)[["port"]]) else listen_port,
     launch.browser = FALSE, quiet = TRUE)
 }

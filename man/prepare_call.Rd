@@ -56,7 +56,7 @@ handling itself but needs shinyOAuth to construct the OAuth 2.0 authorization
 request. Pair it with \code{\link[=handle_callback]{handle_callback()}} to complete the code flow.
 }
 \details{
-In a Shiny app using \code{\link[=oauth_module_server]{oauth_module_server()}}, call \code{auth$request_login()}
+In a Shiny app using \code{\link[=oauth_module_server]{oauth_module_server()}}, call \code{auth[["request_login"]]()}
 to start login through the module, which manages both operations and the
 reactive session state.
 

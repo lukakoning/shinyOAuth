@@ -1,7 +1,7 @@
 online_negotiation_client <- function(policy = "online_only", required = "online_access",
   scopes = c("user/Patient.r", "online_access")) {
   discovery <- smart_client_fixture()
-  discovery$metadata$capabilities <- c(discovery$metadata$capabilities,
+  discovery[["metadata"]][["capabilities"]] <- c(discovery[["metadata"]][["capabilities"]],
     list("permission-online", "permission-offline"))
   smart_client(discovery, "example", "https://app.example/callback",
     scopes = scopes, launch = "ehr",
@@ -19,13 +19,13 @@ test_that("online negotiation requires an explicit persistence choice", {
   }
   client <- online_negotiation_client("allow_offline")
   token <- verify_token_set(client, grant("user/Patient.r offline_access"), NULL)
-  expect_setequal(token$granted_scopes, c("user/Patient.r", "offline_access"))
-  expect_true(token$granted_scopes_verified)
+  expect_setequal(token[["granted_scopes"]], c("user/Patient.r", "offline_access"))
+  expect_true(token[["granted_scopes_verified"]])
   expect_identical(client_scope_coverage(client, client@scopes,
-    c(token$granted_scopes, "launch"))$status, "covered")
+    c(token[["granted_scopes"]], "launch"))[["status"]], "covered")
   expect_error(verify_token_set(client, grant("user/Observation.r offline_access"), NULL),
     "required permissions")
-  expect_identical(smart_scope_coverage("online_access", "offline_access")$status,
+  expect_identical(smart_scope_coverage("online_access", "offline_access")[["status"]],
     "insufficient")
   expect_error({ client@smart[["online_access_policy"]] <- "automatic" }, "online_access_policy")
 })
@@ -84,7 +84,7 @@ test_that("negotiated refresh permissions retain directional scope continuity", 
   client <- online_negotiation_client("allow_offline")
   response_scope <- "user/Patient.r offline_access"
   local_mocked_bindings(req_with_retry = function(req, ...) {
-    httr2::response(url = req$url, status = 200,
+    httr2::response(url = req[["url"]], status = 200,
       headers = list("content-type" = "application/json"),
       body = charToRaw(jsonlite::toJSON(list(access_token = "new-access",
         refresh_token = "rotated", token_type = "Bearer", expires_in = 300,

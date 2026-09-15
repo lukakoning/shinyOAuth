@@ -6,11 +6,11 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 callback_iss <- function(login_result) {
-  parse_query_param(login_result$callback_url, "iss", decode = TRUE)
+  parse_query_param(login_result[["callback_url"]], "iss", decode = TRUE)
 }
 
 testthat::test_that("Browser token mismatch: tampered cookie value rejected", {
@@ -27,11 +27,11 @@ testthat::test_that("Browser token mismatch: tampered cookie value rejected", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
 
       # Read the state store entry to see the stored browser_token
       ss <- get_state_store_entry(client, url)
-      stored_bt <- ss$entry$browser_token
+      stored_bt <- ss[["entry"]][["browser_token"]]
 
       # Generate a DIFFERENT valid-format browser token (128 hex chars)
       attacker_bt <- paste0(
@@ -50,8 +50,8 @@ testthat::test_that("Browser token mismatch: tampered cookie value rejected", {
       testthat::expect_error(
         shinyOAuth:::handle_callback(
           oauth_client = client,
-          code = res$code,
-          payload = res$state_payload,
+          code = res[["code"]],
+          payload = res[["state_payload"]],
           browser_token = attacker_bt,
           iss = callback_iss(res)
         ),
@@ -72,7 +72,7 @@ testthat::test_that("Browser token: NULL browser_token rejected", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       res <- perform_login_form(url)
 
       # Calling handle_callback with NULL browser_token should fail
@@ -80,8 +80,8 @@ testthat::test_that("Browser token: NULL browser_token rejected", {
       testthat::expect_error(
         shinyOAuth:::handle_callback(
           oauth_client = client,
-          code = res$code,
-          payload = res$state_payload,
+          code = res[["code"]],
+          payload = res[["state_payload"]],
           browser_token = NULL,
           iss = callback_iss(res)
         ),
@@ -102,7 +102,7 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       res <- perform_login_form(url)
 
       # Too short (64 chars instead of 128)
@@ -113,8 +113,8 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
       testthat::expect_error(
         shinyOAuth:::handle_callback(
           oauth_client = client,
-          code = res$code,
-          payload = res$state_payload,
+          code = res[["code"]],
+          payload = res[["state_payload"]],
           browser_token = short_token,
           iss = callback_iss(res)
         ),
@@ -129,8 +129,8 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
       testthat::expect_error(
         shinyOAuth:::handle_callback(
           oauth_client = client,
-          code = res$code,
-          payload = res$state_payload,
+          code = res[["code"]],
+          payload = res[["state_payload"]],
           browser_token = bad_chars_token,
           iss = callback_iss(res)
         ),
@@ -154,7 +154,7 @@ testthat::test_that("Browser token: skip_browser_token=TRUE allows __SKIPPED__ s
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       res <- perform_login_form(url)
 
       # With skip enabled, handle_callback should succeed with __SKIPPED__
@@ -163,8 +163,8 @@ testthat::test_that("Browser token: skip_browser_token=TRUE allows __SKIPPED__ s
       # be passed explicitly, which the module does automatically.
       result <- shinyOAuth:::handle_callback(
         oauth_client = client,
-        code = res$code,
-        payload = res$state_payload,
+        code = res[["code"]],
+        payload = res[["state_payload"]],
         browser_token = "__SKIPPED__",
         iss = callback_iss(res)
       )

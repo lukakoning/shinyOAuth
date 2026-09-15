@@ -8,7 +8,7 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("Expired state: state exceeding max_age is rejected", {
@@ -32,7 +32,7 @@ testthat::test_that("Expired state: state exceeding max_age is rejected", {
     args = default_module_args(client),
     expr = {
       # Build auth URL (state is created with issued_at = now)
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
 
       # Complete login form immediately (this is fast, well under 2s)
       res <- perform_login_form(url)
@@ -41,13 +41,13 @@ testthat::test_that("Expired state: state exceeding max_age is rejected", {
       Sys.sleep(3)
 
       # Now try to process the callback — the state payload is stale
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       # Must fail due to state freshness check
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
+      combo <- paste(values[["error"]], values[["error_description"]])
       testthat::expect_true(grepl(
         "state|State|expired|stale|fresh|age|issued|time",
         combo,
@@ -69,15 +69,15 @@ testthat::test_that("Fresh state: state within max_age is accepted", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       res <- perform_login_form(url)
 
       # No delay — process immediately
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
     }
   )
 })
@@ -100,18 +100,18 @@ testthat::test_that("Delayed callback: longer-lived state with deliberate pause"
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       res <- perform_login_form(url)
 
       # Wait 3 seconds (within 5s window)
       Sys.sleep(3)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       # Should still succeed — 3s < 5s max_age
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
     }
   )
 })

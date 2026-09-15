@@ -1,7 +1,7 @@
 ## Integration tests: Keycloak JWT-secured authorization requests (JAR)
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 query_param_names <- function(url) {
@@ -27,7 +27,7 @@ testthat::test_that("Keycloak request-object happy path (private_key_jwt)", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_setequal(
         query_param_names(auth_url),
@@ -43,8 +43,8 @@ testthat::test_that("Keycloak request-object happy path (private_key_jwt)", {
       header <- shinyOAuth:::parse_jwt_header(request_jwt)
       payload <- decode_compact_jwt_payload(request_jwt)
 
-      testthat::expect_identical(header$typ, "oauth-authz-req+jwt")
-      testthat::expect_identical(header$alg, "RS256")
+      testthat::expect_identical(header[["typ"]], "oauth-authz-req+jwt")
+      testthat::expect_identical(header[["alg"]], "RS256")
       testthat::expect_identical(payload[["iss"]], "shiny-jar-pjwt")
       testthat::expect_identical(payload[["aud"]], get_issuer())
       testthat::expect_identical(payload[["client_id"]], "shiny-jar-pjwt")
@@ -62,15 +62,15 @@ testthat::test_that("Keycloak request-object happy path (private_key_jwt)", {
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -93,7 +93,7 @@ testthat::test_that("Keycloak request-object carries form_post response_mode in 
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_false(grepl("[?&]response_mode=", auth_url))
 
@@ -124,7 +124,7 @@ testthat::test_that("Keycloak request-object happy path (HS256)", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_setequal(
         query_param_names(auth_url),
@@ -143,8 +143,8 @@ testthat::test_that("Keycloak request-object happy path (HS256)", {
       header <- shinyOAuth:::parse_jwt_header(request_jwt)
       payload <- decode_compact_jwt_payload(request_jwt)
 
-      testthat::expect_identical(header$typ, "oauth-authz-req+jwt")
-      testthat::expect_identical(header$alg, "HS256")
+      testthat::expect_identical(header[["typ"]], "oauth-authz-req+jwt")
+      testthat::expect_identical(header[["alg"]], "HS256")
       testthat::expect_identical(payload[["iss"]], client@client_id)
       testthat::expect_identical(payload[["aud"]], get_issuer())
       testthat::expect_identical(payload[["client_id"]], client@client_id)
@@ -163,15 +163,15 @@ testthat::test_that("Keycloak request-object happy path (HS256)", {
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -195,7 +195,7 @@ testthat::test_that("Keycloak encrypted request-object happy path (private_key_j
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_setequal(
         query_param_names(auth_url),
@@ -224,15 +224,15 @@ testthat::test_that("Keycloak encrypted request-object happy path (private_key_j
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -256,7 +256,7 @@ testthat::test_that("Keycloak encrypted request-object happy path (HS256)", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_setequal(
         query_param_names(auth_url),
@@ -287,15 +287,15 @@ testthat::test_that("Keycloak encrypted request-object happy path (HS256)", {
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -315,7 +315,7 @@ testthat::test_that("Keycloak request-object happy path through PAR (private_key
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_setequal(
         query_param_names(auth_url),
@@ -330,15 +330,15 @@ testthat::test_that("Keycloak request-object happy path through PAR (private_key
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -363,7 +363,7 @@ testthat::test_that("Keycloak encrypted request-object happy path through PAR (p
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_setequal(
         query_param_names(auth_url),
@@ -375,15 +375,15 @@ testthat::test_that("Keycloak encrypted request-object happy path through PAR (p
 
       res <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )

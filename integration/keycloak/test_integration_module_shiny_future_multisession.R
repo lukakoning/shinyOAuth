@@ -1,5 +1,5 @@
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("future multisession resolves OAuth success and failure from a worker", {
@@ -27,7 +27,7 @@ testthat::test_that("future multisession resolves OAuth success and failure from
       cat(
         jsonlite::toJSON(
           list(
-            type = event$type,
+            type = event[["type"]],
             hook_pid = Sys.getpid(),
             session = session_context,
             package_version = as.character(
@@ -52,28 +52,28 @@ testthat::test_that("future multisession resolves OAuth success and failure from
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(success_client, async = TRUE),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       login <- perform_login_form(
         url,
         redirect_uri = success_client@redirect_uri
       )
 
-      values$.process_query(callback_query(login))
+      values[[".process_query"]](callback_query(login))
       deadline <- Sys.time() + 20
       while (
-        (!isTRUE(values$authenticated) || is.null(values$token)) &&
-          is.null(values$error) &&
+        (!isTRUE(values[["authenticated"]]) || is.null(values[["token"]])) &&
+          is.null(values[["error"]]) &&
           Sys.time() < deadline
       ) {
         later::run_now(0.05)
-        session$flushReact()
+        session[["flushReact"]]()
         Sys.sleep(0.02)
       }
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(isTRUE(values$last_login_async_used))
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
+      testthat::expect_false(is.null(values[["token"]]))
+      testthat::expect_true(isTRUE(values[["last_login_async_used"]]))
     }
   )
 
@@ -86,7 +86,7 @@ testthat::test_that("future multisession resolves OAuth success and failure from
   testthat::expect_gt(length(worker_events), 0L)
   worker_pids <- vapply(
     worker_events,
-    function(event) as.integer(event$hook_pid),
+    function(event) as.integer(event[["hook_pid"]]),
     integer(1)
   )
   testthat::expect_true(all(worker_pids != as.integer(main_pid)))
@@ -94,7 +94,7 @@ testthat::test_that("future multisession resolves OAuth success and failure from
     worker_events,
     function(event) {
       identical(
-        event$package_version,
+        event[["package_version"]],
         as.character(utils::packageVersion("shinyOAuth"))
       )
     },
@@ -106,26 +106,26 @@ testthat::test_that("future multisession resolves OAuth success and failure from
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(failure_client, async = TRUE),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       state <- parse_query_param(url, "state")
 
-      values$.process_query(paste0(
+      values[[".process_query"]](paste0(
         "?code=not-a-valid-code&state=",
         state,
         "&iss=",
         utils::URLencode(get_issuer(), reserved = TRUE)
       ))
       deadline <- Sys.time() + 20
-      while (is.null(values$error) && Sys.time() < deadline) {
+      while (is.null(values[["error"]]) && Sys.time() < deadline) {
         later::run_now(0.05)
-        session$flushReact()
+        session[["flushReact"]]()
         Sys.sleep(0.02)
       }
 
-      testthat::expect_identical(values$error, "token_exchange_error")
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_null(values$token)
-      testthat::expect_true(isTRUE(values$last_login_async_used))
+      testthat::expect_identical(values[["error"]], "token_exchange_error")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["token"]])
+      testthat::expect_true(isTRUE(values[["last_login_async_used"]]))
     }
   )
 })

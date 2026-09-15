@@ -39,10 +39,10 @@ test_that("handle_callback always consumes state store even when attacker suppli
   shinyOAuth:::payload_verify_issued_at(cli, pre_payload)
   shinyOAuth:::payload_verify_client_binding(cli, pre_payload)
   key <- shinyOAuth:::state_cache_key(pre_payload[["state"]])
-  pre_state <- cli@state_store$get(key, missing = NULL)
+  pre_state <- cli@state_store[["get"]](key, missing = NULL)
 
   # Now REMOVE the state from the store to simulate single-use consumption
-  cli@state_store$remove(key)
+  cli@state_store[["remove"]](key)
 
   # Attempting to pass bypass args should fail because handle_callback()
   # ignores them and tries to decrypt/consume itself — state is already gone
@@ -114,7 +114,7 @@ test_that("replayed callback does not emit callback validation success", {
   })
   on.exit(options(old), add = TRUE)
 
-  cli@state_store$remove(key)
+  cli@state_store[["remove"]](key)
 
   expect_error(
     shinyOAuth::handle_callback(

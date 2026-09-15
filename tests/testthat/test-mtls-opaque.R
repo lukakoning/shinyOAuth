@@ -61,7 +61,7 @@ test_that("mTLS opaque-token policy preserves certificate presentation without d
     token_type = "Bearer"
   )
   req <- resource_req(token, "https://example.com/api", oauth_client = client)
-  expect_identical(req$options$sslcert, client@mtls_client_cert_file)
+  expect_identical(req[["options"]][["sslcert"]], client@mtls_client_cert_file)
   expect_identical(token_cnf_from_access_token(token@access_token), list())
   token@cnf <- list(`x5t#S256` = "LmpH6Yik2-D3dSsZpdndcwKkN1PcMYHtR5S6wXbUvDQ")
   expect_error(
@@ -96,7 +96,7 @@ for (style in c("body", "public", "private_key_jwt")) {
         )
         respond <- function(req, ...) {
           captured[[length(captured) + 1L]] <<- req
-          endpoint <- sub(".*/", "", req$url)
+          endpoint <- sub(".*/", "", req[["url"]])
           payload <- switch(
             endpoint,
             token = list(
@@ -112,7 +112,7 @@ for (style in c("body", "public", "private_key_jwt")) {
             stop("Unexpected endpoint")
           )
           httr2::response(
-            url = req$url,
+            url = req[["url"]],
             status = if (endpoint == "par") 201L else 200L,
             headers = list("content-type" = "application/json"),
             body = charToRaw(jsonlite::toJSON(payload, auto_unbox = TRUE))
@@ -133,12 +133,12 @@ for (style in c("body", "public", "private_key_jwt")) {
         )
         expect_identical(token@access_token, "opaque-access")
         expect_length(token@cnf, 0L)
-        expect_identical(get_userinfo(client, token)$sub, "local-user")
+        expect_identical(get_userinfo(client, token)[["sub"]], "local-user")
         refreshed <- refresh_token(client, token)
         expect_identical(refreshed@access_token, "opaque-access")
         expect_length(refreshed@cnf, 0L)
-        expect_true(introspect_token(client, refreshed)$active)
-        expect_true(revoke_token(client, refreshed)$revoked)
+        expect_true(introspect_token(client, refreshed)[["active"]])
+        expect_true(revoke_token(client, refreshed)[["revoked"]])
         client@provider@par_url <- "https://example.com/par"
         push_authorization_request(client, list(client_id = client@client_id))
 
@@ -149,32 +149,32 @@ for (style in c("body", "public", "private_key_jwt")) {
         }
         expect_true(all(vapply(
           captured,
-          function(req) startsWith(req$url, prefix),
+          function(req) startsWith(req[["url"]], prefix),
           logical(1)
         )))
         expect_setequal(
-          vapply(captured, function(req) sub(".*/", "", req$url), ""),
+          vapply(captured, function(req) sub(".*/", "", req[["url"]]), ""),
           c("token", "userinfo", "introspect", "revoke", "par")
         )
         for (req in captured) {
-          expect_identical(req$options$sslcert, client@mtls_client_cert_file)
-          expect_identical(req$options$sslkey, client@mtls_client_key_file)
-          if (endsWith(req$url, "/userinfo")) {
+          expect_identical(req[["options"]][["sslcert"]], client@mtls_client_cert_file)
+          expect_identical(req[["options"]][["sslkey"]], client@mtls_client_key_file)
+          if (endsWith(req[["url"]], "/userinfo")) {
             next
           }
-          fields <- attr(req, "test_form")
-          expect_identical(fields$client_id, client@client_id)
+          fields <- attr(req, "test_form", exact = TRUE)
+          expect_identical(fields[["client_id"]], client@client_id)
           if (style == "body") {
-            expect_identical(fields$client_secret, client@client_secret)
+            expect_identical(fields[["client_secret"]], client@client_secret)
           } else {
             expect_false("client_secret" %in% names(fields))
             if (style == "private_key_jwt") {
               expect_identical(
-                fields$client_assertion_type,
+                fields[["client_assertion_type"]],
                 "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
               )
               expect_identical(
-                parse_jwt_header(fields$client_assertion)$alg,
+                parse_jwt_header(fields[["client_assertion"]])[["alg"]],
                 "RS256"
               )
             }
@@ -187,13 +187,13 @@ for (style in c("body", "public", "private_key_jwt")) {
             "https://resource.example.com/api",
             oauth_client = client
           )
-          expect_identical(req$options$sslcert, client@mtls_client_cert_file)
-          expect_identical(req$options$sslkey, client@mtls_client_key_file)
+          expect_identical(req[["options"]][["sslcert"]], client@mtls_client_cert_file)
+          expect_identical(req[["options"]][["sslkey"]], client@mtls_client_key_file)
         }
         metadata <- oauth_client_mtls_registration(client)
-        expect_true(metadata$tls_client_certificate_bound_access_tokens)
+        expect_true(metadata[["tls_client_certificate_bound_access_tokens"]])
         expect_identical(
-          metadata$token_endpoint_auth_method,
+          metadata[["token_endpoint_auth_method"]],
           switch(style, body = "client_secret_post", public = "none", style)
         )
       }
@@ -212,12 +212,12 @@ test_that("opaque mode permits absent confirmation but still rejects observed in
   for (is_refresh in c(FALSE, TRUE)) {
     for (surface in c("response", "jwt", "conflict")) {
       invalid <- token_set
-      invalid$cnf <- list(
+      invalid[["cnf"]] <- list(
         `x5t#S256` = "Jh1awHGgMhtt6QD4R1LEuvmKJQeSaFR6xPaGVuD5C88"
       )
       if (surface %in% c("jwt", "conflict")) {
-        invalid$access_token <- build_dummy_jwt(list(cnf = invalid$cnf))
-        invalid$cnf <- if (surface == "jwt") {
+        invalid[["access_token"]] <- build_dummy_jwt(list(cnf = invalid[["cnf"]]))
+        invalid[["cnf"]] <- if (surface == "jwt") {
           NULL
         } else {
           list(`x5t#S256` = "1POTlBzjS6mGixH0v-seKQHwIp2AqnEC0DB9GstICSI")
@@ -270,7 +270,7 @@ test_that("opaque login and refresh validate any confirmation returned by intros
   local_mocked_bindings(
     req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200L,
         headers = list("content-type" = "application/json"),
         body = charToRaw(
@@ -279,15 +279,15 @@ test_that("opaque login and refresh validate any confirmation returned by intros
       )
     },
     req_with_retry = function(req, ...) {
-      expect_identical(req$url, "https://example.com/mtls/introspect")
-      expect_identical(req$options$sslcert, client@mtls_client_cert_file)
+      expect_identical(req[["url"]], "https://example.com/mtls/introspect")
+      expect_identical(req[["options"]][["sslcert"]], client@mtls_client_cert_file)
       introspections <<- introspections + 1L
       payload <- list(active = TRUE)
       if (!is.null(confirmation)) {
-        payload$cnf <- list(`x5t#S256` = confirmation)
+        payload[["cnf"]] <- list(`x5t#S256` = confirmation)
       }
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200L,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(payload, auto_unbox = TRUE))
@@ -373,7 +373,7 @@ test_that("mTLS observation policy is validated, defaults to strict, and binds p
       "opaque",
       "https://resource.example.com/api",
       oauth_client = client
-    )$options$sslcert
+    )[["options"]][["sslcert"]]
   )
   client@mtls_certificate_bound_access_tokens <- TRUE
   client@mtls_require_observed_cnf <- TRUE

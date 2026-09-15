@@ -1,7 +1,7 @@
 ## Integration tests: live Keycloak RFC 8707 resource-indicator behavior
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 make_resource_indicator_client <- function(prov, resource) {
@@ -35,7 +35,7 @@ resource_indicator_login_via_module <- function(client) {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- try(
         perform_login_form(auth_url, redirect_uri = client@redirect_uri),
         silent = TRUE
@@ -44,24 +44,24 @@ resource_indicator_login_via_module <- function(client) {
       if (inherits(login, "try-error")) {
         result <<- list(
           auth_url = auth_url,
-          login_error = conditionMessage(attr(login, "condition")),
+          login_error = conditionMessage(attr(login, "condition", exact = TRUE)),
           authenticated = FALSE,
-          error = values$error,
-          error_description = values$error_description,
-          token = values$token
+          error = values[["error"]],
+          error_description = values[["error_description"]],
+          token = values[["token"]]
         )
       } else {
-        values$.process_query(callback_query(login))
-        session$flushReact()
+        values[[".process_query"]](callback_query(login))
+        session[["flushReact"]]()
 
         result <<- list(
           auth_url = auth_url,
           login = login,
-          callback_url = login$callback_url,
-          authenticated = isTRUE(values$authenticated),
-          error = values$error,
-          error_description = values$error_description,
-          token = values$token
+          callback_url = login[["callback_url"]],
+          authenticated = isTRUE(values[["authenticated"]]),
+          error = values[["error"]],
+          error_description = values[["error_description"]],
+          token = values[["token"]]
         )
       }
     }
@@ -105,9 +105,9 @@ start_resource_audience_server <- function(
   force(jwks)
   verify_access_token <- verify_signed_access_token
   send_problem <- function(res, status, error_code) {
-    res$set_status(status)
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
+    res[["set_status"]](status)
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
       list(ok = FALSE, error = error_code),
       auto_unbox = TRUE,
       null = "null"
@@ -115,8 +115,8 @@ start_resource_audience_server <- function(
   }
 
   app <- webfakes::new_app()
-  app$get("/", function(req, res) {
-    auth <- req$get_header("authorization") %||% ""
+  app[["get"]]("/", function(req, res) {
+    auth <- req[["get_header"]]("authorization") %||% ""
     if (!grepl("^Bearer\\s+", auth, ignore.case = TRUE)) {
       send_problem(res, 401L, "missing_bearer_authorization")
       return()
@@ -137,8 +137,8 @@ start_resource_audience_server <- function(
       return()
     }
 
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
       list(
         ok = TRUE,
         audience = expected_audience,
@@ -150,7 +150,7 @@ start_resource_audience_server <- function(
   })
 
   srv <- webfakes::local_app_process(app, .local_envir = .local_envir)
-  url <- paste0(sub("/+$", "", srv$url()), "/")
+  url <- paste0(sub("/+$", "", srv[["url"]]()), "/")
   deadline <- Sys.time() + 5
 
   repeat {
@@ -209,12 +209,12 @@ testthat::test_that("Keycloak code flow accepts RFC 8707 resource indicators", {
     result[["token"]],
     which = "access"
   )
-  testthat::expect_true(isTRUE(intros$supported))
-  testthat::expect_true(isTRUE(intros$active))
+  testthat::expect_true(isTRUE(intros[["supported"]]))
+  testthat::expect_true(isTRUE(intros[["active"]]))
 
   testthat::expect_length(access_token_audience(result[["token"]]), 0L)
   testthat::expect_length(
-    normalize_resource_audience(intros$raw[["aud"]] %||% NULL),
+    normalize_resource_audience(intros[["raw"]][["aud"]] %||% NULL),
     0L
   )
 })
@@ -230,7 +230,7 @@ testthat::test_that("audience-mapped Keycloak token is usable at an authenticate
   control_client <- make_resource_indicator_client(prov, resource = resource)
   control <- resource_indicator_login_via_module(control_client)
   testthat::expect_true(
-    isTRUE(control$authenticated),
+    isTRUE(control[["authenticated"]]),
     info = resource_failure_text(control)
   )
 
@@ -249,32 +249,32 @@ testthat::test_that("audience-mapped Keycloak token is usable at an authenticate
     which = "access"
   )
   aud <- access_token_audience(result[["token"]])
-  intros_aud <- normalize_resource_audience(intros$raw[["aud"]] %||% NULL)
+  intros_aud <- normalize_resource_audience(intros[["raw"]][["aud"]] %||% NULL)
 
   testthat::expect_true(resource %in% aud)
   testthat::expect_true(resource %in% intros_aud)
 
   jwks <- shinyOAuth:::fetch_jwks(prov@issuer, prov@jwks_cache, provider = prov)
   protected <- start_resource_audience_server(resource, prov@issuer, jwks)
-  on.exit(try(protected$server$stop(), silent = TRUE), add = TRUE)
+  on.exit(try(protected[["server"]][["stop"]](), silent = TRUE), add = TRUE)
 
   ok_resp <- perform_resource_audience_request(
-    protected$url,
+    protected[["url"]],
     result[["token"]]@access_token
   )
   ok_body <- httr2::resp_body_json(ok_resp, simplifyVector = TRUE)
   testthat::expect_identical(httr2::resp_status(ok_resp), 200L)
-  testthat::expect_true(isTRUE(ok_body$ok))
-  testthat::expect_identical(ok_body$audience, resource)
-  testthat::expect_identical(ok_body$sub, result[["token"]]@userinfo[["sub"]])
+  testthat::expect_true(isTRUE(ok_body[["ok"]]))
+  testthat::expect_identical(ok_body[["audience"]], resource)
+  testthat::expect_identical(ok_body[["sub"]], result[["token"]]@userinfo[["sub"]])
 
   bad_resp <- perform_resource_audience_request(
-    protected$url,
-    control$token@access_token
+    protected[["url"]],
+    control[["token"]]@access_token
   )
   bad_body <- httr2::resp_body_json(bad_resp, simplifyVector = TRUE)
   testthat::expect_identical(httr2::resp_status(bad_resp), 401L)
-  testthat::expect_identical(bad_body$error, "missing_or_wrong_audience")
+  testthat::expect_identical(bad_body[["error"]], "missing_or_wrong_audience")
 })
 
 testthat::test_that("audience resource rejects corrupted expired and wrong-issuer tokens", {
@@ -283,9 +283,9 @@ testthat::test_that("audience resource rejects corrupted expired and wrong-issue
   # jose can retain the ASN.1 sign byte when exporting an RSA modulus.
   # The synthetic issuer must publish the same minimal integers as Keycloak.
   jwk <- shinyOAuth:::canonicalize_local_public_jwk(
-    jsonlite::fromJSON(jose::write_jwk(key$pubkey))
+    jsonlite::fromJSON(jose::write_jwk(key[["pubkey"]]))
   )
-  jwk$kid <- "resource-negative-control"
+  jwk[["kid"]] <- "resource-negative-control"
   issuer <- "https://synthetic-issuer.example"
   audience <- "https://synthetic-resource.example"
   protected <- start_resource_audience_server(
@@ -297,17 +297,17 @@ testthat::test_that("audience resource rejects corrupted expired and wrong-issue
     jose::jwt_encode_sig(
       jose::jwt_claim(iss = iss, aud = audience, sub = "user", exp = exp),
       key,
-      header = list(alg = "RS256", kid = jwk$kid)
+      header = list(alg = "RS256", kid = jwk[["kid"]])
     )
   }
   valid <- sign()
   testthat::expect_identical(
-    verify_signed_access_token(valid, issuer, list(keys = list(jwk)))$sub,
+    verify_signed_access_token(valid, issuer, list(keys = list(jwk)))[["sub"]],
     "user"
   )
   testthat::expect_identical(
     httr2::resp_status(
-      perform_resource_audience_request(protected$url, valid)
+      perform_resource_audience_request(protected[["url"]], valid)
     ),
     200L
   )
@@ -320,10 +320,10 @@ testthat::test_that("audience resource rejects corrupted expired and wrong-issue
     sign(exp = as.numeric(Sys.time()) - 60),
     sign(iss = "https://wrong-issuer.example")
   )) {
-    response <- perform_resource_audience_request(protected$url, invalid)
+    response <- perform_resource_audience_request(protected[["url"]], invalid)
     testthat::expect_identical(httr2::resp_status(response), 401L)
     testthat::expect_identical(
-      httr2::resp_body_json(response)$error,
+      httr2::resp_body_json(response)[["error"]],
       "invalid_access_token"
     )
   }

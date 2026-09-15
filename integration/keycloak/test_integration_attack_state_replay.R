@@ -8,7 +8,7 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("State replay: consumed state rejected on new code", {
@@ -26,29 +26,29 @@ testthat::test_that("State replay: consumed state rejected on new code", {
     args = default_module_args(client),
     expr = {
       # Flow 1: complete successfully, consuming the state
-      url1 <- values$build_auth_url()
+      url1 <- values[["build_auth_url"]]()
       res1 <- perform_login_form(url1)
-      old_state <<- res1$state_payload
+      old_state <<- res1[["state_payload"]]
 
-      values$.process_query(callback_query(res1))
-      session$flushReact()
-      testthat::expect_true(isTRUE(values$authenticated))
+      values[[".process_query"]](callback_query(res1))
+      session[["flushReact"]]()
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
 
       # Flow 2: build a new auth URL → new code
-      values$logout()
-      session$flushReact()
+      values[["logout"]]()
+      session[["flushReact"]]()
       # Restore browser token (logout clears it; no JS to regenerate in testServer)
-      values$browser_token <- "__SKIPPED__"
-      url2 <- values$build_auth_url()
+      values[["browser_token"]] <- "__SKIPPED__"
+      url2 <- values[["build_auth_url"]]()
       res2 <- perform_login_form(url2)
 
       # Attack: inject the OLD consumed state with the NEW code
-      values$.process_query(callback_query(res2, state = old_state))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res2, state = old_state))
+      session[["flushReact"]]()
 
       # Must fail — old state was already consumed from the store
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
     }
   )
 })
@@ -67,7 +67,7 @@ testthat::test_that("State from different session rejected (cross-session CSRF)"
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_a),
     expr = {
-      url_a <- values$build_auth_url()
+      url_a <- values[["build_auth_url"]]()
       login_a <<- perform_login_form(url_a)
     }
   )
@@ -80,13 +80,13 @@ testthat::test_that("State from different session rejected (cross-session CSRF)"
     args = default_module_args(client_b),
     expr = {
       # Attacker tries to use session A's code + state in session B
-      values$.process_query(callback_query(login_a))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login_a))
+      session[["flushReact"]]()
 
       # Must fail — state_a is in client_a's store, not client_b's store
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
+      combo <- paste(values[["error"]], values[["error_description"]])
       testthat::expect_true(grepl(
         "state|State|store|not found",
         combo,
@@ -128,7 +128,7 @@ testthat::test_that("State from different state_key rejected", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_a),
     expr = {
-      url_a <- values$build_auth_url()
+      url_a <- values[["build_auth_url"]]()
       login_a <<- perform_login_form(url_a)
     }
   )
@@ -139,12 +139,12 @@ testthat::test_that("State from different state_key rejected", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_b),
     expr = {
-      values$.process_query(callback_query(login_a))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login_a))
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
+      combo <- paste(values[["error"]], values[["error_description"]])
       testthat::expect_true(grepl(
         "state|State|decrypt|validation",
         combo,

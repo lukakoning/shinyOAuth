@@ -3,14 +3,14 @@ test_that("token exchange HTTP error surfaces as shinyOAuth_http_error", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
-  app$post("/token", function(req, res) {
-    res$status <- 400
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(list(error = "invalid_grant"), auto_unbox = TRUE))
+  app[["post"]]("/token", function(req, res) {
+    res[["status"]] <- 400
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(list(error = "invalid_grant"), auto_unbox = TRUE))
   })
 
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   prov <- oauth_provider(
     name = "fake",
@@ -64,8 +64,8 @@ test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required",
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
-  app$post("/token", function(req, res) {
-    res$send_json(
+  app[["post"]]("/token", function(req, res) {
+    res[["send_json"]](
       object = list(
         access_token = "t",
         token_type = "Bearer",
@@ -74,13 +74,13 @@ test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required",
       auto_unbox = TRUE
     )
   })
-  app$get("/userinfo", function(req, res) {
-    res$set_status(500)
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(list(error = "boom"), auto_unbox = TRUE))
+  app[["get"]]("/userinfo", function(req, res) {
+    res[["set_status"]](500)
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(list(error = "boom"), auto_unbox = TRUE))
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   prov <- oauth_provider(
     name = "fake",
@@ -134,17 +134,17 @@ test_that("userinfo success populates token userinfo when required", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
-  app$post("/token", function(req, res) {
-    res$send_json(
+  app[["post"]]("/token", function(req, res) {
+    res[["send_json"]](
       object = list(access_token = "t", token_type = "Bearer", expires_in = 60),
       auto_unbox = TRUE
     )
   })
-  app$get("/userinfo", function(req, res) {
-    res$send_json(object = list(sub = "u-1", name = "Test"), auto_unbox = TRUE)
+  app[["get"]]("/userinfo", function(req, res) {
+    res[["send_json"]](object = list(sub = "u-1", name = "Test"), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   prov <- oauth_provider(
     name = "fake",

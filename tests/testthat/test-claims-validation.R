@@ -478,7 +478,7 @@ test_that("exact claim values compare objects independently of member order", {
       expect_no_warning(validate_essential_claims(client, list(custom = equivalent), target))
       client@claims_validation <- "strict"
       different <- equivalent
-      different$entries <- rev(different$entries)
+      different[["entries"]] <- rev(different[["entries"]])
       expect_error(validate_essential_claims(client, list(custom = different), target),
                     "Requested claim values not satisfied")
     }
@@ -511,8 +511,8 @@ test_that("claim mismatch diagnostics redact ID token and UserInfo values", {
   cli <- make_test_client(
     use_nonce = TRUE,
     claims = list(
-      id_token = list(email = list(value = expected$id_token)),
-      userinfo = list(email = list(value = expected$userinfo))
+      id_token = list(email = list(value = expected[["id_token"]])),
+      userinfo = list(email = list(value = expected[["userinfo"]]))
     ),
     claims_validation = "strict"
   )

@@ -46,31 +46,31 @@ for (async in c(FALSE, TRUE)) {
             refresh_proactively = FALSE
           ),
           {
-            state <- parse_query_param(values$build_auth_url(), "state")
-            values$.process_query(paste0("?code=ok&state=", state))
+            state <- parse_query_param(values[["build_auth_url"]](), "state")
+            values[[".process_query"]](paste0("?code=ok&state=", state))
             if (async) {
               expect_true(is.function(finish))
               now <<- now + 2
               finish(result)
               for (i in seq_len(10L)) {
                 later::run_now(0)
-                session$flushReact()
+                session[["flushReact"]]()
               }
             }
-            expect_null(values$token)
-            expect_false(is.null(values$error))
-            expect_false(values$token_stale)
-            expect_null(auth_operations$active_login_id)
+            expect_null(values[["token"]])
+            expect_false(is.null(values[["error"]]))
+            expect_false(values[["token_stale"]])
+            expect_null(auth_operations[["active_login_id"]])
           }
         )
       })
       if (async) {
         spans <- Filter(
-          function(span) identical(span$name, "shinyOAuth.callback"),
-          record$traces
+          function(span) identical(span[["name"]], "shinyOAuth.callback"),
+          record[["traces"]]
         )
         expect_length(spans, 1L)
-        expect_identical(spans[[1]]$status, "error")
+        expect_identical(spans[[1]][["status"]], "error")
       }
     }
   )
@@ -129,28 +129,28 @@ for (async in c(FALSE, TRUE)) {
             indefinite_session = keep
           ),
           {
-            values$token <- previous
-            session$flushReact()
+            values[["token"]] <- previous
+            session[["flushReact"]]()
             if (async) {
-              expect_true(values$refresh_in_progress)
+              expect_true(values[["refresh_in_progress"]])
               now <<- now + 2
               finish(result)
               for (i in seq_len(10L)) {
                 later::run_now(0)
-                session$flushReact()
+                session[["flushReact"]]()
               }
             }
-            expect_identical(values$error, "token_refresh_error")
+            expect_identical(values[["error"]], "token_refresh_error")
             retained <- previous
             retained@refresh_token <- NA_character_
-            expect_identical(values$token, if (keep) retained else NULL)
-            expect_identical(values$token_stale, keep)
-            expect_false(values$refresh_in_progress)
-            expect_identical(values$refresh_failure_count, 1L)
-            expect_identical(values$refresh_success_generation, 0L)
-            expect_true(is.na(values$refresh_last_success_at))
-            expect_gt(values$refresh_next_attempt_at, now)
-            expect_null(auth_operations$active_refresh_id)
+            expect_identical(values[["token"]], if (keep) retained else NULL)
+            expect_identical(values[["token_stale"]], keep)
+            expect_false(values[["refresh_in_progress"]])
+            expect_identical(values[["refresh_failure_count"]], 1L)
+            expect_identical(values[["refresh_success_generation"]], 0L)
+            expect_true(is.na(values[["refresh_last_success_at"]]))
+            expect_gt(values[["refresh_next_attempt_at"]], now)
+            expect_null(auth_operations[["active_refresh_id"]])
           }
         )
       }

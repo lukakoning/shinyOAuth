@@ -32,8 +32,8 @@ testthat::test_that("introspect_token uses JWT client assertion for client_secre
   )
 
   res <- introspect_token(cli, t, which = "access", async = FALSE)
-  testthat::expect_true(isTRUE(res$supported))
-  testthat::expect_true(isTRUE(res$active))
+  testthat::expect_true(isTRUE(res[["supported"]]))
+  testthat::expect_true(isTRUE(res[["active"]]))
   testthat::expect_true(called)
   testthat::expect_identical(got_aud, cli@provider@introspection_url)
 })
@@ -73,8 +73,8 @@ testthat::test_that("introspect_token uses JWT client assertion for private_key_
   )
 
   res <- introspect_token(cli, t, which = "refresh", async = FALSE)
-  testthat::expect_true(isTRUE(res$supported))
-  testthat::expect_true(isTRUE(res$active))
+  testthat::expect_true(isTRUE(res[["supported"]]))
+  testthat::expect_true(isTRUE(res[["active"]]))
   testthat::expect_true(called)
   testthat::expect_identical(got_aud, cli@provider@introspection_url)
 })

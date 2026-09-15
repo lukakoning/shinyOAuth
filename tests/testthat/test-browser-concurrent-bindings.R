@@ -3,7 +3,7 @@
 test_that("real tabs and same-origin applications retain independent pending bindings", {
   skip_if_not(tolower(Sys.getenv("SHINYOAUTH_BROWSER_TESTS")) == "true")
   skip_if(Sys.which("node") == "")
-  server <- processx::process$new(
+  server <- processx::process[["new"]](
     Sys.which("node"),
     c(
       test_path("..", "browser-two-port-server.cjs"),
@@ -14,25 +14,25 @@ test_that("real tabs and same-origin applications retain independent pending bin
     stdout = "|",
     stderr = "|"
   )
-  withr::defer(server$kill())
-  server$poll_io(5000)
-  ports <- jsonlite::fromJSON(server$read_output_lines()[[1]])
+  withr::defer(server[["kill"]]())
+  server[["poll_io"]](5000)
+  ports <- jsonlite::fromJSON(server[["read_output_lines"]]()[[1]])
   origin <- paste0("https://127.0.0.1:", ports[[1]])
   idp <- paste0("https://127.0.0.1:", ports[[2]])
-  first <- chromote::ChromoteSession$new()
-  second <- chromote::ChromoteSession$new()
-  withr::defer(first$close())
-  withr::defer(second$close())
+  first <- chromote::ChromoteSession[["new"]]()
+  second <- chromote::ChromoteSession[["new"]]()
+  withr::defer(first[["close"]]())
+  withr::defer(second[["close"]]())
   for (browser in list(first, second)) {
-    browser$Security$setIgnoreCertificateErrors(ignore = TRUE)
-    browser$go_to(paste0(origin, "/app-a"))
+    browser[["Security"]][["setIgnoreCertificateErrors"]](ignore = TRUE)
+    browser[["go_to"]](paste0(origin, "/app-a"))
   }
   evaluate <- function(browser, script) {
-    browser$Runtime$evaluate(
+    browser[["Runtime"]][["evaluate"]](
       script,
       returnByValue = TRUE,
       awaitPromise = TRUE
-    )$result$value
+    )[["result"]][["value"]]
   }
   # Confirm these tabs really share the same origin's local storage/cookie jar.
   evaluate(first, "localStorage.setItem('shared-fixture', 'yes')")
@@ -57,8 +57,8 @@ test_that("real tabs and same-origin applications retain independent pending bin
       errorInputId = "error"
     )
     if (!is.null(token)) {
-      payload$token <- token
-      if (!clear) payload$requestId <- paste0("request-", substr(token, 1L, 1L))
+      payload[["token"]] <- token
+      if (!clear) payload[["requestId"]] <- paste0("request-", substr(token, 1L, 1L))
     }
     evaluate(
       browser,
@@ -76,14 +76,14 @@ test_that("real tabs and same-origin applications retain independent pending bin
   c <- paste(rep("c", 128), collapse = "")
   expect_identical(send(first, token = a), a)
   expect_identical(send(second, token = b), b)
-  first$go_to(idp)
-  second$go_to(idp)
+  first[["go_to"]](idp)
+  second[["go_to"]](idp)
   # Complete callbacks in reverse order, including the post-login reissue.
-  second$go_to(paste0(origin, "/app-a?code=second"))
+  second[["go_to"]](paste0(origin, "/app-a?code=second"))
   expect_identical(send(second), b)
   send(second, token = b, clear = TRUE)
   send(second)
-  first$go_to(paste0(origin, "/app-a?code=first"))
+  first[["go_to"]](paste0(origin, "/app-a?code=first"))
   expect_identical(send(first), a)
   # Logout in one tab leaves the other tab's pending login intact.
   send(second, token = b)
@@ -91,10 +91,10 @@ test_that("real tabs and same-origin applications retain independent pending bin
   expect_identical(send(second), b)
   # Two applications with the same module ID also coexist in one tab.
   send(first, token = a)
-  first$go_to(paste0(origin, "/app-b"))
+  first[["go_to"]](paste0(origin, "/app-b"))
   expect_identical(send(first, "app-b", c), c)
   send(first, "app-b", c, clear = TRUE)
-  first$go_to(paste0(origin, "/app-a"))
+  first[["go_to"]](paste0(origin, "/app-a"))
   expect_identical(send(first), a)
   # A delayed clear for an older transaction cannot clear its replacement.
   send(first, token = c)

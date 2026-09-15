@@ -1,7 +1,7 @@
 ## Integration tests: Keycloak DPoP token issuance, userinfo, and refresh
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 perform_dpop_login <- function(
@@ -15,20 +15,20 @@ perform_dpop_login <- function(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form_as(
         auth_url,
         username = username,
         password = password
       )
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       result <<- list(
-        authenticated = isTRUE(values$authenticated),
-        error = values$error,
-        error_description = values$error_description,
-        token = values$token
+        authenticated = isTRUE(values[["authenticated"]]),
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        token = values[["token"]]
       )
     }
   )
@@ -64,20 +64,20 @@ perform_auth_code_login <- function(
 
   list(
     auth_url = auth_url,
-    code = login$code,
-    state_payload = login$state_payload,
+    code = login[["code"]],
+    state_payload = login[["state_payload"]],
     state = state,
-    code_verifier = state$entry$pkce_code_verifier,
-    browser_token = state$entry$browser_token
+    code_verifier = state[["entry"]][["pkce_code_verifier"]],
+    browser_token = state[["entry"]][["browser_token"]]
   )
 }
 
 perform_raw_token_exchange <- function(client, code_login, dpop = NULL) {
   params <- list(
     grant_type = "authorization_code",
-    code = code_login$code,
+    code = code_login[["code"]],
     redirect_uri = client@redirect_uri,
-    code_verifier = code_login$code_verifier,
+    code_verifier = code_login[["code_verifier"]],
     client_id = client@client_id
   )
 
@@ -86,7 +86,7 @@ perform_raw_token_exchange <- function(client, code_login, dpop = NULL) {
       length(client@client_secret) == 1L &&
       nzchar(client@client_secret)
   ) {
-    params$client_secret <- client@client_secret
+    params[["client_secret"]] <- client@client_secret
   }
 
   req <- httr2::request(client@provider@token_url) |>
@@ -217,29 +217,29 @@ testthat::test_that("Keycloak DPoP auth-code flow binds tokens and protects user
 
   login <- perform_dpop_login(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_null(login$error)
-  testthat::expect_false(is.null(login$token))
-  testthat::expect_identical(login$token@token_type, "DPoP")
-  testthat::expect_true(nzchar(login$token@access_token))
-  access_jkt <- access_token_cnf_jkt(login$token@access_token)
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_null(login[["error"]])
+  testthat::expect_false(is.null(login[["token"]]))
+  testthat::expect_identical(login[["token"]]@token_type, "DPoP")
+  testthat::expect_true(nzchar(login[["token"]]@access_token))
+  access_jkt <- access_token_cnf_jkt(login[["token"]]@access_token)
   testthat::expect_true(nzchar(access_jkt))
 
-  userinfo <- shinyOAuth::get_userinfo(client, login$token)
+  userinfo <- shinyOAuth::get_userinfo(client, login[["token"]])
 
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo[["sub"]], login$token@userinfo[["sub"]])
+  testthat::expect_identical(userinfo[["sub"]], login[["token"]]@userinfo[["sub"]])
   testthat::expect_true(isTRUE(prov@use_pkce))
 
   missing_proof_resp <- perform_raw_userinfo_request(
     prov,
-    authorization = paste("DPoP", login$token@access_token)
+    authorization = paste("DPoP", login[["token"]]@access_token)
   )
   expect_keycloak_dpop_rejection(missing_proof_resp)
 
   bearer_downgrade_resp <- perform_raw_userinfo_request(
     prov,
-    authorization = paste("Bearer", login$token@access_token)
+    authorization = paste("Bearer", login[["token"]]@access_token)
   )
   expect_keycloak_dpop_rejection(bearer_downgrade_resp)
 
@@ -249,7 +249,7 @@ testthat::test_that("Keycloak DPoP auth-code flow binds tokens and protects user
   )
   testthat::expect_error(
     shinyOAuth::resource_req(
-      login$token,
+      login[["token"]],
       prov@userinfo_url,
       oauth_client = attacker_client
     ),
@@ -272,10 +272,10 @@ testthat::test_that("Keycloak 26.6.1 DPoP plus PAR succeeds end-to-end", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_false(is.na(auth_url))
-      testthat::expect_null(values$error)
+      testthat::expect_null(values[["error"]])
       testthat::expect_match(auth_url, "[?&]request_uri=")
       testthat::expect_match(auth_url, "[?&]client_id=shiny-dpop-public")
       testthat::expect_false(grepl("[?&]state=", auth_url))
@@ -288,27 +288,27 @@ testthat::test_that("Keycloak 26.6.1 DPoP plus PAR succeeds end-to-end", {
         password = "alice",
         redirect_uri = client@redirect_uri
       )
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_identical(values$token@token_type, "DPoP")
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
+      testthat::expect_false(is.null(values[["token"]]))
+      testthat::expect_identical(values[["token"]]@token_type, "DPoP")
 
-      access_jkt <- access_token_cnf_jkt(values$token@access_token)
+      access_jkt <- access_token_cnf_jkt(values[["token"]]@access_token)
       testthat::expect_true(nzchar(access_jkt))
 
-      userinfo <- shinyOAuth::get_userinfo(client, values$token)
+      userinfo <- shinyOAuth::get_userinfo(client, values[["token"]])
       testthat::expect_true(is.list(userinfo))
       testthat::expect_identical(
         userinfo[["sub"]],
-        values$token@userinfo[["sub"]]
+        values[["token"]]@userinfo[["sub"]]
       )
 
       missing_proof_resp <- perform_raw_userinfo_request(
         client@provider,
-        authorization = paste("DPoP", values$token@access_token)
+        authorization = paste("DPoP", values[["token"]]@access_token)
       )
       expect_keycloak_dpop_rejection(missing_proof_resp)
     }
@@ -354,12 +354,12 @@ testthat::test_that("Keycloak DPoP refresh succeeds only with the original bound
   )
   ok_login <- perform_dpop_login(ok_client)
 
-  testthat::expect_true(isTRUE(ok_login$authenticated))
-  testthat::expect_true(nzchar(ok_login$token@refresh_token %||% ""))
-  original_jkt <- access_token_cnf_jkt(ok_login$token@access_token)
+  testthat::expect_true(isTRUE(ok_login[["authenticated"]]))
+  testthat::expect_true(nzchar(ok_login[["token"]]@refresh_token %||% ""))
+  original_jkt <- access_token_cnf_jkt(ok_login[["token"]]@access_token)
   testthat::expect_true(nzchar(original_jkt))
 
-  refreshed <- shinyOAuth::refresh_token(ok_client, ok_login$token)
+  refreshed <- shinyOAuth::refresh_token(ok_client, ok_login[["token"]])
 
   testthat::expect_identical(refreshed@token_type, "DPoP")
   refreshed_jkt <- access_token_cnf_jkt(refreshed@access_token)
@@ -372,8 +372,8 @@ testthat::test_that("Keycloak DPoP refresh succeeds only with the original bound
     client_id = "shiny-dpop-shortlived"
   )
 
-  testthat::expect_true(isTRUE(missing_proof_login$authenticated))
-  expect_refresh_failure(missing_proof_client, missing_proof_login$token)
+  testthat::expect_true(isTRUE(missing_proof_login[["authenticated"]]))
+  expect_refresh_failure(missing_proof_client, missing_proof_login[["token"]])
 
   wrong_key_login <- perform_dpop_login(ok_client)
   wrong_key_client <- make_dpop_shortlived_public_client(
@@ -381,6 +381,6 @@ testthat::test_that("Keycloak DPoP refresh succeeds only with the original bound
     dpop_private_key = make_dpop_private_key()
   )
 
-  testthat::expect_true(isTRUE(wrong_key_login$authenticated))
-  expect_refresh_failure(wrong_key_client, wrong_key_login$token)
+  testthat::expect_true(isTRUE(wrong_key_login[["authenticated"]]))
+  expect_refresh_failure(wrong_key_client, wrong_key_login[["token"]])
 })

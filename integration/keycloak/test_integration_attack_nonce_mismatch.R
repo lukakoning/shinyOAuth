@@ -11,7 +11,7 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token rejection", {
@@ -29,11 +29,11 @@ testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
 
       # Get the state store entry and replace the nonce with a fake one
       ss <- get_state_store_entry(client, url)
-      orig_nonce <- ss$entry$nonce
+      orig_nonce <- ss[["entry"]][["nonce"]]
       testthat::expect_true(
         is.character(orig_nonce) && nzchar(orig_nonce)
       )
@@ -48,10 +48,10 @@ testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token
       # Replace just the nonce, keep everything else intact
       set_state_store_entry(
         client,
-        ss$info$key,
+        ss[["info"]][["key"]],
         list(
-          browser_token = ss$entry$browser_token,
-          pkce_code_verifier = ss$entry$pkce_code_verifier,
+          browser_token = ss[["entry"]][["browser_token"]],
+          pkce_code_verifier = ss[["entry"]][["pkce_code_verifier"]],
           nonce = fake_nonce
         )
       )
@@ -59,22 +59,22 @@ testthat::test_that("Nonce tamper: replaced nonce in state store causes ID token
       # Complete the login — Keycloak will embed the ORIGINAL nonce in the ID token
       res <- perform_login_form(url)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       # Must fail: ID token nonce (original) != stored nonce (fake)
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
+      testthat::expect_identical(values[["error"]], "token_exchange_error")
       testthat::expect_true(any(vapply(
-        audit$events,
+        audit[["events"]],
         function(event) {
-          identical(event$error_class, "shinyOAuth_id_token_error")
+          identical(event[["error_class"]], "shinyOAuth_id_token_error")
         },
         logical(1)
       )))
       testthat::expect_no_match(
-        values$error_description,
+        values[["error_description"]],
         fake_nonce,
         fixed = TRUE
       )
@@ -94,33 +94,33 @@ testthat::test_that("Nonce tamper: removed nonce from state store", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
 
       # Remove the nonce from the state store entry
       ss <- get_state_store_entry(client, url)
       testthat::expect_true(
-        is.character(ss$entry$nonce) && nzchar(ss$entry$nonce)
+        is.character(ss[["entry"]][["nonce"]]) && nzchar(ss[["entry"]][["nonce"]])
       )
 
       set_state_store_entry(
         client,
-        ss$info$key,
+        ss[["info"]][["key"]],
         list(
-          browser_token = ss$entry$browser_token,
-          pkce_code_verifier = ss$entry$pkce_code_verifier,
+          browser_token = ss[["entry"]][["browser_token"]],
+          pkce_code_verifier = ss[["entry"]][["pkce_code_verifier"]],
           nonce = NULL
         )
       )
 
       res <- perform_login_form(url)
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       # Must fail: ID token has a nonce claim but no expected nonce to compare against
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
+      testthat::expect_identical(values[["error"]], "invalid_state")
     }
   )
 })
@@ -141,18 +141,18 @@ testthat::test_that("Nonce replay: nonce from flow 1 injected into flow 2", {
     args = default_module_args(client),
     expr = {
       # Flow 1: capture the nonce
-      url1 <- values$build_auth_url()
+      url1 <- values[["build_auth_url"]]()
       ss1 <- get_state_store_entry(client, url1)
-      captured_nonce <<- ss1$entry$nonce
+      captured_nonce <<- ss1[["entry"]][["nonce"]]
       testthat::expect_true(
         is.character(captured_nonce) && nzchar(captured_nonce)
       )
 
       # Complete flow 1 normally
       res1 <- perform_login_form(url1)
-      values$.process_query(callback_query(res1))
-      session$flushReact()
-      testthat::expect_true(isTRUE(values$authenticated))
+      values[[".process_query"]](callback_query(res1))
+      session[["flushReact"]]()
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
     }
   )
 
@@ -162,41 +162,41 @@ testthat::test_that("Nonce replay: nonce from flow 1 injected into flow 2", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client2),
     expr = {
-      url2 <- values$build_auth_url()
+      url2 <- values[["build_auth_url"]]()
 
       # Replace flow 2's nonce with the captured nonce from flow 1
       ss2 <- get_state_store_entry(client2, url2)
       # Ensure flow 2's nonce is different (they're random)
-      testthat::expect_false(identical(ss2$entry$nonce, captured_nonce))
+      testthat::expect_false(identical(ss2[["entry"]][["nonce"]], captured_nonce))
 
       set_state_store_entry(
         client2,
-        ss2$info$key,
+        ss2[["info"]][["key"]],
         list(
-          browser_token = ss2$entry$browser_token,
-          pkce_code_verifier = ss2$entry$pkce_code_verifier,
+          browser_token = ss2[["entry"]][["browser_token"]],
+          pkce_code_verifier = ss2[["entry"]][["pkce_code_verifier"]],
           nonce = captured_nonce
         )
       )
 
       res2 <- perform_login_form(url2)
 
-      values$.process_query(callback_query(res2))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res2))
+      session[["flushReact"]]()
 
       # Must fail: ID token nonce (flow 2's) != stored nonce (flow 1's)
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
+      testthat::expect_identical(values[["error"]], "token_exchange_error")
       testthat::expect_true(any(vapply(
-        audit$events,
+        audit[["events"]],
         function(event) {
-          identical(event$error_class, "shinyOAuth_id_token_error")
+          identical(event[["error_class"]], "shinyOAuth_id_token_error")
         },
         logical(1)
       )))
       testthat::expect_no_match(
-        values$error_description,
+        values[["error_description"]],
         captured_nonce,
         fixed = TRUE
       )

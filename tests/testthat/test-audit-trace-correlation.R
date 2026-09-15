@@ -75,7 +75,7 @@ testthat::test_that("async pre-dispatch callback failures retain specific phase"
     "state"
   )
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
-  cli@state_store$remove(shinyOAuth:::state_cache_key(
+  cli@state_store[["remove"]](shinyOAuth:::state_cache_key(
     payload[["state"]]
   ))
 
@@ -89,8 +89,8 @@ testthat::test_that("async pre-dispatch callback failures retain specific phase"
       indefinite_session = TRUE
     ),
     expr = {
-      values$.process_query(paste0("?code=bad&state=", enc))
-      session$flushReact()
+      values[[".process_query"]](paste0("?code=bad&state=", enc))
+      session[["flushReact"]]()
     }
   )
 
@@ -131,7 +131,7 @@ testthat::test_that("error callback state consumption keeps flow trace and logic
       auto_redirect = FALSE
     ),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       enc <- parse_query_param(url, "state")
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
       plain_digest <- shinyOAuth:::string_digest(
@@ -139,8 +139,8 @@ testthat::test_that("error callback state consumption keeps flow trace and logic
       )
       encrypted_digest <- shinyOAuth:::string_digest(enc)
 
-      values$.process_query(paste0("?error=access_denied&state=", enc))
-      session$flushReact()
+      values[[".process_query"]](paste0("?error=access_denied&state=", enc))
+      session[["flushReact"]]()
 
       types <- vapply(
         events,
@@ -191,7 +191,7 @@ testthat::test_that("error callback state consumption failure keeps flow trace a
       auto_redirect = FALSE
     ),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       enc <- parse_query_param(url, "state")
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, enc)
       key <- shinyOAuth:::state_cache_key(payload[["state"]])
@@ -200,9 +200,9 @@ testthat::test_that("error callback state consumption failure keeps flow trace a
       )
       encrypted_digest <- shinyOAuth:::string_digest(enc)
 
-      cli@state_store$remove(key)
-      values$.process_query(paste0("?error=server_error&state=", enc))
-      session$flushReact()
+      cli@state_store[["remove"]](key)
+      values[[".process_query"]](paste0("?error=server_error&state=", enc))
+      session[["flushReact"]]()
 
       types <- vapply(
         events,

@@ -24,11 +24,11 @@ Uses the client's \code{state_store} to read and remove the state-bound values
 after the encrypted callback payload has been decrypted and validated.
 }
 \details{
-When the store exposes an atomic \verb{$take(key, missing)} method (see
+When the store exposes an atomic \verb{[["take"]](key, missing)} method (see
 \code{\link[=custom_cache]{custom_cache()}}), that path is used first so single-use semantics still
 hold under concurrent access.
-When \verb{$take()} is unavailable, the function falls back to \verb{$get()} +
-\verb{$remove()} with a post-removal absence check.
+When \verb{[["take"]]()} is unavailable, the function falls back to \verb{[["get"]]()} +
+\verb{[["remove"]]()} with a post-removal absence check.
 That fallback is safe for per-process caches such as \code{\link[cachem:cache_mem]{cachem::cache_mem()}}.
 For shared stores it errors by default, because non-atomic get+remove cannot
 guarantee single-use semantics under concurrent access; operators may opt in

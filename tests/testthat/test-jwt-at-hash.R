@@ -309,7 +309,7 @@ test_that("at_hash validation rejects present optional Ed448 claims", {
   )
 
   jwt <- build_jwt(
-    list(alg = "EdDSA", kid = pub_jwk$kid, typ = "JWT"),
+    list(alg = "EdDSA", kid = pub_jwk[["kid"]], typ = "JWT"),
     list(
       iss = client@provider@issuer,
       aud = client@client_id,
@@ -364,7 +364,7 @@ test_that("at_hash validation rejects required Ed448 claims when mapping is unav
   )
 
   jwt <- build_jwt(
-    list(alg = "EdDSA", kid = pub_jwk$kid, typ = "JWT"),
+    list(alg = "EdDSA", kid = pub_jwk[["kid"]], typ = "JWT"),
     list(
       iss = client@provider@issuer,
       aud = client@client_id,
@@ -449,12 +449,12 @@ test_that("at_hash validation accepts Ed25519 tokens after verified curve resolu
   pub_jwk <- list(
     kty = "OKP",
     crv = "Ed25519",
-    x = shinyOAuth:::base64url_encode(keypair$pubkey),
+    x = shinyOAuth:::base64url_encode(keypair[["pubkey"]]),
     kid = "ed25519-at-hash"
   )
 
   jwt <- sign_ed25519_jwt(
-    list(alg = "EdDSA", kid = pub_jwk$kid, typ = "JWT"),
+    list(alg = "EdDSA", kid = pub_jwk[["kid"]], typ = "JWT"),
     list(
       iss = client@provider@issuer,
       aud = client@client_id,
@@ -467,7 +467,7 @@ test_that("at_hash validation accepts Ed25519 tokens after verified curve resolu
         eddsa_curve = "Ed25519"
       )
     ),
-    secret = keypair$secret
+    secret = keypair[["secret"]]
   )
 
   expect_silent(testthat::with_mocked_bindings(

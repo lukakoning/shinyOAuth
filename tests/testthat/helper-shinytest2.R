@@ -14,30 +14,30 @@ local_app_driver_navigation <- function(
   testthat::local_mocked_bindings(
     app_init_browser_log = function(self, private, options) {
       initialize_log(self, private, options)
-      browser <- self$get_chromote_session()
-      pending[[browser$get_session_id()]] <- list(
-        frame = browser$Page$getFrameTree()$frameTree$frame,
-        timeout = private$load_timeout / 1000,
-        log = self$log_message
+      browser <- self[["get_chromote_session"]]()
+      pending[[browser[["get_session_id"]]()]] <- list(
+        frame = browser[["Page"]][["getFrameTree"]]()[["frameTree"]][["frame"]],
+        timeout = private[["load_timeout"]] / 1000,
+        log = self[["log_message"]]
       )
       invisible(NULL)
     },
     chromote_eval = function(chromote_session, js, ...) {
-      id <- chromote_session$get_session_id()
+      id <- chromote_session[["get_session_id"]]()
       ready <- pending[[id]]
       if (!is.null(ready)) {
         pending[[id]] <- NULL
-        if (is.function(ready$log)) {
-          ready$log("Waiting for AppDriver destination document")
+        if (is.function(ready[["log"]])) {
+          ready[["log"]]("Waiting for AppDriver destination document")
         }
         wait_for_app_driver_document(
           chromote_session,
-          ready$frame,
-          ready$timeout,
+          ready[["frame"]],
+          ready[["timeout"]],
           require_shiny = .require_shiny
         )
-        if (is.function(ready$log)) {
-          ready$log("AppDriver destination document loaded")
+        if (is.function(ready[["log"]])) {
+          ready[["log"]]("AppDriver destination document loaded")
         }
       }
       evaluate(chromote_session, js, ...)
@@ -52,9 +52,9 @@ local_app_driver_navigation <- function(
         )
       ) {
         result <- get0("ret", envir = parent.frame(), inherits = FALSE)
-        detail <- result$exceptionDetails$exception$description
+        detail <- result[["exceptionDetails"]][["exception"]][["description"]]
         if (is.null(detail)) {
-          detail <- result$result$description
+          detail <- result[["result"]][["description"]]
         }
         if (is.character(detail) && length(detail) == 1L) {
           message <- c(message, detail)
@@ -76,31 +76,31 @@ wait_for_app_driver_document <- function(
 ) {
   deadline <- Sys.time() + timeout
   repeat {
-    frame <- browser$Page$getFrameTree()$frameTree$frame
+    frame <- browser[["Page"]][["getFrameTree"]]()[["frameTree"]][["frame"]]
     if (
-      !identical(frame$loaderId, initial_frame$loaderId) &&
-        !identical(frame$url, initial_frame$url)
+      !identical(frame[["loaderId"]], initial_frame[["loaderId"]]) &&
+        !identical(frame[["url"]], initial_frame[["url"]])
     ) {
-      document <- browser$Runtime$evaluate(
+      document <- browser[["Runtime"]][["evaluate"]](
         paste0(
           "({ready: document.readyState === 'complete', ",
           "url: document.URL, href: window.location.href, ",
           "shiny: !!window.Shiny, jquery: typeof window.jQuery === 'function'})"
         ),
         returnByValue = TRUE
-      )$result$value
-      current <- browser$Page$getFrameTree()$frameTree$frame
+      )[["result"]][["value"]]
+      current <- browser[["Page"]][["getFrameTree"]]()[["frameTree"]][["frame"]]
       # Page.getFrameTree can report the new loader while Runtime.evaluate
       # still targets the old document. Its readyState is already complete.
       # Check the evaluated document itself before accepting frame readiness.
-      url <- paste0(current$url, current$urlFragment)
+      url <- paste0(current[["url"]], current[["urlFragment"]])
       if (
-        isTRUE(document$ready) &&
-          identical(document$url, url) &&
-          identical(document$href, url) &&
-          identical(frame$loaderId, current$loaderId) &&
+        isTRUE(document[["ready"]]) &&
+          identical(document[["url"]], url) &&
+          identical(document[["href"]], url) &&
+          identical(frame[["loaderId"]], current[["loaderId"]]) &&
           (!require_shiny ||
-            (isTRUE(document$shiny) && isTRUE(document$jquery)))
+            (isTRUE(document[["shiny"]]) && isTRUE(document[["jquery"]])))
       ) {
         return(invisible(NULL))
       }
@@ -111,32 +111,32 @@ wait_for_app_driver_document <- function(
         call. = FALSE
       )
     }
-    later::run_now(0.01, loop = browser$get_child_loop())
+    later::run_now(0.01, loop = browser[["get_child_loop"]]())
   }
 }
 
 stop_test_app_driver <- function(drv) {
-  private <- try(drv$.__enclos_env__$private, silent = TRUE)
+  private <- try(drv[[".__enclos_env__"]][["private"]], silent = TRUE)
 
   if (!inherits(private, "try-error") && is.environment(private)) {
-    worker_id <- private$shiny_worker_id
+    worker_id <- private[["shiny_worker_id"]]
     if (length(worker_id) != 1L) {
-      private$shiny_worker_id <- NA_character_
+      private[["shiny_worker_id"]] <- NA_character_
     }
   }
 
-  try(drv$stop(), silent = TRUE)
+  try(drv[["stop"]](), silent = TRUE)
 
   if (!inherits(private, "try-error") && is.environment(private)) {
-    process <- private$shiny_process
+    process <- private[["shiny_process"]]
     if (
       !is.null(process) &&
         isTRUE(tryCatch(
-          process$is_alive(),
+          process[["is_alive"]](),
           error = function(...) FALSE
         ))
     ) {
-      try(process$kill(), silent = TRUE)
+      try(process[["kill"]](), silent = TRUE)
     }
   }
 

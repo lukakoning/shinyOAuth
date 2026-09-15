@@ -10,7 +10,7 @@ test_that("the mTLS OIDC example validates the end-user identity", {
   end <- start + match("```", lines[start:length(lines)]) - 2L
   env <- new.env(parent = environment())
   eval(parse(text = lines[start:end]), env)
-  provider <- env$provider
+  provider <- env[["provider"]]
   expect_identical(provider@issuer, "https://id.example.com")
   expect_true(provider@use_nonce)
   expect_true(provider@id_token_required)

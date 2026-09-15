@@ -50,7 +50,7 @@ run_account_browser_tests <- function() {
   )
   on.exit(
     {
-      evidence$chrome <- retention_evidence_env$chrome
+      evidence[["chrome"]] <- retention_evidence_env[["chrome"]]
       jsonlite::write_json(
         evidence,
         file.path(artifacts, "evidence.json"),
@@ -67,17 +67,17 @@ run_account_browser_tests <- function() {
     stop_on_failure = FALSE
   )
   counts <- as.data.frame(results)
-  evidence$passed <- sum(counts$passed)
-  evidence$skipped <- sum(counts$skipped)
-  evidence$failures <- sum(counts$failed)
-  evidence$errors <- sum(counts$error)
-  if (evidence$failures || evidence$errors || evidence$skipped) {
+  evidence[["passed"]] <- sum(counts[["passed"]])
+  evidence[["skipped"]] <- sum(counts[["skipped"]])
+  evidence[["failures"]] <- sum(counts[["failed"]])
+  evidence[["errors"]] <- sum(counts[["error"]])
+  if (evidence[["failures"]] || evidence[["errors"]] || evidence[["skipped"]]) {
     stop("Account browser gate did not fully pass")
   }
-  evidence$status <- "passed"
+  evidence[["status"]] <- "passed"
   cat(
     "Account browser gate:",
-    evidence$passed,
+    evidence[["passed"]],
     "assertions passed; no skips.\n"
   )
 }

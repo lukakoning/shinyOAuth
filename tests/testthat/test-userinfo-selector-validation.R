@@ -51,7 +51,7 @@ test_that("userinfo subject mismatch still errors specifically", {
   prov <- make_provider(
     id_token_validation = TRUE,
     userinfo_id_token_match = TRUE,
-    userinfo_id_selector = function(x) x$sub
+    userinfo_id_selector = function(x) x[["sub"]]
   )
   cli <- make_client(prov)
   withr::local_options(list(shinyOAuth.allow_hs = TRUE))
@@ -79,7 +79,7 @@ test_that("custom selector cannot replace the UserInfo OIDC sub comparison", {
   prov <- make_provider(
     id_token_validation = TRUE,
     userinfo_id_token_match = TRUE,
-    userinfo_id_selector = function(x) x$id
+    userinfo_id_selector = function(x) x[["id"]]
   )
   cli <- make_client(prov)
   withr::local_options(list(shinyOAuth.allow_hs = TRUE))
@@ -115,7 +115,7 @@ test_that("custom selector cannot replace the UserInfo OIDC sub comparison", {
 test_that("get_userinfo audit normalizes custom selector output", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
-  cli@provider@userinfo_id_selector <- function(x) x$id
+  cli@provider@userinfo_id_selector <- function(x) x[["id"]]
 
   events <- list()
   old_hook <- getOption("shinyOAuth.audit_hook")
@@ -142,11 +142,11 @@ test_that("get_userinfo audit normalizes custom selector output", {
   result <- get_userinfo(cli, token = "access-token")
   expect_equal(result[["id"]], 12345)
 
-  ui_events <- Filter(function(e) identical(e$type, "audit_userinfo"), events)
+  ui_events <- Filter(function(e) identical(e[["type"]], "audit_userinfo"), events)
   expect_length(ui_events, 1L)
-  expect_identical(ui_events[[1L]]$status, "ok")
+  expect_identical(ui_events[[1L]][["status"]], "ok")
   expect_identical(
-    ui_events[[1L]]$sub_digest,
+    ui_events[[1L]][["sub_digest"]],
     shinyOAuth:::string_digest("12345")
   )
 })

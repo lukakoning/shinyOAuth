@@ -2,7 +2,7 @@
 # (code is not run because it requires a real token from user interaction)
 if (interactive()) {
   # Inside reactive server code, after login has succeeded:
-  token <- auth$token
+  token <- auth[["token"]]
 
   # Recommended for most callers: build + perform in one step.
   response <- perform_resource_req(
@@ -33,7 +33,7 @@ if (interactive()) {
   # restrict HTTPS hosts unless a global allowed_hosts policy is configured.
   response <- perform_resource_req(
     token,
-    input$resource_url,
+    input[["resource_url"]],
     resource_hosts = "api.example.com",
     follow_redirect = FALSE
   )

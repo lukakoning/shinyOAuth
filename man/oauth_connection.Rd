@@ -11,21 +11,21 @@ oauth_connection(client, token, session = shiny::getDefaultReactiveDomain())
 \code{\link[=oauth_client]{oauth_client()}} or \code{\link[=smart_client]{smart_client()}}.}
 
 \item{token}{A Shiny reactive expression returning the current \link{OAuthToken}
-or \code{NULL}, usually \code{shiny::reactive(auth$token)}. It must come from the
+or \code{NULL}, usually \code{shiny::reactive(auth[["token"]])}. It must come from the
 module using \code{client}. Supplying that association is trusted server
 application wiring; a resource policy cannot prove an opaque token's audience.}
 
 \item{session}{The owning Shiny session; defaults to the current session.}
 }
 \value{
-An \link{OAuthConnection} with \verb{$id}, \verb{$is_usable()}, \verb{$summary()} and
-\verb{$request(resource_id, path = "", query = NULL, method = "GET", required_scopes = character(), configure = NULL)}. Requests return \link[httr2:httr2]{httr2}
+An \link{OAuthConnection} with \verb{[["id"]]}, \verb{[["is_usable"]]()}, \verb{[["summary"]]()} and
+\verb{[["request"]](resource_id, path = "", query = NULL, method = "GET", required_scopes = character(), configure = NULL)}. Requests return \link[httr2:httr2]{httr2}
 responses. \code{configure} can add a body and application headers; see
 \link{OAuthConnection} for its contract.
 }
 \description{
 Combine one module's reactive token with its client and approved API addresses
-configured on \code{\link[=oauth_client]{oauth_client()}}. Call \verb{$request()} on the returned connection instead of
+configured on \code{\link[=oauth_client]{oauth_client()}}. Call \verb{[["request"]]()} on the returned connection instead of
 assembling a token, client and URL for each request. It reads the reactive token
 again after refresh or logout and restricts requests to the configured APIs.
 This optional wrapper expires with its Shiny session; it does not implement
@@ -33,8 +33,8 @@ refresh itself or retain credentials across redirects.
 }
 \details{
 Create the reference once inside \code{server()}. Access it only in that session's
-reactive context. \verb{$summary()} excludes tokens, identity claims and extension
-context. \verb{$is_usable()} checks local presence, known expiry and required scopes;
+reactive context. \verb{[["summary"]]()} excludes tokens, identity claims and extension
+context. \verb{[["is_usable"]]()} checks local presence, known expiry and required scopes;
 it cannot guarantee remote authorization. Unknown token expiry is unusable.
 
 Paths are relative to the selected base directory. Absolute and root-relative
@@ -57,10 +57,10 @@ client <- oauth_client(provider, "registered-app",
   resource_bases = c(api = "https://api.example/v1"))
 # Inside server():
 auth <- oauth_module_server("auth", client)
-connection <- oauth_connection(client, shiny::reactive(auth$token))
+connection <- oauth_connection(client, shiny::reactive(auth[["token"]]))
 data <- shiny::reactive({
-  shiny::req(connection$is_usable())
-  connection$request("api", "records", required_scopes = "read")
+  shiny::req(connection[["is_usable"]]())
+  connection[["request"]]("api", "records", required_scopes = "read")
 })
 }
 }

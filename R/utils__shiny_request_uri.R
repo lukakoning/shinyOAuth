@@ -143,19 +143,19 @@ shiny_request_uri_base_url <- function(session, base_url = NULL) {
   }
 
   protocol <- tryCatch(
-    as.character(session$clientData$url_protocol %||% NA_character_),
+    as.character(session[["clientData"]][["url_protocol"]] %||% NA_character_),
     error = function(...) NA_character_
   )
   hostname <- tryCatch(
-    as.character(session$clientData$url_hostname %||% NA_character_),
+    as.character(session[["clientData"]][["url_hostname"]] %||% NA_character_),
     error = function(...) NA_character_
   )
   port <- tryCatch(
-    as.character(session$clientData$url_port %||% NA_character_),
+    as.character(session[["clientData"]][["url_port"]] %||% NA_character_),
     error = function(...) NA_character_
   )
   pathname <- tryCatch(
-    as.character(session$clientData$url_pathname %||% NA_character_),
+    as.character(session[["clientData"]][["url_pathname"]] %||% NA_character_),
     error = function(...) NA_character_
   )
 
@@ -223,7 +223,7 @@ serve_shiny_request_object <- function(data, req) {
   }
 
   usage_state <- data[["usage_state"]] %||% NULL
-  if (is.environment(usage_state) && isTRUE(usage_state$consumed)) {
+  if (is.environment(usage_state) && isTRUE(usage_state[["consumed"]])) {
     return(list(
       status = 410L,
       headers = gone_headers,
@@ -245,7 +245,7 @@ serve_shiny_request_object <- function(data, req) {
   }
 
   if (identical(method, "GET") && is.environment(usage_state)) {
-    usage_state$consumed <- TRUE
+    usage_state[["consumed"]] <- TRUE
   }
 
   list(
@@ -313,7 +313,7 @@ publish_shiny_request_object <- function(
     getOption("shinyOAuth.allowed_hosts", default = NULL)
   )
   require_https_request_uri(absolute_url)
-  store$set(
+  store[["set"]](
     shiny_request_object_key(oauth_client, handle),
     list(
       request_object = request_object,
@@ -342,7 +342,7 @@ shiny_request_object_key <- function(client, handle) {
 }
 
 require_request_object_atomic_store <- function(store) {
-  if (!is.function(store$take) && !inherits(store, "cache_mem")) {
+  if (!is.function(store[["take"]]) && !inherits(store, "cache_mem")) {
     err_config(paste(
       "Request Object publication requires atomic `$take(key, missing)`",
       "or cachem::cache_mem() for a single-process app"
@@ -397,14 +397,14 @@ shiny_request_object_http_handler <- function(req, client) {
       store <- client@state_store
       require_request_object_atomic_store(store)
       key <- shiny_request_object_key(client, handles[[1L]])
-      data <- if (identical(method, "GET") && is.function(store$take)) {
-        store$take(key, missing = NULL)
+      data <- if (identical(method, "GET") && is.function(store[["take"]])) {
+        store[["take"]](key, missing = NULL)
       } else {
-        value <- store$get(key, missing = NULL)
+        value <- store[["get"]](key, missing = NULL)
         if (identical(method, "GET")) {
           # No event-loop yield occurs between read and removal in cache_mem.
-          store$remove(key)
-          if (!is.null(store$get(key, missing = NULL))) {
+          store[["remove"]](key)
+          if (!is.null(store[["get"]](key, missing = NULL))) {
             stop("Request Object removal failed")
           }
         }
@@ -412,20 +412,20 @@ shiny_request_object_http_handler <- function(req, client) {
       }
       if (
         !is.list(data) ||
-          !is_valid_string(data$request_object) ||
-          length(data$expires_at) != 1L ||
-          !is.finite(as.numeric(data$expires_at)) ||
-          Sys.time() >= data$expires_at
+          !is_valid_string(data[["request_object"]]) ||
+          length(data[["expires_at"]]) != 1L ||
+          !is.finite(as.numeric(data[["expires_at"]])) ||
+          Sys.time() >= data[["expires_at"]]
       ) {
         return(response(410L))
       }
       result <- serve_shiny_request_object(data, req)
       shiny::httpResponse(
-        result$status,
-        content_type = result$headers[["Content-Type"]],
-        content = result$body,
+        result[["status"]],
+        content_type = result[["headers"]][["Content-Type"]],
+        content = result[["body"]],
         headers = c(
-          as.list(result$headers[names(result$headers) != "Content-Type"]),
+          as.list(result[["headers"]][names(result[["headers"]]) != "Content-Type"]),
           list("Referrer-Policy" = "no-referrer")
         )
       )

@@ -22,7 +22,7 @@ make_signed_jwt <- function(
 ) {
   header <- list(typ = typ, alg = alg)
   if (!is.null(kid)) {
-    header$kid <- kid
+    header[["kid"]] <- kid
   }
   clm <- do.call(jose::jwt_claim, payload_list)
   jose::jwt_encode_sig(clm, key = key, header = header)
@@ -64,7 +64,7 @@ make_eddsa_signed_jwt <- function(
 ) {
   header <- list(alg = "EdDSA", typ = typ)
   if (!is.null(kid)) {
-    header$kid <- kid
+    header[["kid"]] <- kid
   }
 
   header_json <- jsonlite::toJSON(header, auto_unbox = TRUE, null = "null")
@@ -78,7 +78,7 @@ make_eddsa_signed_jwt <- function(
     ".",
     shinyOAuth:::base64url_encode(charToRaw(as.character(payload_json)))
   )
-  secret <- if (!is.null(keypair$key)) keypair$key else keypair$secretkey
+  secret <- if (!is.null(keypair[["key"]])) keypair[["key"]] else keypair[["secretkey"]]
   sig <- sodium::sig_sign(charToRaw(signing_input), secret)
 
   paste0(signing_input, ".", shinyOAuth:::base64url_encode(sig))
@@ -86,8 +86,8 @@ make_eddsa_signed_jwt <- function(
 
 test_that("JSON and signed JWT UserInfo preserve types through claim policy", {
   key <- openssl::rsa_keygen(2048)
-  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = FALSE)
-  jwk$kid <- "type-parity"
+  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = FALSE)
+  jwk[["kid"]] <- "type-parity"
   cli <- make_test_client(use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://example.com"
@@ -121,7 +121,7 @@ test_that("JSON and signed JWT UserInfo preserve types through claim policy", {
         make_signed_userinfo_json(json, key, "type-parity")
       }
       ui <- get_userinfo(cli, "synthetic-token")
-      expect_identical(ui$role, value)
+      expect_identical(ui[["role"]], value)
       cli@claims <- list(userinfo = list(role = list(value = value)))
       expect_no_error(shinyOAuth:::validate_essential_claims(
         cli,
@@ -202,10 +202,10 @@ test_that("get_userinfo verifies signed JWT userinfo against JWKS", {
   pub <- as.list(openssl::read_key(openssl::write_pem(key), der = FALSE))
 
   # Build JWK for the public key
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "test-kid-1"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "test-kid-1"
+  jwk[["use"]] <- "sig"
 
   jwks <- list(keys = list(jwk))
 
@@ -250,7 +250,7 @@ test_that("get_userinfo verifies signed EdDSA JWT userinfo against JWKS", {
     keys = list(list(
       kty = "OKP",
       crv = "Ed25519",
-      x = shinyOAuth:::base64url_encode(keypair$pubkey),
+      x = shinyOAuth:::base64url_encode(keypair[["pubkey"]]),
       kid = kid,
       use = "sig"
     ))
@@ -294,10 +294,10 @@ test_that("get_userinfo verifies signed EdDSA JWT userinfo against JWKS", {
 test_that("get_userinfo rejects signed JWT userinfo with invalid typ header", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-invalid-typ"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-invalid-typ"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -339,10 +339,10 @@ test_that("get_userinfo rejects signed JWT userinfo with invalid typ header", {
 test_that("get_userinfo accepts signed JWT with valid temporal claims", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "test-kid-time-valid"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "test-kid-time-valid"
+  jwk[["use"]] <- "sig"
 
   jwks <- list(keys = list(jwk))
   now <- floor(as.numeric(Sys.time()))
@@ -383,10 +383,10 @@ test_that("get_userinfo accepts signed JWT with valid temporal claims", {
 test_that("get_userinfo honors provider leeway above 60 seconds", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-leeway-over-60"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-leeway-over-60"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
   now <- floor(as.numeric(Sys.time()))
 
@@ -426,10 +426,10 @@ test_that("get_userinfo honors provider leeway above 60 seconds", {
 test_that("get_userinfo accepts signed JWT iat and nbf at leeway boundaries", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-leeway-boundary"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-leeway-boundary"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   fixed_now <- as.POSIXct("2024-01-01 00:00:00", tz = "UTC")
@@ -501,10 +501,10 @@ test_that("signed UserInfo JWT expires at the exact exp boundary", {
 test_that("get_userinfo can require exp on signed JWT userinfo", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-required-exp"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-required-exp"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   now <- floor(as.numeric(Sys.time()))
@@ -544,10 +544,10 @@ test_that("get_userinfo can require exp on signed JWT userinfo", {
 test_that("get_userinfo errors when signed JWT is missing required exp", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-missing-required-exp"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-missing-required-exp"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -629,9 +629,9 @@ test_that("get_userinfo rejects b64=false with or without crit", {
 test_that("required signed UserInfo time claims reject JSON null", {
   key <- openssl::rsa_keygen(2048)
   kid <- "kid-null-required-times"
-  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = TRUE)
-  jwk$kid <- kid
-  jwk$use <- "sig"
+  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = TRUE)
+  jwk[["kid"]] <- kid
+  jwk[["use"]] <- "sig"
   jwt_body <- NULL
 
   testthat::local_mocked_bindings(
@@ -694,10 +694,10 @@ test_that("oauth_client rejects invalid required UserInfo JWT temporal claims", 
 test_that("get_userinfo errors when signed JWT is expired", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-expired"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-expired"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   now <- floor(as.numeric(Sys.time()))
@@ -736,10 +736,10 @@ test_that("get_userinfo errors when signed JWT is expired", {
 test_that("get_userinfo errors when signed JWT has iat in the future", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-iat-future"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-iat-future"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   now <- floor(as.numeric(Sys.time()))
@@ -779,10 +779,10 @@ test_that("get_userinfo errors when signed JWT has iat in the future", {
 test_that("get_userinfo errors when signed JWT is not yet valid", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-nbf-future"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-nbf-future"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   now <- floor(as.numeric(Sys.time()))
@@ -822,11 +822,11 @@ test_that("get_userinfo errors when signed JWT is not yet valid", {
 test_that("get_userinfo rejects signed JWT when JWK alg mismatches header alg", {
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "test-kid-alg-mismatch"
-  jwk$use <- "sig"
-  jwk$alg <- "RS512"
+  jwk[["kid"]] <- "test-kid-alg-mismatch"
+  jwk[["use"]] <- "sig"
+  jwk[["alg"]] <- "RS512"
 
   jwks <- list(keys = list(jwk))
 
@@ -867,10 +867,10 @@ test_that("get_userinfo errors when JWKS has no compatible keys for signed JWT",
   sign_key <- openssl::rsa_keygen(2048)
   wrong_key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(wrong_key$pubkey)
+  jwk_json <- write_test_jwk(wrong_key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "wrong-kid"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "wrong-kid"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(sub = "user-fallback", name = "Fallback User")
@@ -934,10 +934,10 @@ test_that("get_userinfo errors when JWKS fetch fails for signed JWT", {
 
 test_that("get_userinfo errors when signed JWT has wrong issuer", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-iss"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-iss"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -973,10 +973,10 @@ test_that("get_userinfo errors when signed JWT has wrong issuer", {
 
 test_that("get_userinfo errors when signed JWT has wrong audience", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-aud"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-aud"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -1012,10 +1012,10 @@ test_that("get_userinfo errors when signed JWT has wrong audience", {
 
 test_that("get_userinfo errors when signed JWT is missing iss claim", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-no-iss"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-no-iss"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(sub = "user-no-iss", aud = "abc")
@@ -1047,10 +1047,10 @@ test_that("get_userinfo errors when signed JWT is missing iss claim", {
 
 test_that("get_userinfo errors when signed JWT is missing aud claim", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-no-aud"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-no-aud"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(sub = "user-no-aud", iss = "https://issuer.example.com")
@@ -1170,7 +1170,7 @@ test_that("get_userinfo emits audit event on JWT parse failure", {
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
-    function(e) e$status %||% NA_character_,
+    function(e) e[["status"]] %||% NA_character_,
     character(1)
   )
   expect_true(any(statuses == "parse_error"))
@@ -1178,10 +1178,10 @@ test_that("get_userinfo emits audit event on JWT parse failure", {
 
 test_that("get_userinfo handles application/jwt with charset parameter (signed)", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-charset"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-charset"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
@@ -1282,7 +1282,7 @@ test_that("signed JWT required: non-JWT response fails with clear error + audit"
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
-    function(e) e$status %||% NA_character_,
+    function(e) e[["status"]] %||% NA_character_,
     character(1)
   )
   expect_true("userinfo_not_jwt" %in% statuses)
@@ -1331,7 +1331,7 @@ test_that("signed JWT required: alg=none JWT fails with clear error + audit", {
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
-    function(e) e$status %||% NA_character_,
+    function(e) e[["status"]] %||% NA_character_,
     character(1)
   )
   expect_true("userinfo_jwt_unsigned" %in% statuses)
@@ -1382,7 +1382,7 @@ test_that("signed JWT required: alg not in allowed_algs fails + audit", {
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
-    function(e) e$status %||% NA_character_,
+    function(e) e[["status"]] %||% NA_character_,
     character(1)
   )
   expect_true("userinfo_jwt_alg_rejected" %in% statuses)
@@ -1390,10 +1390,10 @@ test_that("signed JWT required: alg not in allowed_algs fails + audit", {
 
 test_that("signed JWT required: valid signed JWT succeeds", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-req-sig"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-req-sig"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -1547,10 +1547,10 @@ test_that("signed JWT required: uses provider allowed_algs for verification", {
   # Confirm that allowed_algs from provider is respected (ES256 key with
   # provider that only allows ES256)
   key <- openssl::ec_keygen("P-256")
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-es256"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-es256"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -1594,10 +1594,10 @@ test_that("signed JWT required: wrong signature (attacker key) is rejected + aud
   legit_key <- openssl::rsa_keygen(2048)
   attacker_key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(legit_key$pubkey)
+  jwk_json <- write_test_jwk(legit_key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "legit-kid"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "legit-kid"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -1646,10 +1646,10 @@ test_that("signed JWT required: tampered payload is rejected", {
   # Sign a legitimate JWT, then modify the payload after signing
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-tamper"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-tamper"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -1706,10 +1706,10 @@ test_that("signed JWT required: stripped signature (header.payload. with empty s
   # Attacker takes a legitimate JWT header with RS256 but empties the signature
   key <- openssl::rsa_keygen(2048)
 
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-stripped"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-stripped"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -1752,10 +1752,10 @@ test_that("signed JWT required: stripped signature (header.payload. with empty s
 
 test_that("signed JWT required: wrong iss claim is rejected even with valid signature", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-iss-req"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-iss-req"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   # Correctly signed, but iss doesn't match provider issuer
@@ -1794,10 +1794,10 @@ test_that("signed JWT required: wrong iss claim is rejected even with valid sign
 
 test_that("signed JWT required: wrong aud claim is rejected even with valid signature", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-aud-req"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-aud-req"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -1909,7 +1909,7 @@ test_that("content-type downgrade: attacker sends JSON when signed JWT is requir
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
-    function(e) e$status %||% NA_character_,
+    function(e) e[["status"]] %||% NA_character_,
     character(1)
   )
   expect_true("userinfo_not_jwt" %in% statuses)
@@ -2041,8 +2041,8 @@ test_that("application/jwt with HS256 algorithm must fail (non-asymmetric)", {
 })
 test_that("signed UserInfo enforces scalar Boolean verification claims", {
   key <- openssl::rsa_keygen(2048)
-  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey))
-  jwk$kid <- "boolean-schema"
+  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]))
+  jwk[["kid"]] <- "boolean-schema"
   cli <- make_test_client(use_nonce = FALSE)
   cli@provider@issuer <- "https://issuer.example.com"
   cli@provider@userinfo_url <- "https://example.com/userinfo"

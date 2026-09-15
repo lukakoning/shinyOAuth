@@ -3,7 +3,7 @@
 ## Positive enforcement is tested independently in integration/conformance.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 valid_browser_token <- function() {
@@ -11,17 +11,17 @@ valid_browser_token <- function() {
 }
 
 callback_iss <- function(login_result) {
-  parse_query_param(login_result$callback_url, "iss", decode = TRUE)
+  parse_query_param(login_result[["callback_url"]], "iss", decode = TRUE)
 }
 
 expect_no_callback_error <- function(login_result) {
   callback_error <- parse_query_param(
-    login_result$callback_url,
+    login_result[["callback_url"]],
     "error",
     decode = TRUE
   )
   callback_description <- parse_query_param(
-    login_result$callback_url,
+    login_result[["callback_url"]],
     "error_description",
     decode = TRUE
   )
@@ -56,8 +56,8 @@ tamper_signed_request_object <- function(auth_url, mutate_claims) {
 complete_jar_callback <- function(client, login_result, browser_token) {
   shinyOAuth:::handle_callback(
     oauth_client = client,
-    code = login_result$code,
-    payload = login_result$state_payload,
+    code = login_result[["code"]],
+    payload = login_result[["state_payload"]],
     browser_token = browser_token,
     iss = callback_iss(login_result)
   )
@@ -169,9 +169,9 @@ testthat::test_that("Keycloak replays the same signed request object but shinyOA
   expect_no_callback_error(first_login)
   expect_no_callback_error(second_login)
 
-  testthat::expect_true(nzchar(first_login$code %||% ""))
-  testthat::expect_true(nzchar(second_login$code %||% ""))
-  testthat::expect_false(identical(first_login$code, second_login$code))
+  testthat::expect_true(nzchar(first_login[["code"]] %||% ""))
+  testthat::expect_true(nzchar(second_login[["code"]] %||% ""))
+  testthat::expect_false(identical(first_login[["code"]], second_login[["code"]]))
 
   first_token <- complete_jar_callback(client, first_login, browser_token)
   testthat::expect_true(S7::S7_inherits(first_token, shinyOAuth::OAuthToken))

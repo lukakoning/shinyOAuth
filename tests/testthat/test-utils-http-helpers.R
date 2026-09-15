@@ -47,11 +47,11 @@ test_that("add_req_defaults caps timeout before curl integer conversion", {
     req2 <- shinyOAuth:::add_req_defaults(req)
     expect_equal(
       req2[["options"]][["timeout_ms"]],
-      as.double(.Machine$integer.max)
+      as.double(.Machine[["integer.max"]])
     )
     expect_identical(
       as.integer(req2[["options"]][["timeout_ms"]]),
-      .Machine$integer.max
+      .Machine[["integer.max"]]
     )
   })
 })
@@ -60,7 +60,7 @@ test_that("resolve_retry_status ignores values beyond the integer range", {
   withr::local_options(list(
     shinyOAuth.retry_status = c(
       500,
-      as.double(.Machine$integer.max) + 1
+      as.double(.Machine[["integer.max"]]) + 1
     ),
     warn = 2
   ))
@@ -102,7 +102,7 @@ test_that("req_with_retry retries on transient errors then succeeds", {
         stop("boom")
       }
       httr2::response(
-        url = request$url,
+        url = request[["url"]],
         status = 200,
         headers = list("content-type" = "text/plain"),
         body = charToRaw("ok")
@@ -133,7 +133,7 @@ test_that("req_with_retry honours Retry-After header and returns last response",
     req_perform = function(request, ...) {
       attempts <<- attempts + 1
       httr2::response(
-        url = request$url,
+        url = request[["url"]],
         status = 503,
         headers = list(
           "content-type" = "text/plain",
@@ -169,7 +169,7 @@ test_that("req_with_retry caps Retry-After delays by default", {
   testthat::local_mocked_bindings(
     req_perform = function(request, ...) {
       httr2::response(
-        url = request$url,
+        url = request[["url"]],
         status = 503,
         headers = list(
           "content-type" = "text/plain",
@@ -205,7 +205,7 @@ test_that("req_with_retry caps future-date Retry-After values", {
   testthat::local_mocked_bindings(
     req_perform = function(request, ...) {
       httr2::response(
-        url = request$url,
+        url = request[["url"]],
         status = 503,
         headers = list(
           "content-type" = "text/plain",
@@ -323,8 +323,8 @@ test_that("parse_token_response parses json and form encoded bodies", {
     headers = list("content-type" = "application/x-www-form-urlencoded"),
     body = charToRaw("access_token=abc&scope=read")
   )
-  expect_equal(shinyOAuth:::parse_token_response(json_resp)$access_token, "abc")
-  expect_equal(shinyOAuth:::parse_token_response(form_resp)$scope, "read")
+  expect_equal(shinyOAuth:::parse_token_response(json_resp)[["access_token"]], "abc")
+  expect_equal(shinyOAuth:::parse_token_response(form_resp)[["scope"]], "read")
 })
 
 test_that("parse_token_response applies form plus decoding", {
@@ -336,8 +336,8 @@ test_that("parse_token_response applies form plus decoding", {
   )
 
   parsed <- shinyOAuth:::parse_token_response(form_resp)
-  expect_identical(parsed$scope, "openid profile")
-  expect_identical(parsed$access_token, "abc+def")
+  expect_identical(parsed[["scope"]], "openid profile")
+  expect_identical(parsed[["access_token"]], "abc+def")
 })
 
 test_that("parse_token_response falls back to form parsing for text/plain", {
@@ -348,8 +348,8 @@ test_that("parse_token_response falls back to form parsing for text/plain", {
     body = charToRaw("token_type=bearer&expires_in=3600")
   )
   parsed <- shinyOAuth:::parse_token_response(plain_resp)
-  expect_equal(parsed$token_type, "bearer")
-  expect_equal(parsed$expires_in, "3600")
+  expect_equal(parsed[["token_type"]], "bearer")
+  expect_equal(parsed[["expires_in"]], "3600")
 })
 
 test_that("parse_token_response tries JSON first for text/plain", {
@@ -361,8 +361,8 @@ test_that("parse_token_response tries JSON first for text/plain", {
     body = charToRaw('{"access_token":"abc123","token_type":"bearer"}')
   )
   parsed <- shinyOAuth:::parse_token_response(json_plain_resp)
-  expect_equal(parsed$access_token, "abc123")
-  expect_equal(parsed$token_type, "bearer")
+  expect_equal(parsed[["access_token"]], "abc123")
+  expect_equal(parsed[["token_type"]], "bearer")
 })
 
 test_that("parse_token_response errors on unsupported content types", {
@@ -506,24 +506,24 @@ test_that("req_with_retry returns 400 response immediately (no retry)", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
-  app$locals$attempts <- 0
-  app$get("/badrequest", function(req, res) {
-    app <- req$app
-    app$locals$attempts <- app$locals$attempts + 1
-    res$set_status(400)
-    res$set_type("application/json")
-    res$send('{"error":"bad_request"}')
+  app[["locals"]][["attempts"]] <- 0
+  app[["get"]]("/badrequest", function(req, res) {
+    app <- req[["app"]]
+    app[["locals"]][["attempts"]] <- app[["locals"]][["attempts"]] + 1
+    res[["set_status"]](400)
+    res[["set_type"]]("application/json")
+    res[["send"]]('{"error":"bad_request"}')
   })
-  app$get("/attempts", function(req, res) {
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
-      list(attempts = req$app$locals$attempts),
+  app[["get"]]("/attempts", function(req, res) {
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
+      list(attempts = req[["app"]][["locals"]][["attempts"]]),
       auto_unbox = TRUE
     ))
   })
 
   srv <- webfakes::local_app_process(app)
-  url <- paste0(srv$url(), "/badrequest")
+  url <- paste0(srv[["url"]](), "/badrequest")
 
   req <- httr2::request(url) |> shinyOAuth:::add_req_defaults()
   resp <- shinyOAuth:::req_with_retry(req)
@@ -534,7 +534,7 @@ test_that("req_with_retry returns 400 response immediately (no retry)", {
 
   # Check attempt count via API
 
-  attempts_resp <- httr2::request(paste0(srv$url(), "/attempts")) |>
+  attempts_resp <- httr2::request(paste0(srv[["url"]](), "/attempts")) |>
     httr2::req_perform()
   attempts <- jsonlite::fromJSON(httr2::resp_body_string(
     attempts_resp
@@ -548,23 +548,23 @@ test_that("req_with_retry returns 401 response immediately (no retry)", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
-  app$locals$attempts <- 0
-  app$get("/unauthorized", function(req, res) {
-    req$app$locals$attempts <- req$app$locals$attempts + 1
-    res$set_status(401)
-    res$set_type("text/plain")
-    res$send("Unauthorized")
+  app[["locals"]][["attempts"]] <- 0
+  app[["get"]]("/unauthorized", function(req, res) {
+    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][["attempts"]] + 1
+    res[["set_status"]](401)
+    res[["set_type"]]("text/plain")
+    res[["send"]]("Unauthorized")
   })
-  app$get("/attempts", function(req, res) {
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
-      list(attempts = req$app$locals$attempts),
+  app[["get"]]("/attempts", function(req, res) {
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
+      list(attempts = req[["app"]][["locals"]][["attempts"]]),
       auto_unbox = TRUE
     ))
   })
 
   srv <- webfakes::local_app_process(app)
-  url <- paste0(srv$url(), "/unauthorized")
+  url <- paste0(srv[["url"]](), "/unauthorized")
 
   req <- httr2::request(url) |> shinyOAuth:::add_req_defaults()
   resp <- shinyOAuth:::req_with_retry(req)
@@ -572,7 +572,7 @@ test_that("req_with_retry returns 401 response immediately (no retry)", {
   expect_s3_class(resp, "httr2_response")
   expect_equal(httr2::resp_status(resp), 401)
 
-  attempts_resp <- httr2::request(paste0(srv$url(), "/attempts")) |>
+  attempts_resp <- httr2::request(paste0(srv[["url"]](), "/attempts")) |>
     httr2::req_perform()
   attempts <- jsonlite::fromJSON(httr2::resp_body_string(
     attempts_resp
@@ -585,23 +585,23 @@ test_that("req_with_retry retries 503 and returns last response", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
-  app$locals$attempts <- 0
-  app$get("/unavailable", function(req, res) {
-    req$app$locals$attempts <- req$app$locals$attempts + 1
-    res$set_status(503)
-    res$set_type("text/plain")
-    res$send("Service Unavailable")
+  app[["locals"]][["attempts"]] <- 0
+  app[["get"]]("/unavailable", function(req, res) {
+    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][["attempts"]] + 1
+    res[["set_status"]](503)
+    res[["set_type"]]("text/plain")
+    res[["send"]]("Service Unavailable")
   })
-  app$get("/attempts", function(req, res) {
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
-      list(attempts = req$app$locals$attempts),
+  app[["get"]]("/attempts", function(req, res) {
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
+      list(attempts = req[["app"]][["locals"]][["attempts"]]),
       auto_unbox = TRUE
     ))
   })
 
   srv <- webfakes::local_app_process(app)
-  url <- paste0(srv$url(), "/unavailable")
+  url <- paste0(srv[["url"]](), "/unavailable")
 
   withr::local_options(list(
     shinyOAuth.retry_max_tries = 2L,
@@ -615,11 +615,11 @@ test_that("req_with_retry retries 503 and returns last response", {
   expect_s3_class(resp, "httr2_response")
   expect_equal(httr2::resp_status(resp), 503)
 
-  attempts_resp <- httr2::request(paste0(srv$url(), "/attempts")) |>
+  attempts_resp <- httr2::request(paste0(srv[["url"]](), "/attempts")) |>
     httr2::req_perform()
   attempts <- jsonlite::fromJSON(httr2::resp_body_string(
     attempts_resp
-  ))$attempts
+  ))[["attempts"]]
   # Should have retried (503 is in retry_status by default)
   expect_equal(attempts, 2)
 })
@@ -629,29 +629,29 @@ test_that("req_with_retry succeeds on retry after transient 500", {
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
   app <- webfakes::new_app()
-  app$locals$attempts <- 0
-  app$get("/flaky", function(req, res) {
-    req$app$locals$attempts <- req$app$locals$attempts + 1
-    if (req$app$locals$attempts < 2) {
-      res$set_status(500)
-      res$set_type("text/plain")
-      res$send("Internal Server Error")
+  app[["locals"]][["attempts"]] <- 0
+  app[["get"]]("/flaky", function(req, res) {
+    req[["app"]][["locals"]][["attempts"]] <- req[["app"]][["locals"]][["attempts"]] + 1
+    if (req[["app"]][["locals"]][["attempts"]] < 2) {
+      res[["set_status"]](500)
+      res[["set_type"]]("text/plain")
+      res[["send"]]("Internal Server Error")
     } else {
-      res$set_status(200)
-      res$set_type("application/json")
-      res$send('{"status":"ok"}')
+      res[["set_status"]](200)
+      res[["set_type"]]("application/json")
+      res[["send"]]('{"status":"ok"}')
     }
   })
-  app$get("/attempts", function(req, res) {
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
-      list(attempts = req$app$locals$attempts),
+  app[["get"]]("/attempts", function(req, res) {
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
+      list(attempts = req[["app"]][["locals"]][["attempts"]]),
       auto_unbox = TRUE
     ))
   })
 
   srv <- webfakes::local_app_process(app)
-  url <- paste0(srv$url(), "/flaky")
+  url <- paste0(srv[["url"]](), "/flaky")
 
   withr::local_options(list(
     shinyOAuth.retry_max_tries = 3L,
@@ -665,11 +665,11 @@ test_that("req_with_retry succeeds on retry after transient 500", {
   expect_s3_class(resp, "httr2_response")
   expect_equal(httr2::resp_status(resp), 200)
 
-  attempts_resp <- httr2::request(paste0(srv$url(), "/attempts")) |>
+  attempts_resp <- httr2::request(paste0(srv[["url"]](), "/attempts")) |>
     httr2::req_perform()
   attempts <- jsonlite::fromJSON(httr2::resp_body_string(
     attempts_resp
-  ))$attempts
+  ))[["attempts"]]
   expect_equal(attempts, 2)
 })
 
@@ -760,10 +760,10 @@ test_that("resolve_max_body_bytes falls back to 1 MiB for invalid values", {
 })
 
 test_that("resolve_max_body_bytes caps values before integer overflow", {
-  max_safe_bytes <- .Machine$integer.max - 1L
+  max_safe_bytes <- .Machine[["integer.max"]] - 1L
 
   withr::local_options(list(
-    shinyOAuth.max_body_bytes = as.double(.Machine$integer.max) + 1
+    shinyOAuth.max_body_bytes = as.double(.Machine[["integer.max"]]) + 1
   ))
   expect_no_warning({
     expect_identical(
@@ -776,15 +776,15 @@ test_that("resolve_max_body_bytes caps values before integer overflow", {
   expect_no_warning({
     req <- shinyOAuth:::add_req_defaults(req)
   })
-  expect_identical(req$options$maxfilesize, max_safe_bytes)
+  expect_identical(req[["options"]][["maxfilesize"]], max_safe_bytes)
 })
 
 test_that("add_req_defaults sets maxfilesize curl option", {
   req <- httr2::request("https://example.com")
   req2 <- shinyOAuth:::add_req_defaults(req)
-  expect_equal(req2$options$maxfilesize, 1048576L)
+  expect_equal(req2[["options"]][["maxfilesize"]], 1048576L)
 
   withr::local_options(list(shinyOAuth.max_body_bytes = 2048))
   req3 <- shinyOAuth:::add_req_defaults(req)
-  expect_equal(req3$options$maxfilesize, 2048L)
+  expect_equal(req3[["options"]][["maxfilesize"]], 2048L)
 })

@@ -1,7 +1,7 @@
 test_that("public JWK extensions do not alter RSA or EC key import", {
   for (key in list(openssl::rsa_keygen(), openssl::ec_keygen())) {
     original <- jsonlite::fromJSON(
-      write_test_jwk(key$pubkey),
+      write_test_jwk(key[["pubkey"]]),
       simplifyVector = FALSE
     )
     alg <- if (original[["kty"]] == "RSA") "RS256" else "ES256"
@@ -19,7 +19,7 @@ test_that("public JWK extensions do not alter RSA or EC key import", {
       expect_s3_class(imported, "pubkey")
       expect_identical(
         openssl::write_der(imported),
-        openssl::write_der(key$pubkey)
+        openssl::write_der(key[["pubkey"]])
       )
       verified <- verify_jwt_with_jwks(jwt, list(jwk), alg)
       expect_identical(verified[["jwk"]], jwk)

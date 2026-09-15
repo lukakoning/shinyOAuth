@@ -48,7 +48,7 @@ async_daemon_source_files <- function() {
 assert_shinyoauth_available_in_daemon <- function() {
   source_root <- async_daemon_source_root()
   source_files <- async_daemon_source_files()
-  source_times <- file.info(source_files)$mtime
+  source_times <- file.info(source_files)[["mtime"]]
   source_times <- source_times[!is.na(source_times)]
   source_mtime <- if (length(source_times)) max(source_times) else NA
   source_version <- if (is.null(source_root)) {
@@ -71,7 +71,7 @@ assert_shinyoauth_available_in_daemon <- function() {
       file.path(pkg_path, "DESCRIPTION"),
       file.path(pkg_path, "Meta", "package.rds")
     )
-    pkg_times <- file.info(pkg_files)$mtime
+    pkg_times <- file.info(pkg_files)[["mtime"]]
     pkg_times <- pkg_times[!is.na(pkg_times)]
 
     list(

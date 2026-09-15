@@ -57,7 +57,7 @@
 #' @param launch `"standalone"` or `"ehr"`, matching the registered app flow.
 #' @param identity `"none"` (default), `"openid"` for a validated OIDC subject, or
 #'   `"fhirUser"` to also require the user's FHIR reference. `"openid"` does not
-#'   interpret a `fhirUser` claim or populate `smart_context()$fhirUser`.
+#'   interpret a `fhirUser` claim or populate `smart_context()[["fhirUser"]]`.
 #'   A validated `fhirUser`
 #'   claim may be an absolute URL or a supported resource instance reference
 #'   relative to this client's FHIR base, such as `"Practitioner/example"` or
@@ -103,7 +103,7 @@
 #' client <- smart_client(site, "registered-app", "https://app.example/callback",
 #'   scopes = c("launch/patient", "patient/Patient.r"),
 #'   required_scopes = "patient/Patient.r", token_auth_style = "public")
-#' client@smart$launch
+#' client@smart[["launch"]]
 #' }
 #' @export
 smart_client <- function(

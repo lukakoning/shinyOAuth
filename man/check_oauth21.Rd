@@ -76,7 +76,7 @@ client <- oauth_client(
   redirect_uri = "https://app.example/callback"
 )
 assessment <- check_oauth21(client)
-assessment$checks[assessment$checks$status != "pass", ]
+assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 }
 \references{
 \url{https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16}

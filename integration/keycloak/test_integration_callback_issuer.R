@@ -5,7 +5,7 @@
 ## mismatched issuers before it consumes state or exchanges the code.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 expect_callback_issuer_support <- function(prov, client) {
@@ -43,35 +43,35 @@ run_callback_issuer_rejection_then_retry <- function(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       login <- perform_login_form(url, redirect_uri = client@redirect_uri)
       state_info <- get_state_info(client, url)
 
-      values$.process_query(callback_query(login, iss = iss))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login, iss = iss))
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, expected_error)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], expected_error)
       expect_state_store_entry_present(
         client,
         state_info,
         info = "Issuer rejection must happen before state is consumed"
       )
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       if (is.null(success_assert)) {
         expect_keycloak_module_login_invariants(
-          authenticated = values$authenticated,
-          error = values$error,
-          error_description = values$error_description,
-          error_uri = values$error_uri,
-          token = values$token,
+          authenticated = values[["authenticated"]],
+          error = values[["error"]],
+          error_description = values[["error_description"]],
+          error_uri = values[["error_uri"]],
+          token = values[["token"]],
           client = client,
           expected_username = "alice"
         )
@@ -99,25 +99,25 @@ testthat::test_that("Keycloak callback issuer is accepted on the happy path", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       login <- perform_login_form(url, redirect_uri = client@redirect_uri)
       callback_iss <- parse_query_param(
-        login$callback_url,
+        login[["callback_url"]],
         "iss",
         decode = TRUE
       )
 
       testthat::expect_identical(callback_iss, prov@issuer)
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -148,7 +148,7 @@ testthat::test_that("callback issuer mix-up from a real second Keycloak realm is
   mixup_realm <- keycloak_create_mixup_realm(admin_token)
 
   on.exit(
-    keycloak_delete_realm(admin_token, mixup_realm$realm),
+    keycloak_delete_realm(admin_token, mixup_realm[["realm"]]),
     add = TRUE
   )
 
@@ -159,11 +159,11 @@ testthat::test_that("callback issuer mix-up from a real second Keycloak realm is
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       state_info <- get_state_info(client, url)
       foreign_url <- replace_auth_request_endpoint(
         url,
-        mixup_realm$auth_endpoint
+        mixup_realm[["auth_endpoint"]]
       )
 
       foreign_login <- perform_login_form(
@@ -171,43 +171,43 @@ testthat::test_that("callback issuer mix-up from a real second Keycloak realm is
         redirect_uri = client@redirect_uri
       )
       foreign_iss <- parse_query_param(
-        foreign_login$callback_url,
+        foreign_login[["callback_url"]],
         "iss",
         decode = TRUE
       )
 
-      testthat::expect_identical(foreign_iss, mixup_realm$issuer)
+      testthat::expect_identical(foreign_iss, mixup_realm[["issuer"]])
       testthat::expect_false(identical(foreign_iss, prov@issuer))
 
-      values$.process_query(callback_query(foreign_login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(foreign_login))
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "issuer_mismatch")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "issuer_mismatch")
       expect_state_store_entry_present(
         client,
         state_info,
         info = "A real second-issuer callback must not consume primary state"
       )
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
       legitimate_login <- perform_login_form(
         url,
         redirect_uri = client@redirect_uri
       )
 
-      values$.process_query(callback_query(legitimate_login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(legitimate_login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -298,14 +298,14 @@ testthat::test_that("mismatched callback issuer is rejected before state or code
     iss = "https://localhost:8443/realms/attacker",
     expected_error = "issuer_mismatch",
     success_assert = function(values, client) {
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_null(values$error_description)
-      testthat::expect_null(values$error_uri)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token %||% ""))
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
+      testthat::expect_null(values[["error_description"]])
+      testthat::expect_null(values[["error_uri"]])
+      testthat::expect_false(is.null(values[["token"]]))
+      testthat::expect_true(nzchar(values[["token"]]@access_token %||% ""))
       testthat::expect_identical(
-        values$token@userinfo[["preferred_username"]],
+        values[["token"]]@userinfo[["preferred_username"]],
         "alice"
       )
     }

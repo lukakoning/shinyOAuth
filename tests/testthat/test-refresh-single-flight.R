@@ -40,7 +40,7 @@ test_that("concurrent exported refreshes share one dispatch and rotated result",
   expect_identical(values[[1L]], rotated)
   expect_identical(values[[2L]], rotated)
   expect_identical(token@refresh_token, "refresh-original")
-  expect_length(ls(shinyOAuth:::refresh_flights$active), 0L)
+  expect_length(ls(shinyOAuth:::refresh_flights[["active"]]), 0L)
 })
 
 test_that("failed refreshes release locks and separate clients do not collide", {
@@ -75,11 +75,11 @@ test_that("failed refreshes release locks and separate clients do not collide", 
     later::run_now(0.01)
   }
   expect_length(errors, 2L)
-  expect_length(ls(shinyOAuth:::refresh_flights$active), 0L)
+  expect_length(ls(shinyOAuth:::refresh_flights[["active"]]), 0L)
   local_mocked_bindings(
     refresh_token_impl = function(...) stop("dispatch failed"),
     .package = "shinyOAuth"
   )
   expect_error(refresh_token(client, token), "dispatch failed")
-  expect_length(ls(shinyOAuth:::refresh_flights$active), 0L)
+  expect_length(ls(shinyOAuth:::refresh_flights[["active"]]), 0L)
 })

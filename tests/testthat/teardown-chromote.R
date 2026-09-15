@@ -2,7 +2,7 @@ if (requireNamespace("chromote", quietly = TRUE)) {
   try(
     {
       if (chromote::has_default_chromote_object()) {
-        chromote::default_chromote_object()$close()
+        chromote::default_chromote_object()[["close"]]()
         chromote::set_default_chromote_object(NULL)
       }
     },

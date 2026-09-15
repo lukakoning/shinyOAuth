@@ -32,12 +32,12 @@ testthat::test_that("explicit endpoint headers are sent on revoke requests", {
   )
 
   res <- revoke_token(cli, tok, which = "access", async = FALSE)
-  testthat::expect_identical(res$status, "ok")
-  testthat::expect_true(isTRUE(res$revoked))
+  testthat::expect_identical(res[["status"]], "ok")
+  testthat::expect_true(isTRUE(res[["revoked"]]))
 
   # Verify custom headers were applied to the request
   testthat::expect_false(is.null(captured_req))
-  hdrs <- captured_req$headers
+  hdrs <- captured_req[["headers"]]
   testthat::expect_identical(hdrs[["X-Custom"]], "custom-value")
   testthat::expect_identical(hdrs[["Accept"]], "application/json")
 })
@@ -76,12 +76,12 @@ testthat::test_that("explicit endpoint headers are sent on introspect requests",
   )
 
   res <- introspect_token(cli, tok, which = "access", async = FALSE)
-  testthat::expect_identical(res$status, "ok")
-  testthat::expect_true(isTRUE(res$active))
+  testthat::expect_identical(res[["status"]], "ok")
+  testthat::expect_true(isTRUE(res[["active"]]))
 
   # Verify custom headers were applied to the request
   testthat::expect_false(is.null(captured_req))
-  hdrs <- captured_req$headers
+  hdrs <- captured_req[["headers"]]
   testthat::expect_identical(hdrs[["X-Custom"]], "custom-value")
   testthat::expect_identical(hdrs[["Accept"]], "application/json")
 })
@@ -113,8 +113,8 @@ testthat::test_that("revoke and introspect work without extra_token_headers", {
 
   # Both should succeed without errors when no extra headers are set
   res_revoke <- revoke_token(cli, tok, which = "access", async = FALSE)
-  testthat::expect_identical(res_revoke$status, "ok")
+  testthat::expect_identical(res_revoke[["status"]], "ok")
 
   res_intro <- introspect_token(cli, tok, which = "access", async = FALSE)
-  testthat::expect_identical(res_intro$status, "ok")
+  testthat::expect_identical(res_intro[["status"]], "ok")
 })

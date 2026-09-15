@@ -17,11 +17,11 @@ test_that("claim conditions redact values and bound explicitly exposed details",
         error = identity
       )
       expect_s3_class(error, "shinyOAuth_userinfo_error")
-      expect_identical(error$context$claim, claim)
-      expect_match(error$context$expected_claim_digest, "^[a-f0-9]{64}$")
+      expect_identical(error[["context"]][["claim"]], claim)
+      expect_match(error[["context"]][["expected_claim_digest"]], "^[a-f0-9]{64}$")
       expect_false(identical(
-        error$context$expected_claim_digest,
-        error$context$received_claim_digest
+        error[["context"]][["expected_claim_digest"]],
+        error[["context"]][["received_claim_digest"]]
       ))
       message <- conditionMessage(error)
       expect_false(grepl(
@@ -63,7 +63,7 @@ test_that("required ACR conditions apply the diagnostic exposure policy", {
     required_acr_values = c("private-expected-acr", "private-alternative-acr")
   )
   key <- openssl::rsa_keygen()
-  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = FALSE)
+  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = FALSE)
   local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)))
   for (expose in c(FALSE, TRUE)) {
     local_options(shinyOAuth.expose_error_body = expose)
@@ -91,8 +91,8 @@ test_that("required ACR conditions apply the diagnostic exposure policy", {
         error = identity
       )
       expect_s3_class(error, "shinyOAuth_id_token_error")
-      expect_identical(error$context$claim, "acr")
-      expect_match(error$context$expected_claim_digest, "^[a-f0-9]{64}$")
+      expect_identical(error[["context"]][["claim"]], "acr")
+      expect_match(error[["context"]][["expected_claim_digest"]], "^[a-f0-9]{64}$")
       if (expose) {
         expect_match(
           conditionMessage(error),
@@ -212,7 +212,7 @@ test_that("module callback descriptions are omitted unless explicitly exposed", 
           "?error=access_denied&error_description=Private%20detail&state=",
           state
         ))
-        session$flushReact()
+        session[["flushReact"]]()
         expect_identical(values[["error"]], "access_denied")
         if (expose) {
           expect_identical(values[["error_description"]], "Private detail")
@@ -268,17 +268,17 @@ test_that("JWKS metadata failure redacts the producer's event and condition", {
     error = identity
   )
   expect_s3_class(error, "shinyOAuth_config_error")
-  expect_length(error$context$attempted_metadata_urls, 3L)
+  expect_length(error[["context"]][["attempted_metadata_urls"]], 3L)
   expect_true(all(
-    error$context$attempted_metadata_urls == "https://example.test/"
+    error[["context"]][["attempted_metadata_urls"]] == "https://example.test/"
   ))
-  expect_null(error$context$metadata_error)
+  expect_null(error[["context"]][["metadata_error"]])
   expect_false(any(grepl(
     "private-tenant|query-marker|diagnostic-marker",
     c(
       conditionMessage(error),
       capture.output(print(error)),
-      unlist(error$context),
+      unlist(error[["context"]]),
       unlist(seen)
     )
   )))
@@ -335,19 +335,19 @@ test_that("transport conditions retain classification without raw parent data", 
   )
   error <- tryCatch(req_with_retry(req, idempotent = FALSE), error = identity)
   expect_s3_class(error, "shinyOAuth_transport_error")
-  expect_s3_class(error$parent, "test_connection_error")
-  expect_null(error$parent$request)
-  expect_null(error$parent$parent)
-  expect_null(error$parent$call)
-  expect_null(error$parent$trace)
-  expect_identical(error$context$url, "https://example.test/")
+  expect_s3_class(error[["parent"]], "test_connection_error")
+  expect_null(error[["parent"]][["request"]])
+  expect_null(error[["parent"]][["parent"]])
+  expect_null(error[["parent"]][["call"]])
+  expect_null(error[["parent"]][["trace"]])
+  expect_identical(error[["context"]][["url"]], "https://example.test/")
   expect_false(any(grepl(
     "private-tenant|query-marker|diagnostic-marker",
     c(
       conditionMessage(error),
       capture.output(print(error)),
-      unlist(error$context),
-      unlist(error$parent)
+      unlist(error[["context"]]),
+      unlist(error[["parent"]])
     )
   )))
 })

@@ -49,8 +49,8 @@ automatically during login and refresh, set \code{introspect = TRUE} on
 \code{\link[=oauth_client]{oauth_client()}}.
 }
 \details{
-Read \code{result$active}: \code{TRUE} means active, \code{FALSE} means inactive, and \code{NA}
-means the result is unknown. Use \code{isTRUE(result$active)} if your code must
+Read \code{result[["active"]]}: \code{TRUE} means active, \code{FALSE} means inactive, and \code{NA}
+means the result is unknown. Use \code{isTRUE(result[["active"]])} if your code must
 require a definite confirmation.
 
 Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
@@ -72,14 +72,14 @@ Requests use the client's configured credentials and \code{token_auth_style}.
 #
 # The examples below require a real token from a completed login.
 # Inside a reactive expression in server(), after creating auth with
-# oauth_module_server() and confirming auth$authenticated:
+# oauth_module_server() and confirming auth[["authenticated"]]:
 if (interactive()) {
-  token <- auth$token
+  token <- auth[["token"]]
   user_info <- get_userinfo(client, token)
 
   # Requires an introspection endpoint. NA means activity is unknown.
   result <- introspect_token(client, token)
-  isTRUE(result$active)
+  isTRUE(result[["active"]])
 
   # Requires a refresh token. Keep the returned replacement.
   token <- refresh_token(client, token)

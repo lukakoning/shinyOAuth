@@ -9,5 +9,5 @@ test_that("malformed cookie escapes are repaired before acknowledgment", {
     stdout = TRUE,
     stderr = TRUE
   )
-  expect_null(attr(output, "status"), info = paste(output, collapse = "\n"))
+  expect_null(attr(output, "status", exact = TRUE), info = paste(output, collapse = "\n"))
 })

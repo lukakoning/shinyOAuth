@@ -37,11 +37,11 @@ duplicate_userinfo_response <- function(cli, jwt_body, verify_payload = FALSE) {
   )
 
   if (isTRUE(verify_payload)) {
-    bindings$fetch_jwks <- function(...) list(keys = list("dummy"))
-    bindings$select_candidate_jwks <- function(...) list("dummy")
-    bindings$filter_jwks_for_alg <- function(keys, alg) keys
-    bindings$jwk_to_pubkey <- function(jwk) "dummy"
-    bindings$verify_jws_signature_no_time <- function(jwt, key, alg) TRUE
+    bindings[["fetch_jwks"]] <- function(...) list(keys = list("dummy"))
+    bindings[["select_candidate_jwks"]] <- function(...) list("dummy")
+    bindings[["filter_jwks_for_alg"]] <- function(keys, alg) keys
+    bindings[["jwk_to_pubkey"]] <- function(jwk) "dummy"
+    bindings[["verify_jws_signature_no_time"]] <- function(jwt, key, alg) TRUE
   }
 
   do.call(
@@ -220,7 +220,7 @@ test_that("duplicate JARM issuer normalization stays fast at the callback limit"
   elapsed <- system.time(
     out <- shinyOAuth:::normalize_duplicate_jarm_iss_claim(payload)
   )[["elapsed"]]
-  expect_identical(jsonlite::fromJSON(out)$padding, padding)
+  expect_identical(jsonlite::fromJSON(out)[["padding"]], padding)
   expect_equal(sum(names(jsonlite::fromJSON(out)) == "iss"), 1L)
   expect_lt(elapsed, 0.75)
   many <- paste0('{', paste(rep('"iss":"issuer"', 1500L), collapse = ','), '}')

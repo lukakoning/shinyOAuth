@@ -48,10 +48,10 @@ run_retention_browser_tests <- function(args = commandArgs(trailingOnly = TRUE))
       as.character(utils::packageVersion(package))
     })
   )
-  names(evidence$versions) <- required
+  names(evidence[["versions"]]) <- required
   on.exit(
     {
-      evidence$chrome <- retention_evidence_env$chrome
+      evidence[["chrome"]] <- retention_evidence_env[["chrome"]]
       jsonlite::write_json(
         evidence,
         file.path(artifacts, "evidence.json"),
@@ -68,16 +68,16 @@ run_retention_browser_tests <- function(args = commandArgs(trailingOnly = TRUE))
     as.data.frame(testthat::test_file(file.path("integration/connections", file),
       env = environment(), reporter = "summary", stop_on_failure = TRUE))
   }))
-  evidence$scenarios <- files
-  evidence$passed <- sum(counts$passed)
-  evidence$skipped <- sum(counts$skipped)
-  if (sum(counts$failed) || sum(counts$error) || evidence$skipped) {
+  evidence[["scenarios"]] <- files
+  evidence[["passed"]] <- sum(counts[["passed"]])
+  evidence[["skipped"]] <- sum(counts[["skipped"]])
+  if (sum(counts[["failed"]]) || sum(counts[["error"]]) || evidence[["skipped"]]) {
     stop("Retention browser gate did not fully pass")
   }
-  evidence$status <- "passed"
+  evidence[["status"]] <- "passed"
   cat(
     "Retention browser gate:",
-    evidence$passed,
+    evidence[["passed"]],
     "assertions passed; no skips.\n"
   )
 }

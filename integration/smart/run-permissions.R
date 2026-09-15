@@ -13,13 +13,13 @@ run_permissions <- function() {
     auto_unbox = TRUE, pretty = TRUE, null = "null"), add = TRUE)
   app_port <- httpuv::randomPort()
   app_tls <- inferno_tls(root, app_port)
-  stack <- permissions_start(root, output, app_tls$origin)
-  evidence$provenance <- stack$provenance
-  for (index in 1:2) evidence$scenarios[[index]] <-
+  stack <- permissions_start(root, output, app_tls[["origin"]])
+  evidence[["provenance"]] <- stack[["provenance"]]
+  for (index in 1:2) evidence[["scenarios"]][[index]] <-
     permissions_case(root, output, stack, app_tls, app_port, index == 2L, index)
-  stopifnot(length(evidence$scenarios) == 2L,
-    all(vapply(evidence$scenarios, function(row) isTRUE(row$passed), logical(1))))
-  evidence$status <- "passed"
+  stopifnot(length(evidence[["scenarios"]]) == 2L,
+    all(vapply(evidence[["scenarios"]], function(row) isTRUE(row[["passed"]]), logical(1))))
+  evidence[["status"]] <- "passed"
   cat("Protected FHIR: two browser scenarios passed against Microsoft FHIR Server.\n")
 }
 run_permissions()

@@ -5,7 +5,7 @@
 ## not issue an authorization code for downgraded or malformed PKCE requests.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 drop_query_param <- function(url, name) {
@@ -60,7 +60,7 @@ testthat::test_that("Keycloak rejects authorization request without code_challen
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       testthat::expect_match(auth_url, "[?&]code_challenge=")
 
       tampered_url <- drop_query_param(auth_url, "code_challenge")
@@ -80,7 +80,7 @@ testthat::test_that("Keycloak rejects authorization request downgraded to plain 
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       testthat::expect_match(auth_url, "code_challenge_method=S256")
 
       tampered_url <- set_query_param(
@@ -104,7 +104,7 @@ testthat::test_that("Keycloak rejects authorization request with malformed chall
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       tampered_url <- set_query_param(auth_url, "code_challenge", "short")
 
       expect_no_authorization_code(tampered_url, client@redirect_uri)

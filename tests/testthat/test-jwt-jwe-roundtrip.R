@@ -13,7 +13,7 @@ test_that("compact JWE helpers round-trip a nested JWT", {
 
   compact_jwe <- shinyOAuth:::jwe_compact_encrypt(
     plaintext = inner_jwt,
-    public_key = rsa_key$pubkey,
+    public_key = rsa_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "test-kid",
@@ -25,12 +25,12 @@ test_that("compact JWE helpers round-trip a nested JWT", {
 
   decrypted <- shinyOAuth:::jwe_compact_decrypt(compact_jwe, rsa_key)
 
-  expect_identical(decrypted$header$alg, "RSA-OAEP")
-  expect_identical(decrypted$header$enc, "A256CBC-HS512")
-  expect_identical(decrypted$header$kid, "test-kid")
-  expect_identical(decrypted$header$typ, "oauth-authz-req+jwt")
-  expect_identical(decrypted$header$cty, "JWT")
-  expect_identical(decrypted$plaintext, inner_jwt)
+  expect_identical(decrypted[["header"]][["alg"]], "RSA-OAEP")
+  expect_identical(decrypted[["header"]][["enc"]], "A256CBC-HS512")
+  expect_identical(decrypted[["header"]][["kid"]], "test-kid")
+  expect_identical(decrypted[["header"]][["typ"]], "oauth-authz-req+jwt")
+  expect_identical(decrypted[["header"]][["cty"]], "JWT")
+  expect_identical(decrypted[["plaintext"]], inner_jwt)
 })
 
 test_that("compact JWE helpers reject RSA keys smaller than 2048 bits", {
@@ -40,7 +40,7 @@ test_that("compact JWE helpers reject RSA keys smaller than 2048 bits", {
   expect_error(
     shinyOAuth:::jwe_compact_encrypt(
       plaintext = "header.payload.signature",
-      public_key = weak_key$pubkey,
+      public_key = weak_key[["pubkey"]],
       alg = "RSA-OAEP",
       enc = "A128CBC-HS256"
     ),
@@ -50,7 +50,7 @@ test_that("compact JWE helpers reject RSA keys smaller than 2048 bits", {
 
   compact_jwe <- shinyOAuth:::jwe_compact_encrypt(
     plaintext = "header.payload.signature",
-    public_key = strong_key$pubkey,
+    public_key = strong_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A128CBC-HS256"
   )
@@ -77,7 +77,7 @@ test_that("compact JWE helpers collapse authenticated decryption failures", {
   rsa_key <- openssl::rsa_keygen()
   compact_jwe <- shinyOAuth:::jwe_compact_encrypt(
     plaintext = "header.payload.signature",
-    public_key = rsa_key$pubkey,
+    public_key = rsa_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     cty = "JWT"

@@ -526,8 +526,8 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
     id_token = NA_character_
   )
   seen_jtis <- new.env(parent = emptyenv())
-  seen_jtis$revoke <- character(0)
-  seen_jtis$introspect <- character(0)
+  seen_jtis[["revoke"]] <- character(0)
+  seen_jtis[["introspect"]] <- character(0)
 
   withr::local_options(list(
     shinyOAuth.retry_max_tries = 2L,
@@ -593,8 +593,8 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
 
   expect_true(isTRUE(revoke_res[["revoked"]]))
   expect_true(isTRUE(intro_res[["active"]]))
-  expect_length(seen_jtis$revoke, 2L)
-  expect_length(unique(seen_jtis$revoke), 2L)
-  expect_length(seen_jtis$introspect, 2L)
-  expect_length(unique(seen_jtis$introspect), 2L)
+  expect_length(seen_jtis[["revoke"]], 2L)
+  expect_length(unique(seen_jtis[["revoke"]]), 2L)
+  expect_length(seen_jtis[["introspect"]], 2L)
+  expect_length(unique(seen_jtis[["introspect"]]), 2L)
 })

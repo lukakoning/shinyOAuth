@@ -4,7 +4,7 @@ smart_contract_fixture <- function(name) {
 
 smart_contract_response <- function(req, name) {
   httr2::response(
-    url = req$url, status = 200,
+    url = req[["url"]], status = 200,
     headers = list("content-type" = "application/json"),
     body = charToRaw(smart_contract_fixture(name))
   )
@@ -48,10 +48,10 @@ test_that("raw SMART context snapshots survive refresh without identity inferenc
   state <- parse_query_param(prepare_call(client, valid_browser_token()), "state")
   token <- handle_callback(client, "synthetic-code", state, valid_browser_token())
   initial <- token@initial_extra_fields
-  expect_identical(initial$patient, "synthetic-patient-a")
+  expect_identical(initial[["patient"]], "synthetic-patient-a")
   expect_true("encounter" %in% names(initial))
-  expect_null(initial$encounter)
-  expect_false(initial$need_patient_banner)
+  expect_null(initial[["encounter"]])
+  expect_false(initial[["need_patient_banner"]])
   expect_false(token@id_token_validated)
   expect_identical(token@userinfo, list())
   response_name <- "refresh-token.json"
@@ -74,18 +74,18 @@ test_that("a new legacy Shiny session starts without the preceding session's tok
   shiny::testServer(oauth_module_server,
     args = list(id = "auth", client = client, auto_redirect = FALSE, async = FALSE),
     expr = {
-      state <- parse_query_param(values$build_auth_url(), "state")
-      values$.process_query(paste0("?code=synthetic-code&state=", state))
-      session$flushReact()
-      expect_true(values$authenticated)
-      expect_identical(values$token@extra_fields$patient, "synthetic-patient-a")
+      state <- parse_query_param(values[["build_auth_url"]](), "state")
+      values[[".process_query"]](paste0("?code=synthetic-code&state=", state))
+      session[["flushReact"]]()
+      expect_true(values[["authenticated"]])
+      expect_identical(values[["token"]]@extra_fields[["patient"]], "synthetic-patient-a")
     }
   )
   shiny::testServer(oauth_module_server,
     args = list(id = "auth", client = client, auto_redirect = FALSE, async = FALSE),
     expr = {
-      expect_false(values$authenticated)
-      expect_null(values$token)
+      expect_false(values[["authenticated"]])
+      expect_null(values[["token"]])
     }
   )
 })
@@ -96,6 +96,6 @@ test_that("legacy callback classification does not accept an EHR launch", {
       "iss=https%3A%2F%2Fapi.site-a.example%2Ffhir%2FR4&launch=synthetic-launch",
       rook.url_scheme = "http", HTTP_HOST = "localhost:8100")
   )
-  expect_identical(response$status, 400L)
-  expect_false(grepl("synthetic-launch", response$content, fixed = TRUE))
+  expect_identical(response[["status"]], 400L)
+  expect_false(grepl("synthetic-launch", response[["content"]], fixed = TRUE))
 })

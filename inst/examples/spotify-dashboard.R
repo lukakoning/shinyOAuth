@@ -31,7 +31,7 @@ spotify_safe_url <- function(url, allowed_hosts) {
     return(NULL)
   }
 
-  host <- tolower(parsed$hostname %||% "")
+  host <- tolower(parsed[["hostname"]] %||% "")
   allowed_hosts <- tolower(allowed_hosts)
   host_allowed <- any(vapply(
     allowed_hosts,
@@ -40,13 +40,13 @@ spotify_safe_url <- function(url, allowed_hosts) {
     },
     logical(1)
   ))
-  userinfo_absent <- !nzchar(parsed$username %||% "") &&
-    !nzchar(parsed$password %||% "")
-  port_allowed <- is.null(parsed$port) ||
-    identical(as.character(parsed$port), "443")
+  userinfo_absent <- !nzchar(parsed[["username"]] %||% "") &&
+    !nzchar(parsed[["password"]] %||% "")
+  port_allowed <- is.null(parsed[["port"]]) ||
+    identical(as.character(parsed[["port"]]), "443")
 
   if (
-    !identical(tolower(parsed$scheme %||% ""), "https") ||
+    !identical(tolower(parsed[["scheme"]] %||% ""), "https") ||
       !host_allowed ||
       !userinfo_absent ||
       !port_allowed
@@ -63,7 +63,7 @@ spotify_safe_image_url <- function(url) {
 
 spotify_avatar <- function(images) {
   url <- if (is.data.frame(images) && nrow(images) > 0L) {
-    images$url[[1L]]
+    images[["url"]][[1L]]
   } else if (is.list(images) && length(images) && is.list(images[[1L]])) {
     images[[1L]][["url"]]
   } else {
@@ -73,7 +73,7 @@ spotify_avatar <- function(images) {
   if (is.null(url)) {
     return(NULL)
   }
-  htmltools::tags$img(src = url, class = "profile-avatar", alt = "User avatar")
+  htmltools::tags[["img"]](src = url, class = "profile-avatar", alt = "User avatar")
 }
 
 # Configure provider and client for Spotify
@@ -424,7 +424,7 @@ spotify_theme <- bs_add_rules(
 ## UI --------------------------------------------------------------------------
 
 ui <- bslib::page_fluid(
-  title = tags$span(
+  title = tags[["span"]](
     class = "d-flex align-items-center gap-2",
     icon("headphones"),
     span(class = "fw-semibold", "Spotify Listening Studio")
@@ -464,7 +464,7 @@ ui <- bslib::page_fluid(
                 step = 1
               )
             ),
-            card_footer(tags$small(
+            card_footer(tags[["small"]](
               class = "text-muted",
               "Adjust filters to explore different eras of your listening."
             ))
@@ -564,7 +564,7 @@ ui <- bslib::page_fluid(
             ),
             div(
               class = "mt-3 small",
-              tags$strong("Scopes:"),
+              tags[["strong"]]("Scopes:"),
               " user-top-read • user-read-recently-played • user-read-private"
             )
           )
@@ -590,40 +590,40 @@ server <- function(input, output, session) {
   )
 
   # Expose auth state to JS for our conditionalPanel
-  output$isAuthenticated <- shiny::reactive({
-    isTRUE(auth$authenticated)
+  output[["isAuthenticated"]] <- shiny::reactive({
+    isTRUE(auth[["authenticated"]])
   })
   shiny::outputOptions(output, "isAuthenticated", suspendWhenHidden = FALSE)
 
-  observeEvent(input$login, {
-    auth$request_login()
+  observeEvent(input[["login"]], {
+    auth[["request_login"]]()
   })
 
-  observeEvent(input$logout, {
-    req(isTRUE(auth$authenticated))
-    auth$logout()
+  observeEvent(input[["logout"]], {
+    req(isTRUE(auth[["authenticated"]]))
+    auth[["logout"]]()
   })
 
   observeEvent(
-    list(auth$error, auth$error_description),
+    list(auth[["error"]], auth[["error_description"]]),
     {
-      if (interactive() && !is.null(auth$error_description)) {
+      if (interactive() && !is.null(auth[["error_description"]])) {
         rlang::inform(c(
           "OAuth error details",
-          "i" = paste0("error: ", auth$error),
-          "i" = paste0("error_description: ", auth$error_description)
+          "i" = paste0("error: ", auth[["error"]]),
+          "i" = paste0("error_description: ", auth[["error_description"]])
         ))
       }
     },
     ignoreInit = TRUE
   )
 
-  output$oauth_error <- renderUI({
-    if (is.null(auth$error) || identical(auth$error, "logged_out")) {
+  output[["oauth_error"]] <- renderUI({
+    if (is.null(auth[["error"]]) || identical(auth[["error"]], "logged_out")) {
       return(NULL)
     }
 
-    msg <- if (identical(auth$error, "access_denied")) {
+    msg <- if (identical(auth[["error"]], "access_denied")) {
       "Sign-in was canceled or denied. Please try again."
     } else {
       "Authentication failed. Please try again."
@@ -634,41 +634,41 @@ server <- function(input, output, session) {
 
   # Show user profile ----------------------------------------------------------
 
-  output$profile <- renderUI({
-    req(auth$token)
-    user_info <- auth$token@userinfo
+  output[["profile"]] <- renderUI({
+    req(auth[["token"]])
+    user_info <- auth[["token"]]@userinfo
     if (length(user_info) == 0) {
       return(div(class = "text-muted", "No user info"))
     }
 
-    avatar <- spotify_avatar(user_info$images)
+    avatar <- spotify_avatar(user_info[["images"]])
 
-    display_name <- user_info$display_name %||% user_info$id %||% "<unknown>"
+    display_name <- user_info[["display_name"]] %||% user_info[["id"]] %||% "<unknown>"
 
     followers_badge <- NULL
     if (
-      !is.null(user_info$followers) &&
-        is.list(user_info$followers) &&
-        !is.null(user_info$followers$total)
+      !is.null(user_info[["followers"]]) &&
+        is.list(user_info[["followers"]]) &&
+        !is.null(user_info[["followers"]][["total"]])
     ) {
       followers_badge <- span(
         class = "badge bg-success-subtle text-success-emphasis",
         "Followers:",
-        tags$span(
+        tags[["span"]](
           class = "ms-1",
-          format(user_info$followers$total, big.mark = ",")
+          format(user_info[["followers"]][["total"]], big.mark = ",")
         )
       )
     }
 
     spotify_link <- NULL
     if (
-      !is.null(user_info$external_urls) &&
-        is.list(user_info$external_urls) &&
-        !is.null(user_info$external_urls$spotify)
+      !is.null(user_info[["external_urls"]]) &&
+        is.list(user_info[["external_urls"]]) &&
+        !is.null(user_info[["external_urls"]][["spotify"]])
     ) {
       profile_url <- spotify_safe_url(
-        user_info$external_urls$spotify,
+        user_info[["external_urls"]][["spotify"]],
         "open.spotify.com"
       )
       if (!is.null(profile_url)) {
@@ -711,32 +711,32 @@ server <- function(input, output, session) {
 
   # Data fetch reactives
   top_tracks <- reactive({
-    req(auth$token, input$time_range, input$top_limit)
+    req(auth[["token"]], input[["time_range"]], input[["top_limit"]])
     try(
       get_top_tracks(
-        auth$token,
-        limit = input$top_limit,
-        time_range = input$time_range
+        auth[["token"]],
+        limit = input[["top_limit"]],
+        time_range = input[["time_range"]]
       ),
       silent = FALSE
     )
   })
 
   top_artists <- reactive({
-    req(auth$token, input$time_range, input$top_limit)
+    req(auth[["token"]], input[["time_range"]], input[["top_limit"]])
     try(
       get_top_artists(
-        auth$token,
-        limit = input$top_limit,
-        time_range = input$time_range
+        auth[["token"]],
+        limit = input[["top_limit"]],
+        time_range = input[["time_range"]]
       ),
       silent = FALSE
     )
   })
 
   recent <- reactive({
-    req(auth$token)
-    try(get_recently_played(auth$token, limit = 50), silent = FALSE)
+    req(auth[["token"]])
+    try(get_recently_played(auth[["token"]], limit = 50), silent = FALSE)
   })
 
   summary_data <- reactive({
@@ -747,19 +747,19 @@ server <- function(input, output, session) {
     list(
       top_track = if (!is.null(tracks_df)) {
         list(
-          name = tracks_df$name[1] %||% "—",
-          artist = tracks_df$artist[1] %||% "—"
+          name = tracks_df[["name"]][1] %||% "—",
+          artist = tracks_df[["artist"]][1] %||% "—"
         )
       } else {
         NULL
       },
       top_artist = if (!is.null(artists_df)) {
         list(
-          name = artists_df$name[1] %||% "—",
+          name = artists_df[["name"]][1] %||% "—",
           genres = if (
-            !is.null(artists_df$genres[1]) && nzchar(artists_df$genres[1])
+            !is.null(artists_df[["genres"]][1]) && nzchar(artists_df[["genres"]][1])
           ) {
-            artists_df$genres[1]
+            artists_df[["genres"]][1]
           } else {
             "—"
           }
@@ -769,15 +769,15 @@ server <- function(input, output, session) {
       },
       last_play = if (!is.null(recent_df)) {
         list(
-          track = recent_df$track[1] %||% "—",
-          artist = recent_df$artist[1] %||% "—",
-          played_at = recent_df$played_at[1]
+          track = recent_df[["track"]][1] %||% "—",
+          artist = recent_df[["artist"]][1] %||% "—",
+          played_at = recent_df[["played_at"]][1]
         )
       } else {
         NULL
       },
       unique_recent = if (!is.null(recent_df)) {
-        dplyr::n_distinct(recent_df$artist)
+        dplyr::n_distinct(recent_df[["artist"]])
       } else {
         NA_integer_
       }
@@ -788,39 +788,39 @@ server <- function(input, output, session) {
 
   # These show a few different summary stats about the user's listening
 
-  output$summary_boxes <- renderUI({
+  output[["summary_boxes"]] <- renderUI({
     data <- summary_data()
 
-    top_track <- data$top_track
-    top_artist <- data$top_artist
-    last_play <- data$last_play
+    top_track <- data[["top_track"]]
+    top_artist <- data[["top_artist"]]
+    last_play <- data[["last_play"]]
 
-    top_track_name <- if (!is.null(top_track)) top_track$name else "—"
+    top_track_name <- if (!is.null(top_track)) top_track[["name"]] else "—"
     top_track_artist <- if (!is.null(top_track)) {
-      top_track$artist
+      top_track[["artist"]]
     } else {
       "No data for this window"
     }
 
-    top_artist_name <- if (!is.null(top_artist)) top_artist$name else "—"
+    top_artist_name <- if (!is.null(top_artist)) top_artist[["name"]] else "—"
     top_artist_genres <- if (!is.null(top_artist)) {
-      top_artist$genres
+      top_artist[["genres"]]
     } else {
       "No genres available"
     }
 
-    last_track_name <- if (!is.null(last_play)) last_play$track else "—"
+    last_track_name <- if (!is.null(last_play)) last_play[["track"]] else "—"
     last_track_details <- if (!is.null(last_play)) {
-      parts <- c(last_play$artist %||% "—")
-      if (!is.null(last_play$played_at) && !is.na(last_play$played_at)) {
-        parts <- c(parts, format(last_play$played_at, "%b %d • %H:%M", tz = ""))
+      parts <- c(last_play[["artist"]] %||% "—")
+      if (!is.null(last_play[["played_at"]]) && !is.na(last_play[["played_at"]])) {
+        parts <- c(parts, format(last_play[["played_at"]], "%b %d • %H:%M", tz = ""))
       }
       paste(parts, collapse = "  |  ")
     } else {
       "No recent playback"
     }
 
-    unique_recent <- data$unique_recent
+    unique_recent <- data[["unique_recent"]]
     unique_recent_value <- if (!is.na(unique_recent)) unique_recent else "—"
 
     layout_column_wrap(
@@ -856,7 +856,7 @@ server <- function(input, output, session) {
 
   # Shows the user's top tracks in a data table
 
-  output$top_tracks <- renderDT({
+  output[["top_tracks"]] <- renderDT({
     df <- top_tracks()
     shiny::validate(
       need(!inherits(df, "try-error"), "Failed to load top tracks"),
@@ -866,11 +866,11 @@ server <- function(input, output, session) {
     # Calculate play counts from recent plays
     recent_df <- safe_df(recent())
     if (!is.null(recent_df)) {
-      recent_df$key <- paste0(recent_df$track, " — ", recent_df$artist)
-      df$key <- paste0(df$name, " — ", df$artist)
-      play_counts <- table(recent_df$key)
-      df$plays <- vapply(
-        df$key,
+      recent_df[["key"]] <- paste0(recent_df[["track"]], " — ", recent_df[["artist"]])
+      df[["key"]] <- paste0(df[["name"]], " — ", df[["artist"]])
+      play_counts <- table(recent_df[["key"]])
+      df[["plays"]] <- vapply(
+        df[["key"]],
         function(k) {
           count <- suppressWarnings(play_counts[k])
           if (is.na(count)) 0L else as.integer(count)
@@ -878,20 +878,20 @@ server <- function(input, output, session) {
         integer(1)
       )
     } else {
-      df$plays <- 0L
+      df[["plays"]] <- 0L
     }
 
     # Drop rows that are entirely missing name & artist
-    keep <- (!is.na(df$name) & nzchar(df$name)) |
-      (!is.na(df$artist) & nzchar(df$artist))
+    keep <- (!is.na(df[["name"]]) & nzchar(df[["name"]])) |
+      (!is.na(df[["artist"]]) & nzchar(df[["artist"]]))
     df <- df[keep, , drop = FALSE]
 
     df <- df[, c("name", "artist", "album", "plays", "popularity")]
-    df$plays <- ifelse(df$plays > 0, sprintf("🔁 %d", df$plays), "—")
-    df$popularity <- ifelse(
-      is.na(df$popularity),
+    df[["plays"]] <- ifelse(df[["plays"]] > 0, sprintf("🔁 %d", df[["plays"]]), "—")
+    df[["popularity"]] <- ifelse(
+      is.na(df[["popularity"]]),
       "—",
-      sprintf("⭐ %d", round(df$popularity))
+      sprintf("⭐ %d", round(df[["popularity"]]))
     )
 
     # Add rank numbers
@@ -920,30 +920,30 @@ server <- function(input, output, session) {
 
   # Shows the user's top artists in a data table
 
-  output$top_artists <- renderDT({
+  output[["top_artists"]] <- renderDT({
     df <- top_artists()
     shiny::validate(
       need(!inherits(df, "try-error"), "Failed to load top artists"),
       need(!is.null(df) && nrow(df) > 0, "No artists returned for this window")
     )
     df <- df[, c("name", "genres", "popularity", "followers")]
-    df$genres[df$genres == ""] <- "—"
-    df$genres <- vapply(
-      df$genres,
+    df[["genres"]][df[["genres"]] == ""] <- "—"
+    df[["genres"]] <- vapply(
+      df[["genres"]],
       function(g) {
         if (nchar(g) > 50) paste0(substr(g, 1, 47), "...") else g
       },
       character(1)
     )
-    df$popularity <- ifelse(
-      is.na(df$popularity),
+    df[["popularity"]] <- ifelse(
+      is.na(df[["popularity"]]),
       "—",
-      sprintf("⭐ %d", round(df$popularity))
+      sprintf("⭐ %d", round(df[["popularity"]]))
     )
-    df$followers <- ifelse(
-      is.na(df$followers),
+    df[["followers"]] <- ifelse(
+      is.na(df[["followers"]]),
       "—",
-      paste0("👥 ", format(round(df$followers), big.mark = ","))
+      paste0("👥 ", format(round(df[["followers"]]), big.mark = ","))
     )
 
     # Add rank numbers
@@ -972,13 +972,13 @@ server <- function(input, output, session) {
 
   # Shows the user's recent plays in a data table
 
-  output$recent <- renderDT({
+  output[["recent"]] <- renderDT({
     df <- recent()
     shiny::validate(
       need(!inherits(df, "try-error"), "Failed to load recent plays"),
       need(!is.null(df) && nrow(df) > 0, "No recent plays available")
     )
-    df$played <- format(df$played_at, "%b %d • %H:%M", tz = "")
+    df[["played"]] <- format(df[["played_at"]], "%b %d • %H:%M", tz = "")
     df <- df[, c("played", "track", "artist", "album")]
 
     # Add rank numbers
@@ -1002,7 +1002,7 @@ server <- function(input, output, session) {
 
   # Bar plot of most frequently played artists in recent plays
 
-  output$recent_artist_plot <- renderPlot({
+  output[["recent_artist_plot"]] <- renderPlot({
     df_recent <- recent()
     shiny::validate(
       need(!inherits(df_recent, "try-error"), "Failed to load recent plays"),
@@ -1013,7 +1013,7 @@ server <- function(input, output, session) {
     )
 
     # Primary: counts from recent plays
-    counts <- sort(table(df_recent$artist), decreasing = TRUE)
+    counts <- sort(table(df_recent[["artist"]]), decreasing = TRUE)
     counts_df <- data.frame(
       artist = names(counts),
       plays = as.numeric(counts),
@@ -1022,7 +1022,7 @@ server <- function(input, output, session) {
 
     # If the recent signal is weak (<= 3 artists or max <= 1), fall back to time-range top artists by popularity
     use_fallback <- nrow(counts_df) <= 3 ||
-      max(counts_df$plays, na.rm = TRUE) <= 1
+      max(counts_df[["plays"]], na.rm = TRUE) <= 1
     if (isTRUE(use_fallback)) {
       df_top <- safe_df(top_artists())
       if (!is.null(df_top) && nrow(df_top) > 0) {
@@ -1033,10 +1033,10 @@ server <- function(input, output, session) {
 
     # Take top 10 and order for plotting
     counts_df <- utils::head(
-      counts_df[order(counts_df$plays, decreasing = TRUE), ],
+      counts_df[order(counts_df[["plays"]], decreasing = TRUE), ],
       10L
     )
-    counts_df$artist <- factor(counts_df$artist, levels = rev(counts_df$artist))
+    counts_df[["artist"]] <- factor(counts_df[["artist"]], levels = rev(counts_df[["artist"]]))
 
     x_lab <- if (isTRUE(use_fallback)) "Popularity" else "Plays (last 50)"
 
@@ -1067,24 +1067,24 @@ server <- function(input, output, session) {
 
   # Shows the user's currently playing track with a progress bar
 
-  output$now_playing <- renderUI({
-    req(auth$token)
+  output[["now_playing"]] <- renderUI({
+    req(auth[["token"]])
     # refresh every 5 seconds
     invalidateLater(5000, session)
-    playing <- try(get_currently_playing(auth$token), silent = FALSE)
+    playing <- try(get_currently_playing(auth[["token"]]), silent = FALSE)
     if (inherits(playing, "try-error") || is.null(playing)) {
       return(div(class = "text-muted", "Nothing playing right now"))
     }
 
     pct <- NA_real_
     if (
-      !is.na(playing$progress_ms) &&
-        !is.na(playing$duration_ms) &&
-        playing$duration_ms > 0
+      !is.na(playing[["progress_ms"]]) &&
+        !is.na(playing[["duration_ms"]]) &&
+        playing[["duration_ms"]] > 0
     ) {
       pct <- max(
         0,
-        min(100, round(playing$progress_ms / playing$duration_ms * 100))
+        min(100, round(playing[["progress_ms"]] / playing[["duration_ms"]] * 100))
       )
     }
 
@@ -1105,22 +1105,22 @@ server <- function(input, output, session) {
 
     time_label <- span(
       class = "small text-muted",
-      paste(format_ms(playing$progress_ms), "/", format_ms(playing$duration_ms))
+      paste(format_ms(playing[["progress_ms"]]), "/", format_ms(playing[["duration_ms"]]))
     )
 
     tagList(
       div(
         class = "d-flex gap-3 align-items-center",
-        if (!is.null(playing$art)) {
-          tags$img(
-            src = playing$art,
+        if (!is.null(playing[["art"]])) {
+          tags[["img"]](
+            src = playing[["art"]],
             class = "now-playing-art",
             alt = "Album art"
           )
         },
         div(
-          div(class = "fw-semibold", playing$track),
-          div(class = "text-muted", paste(playing$artist, "•", playing$album))
+          div(class = "fw-semibold", playing[["track"]]),
+          div(class = "text-muted", paste(playing[["artist"]], "•", playing[["album"]]))
         )
       ),
       progress_bar,

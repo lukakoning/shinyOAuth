@@ -43,7 +43,7 @@ test_that("prepare_call rejects oversized browser_token and does not cache", {
   client <- make_client_for_tests()
 
   # initial keys
-  k0 <- sort(client@state_store$keys())
+  k0 <- sort(client@state_store[["keys"]]())
 
   huge <- strrep("A", 1024 * 1024) # 1MB
   expect_error(
@@ -52,7 +52,7 @@ test_that("prepare_call rejects oversized browser_token and does not cache", {
   )
 
   # keys unchanged
-  k1 <- sort(client@state_store$keys())
+  k1 <- sort(client@state_store[["keys"]]())
   expect_identical(k0, k1)
 })
 
@@ -71,12 +71,12 @@ test_that("prepare_call accepts valid token and caches state values", {
   expect_true(is.character(st) && nzchar(st))
 
   key <- shinyOAuth:::state_cache_key(st)
-  val <- client@state_store$get(key, missing = NULL)
+  val <- client@state_store[["get"]](key, missing = NULL)
   expect_type(val, "list")
   expect_true(all(
     c("browser_token", "pkce_code_verifier", "nonce") %in% names(val)
   ))
-  expect_identical(val$browser_token, tok)
+  expect_identical(val[["browser_token"]], tok)
 })
 
 test_that("prepare_call rejects malformed length browser_token", {

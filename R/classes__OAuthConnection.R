@@ -6,8 +6,8 @@
 #' connection selects that hospital's API address and reads the session's current
 #' token for each request. Create it inside `server()` with [oauth_connection()]
 #' or the `connection(id)` method of [oauth_connections_server()].
-#' Use `$request()` to call an approved API, `$is_usable()`
-#' to check local availability and `$summary()` for status without credentials.
+#' Use `[["request"]]()` to call an approved API, `[["is_usable"]]()`
+#' to check local availability and `[["summary"]]()` for status without credentials.
 #'
 #' @details
 #' The existing reactive token already updates on refresh; this object
@@ -19,13 +19,13 @@
 #' Each operation resolves the current credentials, so refresh and logout are
 #' reflected without replacing the reference. [oauth_module_server()] owns the
 #' lifecycle of ordinary references; [oauth_connections_server()] owns managed
-#' references and supplies `$refresh()`. Every reference expires when its Shiny
+#' references and supplies `[["refresh"]]()`. Every reference expires when its Shiny
 #' session closes. A manager can retain the underlying grant across redirects;
 #' a new session obtains a new reference after verifying the local owner.
 #'
-#' Call `$is_usable()`, `$summary()` and `$request()` in the owning session's
-#' reactive context. If the connection cannot be resolved, `$is_usable()` returns
-#' `FALSE`; `$summary()` and `$request()` raise an error. The ID is read-only and
+#' Call `[["is_usable"]]()`, `[["summary"]]()` and `[["request"]]()` in the owning session's
+#' reactive context. If the connection cannot be resolved, `[["is_usable"]]()` returns
+#' `FALSE`; `[["summary"]]()` and `[["request"]]()` raise an error. The ID is read-only and
 #' cloning is disabled. The class generator is internal; the public factories
 #' establish the session binding required by applications.
 #' Managed resource and status reads do not count as owner activity. Record user
@@ -44,11 +44,11 @@
 #' )
 #' server <- function(input, output, session) {
 #'   auth <- oauth_module_server("auth", client)
-#'   connection <- oauth_connection(client, shiny::reactive(auth$token))
-#'   output$status <- shiny::renderText(connection$summary()$status)
+#'   connection <- oauth_connection(client, shiny::reactive(auth[["token"]]))
+#'   output[["status"]] <- shiny::renderText(connection[["summary"]]()[["status"]])
 #'   records <- shiny::reactive({
-#'     shiny::req(connection$is_usable())
-#'     response <- connection$request("api", "records", required_scopes = "read")
+#'     shiny::req(connection[["is_usable"]]())
+#'     response <- connection[["request"]]("api", "records", required_scopes = "read")
 #'     httr2::resp_body_json(response)
 #'   })
 #' }
@@ -64,13 +64,13 @@ OAuthConnection <- R6::R6Class(
     .resolve = NULL,
     .refresh = NULL,
     record = function() {
-      record <- tryCatch(private$.resolve(), error = function(...) {
+      record <- tryCatch(private[[".resolve"]](), error = function(...) {
         err_token("Connection is unavailable")
       })
       valid <- tryCatch(
-        is.list(record) && identical(record$client, private$.client) &&
-          identical(connection_client_fingerprint(record$client), private$.fingerprint) &&
-          (is.null(record$token) || S7::S7_inherits(record$token, OAuthToken)),
+        is.list(record) && identical(record[["client"]], private[[".client"]]) &&
+          identical(connection_client_fingerprint(record[["client"]]), private[[".fingerprint"]]) &&
+          (is.null(record[["token"]]) || S7::S7_inherits(record[["token"]], OAuthToken)),
         error = function(...) FALSE
       )
       if (!valid) {
@@ -88,7 +88,7 @@ OAuthConnection <- R6::R6Class(
       if (!missing(value)) {
         err_input("Connection IDs are read-only")
       }
-      private$.id
+      private[[".id"]]
     }
   ),
   public = list(
@@ -107,26 +107,26 @@ OAuthConnection <- R6::R6Class(
     #'   coordinated refresh. Legacy session references leave this `NULL`.
     #' @return A new `OAuthConnection` instance.
     initialize = function(id, client, resolve, refresh = NULL) {
-      if (!is.null(private$.id)) {
+      if (!is.null(private[[".id"]])) {
         err_input("Connection references are read-only")
       }
-      private$.id <- id
-      private$.client <- client
-      private$.fingerprint <- connection_client_fingerprint(client)
-      private$.resolve <- resolve
-      private$.refresh <- refresh
+      private[[".id"]] <- id
+      private[[".client"]] <- client
+      private[[".fingerprint"]] <- connection_client_fingerprint(client)
+      private[[".resolve"]] <- resolve
+      private[[".refresh"]] <- refresh
       invisible(self)
     },
     #' @description
     #' Check whether the current token is locally usable. This checks token
     #' presence, known unexpired lifetime and the client's required scopes.
     #' It does not refresh the token, contact the provider or guarantee remote
-    #' authorization. Request-specific scopes are checked by `$request()`.
+    #' authorization. Request-specific scopes are checked by `[["request"]]()`.
     #' @return A single logical value: `TRUE` for an `active` or `limited`
     #'   connection, otherwise `FALSE`, including when resolution fails.
     is_usable = function() {
       tryCatch(
-        connection_record_status(private$record()) %in% c("active", "limited"),
+        connection_record_status(private[["record"]]()) %in% c("active", "limited"),
         error = function(...) FALSE
       )
     },
@@ -156,11 +156,11 @@ OAuthConnection <- R6::R6Class(
     #' @return `TRUE` after a successful commit, or a promise resolving to `TRUE`
     #'   when the manager uses async transport. Failure raises a redacted error.
     refresh = function(scopes = NULL) {
-      private$record()
-      if (!is.function(private$.refresh)) {
+      private[["record"]]()
+      if (!is.function(private[[".refresh"]])) {
         err_config("This connection uses oauth_module_server() for refresh")
       }
-      if (is.null(scopes)) private$.refresh() else private$.refresh(scopes = scopes)
+      if (is.null(scopes)) private[[".refresh"]]() else private[[".refresh"]](scopes = scopes)
     },
     #' @description
     #' Resolve the current connection and return status information without
@@ -194,7 +194,7 @@ OAuthConnection <- R6::R6Class(
     #' coverage for both connection and operation permissions.
     #' See [OAuthToken] for the distinction from verified scope evidence.
     summary = function() {
-      connection_record_summary(private$record(), private$.id)
+      connection_record_summary(private[["record"]](), private[[".id"]])
     },
     #' @description
     #' Read explicitly selected OIDC identity fields from the current usable
@@ -210,7 +210,7 @@ OAuthConnection <- R6::R6Class(
     #' @details
     #' Call inside the owning session's reactive context. The result contains
     #' sensitive identity data: select only what the application needs and keep
-    #' it out of logs and generic status displays. `$summary()` and printing
+    #' it out of logs and generic status displays. `[["summary"]]()` and printing
     #' continue to omit identity. Ordinary OAuth connections without validated
     #' OIDC identity cannot use this accessor.
     #'
@@ -219,10 +219,10 @@ OAuthConnection <- R6::R6Class(
     #' authentication. This accessor does not log the user into your application
     #' or establish an account-retention owner. It does not count as owner activity.
     identity = function(claims = c("iss", "sub"), userinfo = character()) {
-      record <- private$record()
-      token <- record$token
+      record <- private[["record"]]()
+      token <- record[["token"]]
       if (!connection_record_status(record) %in% c("active", "limited") ||
-          !provider_uses_oidc(record$client@provider) ||
+          !provider_uses_oidc(record[["client"]]@provider) ||
           !isTRUE(token@id_token_validated) ||
           !"openid" %in% token@granted_scopes) {
         err_token("Connection has no usable validated OIDC identity")
@@ -234,12 +234,12 @@ OAuthConnection <- R6::R6Class(
         }
       }
       verified <- token@id_token_claims
-      if (!is_valid_string(verified$iss) || !is_valid_string(verified$sub)) {
+      if (!is_valid_string(verified[["iss"]]) || !is_valid_string(verified[["sub"]])) {
         err_token("Connection has no usable validated OIDC identity")
       }
       profile <- token@userinfo
       if (length(userinfo) && length(profile) &&
-          !identical(profile$sub, verified$sub)) {
+          !identical(profile[["sub"]], verified[["sub"]])) {
         err_token("UserInfo is not bound to the validated OIDC identity")
       }
       select <- function(values, fields) {
@@ -287,7 +287,7 @@ OAuthConnection <- R6::R6Class(
       configure = NULL
     ) {
       connection_record_request(
-        private$record(),
+        private[["record"]](),
         resource_id,
         path,
         query,
@@ -299,7 +299,7 @@ OAuthConnection <- R6::R6Class(
     #' @description
     #' Read interpreted context for a usable SMART connection in this session.
     #' @return The sensitive context list documented in [smart_context()].
-    smart_context = function() smart_record_context(private$record()),
+    smart_context = function() smart_record_context(private[["record"]]()),
     #' @description
     #' Fetch the contextual Patient or validated fhirUser through the approved
     #' FHIR base, using current read permissions. Prefer [smart_patient()] and
@@ -308,7 +308,7 @@ OAuthConnection <- R6::R6Class(
     #' @return An [httr2] response. Missing context, scope or resource binding
     #'   raises an error before an authenticated request is sent.
     smart_resource = function(kind) {
-      smart_record_resource(private$record(), kind)
+      smart_record_resource(private[["record"]](), kind)
     },
     #' @description
     #' Print the class name and session-binding description, with credentials

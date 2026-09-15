@@ -32,7 +32,7 @@ testthat::test_that("Keycloak runner bounds pull retries and preserves later fai
   script_path <- testthat::test_path("..", "..", "integration", "keycloak", "run-integration.sh")
   testthat::skip_if_not(file.exists(script_path), "Integration runner unavailable")
   bash <- Sys.which("bash")
-  if (.Platform$OS.type == "windows") {
+  if (.Platform[["OS.type"]] == "windows") {
     # Use Git Bash rather than the Windows launcher for WSL.
     bash <- file.path(Sys.getenv("ProgramFiles"), "Git", "bin", "bash.exe")
   }
@@ -94,8 +94,8 @@ testthat::test_that("Keycloak clients use exact local redirect registrations", {
   )
 
   fixture <- jsonlite::read_json(fixture_path, simplifyVector = FALSE)
-  redirects <- unlist(lapply(fixture$clients, `[[`, "redirectUris"))
-  origins <- unlist(lapply(fixture$clients, `[[`, "webOrigins"))
+  redirects <- unlist(lapply(fixture[["clients"]], `[[`, "redirectUris"))
+  origins <- unlist(lapply(fixture[["clients"]], `[[`, "webOrigins"))
   allowed_redirects <- c(
     "http://localhost:3000",
     "http://localhost:3000/callback",

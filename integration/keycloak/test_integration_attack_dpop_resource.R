@@ -1,11 +1,11 @@
 ## Attack vector: DPoP-protected resource token replay and key mismatch
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 if (!exists("start_dpop_protected_resource", mode = "function")) {
   source(file.path(
-    dirname(sys.frame(1)$ofile %||% "."),
+    dirname(sys.frame(1)[["ofile"]] %||% "."),
     "helper-dpop-resource.R"
   ))
 }
@@ -21,20 +21,20 @@ perform_dpop_login <- function(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form_as(
         auth_url,
         username = username,
         password = password
       )
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       result <<- list(
-        authenticated = isTRUE(values$authenticated),
-        error = values$error,
-        error_description = values$error_description,
-        token = values$token
+        authenticated = isTRUE(values[["authenticated"]]),
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        token = values[["token"]]
       )
     }
   )
@@ -56,34 +56,34 @@ perform_raw_resource_request <- function(url, authorization, dpop = NULL) {
 
 expect_dpop_resource_contract <- function(resource, login, client, prov) {
   valid_resp <- shinyOAuth::resource_req(
-    login$token,
-    resource$url,
+    login[["token"]],
+    resource[["url"]],
     oauth_client = client
   ) |>
     httr2::req_perform()
   valid_body <- httr2::resp_body_json(valid_resp, simplifyVector = TRUE)
 
   testthat::expect_identical(httr2::resp_status(valid_resp), 200L)
-  testthat::expect_true(isTRUE(valid_body$ok))
+  testthat::expect_true(isTRUE(valid_body[["ok"]]))
   testthat::expect_identical(
-    valid_body$token_jkt,
-    access_token_cnf_jkt(login$token@access_token)
+    valid_body[["token_jkt"]],
+    access_token_cnf_jkt(login[["token"]]@access_token)
   )
 
   bearer_resp <- perform_raw_resource_request(
-    resource$url,
-    authorization = paste("Bearer", login$token@access_token)
+    resource[["url"]],
+    authorization = paste("Bearer", login[["token"]]@access_token)
   )
   bearer_body <- httr2::resp_body_json(bearer_resp, simplifyVector = TRUE)
   testthat::expect_identical(httr2::resp_status(bearer_resp), 401L)
   testthat::expect_identical(
-    bearer_body$error,
+    bearer_body[["error"]],
     "missing_dpop_authorization"
   )
 
   missing_proof_resp <- perform_raw_resource_request(
-    resource$url,
-    authorization = paste("DPoP", login$token@access_token)
+    resource[["url"]],
+    authorization = paste("DPoP", login[["token"]]@access_token)
   )
   missing_proof_body <- httr2::resp_body_json(
     missing_proof_resp,
@@ -92,7 +92,7 @@ expect_dpop_resource_contract <- function(resource, login, client, prov) {
 
   testthat::expect_identical(httr2::resp_status(missing_proof_resp), 401L)
   testthat::expect_identical(
-    missing_proof_body$error,
+    missing_proof_body[["error"]],
     "missing_dpop_proof"
   )
 
@@ -102,8 +102,8 @@ expect_dpop_resource_contract <- function(resource, login, client, prov) {
   )
   testthat::expect_error(
     shinyOAuth::resource_req(
-      login$token,
-      resource$url,
+      login[["token"]],
+      resource[["url"]],
       oauth_client = attacker_client
     ),
     class = "shinyOAuth_input_error",
@@ -111,8 +111,8 @@ expect_dpop_resource_contract <- function(resource, login, client, prov) {
   )
 
   replay_req <- shinyOAuth::resource_req(
-    login$token,
-    resource$url,
+    login[["token"]],
+    resource[["url"]],
     oauth_client = client
   )
   replay_dry <- httr2::req_dry_run(
@@ -120,16 +120,16 @@ expect_dpop_resource_contract <- function(resource, login, client, prov) {
     quiet = TRUE,
     redact_headers = FALSE
   )
-  replay_auth <- replay_dry$headers$authorization
-  replay_proof <- replay_dry$headers$dpop
+  replay_auth <- replay_dry[["headers"]][["authorization"]]
+  replay_proof <- replay_dry[["headers"]][["dpop"]]
 
   first_replay_resp <- perform_raw_resource_request(
-    resource$url,
+    resource[["url"]],
     authorization = replay_auth,
     dpop = replay_proof
   )
   second_replay_resp <- perform_raw_resource_request(
-    resource$url,
+    resource[["url"]],
     authorization = replay_auth,
     dpop = replay_proof
   )
@@ -140,7 +140,7 @@ expect_dpop_resource_contract <- function(resource, login, client, prov) {
 
   testthat::expect_identical(httr2::resp_status(first_replay_resp), 200L)
   testthat::expect_identical(httr2::resp_status(second_replay_resp), 401L)
-  testthat::expect_identical(second_replay_body$error, "dpop_jti_replay")
+  testthat::expect_identical(second_replay_body[["error"]], "dpop_jti_replay")
 }
 
 testthat::test_that("package-backed DPoP resource accepts the bound key and rejects stolen or replayed proofs", {
@@ -152,11 +152,11 @@ testthat::test_that("package-backed DPoP resource accepts the bound key and reje
   client <- make_dpop_public_client(prov)
   login <- perform_dpop_login(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_identical(login$token@token_type, "DPoP")
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_identical(login[["token"]]@token_type, "DPoP")
 
   resource <- start_dpop_protected_resource(implementation = "package")
-  on.exit(try(resource$server$stop(), silent = TRUE), add = TRUE)
+  on.exit(try(resource[["server"]][["stop"]](), silent = TRUE), add = TRUE)
 
   expect_dpop_resource_contract(resource, login, client, prov)
 })
@@ -170,11 +170,11 @@ testthat::test_that("independent DPoP resource accepts the bound key and rejects
   client <- make_dpop_public_client(prov)
   login <- perform_dpop_login(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_identical(login$token@token_type, "DPoP")
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_identical(login[["token"]]@token_type, "DPoP")
 
   resource <- start_dpop_protected_resource(implementation = "independent")
-  on.exit(try(resource$server$stop(), silent = TRUE), add = TRUE)
+  on.exit(try(resource[["server"]][["stop"]](), silent = TRUE), add = TRUE)
 
   expect_dpop_resource_contract(resource, login, client, prov)
 })

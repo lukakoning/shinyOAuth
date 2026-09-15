@@ -9,7 +9,7 @@ test_that("origin records are required, expire, rotate and fail closed", {
     stdout = TRUE,
     stderr = TRUE
   )
-  expect_null(attr(output, "status"), info = paste(output, collapse = "\n"))
+  expect_null(attr(output, "status", exact = TRUE), info = paste(output, collapse = "\n"))
 })
 
 test_that("unavailable origin storage stops login before state creation", {
@@ -19,17 +19,17 @@ test_that("unavailable origin storage stops login before state creation", {
     oauth_module_server,
     args = list(id = "auth", client = client, auto_redirect = FALSE),
     {
-      session$flushReact()
-      values$request_login()
-      session$setInputs(shinyOAuth_cookie_error = "storage_unavailable")
-      poll_for_async(function() !values$pending_login, session)
-      expect_identical(values$error, "browser_cookie_error")
+      session[["flushReact"]]()
+      values[["request_login"]]()
+      session[["setInputs"]](shinyOAuth_cookie_error = "storage_unavailable")
+      poll_for_async(function() !values[["pending_login"]], session)
+      expect_identical(values[["error"]], "browser_cookie_error")
       expect_match(
-        values$error_description,
+        values[["error_description"]],
         "storage_unavailable",
         fixed = TRUE
       )
-      expect_length(client@state_store$keys(), 0L)
+      expect_length(client@state_store[["keys"]](), 0L)
     }
   )
 })

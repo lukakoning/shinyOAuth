@@ -23,12 +23,12 @@ testthat::test_that("auto_redirected isn't set when auth URL build fails", {
         .package = "shinyOAuth",
         {
           # Simulate initial load with no code/error in query
-          values$.process_query("")
-          session$flushReact()
+          values[[".process_query"]]("")
+          session[["flushReact"]]()
           # auto_redirected should remain FALSE because redirect didn't happen
-          testthat::expect_false(isTRUE(values$auto_redirected))
+          testthat::expect_false(isTRUE(values[["auto_redirected"]]))
           # Should also set an error code for visibility
-          testthat::expect_identical(values$error, "auth_url_error")
+          testthat::expect_identical(values[["error"]], "auth_url_error")
         }
       )
     }
@@ -51,12 +51,12 @@ testthat::test_that("invalid shinyOAuth_sid input is rejected and regeneration a
     ),
     expr = {
       # Inject an obviously invalid token (too short, uppercase)
-      session$setInputs(shinyOAuth_sid = "ABC")
-      session$flushReact()
+      session[["setInputs"]](shinyOAuth_sid = "ABC")
+      session[["flushReact"]]()
       # Server should not accept this as a browser_token
-      testthat::expect_null(values$browser_token)
+      testthat::expect_null(values[["browser_token"]])
       # Module did not set a fatal error; this is auto-repaired
-      testthat::expect_false(identical(values$error, "browser_cookie_error"))
+      testthat::expect_false(identical(values[["error"]], "browser_cookie_error"))
     }
   )
 })
@@ -65,8 +65,8 @@ testthat::test_that("pending login ignores partial matches in query params", {
   withr::local_options(list(shinyOAuth.skip_browser_token = FALSE))
 
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  sess <- shiny::MockShinySession$new()
-  sess$clientData$url_search <- "?code_challenge=challenge"
+  sess <- shiny::MockShinySession[["new"]]()
+  sess[["clientData"]][["url_search"]] <- "?code_challenge=challenge"
 
   shiny::testServer(
     app = oauth_module_server,
@@ -78,32 +78,32 @@ testthat::test_that("pending login ignores partial matches in query params", {
     ),
     session = sess,
     expr = {
-      session$flushReact()
+      session[["flushReact"]]()
 
-      values$browser_token <- NULL
-      testthat::expect_identical(values$request_login(), TRUE)
-      testthat::expect_true(isTRUE(values$pending_login))
-      testthat::expect_false(isTRUE(values$auto_redirected))
+      values[["browser_token"]] <- NULL
+      testthat::expect_identical(values[["request_login"]](), TRUE)
+      testthat::expect_true(isTRUE(values[["pending_login"]]))
+      testthat::expect_false(isTRUE(values[["auto_redirected"]]))
 
-      values$browser_token <- valid_browser_token()
-      session$flushReact()
+      values[["browser_token"]] <- valid_browser_token()
+      session[["flushReact"]]()
 
       # A mirrored value alone cannot resume a newly requested login.
-      testthat::expect_false(isTRUE(values$auto_redirected))
-      session$setInputs(
-        shinyOAuth_sid = browser_ack$token,
+      testthat::expect_false(isTRUE(values[["auto_redirected"]]))
+      session[["setInputs"]](
+        shinyOAuth_sid = browser_ack[["token"]],
         shinyOAuth_cookie_ack = list(
-          requestId = browser_ack$id
+          requestId = browser_ack[["id"]]
         )
       )
       for (i in seq_len(5)) {
         later::run_now()
-        session$flushReact()
+        session[["flushReact"]]()
       }
 
-      testthat::expect_false(isTRUE(values$pending_login))
-      testthat::expect_true(isTRUE(values$auto_redirected))
-      testthat::expect_null(values$error)
+      testthat::expect_false(isTRUE(values[["pending_login"]]))
+      testthat::expect_true(isTRUE(values[["auto_redirected"]]))
+      testthat::expect_null(values[["error"]])
     }
   )
 })

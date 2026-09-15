@@ -8,7 +8,7 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 expect_auth_url_rejected <- function(auth_url, redirect_uri) {
@@ -85,7 +85,7 @@ testthat::test_that("Redirect URI: tampered redirect_uri in auth URL rejected by
     args = default_module_args(client),
     expr = {
       # Build the legitimate auth URL
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
 
       # Parse and replace redirect_uri with an attacker-controlled one
       # Note: Keycloak must have this URI in its allowlist to issue a code.
@@ -147,7 +147,7 @@ testthat::test_that("Redirect URI: state payload binding catches redirect_uri sw
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_a),
     expr = {
-      url_a <- values$build_auth_url()
+      url_a <- values[["build_auth_url"]]()
       state_from_a <<- parse_query_param(url_a, "state")
     }
   )

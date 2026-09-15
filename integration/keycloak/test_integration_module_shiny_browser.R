@@ -14,7 +14,7 @@ wait_for_login_or_auth_result <- function(
   deadline <- Sys.time() + (timeout / 1000)
 
   while (Sys.time() < deadline) {
-    state <- drv$get_js(
+    state <- drv[["get_js"]](
       "(function () {
         if (document.querySelector('#kc-login')) {
           return 'login';
@@ -127,10 +127,10 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
     shiny::h3("shinyOAuth + Keycloak (E2E)"),
     shiny::actionButton("login_btn", "Login"),
     shiny::actionButton("logout_btn", "Logout"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::h4("Auth state"),
     shiny::verbatimTextOutput("auth_state"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::h4("User info"),
     shiny::verbatimTextOutput("user_info")
   )
@@ -138,41 +138,41 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   server <- function(input, output, session) {
     auth <- shinyOAuth::oauth_module_server("auth", client)
 
-    shiny::observeEvent(input$login_btn, ignoreInit = TRUE, {
-      auth$request_login()
+    shiny::observeEvent(input[["login_btn"]], ignoreInit = TRUE, {
+      auth[["request_login"]]()
     })
-    shiny::observeEvent(input$logout_btn, ignoreInit = TRUE, {
-      auth$logout()
+    shiny::observeEvent(input[["logout_btn"]], ignoreInit = TRUE, {
+      auth[["logout"]]()
     })
 
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "has_token:",
-        !is.null(auth$token),
+        !is.null(auth[["token"]]),
         "error:",
-        if (!is.null(auth$error)) auth$error else "<none>",
+        if (!is.null(auth[["error"]])) auth[["error"]] else "<none>",
         "error_description:",
-        if (!is.null(auth$error_description)) {
-          auth$error_description
+        if (!is.null(auth[["error_description"]])) {
+          auth[["error_description"]]
         } else {
           "<none>"
         }
       )
     })
 
-    output$user_info <- shiny::renderText({
-      if (is.null(auth$token)) {
+    output[["user_info"]] <- shiny::renderText({
+      if (is.null(auth[["token"]])) {
         return("{}")
       }
-      jsonlite::toJSON(auth$token@userinfo, auto_unbox = TRUE, null = "null")
+      jsonlite::toJSON(auth[["token"]]@userinfo, auto_unbox = TRUE, null = "null")
     })
   }
 
   app <- shiny::shinyApp(ui, server)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app,
     name = "keycloak-e2e",
     load_timeout = 15000,
@@ -184,7 +184,7 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   login_state <- wait_for_login_or_auth_result(drv, timeout = 5000)
 
   if (identical(login_state, "login")) {
-    drv$run_js(
+    drv[["run_js"]](
       "
       document.querySelector('#username').value = 'alice';
       document.querySelector('#password').value = 'alice';
@@ -194,7 +194,7 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   }
 
   # Wait for a definitive authentication state: success or with error
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
   (function () {
     var el = document.querySelector('#auth_state');
@@ -216,7 +216,7 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   ) {
     for (i in seq_len(max_attempts)) {
       # Get auth_state from page
-      auth_state <- drv$get_js(
+      auth_state <- drv[["get_js"]](
         "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
       )
 
@@ -280,14 +280,14 @@ testthat::test_that("Shiny module E2E in headless browser against Keycloak", {
   )
 
   # Verify user info content
-  user_info <- drv$get_js(
+  user_info <- drv[["get_js"]](
     "(function(){var el=document.querySelector('#user_info');return el?el.innerText:'';})()"
   ) |>
     jsonlite::fromJSON()
 
-  testthat::expect_identical(user_info$preferred_username, "alice")
-  testthat::expect_identical(user_info$name, "Alice Test")
-  testthat::expect_identical(user_info$email, "alice@example.com")
+  testthat::expect_identical(user_info[["preferred_username"]], "alice")
+  testthat::expect_identical(user_info[["name"]], "Alice Test")
+  testthat::expect_identical(user_info[["email"]], "alice@example.com")
 })
 
 testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
@@ -353,15 +353,15 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
   )
   server <- function(input, output, session) {
     auth <- shinyOAuth::oauth_module_server("auth", client)
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "error:",
-        if (!is.null(auth$error)) auth$error else "<none>",
+        if (!is.null(auth[["error"]])) auth[["error"]] else "<none>",
         "error_desc:",
-        if (!is.null(auth$error_description)) {
-          auth$error_description
+        if (!is.null(auth[["error_description"]])) {
+          auth[["error_description"]]
         } else {
           "<none>"
         }
@@ -370,7 +370,7 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
   }
   app <- shiny::shinyApp(ui, server)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app,
     name = "keycloak-e2e-introspect",
     load_timeout = 15000,
@@ -381,11 +381,11 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
 
   login_state <- wait_for_login_or_auth_result(drv, timeout = 10000)
   if (identical(login_state, "login")) {
-    drv$run_js(
+    drv[["run_js"]](
       "document.querySelector('#username').value = 'alice'; document.querySelector('#password').value = 'alice'; document.querySelector('#kc-login').click();"
     )
   }
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "(function () { var el = document.querySelector('#auth_state'); if (!el) return false; var t = el.innerText; return t.includes('authenticated: TRUE') || t.includes('error_desc:') && !t.includes('error_desc: <none>'); })();",
     timeout = 20000
   )
@@ -393,7 +393,7 @@ testthat::test_that("Shiny module E2E with introspect=TRUE succeeds", {
   # Poll a few times to get a stable auth_state
   auth_state <- ""
   for (i in 1:15) {
-    auth_state <- drv$get_js(
+    auth_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
     )
     if (

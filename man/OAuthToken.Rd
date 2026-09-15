@@ -87,11 +87,11 @@ Empty for ordinary OAuth tokens. Set by SMART token processing.}
 }
 \description{
 An \code{OAuthToken} holds credentials and user information returned after login.
-The Shiny module supplies it as \code{auth$token}, and \code{\link[=handle_callback]{handle_callback()}} returns
+The Shiny module supplies it as \code{auth[["token"]]}, and \code{\link[=handle_callback]{handle_callback()}} returns
 it for custom integrations. Pass it to \code{\link[=perform_resource_req]{perform_resource_req()}} to call an
 API, or to the token helpers for refresh, introspection, and revocation.
 
-Read properties with \code{@}, for example \code{auth$token@userinfo}. Profile fields
+Read properties with \code{@}, for example \code{auth[["token"]]@userinfo}. Profile fields
 depend on the provider. Keep access and refresh tokens out of the UI and logs.
 }
 \details{
@@ -118,11 +118,11 @@ Both lists can contain sensitive data; keep them out of the UI and logs.
 }
 \examples{
 # Inside reactive server code, after a successful login:
-# auth$token@userinfo
-# auth$token@expires_at
-# auth$token@id_token_validated
-# auth$token@id_token_claims$sub
-# auth$token@extra_fields$custom_field
-# auth$token@initial_extra_fields$custom_field
+# auth[["token"]]@userinfo
+# auth[["token"]]@expires_at
+# auth[["token"]]@id_token_validated
+# auth[["token"]]@id_token_claims[["sub"]]
+# auth[["token"]]@extra_fields[["custom_field"]]
+# auth[["token"]]@initial_extra_fields[["custom_field"]]
 
 }

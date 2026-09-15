@@ -5,7 +5,7 @@
 # when tokens expire, without requiring manual reactive value changes.
 
 .submit_keycloak_login <- function(drv) {
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var authState = document.querySelector('#auth_state');
@@ -32,7 +32,7 @@
   )
   Sys.sleep(1)
 
-  drv$run_js(
+  drv[["run_js"]](
     "
     (function () {
       var authState = document.querySelector('#auth_state');
@@ -134,7 +134,7 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
     )
   )
   on.exit(
-    keycloak_delete_client(admin_token, id = fixture$id),
+    keycloak_delete_client(admin_token, id = fixture[["id"]]),
     add = TRUE
   )
 
@@ -150,7 +150,7 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
     shinyOAuth::use_shinyOAuth(),
     shiny::h3("Reauth Window E2E Test"),
     shiny::actionButton("login_btn", "Login"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::h4("Auth state"),
     shiny::verbatimTextOutput("auth_state"),
     shiny::h4("Session age"),
@@ -167,25 +167,25 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
       auto_redirect = FALSE
     )
 
-    shiny::observeEvent(input$login_btn, ignoreInit = TRUE, {
-      auth$request_login()
+    shiny::observeEvent(input[["login_btn"]], ignoreInit = TRUE, {
+      auth[["request_login"]]()
     })
 
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "has_token:",
-        !is.null(auth$token),
+        !is.null(auth[["token"]]),
         "error:",
-        auth$error %||% "<none>",
+        auth[["error"]] %||% "<none>",
         "error_description:",
-        auth$error_description %||% "<none>"
+        auth[["error_description"]] %||% "<none>"
       )
     })
 
-    output$session_age <- shiny::renderText({
-      started <- auth$auth_started_at
+    output[["session_age"]] <- shiny::renderText({
+      started <- auth[["auth_started_at"]]
       if (is.na(started)) {
         return("not started")
       }
@@ -196,7 +196,7 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
 
   app <- shiny::shinyApp(ui, server)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app,
     name = "reauth-e2e",
     load_timeout = 15000,
@@ -206,8 +206,8 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   # Click login button (auto_redirect = FALSE)
-  drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)
-  drv$click("login_btn")
+  drv[["wait_for_js"]]("document.querySelector('#login_btn')", timeout = 5000)
+  drv[["click"]]("login_btn")
 
   .submit_keycloak_login(drv)
 
@@ -215,7 +215,7 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
   max_wait <- 30
   auth_state <- ""
   for (i in seq_len(max_wait)) {
-    auth_state <- drv$get_js(
+    auth_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
     )
     if (grepl("authenticated: TRUE", auth_state, fixed = TRUE)) {
@@ -240,7 +240,7 @@ testthat::test_that("authenticated flips FALSE after reauth_after_seconds in rea
   # Poll for authenticated to become FALSE
   max_attempts <- 20
   for (i in seq_len(max_attempts)) {
-    auth_state <- drv$get_js(
+    auth_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
     )
     if (grepl("authenticated: FALSE", auth_state, fixed = TRUE)) {
@@ -329,7 +329,7 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
     shinyOAuth::use_shinyOAuth(),
     shiny::h3("Token Expiry E2E Test"),
     shiny::actionButton("login_btn", "Login"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::h4("Auth state"),
     shiny::verbatimTextOutput("auth_state"),
     shiny::h4("Token info"),
@@ -347,21 +347,21 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
       auto_redirect = FALSE
     )
 
-    shiny::observeEvent(input$login_btn, ignoreInit = TRUE, {
-      auth$request_login()
+    shiny::observeEvent(input[["login_btn"]], ignoreInit = TRUE, {
+      auth[["request_login"]]()
     })
 
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "has_token:",
-        !is.null(auth$token)
+        !is.null(auth[["token"]])
       )
     })
 
-    output$token_info <- shiny::renderText({
-      tok <- auth$token
+    output[["token_info"]] <- shiny::renderText({
+      tok <- auth[["token"]]
       if (is.null(tok)) {
         return("no token")
       }
@@ -376,7 +376,7 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
 
   app <- shiny::shinyApp(ui, server)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app,
     name = "token-expiry-e2e",
     load_timeout = 15000,
@@ -386,8 +386,8 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   # Click login button (auto_redirect = FALSE)
-  drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)
-  drv$click("login_btn")
+  drv[["wait_for_js"]]("document.querySelector('#login_btn')", timeout = 5000)
+  drv[["click"]]("login_btn")
 
   .submit_keycloak_login(drv)
 
@@ -395,7 +395,7 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
   max_wait <- 30
   auth_state <- ""
   for (i in seq_len(max_wait)) {
-    auth_state <- drv$get_js(
+    auth_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
     )
     if (grepl("authenticated: TRUE", auth_state, fixed = TRUE)) {
@@ -411,7 +411,7 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
   )
 
   # Get initial token info to confirm we have a short-lived token
-  token_info <- drv$get_js(
+  token_info <- drv[["get_js"]](
     "(function(){ var el=document.querySelector('#token_info'); return el?el.innerText:''; })()"
   )
   message("Initial token info: ", token_info)
@@ -422,7 +422,7 @@ testthat::test_that("authenticated flips FALSE after actual token expiry (short-
   # Poll for authenticated to become FALSE
   max_attempts <- 20
   for (i in seq_len(max_attempts)) {
-    auth_state <- drv$get_js(
+    auth_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
     )
     if (grepl("authenticated: FALSE", auth_state, fixed = TRUE)) {

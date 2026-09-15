@@ -22,7 +22,7 @@ smart_discovery_read <- function(
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status_code = status,
         headers = list("Content-Type" = content_type),
         body = charToRaw(body)
@@ -45,7 +45,7 @@ test_that("SMART discovery uses the complete base and sends no OAuth credentials
     req_with_retry = function(req, ...) {
       requests[[length(requests) + 1L]] <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status_code = 200L,
         headers = list("Content-Type" = "application/json; charset=utf-8"),
         body = charToRaw(jsonlite::toJSON(
@@ -66,21 +66,21 @@ test_that("SMART discovery uses the complete base and sends no OAuth credentials
     site <- smart_discover(base)
     req <- requests[[length(requests)]]
     expect_identical(
-      req$url,
+      req[["url"]],
       paste0(sub("/$", "", base), "/.well-known/smart-configuration")
     )
-    expect_identical(site$fhir_base, base)
-    expect_identical(site$discovery_url, req$url)
-    expect_identical(site$smart_version, "2.2.0")
-    expect_identical(site$endpoint_hosts, "ehr.example")
-    expect_null(req$body)
+    expect_identical(site[["fhir_base"]], base)
+    expect_identical(site[["discovery_url"]], req[["url"]])
+    expect_identical(site[["smart_version"]], "2.2.0")
+    expect_identical(site[["endpoint_hosts"]], "ehr.example")
+    expect_null(req[["body"]])
     expect_false(any(
-      tolower(names(req$headers)) %in% c("authorization", "cookie", "dpop")
+      tolower(names(req[["headers"]])) %in% c("authorization", "cookie", "dpop")
     ))
-    expect_identical(req$headers$Accept, "application/json")
-    expect_false(req$options$followlocation)
-    expect_identical(req$options$maxfilesize, 2048L)
-    expect_gte(req$options$sslversion, 6L)
+    expect_identical(req[["headers"]][["Accept"]], "application/json")
+    expect_false(req[["options"]][["followlocation"]])
+    expect_identical(req[["options"]][["maxfilesize"]], 2048L)
+    expect_gte(req[["options"]][["sslversion"]], 6L)
   }
 })
 
@@ -93,30 +93,30 @@ test_that("SMART OAuth-only metadata does not acquire OIDC or registration defau
     metadata,
     endpoint_hosts = "login.site-a.example"
   )
-  expect_identical(result$metadata, metadata)
-  expect_null(result$metadata$issuer)
-  expect_null(result$metadata$jwks_uri)
-  expect_null(result$metadata$subject_types_supported)
-  expect_null(result$metadata$id_token_signing_alg_values_supported)
+  expect_identical(result[["metadata"]], metadata)
+  expect_null(result[["metadata"]][["issuer"]])
+  expect_null(result[["metadata"]][["jwks_uri"]])
+  expect_null(result[["metadata"]][["subject_types_supported"]])
+  expect_null(result[["metadata"]][["id_token_signing_alg_values_supported"]])
   expect_false(
-    "none" %in% result$metadata$token_endpoint_auth_methods_supported
+    "none" %in% result[["metadata"]][["token_endpoint_auth_methods_supported"]]
   )
-  expect_null(result$client)
-  expect_null(result$client_id)
+  expect_null(result[["client"]])
+  expect_null(result[["client_id"]])
   # Optional discovery arrays stay omitted, including the non-exhaustive scopes.
   minimal <- smart_discovery_read()
-  expect_null(minimal$metadata$scopes_supported)
-  expect_null(minimal$metadata$token_endpoint_auth_methods_supported)
+  expect_null(minimal[["metadata"]][["scopes_supported"]])
+  expect_null(minimal[["metadata"]][["token_endpoint_auth_methods_supported"]])
   expect_identical(class(minimal), "list")
 })
 
 test_that("SMART SSO requires its own exact issuer and signing-key URL", {
   metadata <- smart_discovery_fixture()
-  metadata$capabilities <- c(metadata$capabilities, "sso-openid-connect")
+  metadata[["capabilities"]] <- c(metadata[["capabilities"]], "sso-openid-connect")
   for (field in c("issuer", "jwks_uri")) {
     value <- metadata
-    value$issuer <- "https://login.example/tenant/"
-    value$jwks_uri <- "https://keys.example/keys"
+    value[["issuer"]] <- "https://login.example/tenant/"
+    value[["jwks_uri"]] <- "https://keys.example/keys"
     value[field] <- list(NULL)
     expect_error(
       smart_discovery_read(value),
@@ -124,8 +124,8 @@ test_that("SMART SSO requires its own exact issuer and signing-key URL", {
       class = "shinyOAuth_parse_error"
     )
   }
-  metadata$issuer <- "https://login.example/tenant/"
-  metadata$jwks_uri <- "https://keys.example/keys"
+  metadata[["issuer"]] <- "https://login.example/tenant/"
+  metadata[["jwks_uri"]] <- "https://keys.example/keys"
   expect_error(
     smart_discovery_read(metadata),
     "endpoint_hosts",
@@ -135,26 +135,26 @@ test_that("SMART SSO requires its own exact issuer and signing-key URL", {
     metadata,
     endpoint_hosts = c("EHR.EXAMPLE", "login.example", "keys.example")
   )
-  expect_identical(result$metadata$issuer, "https://login.example/tenant/")
-  expect_identical(result$metadata$jwks_uri, metadata$jwks_uri)
-  expect_null(result$metadata$userinfo_endpoint)
+  expect_identical(result[["metadata"]][["issuer"]], "https://login.example/tenant/")
+  expect_identical(result[["metadata"]][["jwks_uri"]], metadata[["jwks_uri"]])
+  expect_null(result[["metadata"]][["userinfo_endpoint"]])
   # SMART metadata is not an OIDC discovery document and has no such defaults.
-  expect_null(result$metadata$id_token_signing_alg_values_supported)
+  expect_null(result[["metadata"]][["id_token_signing_alg_values_supported"]])
   expect_error(
     shinyOAuth:::.discover_validate_required_metadata(metadata),
     class = "shinyOAuth_parse_error"
   )
-  metadata$issuer <- paste0(metadata$issuer, "?tenant=other")
+  metadata[["issuer"]] <- paste0(metadata[["issuer"]], "?tenant=other")
   expect_error(
     smart_discovery_read(metadata),
     "issuer",
     class = "shinyOAuth_config_error"
   )
   metadata <- smart_discovery_fixture()
-  metadata$issuer <- "https://ehr.example"
+  metadata[["issuer"]] <- "https://ehr.example"
   expect_error(smart_discovery_read(metadata), "sso-openid-connect")
-  metadata$issuer <- NULL
-  metadata$jwks_uri <- "https://ehr.example/keys"
+  metadata[["issuer"]] <- NULL
+  metadata[["jwks_uri"]] <- "https://ehr.example/keys"
   expect_no_error(smart_discovery_read(metadata))
 })
 
@@ -207,7 +207,7 @@ test_that("SMART mandatory metadata cannot be omitted, null or scalar arrays", {
 test_that("SMART launch and PKCE capabilities are internally consistent", {
   for (pkce in list(list("plain"), list("S256", "plain"), list("s256"))) {
     metadata <- smart_discovery_fixture()
-    metadata$code_challenge_methods_supported <- pkce
+    metadata[["code_challenge_methods_supported"]] <- pkce
     expect_error(
       smart_discovery_read(metadata),
       "S256",
@@ -216,33 +216,33 @@ test_that("SMART launch and PKCE capabilities are internally consistent", {
   }
   for (launch in c("launch-standalone", "launch-ehr")) {
     metadata <- smart_discovery_fixture()
-    metadata$capabilities <- list(launch)
-    metadata$grant_types_supported <- list("client_credentials")
+    metadata[["capabilities"]] <- list(launch)
+    metadata[["grant_types_supported"]] <- list("client_credentials")
     expect_error(smart_discovery_read(metadata), "authorization_code")
   }
   metadata <- smart_discovery_fixture()
-  metadata$response_types_supported <- list("id_token")
+  metadata[["response_types_supported"]] <- list("id_token")
   expect_error(smart_discovery_read(metadata), "include code")
-  metadata$response_types_supported <- list("code", "code id_token")
+  metadata[["response_types_supported"]] <- list("code", "code id_token")
   expect_no_error(smart_discovery_read(metadata))
   # Parsing a server without App Launch does not imply backend grant support.
-  metadata$authorization_endpoint <- NULL
-  metadata$capabilities <- list("permission-v2")
-  metadata$grant_types_supported <- list("client_credentials")
+  metadata[["authorization_endpoint"]] <- NULL
+  metadata[["capabilities"]] <- list("permission-v2")
+  metadata[["grant_types_supported"]] <- list("client_credentials")
   expect_no_error(smart_discovery_read(metadata))
 })
 
 test_that("SMART asymmetric advertisements require the specified methods and algorithms", {
   metadata <- smart_discovery_fixture()
-  metadata$capabilities <- c(
-    metadata$capabilities,
+  metadata[["capabilities"]] <- c(
+    metadata[["capabilities"]],
     "client-confidential-asymmetric"
   )
-  metadata$scopes_supported <- list("patient/Patient.rs")
-  metadata$token_endpoint_auth_methods_supported <- list("private_key_jwt")
+  metadata[["scopes_supported"]] <- list("patient/Patient.rs")
+  metadata[["token_endpoint_auth_methods_supported"]] <- list("private_key_jwt")
   for (alg in c("RS384", "ES384")) {
-    metadata$token_endpoint_auth_signing_alg_values_supported <- list(alg)
-    expect_identical(smart_discovery_read(metadata)$metadata, metadata)
+    metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list(alg)
+    expect_identical(smart_discovery_read(metadata)[["metadata"]], metadata)
   }
   for (field in c(
     "scopes_supported",
@@ -257,10 +257,10 @@ test_that("SMART asymmetric advertisements require the specified methods and alg
       class = "shinyOAuth_parse_error"
     )
   }
-  metadata$token_endpoint_auth_signing_alg_values_supported <- list("RS256")
+  metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list("RS256")
   expect_error(smart_discovery_read(metadata), "RS384 or ES384")
-  metadata$token_endpoint_auth_signing_alg_values_supported <- list("RS384")
-  metadata$token_endpoint_auth_methods_supported <- list("client_secret_basic")
+  metadata[["token_endpoint_auth_signing_alg_values_supported"]] <- list("RS384")
+  metadata[["token_endpoint_auth_methods_supported"]] <- list("client_secret_basic")
   expect_error(smart_discovery_read(metadata), "private_key_jwt")
 })
 
@@ -287,14 +287,14 @@ test_that("SMART optional recognized fields reject invalid present values", {
     }
   }
   metadata <- smart_discovery_fixture()
-  metadata$capabilities <- rep(list("extension"), 4097L)
+  metadata[["capabilities"]] <- rep(list("extension"), 4097L)
   expect_error(smart_discovery_read(metadata), "capabilities")
 })
 
 test_that("empty discovery arrays preserve JSON type and public registration support", {
   for (field in c("scopes_supported", "token_endpoint_auth_methods_supported")) {
-    metadata <- smart_client_fixture()$metadata
-    metadata$capabilities <- as.list(setdiff(unlist(metadata$capabilities),
+    metadata <- smart_client_fixture()[["metadata"]]
+    metadata[["capabilities"]] <- as.list(setdiff(unlist(metadata[["capabilities"]]),
       "client-confidential-asymmetric"))
     metadata[[field]] <- NULL
     base <- as.character(jsonlite::toJSON(metadata, auto_unbox = TRUE))
@@ -302,8 +302,8 @@ test_that("empty discovery arrays preserve JSON type and public registration sup
       body <- sub("}$", paste0(', "', field, '":', wire, '}'), base)
       if (wire == "[]") {
         site <- smart_discovery_read(body = body)
-        expect_identical(site$metadata[[field]], list())
-        expect_identical(smart_discovery_array(site$metadata, field), character())
+        expect_identical(site[["metadata"]][[field]], list())
+        expect_identical(smart_discovery_array(site[["metadata"]], field), character())
         expect_no_error(smart_client(site, "example", "https://app.example/callback",
           scopes = "user/Patient.r"))
         if (field == "token_endpoint_auth_methods_supported") {
@@ -317,9 +317,9 @@ test_that("empty discovery arrays preserve JSON type and public registration sup
 })
 
 test_that("empty arrays cannot remove mandatory SMART capabilities and algorithm choices", {
-  metadata <- smart_client_fixture()$metadata
+  metadata <- smart_client_fixture()[["metadata"]]
   # Conditional presence does not make the non-exhaustive scope list exhaustive.
-  metadata$scopes_supported <- list()
+  metadata[["scopes_supported"]] <- list()
   expect_no_error(smart_discovery_read(metadata))
   for (field in c("code_challenge_methods_supported", "grant_types_supported",
       "capabilities", "response_types_supported", "token_endpoint_auth_methods_supported",
@@ -355,7 +355,7 @@ test_that("SMART metadata cannot broaden the configured endpoint host policy", {
       smart_discovery_read(
         metadata,
         endpoint_hosts = c("ehr.example", "other.example")
-      )$metadata[[field]],
+      )[["metadata"]][[field]],
       metadata[[field]]
     )
   }
@@ -371,7 +371,7 @@ test_that("SMART metadata cannot broaden the configured endpoint host policy", {
     "https://ehr.example/a/%2e%2e/token",
     "https://ehr.example./token"
   )) {
-    metadata$token_endpoint <- bad
+    metadata[["token_endpoint"]] <- bad
     expect_error(
       smart_discovery_read(metadata),
       "token_endpoint",
@@ -439,13 +439,13 @@ test_that("SMART HTTP exceptions are explicit and confined to loopback", {
     shinyOAuth.allowed_non_https_hosts = "ehr.example",
     shinyOAuth.allow_insecure_oidc_loopback = TRUE
   )
-  metadata$token_endpoint <- "http://ehr.example/token"
+  metadata[["token_endpoint"]] <- "http://ehr.example/token"
   expect_error(
     smart_discovery_read(metadata, allow_http_loopback = TRUE),
     "token_endpoint"
   )
   for (host in c("localhost", "127.0.0.1", "[::1]")) {
-    metadata$token_endpoint <- paste0("http://", host, ":1234/token")
+    metadata[["token_endpoint"]] <- paste0("http://", host, ":1234/token")
     policy <- c("ehr.example", host)
     expect_error(
       smart_discovery_read(metadata, endpoint_hosts = policy),
@@ -456,7 +456,7 @@ test_that("SMART HTTP exceptions are explicit and confined to loopback", {
       endpoint_hosts = policy,
       allow_http_loopback = TRUE
     )
-    expect_identical(result$metadata$token_endpoint, metadata$token_endpoint)
+    expect_identical(result[["metadata"]][["token_endpoint"]], metadata[["token_endpoint"]])
   }
 })
 
@@ -464,7 +464,7 @@ test_that("SMART discovery retains exact loopback base identifiers without rebui
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status_code = 200L,
         headers = list("Content-Type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(
@@ -482,9 +482,9 @@ test_that("SMART discovery retains exact loopback base identifiers without rebui
       endpoint_hosts = "ehr.example",
       allow_http_loopback = TRUE
     )
-    expect_identical(result$fhir_base, base)
+    expect_identical(result[["fhir_base"]], base)
     expect_identical(
-      result$discovery_url,
+      result[["discovery_url"]],
       paste0(sub("/$", "", base), "/.well-known/smart-configuration")
     )
   }
@@ -564,31 +564,31 @@ test_that("SMART rejects bad HTTP/JSON responses without exposing returned value
 
 test_that("SMART extensions stay data and discovery has no shared cache", {
   metadata <- smart_discovery_fixture()
-  metadata$capabilities <- c(
-    metadata$capabilities,
+  metadata[["capabilities"]] <- c(
+    metadata[["capabilities"]],
     "https://extension.example/capability"
   )
-  metadata$associated_endpoints <- list(list(
+  metadata[["associated_endpoints"]] <- list(list(
     url = "https://unapproved.example/fhir",
     capabilities = list("smart-app-state")
   ))
-  metadata$extension <- list(context = NULL, nested = list(TRUE, 123L))
+  metadata[["extension"]] <- list(context = NULL, nested = list(TRUE, 123L))
   first <- smart_discovery_read(metadata)
-  expect_identical(first$metadata, metadata)
-  expect_false("unapproved.example" %in% first$endpoint_hosts)
-  metadata$token_endpoint <- "https://other.example/token"
+  expect_identical(first[["metadata"]], metadata)
+  expect_false("unapproved.example" %in% first[["endpoint_hosts"]])
+  metadata[["token_endpoint"]] <- "https://other.example/token"
   expect_error(smart_discovery_read(metadata), "endpoint_hosts")
   second <- smart_discovery_read(
     metadata,
     endpoint_hosts = c("ehr.example", "other.example")
   )
   expect_identical(
-    first$metadata$token_endpoint,
+    first[["metadata"]][["token_endpoint"]],
     "https://ehr.example/auth/token"
   )
   expect_identical(
-    second$metadata$token_endpoint,
+    second[["metadata"]][["token_endpoint"]],
     "https://other.example/token"
   )
-  expect_identical(first$endpoint_hosts, "ehr.example")
+  expect_identical(first[["endpoint_hosts"]], "ehr.example")
 })

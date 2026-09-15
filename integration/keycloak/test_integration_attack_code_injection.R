@@ -13,7 +13,7 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("Login CSRF/account substitution: bob can finish alice's started flow and authenticate as bob", {
@@ -33,7 +33,7 @@ testthat::test_that("Login CSRF/account substitution: bob can finish alice's sta
     args = default_module_args(client),
     expr = {
       # Alice's session builds auth URL
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
 
       # Bob authenticates through Alice's auth URL
       # (same PKCE challenge, same state — but bob's credentials)
@@ -44,22 +44,22 @@ testthat::test_that("Login CSRF/account substitution: bob can finish alice's sta
       )
 
       # Process the callback in Alice's module session
-      values$.process_query(callback_query(res_bob))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res_bob))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "bob"
       )
 
       testthat::expect_identical(
-        values$token@userinfo[["sub"]],
-        values$token@id_token_claims$sub
+        values[["token"]]@userinfo[["sub"]],
+        values[["token"]]@id_token_claims[["sub"]]
       )
     }
   )
@@ -77,23 +77,23 @@ testthat::test_that("Login CSRF/account substitution: app can compare the verifi
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_alice),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       res <- perform_login_form_as(url, username = "alice", password = "alice")
 
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client_alice,
         expected_username = "alice"
       )
 
-      expected_alice_sub <<- values$token@userinfo[["sub"]]
+      expected_alice_sub <<- values[["token"]]@userinfo[["sub"]]
     }
   )
 
@@ -110,24 +110,24 @@ testthat::test_that("Login CSRF/account substitution: app can compare the verifi
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       res_bob <- perform_login_form_as(url, username = "bob", password = "bob")
 
-      values$.process_query(callback_query(res_bob))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res_bob))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "bob"
       )
 
       testthat::expect_false(
-        identical(values$token@userinfo[["sub"]], expected_alice_sub)
+        identical(values[["token"]]@userinfo[["sub"]], expected_alice_sub)
       )
     }
   )
@@ -147,7 +147,7 @@ testthat::test_that("Cross-session code+state injection is rejected in alice's s
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_bob),
     expr = {
-      url_bob <- values$build_auth_url()
+      url_bob <- values[["build_auth_url"]]()
       bob_login <<- perform_login_form_as(url_bob, "bob", "bob")
     }
   )
@@ -160,15 +160,15 @@ testthat::test_that("Cross-session code+state injection is rejected in alice's s
     args = default_module_args(client_alice),
     expr = {
       # Attacker injects bob's code + bob's state into alice's session
-      values$.process_query(callback_query(bob_login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(bob_login))
+      session[["flushReact"]]()
 
       # Must fail: bob's state is not in alice's state store
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "invalid_state")
-      testthat::expect_null(values$token)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "invalid_state")
+      testthat::expect_null(values[["token"]])
       testthat::expect_match(
-        paste(values$error, values$error_description),
+        paste(values[["error"]], values[["error_description"]]),
         "state|decrypt|validation|store",
         ignore.case = TRUE
       )
@@ -188,10 +188,10 @@ testthat::test_that("PKCE prevents stolen code exchange with wrong verifier", {
     args = default_module_args(client),
     expr = {
       # Alice builds auth URL (generates code_challenge / code_verifier pair)
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       # Complete login to get a valid code bound to alice's code_challenge
       res <- perform_login_form(url)
-      code_alice <- res$code
+      code_alice <- res[["code"]]
 
       # Attacker intercepts the code and tries to exchange it directly
       # with their own (wrong) code_verifier

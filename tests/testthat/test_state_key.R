@@ -20,9 +20,9 @@ test_that("OAuthClient accepts raw state_key and seals state", {
   expect_true(is_valid_string(url))
 
   # Extract state from URL and try decrypting with same key to ensure roundtrip
-  qs <- httr2::url_parse(url)$query
+  qs <- httr2::url_parse(url)[["query"]]
   st <- qs[["state"]]
   expect_true(is_valid_string(st))
   p <- state_decrypt_gcm(st, key = raw_key)
-  expect_true(is.list(p) && is_valid_string(p$state))
+  expect_true(is.list(p) && is_valid_string(p[["state"]]))
 })

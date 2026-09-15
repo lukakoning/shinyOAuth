@@ -14,7 +14,7 @@ test_that("token media types match exactly after parameter normalization", {
     ""
   )) {
     expect_identical(
-      parse_token_response(response(type))$access_token,
+      parse_token_response(response(type))[["access_token"]],
       "fixture"
     )
   }
@@ -37,5 +37,5 @@ test_that("token media types match exactly after parameter normalization", {
     ),
     body = charToRaw("access_token=fixture&token_type=Bearer")
   )
-  expect_identical(parse_token_response(form)$access_token, "fixture")
+  expect_identical(parse_token_response(form)[["access_token"]], "fixture")
 })

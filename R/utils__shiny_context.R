@@ -45,10 +45,10 @@ get_current_shiny_request <- function() {
   if (is.null(sess)) {
     return(NULL)
   }
-  # Accessing session$request under shiny::testServer emits warnings because
+  # Accessing session[["request"]] under shiny::testServer emits warnings because
   # the Rook request is not fully simulated. We only need a best-effort read,
   # so silence those warnings to keep tests/CI noise-free.
-  req <- suppressWarnings(tryCatch(sess$request, error = function(...) NULL))
+  req <- suppressWarnings(tryCatch(sess[["request"]], error = function(...) NULL))
   if (is.null(req)) {
     return(NULL)
   }
@@ -68,7 +68,7 @@ get_current_shiny_session_token <- function() {
   if (is.null(sess)) {
     return(NA_character_)
   }
-  .scalar_chr(tryCatch(sess$token, error = function(...) NULL))
+  .scalar_chr(tryCatch(sess[["token"]], error = function(...) NULL))
 }
 
 #' Capture the current HTTP summary for audit events
@@ -195,8 +195,8 @@ normalize_shiny_session_context <- function(shiny_session) {
 #' @keywords internal
 #' @noRd
 set_async_session_context <- function(ctx) {
-  old <- .async_context_env$current
-  .async_context_env$current <- ctx
+  old <- .async_context_env[["current"]]
+  .async_context_env[["current"]] <- ctx
   invisible(old)
 }
 
@@ -210,8 +210,8 @@ set_async_session_context <- function(ctx) {
 #' @keywords internal
 #' @noRd
 set_async_worker_context <- function(is_worker) {
-  old <- isTRUE(.async_context_env$is_worker)
-  .async_context_env$is_worker <- isTRUE(is_worker)
+  old <- isTRUE(.async_context_env[["is_worker"]])
+  .async_context_env[["is_worker"]] <- isTRUE(is_worker)
   invisible(old)
 }
 
@@ -222,7 +222,7 @@ set_async_worker_context <- function(is_worker) {
 #' @keywords internal
 #' @noRd
 is_async_worker_context <- function() {
-  isTRUE(.async_context_env$is_worker)
+  isTRUE(.async_context_env[["is_worker"]])
 }
 
 #' Get the current fallback Shiny session context
@@ -231,7 +231,7 @@ is_async_worker_context <- function() {
 #' @keywords internal
 #' @noRd
 get_async_session_context <- function() {
-  .async_context_env$current
+  .async_context_env[["current"]]
 }
 
 #' Evaluate code with fallback Shiny session context installed

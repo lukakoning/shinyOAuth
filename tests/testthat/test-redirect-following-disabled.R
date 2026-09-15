@@ -4,7 +4,7 @@
 test_that("req_no_redirect disables redirect following by default", {
   req <- httr2::request("https://example.com")
   req2 <- shinyOAuth:::req_no_redirect(req)
-  expect_false(isTRUE(req2$options$followlocation))
+  expect_false(isTRUE(req2[["options"]][["followlocation"]]))
 })
 
 test_that("req_no_redirect allows redirects when option is set", {
@@ -12,7 +12,7 @@ test_that("req_no_redirect allows redirects when option is set", {
   req <- httr2::request("https://example.com")
   req2 <- shinyOAuth:::req_no_redirect(req)
   # Should NOT have followlocation = FALSE set (httr2 default is to follow)
-  expect_null(req2$options$followlocation)
+  expect_null(req2[["options"]][["followlocation"]])
 })
 
 test_that("reject_redirect_response throws on 3xx by default", {
@@ -51,15 +51,15 @@ test_that("token exchange does not follow redirects", {
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
-  app$post("/token", function(req, res) {
+  app[["post"]]("/token", function(req, res) {
     # Return a 302 redirect to a different endpoint
-    res$set_status(302)
-    res$set_header("Location", paste0(req$protocol, "://", req$host, "/evil"))
-    res$send("")
+    res[["set_status"]](302)
+    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["send"]]("")
   })
-  app$post("/evil", function(req, res) {
+  app[["post"]]("/evil", function(req, res) {
     redirect_target_hit <<- TRUE
-    res$send_json(
+    res[["send_json"]](
       object = list(
         access_token = "t",
         token_type = "Bearer",
@@ -69,7 +69,7 @@ test_that("token exchange does not follow redirects", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   prov <- shinyOAuth::oauth_provider(
     name = "fake",
@@ -127,14 +127,14 @@ test_that("token refresh does not follow redirects", {
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
-  app$post("/token", function(req, res) {
-    res$set_status(307)
-    res$set_header("Location", paste0(req$protocol, "://", req$host, "/evil"))
-    res$send("")
+  app[["post"]]("/token", function(req, res) {
+    res[["set_status"]](307)
+    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["send"]]("")
   })
-  app$post("/evil", function(req, res) {
+  app[["post"]]("/evil", function(req, res) {
     redirect_target_hit <<- TRUE
-    res$send_json(
+    res[["send_json"]](
       object = list(
         access_token = "new_t",
         token_type = "Bearer",
@@ -144,7 +144,7 @@ test_that("token refresh does not follow redirects", {
     )
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   prov <- shinyOAuth::oauth_provider(
     name = "fake",
@@ -196,17 +196,17 @@ test_that("userinfo fetch does not follow redirects", {
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
-  app$get("/userinfo", function(req, res) {
-    res$set_status(302)
-    res$set_header("Location", paste0(req$protocol, "://", req$host, "/evil"))
-    res$send("")
+  app[["get"]]("/userinfo", function(req, res) {
+    res[["set_status"]](302)
+    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["send"]]("")
   })
-  app$get("/evil", function(req, res) {
+  app[["get"]]("/evil", function(req, res) {
     redirect_target_hit <<- TRUE
-    res$send_json(object = list(sub = "u123"), auto_unbox = TRUE)
+    res[["send_json"]](object = list(sub = "u123"), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   prov <- shinyOAuth::oauth_provider(
     name = "fake",
@@ -250,17 +250,17 @@ test_that("token introspection does not follow redirects", {
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
-  app$post("/introspect", function(req, res) {
-    res$set_status(302)
-    res$set_header("Location", paste0(req$protocol, "://", req$host, "/evil"))
-    res$send("")
+  app[["post"]]("/introspect", function(req, res) {
+    res[["set_status"]](302)
+    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["send"]]("")
   })
-  app$post("/evil", function(req, res) {
+  app[["post"]]("/evil", function(req, res) {
     redirect_target_hit <<- TRUE
-    res$send_json(object = list(active = TRUE), auto_unbox = TRUE)
+    res[["send_json"]](object = list(active = TRUE), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   prov <- shinyOAuth::oauth_provider(
     name = "fake",
@@ -313,18 +313,18 @@ test_that("token revocation does not follow redirects", {
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
-  app$post("/revoke", function(req, res) {
-    res$set_status(307)
-    res$set_header("Location", paste0(req$protocol, "://", req$host, "/evil"))
-    res$send("")
+  app[["post"]]("/revoke", function(req, res) {
+    res[["set_status"]](307)
+    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["send"]]("")
   })
-  app$post("/evil", function(req, res) {
+  app[["post"]]("/evil", function(req, res) {
     redirect_target_hit <<- TRUE
-    res$set_status(200)
-    res$send("")
+    res[["set_status"]](200)
+    res[["send"]]("")
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   prov <- shinyOAuth::oauth_provider(
     name = "fake",
@@ -378,25 +378,25 @@ test_that("OIDC discovery does not follow redirects", {
 
   redirect_target_hit <- FALSE
   app <- webfakes::new_app()
-  app$get("/.well-known/openid-configuration", function(req, res) {
-    res$set_status(302)
-    res$set_header("Location", paste0(req$protocol, "://", req$host, "/evil"))
-    res$send("")
+  app[["get"]]("/.well-known/openid-configuration", function(req, res) {
+    res[["set_status"]](302)
+    res[["set_header"]]("Location", paste0(req[["protocol"]], "://", req[["host"]], "/evil"))
+    res[["send"]]("")
   })
-  app$get("/evil", function(req, res) {
+  app[["get"]]("/evil", function(req, res) {
     redirect_target_hit <<- TRUE
-    res$send_json(
+    res[["send_json"]](
       object = list(
-        issuer = paste0(req$protocol, "://", req$host),
-        authorization_endpoint = paste0(req$protocol, "://", req$host, "/auth"),
-        token_endpoint = paste0(req$protocol, "://", req$host, "/token"),
-        jwks_uri = paste0(req$protocol, "://", req$host, "/jwks")
+        issuer = paste0(req[["protocol"]], "://", req[["host"]]),
+        authorization_endpoint = paste0(req[["protocol"]], "://", req[["host"]], "/auth"),
+        token_endpoint = paste0(req[["protocol"]], "://", req[["host"]], "/token"),
+        jwks_uri = paste0(req[["protocol"]], "://", req[["host"]], "/jwks")
       ),
       auto_unbox = TRUE
     )
   })
   srv <- webfakes::local_app_process(app)
-  base <- srv$url()
+  base <- srv[["url"]]()
 
   expect_error(
     shinyOAuth::oauth_provider_oidc_discover(issuer = base, name = "fake"),
@@ -419,13 +419,13 @@ test_that("userinfo follows redirects when shinyOAuth.allow_redirect = TRUE", {
 
   # verify by checking the response content - /real returns specific data
   app <- webfakes::new_app()
-  app$get("/userinfo", function(req, res) {
+  app[["get"]]("/userinfo", function(req, res) {
     # Redirect to /real
-    res$redirect("/real", 302)
+    res[["redirect"]]("/real", 302)
   })
-  app$get("/real", function(req, res) {
+  app[["get"]]("/real", function(req, res) {
     # Return distinct data that proves we followed the redirect
-    res$send_json(
+    res[["send_json"]](
       object = list(
         sub = "redirected_user",
         name = "Redirect Test",
@@ -436,7 +436,7 @@ test_that("userinfo follows redirects when shinyOAuth.allow_redirect = TRUE", {
   })
 
   srv <- webfakes::local_app_process(app)
-  base_url <- srv$url()
+  base_url <- srv[["url"]]()
 
   prov <- shinyOAuth::oauth_provider(
     name = "fake",
@@ -482,17 +482,17 @@ test_that("token revocation follows redirects when shinyOAuth.allow_redirect = T
 
   # Use a marker in the response to prove we hit /real
   app <- webfakes::new_app()
-  app$post("/revoke", function(req, res) {
+  app[["post"]]("/revoke", function(req, res) {
     # Return 307 redirect - this should be followed to /real
-    res$redirect("/real", 307)
+    res[["redirect"]]("/real", 307)
   })
-  app$post("/real", function(req, res) {
-    res$set_status(200)
-    res$send("")
+  app[["post"]]("/real", function(req, res) {
+    res[["set_status"]](200)
+    res[["send"]]("")
   })
 
   srv <- webfakes::local_app_process(app)
-  base_url <- srv$url()
+  base_url <- srv[["url"]]()
 
   prov <- shinyOAuth::oauth_provider(
     name = "fake",

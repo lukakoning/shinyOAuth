@@ -57,7 +57,7 @@ testthat::test_that("revoke_token invalidates access token (integration)", {
 
   testthat::expect_false(httr2::resp_is_error(token_resp))
   parsed <- httr2::resp_body_json(token_resp, simplifyVector = TRUE)
-  at <- parsed$access_token
+  at <- parsed[["access_token"]]
   testthat::expect_true(is.character(at) && length(at) == 1 && nzchar(at))
 
   # Build OAuthClient and OAuthToken
@@ -72,26 +72,26 @@ testthat::test_that("revoke_token invalidates access token (integration)", {
 
   # 1) Introspect: token should be active
   intros_before <- shinyOAuth::introspect_token(client, tok, which = "access")
-  testthat::expect_true(isTRUE(intros_before$supported))
+  testthat::expect_true(isTRUE(intros_before[["supported"]]))
   testthat::expect_true(
-    isTRUE(intros_before$active),
+    isTRUE(intros_before[["active"]]),
     info = "Token should be active before revocation"
   )
 
   # 2) Revoke the access token
   rev_result <- shinyOAuth::revoke_token(client, tok, which = "access")
-  testthat::expect_true(isTRUE(rev_result$supported))
+  testthat::expect_true(isTRUE(rev_result[["supported"]]))
   testthat::expect_true(
-    isTRUE(rev_result$revoked),
+    isTRUE(rev_result[["revoked"]]),
     info = "revoke_token should succeed with status = 'ok'"
   )
-  testthat::expect_identical(rev_result$status, "ok")
+  testthat::expect_identical(rev_result[["status"]], "ok")
 
   # 3) Introspect again: token should no longer be active
   intros_after <- shinyOAuth::introspect_token(client, tok, which = "access")
-  testthat::expect_true(isTRUE(intros_after$supported))
+  testthat::expect_true(isTRUE(intros_after[["supported"]]))
   testthat::expect_false(
-    isTRUE(intros_after$active),
+    isTRUE(intros_after[["active"]]),
     info = "Token should be inactive after revocation"
   )
 })
@@ -123,7 +123,7 @@ testthat::test_that("revoke_token works with different auth styles (integration)
 
   testthat::expect_false(httr2::resp_is_error(token_resp))
   parsed <- httr2::resp_body_json(token_resp, simplifyVector = TRUE)
-  at <- parsed$access_token
+  at <- parsed[["access_token"]]
 
   client_body <- shinyOAuth::oauth_client(
     provider = prov_body,
@@ -140,13 +140,13 @@ testthat::test_that("revoke_token works with different auth styles (integration)
     tok,
     which = "access"
   )
-  testthat::expect_true(isTRUE(intros_before$active))
+  testthat::expect_true(isTRUE(intros_before[["active"]]))
 
   # Revoke with body auth style
 
   rev_result <- shinyOAuth::revoke_token(client_body, tok, which = "access")
-  testthat::expect_true(isTRUE(rev_result$revoked))
-  testthat::expect_identical(rev_result$status, "ok")
+  testthat::expect_true(isTRUE(rev_result[["revoked"]]))
+  testthat::expect_identical(rev_result[["status"]], "ok")
 
   # Verify inactive after
   intros_after <- shinyOAuth::introspect_token(
@@ -154,5 +154,5 @@ testthat::test_that("revoke_token works with different auth styles (integration)
     tok,
     which = "access"
   )
-  testthat::expect_false(isTRUE(intros_after$active))
+  testthat::expect_false(isTRUE(intros_after[["active"]]))
 })

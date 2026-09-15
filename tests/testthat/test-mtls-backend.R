@@ -11,9 +11,9 @@ test_that("PEM mTLS rejects active Schannel but accepts inactive alternatives", 
 })
 
 test_that("Windows fresh-process default and OpenSSL override are detected", {
-  skip_if(.Platform$OS.type != "windows")
+  skip_if(.Platform[["OS.type"]] != "windows")
   skip_if_not_installed("callr")
-  read_backend <- function() curl::curl_version()$ssl_version
+  read_backend <- function() curl::curl_version()[["ssl_version"]]
   default <- callr::r(read_backend, env = c(CURL_SSL_BACKEND = NA_character_))
   if (grepl("Schannel", gsub("\\([^)]*\\)", "", default))) {
     expect_error(shinyOAuth:::validate_mtls_tls_backend(default), "PEM mTLS")

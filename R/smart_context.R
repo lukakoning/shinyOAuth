@@ -39,7 +39,7 @@
 #' @export
 smart_context <- function(connection) {
   if (!inherits(connection, "OAuthConnection")) err_input("Expected an OAuthConnection")
-  connection$smart_context()
+  connection[["smart_context"]]()
 }
 
 #' @rdname smart_context
@@ -47,14 +47,14 @@ smart_context <- function(connection) {
 #' @export
 smart_patient <- function(connection) {
   if (!inherits(connection, "OAuthConnection")) err_input("Expected an OAuthConnection")
-  connection$smart_resource("patient")
+  connection[["smart_resource"]]("patient")
 }
 
 #' @rdname smart_context
 #' @export
 smart_fhir_user <- function(connection) {
   if (!inherits(connection, "OAuthConnection")) err_input("Expected an OAuthConnection")
-  connection$smart_resource("fhirUser")
+  connection[["smart_resource"]]("fhirUser")
 }
 
 smart_update_token_context <- function(client, token, previous = NULL) {

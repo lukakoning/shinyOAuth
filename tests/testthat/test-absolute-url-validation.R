@@ -66,7 +66,7 @@ testthat::test_that("OAuthProvider preserves endpoint path semantics", {
     )
   }
   testthat::expect_identical(
-    provider@mtls_endpoint_aliases$token_endpoint,
+    provider@mtls_endpoint_aliases[["token_endpoint"]],
     alias
   )
 })
@@ -136,8 +136,8 @@ testthat::test_that("OAuthProvider rejects endpoint URLs with fragments", {
 
   for (case in fragment_cases) {
     testthat::expect_error(
-      do.call(oauth_provider, case$args),
-      regexp = case$regexp
+      do.call(oauth_provider, case[["args"]]),
+      regexp = case[["regexp"]]
     )
   }
 })

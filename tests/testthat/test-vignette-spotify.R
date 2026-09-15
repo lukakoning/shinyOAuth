@@ -30,7 +30,7 @@ spotify_dashboard_helpers <- function() {
 
 test_that("Spotify URLs preserve safe links and reject unsupported origins", {
   helpers <- spotify_dashboard_helpers()
-  safe_url <- helpers$spotify_safe_url
+  safe_url <- helpers[["spotify_safe_url"]]
   expect_identical(
     safe_url("https://open.spotify.com/artist/123", "open.spotify.com"),
     "https://open.spotify.com/artist/123"
@@ -44,7 +44,7 @@ test_that("Spotify URLs preserve safe links and reject unsupported origins", {
     expect_null(safe_url(url, "open.spotify.com"))
   }
   expect_identical(
-    helpers$spotify_safe_image_url("https://i.scdn.co/image/abc"),
+    helpers[["spotify_safe_image_url"]]("https://i.scdn.co/image/abc"),
     "https://i.scdn.co/image/abc"
   )
 })
@@ -60,7 +60,7 @@ test_that("Spotify dashboard never disables table escaping", {
 
 test_that("recent plays preserve UTC time and fractional seconds", {
   helpers <- spotify_dashboard_helpers()
-  helpers$spotify_get <- function(...) {
+  helpers[["spotify_get"]] <- function(...) {
     list(
       items = list(list(
         played_at = "2026-09-09T14:23:45.678Z",
@@ -68,23 +68,23 @@ test_that("recent plays preserve UTC time and fractional seconds", {
       ))
     )
   }
-  result <- helpers$get_recently_played(NULL)$played_at
+  result <- helpers[["get_recently_played"]](NULL)[["played_at"]]
   expect_equal(
     as.numeric(result) -
       as.numeric(as.POSIXct("2026-09-09 14:23:45", tz = "UTC")),
     0.678,
     tolerance = 1e-6
   )
-  expect_identical(attr(result, "tzone"), "UTC")
+  expect_identical(attr(result, "tzone", exact = TRUE), "UTC")
 })
 
 test_that("Spotify avatars render list and data frame images safely", {
   helpers <- spotify_dashboard_helpers()
   url <- "https://i.scdn.co/image/avatar"
   for (images in list(list(list(url = url)), data.frame(url = url))) {
-    avatar <- helpers$spotify_avatar(images)
-    expect_identical(avatar$name, "img")
-    expect_identical(avatar$attribs$src, url)
+    avatar <- helpers[["spotify_avatar"]](images)
+    expect_identical(avatar[["name"]], "img")
+    expect_identical(avatar[["attribs"]][["src"]], url)
   }
   for (images in list(
     NULL,
@@ -93,7 +93,7 @@ test_that("Spotify avatars render list and data frame images safely", {
     list(list()),
     list(list(url = "https://example.test/avatar"))
   )) {
-    expect_null(helpers$spotify_avatar(images))
+    expect_null(helpers[["spotify_avatar"]](images))
   }
 })
 
@@ -110,7 +110,7 @@ test_that("DT escaping covers adversarial Spotify metadata", {
 
   widget <- DT::datatable(metadata, rownames = FALSE, escape = TRUE)
 
-  expect_identical(attr(widget$x$options, "escapeIdx"), "true")
+  expect_identical(attr(widget[["x"]][["options"]], "escapeIdx", exact = TRUE), "true")
 })
 
 test_that("Spotify dashboard loads and transforms data in a fresh R process", {
@@ -144,7 +144,7 @@ test_that("Spotify dashboard loads and transforms data in a fresh R process", {
         }
         eval(expr, env)
       }
-      env$spotify_get <- function(...) {
+      env[["spotify_get"]] <- function(...) {
         list(
           items = list(list(
             name = "Track",
@@ -154,14 +154,14 @@ test_that("Spotify dashboard loads and transforms data in a fresh R process", {
         )
       }
       list(
-        ui = is.function(env$ui) ||
-          inherits(env$ui, "shiny.tag") ||
-          inherits(env$ui, "shiny.tag.list"),
-        track = env$get_top_tracks(NULL)$name
+        ui = is.function(env[["ui"]]) ||
+          inherits(env[["ui"]], "shiny.tag") ||
+          inherits(env[["ui"]], "shiny.tag.list"),
+        track = env[["get_top_tracks"]](NULL)[["name"]]
       )
     },
     args = list(path = path, package_dir = normalizePath(test_path("..", "..")))
   )
-  expect_true(result$ui)
-  expect_identical(result$track, "Track")
+  expect_true(result[["ui"]])
+  expect_identical(result[["track"]], "Track")
 })

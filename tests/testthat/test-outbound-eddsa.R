@@ -25,15 +25,15 @@ test_that("Ed25519 signs interoperable client assertions, Request Objects and DP
           scopes = "openid"
         )
         if (role == "dpop") {
-          args$dpop_private_key <- input
-          args$dpop_signing_alg <- alg
+          args[["dpop_private_key"]] <- input
+          args[["dpop_signing_alg"]] <- alg
         } else {
-          args$client_assertion_private_key <- input
+          args[["client_assertion_private_key"]] <- input
           if (role == "assertion") {
-            args$client_assertion_alg <- alg
+            args[["client_assertion_alg"]] <- alg
           } else {
-            args$request_object_mode <- "request"
-            args$request_object_signing_alg <- alg
+            args[["request_object_mode"]] <- "request"
+            args[["request_object_signing_alg"]] <- alg
           }
         }
         client <- do.call(oauth_client, args)
@@ -57,39 +57,39 @@ test_that("Ed25519 signs interoperable client assertions, Request Objects and DP
         )
         parts <- strsplit(jwt, ".", fixed = TRUE)[[1L]]
         header <- jsonlite::fromJSON(base64url_decode(parts[[1L]]))
-        expect_identical(header$alg, expected_alg)
+        expect_identical(header[["alg"]], expected_alg)
         signing_input <- charToRaw(paste(parts[1:2], collapse = "."))
         signature <- base64url_decode_raw(parts[[3L]])
         expect_length(signature, 64L)
         expect_true(openssl::ed25519_verify(
           signing_input,
           signature,
-          key$pubkey
+          key[["pubkey"]]
         ))
         signature[[1L]] <- as.raw(bitwXor(as.integer(signature[[1L]]), 1L))
         expect_error(
           openssl::ed25519_verify(
             signing_input,
             signature,
-            key$pubkey
+            key[["pubkey"]]
           ),
           "signature"
         )
         if (role == "dpop") {
-          expect_setequal(names(header$jwk), c("kty", "crv", "x"))
-          expect_identical(header$jwk$crv, "Ed25519")
+          expect_setequal(names(header[["jwk"]]), c("kty", "crv", "x"))
+          expect_identical(header[["jwk"]][["crv"]], "Ed25519")
           expect_identical(
-            base64url_decode_raw(header$jwk$x),
-            as.list(key$pubkey)$data
+            base64url_decode_raw(header[["jwk"]][["x"]]),
+            as.list(key[["pubkey"]])[["data"]]
           )
           expect_identical(
             client_dpop_jkt(client),
-            compute_jwk_thumbprint(header$jwk)
+            compute_jwk_thumbprint(header[["jwk"]])
           )
         }
         provider2 <- provider
         S7::prop(provider2, metadata) <- "RS256"
-        args$provider <- provider2
+        args[["provider"]] <- provider2
         expect_error(do.call(oauth_client, args), "not supported by provider")
       }
     }

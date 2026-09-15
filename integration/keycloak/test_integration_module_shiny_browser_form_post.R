@@ -1,11 +1,11 @@
 ## Browser E2E: form_post response mode against a live Keycloak realm
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 .read_form_post_browser_state <- function(drv) {
-  jsonlite::fromJSON(drv$get_js(
+  jsonlite::fromJSON(drv[["get_js"]](
     "
     JSON.stringify((function () {
       var ready = document.querySelector('#ready_state');
@@ -24,7 +24,7 @@ if (!exists("make_provider", mode = "function")) {
 }
 
 .wait_for_form_post_auth_url <- function(drv, timeout = 15000) {
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var authUrl = document.querySelector('#auth_url');
@@ -38,7 +38,7 @@ if (!exists("make_provider", mode = "function")) {
 }
 
 .navigate_form_post_browser_to_url <- function(drv, url) {
-  drv$run_js(paste0(
+  drv[["run_js"]](paste0(
     "window.location.href = ",
     jsonlite::toJSON(url, auto_unbox = TRUE),
     ";"
@@ -90,10 +90,10 @@ if (!exists("make_provider", mode = "function")) {
   testthat::skip_if_not_installed("callr")
   testthat::skip_if_not_installed("webfakes")
 
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key$pubkey), simplifyVector = FALSE)
-  jwk$kid <- "form-post-jarm-enc-1"
-  jwk$use <- "enc"
-  jwk$alg <- "RSA-OAEP"
+  jwk <- jsonlite::fromJSON(jose::write_jwk(key[["pubkey"]]), simplifyVector = FALSE)
+  jwk[["kid"]] <- "form-post-jarm-enc-1"
+  jwk[["use"]] <- "enc"
+  jwk[["alg"]] <- "RSA-OAEP"
   jwks_json <- jsonlite::toJSON(
     list(keys = list(jwk)),
     auto_unbox = TRUE,
@@ -101,9 +101,9 @@ if (!exists("make_provider", mode = "function")) {
   )
 
   app <- webfakes::new_app()
-  app$get("/jwks", function(req, res) {
-    res$set_type("application/json")
-    res$send(jwks_json)
+  app[["get"]]("/jwks", function(req, res) {
+    res[["set_type"]]("application/json")
+    res[["send"]](jwks_json)
   })
 
   process <- webfakes::new_app_process(
@@ -113,13 +113,13 @@ if (!exists("make_provider", mode = "function")) {
     start = TRUE,
     auto_start = FALSE
   )
-  stdout <- process$.access_log %||% NA_character_
-  stderr <- process$.error_log %||% NA_character_
+  stdout <- process[[".access_log"]] %||% NA_character_
+  stderr <- process[[".error_log"]] %||% NA_character_
 
   local_jwks_url <- paste0("http://127.0.0.1:", as.integer(port), "/jwks")
   deadline <- Sys.time() + 5
   repeat {
-    if (!identical(process$get_state(), "live")) {
+    if (!identical(process[["get_state"]](), "live")) {
       stop(
         paste(
           "form_post JARM JWKS server exited before it was reachable.",
@@ -157,7 +157,7 @@ if (!exists("make_provider", mode = "function")) {
 
   list(
     process = process,
-    stop = function() process$stop(),
+    stop = function() process[["stop"]](),
     stdout = stdout,
     stderr = stderr,
     jwks_url = paste0(sub("/+$", "", public_base_url), "/jwks")
@@ -323,15 +323,15 @@ if (!exists("make_provider", mode = "function")) {
         response_mode = response_mode
       )
       if (keycloak_nonempty_string(jarm_signed_response_alg)) {
-        client_args$jarm_signed_response_alg <-
+        client_args[["jarm_signed_response_alg"]] <-
           jarm_signed_response_alg
       }
       if (keycloak_nonempty_string(jarm_encrypted_response_alg)) {
-        client_args$jarm_encrypted_response_alg <-
+        client_args[["jarm_encrypted_response_alg"]] <-
           jarm_encrypted_response_alg
       }
       if (keycloak_nonempty_string(jarm_encrypted_response_enc)) {
-        client_args$jarm_encrypted_response_enc <-
+        client_args[["jarm_encrypted_response_enc"]] <-
           jarm_encrypted_response_enc
       }
       if (
@@ -339,7 +339,7 @@ if (!exists("make_provider", mode = "function")) {
           jarm_decryption_private_key
         )
       ) {
-        client_args$jarm_decryption_private_key <-
+        client_args[["jarm_decryption_private_key"]] <-
           jarm_decryption_private_key
       }
 
@@ -349,7 +349,7 @@ if (!exists("make_provider", mode = "function")) {
         shinyOAuth::use_shinyOAuth(),
         shiny::titlePanel(title),
         shiny::actionButton("prepare_login_btn", "Prepare login"),
-        shiny::tags$hr(),
+        shiny::tags[["hr"]](),
         shiny::verbatimTextOutput("ready_state"),
         shiny::verbatimTextOutput("auth_url"),
         shiny::verbatimTextOutput("auth_state"),
@@ -372,15 +372,15 @@ if (!exists("make_provider", mode = "function")) {
         )
 
         shiny::observe({
-          browser_token <- auth$browser_token %||% NA_character_
+          browser_token <- auth[["browser_token"]] %||% NA_character_
           if (keycloak_nonempty_string(browser_token)) {
-            session_browser_tokens[[session$token]] <- browser_token
+            session_browser_tokens[[session[["token"]]]] <- browser_token
           }
         })
 
         build_and_capture_auth_url <- function() {
-          promises::then(auth$build_auth_url(), function(url) {
-            browser_token <- auth$browser_token %||% NA_character_
+          promises::then(auth[["build_auth_url"]](), function(url) {
+            browser_token <- auth[["browser_token"]] %||% NA_character_
 
             if (keycloak_nonempty_string(browser_token)) {
               published_auth_urls[[browser_token]] <- url
@@ -390,17 +390,17 @@ if (!exists("make_provider", mode = "function")) {
           })
         }
 
-        shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
+        shiny::observeEvent(input[["prepare_login_btn"]], ignoreInit = TRUE, {
           build_and_capture_auth_url()
           invisible(NULL)
         })
 
-        output$ready_state <- shiny::renderText({
-          paste("browser_ready:", isTRUE(auth$has_browser_token()))
+        output[["ready_state"]] <- shiny::renderText({
+          paste("browser_ready:", isTRUE(auth[["has_browser_token"]]()))
         })
 
-        output$auth_url <- shiny::renderText({
-          browser_token <- session_browser_tokens[[session$token]] %||%
+        output[["auth_url"]] <- shiny::renderText({
+          browser_token <- session_browser_tokens[[session[["token"]]]] %||%
             NA_character_
           auth_url <- if (keycloak_nonempty_string(browser_token)) {
             published_auth_urls[[browser_token]] %||% NA_character_
@@ -420,30 +420,30 @@ if (!exists("make_provider", mode = "function")) {
           auth_url
         })
 
-        output$auth_state <- shiny::renderText({
+        output[["auth_state"]] <- shiny::renderText({
           paste(
             "authenticated:",
-            isTRUE(auth$authenticated),
+            isTRUE(auth[["authenticated"]]),
             "has_token:",
-            !is.null(auth$token),
+            !is.null(auth[["token"]]),
             "error:",
-            if (!is.null(auth$error)) auth$error else "<none>",
+            if (!is.null(auth[["error"]])) auth[["error"]] else "<none>",
             "error_description:",
-            if (!is.null(auth$error_description)) {
-              auth$error_description
+            if (!is.null(auth[["error_description"]])) {
+              auth[["error_description"]]
             } else {
               "<none>"
             }
           )
         })
 
-        output$user_info <- shiny::renderText({
-          if (is.null(auth$token)) {
+        output[["user_info"]] <- shiny::renderText({
+          if (is.null(auth[["token"]])) {
             return("{}")
           }
 
           jsonlite::toJSON(
-            auth$token@userinfo,
+            auth[["token"]]@userinfo,
             auto_unbox = TRUE,
             null = "null"
           )
@@ -483,11 +483,11 @@ if (!exists("make_provider", mode = "function")) {
   deadline <- Sys.time() + timeout
 
   while (Sys.time() < deadline) {
-    if (!app_process$process$is_alive()) {
+    if (!app_process[["process"]][["is_alive"]]()) {
       stop(
         paste(
           "Shiny form_post app exited before it was reachable.",
-          .read_log_file(app_process$stderr),
+          .read_log_file(app_process[["stderr"]]),
           sep = "\n"
         ),
         call. = FALSE
@@ -504,7 +504,7 @@ if (!exists("make_provider", mode = "function")) {
   stop(
     paste(
       "Timed out waiting for the Shiny form_post app to listen.",
-      .read_log_file(app_process$stderr),
+      .read_log_file(app_process[["stderr"]]),
       sep = "\n"
     ),
     call. = FALSE
@@ -516,7 +516,7 @@ if (!exists("make_provider", mode = "function")) {
   validate_auth_url,
   final_href_pattern = NULL
 ) {
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -526,10 +526,10 @@ if (!exists("make_provider", mode = "function")) {
     timeout = 15000
   )
 
-  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
 
   prepared <- .wait_for_form_post_auth_url(drv)
-  auth_url <- trimws(prepared$auth_url %||% "")
+  auth_url <- trimws(prepared[["auth_url"]] %||% "")
   testthat::expect_true(nzchar(auth_url))
   validate_auth_url(auth_url)
 
@@ -540,7 +540,7 @@ if (!exists("make_provider", mode = "function")) {
     keycloak_submit_browser_login(drv)
   }
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_state');
@@ -564,7 +564,7 @@ if (!exists("make_provider", mode = "function")) {
   testthat::expect_match(auth_state, "authenticated: TRUE", fixed = TRUE)
   testthat::expect_match(auth_state, "error_description: <none>", fixed = TRUE)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var forbidden = [
@@ -582,7 +582,7 @@ if (!exists("make_provider", mode = "function")) {
     timeout = 5000
   )
 
-  observed <- jsonlite::fromJSON(drv$get_js(
+  observed <- jsonlite::fromJSON(drv[["get_js"]](
     "
     JSON.stringify({
       href: window.location.href || '',
@@ -608,33 +608,33 @@ if (!exists("make_provider", mode = "function")) {
 
   for (key in forbidden) {
     testthat::expect_false(
-      grepl(key, observed$href, fixed = TRUE),
+      grepl(key, observed[["href"]], fixed = TRUE),
       info = paste0(
         "Callback key leaked in href: ",
         key,
         " href=",
-        observed$href
+        observed[["href"]]
       )
     )
     testthat::expect_false(
-      grepl(key, observed$title, fixed = TRUE),
+      grepl(key, observed[["title"]], fixed = TRUE),
       info = paste0(
         "Callback key leaked in title: ",
         key,
         " title=",
-        observed$title
+        observed[["title"]]
       )
     )
   }
 
   if (!is.null(final_href_pattern)) {
-    testthat::expect_match(observed$href, final_href_pattern)
+    testthat::expect_match(observed[["href"]], final_href_pattern)
   }
 
-  user_info <- jsonlite::fromJSON(observed$user_info)
-  testthat::expect_identical(user_info$preferred_username, "alice")
-  testthat::expect_identical(user_info$name, "Alice Test")
-  testthat::expect_identical(user_info$email, "alice@example.com")
+  user_info <- jsonlite::fromJSON(observed[["user_info"]])
+  testthat::expect_identical(user_info[["preferred_username"]], "alice")
+  testthat::expect_identical(user_info[["name"]], "Alice Test")
+  testthat::expect_identical(user_info[["email"]], "alice@example.com")
 
   invisible(list(
     auth_url = auth_url,
@@ -670,10 +670,10 @@ testthat::test_that("browser form_post login authenticates through oauth_form_po
     app_port = app_port,
     app_url = app_url
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(try(app_process[["process"]][["kill"]](), silent = TRUE), add = TRUE)
   .wait_for_form_post_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-form-post-e2e",
     load_timeout = 15000,
@@ -731,7 +731,7 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
     )
   )
   on.exit(
-    keycloak_delete_client(admin_token, id = fixture$id),
+    keycloak_delete_client(admin_token, id = fixture[["id"]]),
     add = TRUE
   )
 
@@ -749,14 +749,14 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
     app_port = app_port,
     app_url = app_url,
     title = "Form Post JWT E2E",
-    client_id = fixture$client_id,
+    client_id = fixture[["client_id"]],
     response_mode = "form_post.jwt",
     jarm_signed_response_alg = "RS256"
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(try(app_process[["process"]][["kill"]](), silent = TRUE), add = TRUE)
   .wait_for_form_post_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-form-post-jarm-e2e",
     load_timeout = 15000,
@@ -773,7 +773,7 @@ testthat::test_that("browser form_post.jwt login authenticates through oauth_for
       )
       testthat::expect_identical(
         parse_query_param(auth_url, "client_id", decode = TRUE),
-        fixture$client_id
+        fixture[["client_id"]]
       )
       testthat::expect_identical(
         parse_query_param(auth_url, "redirect_uri", decode = TRUE),
@@ -828,7 +828,7 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     port = jwks_port,
     public_base_url = public_base_url
   )
-  on.exit(try(jwks_server$stop(), silent = TRUE), add = TRUE)
+  on.exit(try(jwks_server[["stop"]](), silent = TRUE), add = TRUE)
 
   admin_token <- keycloak_admin_token()
   fixture <- keycloak_create_client(
@@ -840,7 +840,7 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
       attributes = list(
         "pkce.code.challenge.method" = "S256",
         "use.jwks.url" = "true",
-        "jwks.url" = jwks_server$jwks_url,
+        "jwks.url" = jwks_server[["jwks_url"]],
         "authorization.signed.response.alg" = "RS256",
         "authorization.encrypted.response.alg" = "RSA-OAEP",
         "authorization.encrypted.response.enc" = "A256CBC-HS512"
@@ -848,7 +848,7 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     )
   )
   on.exit(
-    keycloak_delete_client(admin_token, id = fixture$id),
+    keycloak_delete_client(admin_token, id = fixture[["id"]]),
     add = TRUE
   )
 
@@ -875,17 +875,17 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
     app_port = app_port,
     app_url = app_url,
     title = "Encrypted Form Post JWT E2E",
-    client_id = fixture$client_id,
+    client_id = fixture[["client_id"]],
     response_mode = "form_post.jwt",
     jarm_signed_response_alg = "RS256",
     jarm_encrypted_response_alg = "RSA-OAEP",
     jarm_encrypted_response_enc = "A256CBC-HS512",
     jarm_decryption_private_key = decryption_key_pem
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(try(app_process[["process"]][["kill"]](), silent = TRUE), add = TRUE)
   .wait_for_form_post_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-form-post-jarm-enc-e2e",
     load_timeout = 15000,
@@ -902,7 +902,7 @@ testthat::test_that("browser encrypted form_post.jwt login authenticates through
       )
       testthat::expect_identical(
         parse_query_param(auth_url, "client_id", decode = TRUE),
-        fixture$client_id
+        fixture[["client_id"]]
       )
       testthat::expect_identical(
         parse_query_param(auth_url, "redirect_uri", decode = TRUE),
@@ -946,10 +946,10 @@ testthat::test_that("browser form_post login authenticates on a callback subrout
     redirect_path = callback_path,
     title = "Form Post Callback Path E2E"
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(try(app_process[["process"]][["kill"]](), silent = TRUE), add = TRUE)
   .wait_for_form_post_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-form-post-callback-e2e",
     load_timeout = 15000,
@@ -1010,10 +1010,10 @@ testthat::test_that("browser form_post login still succeeds when the auth reques
     use_par = TRUE,
     title = "Form Post PAR E2E"
   )
-  on.exit(try(app_process$process$kill(), silent = TRUE), add = TRUE)
+  on.exit(try(app_process[["process"]][["kill"]](), silent = TRUE), add = TRUE)
   .wait_for_form_post_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-form-post-par-e2e",
     load_timeout = 15000,

@@ -186,7 +186,7 @@
 #'   unexpected values: `"warn"` continues with a warning, `"strict"` stops
 #'   login, and `"none"` skips the check. When omitted, [oauth_client()] uses
 #'   `"warn"` if `claims` includes `essential = TRUE`, `value`, or `values`
-#'   requirements, and `"none"` otherwise. Checks on `claims$id_token` require
+#'   requirements, and `"none"` otherwise. Checks on `claims[["id_token"]]` require
 #'   ID token validation (`id_token_validation = TRUE` or `use_nonce = TRUE`).
 #'
 #' @param trusted_id_token_audiences Character vector of additional ID-token
@@ -239,7 +239,7 @@
 #' @param state_store Storage for pending logins. The default
 #'   `cachem::cache_mem(max_age = 300)` is suitable for one R process.
 #'   For multiple app processes, supply a shared [custom_cache()] with atomic
-#'   `$take()` and use the same `state_key` on every process.
+#'   `[["take"]]()` and use the same `state_key` on every process.
 #'   Plain `cachem::cache_disk()` is unsafe for shared login state because its
 #'   separate read and delete operations do not prevent simultaneous reuse.
 #'   See [custom_cache()] for method and stored-value requirements.
@@ -348,7 +348,7 @@
 #'   `mtls_certificate_bound_access_tokens = TRUE` and set
 #'   `mtls_require_observed_cnf = FALSE`.
 #' @param mtls_require_observed_cnf Logical, default `TRUE`. When
-#'   `mtls_certificate_bound_access_tokens = TRUE`, require `cnf$x5t#S256`
+#'   `mtls_certificate_bound_access_tokens = TRUE`, require `cnf[["x5t#S256"]]`
 #'   in the token response, JWT access token, or introspection and verify that
 #'   it matches the configured certificate. The default preserves strict
 #'   local assurance. Set `FALSE` for server-enforced opaque bindings that
@@ -392,7 +392,7 @@
 #'   to bind refresh tokens.
 #'
 #' @param dpop_require_observed_cnf Logical. When `TRUE`, shinyOAuth rejects
-#'   `token_type = "DPoP"` access tokens unless it can observe `cnf$jkt`
+#'   `token_type = "DPoP"` access tokens unless it can observe `cnf[["jkt"]]`
 #'   locally, from the token response, introspection, or optional JWT access-token
 #'   inspection. Set `options(shinyOAuth.access_token_cnf = "opaque")` to disable
 #'   access-token decoding for both DPoP and mTLS; the compatibility default
@@ -2837,13 +2837,13 @@ oauth_client_validate <- function(self) {
     )
   }
 
-  # Duck-type state_store: require $get, $set, and $remove; $info optional
-  has_get <- !is.null(self@state_store$get) &&
-    is.function(self@state_store$get)
-  has_set <- !is.null(self@state_store$set) &&
-    is.function(self@state_store$set)
-  has_remove <- !is.null(self@state_store$remove) &&
-    is.function(self@state_store$remove)
+  # Duck-type state_store: require [["get"]], [["set"]], and [["remove"]]; [["info"]] optional
+  has_get <- !is.null(self@state_store[["get"]]) &&
+    is.function(self@state_store[["get"]])
+  has_set <- !is.null(self@state_store[["set"]]) &&
+    is.function(self@state_store[["set"]])
+  has_remove <- !is.null(self@state_store[["remove"]]) &&
+    is.function(self@state_store[["remove"]])
   if (!isTRUE(has_get && has_set && has_remove)) {
     return(paste(
       "OAuthClient: state_store must implement cachem methods:",
@@ -2855,10 +2855,10 @@ oauth_client_validate <- function(self) {
   }
 
   # Robustness: verify method signatures/compatibility.
-  # - $get must accept a named `missing` argument (or `...`).
+  # - [["get"]] must accept a named `missing` argument (or `...`).
   #   Validated via formals inspection (no probe-call) to avoid triggering
   #   side-effects in stateful backends or test wrappers.
-  get_formals <- try(formals(self@state_store$get), silent = TRUE)
+  get_formals <- try(formals(self@state_store[["get"]]), silent = TRUE)
   get_args <- if (!inherits(get_formals, "try-error")) {
     names(get_formals)
   } else {
@@ -2870,9 +2870,9 @@ oauth_client_validate <- function(self) {
     )
   }
 
-  # - $set must accept (key, value) either explicitly or via "..."
+  # - [["set"]] must accept (key, value) either explicitly or via "..."
   #   (do not probe-call to avoid side-effects)
-  set_formals <- try(formals(self@state_store$set), silent = TRUE)
+  set_formals <- try(formals(self@state_store[["set"]]), silent = TRUE)
   set_args <- if (!inherits(set_formals, "try-error")) {
     names(set_formals)
   } else {
@@ -2884,8 +2884,8 @@ oauth_client_validate <- function(self) {
     return("OAuthClient: state_store$set must accept (key, value)")
   }
 
-  # - $remove must accept a key (explicitly or via "...")
-  rm_formals <- try(formals(self@state_store$remove), silent = TRUE)
+  # - [["remove"]] must accept a key (explicitly or via "...")
+  rm_formals <- try(formals(self@state_store[["remove"]]), silent = TRUE)
   rm_args <- if (!inherits(rm_formals, "try-error")) {
     names(rm_formals)
   } else {
@@ -2896,14 +2896,14 @@ oauth_client_validate <- function(self) {
     return("OAuthClient: state_store$remove must accept (key)")
   }
 
-  # Optional $take for atomic state consumption (preferred for shared stores)
+  # Optional [["take"]] for atomic state consumption (preferred for shared stores)
   # Validated via formals inspection (no probe-call) to avoid triggering
   # side-effects in stateful backends or test wrappers.
   if (
-    !is.null(self@state_store$take) &&
-      is.function(self@state_store$take)
+    !is.null(self@state_store[["take"]]) &&
+      is.function(self@state_store[["take"]])
   ) {
-    take_formals <- try(formals(self@state_store$take), silent = TRUE)
+    take_formals <- try(formals(self@state_store[["take"]]), silent = TRUE)
     take_args <- if (!inherits(take_formals, "try-error")) {
       names(take_formals)
     } else {

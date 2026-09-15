@@ -112,11 +112,11 @@ manager <- oauth_connections(
 ui <- oauth_connections_ui(app_ui, "health", manager)
 server <- function(input, output, session) {
   health <- oauth_connections_server("health", manager)
-  shiny::observeEvent(input$connect, health$connect(input$client_name))
+  shiny::observeEvent(input[["connect"]], health[["connect"]](input[["client_name"]]))
   data <- shiny::reactive({
-    connection <- health$connection(input$connection_id)
-    shiny::req(connection$is_usable())
-    connection$request("fhir", "Patient/123")
+    connection <- health[["connection"]](input[["connection_id"]])
+    shiny::req(connection[["is_usable"]]())
+    connection[["request"]]("fhir", "Patient/123")
   })
 }
 shiny::shinyApp(ui, server, uiPattern = ".*")

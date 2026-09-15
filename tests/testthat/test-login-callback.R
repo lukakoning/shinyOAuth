@@ -20,7 +20,7 @@ test_that("payload_verify_issued_at rejects future and old payloads", {
 
   # Future issued_at
   p2 <- p
-  p2$issued_at <- now + 3600
+  p2[["issued_at"]] <- now + 3600
   expect_error(
     shinyOAuth:::payload_verify_issued_at(cli, p2),
     class = "shinyOAuth_state_error",
@@ -29,7 +29,7 @@ test_that("payload_verify_issued_at rejects future and old payloads", {
 
   # Too old: set max_age small and backdate
   p3 <- p
-  p3$issued_at <- now - 10
+  p3[["issued_at"]] <- now - 10
   cli2 <- make_test_client(
     use_pkce = TRUE,
     use_nonce = FALSE,
@@ -62,43 +62,43 @@ test_that("payload_verify_client_binding enforces client_id/redirect/scopes/prov
 
   # Robustness: allow equivalent representations
   base2 <- base
-  base2$scopes <- paste(cli@scopes, collapse = " ")
+  base2[["scopes"]] <- paste(cli@scopes, collapse = " ")
   expect_silent(shinyOAuth:::payload_verify_client_binding(cli, base2))
 
   base3 <- base
-  base3$scopes <- as.list(cli@scopes)
+  base3[["scopes"]] <- as.list(cli@scopes)
   expect_silent(shinyOAuth:::payload_verify_client_binding(cli, base3))
 
   bad <- base
-  bad$client_id <- "other"
+  bad[["client_id"]] <- "other"
   expect_error(
     shinyOAuth:::payload_verify_client_binding(cli, bad),
     class = "shinyOAuth_state_error",
     regexp = "client_id mismatch"
   )
   bad <- base
-  bad$redirect_uri <- "http://localhost:9999"
+  bad[["redirect_uri"]] <- "http://localhost:9999"
   expect_error(
     shinyOAuth:::payload_verify_client_binding(cli, bad),
     class = "shinyOAuth_state_error",
     regexp = "redirect_uri mismatch"
   )
   bad <- base
-  bad$scopes <- c("x")
+  bad[["scopes"]] <- c("x")
   expect_error(
     shinyOAuth:::payload_verify_client_binding(cli, bad),
     class = "shinyOAuth_state_error",
     regexp = "scopes do not match"
   )
   bad <- base
-  bad$provider <- paste0(base$provider, "-tamper")
+  bad[["provider"]] <- paste0(base[["provider"]], "-tamper")
   expect_error(
     shinyOAuth:::payload_verify_client_binding(cli, bad),
     class = "shinyOAuth_state_error",
     regexp = "provider fingerprint mismatch"
   )
   bad <- base
-  bad$client_policy <- shinyOAuth:::state_client_policy_fingerprint(
+  bad[["client_policy"]] <- shinyOAuth:::state_client_policy_fingerprint(
     make_test_client(
       use_pkce = TRUE,
       use_nonce = FALSE,
@@ -449,10 +449,10 @@ test_that("handle_callback errors when PKCE verifier missing and when browser to
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
   key <- shinyOAuth:::state_cache_key(payload[["state"]])
 
-  ssv <- cli@state_store$get(key, missing = NULL)
+  ssv <- cli@state_store[["get"]](key, missing = NULL)
   # Simulate missing verifier (removing field from state store entry)
-  ssv$pkce_code_verifier <- NULL
-  cli@state_store$set(key, ssv)
+  ssv[["pkce_code_verifier"]] <- NULL
+  cli@state_store[["set"]](key, ssv)
 
   # Early validation in state_store_get_remove now catches malformed entries
   expect_error(
@@ -465,7 +465,7 @@ test_that("handle_callback errors when PKCE verifier missing and when browser to
     class = "shinyOAuth_state_error",
     regexp = "malformed.*missing required fields"
   )
-  expect_null(cli@state_store$get(key, missing = NULL))
+  expect_null(cli@state_store[["get"]](key, missing = NULL))
 
   # Re-prepare and use malformed browser token
   url2 <- shinyOAuth:::prepare_call(cli, browser_token = tok)
@@ -518,10 +518,10 @@ test_that("handle_callback fails when nonce is required but missing in state sto
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
   key <- shinyOAuth:::state_cache_key(payload[["state"]])
-  ssv <- cli@state_store$get(key, missing = NULL)
+  ssv <- cli@state_store[["get"]](key, missing = NULL)
 
-  ssv$nonce <- NULL
-  cli@state_store$set(key, ssv)
+  ssv[["nonce"]] <- NULL
+  cli@state_store[["set"]](key, ssv)
 
   # Early validation in state_store_get_remove now catches malformed entries
   # (nonce field removed = missing required field)
@@ -535,7 +535,7 @@ test_that("handle_callback fails when nonce is required but missing in state sto
     class = "shinyOAuth_state_error",
     regexp = "malformed.*missing required fields"
   )
-  expect_null(cli@state_store$get(key, missing = NULL))
+  expect_null(cli@state_store[["get"]](key, missing = NULL))
 })
 
 test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
@@ -545,11 +545,11 @@ test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
   key <- shinyOAuth:::state_cache_key(payload[["state"]])
-  ssv <- cli@state_store$get(key, missing = NULL)
+  ssv <- cli@state_store[["get"]](key, missing = NULL)
 
   # Set verifier to a too-short value (RFC 7636 requires 43-128 chars)
-  ssv$pkce_code_verifier <- "tooshort"
-  cli@state_store$set(key, ssv)
+  ssv[["pkce_code_verifier"]] <- "tooshort"
+  cli@state_store[["set"]](key, ssv)
 
   expect_error(
     shinyOAuth:::handle_callback(
@@ -567,11 +567,11 @@ test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
   enc2 <- parse_query_param(url2, "state")
   payload2 <- shinyOAuth:::state_decrypt_gcm(enc2, key = cli@state_key)
   key2 <- shinyOAuth:::state_cache_key(payload2[["state"]])
-  ssv2 <- cli@state_store$get(key2, missing = NULL)
+  ssv2 <- cli@state_store[["get"]](key2, missing = NULL)
 
   # Valid length but invalid chars (contains '!')
-  ssv2$pkce_code_verifier <- paste0("!", strrep("a", 50))
-  cli@state_store$set(key2, ssv2)
+  ssv2[["pkce_code_verifier"]] <- paste0("!", strrep("a", 50))
+  cli@state_store[["set"]](key2, ssv2)
 
   expect_error(
     shinyOAuth:::handle_callback(
@@ -593,11 +593,11 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
   enc <- parse_query_param(url, "state")
   payload <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
   key <- shinyOAuth:::state_cache_key(payload[["state"]])
-  ssv <- cli@state_store$get(key, missing = NULL)
+  ssv <- cli@state_store[["get"]](key, missing = NULL)
 
   # Set nonce to a too-short value (validate_oidc_nonce requires >= 22 chars)
-  ssv$nonce <- "short"
-  cli@state_store$set(key, ssv)
+  ssv[["nonce"]] <- "short"
+  cli@state_store[["set"]](key, ssv)
 
   # Stub token swap to avoid network (nonce validation happens after swap)
   testthat::with_mocked_bindings(
@@ -629,11 +629,11 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
   enc2 <- parse_query_param(url2, "state")
   payload2 <- shinyOAuth:::state_decrypt_gcm(enc2, key = cli@state_key)
   key2 <- shinyOAuth:::state_cache_key(payload2[["state"]])
-  ssv2 <- cli@state_store$get(key2, missing = NULL)
+  ssv2 <- cli@state_store[["get"]](key2, missing = NULL)
 
   # Valid length but invalid chars (contains '!')
-  ssv2$nonce <- "abc!defghijklmnopqrstuvwxyz"
-  cli@state_store$set(key2, ssv2)
+  ssv2[["nonce"]] <- "abc!defghijklmnopqrstuvwxyz"
+  cli@state_store[["set"]](key2, ssv2)
 
   testthat::with_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {

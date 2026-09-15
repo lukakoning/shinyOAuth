@@ -19,11 +19,11 @@ test_that("oversized queries are rejected before callback scanning on any route"
     ),
     expr = {
       for (path in c("/", "/wrong-route")) {
-        values$.process_query(
+        values[[".process_query"]](
           paste0("?code=", strrep("x", 100)),
           current_path = path
         )
-        expect_identical(values$error, "invalid_callback_query")
+        expect_identical(values[["error"]], "invalid_callback_query")
       }
       expect_identical(scans, 0L)
     }
@@ -110,10 +110,10 @@ test_that("encoded callbacks within an 8000-byte request line reach code exchang
     8000L
   )
   expect_identical(
-    oauth_get_parse_query(query, oauth_callback_limits(), client)$code,
+    oauth_get_parse_query(query, oauth_callback_limits(), client)[["code"]],
     code
   )
-  expect_identical(oauth_form_post_parse_body(query)$code, code)
+  expect_identical(oauth_form_post_parse_body(query)[["code"]], code)
   exchanged <- NULL
   testthat::local_mocked_bindings(
     swap_code_for_token_set = function(client, code, code_verifier) {
@@ -130,15 +130,15 @@ test_that("encoded callbacks within an 8000-byte request line reach code exchang
     oauth_module_server,
     args = list(id = "auth", client = client, auto_redirect = FALSE),
     {
-      state <- parse_query_param(values$build_auth_url(), "state")
-      values$.process_query(paste0(
+      state <- parse_query_param(values[["build_auth_url"]](), "state")
+      values[[".process_query"]](paste0(
         "?code=",
         utils::URLencode(code, reserved = TRUE),
         "&state=",
         state
       ))
-      session$flushReact()
-      expect_true(values$authenticated)
+      session[["flushReact"]]()
+      expect_true(values[["authenticated"]])
       expect_identical(exchanged, code)
     }
   )
@@ -153,27 +153,27 @@ test_that("callback and JARM field budgets share one resolver and honor override
     state = "state",
     code = strrep("a", 8192)
   )
-  expect_equal(oauth_callback_limits()$code, 8192)
-  expect_identical(validate_jarm_claims(client, claims)$code, claims$code)
-  query <- paste0("code=", claims$code, "&state=state")
-  expect_identical(oauth_form_post_parse_body(query)$code, claims$code)
+  expect_equal(oauth_callback_limits()[["code"]], 8192)
+  expect_identical(validate_jarm_claims(client, claims)[["code"]], claims[["code"]])
+  query <- paste0("code=", claims[["code"]], "&state=state")
+  expect_identical(oauth_form_post_parse_body(query)[["code"]], claims[["code"]])
   withr::local_options(list(shinyOAuth.callback_max_code_bytes = 4096))
   expect_error(validate_jarm_claims(client, claims), "maximum length")
   expect_error(oauth_form_post_parse_body(query), "maximum length")
   expect_error(
-    handle_callback(client, claims$code, "state", valid_browser_token()),
+    handle_callback(client, claims[["code"]], "state", valid_browser_token()),
     "maximum length"
   )
   withr::local_options(list(
     shinyOAuth.callback_max_code_bytes = 10000,
     shinyOAuth.callback_max_query_bytes = 200
   ))
-  expect_equal(oauth_callback_limits()$code, 10000)
-  expect_equal(oauth_callback_limits()$query, 200)
+  expect_equal(oauth_callback_limits()[["code"]], 10000)
+  expect_equal(oauth_callback_limits()[["query"]], 200)
   expect_error(
     validate_untrusted_query_string(
       query,
-      max_bytes = oauth_callback_limits()$query
+      max_bytes = oauth_callback_limits()[["query"]]
     ),
     "maximum length"
   )
@@ -190,7 +190,7 @@ test_that("HTTP entrypoints reject oversized queries before any scanning", {
   ui <- oauth_ui(function(...) stop("UI must not render"), "auth", client)
   registry_ui <- oauth_ui(function(...) stop("UI must not render"), clients = list(auth = client))
   entrypoints <- list(
-    shiny::shinyApp(ui, function(...) {})$httpHandler,
+    shiny::shinyApp(ui, function(...) {})[["httpHandler"]],
     registry_ui,
     function(req) oauth_registry_http_handler(req, list(auth = client), scan),
     function(req) shiny_request_object_http_handler(req, client)
@@ -203,9 +203,9 @@ test_that("HTTP entrypoints reject oversized queries before any scanning", {
           PATH_INFO = "/",
           QUERY_STRING = paste0(key, "=", strrep("x", 65L))
         ))
-        expect_identical(response$status, 400L)
-        expect_identical(response$headers[["Cache-Control"]], "no-store")
-        if (method == "HEAD") expect_identical(response$content, "")
+        expect_identical(response[["status"]], 400L)
+        expect_identical(response[["headers"]][["Cache-Control"]], "no-store")
+        if (method == "HEAD") expect_identical(response[["content"]], "")
       }
     }
   }

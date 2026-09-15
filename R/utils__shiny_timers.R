@@ -31,7 +31,7 @@ shiny_timer_delay_ms <- function(
   )
 
   milliseconds <- (seconds + buffer_seconds) * 1000
-  max(minimum_ms, min(milliseconds, as.double(.Machine$integer.max)))
+  max(minimum_ms, min(milliseconds, as.double(.Machine[["integer.max"]])))
 }
 
 

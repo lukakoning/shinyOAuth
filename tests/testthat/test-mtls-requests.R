@@ -38,7 +38,7 @@ test_that("token exchange uses mTLS alias, client certificate options, and clien
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
 
   provider <- oauth_provider(
     name = "example",
@@ -55,9 +55,9 @@ test_that("token exchange uses mTLS alias, client certificate options, and clien
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]]
   )
 
   captured_req <- NULL
@@ -95,13 +95,13 @@ test_that("token exchange uses mTLS alias, client certificate options, and clien
   )
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
-  expect_identical(captured_req$options$keypasswd, "password")
-  expect_identical(captured_req$options$cainfo, files$ca_file)
-  expect_identical(captured_form$client_id, "abc")
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
+  expect_identical(captured_req[["options"]][["keypasswd"]], "password")
+  expect_identical(captured_req[["options"]][["cainfo"]], files[["ca_file"]])
+  expect_identical(captured_form[["client_id"]], "abc")
   expect_false("client_secret" %in% names(captured_form))
-  expect_identical(token_set[["cnf"]]$`x5t#S256`, thumbprint)
+  expect_identical(token_set[["cnf"]][["x5t#S256"]], thumbprint)
 })
 
 test_that("public clients keep the standard token endpoint by default", {
@@ -127,9 +127,9 @@ test_that("public clients keep the standard token endpoint by default", {
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
 
@@ -165,7 +165,7 @@ test_that("public clients use mTLS token aliases when they explicitly request ce
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
 
   provider <- oauth_provider(
     name = "example",
@@ -183,9 +183,9 @@ test_that("public clients use mTLS token aliases when they explicitly request ce
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -225,12 +225,12 @@ test_that("public clients use mTLS token aliases when they explicitly request ce
   )
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
-  expect_identical(captured_form$client_id, "abc")
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
+  expect_identical(captured_form[["client_id"]], "abc")
   expect_false("client_secret" %in% names(captured_form))
   expect_identical(token_set[["access_token"]], "at")
-  expect_identical(token_set[["cnf"]]$`x5t#S256`, thumbprint)
+  expect_identical(token_set[["cnf"]][["x5t#S256"]], thumbprint)
 })
 
 test_that("public clients reject missing cnf when they explicitly request certificate-bound tokens", {
@@ -253,9 +253,9 @@ test_that("public clients reject missing cnf when they explicitly request certif
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -301,7 +301,7 @@ test_that("requested certificate-bound login can backfill cnf from introspection
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
 
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
   provider <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
@@ -321,9 +321,9 @@ test_that("requested certificate-bound login can backfill cnf from introspection
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -407,9 +407,9 @@ test_that("PAR uses mTLS alias when the client explicitly requests certificate-b
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -448,9 +448,9 @@ test_that("PAR uses mTLS alias when the client explicitly requests certificate-b
   )
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/par")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
-  expect_identical(captured_form$response_mode, "form_post")
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
+  expect_identical(captured_form[["response_mode"]], "form_post")
   expect_identical(
     result[["request_uri"]],
     "urn:ietf:params:oauth:request_uri:test"
@@ -479,9 +479,9 @@ test_that("PAR JWT client assertions keep the issuer audience on mTLS aliases", 
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = paste(rep("s", 32), collapse = ""),
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -517,7 +517,7 @@ test_that("PAR JWT client assertions keep the issuer audience on mTLS aliases", 
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/par")
   expect_identical(
-    shinyOAuth:::parse_jwt_payload(captured_form$client_assertion)$aud,
+    shinyOAuth:::parse_jwt_payload(captured_form[["client_assertion"]])[["aud"]],
     provider@issuer
   )
   expect_identical(
@@ -547,9 +547,9 @@ test_that("explicit certificate-bound requests honor the standard PAR alias name
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -576,8 +576,8 @@ test_that("explicit certificate-bound requests honor the standard PAR alias name
   )
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/par")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
   expect_identical(
     result[["request_uri"]],
     "urn:ietf:params:oauth:request_uri:test"
@@ -590,7 +590,7 @@ test_that("refresh token uses mTLS alias and preserves confirmation claims", {
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
 
   provider <- oauth_provider(
     name = "example",
@@ -607,9 +607,9 @@ test_that("refresh token uses mTLS alias and preserves confirmation claims", {
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]]
   )
   token <- OAuthToken(
     access_token = "old-at",
@@ -649,8 +649,8 @@ test_that("refresh token uses mTLS alias and preserves confirmation claims", {
   refreshed <- shinyOAuth::refresh_token(client, token)
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
-  expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
-  expect_identical(captured_form$client_id, "abc")
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_form[["client_id"]], "abc")
   expect_false("client_secret" %in% names(captured_form))
   expect_identical(refreshed@access_token, "new-at")
   expect_identical(refreshed@refresh_token, "new-rt")
@@ -679,9 +679,9 @@ test_that("refresh token derives confirmation claims from JWT access tokens", {
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]]
   )
   token <- OAuthToken(
     access_token = "old-at",
@@ -689,7 +689,7 @@ test_that("refresh token derives confirmation claims from JWT access tokens", {
     expires_at = as.numeric(Sys.time()) + 60,
     userinfo = list()
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
   jwt_access_token <- build_mtls_access_jwt(list(
     cnf = list(`x5t#S256` = thumbprint)
   ))
@@ -743,9 +743,9 @@ test_that("refresh rejects mismatched certificate-bound token responses", {
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
   token <- OAuthToken(
@@ -782,7 +782,7 @@ test_that("refresh uses the mTLS token alias when the client explicitly requests
     key_file = mtls_pem_fixture("client-key.pem"),
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
 
   provider <- oauth_provider(
     name = "example",
@@ -800,9 +800,9 @@ test_that("refresh uses the mTLS token alias when the client explicitly requests
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -836,8 +836,8 @@ test_that("refresh uses the mTLS token alias when the client explicitly requests
   refreshed <- shinyOAuth::refresh_token(client, token)
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
-  expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
-  expect_identical(captured_req[["options"]][["sslkey"]], files$key_file)
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
   expect_identical(refreshed@access_token, "new-at")
   expect_identical(refreshed@cnf[["x5t#S256"]], thumbprint)
 })
@@ -862,9 +862,9 @@ test_that("requested certificate-bound refresh rejects token responses missing c
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -903,7 +903,7 @@ test_that("requested certificate-bound refresh can backfill cnf from introspecti
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
 
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
   provider <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
@@ -922,9 +922,9 @@ test_that("requested certificate-bound refresh can backfill cnf from introspecti
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -977,7 +977,7 @@ test_that("requested certificate-bound refresh rejects stale prior cnf after int
     ca_file = mtls_pem_fixture("ca-cert.pem")
   )
 
-  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files$cert_file)
+  thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(files[["cert_file"]])
   provider <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
@@ -996,9 +996,9 @@ test_that("requested certificate-bound refresh rejects stale prior cnf after int
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = "",
     mtls_certificate_bound_access_tokens = TRUE
   )
@@ -1058,9 +1058,9 @@ test_that("refresh uses prior token cnf for the token endpoint but does not keep
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
   token <- OAuthToken(
@@ -1093,8 +1093,8 @@ test_that("refresh uses prior token cnf for the token endpoint but does not keep
   refreshed <- shinyOAuth::refresh_token(client, token)
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/token")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
   expect_identical(refreshed@access_token, "new-at")
   expect_length(refreshed@cnf, 0L)
   expect_false(
@@ -1122,9 +1122,9 @@ test_that("revoke uses token cnf to choose mTLS alias without local thumbprint v
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
   token <- OAuthToken(
@@ -1163,10 +1163,10 @@ test_that("revoke uses token cnf to choose mTLS alias without local thumbprint v
   )
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/revoke")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
-  expect_true(isTRUE(revoked$revoked))
-  expect_identical(revoked$status, "ok")
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
+  expect_true(isTRUE(revoked[["revoked"]]))
+  expect_identical(revoked[["status"]], "ok")
 })
 
 test_that("introspect uses token cnf to choose mTLS alias without local thumbprint validation", {
@@ -1189,9 +1189,9 @@ test_that("introspect uses token cnf to choose mTLS alias without local thumbpri
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
   token <- OAuthToken(
@@ -1230,10 +1230,10 @@ test_that("introspect uses token cnf to choose mTLS alias without local thumbpri
   )
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/introspect")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
-  expect_true(isTRUE(inspected$active))
-  expect_identical(inspected$status, "ok")
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
+  expect_true(isTRUE(inspected[["active"]]))
+  expect_identical(inspected[["status"]], "ok")
 })
 
 test_that("authorization-server mTLS requests fail closed when certificate files are missing", {
@@ -1291,9 +1291,9 @@ test_that("client bearer requests still enforce certificate thumbprint binding",
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
   token <- OAuthToken(
@@ -1305,7 +1305,7 @@ test_that("client bearer requests still enforce certificate thumbprint binding",
 
   testthat::local_mocked_bindings(
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
-      expect_identical(cert_file, files$cert_file)
+      expect_identical(cert_file, files[["cert_file"]])
       "new-thumbprint"
     },
     .package = "shinyOAuth"
@@ -1338,9 +1338,9 @@ test_that("client bearer requests honor cnf in raw JWT access tokens", {
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
   raw_token <- build_mtls_access_jwt(list(
@@ -1349,7 +1349,7 @@ test_that("client bearer requests honor cnf in raw JWT access tokens", {
 
   testthat::local_mocked_bindings(
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
-      expect_identical(cert_file, files$cert_file)
+      expect_identical(cert_file, files[["cert_file"]])
       "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
     },
     .package = "shinyOAuth"
@@ -1362,9 +1362,9 @@ test_that("client bearer requests honor cnf in raw JWT access tokens", {
   )
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-  expect_identical(req$options$sslcert, files$cert_file)
-  expect_identical(req$options$sslkey, files$key_file)
-  expect_identical(dry$headers$authorization, paste("Bearer", raw_token))
+  expect_identical(req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(req[["options"]][["sslkey"]], files[["key_file"]])
+  expect_identical(dry[["headers"]][["authorization"]], paste("Bearer", raw_token))
 })
 
 test_that("userinfo uses mTLS alias and client certificate for certificate-bound tokens", {
@@ -1388,9 +1388,9 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]]
   )
   token <- OAuthToken(
     access_token = "at",
@@ -1402,7 +1402,7 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
   captured_req <- NULL
   testthat::local_mocked_bindings(
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
-      expect_identical(cert_file, files$cert_file)
+      expect_identical(cert_file, files[["cert_file"]])
       "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
     },
     req_with_retry = function(req, ...) {
@@ -1420,8 +1420,8 @@ test_that("userinfo uses mTLS alias and client certificate for certificate-bound
   userinfo <- shinyOAuth::get_userinfo(client, token)
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/userinfo")
-  expect_identical(captured_req$options$sslcert, files$cert_file)
-  expect_identical(captured_req$options$sslkey, files$key_file)
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
   expect_identical(userinfo[["sub"]], "user-123")
 })
 
@@ -1470,7 +1470,7 @@ test_that("userinfo ignores mTLS alias when only provider metadata is present", 
 
   userinfo <- shinyOAuth::get_userinfo(client, token)
 
-  req_options <- captured_req$options
+  req_options <- captured_req[["options"]]
   if (is.null(req_options)) {
     req_options <- list()
   }
@@ -1505,16 +1505,16 @@ test_that("handle_callback preserves certificate-bound context for automatic use
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
 
   browser_token <- valid_browser_token()
   cert_thumbprint <- shinyOAuth:::tls_client_cert_thumbprint_s256(
-    files$cert_file,
-    key_file = files$key_file,
+    files[["cert_file"]],
+    key_file = files[["key_file"]],
     key_password = "password"
   )
   auth_url <- shinyOAuth:::prepare_call(client, browser_token = browser_token)
@@ -1533,7 +1533,7 @@ test_that("handle_callback preserves certificate-bound context for automatic use
       )
     },
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
-      expect_identical(cert_file, files$cert_file)
+      expect_identical(cert_file, files[["cert_file"]])
       cert_thumbprint
     },
     req_with_retry = function(req, ...) {
@@ -1558,8 +1558,8 @@ test_that("handle_callback preserves certificate-bound context for automatic use
         captured_req[["url"]],
         "https://example.com/mtls/userinfo"
       )
-      expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
-      expect_identical(captured_req[["options"]][["sslkey"]], files$key_file)
+      expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+      expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
       expect_identical(token@userinfo[["sub"]], "user-123")
       expect_identical(token@cnf[["x5t#S256"]], cert_thumbprint)
     }
@@ -1587,9 +1587,9 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
   token <- OAuthToken(
@@ -1621,7 +1621,7 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
       )
     },
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
-      expect_identical(cert_file, files$cert_file)
+      expect_identical(cert_file, files[["cert_file"]])
       "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
     },
     req_with_retry = function(req, ...) {
@@ -1639,8 +1639,8 @@ test_that("refresh_token preserves certificate-bound context for automatic useri
   refreshed <- shinyOAuth::refresh_token(client, token, introspect = FALSE)
 
   expect_identical(captured_req[["url"]], "https://example.com/mtls/userinfo")
-  expect_identical(captured_req[["options"]][["sslcert"]], files$cert_file)
-  expect_identical(captured_req[["options"]][["sslkey"]], files$key_file)
+  expect_identical(captured_req[["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_req[["options"]][["sslkey"]], files[["key_file"]])
   expect_identical(refreshed@userinfo[["sub"]], "user-123")
   expect_identical(
     refreshed@cnf[["x5t#S256"]],
@@ -1664,9 +1664,9 @@ test_that("resource_req rejects certificate-bound tokens when thumbprint mismatc
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]]
   )
   token <- OAuthToken(
     access_token = "at",
@@ -1708,9 +1708,9 @@ test_that("resource_req enforces certificate binding from JWT cnf", {
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]]
   )
   token <- OAuthToken(
     access_token = build_mtls_access_jwt(list(
@@ -1760,9 +1760,9 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
   )
   client <- make_mtls_test_client(
     provider,
-    cert_file = files$cert_file,
-    key_file = files$key_file,
-    ca_file = files$ca_file,
+    cert_file = files[["cert_file"]],
+    key_file = files[["key_file"]],
+    ca_file = files[["ca_file"]],
     client_secret = ""
   )
   token <- OAuthToken(
@@ -1777,7 +1777,7 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
   captured_reqs <- list()
   testthat::local_mocked_bindings(
     tls_client_cert_thumbprint_s256 = function(cert_file, ...) {
-      expect_identical(cert_file, files$cert_file)
+      expect_identical(cert_file, files[["cert_file"]])
       "iPIdjkTUJxFJKXQE35HK8gcTC_oRZYJAir0E7ebbf1E"
     },
     req_with_dpop_retry = function(...) {
@@ -1819,8 +1819,8 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
     async = FALSE
   )
 
-  expect_true(isTRUE(introspection$active))
-  expect_true(isTRUE(revocation$revoked))
+  expect_true(isTRUE(introspection[["active"]]))
+  expect_true(isTRUE(revocation[["revoked"]]))
   expect_identical(
     captured_urls,
     c(
@@ -1828,8 +1828,8 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
       "https://example.com/mtls/revoke"
     )
   )
-  expect_identical(captured_reqs[[1]]$options$sslcert, files$cert_file)
-  expect_identical(captured_reqs[[2]]$options$sslcert, files$cert_file)
+  expect_identical(captured_reqs[[1]][["options"]][["sslcert"]], files[["cert_file"]])
+  expect_identical(captured_reqs[[2]][["options"]][["sslcert"]], files[["cert_file"]])
 })
 
 test_that("certificate binding requires the transport certificate first in PEM bundles", {

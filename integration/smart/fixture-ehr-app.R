@@ -29,9 +29,9 @@ smart_ehr_fixture_app <- function(origin, providers, async = FALSE, response_mod
     health <- shinyOAuth::oauth_connections_server("health", manager, async = async, refresh_check_interval = 500)
     result <- shiny::reactiveVal("ready")
     connection <- function(site) {
-      rows <- Filter(function(row) identical(row$client_label, paste("Site", site)), health$connections())
+      rows <- Filter(function(row) identical(row[["client_label"]], paste("Site", site)), health[["connections"]]())
       if (!length(rows)) stop("Unavailable")
-      health$connection(rows[[length(rows)]]$connection_id)
+      health[["connection"]](rows[[length(rows)]][["connection_id"]])
     }
     for (site in c("a", "b")) local({
       selected <- site
@@ -40,34 +40,34 @@ smart_ehr_fixture_app <- function(origin, providers, async = FALSE, response_mod
           conn <- connection(selected)
           ctx <- shinyOAuth::smart_context(conn)
           body <- httr2::resp_body_json(shinyOAuth::smart_patient(conn))
-          stopifnot(identical(body$id, ctx$patient))
-          paste0(body$fixture_site, ":", body$fixture_revision, ":context-", ctx$revision)
+          stopifnot(identical(body[["id"]], ctx[["patient"]]))
+          paste0(body[["fixture_site"]], ":", body[["fixture_revision"]], ":context-", ctx[["revision"]])
         }, error = function(...) "unavailable"))
       })
     })
-    shiny::observeEvent(input$connect_a, health$connect("a"))
-    shiny::observeEvent(input$refresh_a, {
-      value <- tryCatch(connection("a")$refresh(), error = function(...) FALSE)
+    shiny::observeEvent(input[["connect_a"]], health[["connect"]]("a"))
+    shiny::observeEvent(input[["refresh_a"]], {
+      value <- tryCatch(connection("a")[["refresh"]](), error = function(...) FALSE)
       if (inherits(value, "promise")) {
         promises::then(value, function(...) result("refreshed"), function(...) result("unavailable"))
       } else result(if (isTRUE(value)) "refreshed" else "unavailable")
     })
-    shiny::observeEvent(input$logout, health$logout(revoke = FALSE))
-    output$result <- shiny::renderText(result())
-    output$snapshot <- shiny::renderText(jsonlite::toJSON(list(session = number,
-      connections = health$connections(), errors = health$errors()), auto_unbox = TRUE, null = "null"))
+    shiny::observeEvent(input[["logout"]], health[["logout"]](revoke = FALSE))
+    output[["result"]] <- shiny::renderText(result())
+    output[["snapshot"]] <- shiny::renderText(jsonlite::toJSON(list(session = number,
+      connections = health[["connections"]](), errors = health[["errors"]]()), auto_unbox = TRUE, null = "null"))
   }
   launch_ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager,
     launch_routes = list(shinyOAuth::smart_launch_route("/launch", c("a", "b"))))
   ui <- function(req) {
     response <- launch_ui(req)
     if (!is.null(response)) {
-      response$headers <- c(response$headers,
+      response[["headers"]] <- c(response[["headers"]],
         list("Content-Security-Policy" = "script-src 'self'; object-src 'none'"))
     }
     response
   }
-  attr(ui, "http_methods_supported") <- attr(launch_ui, "http_methods_supported")
+  attr(ui, "http_methods_supported") <- attr(launch_ui, "http_methods_supported", exact = TRUE)
   shiny::runApp(shiny::shinyApp(ui, server, uiPattern = ".*"), host = "127.0.0.1",
-    port = as.integer(httr2::url_parse(origin)$port), launch.browser = FALSE, quiet = TRUE)
+    port = as.integer(httr2::url_parse(origin)[["port"]]), launch.browser = FALSE, quiet = TRUE)
 }

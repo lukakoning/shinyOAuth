@@ -5,7 +5,7 @@ test_that("Ed25519 verifies ID tokens, UserInfo, and JARM with exact key policy"
     crv = "Ed25519",
     alg = "Ed25519",
     kid = "explicit-ed",
-    x = base64url_encode(as.list(key$pubkey)$data)
+    x = base64url_encode(as.list(key[["pubkey"]])[["data"]])
   )
   client <- make_test_client(use_nonce = FALSE)
   client@provider@issuer <- "https://example.com"
@@ -32,7 +32,7 @@ test_that("Ed25519 verifies ID tokens, UserInfo, and JARM with exact key policy"
   jwt <- encode_asymmetric_jwt_with_header(
     claims,
     key,
-    list(alg = "Ed25519", kid = jwk$kid)
+    list(alg = "Ed25519", kid = jwk[["kid"]])
   )
   local_mocked_bindings(
     fetch_jwks = function(...) list(keys = list(jwk)),
@@ -46,20 +46,20 @@ test_that("Ed25519 verifies ID tokens, UserInfo, and JARM with exact key policy"
     .package = "shinyOAuth"
   )
   expect_identical(
-    validate_id_token(client, jwt, expected_access_token = access)$sub,
+    validate_id_token(client, jwt, expected_access_token = access)[["sub"]],
     "user"
   )
-  expect_identical(get_userinfo(client, access)$sub, "user")
-  expect_identical(validate_jarm_response(client, jwt)$code, "code")
+  expect_identical(get_userinfo(client, access)[["sub"]], "user")
+  expect_identical(validate_jarm_response(client, jwt)[["code"]], "code")
   expect_error(
     validate_id_token(client, jwt, expected_access_token = "different"),
     "at_hash"
   )
   wrong_curve <- jwk
-  wrong_curve$crv <- "Ed448"
+  wrong_curve[["crv"]] <- "Ed448"
   expect_false(jwk_is_compatible_with_alg(wrong_curve, "Ed25519"))
   expect_length(filter_jwks_for_alg(list(jwk), "EdDSA"), 0L)
-  jwk$alg <- "EdDSA"
+  jwk[["alg"]] <- "EdDSA"
   expect_error(validate_id_token(client, jwt, expected_access_token = access))
   expect_length(filter_jwks_for_alg(list(jwk), "Ed25519"), 0L)
 })

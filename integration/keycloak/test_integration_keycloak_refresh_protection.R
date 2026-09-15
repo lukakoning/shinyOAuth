@@ -4,7 +4,7 @@
 ## module-level revoke_on_session_end behavior.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 make_refresh_confidential_client <- function(
@@ -34,21 +34,21 @@ refresh_login_via_module <- function(
       revoke_on_session_end = revoke_on_session_end
     ),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form_as(
         auth_url,
         username = username,
         password = username,
         redirect_uri = client@redirect_uri
       )
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       result <<- list(
-        authenticated = isTRUE(values$authenticated),
-        error = values$error,
-        error_description = values$error_description,
-        token = values$token
+        authenticated = isTRUE(values[["authenticated"]]),
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        token = values[["token"]]
       )
     }
   )
@@ -66,7 +66,7 @@ token_subject <- function(token) {
   }
 
   if (is.character(token@id_token) && nzchar(token@id_token)) {
-    return(shinyOAuth:::parse_jwt_payload(token@id_token)$sub)
+    return(shinyOAuth:::parse_jwt_payload(token@id_token)[["sub"]])
   }
 
   NA_character_
@@ -101,16 +101,16 @@ testthat::test_that("Keycloak refresh happy path preserves subject binding", {
   client <- make_refresh_confidential_client(prov)
   login <- refresh_login_via_module(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_null(login$error)
-  testthat::expect_true(nzchar(login$token@refresh_token %||% ""))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_null(login[["error"]])
+  testthat::expect_true(nzchar(login[["token"]]@refresh_token %||% ""))
 
-  original_subject <- token_subject(login$token)
+  original_subject <- token_subject(login[["token"]])
   testthat::expect_true(nzchar(original_subject))
 
-  expect_live_userinfo_subject(client, login$token, original_subject)
+  expect_live_userinfo_subject(client, login[["token"]], original_subject)
 
-  refreshed <- shinyOAuth::refresh_token(client, login$token)
+  refreshed <- shinyOAuth::refresh_token(client, login[["token"]])
 
   testthat::expect_true(nzchar(refreshed@access_token))
   testthat::expect_true(nzchar(refreshed@refresh_token))
@@ -128,15 +128,15 @@ testthat::test_that("revoking a Keycloak refresh token blocks future refresh", {
   client <- make_refresh_confidential_client(prov)
   login <- refresh_login_via_module(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_true(nzchar(login$token@refresh_token %||% ""))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_true(nzchar(login[["token"]]@refresh_token %||% ""))
 
-  rev_result <- shinyOAuth::revoke_token(client, login$token, which = "refresh")
-  testthat::expect_true(isTRUE(rev_result$supported))
-  testthat::expect_true(isTRUE(rev_result$revoked))
-  testthat::expect_identical(rev_result$status, "ok")
+  rev_result <- shinyOAuth::revoke_token(client, login[["token"]], which = "refresh")
+  testthat::expect_true(isTRUE(rev_result[["supported"]]))
+  testthat::expect_true(isTRUE(rev_result[["revoked"]]))
+  testthat::expect_identical(rev_result[["status"]], "ok")
 
-  expect_refresh_token_failure(client, login$token)
+  expect_refresh_token_failure(client, login[["token"]])
 })
 
 testthat::test_that("revoke_on_session_end invalidates the live refresh token", {
@@ -147,8 +147,8 @@ testthat::test_that("revoke_on_session_end invalidates the live refresh token", 
   client <- make_refresh_confidential_client(prov)
   login <- refresh_login_via_module(client, revoke_on_session_end = TRUE)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_true(nzchar(login$token@refresh_token %||% ""))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_true(nzchar(login[["token"]]@refresh_token %||% ""))
 
-  expect_refresh_token_failure(client, login$token)
+  expect_refresh_token_failure(client, login[["token"]])
 })

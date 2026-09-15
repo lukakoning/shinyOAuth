@@ -16,20 +16,20 @@ for (test_alg in c("Ed25519", "EdDSA", "RS256")) {
 
     # Create key material and JWKS depending on chosen algorithm
     if (isTRUE(use_eddsa)) {
-      pub <- kp$pubkey
-      secret <- if (!is.null(kp$key)) kp$key else kp$secretkey
+      pub <- kp[["pubkey"]]
+      secret <- if (!is.null(kp[["key"]])) kp[["key"]] else kp[["secretkey"]]
       pub_jwk <- list(
         kty = "OKP",
         crv = "Ed25519",
         x = shinyOAuth:::base64url_encode(pub)
       )
-      pub_jwk$kid <- "ed25519-1"
+      pub_jwk[["kid"]] <- "ed25519-1"
     } else {
       rsa <- openssl::rsa_keygen(bits = 2048)
       priv_jwk_json <- write_test_jwk(rsa)
       priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
-      pub_jwk <- list(kty = priv_jwk$kty, n = priv_jwk$n, e = priv_jwk$e)
-      pub_jwk$kid <- "rsa-1"
+      pub_jwk <- list(kty = priv_jwk[["kty"]], n = priv_jwk[["n"]], e = priv_jwk[["e"]])
+      pub_jwk[["kid"]] <- "rsa-1"
     }
 
     # Use a local issuer and mock JWKS fetch to avoid HTTP
@@ -53,7 +53,7 @@ for (test_alg in c("Ed25519", "EdDSA", "RS256")) {
     # Create a valid ID token with EdDSA or RS256 signature
     header <- list(
       alg = test_alg,
-      kid = pub_jwk$kid,
+      kid = pub_jwk[["kid"]],
       typ = "JWT"
     )
     claims <- list(
@@ -139,9 +139,9 @@ make_rsa_jwt_with_alg <- function(key, alg, claims, kid) {
 test_that("validate_id_token rejects a signed lowercase alg", {
   rsa <- openssl::rsa_keygen(bits = 2048)
   jwk <- jsonlite::fromJSON(write_test_jwk(rsa), simplifyVector = TRUE)
-  jwk$kid <- "lowercase-alg"
-  jwk$use <- "sig"
-  jwk$alg <- "RS256"
+  jwk[["kid"]] <- "lowercase-alg"
+  jwk[["use"]] <- "sig"
+  jwk[["alg"]] <- "RS256"
   issuer <- "http://localhost"
   client <- oauth_client(
     oauth_provider(
@@ -166,7 +166,7 @@ test_that("validate_id_token rejects a signed lowercase alg", {
       exp = now + 120,
       iat = now - 1
     ),
-    jwk$kid
+    jwk[["kid"]]
   )
 
   expect_error(
@@ -186,8 +186,8 @@ test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
   rsa <- openssl::rsa_keygen(bits = 2048)
   priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
-  pub_jwk <- list(kty = priv_jwk$kty, n = priv_jwk$n, e = priv_jwk$e)
-  pub_jwk$kid <- "rsa-wide-1"
+  pub_jwk <- list(kty = priv_jwk[["kty"]], n = priv_jwk[["n"]], e = priv_jwk[["e"]])
+  pub_jwk[["kid"]] <- "rsa-wide-1"
   base <- "http://localhost"
 
   prov <- oauth_provider(
@@ -217,7 +217,7 @@ test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
       key = rsa,
       alg = alg,
       claims = claims,
-      kid = pub_jwk$kid
+      kid = pub_jwk[["kid"]]
     )
 
     expect_silent(testthat::with_mocked_bindings(

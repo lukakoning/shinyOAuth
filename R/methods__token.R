@@ -14,7 +14,7 @@
 #' Ask the provider to invalidate an access or refresh token, for example when
 #' a user disconnects their account or your application disposes of stored
 #' credentials. The provider must support token revocation. The Shiny module
-#' calls this during logout; use `auth$logout()` to also clear its local session.
+#' calls this during logout; use `auth[["logout"]]()` to also clear its local session.
 #' Revocation does not end the user's login session at the provider.
 #'
 #' @details
@@ -60,7 +60,7 @@ revoke_token <- function(
 
   which <- match.arg(which)
   auth_client <- endpoint_auth_client(oauth_client, "revocation")
-  async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
+  async_attr <- isTRUE(tryCatch(shiny_session[["is_async"]], error = function(...) {
     NULL
   })) ||
     isTRUE(get_async_session_context()[["is_async"]]) ||
@@ -289,8 +289,8 @@ revoke_token <- function(
 #' [oauth_client()].
 #'
 #' @details
-#' Read `result$active`: `TRUE` means active, `FALSE` means inactive, and `NA`
-#' means the result is unknown. Use `isTRUE(result$active)` if your code must
+#' Read `result[["active"]]`: `TRUE` means active, `FALSE` means inactive, and `NA`
+#' means the result is unknown. Use `isTRUE(result[["active"]])` if your code must
 #' require a definite confirmation.
 #'
 #' Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
@@ -343,7 +343,7 @@ introspect_token <- function(
 
   which <- match.arg(which)
   auth_client <- endpoint_auth_client(oauth_client, "introspection")
-  async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
+  async_attr <- isTRUE(tryCatch(shiny_session[["is_async"]], error = function(...) {
     NULL
   })) ||
     isTRUE(get_async_session_context()[["is_async"]]) ||
@@ -489,7 +489,7 @@ introspect_token <- function(
           shinyOAuth_parse_error = function(e) {
             if (
               !isTRUE(
-                e$context$reason %in%
+                e[["context"]][["reason"]] %in%
                   c("body_too_large", "unsupported_encoding")
               )
             ) {
@@ -503,7 +503,7 @@ introspect_token <- function(
             supported = TRUE,
             active = NA,
             raw = NULL,
-            status = resp$context$reason
+            status = resp[["context"]][["reason"]]
           )
           emit_token_introspection_audit(
             oauth_client,
@@ -803,35 +803,35 @@ refresh_token_dispatch <- function(
   }
   effective_introspect <- isTRUE(oauth_client@introspect) || isTRUE(introspect)
   key <- refresh_flight_key(oauth_client, token)
-  flights <- refresh_flights$active
+  flights <- refresh_flights[["active"]]
   active <- flights[[key]]
   policy_options <- capture_async_options()
   if (!is.null(active)) {
-    if (!isTRUE(async) || is.null(active$promise)) {
+    if (!isTRUE(async) || is.null(active[["promise"]])) {
       err_token(
         "Refresh already in progress; await the outstanding async refresh"
       )
     }
     if (
-      !identical(active$client, oauth_client) ||
-        !identical(active$token, token) ||
-        !identical(active$introspect, effective_introspect) ||
-        !identical(active$scope_request, scope_request) ||
-        !identical(active$options, policy_options)
+      !identical(active[["client"]], oauth_client) ||
+        !identical(active[["token"]], token) ||
+        !identical(active[["introspect"]], effective_introspect) ||
+        !identical(active[["scope_request"]], scope_request) ||
+        !identical(active[["options"]], policy_options)
     ) {
       err_token(
         "Refresh already in progress with different token or validation settings"
       )
     }
-    return(active$promise)
+    return(active[["promise"]])
   }
 
   flight <- new.env(parent = emptyenv())
-  flight$client <- oauth_client
-  flight$token <- token
-  flight$introspect <- effective_introspect
-  flight$scope_request <- scope_request
-  flight$options <- policy_options
+  flight[["client"]] <- oauth_client
+  flight[["token"]] <- token
+  flight[["introspect"]] <- effective_introspect
+  flight[["scope_request"]] <- scope_request
+  flight[["options"]] <- policy_options
   flights[[key]] <- flight
   release <- function() {
     # An older completion must never remove a newer operation's lock.
@@ -845,13 +845,13 @@ refresh_token_dispatch <- function(
     {
       args <- list(oauth_client = oauth_client, token = token, async = async,
         introspect = effective_introspect, shiny_session = shiny_session)
-      if (!is.null(scope_request)) args$scope_request <- scope_request
+      if (!is.null(scope_request)) args[["scope_request"]] <- scope_request
       do.call(refresh_token_impl, args)
     },
     error = function(e) stop(refresh_outcome_error(e, "not_consumed"))
   )
   if (isTRUE(async) && promises::is.promise(result)) {
-    flight$promise <- promises::then(
+    flight[["promise"]] <- promises::then(
       result,
       onFulfilled = function(value) {
         release()
@@ -863,7 +863,7 @@ refresh_token_dispatch <- function(
       }
     )
     deferred <- TRUE
-    return(flight$promise)
+    return(flight[["promise"]])
   }
   result
 }
@@ -871,11 +871,11 @@ refresh_token_dispatch <- function(
 # Process-local coordination happens before dispatch. Workers execute only the
 # implementation, including when a sequential future executes in this process.
 refresh_flights <- new.env(parent = emptyenv())
-refresh_flights$active <- new.env(parent = emptyenv())
+refresh_flights[["active"]] <- new.env(parent = emptyenv())
 
 refresh_flight_key <- function(client, token) {
-  if (is.null(refresh_flights$key)) {
-    refresh_flights$key <- openssl::rand_bytes(32L)
+  if (is.null(refresh_flights[["key"]])) {
+    refresh_flights[["key"]] <- openssl::rand_bytes(32L)
   }
   raw_to_hex_lower(openssl::sha256(
     serialize(
@@ -888,7 +888,7 @@ refresh_flight_key <- function(client, token) {
       NULL,
       version = 2
     ),
-    key = refresh_flights$key
+    key = refresh_flights[["key"]]
   ))
 }
 
@@ -920,7 +920,7 @@ validate_refresh_delivery <- function(token, previous) {
 
 with_refresh_outcome <- function(expr, outcome) {
   tryCatch(force(expr), error = function(e) {
-    stop(refresh_outcome_error(e, outcome$value))
+    stop(refresh_outcome_error(e, outcome[["value"]]))
   })
 }
 
@@ -947,7 +947,7 @@ refresh_token_impl <- function(
   effective_introspect <- isTRUE(oauth_client@introspect) || isTRUE(introspect)
   auth_client <- endpoint_auth_client(oauth_client, "token")
 
-  async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
+  async_attr <- isTRUE(tryCatch(shiny_session[["is_async"]], error = function(...) {
     NULL
   })) ||
     isTRUE(get_async_session_context()[["is_async"]]) ||
@@ -955,7 +955,7 @@ refresh_token_impl <- function(
   trace_id <- resolve_trace_id()
 
   outcome <- new.env(parent = emptyenv())
-  outcome$value <- "not_consumed"
+  outcome[["value"]] <- "not_consumed"
   # Optional async execution using mirai if requested and available.
   with_refresh_outcome(
     with_trace_id(trace_id, {
@@ -1002,21 +1002,21 @@ refresh_token_impl <- function(
             token@id_token
           }
 
-          requested_scopes <- scope_request$scopes
+          requested_scopes <- scope_request[["scopes"]]
           params <- list(
             grant_type = "refresh_token",
             refresh_token = token@refresh_token
           )
           if (client_uses_smart(oauth_client)) {
             scopes <- smart_refresh_request_scopes(oauth_client, token, scope_request)
-            if (!is.null(scopes)) params$scope <- paste(scopes, collapse = " ")
+            if (!is.null(scopes)) params[["scope"]] <- paste(scopes, collapse = " ")
           } else {
             # RFC 6749 section 6: omitting scope requests the original refresh
             # grant, which can exceed the preceding access-token grant. Request
             # the retained scope explicitly so omitted responses are unambiguous.
-            requested_scopes <- scope_request$scopes %||% token@granted_scopes
+            requested_scopes <- scope_request[["scopes"]] %||% token@granted_scopes
             if (length(requested_scopes)) {
-              params$scope <- paste(requested_scopes, collapse = " ")
+              params[["scope"]] <- paste(requested_scopes, collapse = " ")
             } else {
               requested_scopes <- NULL
             }
@@ -1077,7 +1077,7 @@ refresh_token_impl <- function(
             "shinyOAuth.token.exchange.http",
             {
               # Refresh may consume a rotatable refresh token; do not retry.
-              outcome$value <- "possibly_consumed"
+              outcome[["value"]] <- "possibly_consumed"
               resp <- req_with_dpop_retry(req, oauth_client, idempotent = FALSE)
               otel_record_http_result(resp)
               resp
@@ -1110,7 +1110,7 @@ refresh_token_impl <- function(
               ),
               error = function(e) {
                 if (identical(e[["oauth_error"]], "invalid_grant")) {
-                  outcome$value <- "rejected"
+                  outcome[["value"]] <- "rejected"
                 } else if (
                   isTRUE(
                     e[["oauth_error"]] %in%
@@ -1124,7 +1124,7 @@ refresh_token_impl <- function(
                       )
                   )
                 ) {
-                  outcome$value <- "not_consumed"
+                  outcome[["value"]] <- "not_consumed"
                 }
                 stop(e)
               }
@@ -1135,7 +1135,7 @@ refresh_token_impl <- function(
             allow_empty_scope = client_uses_smart_scopes(oauth_client)
           )
           extra_fields <- token_response_extra_fields(tok)
-          outcome$value <- if (
+          outcome[["value"]] <- if (
             is_valid_string(tok[["refresh_token"]]) &&
               !identical(tok[["refresh_token"]], pre_refresh_token)
           ) {
@@ -1205,10 +1205,10 @@ refresh_token_impl <- function(
             # RFC 6749 permits omission only when the response matches the
             # current request. Preserve the unverified evidence flag; SMART
             # still requires an explicit response scope.
-            grant <- resolve_granted_scope_state(smart_response_scope(oauth_client, token_set), scope_request$scopes,
-              is_refresh = TRUE, previous_granted_scopes = scope_request$scopes,
+            grant <- resolve_granted_scope_state(smart_response_scope(oauth_client, token_set), scope_request[["scopes"]],
+              is_refresh = TRUE, previous_granted_scopes = scope_request[["scopes"]],
               smart = client_uses_smart_scopes(oauth_client))
-            validate_refresh_scope_grant(oauth_client, grant$granted_scopes, scope_request)
+            validate_refresh_scope_grant(oauth_client, grant[["granted_scopes"]], scope_request)
           }
           defer_certificate_binding <- isTRUE(effective_introspect) &&
             client_requires_observed_mtls_cnf(oauth_client) &&
@@ -1297,11 +1297,11 @@ refresh_token_impl <- function(
               async = FALSE,
               shiny_session = shiny_session
             )
-            if (!is.null(scope_request) && "scope" %in% names(intro_res$raw)) {
-              validate_response_scope(intro_res$raw$scope, err_token,
+            if (!is.null(scope_request) && "scope" %in% names(intro_res[["raw"]])) {
+              validate_response_scope(intro_res[["raw"]][["scope"]], err_token,
                 allow_empty = client_uses_smart_scopes(oauth_client))
               validate_refresh_scope_grant(oauth_client,
-                normalize_scope_tokens(intro_res$raw$scope), scope_request)
+                normalize_scope_tokens(intro_res[["raw"]][["scope"]]), scope_request)
             }
             refreshed_token <- enforce_token_introspection_policy(
               oauth_client = oauth_client,
@@ -1747,9 +1747,9 @@ dispatch_token_async <- function(
       expr = quote({
         .ns <- asNamespace("shinyOAuth")
         .fn <- get(function_name, envir = .ns, inherits = FALSE)
-        .ns$with_trace_id(captured_trace_id, {
-          .ns$with_async_options(captured_async_options, {
-            .ns$with_async_session_context(captured_shiny_session, {
+        .ns[["with_trace_id"]](captured_trace_id, {
+          .ns[["with_async_options"]](captured_async_options, {
+            .ns[["with_async_session_context"]](captured_shiny_session, {
               do.call(
                 .fn,
                 c(
@@ -1796,7 +1796,7 @@ dispatch_token_async <- function(
     promises::then(function(value) {
       value <- replay_async_conditions(value)
       if (function_name %in% c("refresh_token", "refresh_token_impl")) {
-        validate_refresh_delivery(value, call_args$token)
+        validate_refresh_delivery(value, call_args[["token"]])
       }
       otel_end_async_parent(
         otel_parent,

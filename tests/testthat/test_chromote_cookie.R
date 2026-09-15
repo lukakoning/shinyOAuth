@@ -13,18 +13,18 @@
 # - document.cookie only exposes name=value; we validate presence and value shape
 
 .browser_probe_cache <- new.env(parent = emptyenv())
-.browser_probe_cache$result <- NULL
+.browser_probe_cache[["result"]] <- NULL
 
 browser_launchability <- function() {
-  if (!is.null(.browser_probe_cache$result)) {
-    return(.browser_probe_cache$result)
+  if (!is.null(.browser_probe_cache[["result"]])) {
+    return(.browser_probe_cache[["result"]])
   }
 
   browser <- NULL
   result <- tryCatch(
     {
-      browser <- chromote::ChromoteSession$new()
-      browser$go_to("about:blank")
+      browser <- chromote::ChromoteSession[["new"]]()
+      browser[["go_to"]]("about:blank")
       list(ok = TRUE, message = NULL)
     },
     error = function(e) {
@@ -32,10 +32,10 @@ browser_launchability <- function() {
     }
   )
   if (!is.null(browser)) {
-    try(browser$close(), silent = TRUE)
+    try(browser[["close"]](), silent = TRUE)
   }
 
-  .browser_probe_cache$result <- result
+  .browser_probe_cache[["result"]] <- result
   result
 }
 
@@ -64,8 +64,8 @@ require_browser_test_env <- function(check_launch = TRUE) {
   if (isTRUE(check_launch)) {
     probe <- browser_launchability()
     testthat::skip_if_not(
-      probe$ok,
-      paste0("Chrome launchability probe failed: ", probe$message)
+      probe[["ok"]],
+      paste0("Chrome launchability probe failed: ", probe[["message"]])
     )
   }
   local_app_driver_navigation(.env = parent.frame())
@@ -76,16 +76,16 @@ testthat::test_that("browser cookie test environment can launch Chrome", {
   probe <- browser_launchability()
 
   testthat::expect_true(
-    probe$ok,
-    info = paste0("Unable to launch Chrome through chromote: ", probe$message)
+    probe[["ok"]],
+    info = paste0("Unable to launch Chrome through chromote: ", probe[["message"]])
   )
 })
 
 testthat::test_that("AppDriver waits for navigation before injecting browser state", {
   require_browser_test_env()
-  browser <- chromote::ChromoteSession$new()
-  on.exit(browser$close(), add = TRUE)
-  browser$go_to("about:blank")
+  browser <- chromote::ChromoteSession[["new"]]()
+  on.exit(browser[["close"]](), add = TRUE)
+  browser[["go_to"]]("about:blank")
 
   # Use a real Chrome navigation and only stub the unrelated R-side log setup.
   testthat::local_mocked_bindings(
@@ -100,19 +100,19 @@ testthat::test_that("AppDriver waits for navigation before injecting browser sta
   )
   url <- "data:text/html,navigation-ready"
   later::later(
-    function() browser$Page$navigate(url, wait_ = FALSE),
+    function() browser[["Page"]][["navigate"]](url, wait_ = FALSE),
     delay = 0.1,
-    loop = browser$get_child_loop()
+    loop = browser[["get_child_loop"]]()
   )
   shinytest2:::chromote_eval(
     browser,
     "window.shinyOAuth_navigation_probe = window.location.href"
   )
   testthat::expect_identical(
-    browser$Runtime$evaluate(
+    browser[["Runtime"]][["evaluate"]](
       "window.shinyOAuth_navigation_probe",
       returnByValue = TRUE
-    )$result$value,
+    )[["result"]][["value"]],
     url
   )
 })
@@ -146,7 +146,7 @@ make_test_app <- function(
 
   ui <- shiny::fluidPage(
     shinyOAuth::use_shinyOAuth(),
-    shiny::tags$h3("Cookie test app"),
+    shiny::tags[["h3"]]("Cookie test app"),
     shiny::actionButton("set", "Set cookie"),
     shiny::actionButton("clear", "Clear cookie"),
     shiny::actionButton("prepare", "Prepare login"),
@@ -166,24 +166,24 @@ make_test_app <- function(
 
     # Wire buttons to the module's helpers
     prepared_url <- shiny::reactiveVal("")
-    shiny::observeEvent(input$prepare, {
-      promises::then(mod$build_auth_url(), prepared_url)
+    shiny::observeEvent(input[["prepare"]], {
+      promises::then(mod[["build_auth_url"]](), prepared_url)
       invisible(NULL)
     })
-    output$prepared_url <- shiny::renderText(prepared_url())
-    output$browser_value <- shiny::renderText(mod$browser_token)
-    shiny::observeEvent(input$set, {
-      mod$set_browser_token()
+    output[["prepared_url"]] <- shiny::renderText(prepared_url())
+    output[["browser_value"]] <- shiny::renderText(mod[["browser_token"]])
+    shiny::observeEvent(input[["set"]], {
+      mod[["set_browser_token"]]()
     })
-    shiny::observeEvent(input$clear, {
-      mod$clear_browser_token()
+    shiny::observeEvent(input[["clear"]], {
+      mod[["clear_browser_token"]]()
     })
 
     # Special: directly invoke the client message with maxAgeMs = 0 to
     # verify zero TTL is honored by the browser helper (nullish coalescing fix)
-    shiny::observeEvent(input$set_zero, {
+    shiny::observeEvent(input[["set_zero"]], {
       # Build the instance suffix similar to the module's logic
-      ns_prefix <- tryCatch(session$ns(""), error = function(...) id)
+      ns_prefix <- tryCatch(session[["ns"]](""), error = function(...) id)
       instance <- sub("-$", "", ns_prefix)
 
       ns_hash <- substr(as.character(openssl::sha256(ns_prefix)), 1, 8)
@@ -191,7 +191,7 @@ make_test_app <- function(
       instance <- gsub("[^A-Za-z0-9_\\-]", "-", instance)
       instance <- paste0(instance, "-", ns_hash)
 
-      session$sendCustomMessage(
+      session[["sendCustomMessage"]](
         type = "shinyOAuth:setBrowserToken",
         message = list(
           instance = instance,
@@ -199,8 +199,8 @@ make_test_app <- function(
           sameSite = samesite,
           path = NULL,
           # Use throwaway input ids; we don't need server reflection for this check
-          inputId = session$ns("sid_zero"),
-          errorInputId = session$ns("err_zero")
+          inputId = session[["ns"]]("sid_zero"),
+          errorInputId = session[["ns"]]("err_zero")
         )
       )
     })
@@ -229,7 +229,7 @@ browser_cookie_name <- function(id, prefix = "shinyOAuth_sid") {
 }
 
 get_browser_cookie <- function(app, name) {
-  binding_id <- app$get_js(paste0(
+  binding_id <- app[["get_js"]](paste0(
     "JSON.parse(sessionStorage.getItem(",
     jsonlite::toJSON(paste0(name, ":binding"), auto_unbox = TRUE),
     "))?.id || null"
@@ -238,8 +238,8 @@ get_browser_cookie <- function(app, name) {
     return(NULL)
   }
   name <- paste0(name, "-", binding_id)
-  cookies <- app$get_chromote_session()$Network$getAllCookies()$cookies
-  matches <- Filter(function(cookie) identical(cookie$name, name), cookies)
+  cookies <- app[["get_chromote_session"]]()[["Network"]][["getAllCookies"]]()[["cookies"]]
+  matches <- Filter(function(cookie) identical(cookie[["name"]], name), cookies)
   if (length(matches) == 0) {
     return(NULL)
   }
@@ -258,7 +258,7 @@ wait_for_browser_cookie <- function(app, name, timeout = 8) {
     if (Sys.time() > deadline) {
       return(NULL)
     }
-    app$wait_for_idle(200)
+    app[["wait_for_idle"]](200)
   }
 }
 
@@ -285,9 +285,9 @@ capture_set_cookie_writes <- function(
     errorInputId = "err"
   )
 
-  browser <- chromote::ChromoteSession$new()
-  on.exit(try(browser$close(), silent = TRUE), add = TRUE)
-  browser$go_to("about:blank")
+  browser <- chromote::ChromoteSession[["new"]]()
+  on.exit(try(browser[["close"]](), silent = TRUE), add = TRUE)
+  browser[["go_to"]]("about:blank")
 
   expression <- paste0(
     "(function(source, payload, protocol) {",
@@ -331,10 +331,10 @@ capture_set_cookie_writes <- function(
     ")"
   )
 
-  browser$Runtime$evaluate(
+  browser[["Runtime"]][["evaluate"]](
     expression = expression,
     returnByValue = TRUE
-  )$result[["value"]]
+  )[["result"]][["value"]]
 }
 
 capture_clear_query_url <- function(
@@ -350,9 +350,9 @@ capture_clear_query_url <- function(
     collapse = "\n"
   )
 
-  browser <- chromote::ChromoteSession$new()
-  on.exit(try(browser$close(), silent = TRUE), add = TRUE)
-  browser$go_to("about:blank")
+  browser <- chromote::ChromoteSession[["new"]]()
+  on.exit(try(browser[["close"]](), silent = TRUE), add = TRUE)
+  browser[["go_to"]]("about:blank")
 
   expression <- paste0(
     "(function(source, href, cleanTitle, dropResponse) {",
@@ -398,10 +398,10 @@ capture_clear_query_url <- function(
     ")"
   )
 
-  browser$Runtime$evaluate(
+  browser[["Runtime"]][["evaluate"]](
     expression = expression,
     returnByValue = TRUE
-  )$result[["value"]]
+  )[["result"]][["value"]]
 }
 
 # Basic cookie set/clear lifecycle
@@ -409,7 +409,7 @@ capture_clear_query_url <- function(
 testthat::test_that("browser token cookie is set, cleared, and re-set with new value", {
   require_browser_test_env()
 
-  app <- shinytest2::AppDriver$new(
+  app <- shinytest2::AppDriver[["new"]](
     app = make_test_app(samesite = "Strict", id = "auth"),
     name = "cookie-basic",
     load_timeout = 10000
@@ -419,37 +419,37 @@ testthat::test_that("browser token cookie is set, cleared, and re-set with new v
   cookie_name <- browser_cookie_name("auth")
 
   # Wait until the JS dependency is loaded and the module had a chance to set the cookie
-  app$wait_for_js(cookie_value_js(cookie_name), timeout = 8000)
+  app[["wait_for_js"]](cookie_value_js(cookie_name), timeout = 8000)
 
-  v1 <- app$get_js(cookie_value_js(cookie_name))
+  v1 <- app[["get_js"]](cookie_value_js(cookie_name))
   testthat::expect_type(v1, "character")
   testthat::expect_true(nchar(v1) == 128)
   testthat::expect_true(grepl("^[a-f0-9]{128}$", v1))
 
   cookie <- wait_for_browser_cookie(app, cookie_name)
   testthat::expect_false(is.null(cookie))
-  testthat::expect_identical(cookie$path, "/")
-  testthat::expect_identical(cookie$sameSite, "Strict")
-  testthat::expect_false(cookie$secure)
-  testthat::expect_false(cookie$session)
-  testthat::expect_false(startsWith(cookie$name, "__Host-"))
-  remaining_lifetime <- cookie$expires - as.numeric(Sys.time())
+  testthat::expect_identical(cookie[["path"]], "/")
+  testthat::expect_identical(cookie[["sameSite"]], "Strict")
+  testthat::expect_false(cookie[["secure"]])
+  testthat::expect_false(cookie[["session"]])
+  testthat::expect_false(startsWith(cookie[["name"]], "__Host-"))
+  remaining_lifetime <- cookie[["expires"]] - as.numeric(Sys.time())
   testthat::expect_gte(remaining_lifetime, 30)
   testthat::expect_lte(remaining_lifetime, 120)
 
   # Clear the cookie via UI and wait until it disappears
-  app$click("clear")
-  app$wait_for_js(
+  app[["click"]]("clear")
+  app[["wait_for_js"]](
     sprintf("(function(){return %s===null;})()", cookie_value_js(cookie_name)),
     timeout = 8000
   )
-  v_cleared <- app$get_js(cookie_value_js(cookie_name))
+  v_cleared <- app[["get_js"]](cookie_value_js(cookie_name))
   testthat::expect_true(is.null(v_cleared))
 
   # Re-set the cookie and wait for it to appear with a fresh value
-  app$click("set")
-  app$wait_for_js(cookie_value_js(cookie_name), timeout = 8000)
-  v2 <- app$get_js(cookie_value_js(cookie_name))
+  app[["click"]]("set")
+  app[["wait_for_js"]](cookie_value_js(cookie_name), timeout = 8000)
+  v2 <- app[["get_js"]](cookie_value_js(cookie_name))
   testthat::expect_type(v2, "character")
   testthat::expect_true(nchar(v2) == 128)
   testthat::expect_true(grepl("^[a-f0-9]{128}$", v2))
@@ -459,23 +459,23 @@ testthat::test_that("browser token cookie is set, cleared, and re-set with new v
 testthat::test_that("browser token cookie honors custom path and SameSite metadata", {
   require_browser_test_env()
 
-  app <- shinytest2::AppDriver$new(
+  app <- shinytest2::AppDriver[["new"]](
     app = shiny::shinyApp(
       ui = shiny::fluidPage(
         shinyOAuth::use_shinyOAuth(),
         shiny::actionButton("set", "Set cookie")
       ),
       server = function(input, output, session) {
-        shiny::observeEvent(input$set, {
-          session$sendCustomMessage(
+        shiny::observeEvent(input[["set"]], {
+          session[["sendCustomMessage"]](
             type = "shinyOAuth:setBrowserToken",
             message = list(
               instance = browser_cookie_instance("authpath"),
               maxAgeMs = 60000,
               sameSite = "Lax",
               path = "/foo",
-              inputId = session$ns("sid"),
-              errorInputId = session$ns("err")
+              inputId = session[["ns"]]("sid"),
+              errorInputId = session[["ns"]]("err")
             )
           )
         })
@@ -488,14 +488,14 @@ testthat::test_that("browser token cookie honors custom path and SameSite metada
 
   cookie_name <- browser_cookie_name("authpath")
 
-  app$click("set")
+  app[["click"]]("set")
   cookie <- wait_for_browser_cookie(app, cookie_name)
 
   testthat::expect_false(is.null(cookie))
-  testthat::expect_identical(cookie$path, "/foo")
-  testthat::expect_identical(cookie$sameSite, "Lax")
-  testthat::expect_false(cookie$secure)
-  testthat::expect_false(startsWith(cookie$name, "__Host-"))
+  testthat::expect_identical(cookie[["path"]], "/foo")
+  testthat::expect_identical(cookie[["sameSite"]], "Lax")
+  testthat::expect_false(cookie[["secure"]])
+  testthat::expect_false(startsWith(cookie[["name"]], "__Host-"))
 })
 
 testthat::test_that("setBrowserToken writes __Host- cookie attributes for HTTPS root paths", {
@@ -604,7 +604,7 @@ testthat::test_that("browser fragment cleanup handles values containing equals",
 testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
   require_browser_test_env()
 
-  app <- shinytest2::AppDriver$new(
+  app <- shinytest2::AppDriver[["new"]](
     app = make_test_app(samesite = "None", id = "authnone"),
     name = "cookie-samesite-none",
     load_timeout = 10000
@@ -614,12 +614,12 @@ testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
   # The cookie should not be created under HTTP when SameSite=None
   cookie_name <- browser_cookie_name("authnone")
   # Wait a bit for the attempted set + error path to run
-  app$wait_for_idle(timeout = 8000)
+  app[["wait_for_idle"]](timeout = 8000)
   # Poll briefly to ensure it never appears
   deadline <- Sys.time() + 6
   ever_set <- FALSE
   repeat {
-    val <- app$get_js(cookie_value_js(cookie_name))
+    val <- app[["get_js"]](cookie_value_js(cookie_name))
     if (!is.null(val)) {
       ever_set <- TRUE
       break
@@ -627,7 +627,7 @@ testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
     if (Sys.time() > deadline) {
       break
     }
-    app$wait_for_idle(200)
+    app[["wait_for_idle"]](200)
   }
   testthat::expect_false(ever_set)
 })
@@ -637,7 +637,7 @@ testthat::test_that("SameSite=None does not set cookie on non-HTTPS origins", {
 testthat::test_that("Zero TTL cookie is not persisted (maxAgeMs = 0)", {
   require_browser_test_env()
 
-  app <- shinytest2::AppDriver$new(
+  app <- shinytest2::AppDriver[["new"]](
     app = make_test_app(samesite = "Strict", id = "authzero"),
     name = "cookie-zero-ttl",
     load_timeout = 10000
@@ -647,51 +647,51 @@ testthat::test_that("Zero TTL cookie is not persisted (maxAgeMs = 0)", {
   cookie_name <- browser_cookie_name("authzero")
 
   # Ensure a clean start: clear any existing cookie
-  app$click("clear")
-  app$wait_for_js(
+  app[["click"]]("clear")
+  app[["wait_for_js"]](
     sprintf("(function(){return %s===null;})()", cookie_value_js(cookie_name)),
     timeout = 8000
   )
 
   # Click the special button that sets cookie with maxAgeMs=0
-  app$click("set_zero")
+  app[["click"]]("set_zero")
 
   # It should become (or remain) absent very quickly
-  app$wait_for_js(
+  app[["wait_for_js"]](
     sprintf("(function(){return %s===null;})()", cookie_value_js(cookie_name)),
     timeout = 8000
   )
-  v <- app$get_js(cookie_value_js(cookie_name))
+  v <- app[["get_js"]](cookie_value_js(cookie_name))
   testthat::expect_true(is.null(v))
 })
 
 testthat::test_that("interactive preparation refreshes a browser cookie after idle expiry", {
   require_browser_test_env()
-  app <- shinytest2::AppDriver$new(
+  app <- shinytest2::AppDriver[["new"]](
     make_test_app(ttl = 3),
     name = "idle-cookie",
     load_timeout = 10000
   )
   on.exit(stop_test_app_driver(app), add = TRUE)
   name <- browser_cookie_name("auth")
-  old <- wait_for_browser_cookie(app, name)$value
-  old_binding <- app$get_value(output = "browser_value")
+  old <- wait_for_browser_cookie(app, name)[["value"]]
+  old_binding <- app[["get_value"]](output = "browser_value")
   testthat::expect_false(identical(old_binding, old))
-  app$wait_for_js(
+  app[["wait_for_js"]](
     paste0("(", cookie_value_js(name), ") === null"),
     timeout = 7000
   )
   testthat::expect_identical(
-    app$get_value(output = "browser_value"),
+    app[["get_value"]](output = "browser_value"),
     old_binding
   )
-  app$click("prepare")
-  app$wait_for_js(
+  app[["click"]]("prepare")
+  app[["wait_for_js"]](
     "document.querySelector('#prepared_url').innerText.includes('state=')"
   )
-  fresh <- get_browser_cookie(app, name)$value
+  fresh <- get_browser_cookie(app, name)[["value"]]
   testthat::expect_false(identical(fresh, old))
-  fresh_binding <- app$get_value(output = "browser_value")
+  fresh_binding <- app[["get_value"]](output = "browser_value")
   testthat::expect_false(identical(fresh_binding, old_binding))
   testthat::expect_false(identical(fresh_binding, fresh))
 })

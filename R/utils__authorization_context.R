@@ -112,14 +112,14 @@ prepare_authorization <- function(
       )
       payload <- state_payload_decrypt_validate(
         client,
-        prepared$build_args$payload
+        prepared[["build_args"]][["payload"]]
       )
       state_record_verify_authorization_context(
-        state_store_get(client, payload$state),
-        payload$transaction_context_digest
+        state_store_get(client, payload[["state"]]),
+        payload[["transaction_context_digest"]]
       )
       expires_at <- as.POSIXct(
-        payload$issued_at + client@state_payload_max_age,
+        payload[["issued_at"]] + client@state_payload_max_age,
         origin = "1970-01-01",
         tz = "UTC"
       )
@@ -128,28 +128,28 @@ prepare_authorization <- function(
         expires_at <- min(
           expires_at,
           as.POSIXct(
-            payload$issued_at + client@request_object_ttl,
+            payload[["issued_at"]] + client@request_object_ttl,
             origin = "1970-01-01",
             tz = "UTC"
           )
         )
       }
-      par_expiry <- attr(url, "shinyOAuth.par_expires_at")
+      par_expiry <- attr(url, "shinyOAuth.par_expires_at", exact = TRUE)
       if (!is.null(par_expiry)) {
         expires_at <- min(expires_at, par_expiry)
       }
       structure(
         list(
           url = url,
-          state = prepared$build_args$payload,
-          state_key = prepared$state_key,
+          state = prepared[["build_args"]][["payload"]],
+          state_key = prepared[["state_key"]],
           expires_at = expires_at
         ),
         class = "shinyOAuth_authorization"
       )
     },
     error = function(e) {
-      try(client@state_store$remove(prepared$state_key), silent = TRUE)
+      try(client@state_store[["remove"]](prepared[["state_key"]]), silent = TRUE)
       stop(e)
     }
   )

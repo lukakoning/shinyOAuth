@@ -17,7 +17,7 @@ library(shinyOAuth)
 # Cloud Run will fail the deployment if the process exits during startup.
 # In practice, missing/invalid OAuth env vars can cause `oauth_client()` to
 # throw (e.g., empty client_id), which would crash the container before it
-# starts listening on $PORT
+# starts listening on [["PORT"]]
 provider <- oauth_provider_github()
 
 client_id <- Sys.getenv("GITHUB_OAUTH_CLIENT_ID", "")
@@ -48,19 +48,19 @@ if (inherits(client_or_error, "error")) {
     div(
       class = "alert alert-warning",
       role = "alert",
-      tags$p(
+      tags[["p"]](
         "OAuth client configuration is missing or invalid. The app is running so",
         "Cloud Run health checks can succeed, but login is disabled until the",
         "required environment variables are set."
       ),
-      tags$ul(
-        tags$li(tags$code("GITHUB_OAUTH_CLIENT_ID")),
-        tags$li(tags$code("GITHUB_OAUTH_CLIENT_SECRET")),
-        tags$li(tags$code("OAUTH_REDIRECT_URI"))
+      tags[["ul"]](
+        tags[["li"]](tags[["code"]]("GITHUB_OAUTH_CLIENT_ID")),
+        tags[["li"]](tags[["code"]]("GITHUB_OAUTH_CLIENT_SECRET")),
+        tags[["li"]](tags[["code"]]("OAUTH_REDIRECT_URI"))
       ),
-      tags$details(
-        tags$summary("Startup error"),
-        tags$pre(conditionMessage(client_or_error))
+      tags[["details"]](
+        tags[["summary"]]("Startup error"),
+        tags[["pre"]](conditionMessage(client_or_error))
       )
     )
   )
@@ -85,10 +85,10 @@ if (inherits(client_or_error, "error")) {
           )
         ),
         uiOutput("oauth_error"),
-        tags$hr(),
+        tags[["hr"]](),
         h4("Auth summary"),
         verbatimTextOutput("auth_print"),
-        tags$hr(),
+        tags[["hr"]](),
         h4("User info"),
         verbatimTextOutput("user_info")
       )
@@ -117,18 +117,18 @@ if (inherits(client_or_error, "error")) {
       auto_redirect = FALSE
     )
 
-    observeEvent(input$login_btn, {
-      auth$request_login()
+    observeEvent(input[["login_btn"]], {
+      auth[["request_login"]]()
     })
 
-    observeEvent(input$logout_btn, {
-      auth$logout()
+    observeEvent(input[["logout_btn"]], {
+      auth[["logout"]]()
     })
 
-    output$auth_print <- renderText({
-      authenticated <- auth$authenticated
-      tok <- auth$token
-      err <- auth$error
+    output[["auth_print"]] <- renderText({
+      authenticated <- auth[["authenticated"]]
+      tok <- auth[["token"]]
+      err <- auth[["error"]]
 
       paste0(
         "Authenticated? ",
@@ -154,18 +154,18 @@ if (inherits(client_or_error, "error")) {
       )
     })
 
-    output$user_info <- renderPrint({
-      req(auth$token)
-      auth$token@userinfo
+    output[["user_info"]] <- renderPrint({
+      req(auth[["token"]])
+      auth[["token"]]@userinfo
     })
 
     # Note: in a real app, you don't want to expose error details to your users;
     # this is just for demonstration & debugging purposes
-    output$oauth_error <- renderUI({
-      if (!is.null(auth$error)) {
-        msg <- auth$error
-        if (!is.null(auth$error_description)) {
-          msg <- paste0(msg, ": ", auth$error_description)
+    output[["oauth_error"]] <- renderUI({
+      if (!is.null(auth[["error"]])) {
+        msg <- auth[["error"]]
+        if (!is.null(auth[["error_description"]])) {
+          msg <- paste0(msg, ": ", auth[["error_description"]])
         }
         div(class = "alert alert-danger", role = "alert", msg)
       }

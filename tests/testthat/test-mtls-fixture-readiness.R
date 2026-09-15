@@ -1,16 +1,16 @@
 local_readiness_process <- function(code, .local_envir = parent.frame()) {
   script <- withr::local_tempfile(fileext = ".R", .local_envir = .local_envir)
   writeLines(code, script)
-  server <- processx::process$new(
+  server <- processx::process[["new"]](
     file.path(
       R.home("bin"),
-      if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"
+      if (.Platform[["OS.type"]] == "windows") "Rscript.exe" else "Rscript"
     ),
     c("--vanilla", script),
     stdout = "|",
     stderr = "|"
   )
-  withr::defer(server$kill(), envir = .local_envir)
+  withr::defer(server[["kill"]](), envir = .local_envir)
   server
 }
 
@@ -70,13 +70,13 @@ test_that("the loopback TLS fixture starts without reverse hostname lookups", {
     "runpy.run_path(sys.argv[1], run_name='__main__')",
     sep = "\n"
   )
-  server <- processx::process$new(
+  server <- processx::process[["new"]](
     python,
     c("-c", code, mtls_pem_fixture("roundtrip-server.py")),
     stdout = "|",
     stderr = "|"
   )
-  withr::defer(server$kill())
+  withr::defer(server[["kill"]]())
   port <- wait_for_mtls_server_port(server)
   req <- httr2::request(paste0("https://127.0.0.1:", port, "/"))
   req <- httr2::req_options(

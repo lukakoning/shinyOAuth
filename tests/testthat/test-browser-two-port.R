@@ -3,7 +3,7 @@
 test_that("HTTPS ports share cookie markers but cannot adopt each other's bindings", {
   skip_if_not(tolower(Sys.getenv("SHINYOAUTH_BROWSER_TESTS")) == "true")
   skip_if(Sys.which("node") == "")
-  server <- processx::process$new(
+  server <- processx::process[["new"]](
     Sys.which("node"),
     c(
       test_path("..", "browser-two-port-server.cjs"),
@@ -14,23 +14,23 @@ test_that("HTTPS ports share cookie markers but cannot adopt each other's bindin
     stdout = "|",
     stderr = "|"
   )
-  on.exit(server$kill(), add = TRUE)
-  server$poll_io(5000)
-  ports <- jsonlite::fromJSON(server$read_output_lines()[[1]])
-  first <- chromote::ChromoteSession$new()
-  second <- chromote::ChromoteSession$new()
-  on.exit(first$close(), add = TRUE)
-  on.exit(second$close(), add = TRUE)
-  first$Security$setIgnoreCertificateErrors(ignore = TRUE)
-  second$Security$setIgnoreCertificateErrors(ignore = TRUE)
-  first$go_to(paste0("https://127.0.0.1:", ports[[1]]))
-  second$go_to(paste0("https://127.0.0.1:", ports[[2]]))
+  on.exit(server[["kill"]](), add = TRUE)
+  server[["poll_io"]](5000)
+  ports <- jsonlite::fromJSON(server[["read_output_lines"]]()[[1]])
+  first <- chromote::ChromoteSession[["new"]]()
+  second <- chromote::ChromoteSession[["new"]]()
+  on.exit(first[["close"]](), add = TRUE)
+  on.exit(second[["close"]](), add = TRUE)
+  first[["Security"]][["setIgnoreCertificateErrors"]](ignore = TRUE)
+  second[["Security"]][["setIgnoreCertificateErrors"]](ignore = TRUE)
+  first[["go_to"]](paste0("https://127.0.0.1:", ports[[1]]))
+  second[["go_to"]](paste0("https://127.0.0.1:", ports[[2]]))
   evaluate <- function(browser, script) {
-    browser$Runtime$evaluate(
+    browser[["Runtime"]][["evaluate"]](
       script,
       returnByValue = TRUE,
       awaitPromise = TRUE
-    )$result$value
+    )[["result"]][["value"]]
   }
   payload <- list(
     instance = "auth",
@@ -81,7 +81,7 @@ test_that("HTTPS ports share cookie markers but cannot adopt each other's bindin
   expect_false(restored %in% c(other, sub("^[^=]+=", "", other_marker)))
   expect_identical(send(first, payload), restored)
   # The origin record must also survive a real navigation back from an IdP.
-  first$go_to(paste0("https://127.0.0.1:", ports[[2]]))
-  first$go_to(paste0("https://127.0.0.1:", ports[[1]]))
+  first[["go_to"]](paste0("https://127.0.0.1:", ports[[2]]))
+  first[["go_to"]](paste0("https://127.0.0.1:", ports[[1]]))
   expect_identical(send(first, payload), restored)
 })

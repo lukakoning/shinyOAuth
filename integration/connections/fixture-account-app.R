@@ -17,7 +17,7 @@ account_fixture_app <- function(
   cookie_name <- "__Host-fixture-account"
   random <- function() paste(format(openssl::rand_bytes(32)), collapse = "")
   cookie_id <- function(req) {
-    cookie <- req$HTTP_COOKIE
+    cookie <- req[["HTTP_COOKIE"]]
     if (is.null(cookie)) {
       return(NULL)
     }
@@ -35,7 +35,7 @@ account_fixture_app <- function(
       return(NULL)
     }
     record <- logins[[id]]
-    if (is.null(record) || record$expires_at <= as.numeric(Sys.time())) {
+    if (is.null(record) || record[["expires_at"]] <= as.numeric(Sys.time())) {
       return(NULL)
     }
     record
@@ -78,12 +78,12 @@ account_fixture_app <- function(
   }
   local_auth <- function(req) {
     if (
-      !identical(req$REQUEST_METHOD, "POST") ||
-        !identical(req$HTTP_ORIGIN, origin)
+      !identical(req[["REQUEST_METHOD"]], "POST") ||
+        !identical(req[["HTTP_ORIGIN"]], origin)
     ) {
       return(response(403L, "Local login requires a same-origin form POST"))
     }
-    if (identical(req$PATH_INFO, "/local/logout")) {
+    if (identical(req[["PATH_INFO"]], "/local/logout")) {
       retire(req)
       return(response(
         303L,
@@ -96,21 +96,21 @@ account_fixture_app <- function(
         )
       ))
     }
-    size <- suppressWarnings(as.integer(req$CONTENT_LENGTH))
+    size <- suppressWarnings(as.integer(req[["CONTENT_LENGTH"]]))
     if (
       length(size) != 1L ||
         is.na(size) ||
         size < 1L ||
         size > 4096L ||
-        !identical(req$CONTENT_TYPE, "application/x-www-form-urlencoded")
+        !identical(req[["CONTENT_TYPE"]], "application/x-www-form-urlencoded")
     ) {
       return(response(400L, "Invalid login form"))
     }
-    body <- shiny::parseQueryString(rawToChar(req[["rook.input"]]$read(size)))
+    body <- shiny::parseQueryString(rawToChar(req[["rook.input"]][["read"]](size)))
     if (
       !setequal(names(body), c("username", "password")) ||
-        !body$username %in% names(passwords) ||
-        !identical(unname(passwords[[body$username]]), body$password)
+        !body[["username"]] %in% names(passwords) ||
+        !identical(unname(passwords[[body[["username"]]]]), body[["password"]])
     ) {
       return(response(401L, "Invalid fixture credentials"))
     }
@@ -118,7 +118,7 @@ account_fixture_app <- function(
     id <- random()
     now <- as.numeric(Sys.time())
     logins[[id]] <- list(
-      subject = body$username,
+      subject = body[["username"]],
       session_id = id,
       generation = random(),
       authenticated_at = now,
@@ -142,8 +142,8 @@ account_fixture_app <- function(
     base <- providers[[site]]
     if (!is.null(smart_registrations)) {
       registration <- smart_registrations[[site]]
-      return(shinyOAuth::smart_client(shinyOAuth::smart_discover(registration$fhir_base),
-        client_id = registration$client_id, redirect_uri = paste0(origin, "/callback/", site),
+      return(shinyOAuth::smart_client(shinyOAuth::smart_discover(registration[["fhir_base"]]),
+        client_id = registration[["client_id"]], redirect_uri = paste0(origin, "/callback/", site),
         scopes = c("launch/patient", "patient/Patient.rs", "user/Practitioner.r", "offline_access"),
         required_scopes = c("patient/Patient.r", "user/Practitioner.r"),
         launch = "standalone", identity = "fhirUser", token_auth_style = "public", label = site,
@@ -178,7 +178,7 @@ account_fixture_app <- function(
     origin,
     retention = "account",
     owner = shinyOAuth::oauth_account_owner(
-      function(session) identity(session$request),
+      function(session) identity(session[["request"]]),
       idle_timeout = 300,
       absolute_timeout = 600,
       reauth_after_seconds = 600
@@ -197,7 +197,7 @@ account_fixture_app <- function(
     shiny::actionButton("read_b", "Read B"),
     shiny::actionButton("refresh_a", "Refresh A"),
     shiny::actionButton("manager_logout", "Disconnect account grants"),
-    shiny::tags$form(
+    shiny::tags[["form"]](
       method = "post",
       action = paste0(origin, "/local/logout"),
       onsubmit = paste0(
@@ -207,7 +207,7 @@ account_fixture_app <- function(
         jsonlite::toJSON(origin, auto_unbox = TRUE),
         ");});"
       ),
-      shiny::tags$button(
+      shiny::tags[["button"]](
         id = "local_logout",
         type = "submit",
         "Log out of local account"
@@ -235,15 +235,15 @@ account_fixture_app <- function(
     connection <- function(site) {
       rows <- Filter(
         function(row) {
-          identical(row$client_label, site) &&
-            row$status %in% c("active", "limited")
+          identical(row[["client_label"]], site) &&
+            row[["status"]] %in% c("active", "limited")
         },
-        health$connections()
+        health[["connections"]]()
       )
       if (!length(rows)) {
         stop("No usable connection")
       }
-      health$connection(rows[[1L]]$connection_id)
+      health[["connection"]](rows[[1L]][["connection_id"]])
     }
     perform <- function(action) {
       tryCatch(
@@ -268,7 +268,7 @@ account_fixture_app <- function(
         shiny::observeEvent(
           input[[paste0("connect_", selected)]],
           perform(function() {
-            health$connect(selected)
+            health[["connect"]](selected)
             "connecting"
           })
         )
@@ -280,42 +280,42 @@ account_fixture_app <- function(
               patient <- httr2::resp_body_json(shinyOAuth::smart_patient(conn))
               user <- httr2::resp_body_json(shinyOAuth::smart_fhir_user(conn))
               expected <- smart_registrations[[selected]]
-              stopifnot(identical(patient$resourceType, "Patient"), identical(patient$id, expected$patient),
-                identical(user$resourceType, "Practitioner"), identical(user$id, expected$practitioner))
+              stopifnot(identical(patient[["resourceType"]], "Patient"), identical(patient[["id"]], expected[["patient"]]),
+                identical(user[["resourceType"]], "Practitioner"), identical(user[["id"]], expected[["practitioner"]]))
               return(paste0(selected, ":patient"))
             }
-            body <- httr2::resp_body_json(connection(selected)$request(
+            body <- httr2::resp_body_json(connection(selected)[["request"]](
               "api",
               "records"
             ))
-            paste0(body$site, ":", body$revision)
+            paste0(body[["site"]], ":", body[["revision"]])
           })
         )
       })
     }
     shiny::observeEvent(
-      input$refresh_a,
+      input[["refresh_a"]],
       perform(function() {
-        value <- connection("a")$refresh()
+        value <- connection("a")[["refresh"]]()
         if (inherits(value, "promise")) value else "refreshed"
       })
     )
     shiny::observeEvent(
-      input$manager_logout,
+      input[["manager_logout"]],
       perform(function() {
-        health$logout(revoke = FALSE, reload = FALSE)
+        health[["logout"]](revoke = FALSE, reload = FALSE)
         "disconnected"
       })
     )
-    output$result <- shiny::renderText(result())
-    output$snapshot <- shiny::renderText({
+    output[["result"]] <- shiny::renderText(result())
+    output[["snapshot"]] <- shiny::renderText({
       shiny::invalidateLater(500, session)
       jsonlite::toJSON(
         list(
-          account = identity(session$request)$subject,
+          account = identity(session[["request"]])[["subject"]],
           session = number,
-          connections = health$connections(),
-          errors = health$errors(),
+          connections = health[["connections"]](),
+          errors = health[["errors"]](),
           result = result(),
           result_revision = revision()
         ),
@@ -333,25 +333,25 @@ account_fixture_app <- function(
       # forwarded headers. Only its preconfigured public authority is valid.
       if (
         !identical(
-          req$HTTP_HOST,
-          httr2::url_parse(origin)$hostname |>
-            paste0(":", httr2::url_parse(origin)$port)
+          req[["HTTP_HOST"]],
+          httr2::url_parse(origin)[["hostname"]] |>
+            paste0(":", httr2::url_parse(origin)[["port"]])
         )
       ) {
         stop("Invalid fixture authority")
       }
       paste0(
         origin,
-        req$PATH_INFO,
-        if (nzchar(req$QUERY_STRING)) paste0("?", req$QUERY_STRING)
+        req[["PATH_INFO"]],
+        if (nzchar(req[["QUERY_STRING"]])) paste0("?", req[["QUERY_STRING"]])
       )
     }
   )
   ui <- function(req) {
-    if (req$PATH_INFO %in% c("/local/login", "/local/logout")) {
+    if (req[["PATH_INFO"]] %in% c("/local/login", "/local/logout")) {
       return(local_auth(req))
     }
-    if (!startsWith(req$PATH_INFO, "/callback/") && is.null(identity(req))) {
+    if (!startsWith(req[["PATH_INFO"]], "/callback/") && is.null(identity(req))) {
       return(login_page())
     }
     wrapped(req)

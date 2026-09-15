@@ -201,7 +201,7 @@ state_encrypt_gcm <- function(payload, key, version = 1L, min_key_chars = 32L) {
 
   enc <- openssl::aes_gcm_encrypt(charToRaw(json), key = key, iv = iv)
 
-  # Handle both return shapes (list with $data/$tag or raw(ct||tag))
+  # Handle both return shapes (list with [["data"]]/[["tag"]] or raw(ct||tag))
   if (
     is.list(enc) &&
       !is.null(enc[["data"]]) &&
@@ -264,7 +264,7 @@ normalize_state_envelope_version <- function(value) {
       is.na(value) ||
       !is.finite(value) ||
       value < 0 ||
-      value > .Machine$integer.max ||
+      value > .Machine[["integer.max"]] ||
       value != trunc(value)
   ) {
     return(NA_integer_)
@@ -332,10 +332,10 @@ state_decrypt_gcm <- function(
         logical(1)
       ))
     )
-    max_token_chars <- size_limits$token
-    max_wrapper_bytes <- size_limits$wrapper
-    max_ct_b64_chars <- size_limits$ct_b64
-    max_ct_bytes <- size_limits$ct
+    max_token_chars <- size_limits[["token"]]
+    max_wrapper_bytes <- size_limits[["wrapper"]]
+    max_ct_b64_chars <- size_limits[["ct_b64"]]
+    max_ct_bytes <- size_limits[["ct"]]
   }
 
   # Internal helper: emit an audit event for a parse or decrypt failure.

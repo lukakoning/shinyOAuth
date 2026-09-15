@@ -24,9 +24,9 @@ permissions_app <- function(origin, listen_port, fhir_base, ca, async) {
     result <- shiny::reactiveVal("ready")
     revision <- shiny::reactiveVal(0L)
     connection <- function() {
-      rows <- health$connections()
+      rows <- health[["connections"]]()
       stopifnot(length(rows) == 1L)
-      health$connection(rows[[1L]]$connection_id)
+      health[["connection"]](rows[[1L]][["connection_id"]])
     }
     perform <- function(id, fn) {
       finish <- function(value) {
@@ -41,35 +41,35 @@ permissions_app <- function(origin, listen_port, fhir_base, ca, async) {
       conn <- connection()
       response <- switch(kind,
         read = shinyOAuth::smart_patient(conn), user = shinyOAuth::smart_fhir_user(conn),
-        search = conn$request("fhir", "Patient"), other = conn$request("fhir", "Patient/synthetic-p2"),
-        observation = conn$request("fhir", "Observation/synthetic-observation"))
+        search = conn[["request"]]("fhir", "Patient"), other = conn[["request"]]("fhir", "Patient/synthetic-p2"),
+        observation = conn[["request"]]("fhir", "Observation/synthetic-observation"))
       status <- httr2::resp_status(response)
       body <- httr2::resp_body_json(response)
-      if (kind %in% c("read", "user")) stopifnot(status == 200L, body$resourceType == "Patient", body$id == "synthetic-p1")
+      if (kind %in% c("read", "user")) stopifnot(status == 200L, body[["resourceType"]] == "Patient", body[["id"]] == "synthetic-p1")
       if (kind == "search" && status == 200L) {
-        stopifnot(body$resourceType == "Bundle", length(body$entry) == 1L,
-          body$entry[[1L]]$resource$id == "synthetic-p1")
+        stopifnot(body[["resourceType"]] == "Bundle", length(body[["entry"]]) == 1L,
+          body[["entry"]][[1L]][["resource"]][["id"]] == "synthetic-p1")
       }
-      if (status >= 400L) stopifnot(body$resourceType == "OperationOutcome")
+      if (status >= 400L) stopifnot(body[["resourceType"]] == "OperationOutcome")
       as.character(status)
     }
-    shiny::observeEvent(input$connect_a, health$connect("a"))
+    shiny::observeEvent(input[["connect_a"]], health[["connect"]]("a"))
     for (kind in c("read", "user", "search", "other", "observation")) local({
       selected <- kind
       shiny::observeEvent(input[[paste0(selected, "_a")]], perform(paste0(selected, "_a"), function() resource(selected)))
     })
-    shiny::observeEvent(input$narrow_a, perform("narrow_a", function() {
-      value <- connection()$refresh(scopes = c("patient/Patient.r", "offline_access", "openid", "fhirUser"))
+    shiny::observeEvent(input[["narrow_a"]], perform("narrow_a", function() {
+      value <- connection()[["refresh"]](scopes = c("patient/Patient.r", "offline_access", "openid", "fhirUser"))
       if (inherits(value, "promise")) value else "ok"
     }))
-    output$result <- shiny::renderText(result())
-    output$snapshot <- shiny::renderText(jsonlite::toJSON(list(session = number, connections = health$connections(),
-      errors = health$errors(), result = result(), result_revision = revision()), auto_unbox = TRUE, null = "null"))
+    output[["result"]] <- shiny::renderText(result())
+    output[["snapshot"]] <- shiny::renderText(jsonlite::toJSON(list(session = number, connections = health[["connections"]](),
+      errors = health[["errors"]](), result = result(), result_revision = revision()), auto_unbox = TRUE, null = "null"))
   }
   ui <- shinyOAuth::oauth_connections_ui(ui, "health", manager, request_uri_resolver = function(req) {
     url <- httr2::url_parse(origin)
-    stopifnot(identical(req$HTTP_HOST, paste0(url$hostname, ":", url$port)))
-    paste0(origin, req$PATH_INFO, if (nzchar(req$QUERY_STRING)) paste0("?", req$QUERY_STRING))
+    stopifnot(identical(req[["HTTP_HOST"]], paste0(url[["hostname"]], ":", url[["port"]])))
+    paste0(origin, req[["PATH_INFO"]], if (nzchar(req[["QUERY_STRING"]])) paste0("?", req[["QUERY_STRING"]]))
   })
   shiny::runApp(shiny::shinyApp(ui, server, uiPattern = ".*"), host = "127.0.0.1",
     port = listen_port, launch.browser = FALSE, quiet = TRUE)

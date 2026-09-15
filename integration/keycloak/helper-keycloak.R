@@ -5,7 +5,7 @@
 ## login-form driving, and factory functions for providers/clients.
 
 keycloak_configure_curl_ssl_backend <- function() {
-  if (!identical(.Platform$OS.type, "windows")) {
+  if (!identical(.Platform[["OS.type"]], "windows")) {
     return(invisible(FALSE))
   }
   if (nzchar(Sys.getenv("CURL_SSL_BACKEND", unset = ""))) {
@@ -437,7 +437,7 @@ req_apply_keycloak_ca <- function(req) {
       nzchar(ca_file)
   ) {
     req <- httr2::req_options(req, cainfo = ca_file)
-    if (identical(.Platform$OS.type, "windows")) {
+    if (identical(.Platform[["OS.type"]], "windows")) {
       req <- httr2::req_options(req, ssl_options = 2L)
     }
   }
@@ -467,15 +467,15 @@ tls_client_thumbprint <- function(cert_variant = c("valid", "wrong", "rogue")) {
 
 keycloak_cache <- local({
   env <- new.env(parent = emptyenv())
-  env$discovery <- NULL
-  env$https_discovery <- NULL
-  env$jwks <- NULL
+  env[["discovery"]] <- NULL
+  env[["https_discovery"]] <- NULL
+  env[["jwks"]] <- NULL
   env
 })
 
 get_discovery_document <- function(force = FALSE) {
-  if (!isTRUE(force) && !is.null(keycloak_cache$discovery)) {
-    return(keycloak_cache$discovery)
+  if (!isTRUE(force) && !is.null(keycloak_cache[["discovery"]])) {
+    return(keycloak_cache[["discovery"]])
   }
 
   disc_url <- paste0(get_issuer(), "/.well-known/openid-configuration")
@@ -489,16 +489,16 @@ get_discovery_document <- function(force = FALSE) {
     stop("Keycloak discovery request failed", call. = FALSE)
   }
 
-  keycloak_cache$discovery <- httr2::resp_body_json(
+  keycloak_cache[["discovery"]] <- httr2::resp_body_json(
     resp,
     simplifyVector = TRUE
   )
-  keycloak_cache$discovery
+  keycloak_cache[["discovery"]]
 }
 
 get_https_discovery_document <- function(force = FALSE) {
-  if (!isTRUE(force) && !is.null(keycloak_cache$https_discovery)) {
-    return(keycloak_cache$https_discovery)
+  if (!isTRUE(force) && !is.null(keycloak_cache[["https_discovery"]])) {
+    return(keycloak_cache[["https_discovery"]])
   }
 
   disc_url <- paste0(get_https_issuer(), "/.well-known/openid-configuration")
@@ -512,16 +512,16 @@ get_https_discovery_document <- function(force = FALSE) {
     stop("Keycloak HTTPS discovery request failed", call. = FALSE)
   }
 
-  keycloak_cache$https_discovery <- httr2::resp_body_json(
+  keycloak_cache[["https_discovery"]] <- httr2::resp_body_json(
     resp,
     simplifyVector = TRUE
   )
-  keycloak_cache$https_discovery
+  keycloak_cache[["https_discovery"]]
 }
 
 get_jwks <- function(force = FALSE) {
-  if (!isTRUE(force) && !is.null(keycloak_cache$jwks)) {
-    return(keycloak_cache$jwks)
+  if (!isTRUE(force) && !is.null(keycloak_cache[["jwks"]])) {
+    return(keycloak_cache[["jwks"]])
   }
 
   disc <- get_discovery_document(force = force)
@@ -540,8 +540,8 @@ get_jwks <- function(force = FALSE) {
     stop("Keycloak JWKS request failed", call. = FALSE)
   }
 
-  keycloak_cache$jwks <- httr2::resp_body_json(resp, simplifyVector = TRUE)
-  keycloak_cache$jwks
+  keycloak_cache[["jwks"]] <- httr2::resp_body_json(resp, simplifyVector = TRUE)
+  keycloak_cache[["jwks"]]
 }
 
 get_request_object_encryption_kid <- function(alg = "RSA-OAEP") {
@@ -644,10 +644,10 @@ local_test_options <- function(.local_envir = parent.frame()) {
 
 local_keycloak_audit_events <- function(.local_envir = parent.frame()) {
   captured <- new.env(parent = emptyenv())
-  captured$events <- list()
+  captured[["events"]] <- list()
   withr::local_options(
     list(shinyOAuth.audit_hook = function(event) {
-      captured$events[[length(captured$events) + 1L]] <- event
+      captured[["events"]][[length(captured[["events"]]) + 1L]] <- event
     }),
     .local_envir = .local_envir
   )
@@ -689,36 +689,36 @@ keycloak_browser_port_in_use <- function(port) {
 
 # shinytest2 <= 0.5.1 can leave `shiny_worker_id` as a zero-length value when
 # more than one live AppDriver is active. Its logging code assumes that value
-# has length one, so both ordinary driver methods and `$stop()` can fail before
+# has length one, so both ordinary driver methods and `[["stop"]]()` can fail before
 # the child Shiny process is terminated. Normalize the field before stopping
 # and retain a direct process kill as a last-resort cleanup so one failed E2E
 # test cannot occupy a shared port and cause later tests to skip.
 keycloak_stop_app_driver <- function(drv) {
-  private <- try(drv$.__enclos_env__$private, silent = TRUE)
+  private <- try(drv[[".__enclos_env__"]][["private"]], silent = TRUE)
   process <- NULL
 
   if (!inherits(private, "try-error") && is.environment(private)) {
-    process <- private$shiny_process
-    worker_id <- private$shiny_worker_id
+    process <- private[["shiny_process"]]
+    worker_id <- private[["shiny_worker_id"]]
     if (length(worker_id) != 1L) {
-      private$shiny_worker_id <- NA_character_
+      private[["shiny_worker_id"]] <- NA_character_
     }
   }
 
-  try(drv$stop(), silent = TRUE)
+  try(drv[["stop"]](), silent = TRUE)
 
   if (!inherits(private, "try-error") && is.environment(private)) {
     if (
       !is.null(process) &&
         isTRUE(tryCatch(
-          process$is_alive(),
+          process[["is_alive"]](),
           error = function(...) FALSE
         ))
     ) {
-      try(process$kill(), silent = TRUE)
+      try(process[["kill"]](), silent = TRUE)
     }
-    if (!is.null(process) && is.function(process$wait)) {
-      try(process$wait(timeout = 5000), silent = TRUE)
+    if (!is.null(process) && is.function(process[["wait"]])) {
+      try(process[["wait"]](timeout = 5000), silent = TRUE)
     }
   }
 
@@ -735,7 +735,7 @@ keycloak_wait_for_login_or_auth_result <- function(
   auth_selector_json <- jsonlite::toJSON(auth_selector, auto_unbox = TRUE)
 
   while (Sys.time() < deadline) {
-    state <- drv$get_js(
+    state <- drv[["get_js"]](
       paste0(
         "(function () {",
         "  if (document.querySelector('#kc-login')) { return 'login'; }",
@@ -791,7 +791,7 @@ keycloak_submit_browser_login <- function(
   username_json <- jsonlite::toJSON(username, auto_unbox = TRUE)
   password_json <- jsonlite::toJSON(password, auto_unbox = TRUE)
 
-  drv$run_js(
+  drv[["run_js"]](
     paste0(
       "(function () {",
       "  var authState = document.querySelector(",
@@ -836,7 +836,7 @@ keycloak_get_auth_state_robust <- function(
   auth_selector_json <- jsonlite::toJSON(auth_selector, auto_unbox = TRUE)
 
   for (i in seq_len(max_attempts)) {
-    auth_state <- drv$get_js(
+    auth_state <- drv[["get_js"]](
       paste0(
         "(function () {",
         "  var el = document.querySelector(",
@@ -878,7 +878,7 @@ browser_cookie_candidates <- function(id, redirect_uri) {
 }
 
 get_browser_cookie <- function(drv, name) {
-  cookies <- drv$get_chromote_session()$Network$getAllCookies()[[
+  cookies <- drv[["get_chromote_session"]]()[["Network"]][["getAllCookies"]]()[[
     "cookies",
     exact = TRUE
   ]]
@@ -898,8 +898,8 @@ get_browser_cookie <- function(drv, name) {
 # ends in a transaction ID; sessionStorage uses the application name alone.
 snapshot_browser_binding <- function(drv, cookie) {
   stopifnot(!is.null(cookie))
-  key <- paste0(sub("-[a-f0-9]{32}$", "", cookie$name), ":binding")
-  record <- drv$get_js(paste0(
+  key <- paste0(sub("-[a-f0-9]{32}$", "", cookie[["name"]]), ":binding")
+  record <- drv[["get_js"]](paste0(
     "window.sessionStorage.getItem(",
     jsonlite::toJSON(key, auto_unbox = TRUE),
     ")"
@@ -909,22 +909,22 @@ snapshot_browser_binding <- function(drv, cookie) {
 }
 
 restore_browser_binding <- function(drv, snapshot) {
-  cookie <- snapshot$cookie
+  cookie <- snapshot[["cookie"]]
   cookie_text <- paste0(
-    cookie$name,
+    cookie[["name"]],
     "=",
-    cookie$value,
+    cookie[["value"]],
     "; Path=",
-    cookie$path,
+    cookie[["path"]],
     "; SameSite=",
-    cookie$sameSite %||% "Strict",
-    if (isTRUE(cookie$secure)) "; Secure" else ""
+    cookie[["sameSite"]] %||% "Strict",
+    if (isTRUE(cookie[["secure"]])) "; Secure" else ""
   )
-  drv$run_js(paste0(
+  drv[["run_js"]](paste0(
     "window.sessionStorage.setItem(",
-    jsonlite::toJSON(snapshot$key, auto_unbox = TRUE),
+    jsonlite::toJSON(snapshot[["key"]], auto_unbox = TRUE),
     ",",
-    jsonlite::toJSON(snapshot$record, auto_unbox = TRUE),
+    jsonlite::toJSON(snapshot[["record"]], auto_unbox = TRUE),
     ");",
     "document.cookie = ",
     jsonlite::toJSON(cookie_text, auto_unbox = TRUE),
@@ -949,7 +949,7 @@ wait_for_browser_cookie <- function(
     if (Sys.time() > deadline) {
       return(NULL)
     }
-    drv$wait_for_idle(idle_ms)
+    drv[["wait_for_idle"]](idle_ms)
   }
 }
 
@@ -967,7 +967,7 @@ find_browser_token_cookie <- function(
     for (name in names) {
       # Older transaction cookies may still exist. Resolve the active marker
       # from this application's record in the current tab, never by prefix.
-      binding_id <- drv$get_js(paste0(
+      binding_id <- drv[["get_js"]](paste0(
         "JSON.parse(window.sessionStorage.getItem(",
         jsonlite::toJSON(paste0(name, ":binding"), auto_unbox = TRUE),
         "))?.id || null"
@@ -983,7 +983,7 @@ find_browser_token_cookie <- function(
     if (Sys.time() > deadline) {
       return(NULL)
     }
-    drv$wait_for_idle(idle_ms)
+    drv[["wait_for_idle"]](idle_ms)
   }
 }
 
@@ -1374,7 +1374,7 @@ get_pjwt_public_key_pem <- function() {
     return(NULL)
   }
 
-  paste(capture.output(openssl::write_pem(key$pubkey)), collapse = "\n")
+  paste(capture.output(openssl::write_pem(key[["pubkey"]])), collapse = "\n")
 }
 
 keycloak_temp_client_id <- function(prefix) {
@@ -2198,7 +2198,7 @@ get_state_info <- function(client, auth_url) {
     dec <- shinyOAuth:::state_payload_decrypt_validate(client, sealed)
     key <- shinyOAuth:::state_cache_key(dec[["state"]])
   } else {
-    keys <- sort(client@state_store$keys())
+    keys <- sort(client@state_store[["keys"]]())
     if (length(keys) != 1L || !nzchar(keys[[1]])) {
       stop(
         "Could not infer a unique state-store key from the authorization URL",
@@ -2214,7 +2214,7 @@ get_state_info <- function(client, auth_url) {
 #' Get the state store entry for the given auth URL
 get_state_store_entry <- function(client, auth_url) {
   info <- get_state_info(client, auth_url)
-  orig <- client@state_store$get(info[["key"]], missing = NULL)
+  orig <- client@state_store[["get"]](info[["key"]], missing = NULL)
   stopifnot(is.list(orig))
   list(info = info, entry = orig)
 }
@@ -2253,7 +2253,7 @@ resolve_state_store_key <- function(state_ref) {
 #' @noRd
 expect_state_store_entry_present <- function(client, state_ref, info = NULL) {
   key <- resolve_state_store_key(state_ref)
-  entry <- client@state_store$get(key, missing = NULL)
+  entry <- client@state_store[["get"]](key, missing = NULL)
 
   testthat::expect_false(
     is.null(entry),
@@ -2277,7 +2277,7 @@ expect_state_store_entry_consumed <- function(client, state_ref, info = NULL) {
   key <- resolve_state_store_key(state_ref)
 
   testthat::expect_null(
-    client@state_store$get(key, missing = NULL),
+    client@state_store[["get"]](key, missing = NULL),
     info = info %||% paste("Expected state-store entry to be consumed:", key)
   )
 
@@ -2294,7 +2294,7 @@ expect_state_store_entry_consumed <- function(client, state_ref, info = NULL) {
 #' @keywords internal
 #' @noRd
 expect_state_store_size <- function(client, n, info = NULL) {
-  keys <- client@state_store$keys()
+  keys <- client@state_store[["keys"]]()
   testthat::expect_equal(
     length(keys),
     n,
@@ -2306,7 +2306,7 @@ expect_state_store_size <- function(client, n, info = NULL) {
 
 #' Replace state store entry with a modified copy
 set_state_store_entry <- function(client, key, new_entry) {
-  client@state_store$set(key = key, value = new_entry)
+  client@state_store[["set"]](key = key, value = new_entry)
 }
 
 decode_compact_jwt_payload <- function(jwt) {

@@ -105,10 +105,10 @@ test_that("validate_jose_header_fields reads exact JOSE member names", {
 
   fields <- shinyOAuth:::validate_jose_header_fields(header, stop)
 
-  expect_identical(fields$alg, "RS256")
-  expect_null(fields$kid)
-  expect_null(fields$typ)
-  expect_null(fields$crit)
+  expect_identical(fields[["alg"]], "RS256")
+  expect_null(fields[["kid"]])
+  expect_null(fields[["typ"]])
+  expect_null(fields[["crit"]])
 })
 
 test_that("ID token and UserInfo alg values are case-sensitive", {
@@ -196,7 +196,7 @@ test_that("validate_id_token rejects malformed JOSE header field shapes", {
   )
 
   for (case in cases) {
-    expect_id_token_header_error(case$header_json, case$regexp)
+    expect_id_token_header_error(case[["header_json"]], case[["regexp"]])
   }
 })
 
@@ -265,7 +265,7 @@ test_that("get_userinfo rejects malformed JOSE header field shapes", {
   )
 
   for (case in cases) {
-    expect_userinfo_header_error(case$header_json, case$regexp)
+    expect_userinfo_header_error(case[["header_json"]], case[["regexp"]])
   }
 })
 
@@ -300,13 +300,13 @@ test_that("get_userinfo audits malformed JOSE header fields", {
 
   types <- vapply(
     events,
-    function(event) event$type %||% NA_character_,
+    function(event) event[["type"]] %||% NA_character_,
     character(1)
   )
   ui_events <- events[types == "audit_userinfo"]
   statuses <- vapply(
     ui_events,
-    function(event) event$status %||% NA_character_,
+    function(event) event[["status"]] %||% NA_character_,
     character(1)
   )
   expect_true("userinfo_jwt_header_invalid" %in% statuses)

@@ -85,17 +85,17 @@
 #'
 #' @param remove A function(key) -> any. Required.
 #'
-#'   Deletes the entry for `key`. When `$take()` is provided, `$remove()` serves
+#'   Deletes the entry for `key`. When `[["take"]]()` is provided, `[["remove"]]()` serves
 #'   only as a best-effort cleanup and its return value is ignored. When
-#'   `$take()` is not provided, shinyOAuth falls back to
-#'   `$get()` + `$remove()` followed by a post-removal absence check via
-#'   `$get(key, missing = NA)`. In this fallback path the return value of
-#'   `$remove()` is not relied upon; the post-check is authoritative.
+#'   `[["take"]]()` is not provided, shinyOAuth falls back to
+#'   `[["get"]]()` + `[["remove"]]()` followed by a post-removal absence check via
+#'   `[["get"]](key, missing = NA)`. In this fallback path the return value of
+#'   `[["remove"]]()` is not relied upon; the post-check is authoritative.
 #'
 #' @param take A function(key, missing = NULL) -> value. Optional.
 #'
 #'   An atomic get-and-delete operation. When provided, shinyOAuth uses
-#'   `$take()` instead of separate `$get()` + `$remove()` calls to enforce
+#'   `[["take"]]()` instead of separate `[["get"]]()` + `[["remove"]]()` calls to enforce
 #'   single-use state consumption. This prevents TOCTOU (time-of-check /
 #'   time-of-use) replay attacks in multi-worker deployments with shared state
 #'   stores.
@@ -109,7 +109,7 @@
 #'
 #'   When `take` is not provided and the state store is not a per-process cache
 #'   (like [cachem::cache_mem()]), shinyOAuth will **error** at state
-#'   consumption time because non-atomic `$get()` + `$remove()` cannot
+#'   consumption time because non-atomic `[["get"]]()` + `[["remove"]]()` cannot
 #'   guarantee single-use under concurrent access in shared stores.
 #'
 #' @param set_if_absent A function(key, value, ttl = NULL) -> logical. Optional.
@@ -130,11 +130,11 @@
 #'
 #' @param info Function() -> list(max_age = seconds, ...). Optional
 #'
-#'   TTL information from `$info()` is used to align browser cookie max age in
+#'   TTL information from `[["info"]]()` is used to align browser cookie max age in
 #'   [oauth_module_server()].
 #'
-#' @return An R6 object exposing cachem-like `$get/$set/$remove/$info` methods
-#'   and the optional `$take` and `$set_if_absent` atomic methods.
+#' @return An R6 object exposing cachem-like `[["get"]]/[["set"]]/[["remove"]]/[["info"]]` methods
+#'   and the optional `[["take"]]` and `[["set_if_absent"]]` atomic methods.
 #'
 #' @example inst/examples/custom_cache.R
 #'
@@ -189,7 +189,7 @@ custom_cache <- function(
     public = list(
       # Set to a function in initialize() when an atomic take implementation is
       # provided; remains NULL otherwise.  Duck-typing check
-      # is.function(store$take) naturally returns TRUE/FALSE.
+      # is.function(store[["take"]]) naturally returns TRUE/FALSE.
       take = NULL,
       set_if_absent = NULL,
       initialize = function(
@@ -200,37 +200,37 @@ custom_cache <- function(
         .info,
         .set_if_absent
       ) {
-        private$.get <- .get
-        private$.set <- .set
-        private$.remove <- .remove
-        private$.info <- .info
+        private[[".get"]] <- .get
+        private[[".set"]] <- .set
+        private[[".remove"]] <- .remove
+        private[[".info"]] <- .info
         if (!is.null(.take)) {
-          self$take <- function(key, missing = NULL) .take(key, missing)
+          self[["take"]] <- function(key, missing = NULL) .take(key, missing)
         }
         if (!is.null(.set_if_absent)) {
-          self$set_if_absent <- function(key, value, ttl = NULL) {
+          self[["set_if_absent"]] <- function(key, value, ttl = NULL) {
             .set_if_absent(key, value, ttl)
           }
         }
       },
       get = function(key, missing = NULL) {
-        private$.get(key, missing)
+        private[[".get"]](key, missing)
       },
       set = function(key, value) {
-        private$.set(key, value)
+        private[[".set"]](key, value)
         invisible(NULL)
       },
       remove = function(key) {
         # Pass through the underlying return value so callers can distinguish
         # successful deletion (TRUE) from no-op/absence (non-TRUE). Visibility
         # is intentionally not forced to invisible, to preserve boolean returns.
-        private$.remove(key)
+        private[[".remove"]](key)
       },
       info = function() {
-        if (is.null(private$.info)) {
+        if (is.null(private[[".info"]])) {
           return(list())
         }
-        out <- try(private$.info(), silent = TRUE)
+        out <- try(private[[".info"]](), silent = TRUE)
         if (inherits(out, "try-error") || is.null(out)) {
           return(list())
         }
@@ -245,5 +245,5 @@ custom_cache <- function(
     )
   )
 
-  CacheCls$new(get, set, remove, take, info, set_if_absent)
+  CacheCls[["new"]](get, set, remove, take, info, set_if_absent)
 }

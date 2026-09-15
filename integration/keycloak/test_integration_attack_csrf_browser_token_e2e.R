@@ -5,7 +5,7 @@
 ## returns from Keycloak.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 random_browser_token_hex <- function(bytes = 64L) {
@@ -16,7 +16,7 @@ random_browser_token_hex <- function(bytes = 64L) {
 }
 
 read_browser_csrf_payload <- function(drv, redirect_uri) {
-  payload <- jsonlite::fromJSON(drv$get_js(
+  payload <- jsonlite::fromJSON(drv[["get_js"]](
     "
     JSON.stringify((function () {
       var ready = document.querySelector('#ready_state');
@@ -31,8 +31,8 @@ read_browser_csrf_payload <- function(drv, redirect_uri) {
   "
   ))
   cookie <- find_browser_token_cookie(drv, "auth", redirect_uri)
-  payload$cookie_name <- cookie$name %||% ""
-  payload$cookie_value <- cookie$value %||% ""
+  payload[["cookie_name"]] <- cookie[["name"]] %||% ""
+  payload[["cookie_value"]] <- cookie[["value"]] %||% ""
   payload
 }
 
@@ -40,7 +40,7 @@ tamper_browser_token_cookie <- function(drv, cookie_name, cookie_value) {
   cookie_name_json <- jsonlite::toJSON(cookie_name, auto_unbox = TRUE)
   cookie_value_json <- jsonlite::toJSON(cookie_value, auto_unbox = TRUE)
 
-  jsonlite::fromJSON(drv$get_js(
+  jsonlite::fromJSON(drv[["get_js"]](
     paste0(
       "JSON.stringify((function () {",
       "  var cookieName = ",
@@ -96,7 +96,7 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
     shinyOAuth::use_shinyOAuth(),
     shiny::titlePanel("Browser-token CSRF E2E"),
     shiny::actionButton("prepare_login_btn", "Prepare login"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::verbatimTextOutput("ready_state"),
     shiny::verbatimTextOutput("auth_state"),
     shiny::verbatimTextOutput("auth_url")
@@ -109,33 +109,33 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
       auto_redirect = FALSE
     )
 
-    shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
-      promises::then(auth$build_auth_url(), published_auth_url)
+    shiny::observeEvent(input[["prepare_login_btn"]], ignoreInit = TRUE, {
+      promises::then(auth[["build_auth_url"]](), published_auth_url)
       invisible(NULL)
     })
 
-    output$ready_state <- shiny::renderText({
-      paste("browser_ready:", isTRUE(auth$has_browser_token()))
+    output[["ready_state"]] <- shiny::renderText({
+      paste("browser_ready:", isTRUE(auth[["has_browser_token"]]()))
     })
 
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "has_token:",
-        !is.null(auth$token),
+        !is.null(auth[["token"]]),
         "error:",
-        if (!is.null(auth$error)) auth$error else "<none>",
+        if (!is.null(auth[["error"]])) auth[["error"]] else "<none>",
         "error_description:",
-        if (!is.null(auth$error_description)) {
-          auth$error_description
+        if (!is.null(auth[["error_description"]])) {
+          auth[["error_description"]]
         } else {
           "<none>"
         }
       )
     })
 
-    output$auth_url <- shiny::renderText({
+    output[["auth_url"]] <- shiny::renderText({
       auth_url <- published_auth_url() %||% NA_character_
       if (
         !is.character(auth_url) ||
@@ -150,7 +150,7 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
     })
   }
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     shiny::shinyApp(ui, server),
     name = "keycloak-browser-token-csrf",
     load_timeout = 15000,
@@ -163,7 +163,7 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
   )
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -173,8 +173,8 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
     timeout = 15000
   )
 
-  drv$click("prepare_login_btn")
-  drv$wait_for_js(
+  drv[["click"]]("prepare_login_btn")
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_url');
@@ -205,9 +205,9 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
     cookie_name = payload[["cookie_name"]],
     cookie_value = attacker_cookie
   )
-  testthat::expect_identical(tampered$current_value, attacker_cookie)
+  testthat::expect_identical(tampered[["current_value"]], attacker_cookie)
 
-  drv$run_js(
+  drv[["run_js"]](
     paste0(
       "window.location = ",
       jsonlite::toJSON(payload[["auth_url"]], auto_unbox = TRUE),
@@ -220,7 +220,7 @@ testthat::test_that("browser callback with tampered cookie is rejected", {
     keycloak_submit_browser_login(drv)
   }
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_state');

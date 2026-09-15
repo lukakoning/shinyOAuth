@@ -160,17 +160,17 @@ cases <- list(
 
 for (case in cases) {
   testthat::test_that(
-    paste0("Keycloak introspection via auth style: ", case$name),
+    paste0("Keycloak introspection via auth style: ", case[["name"]]),
     {
       maybe_skip_keycloak()
-      if (!isTRUE(case$include())) {
-        testthat::skip(paste("Skipping", case$name, "— prerequisites not met"))
+      if (!isTRUE(case[["include"]]())) {
+        testthat::skip(paste("Skipping", case[["name"]], "— prerequisites not met"))
       }
 
-      prov <- make_provider(case$style)
+      prov <- make_provider(case[["style"]])
       token_value <- fetch_access_token_cc(prov)
 
-      client <- case$client(prov)
+      client <- case[["client"]](prov)
       tok <- shinyOAuth::OAuthToken(access_token = token_value)
 
       res <- shinyOAuth::introspect_token(
@@ -181,10 +181,10 @@ for (case in cases) {
       )
 
       # We require the call to be supported and not an outright HTTP failure
-      testthat::expect_true(isTRUE(res$supported))
-      testthat::expect_identical(res$status, "ok")
-      testthat::expect_true(isTRUE(res$active))
-      testthat::expect_true(is.list(res$raw))
+      testthat::expect_true(isTRUE(res[["supported"]]))
+      testthat::expect_identical(res[["status"]], "ok")
+      testthat::expect_true(isTRUE(res[["active"]]))
+      testthat::expect_true(is.list(res[["raw"]]))
     }
   )
 }

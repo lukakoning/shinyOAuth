@@ -94,32 +94,32 @@ for (shared in c(FALSE, TRUE)) {
             }
             if (encrypted) {
               fields[["response"]] <- jwe_compact_encrypt(fields[["response"]],
-                client@jarm_decryption_private_key$pubkey, alg = "RSA-OAEP",
+                client@jarm_decryption_private_key[["pubkey"]], alg = "RSA-OAEP",
                 enc = "A128CBC-HS256", cty = "JWT")
               if (shared) fields[["iss"]] <- client@provider@issuer
             }
             encoded <- httr2::url_query_build(fields)
             req <- list(
               REQUEST_METHOD = if (post) "POST" else "GET",
-              PATH_INFO = httr2::url_parse(client@redirect_uri)$path,
+              PATH_INFO = httr2::url_parse(client@redirect_uri)[["path"]],
               QUERY_STRING = if (post) "" else encoded,
               rook.url_scheme = "https",
               HTTP_HOST = "app.example"
             )
             if (post) {
-              req$CONTENT_TYPE <- "application/x-www-form-urlencoded"
-              req$rook.input <- list(read = function(n) charToRaw(encoded))
+              req[["CONTENT_TYPE"]] <- "application/x-www-form-urlencoded"
+              req[["rook.input"]] <- list(read = function(n) charToRaw(encoded))
             }
             response <- ui(req)
-            expect_identical(response$status, 303L, info = response$content)
+            expect_identical(response[["status"]], 303L, info = response[["content"]])
             expect_identical(rendered, 0L)
             expect_identical(
-              response$headers[["Referrer-Policy"]],
+              response[["headers"]][["Referrer-Policy"]],
               "no-referrer"
             )
             expect_false(grepl(
               "code=|state=|response=",
-              response$headers$Location
+              response[["headers"]][["Location"]]
             ))
             response
           })
@@ -148,25 +148,25 @@ for (shared in c(FALSE, TRUE)) {
           shiny::testServer(server, {
             for (id in names(clients)) {
               do.call(
-                session$setInputs,
+                session[["setInputs"]],
                 stats::setNames(
                   list(browsers[[id]]),
                   paste0(id, "-shinyOAuth_sid")
                 )
               )
-              query <- responses[[id]]$headers$Location
+              query <- responses[[id]][["headers"]][["Location"]]
               for (module in auth) {
-                module$.process_query(
+                module[[".process_query"]](
                   query,
                   current_uri = paste0(clients[[id]]@redirect_uri, query)
                 )
               }
-              session$flushReact()
-              expect_true(auth[[id]]$authenticated, info = auth[[id]]$error)
+              session[["flushReact"]]()
+              expect_true(auth[[id]][["authenticated"]], info = auth[[id]][["error"]])
             }
             expect_true(all(vapply(
               auth,
-              function(value) value$authenticated,
+              function(value) value[["authenticated"]],
               logical(1)
             )))
           })
@@ -186,7 +186,7 @@ for (post in c(FALSE, TRUE)) {
     encrypted <- function(issuer = client@provider@issuer) {
       signed <- jose::jwt_encode_hmac(jose::jwt_claim(iss = issuer, aud = client@client_id,
         exp = as.numeric(Sys.time()) + 60, code = "example-code", state = state), client@client_secret)
-      jwe_compact_encrypt(signed, client@jarm_decryption_private_key$pubkey,
+      jwe_compact_encrypt(signed, client@jarm_decryption_private_key[["pubkey"]],
         alg = "RSA-OAEP", enc = "A128CBC-HS256", cty = "JWT")
     }
     request <- function(fields) {
@@ -202,12 +202,12 @@ for (post in c(FALSE, TRUE)) {
     local_mocked_bindings(swap_code_for_token_set = function(...) stop("Unexpected exchange"),
       .package = "shinyOAuth")
     response <- encrypted()
-    expect_identical(request(list(response = response))$status, 400L)
-    expect_identical(request(list(response = response, iss = "https://unknown.example"))$status, 400L)
-    expect_identical(request(list(response = response, iss = clients[[2L]]@provider@issuer))$status, 400L)
+    expect_identical(request(list(response = response))[["status"]], 400L)
+    expect_identical(request(list(response = response, iss = "https://unknown.example"))[["status"]], 400L)
+    expect_identical(request(list(response = response, iss = clients[[2L]]@provider@issuer))[["status"]], 400L)
     expect_identical(request(list(response = encrypted(clients[[2L]]@provider@issuer),
-      iss = client@provider@issuer))$status, 400L)
-    expect_identical(request(list(response = response, iss = client@provider@issuer))$status, 303L)
+      iss = client@provider@issuer))[["status"]], 400L)
+    expect_identical(request(list(response = response, iss = client@provider@issuer))[["status"]], 303L)
   })
 }
 
@@ -237,11 +237,11 @@ test_that("registry early rejections emit one sanitized routing event and error 
     case <- cases[[reason]]
     events <- list()
     fields <- list(code = "CODE-SENTINEL", state = "STATE-SENTINEL")
-    if (!is.null(case$issuer)) {
-      fields$iss <- case$issuer
+    if (!is.null(case[["issuer"]])) {
+      fields[["iss"]] <- case[["issuer"]]
     }
     request <- list(
-      REQUEST_METHOD = if (isTRUE(case$post)) "POST" else "GET",
+      REQUEST_METHOD = if (isTRUE(case[["post"]])) "POST" else "GET",
       PATH_INFO = "/callback",
       QUERY_STRING = httr2::url_query_build(fields),
       rook.url_scheme = "https",
@@ -251,30 +251,30 @@ test_that("registry early rejections emit one sanitized routing event and error 
       response <- oauth_registry_http_handler(
         request,
         clients,
-        function(req) case$uri %||% "https://app.example/callback"
+        function(req) case[["uri"]] %||% "https://app.example/callback"
       )
     })
-    expect_identical(response$status, 400L)
+    expect_identical(response[["status"]], 400L)
     routing <- Filter(
-      function(event) event$type == "audit_callback_routing_rejected",
+      function(event) event[["type"]] == "audit_callback_routing_rejected",
       events
     )
     expect_length(routing, 1L)
     expect_length(events, 1L)
-    expect_identical(routing[[1L]]$reason, reason)
-    expect_identical(routing[[1L]]$phase, "callback_registry_routing")
-    expect_identical(routing[[1L]]$shiny_session$http$host, "app.example")
-    expect_null(routing[[1L]]$provider)
-    expect_null(routing[[1L]]$issuer)
-    span <- record$traces[["shinyOAuth.callback.route"]]
-    expect_identical(span$status, "error")
-    expect_identical(span$attributes[["oauth.reason"]], reason)
+    expect_identical(routing[[1L]][["reason"]], reason)
+    expect_identical(routing[[1L]][["phase"]], "callback_registry_routing")
+    expect_identical(routing[[1L]][["shiny_session"]][["http"]][["host"]], "app.example")
+    expect_null(routing[[1L]][["provider"]])
+    expect_null(routing[[1L]][["issuer"]])
+    span <- record[["traces"]][["shinyOAuth.callback.route"]]
+    expect_identical(span[["status"]], "error")
+    expect_identical(span[["attributes"]][["oauth.reason"]], reason)
     expect_identical(
-      span$attributes[["oauth.phase"]],
+      span[["attributes"]][["oauth.phase"]],
       "callback_registry_routing"
     )
-    expect_null(span$attributes[["oauth.provider.name"]])
-    expect_false(any(grepl("SENTINEL", unlist(list(events, span$attributes)))))
+    expect_null(span[["attributes"]][["oauth.provider.name"]])
+    expect_false(any(grepl("SENTINEL", unlist(list(events, span[["attributes"]])))))
   }
 })
 
@@ -290,11 +290,11 @@ test_that("registry does not duplicate parser diagnostics or report ordinary pag
     clients,
     resolver
   )
-  expect_identical(response$status, 400L)
+  expect_identical(response[["status"]], 400L)
   expect_true(length(events) > 0L)
   expect_false(any(vapply(
     events,
-    function(event) event$type == "audit_callback_routing_rejected",
+    function(event) event[["type"]] == "audit_callback_routing_rejected",
     logical(1)
   )))
   events <- list()
@@ -329,5 +329,5 @@ test_that("registry validates configuration and does not render unrecognized GET
     rook.url_scheme = "https",
     HTTP_HOST = "app.example"
   ))
-  expect_identical(response$status, 400L)
+  expect_identical(response[["status"]], 400L)
 })

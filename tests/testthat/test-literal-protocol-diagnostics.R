@@ -77,8 +77,8 @@ test_that("received protocol diagnostics are literal and respect exposure", {
       }
     )
     for (case in cases) {
-      error <- tryCatch(case$run(), error = identity)
-      expect_s3_class(error, case$class)
+      error <- tryCatch(case[["run"]](), error = identity)
+      expect_s3_class(error, case[["class"]])
       expect_identical(
         grepl(marker, conditionMessage(error), fixed = TRUE),
         expose

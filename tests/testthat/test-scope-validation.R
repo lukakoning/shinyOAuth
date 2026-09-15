@@ -861,7 +861,7 @@ test_that("only omitted refresh scope carries forward the previous grant", {
     is_refresh = TRUE,
     previous_granted_scopes = "read:user"
   )
-  expect_equal(result$granted_scopes, "read:user")
-  expect_false(result$granted_scopes_verified)
+  expect_equal(result[["granted_scopes"]], "read:user")
+  expect_false(result[["granted_scopes_verified"]])
   expect_error(shinyOAuth:::validate_response_scope(""), "Response scope")
 })

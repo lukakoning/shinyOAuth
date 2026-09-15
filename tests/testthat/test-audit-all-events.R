@@ -132,8 +132,8 @@ testthat::test_that("representative real producers emit required audit events", 
           },
           .package = "shinyOAuth",
           {
-            values$.process_query(paste0("?code=bad&state=", enc))
-            session$flushReact()
+            values[[".process_query"]](paste0("?code=bad&state=", enc))
+            session[["flushReact"]]()
           }
         )
       }
@@ -152,11 +152,11 @@ testthat::test_that("representative real producers emit required audit events", 
       ),
       expr = {
         # Simulate an invalid cookie value -> triggers audit_invalid_browser_token
-        session$setInputs(shinyOAuth_sid = "abc")
-        session$flushReact()
+        session[["setInputs"]](shinyOAuth_sid = "abc")
+        session[["flushReact"]]()
         # Simulate a browser cookie/webcrypto error -> triggers audit_browser_cookie_error
-        session$setInputs(shinyOAuth_cookie_error = "webcrypto_unavailable")
-        session$flushReact()
+        session[["setInputs"]](shinyOAuth_cookie_error = "webcrypto_unavailable")
+        session[["flushReact"]]()
       }
     )
   }
@@ -179,10 +179,10 @@ testthat::test_that("representative real producers emit required audit events", 
           expires_at = as.numeric(Sys.time()) - 1,
           id_token = NA_character_
         )
-        values$token <- t
-        session$flushReact()
+        values[["token"]] <- t
+        session[["flushReact"]]()
         # Also call logout to get audit_logout
-        values$logout()
+        values[["logout"]]()
       }
     )
   }
@@ -285,14 +285,14 @@ testthat::test_that("representative real producers emit required audit events", 
   )
   testthat::expect_length(setdiff(required, audit_types(events)), 0L)
   success <- Filter(
-    function(e) identical(e$type, "audit_login_success"),
+    function(e) identical(e[["type"]], "audit_login_success"),
     events
   )[[1L]]
   transaction <- Filter(
-    function(e) identical(e$trace_id, success$trace_id),
+    function(e) identical(e[["trace_id"]], success[["trace_id"]]),
     events
   )
-  types <- vapply(transaction, function(e) e$type, "")
+  types <- vapply(transaction, function(e) e[["type"]], "")
   ordered <- match(
     c(
       "audit_callback_received",
@@ -304,11 +304,11 @@ testthat::test_that("representative real producers emit required audit events", 
   testthat::expect_false(anyNA(ordered))
   testthat::expect_true(all(diff(ordered) > 0))
   validation <- Filter(
-    function(e) identical(e$type, "audit_callback_validation_success"),
+    function(e) identical(e[["type"]], "audit_callback_validation_success"),
     transaction
   )[[1L]]
   testthat::expect_true(
-    is.character(validation$state_digest) && nzchar(validation$state_digest)
+    is.character(validation[["state_digest"]]) && nzchar(validation[["state_digest"]])
   )
 })
 
@@ -321,7 +321,7 @@ testthat::test_that("audit registry entries serialize and have documentation", {
       events[[length(events) + 1L]] <<- e
     }
   ))
-  audit_types <- function(events) vapply(events, function(e) e$type, "")
+  audit_types <- function(events) vapply(events, function(e) e[["type"]], "")
   for (type in shinyOAuth:::audit_event_registry()) {
     shinyOAuth:::audit_event(type, context = list(registry_probe = TRUE))
   }

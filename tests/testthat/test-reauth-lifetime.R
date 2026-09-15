@@ -36,25 +36,25 @@ testthat::test_that("token refresh does not extend reauthentication lifetime", {
           },
           .package = "shinyOAuth",
           {
-            values$auth_started_at <- auth_started_at
-            values$token <- OAuthToken(
+            values[["auth_started_at"]] <- auth_started_at
+            values[["token"]] <- OAuthToken(
               access_token = "initial",
               refresh_token = "refresh-1",
               expires_at = as.numeric(Sys.time()) + 3600
             )
             poll_for_async(
-              function() values$refresh_success_generation == 1L,
+              function() values[["refresh_success_generation"]] == 1L,
               session
             )
           }
         )
 
         testthat::expect_identical(
-          values$auth_started_at,
+          values[["auth_started_at"]],
           auth_started_at,
           info = paste("async =", async_mode)
         )
-        testthat::expect_identical(values$token@access_token, "refreshed")
+        testthat::expect_identical(values[["token"]]@access_token, "refreshed")
       }
     )
   }
@@ -74,15 +74,15 @@ testthat::test_that("OIDC reauthentication sends and binds max_age zero", {
       reauth_after_seconds = 1
     ),
     expr = {
-      values$auth_started_at <- as.numeric(Sys.time()) - 10
-      values$token <- OAuthToken(
+      values[["auth_started_at"]] <- as.numeric(Sys.time()) - 10
+      values[["token"]] <- OAuthToken(
         access_token = "old",
         expires_at = as.numeric(Sys.time()) + 3600
       )
-      session$flushReact()
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "reauth_required")
-      url <- values$build_auth_url()
+      testthat::expect_identical(values[["error"]], "reauth_required")
+      url <- values[["build_auth_url"]]()
       state <- parse_query_param(url, "state")
       payload <- shinyOAuth:::state_payload_decrypt_validate(cli, state)
 
@@ -109,15 +109,15 @@ testthat::test_that("OAuth-only reauthentication remains a local lifetime", {
       reauth_after_seconds = 1
     ),
     expr = {
-      values$auth_started_at <- as.numeric(Sys.time()) - 10
-      values$token <- OAuthToken(
+      values[["auth_started_at"]] <- as.numeric(Sys.time()) - 10
+      values[["token"]] <- OAuthToken(
         access_token = "old",
         expires_at = as.numeric(Sys.time()) + 3600
       )
-      session$flushReact()
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "reauth_required")
-      url <- values$build_auth_url()
+      testthat::expect_identical(values[["error"]], "reauth_required")
+      url <- values[["build_auth_url"]]()
       testthat::expect_true(is.na(parse_query_param(
         url,
         "max_age",
@@ -130,7 +130,7 @@ testthat::test_that("OAuth-only reauthentication remains a local lifetime", {
 testthat::test_that("large reauthentication lifetimes format safely", {
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  lifetime <- as.double(.Machine$integer.max) + 1
+  lifetime <- as.double(.Machine[["integer.max"]]) + 1
 
   shiny::testServer(
     app = oauth_module_server,
@@ -141,16 +141,16 @@ testthat::test_that("large reauthentication lifetimes format safely", {
       reauth_after_seconds = lifetime
     ),
     expr = {
-      values$auth_started_at <- as.numeric(Sys.time()) - lifetime - 10
-      values$token <- OAuthToken(
+      values[["auth_started_at"]] <- as.numeric(Sys.time()) - lifetime - 10
+      values[["token"]] <- OAuthToken(
         access_token = "old",
         expires_at = as.numeric(Sys.time()) + 3600
       )
 
-      testthat::expect_no_warning(session$flushReact())
-      testthat::expect_identical(values$error, "reauth_required")
+      testthat::expect_no_warning(session[["flushReact"]]())
+      testthat::expect_identical(values[["error"]], "reauth_required")
       testthat::expect_identical(
-        values$error_description,
+        values[["error_description"]],
         "Reauthentication required after 2147483648 seconds"
       )
     }
@@ -177,19 +177,19 @@ testthat::test_that("validated auth_time starts the reauthentication lifetime", 
       auto_redirect = FALSE
     ),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       state <- parse_query_param(url, "state")
 
       testthat::with_mocked_bindings(
         handle_callback = function(...) token,
         .package = "shinyOAuth",
         {
-          values$.process_query(paste0("?code=ok&state=", state))
+          values[[".process_query"]](paste0("?code=ok&state=", state))
         }
       )
 
-      testthat::expect_identical(values$auth_started_at, auth_time)
-      testthat::expect_identical(values$token@access_token, "with-auth-time")
+      testthat::expect_identical(values[["auth_started_at"]], auth_time)
+      testthat::expect_identical(values[["token"]]@access_token, "with-auth-time")
     }
   )
 })

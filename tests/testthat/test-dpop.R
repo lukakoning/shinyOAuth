@@ -26,7 +26,7 @@ make_dpop_test_client <- function(
   )
 
   if (!is.null(dpop_require_access_token)) {
-    args$dpop_require_access_token <- dpop_require_access_token
+    args[["dpop_require_access_token"]] <- dpop_require_access_token
   }
 
   do.call(oauth_client, args)
@@ -507,8 +507,8 @@ test_that("DPoP proofs and nonce caches preserve escaped path identity", {
   for (path in paths) {
     url <- paste0("https://resource.example", path)
     req <- resource_req(token, url, oauth_client = client)
-    expect_identical(req$url, url)
-    expect_identical(decode_dpop_payload(req$headers$DPoP)$htu, url)
+    expect_identical(req[["url"]], url)
+    expect_identical(decode_dpop_payload(req[["headers"]][["DPoP"]])[["htu"]], url)
     expect_false(identical(
       dpop_nonce_cache_key(client, url, "resource"),
       dpop_nonce_cache_key(client, utils::URLdecode(url), "resource")
@@ -529,14 +529,14 @@ test_that("Keycloak DPoP verifiers independently reject decoded target paths", {
     make_test_provider(), dpop_private_key = openssl::ec_keygen()
   )
   url <- "https://resource.example/a%2Fb"
-  for (verify in list(helper$verify_dpop_proof_independent, helper$verify_dpop_proof)) {
+  for (verify in list(helper[["verify_dpop_proof_independent"]], helper[["verify_dpop_proof"]])) {
     proof <- build_dpop_proof(client, "GET", url, access_token = "access-token")
     expect_no_error(verify(proof, "GET", url, "access-token", FALSE, new.env()))
     wrong <- build_dpop_proof(client, "GET", "https://resource.example/a/b",
                               access_token = "access-token")
     expect_error(verify(wrong, "GET", url, "access-token", FALSE, new.env()), "dpop_htu_mismatch")
   }
-  expect_identical(helper$local_dpop_target_uri("HTTPS://[::1]:443/a%2Fb?q=1#f"),
+  expect_identical(helper[["local_dpop_target_uri"]]("HTTPS://[::1]:443/a%2Fb?q=1#f"),
                    "https://[::1]/a%2Fb")
 })
 
@@ -1009,7 +1009,7 @@ test_that("DPoP token type is independent of access-token representation", {
       ),
       "httr2_request"
     )
-    token_set$token_type <- "Bearer"
+    token_set[["token_type"]] <- "Bearer"
     expect_error(verify_token_set(client, token_set, nonce = NULL), "DPoP")
   }
 })
@@ -1206,7 +1206,7 @@ test_that("strict opaque DPoP login and refresh require binding from introspecti
       expect_identical(calls, before + 1L, info = paste(flow, outcome))
       if (outcome == "matching") {
         expect_true(S7::S7_inherits(result, OAuthToken))
-        expect_identical(result@cnf$jkt, jkt)
+        expect_identical(result@cnf[["jkt"]], jkt)
       } else {
         expect_s3_class(result, "error")
       }
@@ -1215,7 +1215,7 @@ test_that("strict opaque DPoP login and refresh require binding from introspecti
 })
 
 test_that("DPoP nonce cache is bounded by age and entry count", {
-  info <- shinyOAuth:::dpop_nonce_cache$info()
+  info <- shinyOAuth:::dpop_nonce_cache[["info"]]()
 
   expect_identical(info[["max_age"]], 300)
   expect_identical(info[["max_n"]], 256)
@@ -1224,9 +1224,9 @@ test_that("DPoP nonce cache is bounded by age and entry count", {
 
 test_that("swap_code_for_token_set retries DPoP nonce challenges once", {
   state <- new.env(parent = emptyenv())
-  state$count <- 0L
-  state$first_has_nonce <- NA
-  state$second_nonce <- NA_character_
+  state[["count"]] <- 0L
+  state[["first_has_nonce"]] <- NA
+  state[["second_nonce"]] <- NA_character_
 
   prov <- oauth_provider(
     name = "example",
@@ -1249,18 +1249,18 @@ test_that("swap_code_for_token_set retries DPoP nonce challenges once", {
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
-      state$count <- state$count + 1L
+      state[["count"]] <- state[["count"]] + 1L
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
-      if (state$count == 1L) {
-        state$first_has_nonce <- "nonce" %in% names(payload)
+      if (state[["count"]] == 1L) {
+        state[["first_has_nonce"]] <- "nonce" %in% names(payload)
       } else {
-        state$second_nonce <- payload[["nonce"]] %||% NA_character_
+        state[["second_nonce"]] <- payload[["nonce"]] %||% NA_character_
       }
 
-      if (state$count == 1L) {
+      if (state[["count"]] == 1L) {
         return(httr2::response(
           url = as.character(req[["url"]]),
           status = 400,
@@ -1295,9 +1295,9 @@ test_that("swap_code_for_token_set retries DPoP nonce challenges once", {
 
   expect_identical(token_set[["access_token"]], "at-1")
   expect_identical(token_set[["token_type"]], "DPoP")
-  expect_identical(state$count, 2L)
-  expect_false(isTRUE(state$first_has_nonce))
-  expect_identical(state$second_nonce, "nonce-1")
+  expect_identical(state[["count"]], 2L)
+  expect_false(isTRUE(state[["first_has_nonce"]]))
+  expect_identical(state[["second_nonce"]], "nonce-1")
 })
 
 test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce challenges", {
@@ -1333,9 +1333,9 @@ test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce 
   }
 
   state <- new.env(parent = emptyenv())
-  state$count <- 0L
-  state$assertion_jtis <- character()
-  state$proof_nonces <- character()
+  state[["count"]] <- 0L
+  state[["assertion_jtis"]] <- character()
+  state[["proof_nonces"]] <- character()
 
   prov <- oauth_provider(
     name = "example",
@@ -1371,7 +1371,7 @@ test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce 
 
   testthat::local_mocked_bindings(
     req_perform = function(req, ...) {
-      state$count <- state$count + 1L
+      state[["count"]] <- state[["count"]] + 1L
       body_text <- request_body_text(req)
       assertion <- parse_query_param(
         paste0("https://example.com/?", body_text),
@@ -1383,16 +1383,16 @@ test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce 
       proof_payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
-      state$assertion_jtis <- c(
-        state$assertion_jtis,
+      state[["assertion_jtis"]] <- c(
+        state[["assertion_jtis"]],
         payload[["jti"]] %||% NA_character_
       )
-      state$proof_nonces <- c(
-        state$proof_nonces,
+      state[["proof_nonces"]] <- c(
+        state[["proof_nonces"]],
         proof_payload[["nonce"]] %||% ""
       )
 
-      if (state$count == 1L) {
+      if (state[["count"]] == 1L) {
         return(httr2::response(
           url = as.character(req[["url"]]),
           status = 400,
@@ -1427,13 +1427,13 @@ test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce 
 
   expect_identical(token_set[["access_token"]], "at-1")
   expect_identical(token_set[["token_type"]], "DPoP")
-  expect_length(unique(state$assertion_jtis), 2L)
-  expect_identical(state$proof_nonces, c("", "nonce-1"))
+  expect_length(unique(state[["assertion_jtis"]]), 2L)
+  expect_identical(state[["proof_nonces"]], c("", "nonce-1"))
 })
 
 test_that("req_with_dpop_retry retries nonce challenges for non-idempotent requests", {
   state <- new.env(parent = emptyenv())
-  state$count <- 0L
+  state[["count"]] <- 0L
 
   prov <- oauth_provider(
     name = "example",
@@ -1459,20 +1459,20 @@ test_that("req_with_dpop_retry retries nonce challenges for non-idempotent reque
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
-      state$count <- state$count + 1L
+      state[["count"]] <- state[["count"]] + 1L
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
 
-      if (state$count == 2L) {
+      if (state[["count"]] == 2L) {
         return(httr2::response(
           url = as.character(req[["url"]]),
           status = 200,
           headers = list("content-type" = "application/json"),
           body = charToRaw(jsonlite::toJSON(
             list(
-              request_count = state$count,
+              request_count = state[["count"]],
               proof_nonce = payload[["nonce"]] %||% NA_character_
             ),
             auto_unbox = TRUE
@@ -1486,12 +1486,12 @@ test_that("req_with_dpop_retry retries nonce challenges for non-idempotent reque
         headers = list(
           "content-type" = "application/json",
           "www-authenticate" = 'DPoP error="use_dpop_nonce"',
-          "dpop-nonce" = paste0("nonce-", state$count)
+          "dpop-nonce" = paste0("nonce-", state[["count"]])
         ),
         body = charToRaw(jsonlite::toJSON(
           list(
             error = "use_dpop_nonce",
-            request_count = state$count,
+            request_count = state[["count"]],
             proof_nonce = payload[["nonce"]] %||% NA_character_
           ),
           auto_unbox = TRUE
@@ -1503,12 +1503,12 @@ test_that("req_with_dpop_retry retries nonce challenges for non-idempotent reque
 
   resp <- shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = FALSE)
 
-  expect_identical(state$count, 2L)
+  expect_identical(state[["count"]], 2L)
   expect_identical(
     jsonlite::fromJSON(
       rawToChar(resp[["body"]]),
       simplifyVector = TRUE
-    )$proof_nonce,
+    )[["proof_nonce"]],
     "nonce-1"
   )
 })
@@ -1537,9 +1537,9 @@ test_that("req_with_dpop_retry preserves the caller idempotency setting", {
 
   run_case <- function(idempotent) {
     state <- new.env(parent = emptyenv())
-    state$count <- 0L
-    state$idempotent <- logical()
-    state$nonces <- character()
+    state[["count"]] <- 0L
+    state[["idempotent"]] <- logical()
+    state[["nonces"]] <- character()
 
     testthat::local_mocked_bindings(
       req_add_dpop_proof = function(
@@ -1548,17 +1548,17 @@ test_that("req_with_dpop_retry preserves the caller idempotency setting", {
         access_token = NULL,
         nonce = NULL
       ) {
-        state$nonces <- c(
-          state$nonces,
+        state[["nonces"]] <- c(
+          state[["nonces"]],
           if (is.null(nonce)) "" else as.character(nonce)
         )
         req
       },
       req_with_retry = function(req, idempotent = TRUE) {
-        state$count <- state$count + 1L
-        state$idempotent <- c(state$idempotent, idempotent)
+        state[["count"]] <- state[["count"]] + 1L
+        state[["idempotent"]] <- c(state[["idempotent"]], idempotent)
 
-        if (state$count == 1L) {
+        if (state[["count"]] == 1L) {
           return(httr2::response(
             url = as.character(req[["url"]]),
             status = 401,
@@ -1584,18 +1584,18 @@ test_that("req_with_dpop_retry preserves the caller idempotency setting", {
     shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = idempotent)
 
     list(
-      idempotent = state$idempotent,
-      nonces = state$nonces
+      idempotent = state[["idempotent"]],
+      nonces = state[["nonces"]]
     )
   }
 
   idempotent_case <- run_case(TRUE)
-  expect_identical(idempotent_case$idempotent, c(TRUE, TRUE))
-  expect_identical(idempotent_case$nonces, c("", "nonce-1"))
+  expect_identical(idempotent_case[["idempotent"]], c(TRUE, TRUE))
+  expect_identical(idempotent_case[["nonces"]], c("", "nonce-1"))
 
   non_idempotent_case <- run_case(FALSE)
-  expect_identical(non_idempotent_case$idempotent, c(FALSE, FALSE))
-  expect_identical(non_idempotent_case$nonces, c("", "nonce-1"))
+  expect_identical(non_idempotent_case[["idempotent"]], c(FALSE, FALSE))
+  expect_identical(non_idempotent_case[["nonces"]], c("", "nonce-1"))
 })
 
 test_that("req_with_dpop_retry regenerates DPoP proofs for transient retries", {
@@ -1621,8 +1621,8 @@ test_that("req_with_dpop_retry regenerates DPoP proofs for transient retries", {
     httr2::req_method("GET")
 
   state <- new.env(parent = emptyenv())
-  state$jtis <- character()
-  state$proofs <- character()
+  state[["jtis"]] <- character()
+  state[["proofs"]] <- character()
 
   withr::local_options(list(
     shinyOAuth.retry_max_tries = 2L,
@@ -1635,10 +1635,10 @@ test_that("req_with_dpop_retry regenerates DPoP proofs for transient retries", {
       dry <- httr2::req_dry_run(request, quiet = TRUE, redact_headers = FALSE)
       proof <- dry[["headers"]][["dpop"]]
       payload <- decode_dpop_payload(proof)
-      state$jtis <- c(state$jtis, payload[["jti"]])
-      state$proofs <- c(state$proofs, proof)
+      state[["jtis"]] <- c(state[["jtis"]], payload[["jti"]])
+      state[["proofs"]] <- c(state[["proofs"]], proof)
 
-      if (length(state$jtis) == 1L) {
+      if (length(state[["jtis"]]) == 1L) {
         return(httr2::response(
           url = as.character(request[["url"]]),
           status = 500,
@@ -1669,8 +1669,8 @@ test_that("req_with_dpop_retry regenerates DPoP proofs for transient retries", {
   )
 
   expect_identical(httr2::resp_status(resp), 200L)
-  expect_length(unique(state$jtis), 2L)
-  expect_length(unique(state$proofs), 2L)
+  expect_length(unique(state[["jtis"]]), 2L)
+  expect_length(unique(state[["proofs"]]), 2L)
 })
 
 test_that("req_with_dpop_retry preserves existing prepare-attempt hooks", {
@@ -1700,8 +1700,8 @@ test_that("req_with_dpop_retry preserves existing prepare-attempt hooks", {
   }
 
   state <- new.env(parent = emptyenv())
-  state$markers <- character()
-  state$proof_jtis <- character()
+  state[["markers"]] <- character()
+  state[["proof_jtis"]] <- character()
 
   withr::local_options(list(
     shinyOAuth.retry_max_tries = 2L,
@@ -1715,18 +1715,18 @@ test_that("req_with_dpop_retry preserves existing prepare-attempt hooks", {
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
-      state$markers <- c(
-        state$markers,
+      state[["markers"]] <- c(
+        state[["markers"]],
         as.character(
           request[["body"]][["data"]][["marker"]] %||% NA_character_
         )
       )
-      state$proof_jtis <- c(
-        state$proof_jtis,
+      state[["proof_jtis"]] <- c(
+        state[["proof_jtis"]],
         payload[["jti"]]
       )
 
-      if (length(state$markers) == 1L) {
+      if (length(state[["markers"]]) == 1L) {
         return(httr2::response(
           url = as.character(request[["url"]]),
           status = 500,
@@ -1757,8 +1757,8 @@ test_that("req_with_dpop_retry preserves existing prepare-attempt hooks", {
   )
 
   expect_identical(httr2::resp_status(resp), 200L)
-  expect_identical(state$markers, c("marker-1", "marker-2"))
-  expect_length(unique(state$proof_jtis), 2L)
+  expect_identical(state[["markers"]], c("marker-1", "marker-2"))
+  expect_length(unique(state[["proof_jtis"]]), 2L)
 })
 
 test_that("req_with_dpop_retry reuses a nonce learned from a successful response", {
@@ -1784,7 +1784,7 @@ test_that("req_with_dpop_retry reuses a nonce learned from a successful response
     httr2::req_method("POST")
 
   state <- new.env(parent = emptyenv())
-  state$proof_nonces <- character()
+  state[["proof_nonces"]] <- character()
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
@@ -1792,13 +1792,13 @@ test_that("req_with_dpop_retry reuses a nonce learned from a successful response
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
-      state$proof_nonces <- c(
-        state$proof_nonces,
+      state[["proof_nonces"]] <- c(
+        state[["proof_nonces"]],
         payload[["nonce"]] %||% ""
       )
 
       headers <- list("content-type" = "application/json")
-      if (length(state$proof_nonces) == 1L) {
+      if (length(state[["proof_nonces"]]) == 1L) {
         headers[["dpop-nonce"]] <- "success-nonce-1"
       }
 
@@ -1815,7 +1815,7 @@ test_that("req_with_dpop_retry reuses a nonce learned from a successful response
   shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = FALSE)
   shinyOAuth:::req_with_dpop_retry(req, cli, idempotent = FALSE)
 
-  expect_identical(state$proof_nonces, c("", "success-nonce-1"))
+  expect_identical(state[["proof_nonces"]], c("", "success-nonce-1"))
 })
 
 test_that("req_with_dpop_retry isolates same-origin resource endpoints", {
@@ -1841,7 +1841,7 @@ test_that("req_with_dpop_retry isolates same-origin resource endpoints", {
   resource_req <- httr2::request("https://example.com/profile")
 
   state <- new.env(parent = emptyenv())
-  state$seen <- list()
+  state[["seen"]] <- list()
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
@@ -1849,7 +1849,7 @@ test_that("req_with_dpop_retry isolates same-origin resource endpoints", {
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
-      state$seen[[length(state$seen) + 1L]] <<- list(
+      state[["seen"]][[length(state[["seen"]]) + 1L]] <<- list(
         url = as.character(req[["url"]]),
         nonce = payload[["nonce"]] %||% ""
       )
@@ -1882,10 +1882,10 @@ test_that("req_with_dpop_retry isolates same-origin resource endpoints", {
     idempotent = TRUE
   )
 
-  expect_identical(state$seen[[1]][["url"]], prov@userinfo_url)
-  expect_identical(state$seen[[1]][["nonce"]], "")
-  expect_identical(state$seen[[2]][["url"]], "https://example.com/profile")
-  expect_identical(state$seen[[2]][["nonce"]], "")
+  expect_identical(state[["seen"]][[1]][["url"]], prov@userinfo_url)
+  expect_identical(state[["seen"]][[1]][["nonce"]], "")
+  expect_identical(state[["seen"]][[2]][["url"]], "https://example.com/profile")
+  expect_identical(state[["seen"]][[2]][["nonce"]], "")
 })
 
 test_that("DPoP nonce cache separates tenant paths and issuers", {
@@ -1925,7 +1925,7 @@ test_that("req_with_dpop_retry keeps token and resource nonces separate on the s
   userinfo_req <- httr2::request(prov@userinfo_url)
 
   state <- new.env(parent = emptyenv())
-  state$seen <- list()
+  state[["seen"]] <- list()
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
@@ -1933,7 +1933,7 @@ test_that("req_with_dpop_retry keeps token and resource nonces separate on the s
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
-      state$seen[[length(state$seen) + 1L]] <<- list(
+      state[["seen"]][[length(state[["seen"]]) + 1L]] <<- list(
         url = as.character(req[["url"]]),
         nonce = payload[["nonce"]] %||% ""
       )
@@ -1961,29 +1961,29 @@ test_that("req_with_dpop_retry keeps token and resource nonces separate on the s
     idempotent = TRUE
   )
 
-  expect_identical(state$seen[[1]][["url"]], prov@token_url)
-  expect_identical(state$seen[[1]][["nonce"]], "")
-  expect_identical(state$seen[[2]][["url"]], prov@userinfo_url)
-  expect_identical(state$seen[[2]][["nonce"]], "")
+  expect_identical(state[["seen"]][[1]][["url"]], prov@token_url)
+  expect_identical(state[["seen"]][[1]][["nonce"]], "")
+  expect_identical(state[["seen"]][[2]][["url"]], prov@userinfo_url)
+  expect_identical(state[["seen"]][[2]][["nonce"]], "")
 })
 
 test_that("handle_callback enforces strict DPoP token_type after exchange", {
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
-  app$post("/token", function(req, res) {
-    if (!nzchar(req$get_header("dpop") %||% "")) {
-      res$set_status(400)
-      res$set_type("application/json")
-      res$send(jsonlite::toJSON(
+  app[["post"]]("/token", function(req, res) {
+    if (!nzchar(req[["get_header"]]("dpop") %||% "")) {
+      res[["set_status"]](400)
+      res[["set_type"]]("application/json")
+      res[["send"]](jsonlite::toJSON(
         list(error = "missing_dpop"),
         auto_unbox = TRUE
       ))
       return()
     }
 
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
       list(
         access_token = "at-1",
         token_type = "Bearer",
@@ -1997,7 +1997,7 @@ test_that("handle_callback enforces strict DPoP token_type after exchange", {
   prov <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
-    token_url = paste0(srv$url(), "/token"),
+    token_url = paste0(srv[["url"]](), "/token"),
     userinfo_url = NA_character_,
     introspection_url = NA_character_,
     revocation_url = NA_character_,
@@ -2032,20 +2032,20 @@ test_that("refresh_token sends DPoP proof and preserves DPoP token_type", {
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
-  app$post("/token", function(req, res) {
-    proof <- req$get_header("dpop")
+  app[["post"]]("/token", function(req, res) {
+    proof <- req[["get_header"]]("dpop")
     if (!nzchar(proof %||% "")) {
-      res$set_status(400)
-      res$set_type("application/json")
-      res$send(jsonlite::toJSON(
+      res[["set_status"]](400)
+      res[["set_type"]]("application/json")
+      res[["send"]](jsonlite::toJSON(
         list(error = "missing_dpop"),
         auto_unbox = TRUE
       ))
       return()
     }
 
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
       list(
         access_token = proof,
         token_type = "DPoP",
@@ -2060,7 +2060,7 @@ test_that("refresh_token sends DPoP proof and preserves DPoP token_type", {
   prov <- oauth_provider(
     name = "example",
     auth_url = "https://example.com/auth",
-    token_url = paste0(srv$url(), "/token"),
+    token_url = paste0(srv[["url"]](), "/token"),
     userinfo_url = NA_character_,
     introspection_url = NA_character_,
     revocation_url = NA_character_,
@@ -2096,9 +2096,9 @@ test_that("refresh_token sends DPoP proof and preserves DPoP token_type", {
 
 test_that("refresh_token retries DPoP nonce challenges once", {
   state <- new.env(parent = emptyenv())
-  state$count <- 0L
-  state$first_has_nonce <- NA
-  state$second_nonce <- NA_character_
+  state[["count"]] <- 0L
+  state[["first_has_nonce"]] <- NA
+  state[["second_nonce"]] <- NA_character_
 
   prov <- oauth_provider(
     name = "example",
@@ -2127,18 +2127,18 @@ test_that("refresh_token retries DPoP nonce challenges once", {
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
-      state$count <- state$count + 1L
+      state[["count"]] <- state[["count"]] + 1L
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
-      if (state$count == 1L) {
-        state$first_has_nonce <- "nonce" %in% names(payload)
+      if (state[["count"]] == 1L) {
+        state[["first_has_nonce"]] <- "nonce" %in% names(payload)
       } else {
-        state$second_nonce <- payload[["nonce"]] %||% NA_character_
+        state[["second_nonce"]] <- payload[["nonce"]] %||% NA_character_
       }
 
-      if (state$count == 1L) {
+      if (state[["count"]] == 1L) {
         return(httr2::response(
           url = as.character(req[["url"]]),
           status = 400,
@@ -2170,9 +2170,9 @@ test_that("refresh_token retries DPoP nonce challenges once", {
 
   expect_identical(refreshed@access_token, "new-access")
   expect_identical(refreshed@refresh_token, "new-refresh")
-  expect_identical(state$count, 2L)
-  expect_false(isTRUE(state$first_has_nonce))
-  expect_identical(state$second_nonce, "refresh-nonce-1")
+  expect_identical(state[["count"]], 2L)
+  expect_false(isTRUE(state[["first_has_nonce"]]))
+  expect_identical(state[["second_nonce"]], "refresh-nonce-1")
 })
 
 test_that("refresh_token reuses a nonce learned from a successful token exchange", {
@@ -2196,7 +2196,7 @@ test_that("refresh_token reuses a nonce learned from a successful token exchange
   cli <- make_dpop_test_client(prov)
 
   state <- new.env(parent = emptyenv())
-  state$request_nonces <- character()
+  state[["request_nonces"]] <- character()
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
@@ -2204,12 +2204,12 @@ test_that("refresh_token reuses a nonce learned from a successful token exchange
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
-      state$request_nonces <- c(
-        state$request_nonces,
+      state[["request_nonces"]] <- c(
+        state[["request_nonces"]],
         payload[["nonce"]] %||% ""
       )
 
-      if (length(state$request_nonces) == 1L) {
+      if (length(state[["request_nonces"]]) == 1L) {
         return(httr2::response(
           url = as.character(req[["url"]]),
           status = 200,
@@ -2249,7 +2249,7 @@ test_that("refresh_token reuses a nonce learned from a successful token exchange
 
   refreshed <- refresh_token(cli, tok)
 
-  expect_identical(state$request_nonces, c("", "success-nonce-1"))
+  expect_identical(state[["request_nonces"]], c("", "success-nonce-1"))
   expect_identical(refreshed@refresh_token, "refresh-2")
 })
 
@@ -2257,45 +2257,45 @@ test_that("revoke_token and introspect_token skip DPoP proofs while get_userinfo
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
-  app$post("/revoke", function(req, res) {
-    if (nzchar(req$get_header("dpop") %||% "")) {
-      res$set_status(400)
-      res$send("")
+  app[["post"]]("/revoke", function(req, res) {
+    if (nzchar(req[["get_header"]]("dpop") %||% "")) {
+      res[["set_status"]](400)
+      res[["send"]]("")
       return()
     }
-    res$set_status(200)
-    res$send("")
+    res[["set_status"]](200)
+    res[["send"]]("")
   })
-  app$post("/introspect", function(req, res) {
-    if (nzchar(req$get_header("dpop") %||% "")) {
-      res$set_status(400)
-      res$set_type("application/json")
-      res$send(jsonlite::toJSON(
+  app[["post"]]("/introspect", function(req, res) {
+    if (nzchar(req[["get_header"]]("dpop") %||% "")) {
+      res[["set_status"]](400)
+      res[["set_type"]]("application/json")
+      res[["send"]](jsonlite::toJSON(
         list(active = FALSE),
         auto_unbox = TRUE
       ))
       return()
     }
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
       list(active = TRUE),
       auto_unbox = TRUE
     ))
   })
-  app$get("/userinfo", function(req, res) {
-    auth <- req$get_header("authorization") %||% ""
-    proof <- req$get_header("dpop") %||% ""
+  app[["get"]]("/userinfo", function(req, res) {
+    auth <- req[["get_header"]]("authorization") %||% ""
+    proof <- req[["get_header"]]("dpop") %||% ""
     if (!identical(auth, "DPoP at-1") || !nzchar(proof)) {
-      res$set_status(401)
-      res$set_type("application/json")
-      res$send(jsonlite::toJSON(
+      res[["set_status"]](401)
+      res[["set_type"]]("application/json")
+      res[["send"]](jsonlite::toJSON(
         list(error = "missing_dpop"),
         auto_unbox = TRUE
       ))
       return()
     }
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
       list(sub = "user-1"),
       auto_unbox = TRUE
     ))
@@ -2306,9 +2306,9 @@ test_that("revoke_token and introspect_token skip DPoP proofs while get_userinfo
     name = "example",
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
-    userinfo_url = paste0(srv$url(), "/userinfo"),
-    introspection_url = paste0(srv$url(), "/introspect"),
-    revocation_url = paste0(srv$url(), "/revoke"),
+    userinfo_url = paste0(srv[["url"]](), "/userinfo"),
+    introspection_url = paste0(srv[["url"]](), "/introspect"),
+    revocation_url = paste0(srv[["url"]](), "/revoke"),
     issuer = NA_character_,
     use_nonce = FALSE,
     use_pkce = TRUE,
@@ -2340,35 +2340,35 @@ test_that("get_userinfo retries a resource DPoP nonce challenge", {
   testthat::skip_if_not_installed("webfakes")
 
   state <- new.env(parent = emptyenv())
-  state$count <- 0L
-  state$first_has_nonce <- NA
-  state$second_nonce <- NA_character_
+  state[["count"]] <- 0L
+  state[["first_has_nonce"]] <- NA
+  state[["second_nonce"]] <- NA_character_
 
   app <- webfakes::new_app()
-  app$get("/userinfo", function(req, res) {
-    state$count <- state$count + 1L
-    payload <- decode_dpop_payload(req$get_header("dpop"))
-    if (state$count == 1L) {
-      state$first_has_nonce <- "nonce" %in% names(payload)
-      res$set_status(401)
-      res$set_header("WWW-Authenticate", "DPoP error=\"use_dpop_nonce\"")
-      res$set_header("DPoP-Nonce", "resource-nonce-1")
-      res$set_type("application/json")
-      res$send(jsonlite::toJSON(
+  app[["get"]]("/userinfo", function(req, res) {
+    state[["count"]] <- state[["count"]] + 1L
+    payload <- decode_dpop_payload(req[["get_header"]]("dpop"))
+    if (state[["count"]] == 1L) {
+      state[["first_has_nonce"]] <- "nonce" %in% names(payload)
+      res[["set_status"]](401)
+      res[["set_header"]]("WWW-Authenticate", "DPoP error=\"use_dpop_nonce\"")
+      res[["set_header"]]("DPoP-Nonce", "resource-nonce-1")
+      res[["set_type"]]("application/json")
+      res[["send"]](jsonlite::toJSON(
         list(error = "use_dpop_nonce"),
         auto_unbox = TRUE
       ))
       return()
     }
 
-    state$second_nonce <- payload[["nonce"]] %||% NA_character_
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
+    state[["second_nonce"]] <- payload[["nonce"]] %||% NA_character_
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
       list(
         sub = "user-1",
-        request_count = state$count,
-        first_has_nonce = isTRUE(state$first_has_nonce),
-        second_nonce = state$second_nonce
+        request_count = state[["count"]],
+        first_has_nonce = isTRUE(state[["first_has_nonce"]]),
+        second_nonce = state[["second_nonce"]]
       ),
       auto_unbox = TRUE
     ))
@@ -2379,7 +2379,7 @@ test_that("get_userinfo retries a resource DPoP nonce challenge", {
     name = "example",
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
-    userinfo_url = paste0(srv$url(), "/userinfo"),
+    userinfo_url = paste0(srv[["url"]](), "/userinfo"),
     introspection_url = NA_character_,
     revocation_url = NA_character_,
     issuer = NA_character_,
@@ -2407,9 +2407,9 @@ test_that("get_userinfo retries a resource DPoP nonce challenge", {
 
 test_that("get_userinfo retries a DPoP nonce challenge for raw JWT tokens with explicit token_type", {
   state <- new.env(parent = emptyenv())
-  state$count <- 0L
-  state$first_has_nonce <- NA
-  state$second_nonce <- NA_character_
+  state[["count"]] <- 0L
+  state[["first_has_nonce"]] <- NA
+  state[["second_nonce"]] <- NA_character_
 
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@userinfo_url <- "https://example.com/userinfo"
@@ -2426,14 +2426,14 @@ test_that("get_userinfo retries a DPoP nonce challenge for raw JWT tokens with e
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
-      state$count <<- state$count + 1L
+      state[["count"]] <<- state[["count"]] + 1L
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
       payload <- decode_dpop_payload(
         dry[["headers"]][["dpop"]]
       )
 
-      if (state$count == 1L) {
-        state$first_has_nonce <<- "nonce" %in% names(payload)
+      if (state[["count"]] == 1L) {
+        state[["first_has_nonce"]] <<- "nonce" %in% names(payload)
         return(httr2::response(
           url = "https://example.com/userinfo",
           status = 401,
@@ -2446,7 +2446,7 @@ test_that("get_userinfo retries a DPoP nonce challenge for raw JWT tokens with e
         ))
       }
 
-      state$second_nonce <<- payload[["nonce"]] %||% NA_character_
+      state[["second_nonce"]] <<- payload[["nonce"]] %||% NA_character_
       httr2::response(
         url = "https://example.com/userinfo",
         status = 200,
@@ -2461,8 +2461,8 @@ test_that("get_userinfo retries a DPoP nonce challenge for raw JWT tokens with e
 
   expect_identical(userinfo[["sub"]], "user-1")
   expect_identical(userinfo[["request_count"]], 2L)
-  expect_false(isTRUE(state$first_has_nonce))
-  expect_identical(state$second_nonce, "resource-nonce-raw")
+  expect_false(isTRUE(state[["first_has_nonce"]]))
+  expect_identical(state[["second_nonce"]], "resource-nonce-raw")
 })
 
 test_that("get_userinfo keeps DPoP resource requests idempotent", {
@@ -2485,8 +2485,8 @@ test_that("get_userinfo keeps DPoP resource requests idempotent", {
   )
   cli <- make_dpop_test_client(prov)
   seen <- new.env(parent = emptyenv())
-  seen$idempotent <- NA
-  seen$access_token <- NA_character_
+  seen[["idempotent"]] <- NA
+  seen[["access_token"]] <- NA_character_
 
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(
@@ -2495,8 +2495,8 @@ test_that("get_userinfo keeps DPoP resource requests idempotent", {
       access_token = NULL,
       idempotent = TRUE
     ) {
-      seen$idempotent <- idempotent
-      seen$access_token <- access_token %||% NA_character_
+      seen[["idempotent"]] <- idempotent
+      seen[["access_token"]] <- access_token %||% NA_character_
       httr2::response(
         url = as.character(req[["url"]]),
         status = 200,
@@ -2509,8 +2509,8 @@ test_that("get_userinfo keeps DPoP resource requests idempotent", {
 
   userinfo <- get_userinfo(cli, token = "at-1", token_type = "DPoP")
 
-  expect_true(isTRUE(seen$idempotent))
-  expect_identical(seen$access_token, "at-1")
+  expect_true(isTRUE(seen[["idempotent"]]))
+  expect_identical(seen[["access_token"]], "at-1")
   expect_identical(userinfo[["sub"]], "user-1")
 })
 
@@ -2539,7 +2539,7 @@ test_that("get_userinfo lets an explicit override repair missing OAuthToken toke
     userinfo = list()
   )
   seen <- new.env(parent = emptyenv())
-  seen$helper <- NA_character_
+  seen[["helper"]] <- NA_character_
 
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(
@@ -2548,7 +2548,7 @@ test_that("get_userinfo lets an explicit override repair missing OAuthToken toke
       access_token = NULL,
       idempotent = TRUE
     ) {
-      seen$helper <- "dpop"
+      seen[["helper"]] <- "dpop"
       httr2::response(
         url = as.character(req[["url"]]),
         status = 200,
@@ -2557,7 +2557,7 @@ test_that("get_userinfo lets an explicit override repair missing OAuthToken toke
       )
     },
     req_with_retry = function(req, idempotent = TRUE) {
-      seen$helper <- "bearer"
+      seen[["helper"]] <- "bearer"
       httr2::response(
         url = as.character(req[["url"]]),
         status = 200,
@@ -2570,7 +2570,7 @@ test_that("get_userinfo lets an explicit override repair missing OAuthToken toke
 
   userinfo <- get_userinfo(cli, token = tok, token_type = "DPoP")
 
-  expect_identical(seen$helper, "dpop")
+  expect_identical(seen[["helper"]], "dpop")
   expect_identical(userinfo[["sub"]], "user-1")
 })
 test_that("transient DPoP response nonces update every retry and the cache", {
@@ -2587,8 +2587,8 @@ test_that("transient DPoP response nonces update every retry and the cache", {
     retry_backoff_delay = function(...) 0,
     req_perform_bounded = function(req) {
       expect_null(req[["shinyOAuth_response_observer"]])
-      claims <- parse_jwt_payload(req$headers[["DPoP"]])
-      nonces[length(nonces) + 1L] <<- list(claims$nonce)
+      claims <- parse_jwt_payload(req[["headers"]][["DPoP"]])
+      nonces[length(nonces) + 1L] <<- list(claims[["nonce"]])
       attempt <- length(nonces)
       httr2::response(
         url = url,

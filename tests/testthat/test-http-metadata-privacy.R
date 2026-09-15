@@ -22,17 +22,17 @@ test_that("raw HTTP metadata requires an explicit logical FALSE", {
   )) {
     local_options(shinyOAuth.audit_redact_http = value)
     summary <- shinyOAuth:::build_http_summary(req)
-    expect_identical(summary$method, "GET")
-    expect_identical(summary$host, "example.test")
-    expect_null(summary$query_string)
-    expect_null(summary$headers)
-    expect_null(summary$remote_addr)
+    expect_identical(summary[["method"]], "GET")
+    expect_identical(summary[["host"]], "example.test")
+    expect_null(summary[["query_string"]])
+    expect_null(summary[["headers"]])
+    expect_null(summary[["remote_addr"]])
   }
   local_options(shinyOAuth.audit_redact_http = FALSE)
   summary <- shinyOAuth:::build_http_summary(req)
-  expect_identical(summary$query_string, "sample=value")
-  expect_identical(summary$headers$x_sample, "sample-header")
-  expect_identical(summary$remote_addr, "192.0.2.1")
+  expect_identical(summary[["query_string"]], "sample=value")
+  expect_identical(summary[["headers"]][["x_sample"]], "sample-header")
+  expect_identical(summary[["remote_addr"]], "192.0.2.1")
 })
 
 test_that("HTTP paths are omitted by default and route export is explicit", {
@@ -48,11 +48,11 @@ test_that("HTTP paths are omitted by default and route export is explicit", {
     HTTP_HOST = "example.test",
     QUERY_STRING = "secret=1"
   )
-  expect_null(shinyOAuth:::build_http_summary(req)$path)
+  expect_null(shinyOAuth:::build_http_summary(req)[["path"]])
   local_options(shinyOAuth.telemetry_path_scrubber = function(path) {
     if (startsWith(path, "/users/")) "/users/:id" else NULL
   })
-  expect_identical(shinyOAuth:::build_http_summary(req)$path, "/users/:id")
+  expect_identical(shinyOAuth:::build_http_summary(req)[["path"]], "/users/:id")
   expect_identical(
     shinyOAuth:::otel_http_url_full(url),
     "https://example.test/users/:id"

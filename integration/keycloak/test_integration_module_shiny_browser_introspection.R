@@ -40,7 +40,7 @@
 
 .get_auth_state_robust <- function(drv, max_attempts = 10, delay = 0.5) {
   for (i in seq_len(max_attempts)) {
-    auth_state <- drv$get_js(
+    auth_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
     )
 
@@ -89,10 +89,10 @@
   ui <- shiny::fluidPage(
     shinyOAuth::use_shinyOAuth(),
     shiny::h3("shinyOAuth + Keycloak (E2E introspection)"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::h4("Auth state"),
     shiny::verbatimTextOutput("auth_state"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::h4("User info"),
     shiny::verbatimTextOutput("user_info")
   )
@@ -104,34 +104,34 @@
       client
     )
 
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "has_token:",
-        !is.null(auth$token),
+        !is.null(auth[["token"]]),
         "error:",
-        if (!is.null(auth$error)) auth$error else "<none>",
+        if (!is.null(auth[["error"]])) auth[["error"]] else "<none>",
         "error_description:",
-        if (!is.null(auth$error_description)) {
-          auth$error_description
+        if (!is.null(auth[["error_description"]])) {
+          auth[["error_description"]]
         } else {
           "<none>"
         }
       )
     })
 
-    output$user_info <- shiny::renderText({
-      if (is.null(auth$token)) {
+    output[["user_info"]] <- shiny::renderText({
+      if (is.null(auth[["token"]])) {
         return("{}")
       }
-      jsonlite::toJSON(auth$token@userinfo, auto_unbox = TRUE, null = "null")
+      jsonlite::toJSON(auth[["token"]]@userinfo, auto_unbox = TRUE, null = "null")
     })
   }
 
   app <- shiny::shinyApp(ui, server)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app,
     name = sprintf("keycloak-e2e-introspection-%d", as.integer(app_port)),
     load_timeout = 15000,
@@ -145,10 +145,10 @@
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   # auto_redirect sends us to Keycloak automatically; wait for login page
-  drv$wait_for_js("document.querySelector('#kc-login')", timeout = 15000)
+  drv[["wait_for_js"]]("document.querySelector('#kc-login')", timeout = 15000)
 
   # Fill credentials & submit
-  drv$run_js(
+  drv[["run_js"]](
     "
     document.querySelector('#username').value = 'alice';
     document.querySelector('#password').value = 'alice';
@@ -157,7 +157,7 @@
   )
 
   # Wait for either success or error state
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
   (function () {
     var el = document.querySelector('#auth_state');
@@ -183,7 +183,7 @@
     auth_state = auth_state,
     authenticated = authenticated_flag,
     error_description = error_description,
-    user_info = drv$get_js(
+    user_info = drv[["get_js"]](
       "(function(){var el=document.querySelector('#user_info');return el?el.innerText:'';})()"
     )
   )
@@ -225,17 +225,17 @@ testthat::test_that("Shiny module E2E with login-time introspection succeeds", {
   )
 
   testthat::expect_true(
-    isTRUE(res$authenticated),
-    info = paste0("Login did not succeed. auth_state:\n", res$auth_state)
+    isTRUE(res[["authenticated"]]),
+    info = paste0("Login did not succeed. auth_state:\n", res[["auth_state"]])
   )
   testthat::expect_identical(
-    res$error_description,
+    res[["error_description"]],
     "<none>",
-    info = paste0("Login had error_description. auth_state:\n", res$auth_state)
+    info = paste0("Login had error_description. auth_state:\n", res[["auth_state"]])
   )
 
-  user_info <- jsonlite::fromJSON(res$user_info)
-  testthat::expect_identical(user_info$preferred_username, "alice")
+  user_info <- jsonlite::fromJSON(res[["user_info"]])
+  testthat::expect_identical(user_info[["preferred_username"]], "alice")
 })
 
 testthat::test_that("Shiny module E2E with introspection endpoint failing does not authenticate", {
@@ -281,11 +281,11 @@ testthat::test_that("Shiny module E2E with introspection endpoint failing does n
   )
 
   testthat::expect_false(
-    isTRUE(res$authenticated),
-    info = paste0("Unexpected success. auth_state:\n", res$auth_state)
+    isTRUE(res[["authenticated"]]),
+    info = paste0("Unexpected success. auth_state:\n", res[["auth_state"]])
   )
   testthat::expect_false(
-    identical(res$error_description, "<none>"),
+    identical(res[["error_description"]], "<none>"),
     info = "Expected an error_description when introspection fails"
   )
 })

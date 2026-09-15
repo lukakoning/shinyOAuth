@@ -39,9 +39,9 @@ testthat::test_that("audit hook options propagate to async workers with async se
   promise <- shinyOAuth:::async_dispatch(
     expr = quote({
       .ns <- asNamespace("shinyOAuth")
-      .ns$with_async_options(captured_opts, {
-        .ns$with_async_session_context(ctx, {
-          .ns$audit_event("test_async_worker")
+      .ns[["with_async_options"]](captured_opts, {
+        .ns[["with_async_session_context"]](ctx, {
+          .ns[["audit_event"]]("test_async_worker")
         })
         hook <- getOption("shinyOAuth.audit_hook")
         get("worker_events", envir = environment(hook), inherits = FALSE)
@@ -216,9 +216,9 @@ testthat::test_that("reused daemons clear stale options absent from capture", {
   check <- mirai::mirai(
     {
       .ns <- asNamespace("shinyOAuth")
-      during <- .ns$with_async_options(captured, {
+      during <- .ns[["with_async_options"]](captured, {
         list(
-          allow_redirect = .ns$allow_redirect(),
+          allow_redirect = .ns[["allow_redirect"]](),
           hook = getOption("shinyOAuth.audit_hook"),
           digest_key = getOption("shinyOAuth.audit_digest_key")
         )
@@ -236,16 +236,16 @@ testthat::test_that("reused daemons clear stale options absent from capture", {
     captured = captured
   )
   mirai::call_mirai(check)
-  result <- check$data
+  result <- check[["data"]]
 
-  testthat::expect_identical(result$process_id, poison$data)
-  testthat::expect_false(result$during$allow_redirect)
-  testthat::expect_null(result$during$hook)
-  testthat::expect_null(result$during$digest_key)
-  testthat::expect_true(result$restored$allow_redirect)
-  testthat::expect_true(result$restored$hook_is_function)
+  testthat::expect_identical(result[["process_id"]], poison[["data"]])
+  testthat::expect_false(result[["during"]][["allow_redirect"]])
+  testthat::expect_null(result[["during"]][["hook"]])
+  testthat::expect_null(result[["during"]][["digest_key"]])
+  testthat::expect_true(result[["restored"]][["allow_redirect"]])
+  testthat::expect_true(result[["restored"]][["hook_is_function"]])
   testthat::expect_identical(
-    result$restored$digest_key,
+    result[["restored"]][["digest_key"]],
     charToRaw(strrep("f", 32))
   )
 })
@@ -321,10 +321,10 @@ testthat::test_that("with_async_options disables otel when cache reset is unavai
   ))
 
   cache_state <- getFromNamespace("async_otel_cache_state", "shinyOAuth")
-  old_verified <- cache_state$verified_envvars
-  cache_state$verified_envvars <- NULL
+  old_verified <- cache_state[["verified_envvars"]]
+  cache_state[["verified_envvars"]] <- NULL
   withr::defer({
-    cache_state$verified_envvars <- old_verified
+    cache_state[["verified_envvars"]] <- old_verified
   })
 
   warned <- NULL
@@ -531,21 +531,21 @@ testthat::test_that("with_async_options clears cached otel providers after resto
 testthat::test_that("with_async_options restores captured digest key cache", {
   ns <- asNamespace("shinyOAuth")
   key_env <- get("audit_digest_key_env", envir = ns)
-  old_key <- key_env$key
+  old_key <- key_env[["key"]]
   on.exit(
     {
-      key_env$key <- old_key
+      key_env[["key"]] <- old_key
     },
     add = TRUE
   )
 
   withr::local_options(list(shinyOAuth.audit_digest_key = NULL))
-  key_env$key <- NULL
+  key_env[["key"]] <- NULL
 
   main_digest <- shinyOAuth:::string_digest("hello")
   captured <- shinyOAuth:::capture_async_options()
 
-  key_env$key <- NULL
+  key_env[["key"]] <- NULL
   worker_digest <- shinyOAuth:::with_async_options(captured, {
     get("string_digest", envir = asNamespace("shinyOAuth"))("hello")
   })
@@ -1006,8 +1006,8 @@ testthat::test_that("hook errors in async workers propagate to main process", {
   m <- shinyOAuth:::async_dispatch(
     expr = quote({
       .ns <- asNamespace("shinyOAuth")
-      .ns$with_async_options(captured_opts, {
-        .ns$audit_event("test_hook_error", context = list(a = 1))
+      .ns[["with_async_options"]](captured_opts, {
+        .ns[["audit_event"]]("test_hook_error", context = list(a = 1))
       })
       "done"
     }),
@@ -1156,8 +1156,8 @@ testthat::test_that("true-async: audit_hook takes precedence over trace_hook ali
   m <- shinyOAuth:::async_dispatch(
     expr = quote({
       .ns <- asNamespace("shinyOAuth")
-      .ns$with_async_options(captured_opts, {
-        .ns$emit_trace_event(list(type = "test_from_daemon"))
+      .ns[["with_async_options"]](captured_opts, {
+        .ns[["emit_trace_event"]](list(type = "test_from_daemon"))
       })
       "hook_test_done"
     }),
@@ -1232,8 +1232,8 @@ testthat::test_that("true-async: trace_hook alias captures conditions from daemo
   m <- shinyOAuth:::async_dispatch(
     expr = quote({
       .ns <- asNamespace("shinyOAuth")
-      .ns$with_async_options(captured_opts, {
-        .ns$emit_trace_event(list(type = "hook_condition_test"))
+      .ns[["with_async_options"]](captured_opts, {
+        .ns[["emit_trace_event"]](list(type = "hook_condition_test"))
       })
       "hook_conditions_done"
     }),

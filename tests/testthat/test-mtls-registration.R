@@ -40,9 +40,9 @@ test_that("oauth_client_mtls_registration derives subject DN metadata", {
 
   metadata <- shinyOAuth::oauth_client_mtls_registration(client)
 
-  expect_identical(metadata$token_endpoint_auth_method, "tls_client_auth")
+  expect_identical(metadata[["token_endpoint_auth_method"]], "tls_client_auth")
   expect_identical(
-    metadata$tls_client_auth_subject_dn,
+    metadata[["tls_client_auth_subject_dn"]],
     "CN=shiny-mtls-client,OU=Tests,O=shinyOAuth,L=Local,ST=NA,C=US"
   )
 })
@@ -72,13 +72,13 @@ test_that("oauth_client_mtls_registration supports explicit SAN identifiers", {
     metadata <- shinyOAuth::oauth_client_mtls_registration(
       client,
       tls_client_auth_type = identifier,
-      tls_client_auth_value = identifiers[[identifier]]$value
+      tls_client_auth_value = identifiers[[identifier]][["value"]]
     )
 
-    expect_identical(metadata$token_endpoint_auth_method, "tls_client_auth")
+    expect_identical(metadata[["token_endpoint_auth_method"]], "tls_client_auth")
     expect_identical(
-      metadata[[identifiers[[identifier]]$field]],
-      identifiers[[identifier]]$value
+      metadata[[identifiers[[identifier]][["field"]]]],
+      identifiers[[identifier]][["value"]]
     )
   }
 })
@@ -123,7 +123,7 @@ test_that("explicit mTLS identifiers are validated after normalization", {
       tls_client_auth_value = value
     )
     expect_identical(
-      metadata$tls_client_auth_san_ip,
+      metadata[["tls_client_auth_san_ip"]],
       if (grepl(":", value)) "2001:db8::1" else "192.0.2.10"
     )
   }
@@ -138,10 +138,10 @@ test_that("oauth_client_mtls_registration emits certificate-bound token intent",
 
   metadata <- shinyOAuth::oauth_client_mtls_registration(client)
 
-  expect_identical(metadata$token_endpoint_auth_method, "tls_client_auth")
-  expect_true(isTRUE(metadata$tls_client_certificate_bound_access_tokens))
+  expect_identical(metadata[["token_endpoint_auth_method"]], "tls_client_auth")
+  expect_true(isTRUE(metadata[["tls_client_certificate_bound_access_tokens"]]))
   expect_identical(
-    metadata$tls_client_auth_subject_dn,
+    metadata[["tls_client_auth_subject_dn"]],
     "CN=shiny-mtls-client,OU=Tests,O=shinyOAuth,L=Local,ST=NA,C=US"
   )
 })
@@ -155,8 +155,8 @@ test_that("oauth_client_mtls_registration supports public certificate-bound clie
 
   metadata <- shinyOAuth::oauth_client_mtls_registration(client)
 
-  expect_identical(metadata$token_endpoint_auth_method, "none")
-  expect_true(isTRUE(metadata$tls_client_certificate_bound_access_tokens))
+  expect_identical(metadata[["token_endpoint_auth_method"]], "none")
+  expect_true(isTRUE(metadata[["tls_client_certificate_bound_access_tokens"]]))
   expect_false(any(grepl("^tls_client_auth_", names(metadata))))
   expect_null(metadata[["jwks"]])
   expect_null(metadata[["jwks_uri"]])
@@ -268,15 +268,15 @@ test_that("oauth_client_mtls_registration builds inline self-signed jwks", {
   )))
 
   expect_identical(
-    metadata$token_endpoint_auth_method,
+    metadata[["token_endpoint_auth_method"]],
     "self_signed_tls_client_auth"
   )
-  expect_true(is.list(metadata$jwks))
-  expect_silent(shinyOAuth:::validate_jwks(metadata$jwks))
-  expect_identical(as.vector(metadata$jwks$keys[[1]]$x5c)[[1]], leaf_der_b64)
+  expect_true(is.list(metadata[["jwks"]]))
+  expect_silent(shinyOAuth:::validate_jwks(metadata[["jwks"]]))
+  expect_identical(as.vector(metadata[["jwks"]][["keys"]][[1]][["x5c"]])[[1]], leaf_der_b64)
   expect_match(encoded, '"x5c":\\[')
   expect_false(any(
-    names(metadata$jwks$keys[[1]]) %in%
+    names(metadata[["jwks"]][["keys"]][[1]]) %in%
       c(
         "d",
         "p",
@@ -299,10 +299,10 @@ test_that("oauth_client_mtls_registration supports self-signed jwks_uri", {
   )
 
   expect_identical(
-    metadata$token_endpoint_auth_method,
+    metadata[["token_endpoint_auth_method"]],
     "self_signed_tls_client_auth"
   )
-  expect_identical(metadata$jwks_uri, "https://example.com/jwks.json")
+  expect_identical(metadata[["jwks_uri"]], "https://example.com/jwks.json")
   expect_null(metadata[["jwks"]])
 })
 test_that("self-signed registration requires and retains a leaf-first chain", {
@@ -328,7 +328,7 @@ test_that("self-signed registration requires and retains a leaf-first chain", {
     character(1),
     USE.NAMES = FALSE
   )
-  expect_identical(as.vector(metadata$jwks$keys[[1]]$x5c), expected)
+  expect_identical(as.vector(metadata[["jwks"]][["keys"]][[1]][["x5c"]]), expected)
 })
 
 test_that("real certificates cannot have their SAN type inferred from text", {
@@ -346,7 +346,7 @@ test_that("real certificates cannot have their SAN type inferred from text", {
       tls_client_auth_type = "san_dns",
       tls_client_auth_value = "192.0.2.10"
     )
-    expect_identical(metadata$tls_client_auth_san_dns, "192.0.2.10")
-    expect_null(metadata$tls_client_auth_san_ip)
+    expect_identical(metadata[["tls_client_auth_san_dns"]], "192.0.2.10")
+    expect_null(metadata[["tls_client_auth_san_ip"]])
   }
 })

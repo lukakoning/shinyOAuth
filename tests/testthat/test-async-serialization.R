@@ -131,10 +131,10 @@ testthat::test_that("async login with non-serializable client falls back to sync
       indefinite_session = TRUE
     ),
     expr = {
-      testthat::expect_true(values$has_browser_token())
+      testthat::expect_true(values[["has_browser_token"]]())
 
       # Build the authorization URL and capture encoded state
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       enc <- parse_query_param(url, "state")
       testthat::expect_true(is.character(enc) && nzchar(enc))
 
@@ -154,20 +154,20 @@ testthat::test_that("async login with non-serializable client falls back to sync
         {
           # The fallback should produce a warning
           testthat::expect_warning(
-            values$.process_query(paste0("?code=ok&state=", enc)),
+            values[[".process_query"]](paste0("?code=ok&state=", enc)),
             class = "shinyOAuth_async_serialization_fallback"
           )
           # Sync fallback produces result immediately (no promise)
-          session$flushReact()
-          values$token
+          session[["flushReact"]]()
+          values[["token"]]
         }
       )
 
       testthat::expect_false(is.null(token))
       testthat::expect_identical(token@access_token, "t-sync-fallback")
       # Sync fallback should NOT set async flag
-      testthat::expect_false(isTRUE(values$last_login_async_used))
-      testthat::expect_true(isTRUE(values$authenticated))
+      testthat::expect_false(isTRUE(values[["last_login_async_used"]]))
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
     }
   )
 })
@@ -202,10 +202,10 @@ testthat::test_that("async login with serializable client still uses async path"
       indefinite_session = TRUE
     ),
     expr = {
-      testthat::expect_true(values$has_browser_token())
+      testthat::expect_true(values[["has_browser_token"]]())
 
       # Build the authorization URL and capture encoded state
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       enc <- parse_query_param(url, "state")
 
       # Normal async path should work (no warning)
@@ -219,15 +219,15 @@ testthat::test_that("async login with serializable client still uses async path"
         },
         .package = "shinyOAuth",
         {
-          values$.process_query(paste0("?code=ok&state=", enc))
-          poll_for_async(function() !is.null(values$token), session)
-          values$token
+          values[[".process_query"]](paste0("?code=ok&state=", enc))
+          poll_for_async(function() !is.null(values[["token"]]), session)
+          values[["token"]]
         }
       )
 
       testthat::expect_false(is.null(token))
       testthat::expect_identical(token@access_token, "t-async-ok")
-      testthat::expect_true(isTRUE(values$last_login_async_used))
+      testthat::expect_true(isTRUE(values[["last_login_async_used"]]))
     }
   )
 })

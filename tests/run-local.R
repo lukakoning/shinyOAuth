@@ -1,7 +1,7 @@
 # Run from the repository root: Rscript --vanilla tests/run-local.R [filter]
 # Select the TLS backend before pkgload/devtools can load curl. Setting this
 # inside testthat.R is too late for test_local()/devtools::test().
-if (.Platform$OS.type == "windows") {
+if (.Platform[["OS.type"]] == "windows") {
   Sys.setenv(CURL_SSL_BACKEND = "openssl")
 }
 args <- commandArgs(trailingOnly = TRUE)
@@ -13,7 +13,7 @@ dir.create(test_library)
 invisible(processx::run(
   file.path(
     R.home("bin"),
-    if (.Platform$OS.type == "windows") "R.exe" else "R"
+    if (.Platform[["OS.type"]] == "windows") "R.exe" else "R"
   ),
   c("CMD", "INSTALL", paste0("--library=", test_library), "."),
   echo = FALSE
@@ -40,7 +40,7 @@ results <- testthat::test_local(
   filter = if (length(args)) args[[1]] else NULL,
   stop_on_failure = TRUE
 )
-skipped <- sum(as.data.frame(results)$skipped)
+skipped <- sum(as.data.frame(results)[["skipped"]])
 if (skipped > 0L) {
   message(
     "Local suite skipped ",

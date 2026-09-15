@@ -63,9 +63,9 @@ ui <- oauth_ui(fluidPage(
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
 
-  output$greeting <- renderText({
-    req(auth$authenticated)
-    paste("Hello,", auth$token@userinfo$login)
+  output[["greeting"]] <- renderText({
+    req(auth[["authenticated"]])
+    paste("Hello,", auth[["token"]]@userinfo[["login"]])
   })
 }
 
@@ -83,7 +83,7 @@ the service's endpoint URLs and protocol settings; a provider helper such as
 `oauth_provider_github()` creates it. An `OAuthClient`, created with
 `oauth_client()`, holds your app's credentials, redirect URI, and requested
 scopes. After authentication, the module returns an `OAuthToken` as
-`auth$token`, containing tokens and available user information.
+`auth[["token"]]`, containing tokens and available user information.
 
 The **redirect URI**, also called the callback URL, is the address where the
 provider sends the browser back. Register it with the provider and use the
@@ -106,16 +106,16 @@ each user has their own login state.
 `auth` is a Shiny `reactiveValues` object. Read it inside `render*()`,
 `reactive()`, or `observe*()`, just as you would read other reactive values.
 
-- `auth$authenticated` tells you whether login passed the configured checks.
-- `auth$token@userinfo` contains the user's profile, when fetched. Fields
+- `auth[["authenticated"]]` tells you whether login passed the configured checks.
+- `auth[["token"]]@userinfo` contains the user's profile, when fetched. Fields
   depend on the provider: GitHub uses `login` for the username.
-- `auth$error` and `auth$error_description` describe a failed login. Show a
+- `auth[["error"]]` and `auth[["error_description"]]` describe a failed login. Show a
   simple message to users and use [audit logging](audit-logging.html) to investigate.
 
 The token is an S7 object: access its properties with `@`, as in
-`auth$token@userinfo`. See [`OAuthToken`](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html) for the available properties.
+`auth[["token"]]@userinfo`. See [`OAuthToken`](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html) for the available properties.
 
-Use `req(auth$authenticated)` before server code reads private data or performs
+Use `req(auth[["authenticated"]])` before server code reads private data or performs
 an action that requires login. Hiding a UI element alone does not protect the
 server code behind it. Your app must also check any access rules, such as
 which accounts or groups may view a report. A successful login by itself does
@@ -136,12 +136,12 @@ ui <- oauth_ui(fluidPage(
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client, auto_redirect = FALSE)
 
-  observeEvent(input$login, auth$request_login())
-  observeEvent(input$logout, auth$logout())
+  observeEvent(input[["login"]], auth[["request_login"]]())
+  observeEvent(input[["logout"]], auth[["logout"]]())
 
-  output$status <- renderText({
-    if (isTRUE(auth$authenticated)) {
-      paste("Signed in as", auth$token@userinfo$login)
+  output[["status"]] <- renderText({
+    if (isTRUE(auth[["authenticated"]])) {
+      paste("Signed in as", auth[["token"]]@userinfo[["login"]])
     } else {
       "You are signed out. Use Sign in to continue."
     }
@@ -149,7 +149,7 @@ server <- function(input, output, session) {
 }
 ```
 
-`auth$logout()` clears the app's local login and attempts to revoke its tokens
+`auth[["logout"]]()` clears the app's local login and attempts to revoke its tokens
 if the provider supports revocation. It does not sign the user out of their
 GitHub, Google, or other provider account. The provider may therefore remember
 them on their next visit.
@@ -161,12 +161,12 @@ user's access token. For example, add `tableOutput("repositories")` to the UI an
 output to `server()`:
 
 ```{r, eval = FALSE}
-output$repositories <- renderTable({
-  req(auth$authenticated)
+output[["repositories"]] <- renderTable({
+  req(auth[["authenticated"]])
 
   repos <- tryCatch({
     response <- perform_resource_req(
-      auth$token,
+      auth[["token"]],
       "https://api.github.com/user/repos",
       query = list(per_page = 10)
     )
@@ -189,7 +189,7 @@ request to `perform_resource_req()`. See the
 ### Additional token response fields
 
 Some providers return extra parameters alongside the access and ID tokens.
-Read these through `auth$token@extra_fields`, using the field names documented
+Read these through `auth[["token"]]@extra_fields`, using the field names documented
 by your provider.
 
 `extra_fields` contains only the additional parameters from the latest
@@ -203,9 +203,9 @@ For a provider that returns a parameter named `custom_field`:
 
 ```{r, eval = FALSE}
 # Inside reactive server code, after a successful login:
-token <- auth$token
-token@extra_fields$custom_field
-token@initial_extra_fields$custom_field
+token <- auth[["token"]]
+token@extra_fields[["custom_field"]]
+token@initial_extra_fields[["custom_field"]]
 
 # Distinguish an absent field from one explicitly returned as null.
 "custom_field" %in% names(token@extra_fields)
@@ -254,8 +254,8 @@ OpenID Connect (OIDC) is a login protocol: it supplies a signed **ID token**
 that shinyOAuth checks to identify the user. OAuth 2.0 grants permission to
 call APIs using an **access token**. GitHub and Spotify use OAuth without
 OIDC; their helpers fetch profile information through their own APIs. With
-OIDC, read validated identity details from `auth$token@id_token_claims` and
-check `auth$token@id_token_validated`. An access token alone is not proof of
+OIDC, read validated identity details from `auth[["token"]]@id_token_claims` and
+check `auth[["token"]]@id_token_validated`. An access token alone is not proof of
 identity. The [authentication guide](authentication-flow.html) explains more.
 
 For a local Keycloak server using HTTP, opt in before creating the provider:
@@ -299,8 +299,8 @@ client <- oauth_client(
   scopes = "read"
 )
 assessment <- check_oauth21(client)
-assessment$configuration_compliant
-assessment$checks
+assessment[["configuration_compliant"]]
+assessment[["checks"]]
 ```
 
 Choose credentials and endpoints to match your actual registration. Basic and
@@ -341,10 +341,10 @@ Applications choose how to use the result. For example, a deployment script
 may decide to block a known failure and separately flag unresolved prerequisites:
 
 ```{r, eval = FALSE}
-if (identical(assessment$configuration_compliant, FALSE)) {
+if (identical(assessment[["configuration_compliant"]], FALSE)) {
   stop("Resolve the mandatory configuration findings before deployment.")
 }
-if (is.na(assessment$configuration_compliant)) {
+if (is.na(assessment[["configuration_compliant"]])) {
   message("Review unresolved configuration prerequisites before deployment.")
 }
 ```
@@ -388,10 +388,10 @@ ui <- oauth_ui(fluidPage(
   actionButton("connect_b", "Connect B")
 ), clients = clients)
 server <- function(input, output, session) {
-  a <- oauth_module_server("auth_a", clients$auth_a, auto_redirect = FALSE)
-  b <- oauth_module_server("auth_b", clients$auth_b, auto_redirect = FALSE)
-  observeEvent(input$connect_a, a$request_login())
-  observeEvent(input$connect_b, b$request_login())
+  a <- oauth_module_server("auth_a", clients[["auth_a"]], auto_redirect = FALSE)
+  b <- oauth_module_server("auth_b", clients[["auth_b"]], auto_redirect = FALSE)
+  observeEvent(input[["connect_a"]], a[["request_login"]]())
+  observeEvent(input[["connect_b"]], b[["request_login"]]())
 }
 shinyApp(ui, server, uiPattern = ".*")
 ```
@@ -415,8 +415,8 @@ discovery, client registration settings, patient requests and EHR launch using
 the same manager.
 
 Additional token fields are already available server-side. For example,
-`a$token@initial_extra_fields$patient` reads an initial SMART patient value,
-while `a$token@extra_fields` contains only the latest successful response's
+`a[["token"]]@initial_extra_fields[["patient"]]` reads an initial SMART patient value,
+while `a[["token"]]@extra_fields` contains only the latest successful response's
 extras. Refresh may omit `patient`. Neither list is validated identity data or
 evidence of permission to read a resource. Ordinary clients do not infer SMART
 discovery, launch handling, scope equivalence, or a FHIR destination from these
@@ -452,10 +452,10 @@ client <- oauth_client(
 )
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
-  connection <- oauth_connection(client, reactive(auth$token))
+  connection <- oauth_connection(client, reactive(auth[["token"]]))
   records <- reactive({
-    req(connection$is_usable())
-    connection$request("records", "records", query = list(limit = 20)) |>
+    req(connection[["is_usable"]]())
+    connection[["request"]]("records", "records", query = list(limit = 20)) |>
       httr2::resp_body_json()
   })
 }
@@ -479,9 +479,9 @@ General URL options cannot relax this policy. These comparisons use URI origin
 and path rules from [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986.html).
 
 Optional permissions can produce a limited connection. Declare an operation's
-extra permissions with `$request(..., required_scopes = "write")`; the current
+extra permissions with `[["request"]](..., required_scopes = "write")`; the current
 grant must cover them. No generic mapping from API paths to OAuth scopes is
-assumed. `$summary()` contains the opaque connection ID, client label, local
+assumed. `[["summary"]]()` contains the opaque connection ID, client label, local
 status, expiry, and resource IDs. It excludes credentials and raw context.
 
 ## Asynchronous execution
@@ -552,7 +552,7 @@ Connect Cloud, use the app's direct URL as described in its
 The default configuration stores pending logins in one R process. If a login
 can start on one process and return to another, those processes need:
 
-- A shared `state_store` with an atomic `$take()` operation: reading and
+- A shared `state_store` with an atomic `[["take"]]()` operation: reading and
   deleting a pending login must happen as one indivisible operation.
 - The same secret `state_key`, so each process can read the encrypted login
   details. Supply at least 32 random bytes, stored in your deployment's secret manager.

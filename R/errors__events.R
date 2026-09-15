@@ -257,7 +257,7 @@ with_event_sink_warning_policy <- function(expr) {
 #' the configured audit hook. `trace_hook` intentionally remains supported only
 #' as an undocumented backward-compatible alias when `audit_hook` is unset.
 #' When both options are configured, `audit_hook` takes precedence. Native hook
-#' payloads expose `shiny_session$session_token_digest` by default; the raw
+#' payloads expose `shiny_session[["session_token_digest"]]` by default; the raw
 #' token requires an explicit opt-in. Used by `audit_event()` and direct
 #' internal event emitters.
 #'

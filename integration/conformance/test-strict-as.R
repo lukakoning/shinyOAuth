@@ -6,27 +6,27 @@ run_strict_as <- function(alg) {
   on.exit(unlink(root, recursive = TRUE), add = TRUE)
   signing_key <- openssl::rsa_keygen()
   writeLines(
-    openssl::write_pem(as.list(signing_key)$pubkey),
+    openssl::write_pem(as.list(signing_key)[["pubkey"]]),
     file.path(root, "registered.pem")
   )
-  server <- processx::process$new(
+  server <- processx::process[["new"]](
     python,
     c("strict_as.py", root, alg),
     stdout = "|",
     stderr = "|"
   )
-  on.exit(server$kill(), add = TRUE)
+  on.exit(server[["kill"]](), add = TRUE)
   deadline <- Sys.time() + 15
   ready <- character()
-  while (!length(ready) && server$is_alive() && Sys.time() < deadline) {
-    server$poll_io(100)
-    ready <- server$read_output_lines()
+  while (!length(ready) && server[["is_alive"]]() && Sys.time() < deadline) {
+    server[["poll_io"]](100)
+    ready <- server[["read_output_lines"]]()
   }
   if (!length(ready) || !startsWith(ready[[1]], "{")) {
-    server$wait(1000)
-    stop(paste(c(ready, server$read_all_error()), collapse = "\n"))
+    server[["wait"]](1000)
+    stop(paste(c(ready, server[["read_all_error"]]()), collapse = "\n"))
   }
-  issuer <- jsonlite::fromJSON(ready[[1]])$issuer
+  issuer <- jsonlite::fromJSON(ready[[1]])[["issuer"]]
   withr::local_envvar(CURL_CA_BUNDLE = file.path(root, "ca.pem"))
   withr::local_options(list(
     shinyOAuth.tls_min_version = "1.2",
@@ -64,10 +64,10 @@ run_strict_as <- function(alg) {
   browser <- strrep("ab", 64)
   get <- function(url) {
     if (is.list(url)) {
-      fields <- stats::setNames(lapply(url$fields, `[[`, "value"),
-        vapply(url$fields, `[[`, "", "name"))
-      testthat::expect_identical(url$method, "POST")
-      request <- do.call(httr2::req_body_form, c(list(httr2::request(url$url)), fields))
+      fields <- stats::setNames(lapply(url[["fields"]], `[[`, "value"),
+        vapply(url[["fields"]], `[[`, "", "name"))
+      testthat::expect_identical(url[["method"]], "POST")
+      request <- do.call(httr2::req_body_form, c(list(httr2::request(url[["url"]])), fields))
     } else request <- httr2::request(url)
     request |>
       httr2::req_options(
@@ -77,7 +77,7 @@ run_strict_as <- function(alg) {
       httr2::req_error(is_error = function(resp) FALSE) |>
       httr2::req_perform()
   }
-  query <- function(url) httr2::url_parse(url)$query
+  query <- function(url) httr2::url_parse(url)[["query"]]
   # Required signing is an AS policy, independently enforced before code issue.
   unsigned <- get(paste0(
     issuer,
@@ -90,11 +90,11 @@ run_strict_as <- function(alg) {
   ))
   testthat::expect_identical(httr2::resp_status(unsigned), 400L)
   testthat::expect_identical(
-    httr2::resp_body_json(unsigned)$reason,
+    httr2::resp_body_json(unsigned)[["reason"]],
     "signed_request_required"
   )
   url <- shinyOAuth::prepare_call(client, browser_token = browser)
-  original <- shinyOAuth:::parse_jwt_payload(query(url)$request)
+  original <- shinyOAuth:::parse_jwt_payload(query(url)[["request"]])
   for (field in c("iss", "aud", "exp")) {
     claims <- original
     claims[[field]] <- switch(
@@ -116,7 +116,7 @@ run_strict_as <- function(alg) {
     ))
     testthat::expect_identical(httr2::resp_status(response), 400L)
     testthat::expect_identical(
-      httr2::resp_body_json(response)$reason,
+      httr2::resp_body_json(response)[["reason"]],
       switch(
         field,
         iss = "jar_issuer",
@@ -128,7 +128,7 @@ run_strict_as <- function(alg) {
   first <- get(url)
   testthat::expect_identical(httr2::resp_status(first), 302L)
   replay <- get(url)
-  testthat::expect_identical(httr2::resp_body_json(replay)$reason, "jar_replay")
+  testthat::expect_identical(httr2::resp_body_json(replay)[["reason"]], "jar_replay")
 
   for (authorization_method in c("GET", "POST")) for (mode in c(
     "dpop",
@@ -195,7 +195,7 @@ run_strict_as <- function(alg) {
         context = list(operations = c("introspection", "revocation"))
       )
       testthat::expect_identical(
-        assessment$configuration_compliant,
+        assessment[["configuration_compliant"]],
         profile == "oauth21"
       )
     }
@@ -210,23 +210,23 @@ run_strict_as <- function(alg) {
     if (mode != "jarm" && !jwt_profile) {
       state <- shinyOAuth:::state_payload_decrypt_validate(
         configured,
-        callback$state
+        callback[["state"]]
       )
-      saved <- shinyOAuth:::state_store_get(configured, state$state)
+      saved <- shinyOAuth:::state_store_get(configured, state[["state"]])
       unbound <- httr2::request(paste0(issuer, "/token")) |>
         httr2::req_options(cainfo = file.path(root, "ca.pem")) |>
         httr2::req_body_form(
           grant_type = "authorization_code",
           client_id = "client",
-          code = callback$code,
+          code = callback[["code"]],
           redirect_uri = configured@redirect_uri,
-          code_verifier = saved$pkce_code_verifier
+          code_verifier = saved[["pkce_code_verifier"]]
         ) |>
         httr2::req_error(is_error = function(resp) FALSE) |>
         httr2::req_perform()
       testthat::expect_identical(httr2::resp_status(unbound), 400L)
       testthat::expect_identical(
-        httr2::resp_body_json(unbound)$reason,
+        httr2::resp_body_json(unbound)[["reason"]],
         if (grepl("dpop", mode)) "dpop_required" else "mtls_certificate"
       )
     }
@@ -236,20 +236,20 @@ run_strict_as <- function(alg) {
         shinyOAuth::oauth_module_server,
         args = list(id = "auth", client = configured, auto_redirect = FALSE),
         {
-          session$setInputs(shinyOAuth_sid = browser)
-          values$.process_query(paste0("?", httr2::url_query_build(callback)))
-          session$flushReact()
-          testthat::expect_null(values$error)
-          token <<- values$token
+          session[["setInputs"]](shinyOAuth_sid = browser)
+          values[[".process_query"]](paste0("?", httr2::url_query_build(callback)))
+          session[["flushReact"]]()
+          testthat::expect_null(values[["error"]])
+          token <<- values[["token"]]
         }
       )
     } else {
       token <- shinyOAuth:::handle_callback(
         configured,
-        code = callback$code,
-        payload = callback$state,
+        code = callback[["code"]],
+        payload = callback[["state"]],
         browser_token = browser,
-        iss = callback$iss
+        iss = callback[["iss"]]
       )
     }
     testthat::expect_true(
@@ -272,7 +272,7 @@ run_strict_as <- function(alg) {
           configured,
           refreshed,
           async = FALSE
-        )$active
+        )[["active"]]
       )
       testthat::expect_true(
         shinyOAuth::revoke_token(
@@ -280,14 +280,14 @@ run_strict_as <- function(alg) {
           refreshed,
           which = "access",
           async = FALSE
-        )$revoked
+        )[["revoked"]]
       )
       testthat::expect_false(
         shinyOAuth::introspect_token(
           configured,
           refreshed,
           async = FALSE
-        )$active
+        )[["active"]]
       )
     }
   }

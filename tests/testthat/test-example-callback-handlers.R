@@ -17,24 +17,24 @@ example_callback_request <- function(client, path = "/") {
 }
 
 expect_example_callback_bridge <- function(app, client, req) {
-  response <- app$httpHandler(req)
-  expect_identical(response$status, 303L, info = response$content)
-  expect_identical(response$headers[["Referrer-Policy"]], "no-referrer")
-  expect_identical(response$headers[["Cache-Control"]], "no-store")
-  expect_identical(response$headers[["Pragma"]], "no-cache")
-  location <- response$headers[["Location"]]
+  response <- app[["httpHandler"]](req)
+  expect_identical(response[["status"]], 303L, info = response[["content"]])
+  expect_identical(response[["headers"]][["Referrer-Policy"]], "no-referrer")
+  expect_identical(response[["headers"]][["Cache-Control"]], "no-store")
+  expect_identical(response[["headers"]][["Pragma"]], "no-cache")
+  location <- response[["headers"]][["Location"]]
   expect_match(location, "shinyOAuth_form_post=")
   expect_false(grepl(
     "example-code|code=|state=|<script",
-    paste(location, response$content)
+    paste(location, response[["content"]])
   ))
-  req$QUERY_STRING <- sub("^\\?", "", location)
-  page <- app$httpHandler(req)
-  expect_equal(page$status, 200L)
-  expect_identical(page$headers[["Referrer-Policy"]], "no-referrer")
-  expect_identical(page$headers[["Cache-Control"]], "no-store")
-  expect_identical(page$headers[["Pragma"]], "no-cache")
-  expect_match(page$content, "shinyOAuth.js", fixed = TRUE)
+  req[["QUERY_STRING"]] <- sub("^\\?", "", location)
+  page <- app[["httpHandler"]](req)
+  expect_equal(page[["status"]], 200L)
+  expect_identical(page[["headers"]][["Referrer-Policy"]], "no-referrer")
+  expect_identical(page[["headers"]][["Cache-Control"]], "no-store")
+  expect_identical(page[["headers"]][["Pragma"]], "no-cache")
+  expect_match(page[["content"]], "shinyOAuth.js", fixed = TRUE)
 }
 
 test_that("deployment apps bridge callbacks behind their configured public origin", {
@@ -47,27 +47,27 @@ test_that("deployment apps bridge callbacks behind their configured public origi
   ))
   for (file in c("gcp/app.R", "posit/app.R", "posit/app-auto-redirect.R")) {
     env <- new.env(parent = globalenv())
-    app <- source(file.path(root, "integration", file), local = env)$value
-    req <- example_callback_request(env$client)
+    app <- source(file.path(root, "integration", file), local = env)[["value"]]
+    req <- example_callback_request(env[["client"]])
     # The ingress terminates HTTPS and forwards HTTP. Public origin comes from
     # configuration, while the actual request path must still match.
-    req$HTTP_HOST <- "internal-service:8080"
-    expect_example_callback_bridge(app, env$client, req)
-    req$PATH_INFO <- "/other-route"
-    expect_gte(app$httpHandler(req)$status, 400L)
+    req[["HTTP_HOST"]] <- "internal-service:8080"
+    expect_example_callback_bridge(app, env[["client"]], req)
+    req[["PATH_INFO"]] <- "/other-route"
+    expect_gte(app[["httpHandler"]](req)[["status"]], 400L)
 
     for (invalid in c("", "not-a-uri")) {
       withr::with_envvar(c(OAUTH_REDIRECT_URI = invalid), {
         env <- new.env(parent = globalenv())
-        app <- source(file.path(root, "integration", file), local = env)$value
-        req$PATH_INFO <- "/"
-        req$QUERY_STRING <- ""
-        page <- app$httpHandler(req)
-        expect_equal(page$status, 200L)
-        expect_identical(page$headers[["Cache-Control"]], "no-store")
-        expect_identical(page$headers[["Referrer-Policy"]], "no-referrer")
-        req$QUERY_STRING <- "code=sample&state=sample"
-        expect_gte(app$httpHandler(req)$status, 400L)
+        app <- source(file.path(root, "integration", file), local = env)[["value"]]
+        req[["PATH_INFO"]] <- "/"
+        req[["QUERY_STRING"]] <- ""
+        page <- app[["httpHandler"]](req)
+        expect_equal(page[["status"]], 200L)
+        expect_identical(page[["headers"]][["Cache-Control"]], "no-store")
+        expect_identical(page[["headers"]][["Referrer-Policy"]], "no-referrer")
+        req[["QUERY_STRING"]] <- "code=sample&state=sample"
+        expect_gte(app[["httpHandler"]](req)[["status"]], 400L)
       })
     }
   }
@@ -83,15 +83,15 @@ test_that("playground query apps execute the callback bridge before rendering", 
     # local client. Provider discovery, daemons, and browser launching belong
     # to each example's manual setup and are not needed for the HTTP handler.
     env <- list2env(as.list(asNamespace("shiny")), parent = environment())
-    env$client <- make_test_client(use_nonce = FALSE)
+    env[["client"]] <- make_test_client(use_nonce = FALSE)
     path <- if (basename(file) == "example-keycloak-docker.R") {
       "/callback"
     } else {
       "/"
     }
-    env$client@redirect_uri <- paste0("http://localhost:8100", path)
-    env$otel_endpoint <- "http://localhost:4318"
-    env$useShinyjs <- function(...) htmltools::tagList()
+    env[["client"]]@redirect_uri <- paste0("http://localhost:8100", path)
+    env[["otel_endpoint"]] <- "http://localhost:4318"
+    env[["useShinyjs"]] <- function(...) htmltools::tagList()
     expressions <- parse(file)
     for (expr in expressions) {
       if (
@@ -118,7 +118,7 @@ test_that("playground query apps execute the callback bridge before rendering", 
     calls <- Filter(Negate(is.null), lapply(expressions, find_app))
     expect_length(calls, 1L)
     app <- eval(calls[[1]], env)
-    req <- example_callback_request(env$client, path)
-    expect_example_callback_bridge(app, env$client, req)
+    req <- example_callback_request(env[["client"]], path)
+    expect_example_callback_bridge(app, env[["client"]], req)
   }
 })

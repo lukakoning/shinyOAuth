@@ -1,5 +1,5 @@
 if (!exists("keycloak_skip_or_fail", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("strict integration mode turns infrastructure skips into failures", {
@@ -25,7 +25,7 @@ testthat::test_that("non-strict integration mode retains developer-friendly skip
 })
 
 testthat::test_that("occupied browser ports are never skipped", {
-  test_dir <- dirname(sys.frame(1)$ofile %||% ".")
+  test_dir <- dirname(sys.frame(1)[["ofile"]] %||% ".")
   test_files <- list.files(
     test_dir,
     pattern = "\\.[Rr]$",
@@ -63,54 +63,54 @@ testthat::test_that("occupied browser ports are never skipped", {
 
 testthat::test_that("AppDriver cleanup survives malformed worker IDs", {
   private <- new.env(parent = emptyenv())
-  private$shiny_worker_id <- character()
+  private[["shiny_worker_id"]] <- character()
 
   process <- new.env(parent = emptyenv())
-  process$alive <- TRUE
-  process$waited <- FALSE
-  process$is_alive <- function() process$alive
-  process$kill <- function() process$alive <- FALSE
-  process$wait <- function(timeout) {
-    process$waited <- TRUE
+  process[["alive"]] <- TRUE
+  process[["waited"]] <- FALSE
+  process[["is_alive"]] <- function() process[["alive"]]
+  process[["kill"]] <- function() process[["alive"]] <- FALSE
+  process[["wait"]] <- function(timeout) {
+    process[["waited"]] <- TRUE
     invisible(timeout)
   }
-  private$shiny_process <- process
+  private[["shiny_process"]] <- process
 
   enclosing <- new.env(parent = emptyenv())
-  enclosing$private <- private
+  enclosing[["private"]] <- private
   drv <- new.env(parent = emptyenv())
-  drv$.__enclos_env__ <- enclosing
-  drv$stop <- function() stop("simulated shinytest2 logging failure")
+  drv[[".__enclos_env__"]] <- enclosing
+  drv[["stop"]] <- function() stop("simulated shinytest2 logging failure")
 
   testthat::expect_silent(keycloak_stop_app_driver(drv))
-  testthat::expect_identical(private$shiny_worker_id, NA_character_)
-  testthat::expect_false(process$alive)
-  testthat::expect_true(process$waited)
+  testthat::expect_identical(private[["shiny_worker_id"]], NA_character_)
+  testthat::expect_false(process[["alive"]])
+  testthat::expect_true(process[["waited"]])
 })
 
 testthat::test_that("AppDriver cleanup retains the process handle while stopping", {
   private <- new.env(parent = emptyenv())
-  private$shiny_worker_id <- "worker-1"
+  private[["shiny_worker_id"]] <- "worker-1"
 
   process <- new.env(parent = emptyenv())
-  process$alive <- TRUE
-  process$waited <- FALSE
-  process$is_alive <- function() process$alive
-  process$kill <- function() process$alive <- FALSE
-  process$wait <- function(timeout) {
-    process$waited <- TRUE
+  process[["alive"]] <- TRUE
+  process[["waited"]] <- FALSE
+  process[["is_alive"]] <- function() process[["alive"]]
+  process[["kill"]] <- function() process[["alive"]] <- FALSE
+  process[["wait"]] <- function(timeout) {
+    process[["waited"]] <- TRUE
     invisible(timeout)
   }
-  private$shiny_process <- process
+  private[["shiny_process"]] <- process
 
   enclosing <- new.env(parent = emptyenv())
-  enclosing$private <- private
+  enclosing[["private"]] <- private
   drv <- new.env(parent = emptyenv())
-  drv$.__enclos_env__ <- enclosing
-  drv$stop <- function() private$shiny_process <- NULL
+  drv[[".__enclos_env__"]] <- enclosing
+  drv[["stop"]] <- function() private[["shiny_process"]] <- NULL
 
   testthat::expect_silent(keycloak_stop_app_driver(drv))
-  testthat::expect_null(private$shiny_process)
-  testthat::expect_false(process$alive)
-  testthat::expect_true(process$waited)
+  testthat::expect_null(private[["shiny_process"]])
+  testthat::expect_false(process[["alive"]])
+  testthat::expect_true(process[["waited"]])
 })

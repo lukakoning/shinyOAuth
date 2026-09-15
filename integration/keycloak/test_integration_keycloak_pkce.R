@@ -18,7 +18,7 @@
 ## covered by the *_browser*.R and *_e2e.R tests.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 make_provider <- function() {
@@ -39,17 +39,17 @@ testthat::test_that("Keycloak PKCE happy path (public client)", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       testthat::expect_true(is.character(url) && nzchar(url))
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
-      values$.process_query(callback_query(res))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res))
+      session[["flushReact"]]()
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -67,44 +67,44 @@ testthat::test_that("Keycloak PKCE unhappy path: missing code_verifier", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       state <- get_state_store_entry(client, url)
-      orig <- state$entry
+      orig <- state[["entry"]]
       testthat::expect_true(is.list(orig))
-      client@state_store$set(
-        key = state$info$key,
+      client@state_store[["set"]](
+        key = state[["info"]][["key"]],
         value = list(
-          browser_token = orig$browser_token,
+          browser_token = orig[["browser_token"]],
           pkce_code_verifier = NULL,
-          nonce = orig$nonce
+          nonce = orig[["nonce"]]
         )
       )
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
       query <- callback_query(res)
-      values$.process_query(query)
-      session$flushReact()
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "invalid_state")
-      testthat::expect_null(values$token)
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "invalid_state")
+      testthat::expect_null(values[["token"]])
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "Invalid OAuth state",
         fixed = TRUE
       )
       testthat::expect_null(
-        client@state_store$get(state$info$key, missing = NULL)
+        client@state_store[["get"]](state[["info"]][["key"]], missing = NULL)
       )
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )
@@ -121,11 +121,11 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       state <- get_state_store_entry(client, url)
-      orig <- state$entry
+      orig <- state[["entry"]]
       testthat::expect_true(is.list(orig))
-      new_ver <- orig$pkce_code_verifier
+      new_ver <- orig[["pkce_code_verifier"]]
       for (i in 1:5) {
         cand <- paste0(
           sample(c(letters, LETTERS, 0:9, '-', '_', '.', '~'), 64, TRUE),
@@ -136,40 +136,40 @@ testthat::test_that("Keycloak PKCE unhappy path: wrong code_verifier", {
           break
         }
       }
-      client@state_store$set(
-        key = state$info$key,
+      client@state_store[["set"]](
+        key = state[["info"]][["key"]],
         value = list(
-          browser_token = orig$browser_token,
+          browser_token = orig[["browser_token"]],
           pkce_code_verifier = new_ver,
-          nonce = orig$nonce
+          nonce = orig[["nonce"]]
         )
       )
       res <- perform_login_form(url, redirect_uri = client@redirect_uri)
       query <- callback_query(res)
-      values$.process_query(query)
-      session$flushReact()
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "token_exchange_error")
-      testthat::expect_null(values$token)
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "token_exchange_error")
+      testthat::expect_null(values[["token"]])
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "HTTP request failed",
         fixed = TRUE
       )
       testthat::expect_null(
-        client@state_store$get(state$info$key, missing = NULL)
+        client@state_store[["get"]](state[["info"]][["key"]], missing = NULL)
       )
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )

@@ -29,10 +29,10 @@ immutable_oauth_params <- function() {
 # Merge explicit overrides without creating ambiguous repeated protocol fields.
 merge_oauth_extra_params <- function(params, extra) {
   resolved <- oauth_extra_params_resolution(params, extra)
-  if (!is.null(resolved$problem)) {
-    err_config(resolved$problem)
+  if (!is.null(resolved[["problem"]])) {
+    err_config(resolved[["problem"]])
   }
-  resolved$params
+  resolved[["params"]]
 }
 
 # Token scope overrides need a dedicated model for the refresh-token grant,
@@ -295,7 +295,7 @@ inspect_auth_response_mode <- function(extra_auth_params) {
 #' Resolve the effective OAuthClient authorization response mode
 #'
 #' Merges the client-level `response_mode` with any provider
-#' `extra_auth_params$response_mode`, validates conflicts against advertised
+#' `extra_auth_params[["response_mode"]]`, validates conflicts against advertised
 #' provider support, and strips the provider-level `response_mode` from the
 #' returned auth params so request builders can add it exactly once when
 #' explicitly configured.

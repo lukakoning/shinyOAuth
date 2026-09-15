@@ -96,8 +96,8 @@ perform_raw_introspection_request <- function(client, token_value) {
     client = client,
     context = "introspect_token"
   )
-  req <- prepared$req
-  params <- prepared$params
+  req <- prepared[["req"]]
+  params <- prepared[["params"]]
 
   req <- shinyOAuth:::add_req_defaults(req)
   req <- shinyOAuth:::req_no_redirect(req)
@@ -152,9 +152,9 @@ testthat::test_that("client_secret_jwt: wrong client_secret is rejected (http_ e
   )
   raw_failure <- perform_raw_introspection_request(client, token_value)
 
-  testthat::expect_true(isTRUE(res$supported))
-  testthat::expect_true(is.na(res$active))
-  testthat::expect_identical(res$status, "http_401")
+  testthat::expect_true(isTRUE(res[["supported"]]))
+  testthat::expect_true(is.na(res[["active"]]))
+  testthat::expect_identical(res[["status"]], "http_401")
   expect_keycloak_auth_failure(raw_failure)
 })
 
@@ -184,9 +184,9 @@ testthat::test_that("client_secret_jwt: mismatched alg is rejected by server", {
   )
   raw_failure <- perform_raw_introspection_request(client, token_value)
 
-  testthat::expect_true(isTRUE(res$supported))
-  testthat::expect_true(is.na(res$active))
-  testthat::expect_identical(res$status, "http_401")
+  testthat::expect_true(isTRUE(res[["supported"]]))
+  testthat::expect_true(is.na(res[["active"]]))
+  testthat::expect_identical(res[["status"]], "http_401")
   expect_keycloak_auth_failure(raw_failure)
 })
 
@@ -217,9 +217,9 @@ testthat::test_that("private_key_jwt: wrong private key is rejected (http_ error
   )
   raw_failure <- perform_raw_introspection_request(client, token_value)
 
-  testthat::expect_true(isTRUE(res$supported))
-  testthat::expect_true(is.na(res$active))
-  testthat::expect_identical(res$status, "http_401")
+  testthat::expect_true(isTRUE(res[["supported"]]))
+  testthat::expect_true(is.na(res[["active"]]))
+  testthat::expect_identical(res[["status"]], "http_401")
   expect_keycloak_auth_failure(raw_failure)
 })
 

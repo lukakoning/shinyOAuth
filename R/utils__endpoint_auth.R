@@ -61,7 +61,7 @@ endpoint_auth_config_problem <- function(config) {
     if (
       "client_assertion_typ" %in%
         names(entry) &&
-        !valid_client_assertion_typ(entry$client_assertion_typ)
+        !valid_client_assertion_typ(entry[["client_assertion_typ"]])
     ) {
       return(paste0(
         "endpoint_auth$",
@@ -69,7 +69,7 @@ endpoint_auth_config_problem <- function(config) {
         "$client_assertion_typ must be a non-empty JWT media type"
       ))
     }
-    headers <- entry$extra_headers
+    headers <- entry[["extra_headers"]]
     if (
       !is.null(headers) &&
         (!is.character(headers) ||
@@ -119,7 +119,7 @@ endpoint_auth_metadata_problem <- function(metadata) {
         return("endpoint_auth_metadata values must be string vectors or NULL")
       }
     }
-    if ("none" %in% tolower(entry$signing_algs)) {
+    if ("none" %in% tolower(entry[["signing_algs"]])) {
       return("endpoint_auth_metadata signing algorithms must not include none")
     }
   }
@@ -157,7 +157,7 @@ discover_endpoint_auth_metadata <- function(disc) {
       }
     )
     if (endpoint == "revocation" && is.null(methods)) {
-      out[[endpoint]]$methods <- "client_secret_basic"
+      out[[endpoint]][["methods"]] <- "client_secret_basic"
     }
   }
   out
@@ -165,10 +165,10 @@ discover_endpoint_auth_metadata <- function(disc) {
 
 endpoint_auth_policy_digest <- function(config) {
   values <- lapply(config, function(entry) {
-    key <- entry$client_assertion_private_key
+    key <- entry[["client_assertion_private_key"]]
     if (!is.null(key)) {
-      entry$client_assertion_private_key <- openssl::write_pem(
-        normalize_private_key_input(key)$pubkey
+      entry[["client_assertion_private_key"]] <- openssl::write_pem(
+        normalize_private_key_input(key)[["pubkey"]]
       )
     }
     entry
@@ -182,9 +182,9 @@ resolve_endpoint_auth_method <- function(
   endpoint,
   override = list()
 ) {
-  methods <- provider@endpoint_auth_metadata[[endpoint]]$methods
+  methods <- provider@endpoint_auth_metadata[[endpoint]][["methods"]]
   style <- normalize_token_auth_style(
-    override$token_auth_style %||% provider@token_auth_style
+    override[["token_auth_style"]] %||% provider@token_auth_style
   )
   method <- switch(
     style,
@@ -195,11 +195,11 @@ resolve_endpoint_auth_method <- function(
   )
   if (length(methods) && !method %in% methods) {
     if (
-      is.null(override$token_auth_style) && "client_secret_basic" %in% methods
+      is.null(override[["token_auth_style"]]) && "client_secret_basic" %in% methods
     ) {
       style <- "header"
     } else if (
-      is.null(override$token_auth_style) && "client_secret_post" %in% methods
+      is.null(override[["token_auth_style"]]) && "client_secret_post" %in% methods
     ) {
       style <- "body"
     } else {
@@ -234,15 +234,15 @@ endpoint_auth_client <- function(client, endpoint) {
   }
   metadata <- provider@endpoint_auth_metadata[[endpoint]]
   method <- resolve_endpoint_auth_method(provider, endpoint, override)
-  if (!is.null(method$problem)) {
+  if (!is.null(method[["problem"]])) {
     err_config(paste0(
       "endpoint_auth$",
       endpoint,
       ": authentication method is not advertised"
     ))
   }
-  style <- method$style
-  headers <- override$extra_headers %||%
+  style <- method[["style"]]
+  headers <- override[["extra_headers"]] %||%
     if (endpoint == "token") {
       provider@extra_token_headers
     } else {
@@ -251,7 +251,7 @@ endpoint_auth_client <- function(client, endpoint) {
   algs <- if (endpoint %in% c("token", "par")) {
     provider@token_endpoint_auth_signing_alg_values_supported
   } else {
-    metadata$signing_algs %||% character()
+    metadata[["signing_algs"]] %||% character()
   }
   provider_changes <- list(
     token_auth_style = style,
@@ -266,13 +266,13 @@ endpoint_auth_client <- function(client, endpoint) {
   )]
   if (
     length(algs) &&
-      is.null(override$client_assertion_alg) &&
+      is.null(override[["client_assertion_alg"]]) &&
       !is_valid_string(client@client_assertion_alg) &&
       endpoint %in% c("introspection", "revocation")
   ) {
     preferred <- NA_character_
     compatible <- if (style == "client_secret_jwt") {
-      secret <- changes$client_secret %||% client@client_secret
+      secret <- changes[["client_secret"]] %||% client@client_secret
       Filter(
         function(alg) {
           alg %in%
@@ -283,7 +283,7 @@ endpoint_auth_client <- function(client, endpoint) {
       )
     } else if (style == "private_key_jwt") {
       key <- normalize_private_key_input(
-        changes$client_assertion_private_key %||%
+        changes[["client_assertion_private_key"]] %||%
           client@client_assertion_private_key
       )
       preferred <- choose_default_alg_for_private_key(key)
@@ -300,21 +300,21 @@ endpoint_auth_client <- function(client, endpoint) {
       }
       # Discovery lists capabilities, not a preference order. Preserve the
       # key's usual default when advertised, even as signing support expands.
-      changes$client_assertion_alg <- if (preferred %in% compatible) {
+      changes[["client_assertion_alg"]] <- if (preferred %in% compatible) {
         preferred
       } else {
         compatible[[1]]
       }
     }
   }
-  changes$provider <- provider
-  changes$endpoint_auth <- list()
+  changes[["provider"]] <- provider
+  changes[["endpoint_auth"]] <- list()
   if (client_uses_smart(client) && endpoint %in% c("introspection", "revocation")) {
     # SMART app-launch constraints govern the token endpoint. These temporary
     # authentication settings follow the separate endpoint's registration.
     # Request transport and response validation still use the original client.
     S7::validate(client)
-    changes$smart <- list()
+    changes[["smart"]] <- list()
   }
   S7::props(client) <- changes
   client

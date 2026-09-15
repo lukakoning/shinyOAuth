@@ -41,7 +41,7 @@ testthat::test_that("browser tests run only in Chrome-provisioned CI", {
   )
   testthat::expect_match(
     browser_test_text,
-    "chromote::ChromoteSession$new()",
+    'chromote::ChromoteSession[["new"]]()',
     fixed = TRUE
   )
   testthat::expect_match(
@@ -99,7 +99,7 @@ testthat::test_that("integration tests require a fresh successful install", {
   testthat::expect_match(runner_text, "error_on_status = FALSE", fixed = TRUE)
   testthat::expect_match(
     runner_text,
-    "if (!identical(install_result$status, 0L))",
+    'if (!identical(install_result[["status"]], 0L))',
     fixed = TRUE
   )
   testthat::expect_match(

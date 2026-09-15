@@ -90,7 +90,7 @@ mtls_thumbprint_cache_get <- function(cache_key) {
   if (!is_valid_string(cache_key)) {
     return(NULL)
   }
-  mtls_thumbprint_cache$get(cache_key, missing = NULL)
+  mtls_thumbprint_cache[["get"]](cache_key, missing = NULL)
 }
 
 #' Store an mTLS thumbprint in the cache
@@ -107,7 +107,7 @@ mtls_thumbprint_cache_set <- function(cache_key, thumbprint) {
     return(invisible(thumbprint))
   }
 
-  mtls_thumbprint_cache$set(cache_key, thumbprint)
+  mtls_thumbprint_cache[["set"]](cache_key, thumbprint)
   invisible(thumbprint)
 }
 
@@ -289,7 +289,7 @@ req_apply_mtls_client_certificate <- function(req, oauth_client) {
 # curl reports inactive alternatives in parentheses, e.g.
 # "(OpenSSL/3.5.0) Schannel". Only the active backend determines PEM support.
 validate_mtls_tls_backend <- function(
-  ssl_version = curl::curl_version()$ssl_version
+  ssl_version = curl::curl_version()[["ssl_version"]]
 ) {
   if (!mtls_pem_backend_supported(ssl_version)) {
     err_config(c(
@@ -304,7 +304,7 @@ validate_mtls_tls_backend <- function(
 }
 
 mtls_pem_backend_supported <- function(
-  ssl_version = curl::curl_version()$ssl_version
+  ssl_version = curl::curl_version()[["ssl_version"]]
 ) {
   active <- gsub("\\([^)]*\\)", "", ssl_version)
   !grepl("Schannel", active, ignore.case = TRUE)

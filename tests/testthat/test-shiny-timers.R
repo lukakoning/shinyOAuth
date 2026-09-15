@@ -1,5 +1,5 @@
 test_that("shiny_timer_delay_ms handles the integer boundary", {
-  max_ms <- as.double(.Machine$integer.max)
+  max_ms <- as.double(.Machine[["integer.max"]])
 
   expect_equal(
     shinyOAuth:::shiny_timer_delay_ms((max_ms - 1) / 1000),
@@ -12,7 +12,7 @@ test_that("shiny_timer_delay_ms handles the integer boundary", {
 })
 
 test_that("shiny_timer_delay_ms chunks long-lived durations", {
-  max_ms <- as.double(.Machine$integer.max)
+  max_ms <- as.double(.Machine[["integer.max"]])
 
   expect_equal(shinyOAuth:::shiny_timer_delay_ms(30 * 86400), max_ms)
   expect_equal(shinyOAuth:::shiny_timer_delay_ms(90 * 86400), max_ms)
@@ -34,13 +34,13 @@ test_that("oauth_module_server accepts multi-year token expiry", {
           refresh_proactively = FALSE
         ),
         expr = {
-          values$token <- OAuthToken(
+          values[["token"]] <- OAuthToken(
             access_token = "long-lived-token",
             expires_at = as.numeric(Sys.time()) + 20 * 365.25 * 86400
           )
-          session$flushReact()
+          session[["flushReact"]]()
 
-          testthat::expect_true(values$authenticated)
+          testthat::expect_true(values[["authenticated"]])
         }
       ),
       warning = function(w) {
