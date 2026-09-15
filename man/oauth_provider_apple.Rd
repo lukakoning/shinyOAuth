@@ -32,6 +32,9 @@ Read identity information from the validated ID token's claims. Apple has
 no userinfo endpoint, so \code{userinfo_required} is \code{FALSE}. The one-time
 \code{user} payload that Apple may send with a form POST callback is not mapped
 into \code{token@userinfo}; do not rely on this helper to retrieve that payload.
+Apple's documented \code{email_verified} strings (\code{"true"} and \code{"false"}) are
+normalized to logical values in validated claims after signature and issuer
+verification. Other providers retain the standard JSON Boolean requirement.
 }
 \examples{
 # Sign in with Apple requires an Apple Services ID, Team ID, key ID, and the

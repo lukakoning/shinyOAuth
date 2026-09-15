@@ -112,6 +112,67 @@ test_that("oauth_provider_apple returns valid OAuthProvider with expected defaul
   expect_true(p@id_token_validation)
 })
 
+test_that("Apple signed ID tokens accept only documented email verification values", {
+  mock_apple_discovery()
+  local_options(shinyOAuth.skip_id_sig = FALSE)
+  provider <- oauth_provider_apple()
+  client <- oauth_client(
+    provider,
+    client_id = "com.example.app",
+    client_secret = "secret",
+    redirect_uri = "https://app.example/callback",
+    response_mode = "form_post",
+    scopes = "openid email"
+  )
+  key <- openssl::read_key(mtls_pem_fixture("client-key.pem"))
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
+  jwk[["alg"]] <- "RS256"
+  local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)))
+  claims <- list(
+    iss = provider@issuer,
+    aud = client@client_id,
+    sub = "apple-user",
+    iat = as.numeric(Sys.time()),
+    exp = as.numeric(Sys.time()) + 120,
+    nonce = "nonce"
+  )
+  sign <- function(value, signing_key = key) {
+    payload <- c(claims, list(email_verified = value))
+    jose::jwt_encode_sig(do.call(jose::jwt_claim, payload), key = signing_key)
+  }
+  for (value in list(TRUE, FALSE, "true", "false")) {
+    result <- validate_id_token(client, sign(value), expected_nonce = "nonce")
+    expect_identical(
+      result[["email_verified"]],
+      identical(value, TRUE) || identical(value, "true")
+    )
+  }
+  for (value in list("TRUE", "False", "yes", 1, list("true"))) {
+    expect_error(
+      validate_id_token(client, sign(value), expected_nonce = "nonce"),
+      "JSON Boolean",
+      class = "shinyOAuth_id_token_error"
+    )
+  }
+  expect_error(
+    validate_id_token(
+      client,
+      sign("true", openssl::rsa_keygen(2048)),
+      expected_nonce = "nonce"
+    ),
+    class = "shinyOAuth_id_token_error"
+  )
+  client@provider@issuer <- "https://other.example"
+  claims[["iss"]] <- "https://other.example"
+  expect_error(
+    validate_id_token(client, sign("true"), expected_nonce = "nonce"),
+    "JSON Boolean"
+  )
+})
+
 test_that("oauth_provider_apple allows custom name", {
   mock_apple_discovery()
 

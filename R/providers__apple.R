@@ -27,6 +27,9 @@
 #' no userinfo endpoint, so `userinfo_required` is `FALSE`. The one-time
 #' `user` payload that Apple may send with a form POST callback is not mapped
 #' into `token@userinfo`; do not rely on this helper to retrieve that payload.
+#' Apple's documented `email_verified` strings (`"true"` and `"false"`) are
+#' normalized to logical values in validated claims after signature and issuer
+#' verification. Other providers retain the standard JSON Boolean requirement.
 #'
 #' @param name Optional provider name (default "apple")
 #'
