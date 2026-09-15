@@ -3338,8 +3338,11 @@ compare_refresh_id_token_continuity <- function(
     }
   }
   if (
-    !is.null(new_payload[["nonce"]]) &&
-      !identical(new_payload[["nonce"]], original_nonce)
+    "nonce" %in% names(new_payload) &&
+      (!is.character(new_payload[["nonce"]]) ||
+       length(new_payload[["nonce"]]) != 1L ||
+       is.na(new_payload[["nonce"]]) ||
+       !identical(new_payload[["nonce"]], original_nonce))
   ) {
     err_id_token(
       "Refresh returned an ID token with nonce that does not match the original (OIDC 12.2)"
