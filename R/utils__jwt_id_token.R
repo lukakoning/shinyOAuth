@@ -226,7 +226,7 @@ validate_id_token <- function(
         )
       }
 
-      keys <- filter_jwks_for_alg(keys, alg)
+      keys <- filter_jwks_for_alg(keys, alg, allowed_algs)
       keys <- filter_microsoft_jwks_for_token_issuer(
         keys,
         provider_issuer = issuer,
@@ -255,7 +255,7 @@ validate_id_token <- function(
             kid = kid,
             pins = pins
           )
-          keys <- filter_jwks_for_alg(keys, alg)
+          keys <- filter_jwks_for_alg(keys, alg, allowed_algs)
           keys <- filter_microsoft_jwks_for_token_issuer(
             keys,
             provider_issuer = issuer,

@@ -692,7 +692,7 @@ decode_userinfo_jwt <- function(
     kid = kid,
     pins = prov@jwks_pins %||% character()
   )
-  keys <- filter_jwks_for_alg(keys, alg)
+  keys <- filter_jwks_for_alg(keys, alg, asymmetric_algs)
   did_force_refresh <- FALSE
 
   # One-shot JWKS refresh-on-kid-miss: if kid is present but no candidate keys
@@ -737,7 +737,7 @@ decode_userinfo_jwt <- function(
           kid = kid,
           pins = prov@jwks_pins %||% character()
         )
-        keys <- filter_jwks_for_alg(keys, alg)
+        keys <- filter_jwks_for_alg(keys, alg, asymmetric_algs)
       }
     }
   }
@@ -765,7 +765,7 @@ decode_userinfo_jwt <- function(
         kid = kid,
         pins = prov@jwks_pins %||% character()
       )
-      keys <- filter_jwks_for_alg(keys, alg)
+      keys <- filter_jwks_for_alg(keys, alg, asymmetric_algs)
       verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
     }
   }

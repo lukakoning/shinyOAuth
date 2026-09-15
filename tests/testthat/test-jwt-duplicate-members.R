@@ -39,7 +39,7 @@ duplicate_userinfo_response <- function(cli, jwt_body, verify_payload = FALSE) {
   if (isTRUE(verify_payload)) {
     bindings[["fetch_jwks"]] <- function(...) list(keys = list("dummy"))
     bindings[["select_candidate_jwks"]] <- function(...) list("dummy")
-    bindings[["filter_jwks_for_alg"]] <- function(keys, alg) keys
+    bindings[["filter_jwks_for_alg"]] <- function(keys, alg, allowed_algs) keys
     bindings[["jwk_to_pubkey"]] <- function(jwk) "dummy"
     bindings[["verify_jws_signature_no_time"]] <- function(jwt, key, alg) TRUE
   }

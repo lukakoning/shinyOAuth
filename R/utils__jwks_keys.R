@@ -214,10 +214,17 @@ select_candidate_jwks <- function(
 #'
 #' @param keys Candidate JWK list.
 #' @param alg JWT algorithm name.
+#' @param allowed_algs Trusted algorithm policy for this token context. An
+#'   unlabelled RSA key uses the sole permitted RSA algorithm, or RS256 when
+#'   several are permitted. The JWT header never selects this binding.
 #' @return Filtered key list.
 #' @keywords internal
 #' @noRd
-filter_jwks_for_alg <- function(keys, alg) {
+filter_jwks_for_alg <- function(
+  keys,
+  alg,
+  allowed_algs = c("RS256", "ES256", "ES384", "ES512", "Ed25519", "EdDSA")
+) {
   if (!is.list(keys) || length(keys) == 0L) {
     return(list())
   }
@@ -230,7 +237,19 @@ filter_jwks_for_alg <- function(keys, alg) {
   Filter(
     function(k) {
       ka <- k[["alg"]] %||% NULL
-      is.null(ka) || (is_valid_string(ka) && identical(ka, alg))
+      if (!is.null(ka)) {
+        return(is_valid_string(ka) && identical(ka, alg))
+      }
+      # RSA keys support several distinct hashes. Bind bare keys using only
+      # trusted policy, never the unverified header (RFC 8725 section 3.1).
+      # EC curves select one supported algorithm; EdDSA with Ed25519 is the
+      # legacy spelling of the same operation as the Ed25519 algorithm.
+      if (identical(k[["kty"]], "RSA")) {
+        permitted <- intersect(allowed_algs, c("RS256", "RS384", "RS512"))
+        bound <- if (length(permitted) == 1L) permitted else "RS256"
+        return(bound %in% permitted && identical(alg, bound))
+      }
+      TRUE
     },
     keys
   )

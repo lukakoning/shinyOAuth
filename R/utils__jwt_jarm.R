@@ -254,7 +254,11 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
       pins = prov@jwks_pins %||% character()
     )
   }
-  keys <- filter_jwks_for_alg(keys, alg)
+  keys <- filter_jwks_for_alg(
+    keys,
+    alg,
+    resolve_authorization_response_signing_alg(oauth_client)
+  )
 
   verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
   if (is.null(verified_key) && !isTRUE(did_force_refresh)) {
@@ -272,7 +276,11 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
         kid = kid,
         pins = prov@jwks_pins %||% character()
       )
-      keys <- filter_jwks_for_alg(keys, alg)
+      keys <- filter_jwks_for_alg(
+        keys,
+        alg,
+        resolve_authorization_response_signing_alg(oauth_client)
+      )
       verified_key <- verify_jwt_with_jwks(jwt_str, keys, alg)
     }
   }

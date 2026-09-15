@@ -207,6 +207,7 @@
 #'   Discovery negotiates this independently against UserInfo metadata. Use a
 #'   single algorithm to enforce the client's registered UserInfo signing choice.
 #'   An empty vector rejects all signed UserInfo algorithms.
+#'   Unlabelled RSA keys follow the same binding policy as `allowed_algs`.
 #' @param allowed_algs Optional vector of allowed JWT algorithms for ID tokens.
 #'   Use to restrict acceptable `alg` values on a per-provider basis. Supported
 #'   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
@@ -217,6 +218,12 @@
 #'   verification via the option `options(shinyOAuth.allow_hs = TRUE)`.
 #'   Defaults to `c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")`,
 #'   which intentionally excludes HS*.
+#'   Each RSA verification key is bound to one algorithm: its JWK `alg`, if
+#'   supplied, or the sole RSA algorithm in this allowlist. When several RSA
+#'   algorithms are allowed, an unlabelled key is bound to `RS256` (and rejected
+#'   if `RS256` is excluded). To use unlabelled keys with `RS384` or `RS512`,
+#'   configure only that RSA algorithm. EC curves already select one supported
+#'   algorithm; legacy `EdDSA` with an Ed25519 key uses the Ed25519 operation.
 #'   Only include `HS*` if you are certain the `client_secret` is stored strictly
 #'   server-side and is never shipped to, or derivable by, the browser or other
 #'   untrusted environments.

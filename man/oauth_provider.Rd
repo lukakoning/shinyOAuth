@@ -261,6 +261,12 @@ require that you supply a \code{client_secret} and explicitly enable HMAC
 verification via the option \code{options(shinyOAuth.allow_hs = TRUE)}.
 Defaults to \code{c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")},
 which intentionally excludes HS*.
+Each RSA verification key is bound to one algorithm: its JWK \code{alg}, if
+supplied, or the sole RSA algorithm in this allowlist. When several RSA
+algorithms are allowed, an unlabelled key is bound to \code{RS256} (and rejected
+if \code{RS256} is excluded). To use unlabelled keys with \code{RS384} or \code{RS512},
+configure only that RSA algorithm. EC curves already select one supported
+algorithm; legacy \code{EdDSA} with an Ed25519 key uses the Ed25519 operation.
 Only include \verb{HS*} if you are certain the \code{client_secret} is stored strictly
 server-side and is never shipped to, or derivable by, the browser or other
 untrusted environments.}
@@ -269,7 +275,8 @@ untrusted environments.}
 JWTs. \code{NULL} inherits \code{allowed_algs} for manually configured providers.
 Discovery negotiates this independently against UserInfo metadata. Use a
 single algorithm to enforce the client's registered UserInfo signing choice.
-An empty vector rejects all signed UserInfo algorithms.}
+An empty vector rejects all signed UserInfo algorithms.
+Unlabelled RSA keys follow the same binding policy as \code{allowed_algs}.}
 
 \item{allowed_token_types}{Character vector of acceptable OAuth token types
 returned by the token endpoint (case-insensitive). Successful token

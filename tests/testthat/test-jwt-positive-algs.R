@@ -180,11 +180,11 @@ test_that("validate_id_token rejects a signed lowercase alg", {
       shinyOAuth:::validate_id_token(client, token)
     ),
     class = "shinyOAuth_id_token_error",
-    regexp = "Unsupported JWT alg: rs256"
+    regexp = "Unsupported JWT alg"
   )
 })
 
-test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
+test_that("unlabelled RSA keys use a trusted algorithm binding", {
   testthat::skip_if_not_installed("jose")
 
   rsa <- openssl::rsa_keygen(bits = 2048)
@@ -212,7 +212,7 @@ test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
     redirect_uri = paste0(base, "/cb")
   )
 
-  for (alg in c("RS384", "RS512")) {
+  for (alg in c("RS256", "RS384", "RS512")) {
     now <- as.numeric(Sys.time())
     claims <- list(
       iss = base,
@@ -228,7 +228,7 @@ test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
       kid = pub_jwk[["kid"]]
     )
 
-    expect_silent(testthat::with_mocked_bindings(
+    testthat::with_mocked_bindings(
       fetch_jwks = function(
         issuer,
         jwks_cache,
@@ -248,8 +248,27 @@ test_that("validate_id_token accepts valid RS384 and RS512 JWTs", {
             paste("Local jose::jwt_decode_sig failed for", alg)
           )
         }
-        shinyOAuth:::validate_id_token(cli, id_token)
+        cli@provider@allowed_algs <- c("RS256", "RS384", "RS512")
+        if (identical(alg, "RS256")) {
+          expect_silent(shinyOAuth:::validate_id_token(cli, id_token))
+        } else {
+          expect_error(
+            shinyOAuth:::validate_id_token(cli, id_token),
+            class = "shinyOAuth_id_token_error"
+          )
+        }
+        cli@provider@allowed_algs <- alg
+        expect_silent(shinyOAuth:::validate_id_token(cli, id_token))
+        cli@provider@allowed_algs <- c("RS256", "RS384", "RS512")
+        pub_jwk[["alg"]] <- alg
+        expect_silent(shinyOAuth:::validate_id_token(cli, id_token))
+        pub_jwk[["alg"]] <- setdiff(c("RS256", "RS384", "RS512"), alg)[[1]]
+        expect_error(
+          shinyOAuth:::validate_id_token(cli, id_token),
+          class = "shinyOAuth_id_token_error"
+        )
+        pub_jwk[["alg"]] <- NULL
       }
-    ))
+    )
   }
 })
