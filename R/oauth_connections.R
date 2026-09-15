@@ -939,11 +939,28 @@ connection_manager_controller <- function(manager, session) {
       succeed(result)
     }
   }
-  cleanup_records <- function(previous, revoke) {
+  cleanup_records <- function(previous, revoke, reason = "disconnect", batch = FALSE) {
+    # Local removal has already committed. Record it even when remote cleanup
+    # cannot finish; never expose credentials, raw owner IDs or connection IDs.
+    trace_id <- resolve_trace_id(NULL)
+    owner_digest <- string_digest(owner$id)
+    if (batch) on.exit(audit_event("connections_disconnected", context = list(
+      owner_digest = owner_digest, connection_count = sum(!vapply(previous, is.null, logical(1))),
+      retention = manager$retention, reason = reason, local_outcome = "disconnected",
+      revoke_requested = revoke
+    ), trace_id = trace_id), add = TRUE)
     deadline <- as.numeric(Sys.time()) + 10
     lapply(previous, function(record) {
       remote <- "not_requested"
+      if (!is.null(record)) on.exit(audit_event("connection_disconnected", context = list(
+        owner_digest = owner_digest, connection_id_digest = string_digest(record$id),
+        retention = manager$retention, reason = reason, local_outcome = "disconnected",
+        revoke_requested = revoke,
+        remote_refresh_outcome = if (is.list(remote)) remote$refresh else remote,
+        remote_access_outcome = if (is.list(remote)) remote$access else remote
+      ), trace_id = trace_id), add = TRUE)
       if (revoke && !is.null(record)) {
+        remote <- list(refresh = "not_attempted", access = "not_attempted")
         opened <- tryCatch(
           connection_credentials_open(
             record$sealed,
@@ -996,7 +1013,7 @@ connection_manager_controller <- function(manager, session) {
     cancel_owner_pending()
     previous <- store$disconnect_owner(owner$id)
     signal()
-    cleanup_records(previous, revoke)
+    cleanup_records(previous, revoke, reason = "disconnect_all", batch = TRUE)
   }
   logout <- function(revoke = TRUE) {
     connection_manager_flag(revoke, "revoke")
@@ -1009,7 +1026,7 @@ connection_manager_controller <- function(manager, session) {
     cancel_owner_pending()
     previous <- store$disconnect_owner(owner$id)
     signal()
-    cleanup_records(previous, revoke)
+    cleanup_records(previous, revoke, reason = "logout", batch = TRUE)
   }
   end <- function() {
     if (ended) return(invisible(NULL))
@@ -1019,8 +1036,9 @@ connection_manager_controller <- function(manager, session) {
     rm(list = ls(launch_queue, all.names = TRUE), envir = launch_queue)
     if (manager$retention == "shiny") {
       mark_cleanup(FALSE)
-      store$disconnect_owner(owner$id)
+      previous <- store$disconnect_owner(owner$id)
       signal()
+      cleanup_records(previous, FALSE, reason = "session_end", batch = TRUE)
     }
     invisible(NULL)
   }

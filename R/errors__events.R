@@ -34,6 +34,8 @@ audit_event_registry <- function() {
     "login_success",
     "login_failed",
     "logout",
+    "connection_disconnected",
+    "connections_disconnected",
     "session_cleared",
     "token_revocation",
     "refresh_failed_but_kept_session",
