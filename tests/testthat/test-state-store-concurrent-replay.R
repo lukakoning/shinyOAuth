@@ -5,11 +5,9 @@
 # sharing a backend, and that non-atomic shared stores correctly error
 # (fail closed).
 
-# -- Helper: file-backed store with atomic [["take"]]() via file.rename() ---------
-#
-# file.rename() is atomic on POSIX and effectively atomic on NTFS, making this
-# a simple but realistic simulation of atomic consume semantics (like Redis
-# GETDEL or SQL DELETE ... RETURNING).
+# Test-only shared store: atomic directory creation elects one consumer.
+# A barrier makes both callback handlers read the pending record before either
+# can consume it. Claim directories remain until the test directory is removed.
 
 make_shared_atomic_store <- function(dir) {
   if (!dir.exists(dir)) {
@@ -17,12 +15,21 @@ make_shared_atomic_store <- function(dir) {
   }
 
   key_path <- function(key) file.path(dir, paste0(key, ".rds"))
-  taken_path <- function(key) file.path(dir, paste0(key, ".taken"))
-
   list(
     get = function(key, missing = NULL) {
       f <- key_path(key)
-      if (file.exists(f)) readRDS(f) else missing
+      value <- if (file.exists(f)) readRDS(f) else missing
+      if (file.exists(file.path(dir, "barrier"))) {
+        file.create(file.path(dir, paste0("ready.", Sys.getpid())))
+        deadline <- Sys.time() + 15
+        while (length(list.files(dir, pattern = "^ready\\.")) < 2L) {
+          if (Sys.time() > deadline) {
+            stop("Callback race barrier timed out")
+          }
+          Sys.sleep(0.01)
+        }
+      }
+      value
     },
     set = function(key, value) {
       saveRDS(value, key_path(key))
@@ -34,11 +41,9 @@ make_shared_atomic_store <- function(dir) {
     },
     take = function(key, missing = NULL) {
       f <- key_path(key)
-      t <- taken_path(key)
-      # Atomic: rename the file so only one process can succeed
-      if (file.rename(f, t)) {
-        on.exit(unlink(t), add = TRUE)
-        readRDS(t)
+      if (dir.create(paste0(f, ".claimed"), showWarnings = FALSE)) {
+        on.exit(unlink(f), add = TRUE)
+        if (file.exists(f)) readRDS(f) else missing
       } else {
         missing
       }
@@ -48,66 +53,111 @@ make_shared_atomic_store <- function(dir) {
 }
 
 
-# -- Test: concurrent [["take"]]() across parallel workers -----------------------
+# -- Test: real concurrent callbacks across parallel workers --------------------
 
-test_that("atomic $take() prevents concurrent replay across parallel workers", {
+test_that("concurrent callbacks consume shared state and exchange the code once", {
   skip_on_cran()
-  skip_if(
-    identical(.Platform[["OS.type"]], "windows"),
-    "file.rename() not reliably atomic on Windows"
-  )
-
+  app <- webfakes::new_app()
+  app[["locals"]][["exchanges"]] <- 0L
+  app[["post"]]("/token", function(req, res) {
+    app[["locals"]][["exchanges"]] <- app[["locals"]][["exchanges"]] + 1L
+    res[["send_json"]](
+      list(
+        access_token = "access",
+        token_type = "Bearer",
+        expires_in = 300
+      ),
+      auto_unbox = TRUE
+    )
+  })
+  app[["get"]]("/count", function(req, res) {
+    res[["send_json"]](app[["locals"]][["exchanges"]], auto_unbox = TRUE)
+  })
+  server <- webfakes::new_app_process(app)
+  on.exit(server[["stop"]](), add = TRUE)
   tmp <- withr::local_tempdir()
   store <- make_shared_atomic_store(tmp)
-
-  state <- "CONCURRENT-TAKE"
+  make_client <- function(store, url) {
+    shinyOAuth::oauth_client(
+      shinyOAuth::oauth_provider(
+        name = "callback-race",
+        auth_url = paste0(url, "/auth"),
+        token_url = paste0(url, "/token")
+      ),
+      client_id = "client",
+      client_secret = "secret",
+      redirect_uri = "http://localhost:8100",
+      state_store = store,
+      state_key = paste(rep("test-state-key", 5), collapse = "")
+    )
+  }
+  url <- sub("/$", "", server[["url"]]())
+  client <- make_client(store, url)
+  browser_token <- paste(rep("ab", 64), collapse = "")
+  auth_url <- shinyOAuth:::prepare_call(client, browser_token = browser_token)
+  payload <- shiny::parseQueryString(sub("^[^?]*\\?", "", auth_url))[["state"]]
+  state <- shinyOAuth:::state_decrypt_gcm(payload, key = client@state_key)[[
+    "state"
+  ]]
   key <- shinyOAuth:::state_cache_key(state)
-  ssv <- list(
-    browser_token = "bt_conc",
-    pkce_code_verifier = "cv",
-    nonce = "nn"
-  )
-  store[["set"]](key, ssv)
-
-  # Verify the entry exists before the race
-  expect_false(is.null(store[["get"]](key, missing = NULL)))
-
-  # Spin up a 2-worker cluster; each worker attempts to [["take"]]() the same key
+  expect_type(store[["get"]](key), "list")
   cl <- parallel::makePSOCKcluster(2)
   on.exit(parallel::stopCluster(cl), add = TRUE)
-
+  parallel::clusterCall(cl, function(lib) .libPaths(lib), .libPaths())
+  file.create(file.path(tmp, "barrier"))
   results <- parallel::parLapply(
     cl,
     seq_len(2),
-    function(i, dir, key) {
-      # Reconstruct the store inside the worker (closures don't serialize)
-      key_path <- function(k) file.path(dir, paste0(k, ".rds"))
-      # Per-worker unique taken path to avoid destination collision
-      taken_path <- function(k) {
-        file.path(dir, paste0(k, ".taken.", Sys.getpid()))
-      }
-
-      f <- key_path(key)
-      t <- taken_path(key)
-      if (file.rename(f, t)) {
-        val <- tryCatch(readRDS(t), error = function(e) NULL)
-        unlink(t)
-        list(success = TRUE, value = val)
-      } else {
-        list(success = FALSE, value = NULL)
-      }
+    function(i, dir, url, make_store, make_client, payload, browser_token) {
+      options(
+        shinyOAuth.skip_browser_token = FALSE,
+        shinyOAuth.allow_non_atomic_state_store = FALSE
+      )
+      tryCatch(
+        {
+          token <- shinyOAuth::handle_callback(
+            make_client(make_store(dir), url),
+            code = "authorization-code",
+            payload = payload,
+            browser_token = browser_token
+          )
+          list(success = TRUE, access_token = token@access_token)
+        },
+        error = function(e) {
+          list(success = FALSE, class = class(e), message = conditionMessage(e))
+        }
+      )
     },
     dir = tmp,
-    key = key
+    url = url,
+    make_store = make_shared_atomic_store,
+    make_client = make_client,
+    payload = payload,
+    browser_token = browser_token
   )
-
-  # Exactly one worker should have succeeded
   successes <- vapply(results, function(r) isTRUE(r[["success"]]), logical(1))
-  expect_equal(sum(successes), 1L)
-
-  # The winning worker should have the correct value
-  winner <- results[[which(successes)]]
-  expect_equal(winner[["value"]][["browser_token"]], "bt_conc")
+  expect_equal(
+    sum(successes),
+    1L,
+    info = paste(capture.output(str(results)), collapse = "\n")
+  )
+  expect_length(list.files(tmp, pattern = "^ready\\."), 2L)
+  if (sum(successes) == 1L) {
+    expect_identical(results[[which(successes)]][["access_token"]], "access")
+    expect_contains(
+      results[[which(!successes)]][["class"]],
+      "shinyOAuth_state_error"
+    )
+  }
+  expect_equal(
+    httr2::resp_body_json(httr2::req_perform(httr2::request(paste0(
+      url,
+      "/count"
+    )))),
+    1L
+  )
+  unlink(file.path(tmp, "barrier"))
+  expect_null(store[["get"]](key))
 })
 
 

@@ -143,7 +143,7 @@ testthat::test_that("Concurrent flows: parallel sessions with same client config
   )
 })
 
-testthat::test_that("Concurrent flows: alice and bob login simultaneously without interference", {
+testthat::test_that("Concurrent flows: independent alice and bob logins accept sequential callbacks", {
   skip_common()
   local_test_options()
 
