@@ -72,6 +72,7 @@ testthat::test_that("otel_event_severity maps event types correctly", {
     "audit_callback_iss_missing",
     "audit_callback_iss_mismatch",
     "audit_callback_query_rejected",
+    "audit_callback_routing_rejected",
     "audit_refresh_failed_but_kept_session",
     "audit_state_parse_failure",
     "audit_state_store_lookup_failed",
