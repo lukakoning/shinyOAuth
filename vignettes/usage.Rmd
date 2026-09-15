@@ -276,7 +276,7 @@ shinyOAuth supports configurable OAuth 2.0 behavior and an optional assessment
 of the authorization-code/refresh client role against
 [OAuth 2.1 draft 16](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16),
 published 3 September 2026. This is an Internet-Draft, not a published RFC.
-`check_oauth21()` currently implements only that revision, with ruleset `1.0.0`.
+`check_oauth21()` currently implements only that revision, with ruleset `1.1.0`.
 It makes no network requests, creates no login state and never enables automatic
 enforcement. Existing provider examples and applications remain usable.
 
