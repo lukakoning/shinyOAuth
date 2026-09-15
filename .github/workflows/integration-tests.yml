@@ -108,8 +108,9 @@ jobs:
         with:
           name: keycloak-logs
           path: |
-            integration/keycloak/.generated/**
+            integration/keycloak/.generated/keycloak-compose.log
             integration/keycloak/_snaps/**
+          include-hidden-files: true
           if-no-files-found: ignore
 
       - name: Upload sanitized retained-connection evidence
