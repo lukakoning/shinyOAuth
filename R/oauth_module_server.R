@@ -4835,7 +4835,8 @@ oauth_callback_route <- function(uri) {
   scheme <- tolower(scalar_component(parsed[["scheme"]]))
   hostname <- tolower(scalar_component(parsed[["hostname"]]))
   port <- scalar_component(parsed[["port"]])
-  path <- scalar_component(parsed[["path"]])
+  # Preserve escaped reserved characters: /cb%2Fa and /cb/a are distinct routes.
+  path <- url_raw_path(uri)
   if (!nzchar(scheme) || !nzchar(hostname)) {
     return(NULL)
   }
