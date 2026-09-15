@@ -144,6 +144,7 @@ authorization_singleton_params <- function() {
     "nonce",
     "code_challenge",
     "code_challenge_method",
+    "dpop_jkt",
     "response_mode",
     "request",
     "request_uri",
