@@ -118,7 +118,9 @@ test_that("confirmation diagnostics hide values and reject malformed SHA-256 enc
       seen <- NULL
       local_options(
         shinyOAuth.expose_error_body = expose,
-        shinyOAuth.audit_hook = function(event) seen <<- event
+        shinyOAuth.audit_hook = function(event) {
+          seen <<- event
+        }
       )
       error <- tryCatch(
         validate_token_cnf_consistency(

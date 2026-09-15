@@ -25,10 +25,12 @@ test_that("SMART property edits retain transport and discovery host policy", {
     S7::prop(provider, field) <- "https://outside.example/endpoint"
     expect_error(client@provider <- provider, "outside endpoint_hosts")
   }
-  expect_no_error(
+  expect_no_error({
     client@provider@token_url <- "https://ehr.example/another-token"
-  )
-  expect_no_error(client@redirect_uri <- "https://another-app.example/callback")
+  })
+  expect_no_error({
+    client@redirect_uri <- "https://another-app.example/callback"
+  })
   site <- smart_client_fixture()
   site[["allow_http_loopback"]] <- TRUE
   site[["endpoint_hosts"]] <- c("ehr.example", "localhost")
@@ -38,7 +40,9 @@ test_that("SMART property edits retain transport and discovery host policy", {
     "http://localhost/callback",
     scopes = "user/Patient.r"
   )
-  expect_no_error(dev@provider@token_url <- "http://localhost/token")
+  expect_no_error({
+    dev@provider@token_url <- "http://localhost/token"
+  })
 })
 
 test_that("SMART scope edits retain app launch and advertised capabilities", {
@@ -62,7 +66,9 @@ test_that("SMART scope edits retain app launch and advertised capabilities", {
   )) {
     expect_error(client@scopes <- scope, "SMART|Standalone|capability|Identity")
   }
-  expect_no_error(client@scopes <- c("launch/patient", "patient/Patient.r"))
+  expect_no_error({
+    client@scopes <- c("launch/patient", "patient/Patient.r")
+  })
   ehr <- smart_client(
     site,
     "example",
@@ -72,7 +78,9 @@ test_that("SMART scope edits retain app launch and advertised capabilities", {
     launch = "ehr"
   )
   expect_error(ehr@scopes <- "user/Patient.r", "require launch scope")
-  expect_no_error(ehr@scopes <- c("launch", "user/Observation.r"))
+  expect_no_error({
+    ehr@scopes <- c("launch", "user/Observation.r")
+  })
   site[["metadata"]][["capabilities"]] <- as.list(setdiff(
     unlist(site[["metadata"]][["capabilities"]]),
     "permission-v1"
@@ -174,7 +182,9 @@ test_that("SMART rejects claims through property edits and restored configuratio
       )
 
       ordinary <- make_test_client(scopes = "openid")
-      expect_no_error(ordinary@claims <- value)
+      expect_no_error({
+        ordinary@claims <- value
+      })
       prepared <- prepare_call(ordinary, valid_browser_token())
       fields <- decode_form_pairs(url_raw_query(prepared), "test")
       expect_identical(

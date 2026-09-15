@@ -92,8 +92,8 @@ test_that("SMART retains benign fixed queries and ordinary OAuth extension handl
     expect_null(fields[["launch"]])
   }
   ordinary <- make_test_client()
-  expect_no_error(
+  expect_no_error({
     ordinary@provider@auth_url <- "https://example.com/authorize?aud=extension&launch=extension"
-  )
+  })
   expect_no_error(prepare_call(ordinary, valid_browser_token()))
 })

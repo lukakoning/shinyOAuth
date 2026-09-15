@@ -30,7 +30,9 @@ for (base in c("/", "/app/")) {
           sent <- NULL
           work <- new.env(parent = emptyenv())
           local_mocked_bindings(
-            send_oauth_module_redirect = function(session, url) sent <<- url,
+            send_oauth_module_redirect = function(session, url) {
+              sent <<- url
+            },
             async_dispatch = function(expr, args, ...) {
               work[["args"]] <- args
               promises::promise(function(resolve, reject) {

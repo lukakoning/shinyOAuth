@@ -191,7 +191,9 @@ for (rotate in c(FALSE, TRUE)) {
       ) {
         seen <<- c(seen, token@refresh_token)
         if (length(seen) == 1L) {
-          promises::promise(function(resolve, reject) finish <<- resolve)
+          promises::promise(function(resolve, reject) {
+            finish <<- resolve
+          })
         } else {
           manager_test_token("b-refreshed", "shared")
         }
@@ -216,8 +218,12 @@ for (rotate in c(FALSE, TRUE)) {
           })
           promises::then(
             ctl[["refresh"]](b, async = TRUE),
-            function(value) done_b <<- value,
-            function(error) done_b <<- error
+            function(value) {
+              done_b <<- value
+            },
+            function(error) {
+              done_b <<- error
+            }
           )
           expect_length(seen, 1L)
           expect_identical(ctl[["read"]](b)[["status"]], "active")
@@ -336,7 +342,9 @@ test_that("abandoned shared refreshes invalidate aliases before another dispatch
   f <- manager_test_fixture()
   finish <- NULL
   local_mocked_bindings(refresh_token = function(...) {
-    promises::promise(function(resolve, reject) finish <<- resolve)
+    promises::promise(function(resolve, reject) {
+      finish <<- resolve
+    })
   })
   shiny::testServer(
     session = manager_test_session(manager_test_cookie(f)),
@@ -371,7 +379,9 @@ for (revoke in c(FALSE, TRUE)) {
       finish <- NULL
       local_mocked_bindings(
         refresh_token_impl = function(...) {
-          promises::promise(function(resolve, reject) finish <<- resolve)
+          promises::promise(function(resolve, reject) {
+            finish <<- resolve
+          })
         },
         revoke_token = function(...) list(supported = TRUE, revoked = TRUE)
       )
@@ -386,8 +396,12 @@ for (revoke in c(FALSE, TRUE)) {
           completed <- NULL
           promises::then(
             ctl[["refresh"]](a, async = TRUE),
-            function(value) completed <<- value,
-            function(error) completed <<- error
+            function(value) {
+              completed <<- value
+            },
+            function(error) {
+              completed <<- error
+            }
           )
           # An authorization accepted while the request is pending is an alias too.
           late <- manager_test_accept(ctl)

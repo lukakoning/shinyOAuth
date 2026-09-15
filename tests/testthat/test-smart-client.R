@@ -239,7 +239,9 @@ test_that("SMART online refresh permission requires EHR launch", {
   )
   ordinary <- client
   S7::props(ordinary) <- list(smart = list(), scope_policy = list())
-  expect_no_error(ordinary@scopes <- c(ordinary@scopes, "online_access"))
+  expect_no_error({
+    ordinary@scopes <- c(ordinary@scopes, "online_access")
+  })
   site[["metadata"]][["capabilities"]] <- as.list(setdiff(
     unlist(site[["metadata"]][["capabilities"]]),
     "permission-online"
@@ -294,7 +296,9 @@ test_that("SMART asymmetric registration chooses explicit SHA-384 signing", {
     client@client_assertion_private_key_kid <- NA_character_,
     "SMART asymmetric"
   )
-  expect_no_error(client@client_assertion_audience <- client@provider@token_url)
+  expect_no_error({
+    client@client_assertion_audience <- client@provider@token_url
+  })
   provider <- client@provider
   provider@token_endpoint_auth_signing_alg_values_supported <- c(
     "RS256",
@@ -316,15 +320,21 @@ test_that("SMART asymmetric registration chooses explicit SHA-384 signing", {
   )
   ordinary <- client
   S7::props(ordinary) <- list(smart = list(), scope_policy = list())
-  expect_no_error(ordinary@client_assertion_typ <- "client-authentication+jwt")
-  expect_no_error(ordinary@client_assertion_audience <- "https://ehr.example")
-  expect_no_error(
+  expect_no_error({
+    ordinary@client_assertion_typ <- "client-authentication+jwt"
+  })
+  expect_no_error({
+    ordinary@client_assertion_audience <- "https://ehr.example"
+  })
+  expect_no_error({
     S7::props(ordinary) <- list(
       provider = provider,
       client_assertion_alg = "RS256"
     )
-  )
-  expect_no_error(ordinary@client_assertion_private_key_kid <- NA_character_)
+  })
+  expect_no_error({
+    ordinary@client_assertion_private_key_kid <- NA_character_
+  })
 })
 
 test_that("SMART token authentication constraints leave other endpoints independent", {
@@ -350,8 +360,12 @@ test_that("SMART token authentication constraints leave other endpoints independ
   )
   ordinary <- client
   S7::props(ordinary) <- list(smart = list(), scope_policy = list())
-  expect_no_error(ordinary@provider@token_auth_style <- "body")
-  expect_no_error(ordinary@provider@token_auth_style <- "client_secret_jwt")
+  expect_no_error({
+    ordinary@provider@token_auth_style <- "body"
+  })
+  expect_no_error({
+    ordinary@provider@token_auth_style <- "client_secret_jwt"
+  })
   client@provider@revocation_url <- "https://ehr.example/revoke"
   client@endpoint_auth <- list(revocation = list(token_auth_style = "body"))
   seen <- NULL

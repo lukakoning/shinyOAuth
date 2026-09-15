@@ -592,7 +592,9 @@ test_that("different pending scope requests cannot join one refresh flight", {
   client <- narrowing_client()
   token <- narrowing_token()
   finish <- NULL
-  deferred <- promises::promise(function(resolve, reject) finish <<- resolve)
+  deferred <- promises::promise(function(resolve, reject) {
+    finish <<- resolve
+  })
   local_mocked_bindings(refresh_token_impl = function(...) deferred)
   request <- refresh_scope_request(client, token, "read")
   p <- refresh_token_dispatch(
@@ -622,7 +624,9 @@ test_that("different pending scope requests cannot join one refresh flight", {
   expect_error(refresh_token(client, token, async = TRUE), "different")
   finish(narrowing_token("read"))
   done <- FALSE
-  promises::then(p, function(...) done <<- TRUE)
+  promises::then(p, function(...) {
+    done <<- TRUE
+  })
   poll_for_async(function() done)
   expect_true(done)
 })
@@ -633,7 +637,9 @@ test_that("disconnect prevents a pending narrowed grant from being installed", {
   revoked <- 0L
   local_mocked_bindings(
     refresh_token_dispatch = function(...) {
-      promises::promise(function(resolve, reject) finish <<- resolve)
+      promises::promise(function(resolve, reject) {
+        finish <<- resolve
+      })
     },
     revoke_token = function(...) {
       revoked <<- revoked + 1L
@@ -650,7 +656,9 @@ test_that("disconnect prevents a pending narrowed grant from being installed", {
       failure <- NULL
       promises::catch(
         controller[["refresh"]](id, async = TRUE, scopes = "read"),
-        function(error) failure <<- error
+        function(error) {
+          failure <<- error
+        }
       )
       expect_identical(controller[["read"]](id)[["status"]], "refreshing")
       controller[["disconnect"]](id, FALSE)

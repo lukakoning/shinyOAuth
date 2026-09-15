@@ -90,7 +90,9 @@ test_that("queued automatic refreshes recheck the cooldown after asynchronous fa
   reject_refresh <- NULL
   local_mocked_bindings(refresh_token_impl = function(...) {
     calls <<- calls + 1L
-    promises::promise(function(resolve, reject) reject_refresh <<- reject)
+    promises::promise(function(resolve, reject) {
+      reject_refresh <<- reject
+    })
   })
   shiny::testServer(
     session = manager_test_session(manager_test_cookie(f)),
@@ -103,12 +105,18 @@ test_that("queued automatic refreshes recheck the cooldown after asynchronous fa
       failed <- resumed <- NULL
       promises::catch(
         ctl[["refresh"]](a, async = TRUE, touch = FALSE),
-        function(e) failed <<- e
+        function(e) {
+          failed <<- e
+        }
       )
       promises::then(
         ctl[["refresh"]](b, async = TRUE, touch = FALSE),
-        function(value) resumed <<- value,
-        function(e) resumed <<- e
+        function(value) {
+          resumed <<- value
+        },
+        function(e) {
+          resumed <<- e
+        }
       )
       reject_refresh(refresh_outcome_error(
         simpleError("provider unavailable"),
