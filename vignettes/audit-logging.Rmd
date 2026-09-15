@@ -295,6 +295,27 @@ the high-level audit events.
 - When: `auth$logout()` is called on the module
 - Context: `provider`, `issuer`, `client_id_digest`, `reason` (default `manual_logout`)
 
+#### Event: `audit_connection_disconnected`
+
+Emitted once for each retained connection removed locally, after bounded remote
+cleanup. It is emitted even when revocation is disabled or fails. Context includes
+`owner_digest`, `connection_id_digest`, `retention`, `reason`, `local_outcome`,
+`revoke_requested`, `remote_refresh_outcome`, and `remote_access_outcome`.
+Reasons are `disconnect`, `disconnect_all`, `logout`, or `session_end`.
+Identifiers use the configured audit digest policy; credentials and raw identities
+are excluded. Remote outcomes describe the revocation attempt, not proof that the
+authorization server previously recognized a token.
+
+#### Event: `audit_connections_disconnected`
+
+Summarizes a completed local bulk removal, including an empty batch, with
+`owner_digest`, `connection_count`, `retention`, `reason`, `local_outcome`, and
+`revoke_requested`. Per-connection events describe remote outcomes. This event
+also covers logout and removal of session-only connections at session end;
+ending a Shiny session does not remove browser- or account-retained connections.
+The batch and per-connection events share a trace ID and are available to both
+the native audit hook and OpenTelemetry. Existing module logout events remain.
+
 #### Event: `audit_session_cleared`
 
 - When: the module clears the token reactively
