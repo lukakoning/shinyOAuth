@@ -15,20 +15,20 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
   callbacks <- paste0(origin, "/callback/", sites)
   clients <- lapply(sites, function(site) {
     registration <- registrations[[site]]
-    args <- list(discovery = shinyOAuth::smart_discover(registration$fhir_base),
-      client_id = registration$client_id, redirect_uri = paste0(origin, "/callback/", site),
+    args <- list(discovery = shinyOAuth::smart_discover(registration[["fhir_base"]]),
+      client_id = registration[["client_id"]], redirect_uri = paste0(origin, "/callback/", site),
       scopes = c(if (launch == "standalone") "launch/patient", "patient/Patient.rs",
-        paste0("user/", registration$user_type, ".r"), "offline_access", extra_scopes),
-      required_scopes = c("patient/Patient.r", paste0("user/", registration$user_type, ".r")),
+        paste0("user/", registration[["user_type"]], ".r"), "offline_access", extra_scopes),
+      required_scopes = c("patient/Patient.r", paste0("user/", registration[["user_type"]], ".r")),
       launch = launch, identity = "fhirUser", label = paste("Site", site),
-      token_auth_style = registration$style, authorization_method = authorization_method,
+      token_auth_style = registration[["style"]], authorization_method = authorization_method,
       authorization_server_mode = if (length(sites) > 1L) "multi_redirect_uri" else "single",
       authorization_server_redirect_uris = if (length(sites) > 1L) callbacks else character())
-    if (registration$style == "header") args$client_secret <- registration$secret
-    if (registration$style == "private_key_jwt") {
-      args$client_assertion_private_key <- openssl::read_key(registration$private_pem)
-      args$client_assertion_private_key_kid <- registration$kid
-      args$client_assertion_alg <- registration$algorithm
+    if (registration[["style"]] == "header") args[["client_secret"]] <- registration[["secret"]]
+    if (registration[["style"]] == "private_key_jwt") {
+      args[["client_assertion_private_key"]] <- openssl::read_key(registration[["private_pem"]])
+      args[["client_assertion_private_key_kid"]] <- registration[["kid"]]
+      args[["client_assertion_alg"]] <- registration[["algorithm"]]
     }
     do.call(shinyOAuth::smart_client, args)
   })
@@ -50,9 +50,9 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
     result <- shiny::reactiveVal("ready")
     revision <- shiny::reactiveVal(0L)
     connection <- function(site) {
-      rows <- Filter(function(row) identical(row$client_label, paste("Site", site)), health$connections())
+      rows <- Filter(function(row) identical(row[["client_label"]], paste("Site", site)), health[["connections"]]())
       if (length(rows) != 1L) stop("Connection unavailable")
-      health$connection(rows[[1L]]$connection_id)
+      health[["connection"]](rows[[1L]][["connection_id"]])
     }
     perform <- function(action, fn) {
       finish <- function(ok) {
@@ -67,41 +67,41 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
     for (site in sites) local({
       selected <- site
       expected <- registrations[[selected]]
-      shiny::observeEvent(input[[paste0("connect_", selected)]], health$connect(selected))
+      shiny::observeEvent(input[[paste0("connect_", selected)]], health[["connect"]](selected))
       shiny::observeEvent(input[[paste0("read_", selected)]], perform(paste0("read_", selected), function() {
         conn <- connection(selected)
         context <- shinyOAuth::smart_context(conn)
         body <- httr2::resp_body_json(shinyOAuth::smart_patient(conn))
-        stopifnot(identical(body$resourceType, "Patient"), identical(body$id, expected$patient),
-          identical(context$patient, expected$patient))
-        if (!is.null(expected$encounter)) stopifnot(identical(context$encounter, expected$encounter))
+        stopifnot(identical(body[["resourceType"]], "Patient"), identical(body[["id"]], expected[["patient"]]),
+          identical(context[["patient"]], expected[["patient"]]))
+        if (!is.null(expected[["encounter"]])) stopifnot(identical(context[["encounter"]], expected[["encounter"]]))
         TRUE
       }))
       shiny::observeEvent(input[[paste0("user_", selected)]], perform(paste0("user_", selected), function() {
         body <- httr2::resp_body_json(shinyOAuth::smart_fhir_user(connection(selected)))
-        stopifnot(identical(body$resourceType, expected$user_type), identical(body$id, expected$user_id))
-        if (expected$user_type != "Patient") stopifnot(!identical(body$id, expected$patient))
+        stopifnot(identical(body[["resourceType"]], expected[["user_type"]]), identical(body[["id"]], expected[["user_id"]]))
+        if (expected[["user_type"]] != "Patient") stopifnot(!identical(body[["id"]], expected[["patient"]]))
         TRUE
       }))
       shiny::observeEvent(input[[paste0("refresh_", selected)]],
-        perform(paste0("refresh_", selected), function() connection(selected)$refresh()))
+        perform(paste0("refresh_", selected), function() connection(selected)[["refresh"]]()))
       shiny::observeEvent(input[[paste0("search_", selected)]], perform(paste0("search_", selected), function() {
-        response <- connection(selected)$request("fhir", "Patient", required_scopes = "patient/Patient.s")
+        response <- connection(selected)[["request"]]("fhir", "Patient", required_scopes = "patient/Patient.s")
         body <- httr2::resp_body_json(response)
-        stopifnot(identical(body$resourceType, "Bundle"), identical(body$type, "searchset"))
+        stopifnot(identical(body[["resourceType"]], "Bundle"), identical(body[["type"]], "searchset"))
         TRUE
       }))
       shiny::observeEvent(input[[paste0("disconnect_", selected)]],
-        health$disconnect(connection(selected)$summary()$connection_id, revoke = FALSE))
+        health[["disconnect"]](connection(selected)[["summary"]]()[["connection_id"]], revoke = FALSE))
     })
     limited <- c("patient/Patient.r", "user/Practitioner.r", "offline_access", "openid", "fhirUser")
-    shiny::observeEvent(input$narrow_a, perform("narrow_a", function() connection("a")$refresh(scopes = limited)))
-    shiny::observeEvent(input$widen_a,
-      perform("widen_a", function() connection("a")$refresh(scopes = c(limited, "patient/Patient.s"))))
-    shiny::observeEvent(input$logout, health$logout(revoke = FALSE))
-    output$result <- shiny::renderText(result())
-    output$snapshot <- shiny::renderText(jsonlite::toJSON(list(session = session_number,
-      connections = health$connections(), errors = health$errors(), result = result(),
+    shiny::observeEvent(input[["narrow_a"]], perform("narrow_a", function() connection("a")[["refresh"]](scopes = limited)))
+    shiny::observeEvent(input[["widen_a"]],
+      perform("widen_a", function() connection("a")[["refresh"]](scopes = c(limited, "patient/Patient.s"))))
+    shiny::observeEvent(input[["logout"]], health[["logout"]](revoke = FALSE))
+    output[["result"]] <- shiny::renderText(result())
+    output[["snapshot"]] <- shiny::renderText(jsonlite::toJSON(list(session = session_number,
+      connections = health[["connections"]](), errors = health[["errors"]](), result = result(),
       result_revision = revision()), auto_unbox = TRUE, null = "null"))
   }
   routes <- if (launch == "ehr") list(shinyOAuth::smart_launch_route("/launch", sites)) else list()
@@ -110,9 +110,9 @@ inferno_browser_app <- function(origin, listen_port, registrations, launch,
       # The private loopback proxy preserves Host and does not accept forwarded
       # headers. Reconstruct only the preconfigured public HTTPS authority.
       url <- httr2::url_parse(origin)
-      stopifnot(identical(req$HTTP_HOST, paste0(url$hostname, ":", url$port)))
-      paste0(origin, req$PATH_INFO,
-        if (nzchar(req$QUERY_STRING)) paste0("?", req$QUERY_STRING))
+      stopifnot(identical(req[["HTTP_HOST"]], paste0(url[["hostname"]], ":", url[["port"]])))
+      paste0(origin, req[["PATH_INFO"]],
+        if (nzchar(req[["QUERY_STRING"]])) paste0("?", req[["QUERY_STRING"]]))
     })
   shiny::runApp(shiny::shinyApp(ui, server, uiPattern = ".*"), host = "127.0.0.1",
     port = listen_port, launch.browser = FALSE, quiet = TRUE)

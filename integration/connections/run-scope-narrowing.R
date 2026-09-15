@@ -17,18 +17,18 @@ run_scope_narrowing_browser_tests <- function() {
     modes = c("sync", "async"), responses = c("query", "form_post"),
     versions = stats::setNames(lapply(required, function(package) as.character(utils::packageVersion(package))), required))
   on.exit({
-    evidence$chrome <- retention_evidence_env$chrome
+    evidence[["chrome"]] <- retention_evidence_env[["chrome"]]
     jsonlite::write_json(evidence, file.path(artifacts, "evidence.json"), auto_unbox = TRUE, pretty = TRUE)
   }, add = TRUE)
   results <- testthat::test_file("integration/connections/test-browser-scope-narrowing.R",
     env = environment(), reporter = "summary", stop_on_failure = FALSE)
   counts <- as.data.frame(results)
-  evidence$passed <- sum(counts$passed)
-  evidence$skipped <- sum(counts$skipped)
-  evidence$failures <- sum(counts$failed)
-  evidence$errors <- sum(counts$error)
-  if (evidence$failures || evidence$errors || evidence$skipped) stop("Refresh scope browser gate did not fully pass")
-  evidence$status <- "passed"
-  cat("Refresh scope browser gate:", evidence$passed, "assertions passed; no skips.\n")
+  evidence[["passed"]] <- sum(counts[["passed"]])
+  evidence[["skipped"]] <- sum(counts[["skipped"]])
+  evidence[["failures"]] <- sum(counts[["failed"]])
+  evidence[["errors"]] <- sum(counts[["error"]])
+  if (evidence[["failures"]] || evidence[["errors"]] || evidence[["skipped"]]) stop("Refresh scope browser gate did not fully pass")
+  evidence[["status"]] <- "passed"
+  cat("Refresh scope browser gate:", evidence[["passed"]], "assertions passed; no skips.\n")
 }
 run_scope_narrowing_browser_tests()

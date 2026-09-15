@@ -10,7 +10,7 @@
 # that the outer dispatcher has just created, while still treating a fresh or
 # previously failed worker cache as untrusted.
 async_otel_cache_state <- new.env(parent = emptyenv())
-async_otel_cache_state$verified_envvars <- NULL
+async_otel_cache_state[["verified_envvars"]] <- NULL
 
 ## 1.1 Capture and apply configuration -----------------------------------------
 
@@ -274,22 +274,22 @@ warn_about_async_otel_cache_reset <- function(
 #' @noRd
 reset_async_otel_cache <- function(envvars) {
   cache_reset <- resolve_async_otel_cache_reset()
-  if (!is.function(cache_reset$reset)) {
-    async_otel_cache_state$verified_envvars <- NULL
+  if (!is.function(cache_reset[["reset"]])) {
+    async_otel_cache_state[["verified_envvars"]] <- NULL
     return(warn_about_async_otel_cache_reset("missing"))
   }
 
   tryCatch(
     {
-      cache_reset$reset()
-      async_otel_cache_state$verified_envvars <- envvars
+      cache_reset[["reset"]]()
+      async_otel_cache_state[["verified_envvars"]] <- envvars
       invisible(TRUE)
     },
     error = function(e) {
-      async_otel_cache_state$verified_envvars <- NULL
+      async_otel_cache_state[["verified_envvars"]] <- NULL
       warn_about_async_otel_cache_reset(
         "failed",
-        name = cache_reset$name,
+        name = cache_reset[["name"]],
         error = e
       )
     }
@@ -351,7 +351,7 @@ apply_async_otel_envvars <- function(captured_envvars) {
   cache_reset <- TRUE
   if (
     !identical(
-      async_otel_cache_state$verified_envvars,
+      async_otel_cache_state[["verified_envvars"]],
       desired_envvars
     )
   ) {
@@ -432,24 +432,24 @@ with_async_options <- function(captured_opts, code) {
   ]
   if (!is.null(captured_envvars) && length(captured_envvars) > 0) {
     otel_env_state <- apply_async_otel_envvars(captured_envvars)
-    if (!isTRUE(otel_env_state$cache_reset)) {
+    if (!isTRUE(otel_env_state[["cache_reset"]])) {
       opts_to_set[["shinyOAuth.otel_tracing_enabled"]] <- FALSE
       opts_to_set[["shinyOAuth.otel_logging_enabled"]] <- FALSE
     }
-    if (isTRUE(otel_env_state$changed)) {
+    if (isTRUE(otel_env_state[["changed"]])) {
       on.exit(
-        restore_async_otel_envvars(otel_env_state$old_envvars),
+        restore_async_otel_envvars(otel_env_state[["old_envvars"]]),
         add = TRUE
       )
     }
   }
 
   if (".shinyOAuth.audit_digest_key_cache" %in% names(captured_opts)) {
-    old_digest_key <- audit_digest_key_env$key
-    audit_digest_key_env$key <- captured_digest_key
+    old_digest_key <- audit_digest_key_env[["key"]]
+    audit_digest_key_env[["key"]] <- captured_digest_key
     on.exit(
       {
-        audit_digest_key_env$key <- old_digest_key
+        audit_digest_key_env[["key"]] <- old_digest_key
       },
       add = TRUE
     )

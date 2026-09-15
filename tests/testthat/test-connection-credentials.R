@@ -34,11 +34,11 @@ test_that("encrypted credential schemas retain token continuity without live obj
   expect_false(grepl("synthetic", sealed, fixed = TRUE))
   restored <- connection_credentials_open(sealed, owner, id, client, key)
   expect_identical(connection_credentials_open(sealed, owner, id, client, key,
-    expected_fingerprint = connection_client_fingerprint(client))$token@access_token,
+    expected_fingerprint = connection_client_fingerprint(client))[["token"]]@access_token,
     token@access_token)
-  expect_identical(restored$authenticated_at, 1000L)
+  expect_identical(restored[["authenticated_at"]], 1000L)
   for (field in connection_token_fields) {
-    expect_identical(S7::prop(restored$token, field), S7::prop(token, field))
+    expect_identical(S7::prop(restored[["token"]], field), S7::prop(token, field))
   }
   expect_false(identical(
     sealed,
@@ -93,8 +93,8 @@ test_that("plain-data encoding preserves vector shapes and rejects executable ob
     double = c(1.25, 1789064672.1234567,
       # Decimal round-trips can move these timestamps by one ULP on Apple ARM.
       1789412683 + seq_len(64) * 2^-22,
-      .Machine$double.xmin, .Machine$double.xmin * .Machine$double.eps,
-      .Machine$double.xmax, NA_real_, Inf, -Inf, NaN)
+      .Machine[["double.xmin"]], .Machine[["double.xmin"]] * .Machine[["double.eps"]],
+      .Machine[["double.xmax"]], NA_real_, Inf, -Inf, NaN)
   )
   json <- jsonlite::toJSON(
     connection_data_encode(value),

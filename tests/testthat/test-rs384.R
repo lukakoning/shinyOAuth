@@ -19,11 +19,11 @@ test_that("RS384 client assertions use SHA-384 and preserve registered headers a
     header,
     list(typ = "JWT", alg = "RS384", kid = "registered-key")
   )
-  expect_identical(claims$iss, client@client_id)
-  expect_identical(claims$sub, client@client_id)
-  expect_identical(claims$aud, provider@token_url)
-  expect_lte(claims$exp - claims$iat, 300)
-  expect_true(nzchar(claims$jti))
+  expect_identical(claims[["iss"]], client@client_id)
+  expect_identical(claims[["sub"]], client@client_id)
+  expect_identical(claims[["aud"]], provider@token_url)
+  expect_lte(claims[["exp"]] - claims[["iat"]], 300)
+  expect_true(nzchar(claims[["jti"]]))
   public <- openssl::read_pubkey(openssl::write_pem(key))
   input <- charToRaw(paste(parts[1:2], collapse = "."))
   # Verify independently of jose's encoder and the package JWT parser.

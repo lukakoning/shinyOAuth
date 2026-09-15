@@ -17,7 +17,7 @@ make_jwt_with_header <- function(header_list, payload_list) {
 make_signed_jwt_h <- function(payload_list, key, kid = NULL) {
   header <- list(typ = "JWT", alg = "RS256")
   if (!is.null(kid)) {
-    header$kid <- kid
+    header[["kid"]] <- kid
   }
   clm <- do.call(jose::jwt_claim, payload_list)
   jose::jwt_encode_sig(clm, key = key, header = header)
@@ -131,10 +131,10 @@ test_that("UserInfo JWT with malformed crit (empty array) is rejected", {
 
 test_that("UserInfo signed JWT without crit header still passes", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "kid-crit-ok"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "kid-crit-ok"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   claims <- list(
@@ -161,10 +161,10 @@ test_that("UserInfo signed JWT without crit header still passes", {
 
 test_that("UserInfo JWT triggers JWKS refresh when kid misses initially", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "rotated-kid"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "rotated-kid"
+  jwk[["use"]] <- "sig"
 
   # First JWKS: empty (simulates stale cache without the new kid)
   stale_jwks <- list(keys = list())
@@ -188,7 +188,7 @@ test_that("UserInfo JWT triggers JWKS refresh when kid misses initially", {
     fetch_jwks = function(...) {
       fetch_call_count <<- fetch_call_count + 1L
       args <- list(...)
-      if (isTRUE(args$force_refresh)) {
+      if (isTRUE(args[["force_refresh"]])) {
         fresh_jwks
       } else {
         stale_jwks
@@ -209,11 +209,11 @@ test_that("UserInfo JWT refreshes rotated material with the same kid", {
   new_key <- openssl::rsa_keygen(2048)
   as_public_jwk <- function(key) {
     jwk <- jsonlite::fromJSON(
-      write_test_jwk(key$pubkey),
+      write_test_jwk(key[["pubkey"]]),
       simplifyVector = TRUE
     )
-    jwk$kid <- "stable-kid"
-    jwk$use <- "sig"
+    jwk[["kid"]] <- "stable-kid"
+    jwk[["use"]] <- "sig"
     jwk
   }
   stale_jwks <- list(keys = list(as_public_jwk(old_key)))

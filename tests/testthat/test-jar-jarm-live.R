@@ -14,7 +14,7 @@ test_that(
     client_secret <- "hs256-request-object-secret-32b!"
     server_key <- openssl::rsa_keygen()
     server_jwk <- jsonlite::fromJSON(
-      write_test_jwk(server_key$pubkey),
+      write_test_jwk(server_key[["pubkey"]]),
       simplifyVector = FALSE
     )
     server_jwk[["kid"]] <- "jarm-sig-1"
@@ -22,19 +22,19 @@ test_that(
     server_jwk[["alg"]] <- "RS256"
 
     server_state <- new.env(parent = emptyenv())
-    server_state$last_auth <- NULL
-    server_state$token_requests <- 0L
+    server_state[["last_auth"]] <- NULL
+    server_state[["token_requests"]] <- 0L
 
     app <- webfakes::new_app()
 
-    app$get("/auth", function(req, res) {
-      query <- req$query
+    app[["get"]]("/auth", function(req, res) {
+      query <- req[["query"]]
       if (is.null(query)) {
         query <- list()
       }
       request_jwt <- query[["request"]] %||% NA_character_
       if (!is_valid_string(request_jwt)) {
-        res$set_status(400)$send("missing request object")
+        res[["set_status"]](400)[["send"]]("missing request object")
         return(invisible(NULL))
       }
 
@@ -46,12 +46,12 @@ test_that(
           "HS256"
         ))
       ) {
-        res$set_status(400)$send("invalid request object signature")
+        res[["set_status"]](400)[["send"]]("invalid request object signature")
         return(invisible(NULL))
       }
 
       payload <- shinyOAuth:::parse_jwt_payload(request_jwt)
-      server_state$last_auth <- list(
+      server_state[["last_auth"]] <- list(
         outer_query = as.list(query),
         header = header,
         payload = payload
@@ -63,7 +63,7 @@ test_that(
           sub(
             "/+$",
             "",
-            sub("/auth$", "", sub("\\?.*$", "", req$url))
+            sub("/auth$", "", sub("\\?.*$", "", req[["url"]]))
           ),
           "/"
         ),
@@ -83,15 +83,15 @@ test_that(
         utils::URLencode(response_jwt, reserved = TRUE)
       )
 
-      res$set_status(302)
-      res$set_header("Location", location)
-      res$send("")
+      res[["set_status"]](302)
+      res[["set_header"]]("Location", location)
+      res[["send"]]("")
       invisible(NULL)
     })
 
-    app$post("/token", function(req, res) {
-      server_state$token_requests <- server_state$token_requests + 1L
-      res$send_json(
+    app[["post"]]("/token", function(req, res) {
+      server_state[["token_requests"]] <- server_state[["token_requests"]] + 1L
+      res[["send_json"]](
         object = list(
           access_token = "access-token",
           token_type = "Bearer",
@@ -102,8 +102,8 @@ test_that(
       invisible(NULL)
     })
 
-    app$get("/jwks", function(req, res) {
-      res$send_json(
+    app[["get"]]("/jwks", function(req, res) {
+      res[["send_json"]](
         object = list(keys = list(server_jwk)),
         auto_unbox = TRUE,
         null = "null"
@@ -111,11 +111,11 @@ test_that(
       invisible(NULL)
     })
 
-    app$get("/debug/state", function(req, res) {
-      res$send_json(
+    app[["get"]]("/debug/state", function(req, res) {
+      res[["send_json"]](
         object = list(
-          last_auth = server_state$last_auth,
-          token_requests = server_state$token_requests
+          last_auth = server_state[["last_auth"]],
+          token_requests = server_state[["token_requests"]]
         ),
         auto_unbox = TRUE,
         null = "null"
@@ -124,8 +124,8 @@ test_that(
     })
 
     srv <- webfakes::local_app_process(app)
-    on.exit(srv$stop(), add = TRUE)
-    base <- srv$url()
+    on.exit(srv[["stop"]](), add = TRUE)
+    base <- srv[["url"]]()
 
     provider <- oauth_provider(
       name = "local-jar-jarm",
@@ -175,8 +175,8 @@ test_that(
         indefinite_session = TRUE
       ),
       expr = {
-        values$browser_token <- browser_token
-        auth_url <- values$build_auth_url()
+        values[["browser_token"]] <- browser_token
+        auth_url <- values[["build_auth_url"]]()
         auth_query_names <- names(shiny::parseQueryString(sub(
           "^[^?]*\\?",
           "",
@@ -249,19 +249,19 @@ test_that(
           debug_before[["last_auth"]][["outer_query"]][["response_mode"]]
         )
 
-        values$.process_query(sub("^[^?]*", "", callback_url))
-        session$flushReact()
+        values[[".process_query"]](sub("^[^?]*", "", callback_url))
+        session[["flushReact"]]()
 
         debug_after <- httr2::request(paste0(base, "/debug/state")) |>
           httr2::req_perform() |>
           httr2::resp_body_json(simplifyVector = FALSE)
 
-        testthat::expect_true(isTRUE(values$authenticated))
-        testthat::expect_identical(values$error, NULL)
-        testthat::expect_identical(values$error_description, NULL)
-        testthat::expect_true(!is.null(values$token))
+        testthat::expect_true(isTRUE(values[["authenticated"]]))
+        testthat::expect_identical(values[["error"]], NULL)
+        testthat::expect_identical(values[["error_description"]], NULL)
+        testthat::expect_true(!is.null(values[["token"]]))
         testthat::expect_identical(
-          values$token@access_token,
+          values[["token"]]@access_token,
           "access-token"
         )
         testthat::expect_identical(

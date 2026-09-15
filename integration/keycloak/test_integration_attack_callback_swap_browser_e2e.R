@@ -7,7 +7,7 @@
 ## does not isolate browser-session binding within one deployed client.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 make_callback_swap_browser_app <- function(client, title, module_id) {
@@ -17,7 +17,7 @@ make_callback_swap_browser_app <- function(client, title, module_id) {
     shinyOAuth::use_shinyOAuth(),
     shiny::titlePanel(title),
     shiny::actionButton("prepare_login_btn", "Prepare login"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::verbatimTextOutput("ready_state"),
     shiny::verbatimTextOutput("auth_state"),
     shiny::verbatimTextOutput("auth_url"),
@@ -31,33 +31,33 @@ make_callback_swap_browser_app <- function(client, title, module_id) {
       auto_redirect = FALSE
     )
 
-    shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
-      promises::then(auth$build_auth_url(), published_auth_url)
+    shiny::observeEvent(input[["prepare_login_btn"]], ignoreInit = TRUE, {
+      promises::then(auth[["build_auth_url"]](), published_auth_url)
       invisible(NULL)
     })
 
-    output$ready_state <- shiny::renderText({
-      paste("browser_ready:", isTRUE(auth$has_browser_token()))
+    output[["ready_state"]] <- shiny::renderText({
+      paste("browser_ready:", isTRUE(auth[["has_browser_token"]]()))
     })
 
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "has_token:",
-        !is.null(auth$token),
+        !is.null(auth[["token"]]),
         "error:",
-        if (!is.null(auth$error)) auth$error else "<none>",
+        if (!is.null(auth[["error"]])) auth[["error"]] else "<none>",
         "error_description:",
-        if (!is.null(auth$error_description)) {
-          auth$error_description
+        if (!is.null(auth[["error_description"]])) {
+          auth[["error_description"]]
         } else {
           "<none>"
         }
       )
     })
 
-    output$auth_url <- shiny::renderText({
+    output[["auth_url"]] <- shiny::renderText({
       auth_url <- published_auth_url() %||% NA_character_
       if (
         !is.character(auth_url) ||
@@ -71,11 +71,11 @@ make_callback_swap_browser_app <- function(client, title, module_id) {
       auth_url
     })
 
-    output$user_info <- shiny::renderText({
-      if (is.null(auth$token)) {
+    output[["user_info"]] <- shiny::renderText({
+      if (is.null(auth[["token"]])) {
         return("{}")
       }
-      jsonlite::toJSON(auth$token@userinfo, auto_unbox = TRUE, null = "null")
+      jsonlite::toJSON(auth[["token"]]@userinfo, auto_unbox = TRUE, null = "null")
     })
   }
 
@@ -83,7 +83,7 @@ make_callback_swap_browser_app <- function(client, title, module_id) {
 }
 
 read_callback_swap_browser_state <- function(drv) {
-  jsonlite::fromJSON(drv$get_js(
+  jsonlite::fromJSON(drv[["get_js"]](
     "
     JSON.stringify((function () {
       var ready = document.querySelector('#ready_state');
@@ -102,7 +102,7 @@ read_callback_swap_browser_state <- function(drv) {
 }
 
 wait_for_published_auth_url <- function(drv, timeout = 15000) {
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_url');
@@ -113,13 +113,13 @@ wait_for_published_auth_url <- function(drv, timeout = 15000) {
   )
 
   state <- read_callback_swap_browser_state(drv)
-  stopifnot(is.character(state$auth_url), nzchar(state$auth_url))
+  stopifnot(is.character(state[["auth_url"]]), nzchar(state[["auth_url"]]))
   state
 }
 
 navigate_browser_to_url <- function(drv, url) {
   url_json <- jsonlite::toJSON(url, auto_unbox = TRUE)
-  drv$run_js(paste0(
+  drv[["run_js"]](paste0(
     "window.location.href = ",
     url_json,
     ";"
@@ -132,7 +132,7 @@ replace_callback_base_url <- function(callback_url, new_base_url) {
 }
 
 read_browser_user_info <- function(drv) {
-  raw <- read_callback_swap_browser_state(drv)$user_info %||% "{}"
+  raw <- read_callback_swap_browser_state(drv)[["user_info"]] %||% "{}"
   if (!is.character(raw) || length(raw) != 1L || !nzchar(raw)) {
     raw <- "{}"
   }
@@ -151,7 +151,7 @@ wait_for_auth_state_transition <- function(
 
   while (Sys.time() < deadline) {
     current_state <- trimws(
-      read_callback_swap_browser_state(drv)$auth_state %||% ""
+      read_callback_swap_browser_state(drv)[["auth_state"]] %||% ""
     )
     if (
       nchar(current_state) > 0 &&
@@ -226,7 +226,7 @@ testthat::test_that("separate app deployments reject swapped callbacks and retai
     scopes = c("openid", "profile", "email")
   )
 
-  drv_a <- shinytest2::AppDriver$new(
+  drv_a <- shinytest2::AppDriver[["new"]](
     make_callback_swap_browser_app(client_a, "Callback swap A", module_id_a),
     name = sprintf("keycloak-callback-swap-a-%d", port_a),
     load_timeout = 15000,
@@ -235,7 +235,7 @@ testthat::test_that("separate app deployments reject swapped callbacks and retai
   )
   on.exit(keycloak_stop_app_driver(drv_a), add = TRUE)
 
-  drv_b <- shinytest2::AppDriver$new(
+  drv_b <- shinytest2::AppDriver[["new"]](
     make_callback_swap_browser_app(client_b, "Callback swap B", module_id_b),
     name = sprintf("keycloak-callback-swap-b-%d", port_b),
     load_timeout = 15000,
@@ -244,7 +244,7 @@ testthat::test_that("separate app deployments reject swapped callbacks and retai
   )
   on.exit(keycloak_stop_app_driver(drv_b), add = TRUE)
 
-  drv_a$wait_for_js(
+  drv_a[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -253,7 +253,7 @@ testthat::test_that("separate app deployments reject swapped callbacks and retai
   ",
     timeout = 15000
   )
-  drv_b$wait_for_js(
+  drv_b[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -265,42 +265,42 @@ testthat::test_that("separate app deployments reject swapped callbacks and retai
 
   # Use DOM clicks here because shinytest2's input helper logs through the
   # optional Shiny worker ID, which can be absent for the second live driver.
-  drv_a$run_js("document.querySelector('#prepare_login_btn').click();")
-  drv_b$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv_a[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
+  drv_b[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
 
   state_a <- wait_for_published_auth_url(drv_a)
   state_b <- wait_for_published_auth_url(drv_b)
 
   testthat::expect_true(
-    grepl("browser_ready: TRUE", state_a$ready_state, fixed = TRUE)
+    grepl("browser_ready: TRUE", state_a[["ready_state"]], fixed = TRUE)
   )
   testthat::expect_true(
-    grepl("browser_ready: TRUE", state_b$ready_state, fixed = TRUE)
+    grepl("browser_ready: TRUE", state_b[["ready_state"]], fixed = TRUE)
   )
 
   login_a <- perform_login_form_as(
-    state_a$auth_url,
+    state_a[["auth_url"]],
     username = "alice",
     password = "alice",
     redirect_uri = client_a@redirect_uri
   )
   login_b <- perform_login_form_as(
-    state_b$auth_url,
+    state_b[["auth_url"]],
     username = "bob",
     password = "bob",
     redirect_uri = client_b@redirect_uri
   )
 
   swapped_for_a <- replace_callback_base_url(
-    login_b$callback_url,
+    login_b[["callback_url"]],
     sprintf("http://%s:%d", host_a, port_a)
   )
   legit_for_a <- replace_callback_base_url(
-    login_a$callback_url,
+    login_a[["callback_url"]],
     sprintf("http://%s:%d", host_a, port_a)
   )
   legit_for_b <- replace_callback_base_url(
-    login_b$callback_url,
+    login_b[["callback_url"]],
     sprintf("http://%s:%d", host_b, port_b)
   )
 
@@ -316,12 +316,12 @@ testthat::test_that("separate app deployments reject swapped callbacks and retai
   navigate_browser_to_url(drv_b, legit_for_b)
   auth_state_b <- wait_for_auth_state_transition(
     drv_b,
-    previous_state = state_b$auth_state,
+    previous_state = state_b[["auth_state"]],
     timeout = 20000
   )
   user_b <- read_browser_user_info(drv_b)
   testthat::expect_match(auth_state_b, "authenticated: TRUE", fixed = TRUE)
-  testthat::expect_identical(user_b$preferred_username, "bob")
+  testthat::expect_identical(user_b[["preferred_username"]], "bob")
 
   navigate_browser_to_url(drv_a, legit_for_a)
   recovered_state_a <- wait_for_auth_state_transition(
@@ -331,5 +331,5 @@ testthat::test_that("separate app deployments reject swapped callbacks and retai
   )
   user_a <- read_browser_user_info(drv_a)
   testthat::expect_match(recovered_state_a, "authenticated: TRUE", fixed = TRUE)
-  testthat::expect_identical(user_a$preferred_username, "alice")
+  testthat::expect_identical(user_a[["preferred_username"]], "alice")
 })

@@ -17,12 +17,12 @@ test_that("shared callback storage isolates clients, providers, keys and modules
     }
     backing <- cachem::cache_mem(max_age = Inf, max_n = Inf)
     shared <- custom_cache(
-      get = backing$get,
-      set = backing$set,
-      remove = backing$remove,
+      get = backing[["get"]],
+      set = backing[["set"]],
+      remove = backing[["remove"]],
       take = function(key, missing = NULL) {
-        value <- backing$get(key, missing = missing)
-        backing$remove(key)
+        value <- backing[["get"]](key, missing = missing)
+        backing[["remove"]](key)
         value
       },
       info = function() list(max_age = 300)
@@ -35,7 +35,7 @@ test_that("shared callback storage isolates clients, providers, keys and modules
       list(code = "pending", state = "same-partition")
     )
     pending_key <- oauth_form_post_cache_key(second_id, pending, second)
-    original <- backing$get(pending_key)
+    original <- backing[["get"]](pending_key)
     for (i in seq_len(24L)) {
       oauth_form_post_store_set(
         first,
@@ -43,10 +43,10 @@ test_that("shared callback storage isolates clients, providers, keys and modules
         list(code = "other", state = "same-partition")
       )
     }
-    expect_identical(backing$get(pending_key), original)
-    expect_length(backing$keys(), 9L)
+    expect_identical(backing[["get"]](pending_key), original)
+    expect_length(backing[["keys"]](), 9L)
     expect_identical(
-      oauth_form_post_store_take(second, second_id, pending)$code,
+      oauth_form_post_store_take(second, second_id, pending)[["code"]],
       "pending"
     )
     expect_false(grepl(
@@ -61,12 +61,12 @@ test_that("atomic callback claims preserve concurrent occupants and enforce name
   backing <- cachem::cache_mem(max_age = Inf)
   calls <- 0L
   client@state_store <- custom_cache(
-    get = backing$get,
+    get = backing[["get"]],
     set = function(...) stop("non-atomic write"),
-    remove = backing$remove,
+    remove = backing[["remove"]],
     take = function(key, missing = NULL) {
-      value <- backing$get(key, missing = missing)
-      backing$remove(key)
+      value <- backing[["get"]](key, missing = missing)
+      backing[["remove"]](key)
       value
     },
     info = function() list(max_age = 300),
@@ -74,12 +74,12 @@ test_that("atomic callback claims preserve concurrent occupants and enforce name
       expect_lte(ttl, 120)
       calls <<- calls + 1L
       if (calls == 1L) {
-        backing$set(key, "concurrent-occupant")
+        backing[["set"]](key, "concurrent-occupant")
       }
-      if (!is.null(backing$get(key, missing = NULL))) {
+      if (!is.null(backing[["get"]](key, missing = NULL))) {
         return(FALSE)
       }
-      backing$set(key, value)
+      backing[["set"]](key, value)
       TRUE
     }
   )
@@ -95,7 +95,7 @@ test_that("atomic callback claims preserve concurrent occupants and enforce name
     ""
   )
   expect_length(unique(handles), 7L)
-  expect_length(backing$keys(), 8L)
+  expect_length(backing[["keys"]](), 8L)
   expect_error(
     oauth_form_post_store_set(
       client,
@@ -105,12 +105,12 @@ test_that("atomic callback claims preserve concurrent occupants and enforce name
     "partition is full"
   )
   expect_true(any(vapply(
-    backing$keys(),
-    function(key) identical(backing$get(key), "concurrent-occupant"),
+    backing[["keys"]](),
+    function(key) identical(backing[["get"]](key), "concurrent-occupant"),
     logical(1)
   )))
   expect_identical(
-    oauth_form_post_store_take(client, "auth", handles[[1L]])$code,
+    oauth_form_post_store_take(client, "auth", handles[[1L]])[["code"]],
     "pending"
   )
   expect_silent(oauth_form_post_store_set(

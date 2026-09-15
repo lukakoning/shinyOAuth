@@ -1140,7 +1140,7 @@ otel_set_span_attributes <- function(span = NULL, attributes = list()) {
   for (nm in names(attributes)) {
     value <- otel_scalar_attribute(attributes[[nm]])
     if (!is.null(value)) {
-      try(span$set_attribute(nm, value), silent = TRUE)
+      try(span[["set_attribute"]](nm, value), silent = TRUE)
     }
   }
 
@@ -1161,7 +1161,7 @@ otel_mark_span_ok <- function(span = NULL) {
   }
 
   span <- span %||% otel::get_active_span()
-  try(span$set_status("ok"), silent = TRUE)
+  try(span[["set_status"]]("ok"), silent = TRUE)
   invisible(NULL)
 }
 
@@ -1196,7 +1196,7 @@ otel_record_token_operation_result <- function(result, span = NULL) {
   )
   if (status != "unset") {
     try(
-      span$set_status(
+      span[["set_status"]](
         status,
         description = if (status == "error") outcome else NULL
       ),
@@ -1258,14 +1258,14 @@ otel_note_error <- function(error, span = NULL, attributes = list()) {
 
   otel_set_span_attributes(span = span, attributes = span_attrs)
   try(
-    span$add_event(
+    span[["add_event"]](
       "exception",
       attributes = otel_attributes(event_attrs)
     ),
     silent = TRUE
   )
   try(
-    span$set_status(
+    span[["set_status"]](
       "error",
       description = error_type
     ),
@@ -1321,7 +1321,7 @@ otel_record_http_result <- function(resp, span = NULL) {
       attributes = list(error.type = as.character(status_code))
     )
     try(
-      span$set_status("error"),
+      span[["set_status"]]("error"),
       silent = TRUE
     )
   }
@@ -1393,7 +1393,7 @@ with_otel_span <- function(
         }
         # End explicitly: the SDK's automatic scope finalizer marks an unset
         # status OK even when mark_ok = FALSE (including HTTP client spans).
-        try(otel_sdk_call(span$end(), "span completion"), silent = TRUE)
+        try(otel_sdk_call(span[["end"]](), "span completion"), silent = TRUE)
       }
     },
     add = TRUE
@@ -1461,7 +1461,7 @@ otel_capture_context <- function(span = NULL) {
   headers <- tryCatch(
     {
       if (!is.null(span)) {
-        span$get_context()$to_http_headers()
+        span[["get_context"]]()[["to_http_headers"]]()
       } else {
         otel::pack_http_context()
       }
@@ -1528,7 +1528,7 @@ otel_span_context_from_headers <- function(otel_headers) {
     return(NULL)
   }
 
-  if (!isTRUE(tryCatch(parent_ctx$is_valid(), error = function(...) FALSE))) {
+  if (!isTRUE(tryCatch(parent_ctx[["is_valid"]](), error = function(...) FALSE))) {
     return(NULL)
   }
 

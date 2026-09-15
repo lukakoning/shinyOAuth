@@ -5,17 +5,17 @@ manager_test_request <- function(cookie = NULL, method = "GET", path = "/", quer
 
 manager_test_session <- function(cookie = NULL) {
   session_env <- new.env(parent = asNamespace("shiny"))
-  session_env$request_data <- list(HTTP_ORIGIN = "https://app.example", HTTP_COOKIE = cookie)
+  session_env[["request_data"]] <- list(HTTP_ORIGIN = "https://app.example", HTTP_COOKIE = cookie)
   R6::R6Class(inherit = shiny::MockShinySession, portable = FALSE, lock_objects = FALSE,
     parent_env = session_env, active = list(request = function(value) {
       if (!missing(value)) request_data <<- value
       request_data
-    }))$new()
+    }))[["new"]]()
 }
 
 manager_test_cookie <- function(f) {
-  response <- f$ui(manager_test_request())
-  sub(";.*$", "", response$headers[["Set-Cookie"]])
+  response <- f[["ui"]](manager_test_request())
+  sub(";.*$", "", response[["headers"]][["Set-Cookie"]])
 }
 
 manager_test_fixture <- function(retention = "browser", owner = NULL,
@@ -78,14 +78,14 @@ manager_test_accept <- function(
   token = manager_test_token()
 ) {
   before <- vapply(
-    controller$records(),
-    function(row) row$stored$id,
+    controller[["records"]](),
+    function(row) row[["stored"]][["id"]],
     character(1)
   )
-  hooks <- controller$hooks(client)
-  context <- hooks$prepare()
-  hooks$accept(token, context, as.numeric(Sys.time()) - 100)
-  rows <- controller$records()
-  ids <- vapply(rows, function(row) row$stored$id, character(1))
+  hooks <- controller[["hooks"]](client)
+  context <- hooks[["prepare"]]()
+  hooks[["accept"]](token, context, as.numeric(Sys.time()) - 100)
+  rows <- controller[["records"]]()
+  ids <- vapply(rows, function(row) row[["stored"]][["id"]], character(1))
   setdiff(ids, before)[[1L]]
 }

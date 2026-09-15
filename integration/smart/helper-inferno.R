@@ -18,9 +18,9 @@ inferno_docker <- function(args, log = NULL, timeout = 120000) {
     stdout = if (is.null(log)) "|" else log,
     stderr = if (is.null(log)) "|" else paste0(log, ".stderr"),
     timeout = timeout)
-  if (result$status != 0L) stop("Inferno Docker operation failed (", result$status,
+  if (result[["status"]] != 0L) stop("Inferno Docker operation failed (", result[["status"]],
     "); inspect the local private log: ", log, call. = FALSE)
-  result$stdout
+  result[["stdout"]]
 }
 
 inferno_build <- function(root, output) {
@@ -44,19 +44,19 @@ inferno_build <- function(root, output) {
 }
 
 inferno_tls <- function(root, target_port, .env = parent.frame()) {
-  python <- Sys.which(if (.Platform$OS.type == "windows") "py" else "python3")
+  python <- Sys.which(if (.Platform[["OS.type"]] == "windows") "py" else "python3")
   if (!nzchar(python)) stop("Inferno browser integration requires Python 3")
-  proxy <- processx::process$new(python,
+  proxy <- processx::process[["new"]](python,
     c(file.path(root, "integration/connections/tls-proxy.py"),
       "--target-port", as.character(target_port),
       "--cert", file.path(root, "integration/keycloak/tls/server-cert.pem"),
       "--key", file.path(root, "integration/keycloak/tls/server-key.pem")),
     stdout = "|", stderr = "|", supervise = TRUE)
-  withr::defer({ if (proxy$is_alive()) proxy$kill() }, envir = .env)
+  withr::defer({ if (proxy[["is_alive"]]()) proxy[["kill"]]() }, envir = .env)
   port <- inferno_wait(function() {
-    if (!proxy$is_alive()) stop("Inferno TLS transport did not start")
-    proxy$poll_io(100)
-    line <- proxy$read_output_lines(n = 1L)
+    if (!proxy[["is_alive"]]()) stop("Inferno TLS transport did not start")
+    proxy[["poll_io"]](100)
+    line <- proxy[["read_output_lines"]](n = 1L)
     if (length(line)) as.integer(line) else NULL
   }, "loopback TLS transport", 10)
   stopifnot(length(port) == 1L, !is.na(port), port > 0L, port <= 65535L)
@@ -76,8 +76,8 @@ inferno_test_simulator <- function(root, output) {
 }
 
 inferno_api <- function(stack, path, data = NULL, json = TRUE) {
-  req <- httr2::request(paste0(stack$origin, path)) |>
-    httr2::req_options(cainfo = stack$ca) |> httr2::req_timeout(10) |>
+  req <- httr2::request(paste0(stack[["origin"]], path)) |>
+    httr2::req_options(cainfo = stack[["ca"]]) |> httr2::req_timeout(10) |>
     httr2::req_error(is_error = function(...) FALSE)
   if (!is.null(data)) req <- httr2::req_body_json(req, data, auto_unbox = TRUE)
   response <- httr2::req_perform(req)
@@ -95,7 +95,7 @@ inferno_start <- function(root, output, site = "a", .env = parent.frame()) {
   project <- paste0("shinyoauth-inferno-", Sys.getpid(), "-",
     format(Sys.time(), "%H%M%S"), "-", site)
   env_file <- file.path(output, paste0(site, ".env"))
-  writeLines(c(paste0("SMART_INFERNO_ORIGIN=", tls$origin),
+  writeLines(c(paste0("SMART_INFERNO_ORIGIN=", tls[["origin"]]),
     paste0("SMART_INFERNO_PORT=", port)), env_file)
   compose <- c("compose", "--project-name", project, "--env-file", env_file,
     "--file", file.path(root, "integration/smart/inferno/compose.yml"))
@@ -108,8 +108,8 @@ inferno_start <- function(root, output, site = "a", .env = parent.frame()) {
     "inferno", "migrate"), file.path(output, paste0(site, "-migrate.log")))
   inferno_docker(c(compose, "up", "--detach", "--no-build", "inferno", "worker"),
     file.path(output, paste0(site, "-start.log")))
-  stack <- list(origin = tls$origin, ca = file.path(root, "integration/keycloak/tls/ca-cert.pem"),
-    fhir_base = paste0(tls$origin, "/custom/", inferno_suite, "/fhir"),
+  stack <- list(origin = tls[["origin"]], ca = file.path(root, "integration/keycloak/tls/ca-cert.pem"),
+    fhir_base = paste0(tls[["origin"]], "/custom/", inferno_suite, "/fhir"),
     compose = compose, project = project)
   inferno_wait(function() tryCatch({
     inferno_api(stack, paste0("/custom/", inferno_suite, "/fhir/.well-known/smart-configuration"))

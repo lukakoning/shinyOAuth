@@ -1,13 +1,13 @@
 test_that("SMART extension URLs never become credential destinations", {
   local_options(shinyOAuth.allowed_hosts = NULL)
-  metadata <- smart_client_fixture()$metadata
+  metadata <- smart_client_fixture()[["metadata"]]
   metadata[["revocation_endpoint_extension"]] <- "https://unapproved.example/revoke"
   metadata[["issuerAlias"]] <- "https://unapproved.example"
   metadata[["jwks_uriAlias"]] <- "https://unapproved.example/keys"
   requests <- list()
   local_mocked_bindings(req_with_retry = function(req, ...) {
     requests[[length(requests) + 1L]] <<- req
-    httr2::response(url = req$url, status = 200L,
+    httr2::response(url = req[["url"]], status = 200L,
       headers = list("content-type" = "application/json"),
       body = charToRaw(jsonlite::toJSON(metadata, auto_unbox = TRUE, null = "null")))
   }, .package = "shinyOAuth")
@@ -112,7 +112,7 @@ test_that("SMART token checks require exact type and lifetime members", {
 
 test_that("callback lifetime policy cannot be supplied by a near-match extension", {
   local_mocked_bindings(req_with_retry = function(req, ...) {
-    httr2::response(url = req$url, status = 200L,
+    httr2::response(url = req[["url"]], status = 200L,
       headers = list("content-type" = "application/json"),
       body = charToRaw(jsonlite::toJSON(list(access_token = "example-access",
         token_type = "Bearer", expires_in_hint = 300, scope = "user/Patient.r"),
@@ -139,19 +139,19 @@ test_that("callback lifetime policy cannot be supplied by a near-match extension
 
 test_that("a signed near-match fhirUser claim fails the complete callback", {
   fixture <- smart_identity_fixture()
-  client <- fixture$client
+  client <- fixture[["client"]]
   browser <- valid_browser_token()
   url <- prepare_call(client, browser_token = browser)
-  claims <- fixture$claims
+  claims <- fixture[["claims"]]
   claims[["nonce"]] <- parse_query_param(url, "nonce")
   names(claims)[names(claims) == "fhirUser"] <- "fhirUser_hint"
-  signed <- jose::jwt_encode_sig(do.call(jose::jwt_claim, claims), fixture$key)
+  signed <- jose::jwt_encode_sig(do.call(jose::jwt_claim, claims), fixture[["key"]])
   fetched <- FALSE
   local_mocked_bindings(fetch_jwks = function(...) {
     fetched <<- TRUE
-    fixture$jwks
+    fixture[["jwks"]]
   }, req_with_retry = function(req, ...) {
-    httr2::response(url = req$url, status = 200L,
+    httr2::response(url = req[["url"]], status = 200L,
       headers = list("content-type" = "application/json"),
       body = charToRaw(jsonlite::toJSON(list(access_token = "example-access",
         token_type = "Bearer", expires_in = 300, scope = "openid fhirUser",
@@ -165,43 +165,43 @@ test_that("a signed near-match fhirUser claim fails the complete callback", {
 
 test_that("a signed fhirUser extension cannot establish or refresh SMART identity", {
   record <- smart_identity_fixture()
-  local_mocked_bindings(fetch_jwks = function(...) record$jwks, .package = "shinyOAuth")
-  claims <- record$claims
+  local_mocked_bindings(fetch_jwks = function(...) record[["jwks"]], .package = "shinyOAuth")
+  claims <- record[["claims"]]
   names(claims)[names(claims) == "fhirUser"] <- "fhirUserAlias"
-  signed <- function() jose::jwt_encode_sig(do.call(jose::jwt_claim, claims), record$key)
+  signed <- function() jose::jwt_encode_sig(do.call(jose::jwt_claim, claims), record[["key"]])
   response <- function() list(access_token = "rotated-access", refresh_token = "rotated-refresh",
     token_type = "Bearer", expires_in = 300, scope = "openid fhirUser", id_token = signed())
-  expect_error(verify_token_set(record$client, response(), nonce = "expected-nonce"),
+  expect_error(verify_token_set(record[["client"]], response(), nonce = "expected-nonce"),
     "fhirUser", class = "shinyOAuth_id_token_error")
   unverified <- response()
   unverified[[".id_token_validatedAlias"]] <- TRUE
-  expect_error(smart_verify_identity(record$client, unverified, is_refresh = FALSE),
+  expect_error(smart_verify_identity(record[["client"]], unverified, is_refresh = FALSE),
     "validated ID token", class = "shinyOAuth_id_token_error")
 
   # Exercise context extraction independently of the first acceptance check.
-  token <- record$token
+  token <- record[["token"]]
   token@id_token <- signed()
   token@id_token_validated <- TRUE
-  expect_error(smart_update_token_context(record$client, token),
+  expect_error(smart_update_token_context(record[["client"]], token),
     "requires fhirUser", class = "shinyOAuth_token_error")
-  expect_error(smart_update_token_context(record$client, token, record$token),
+  expect_error(smart_update_token_context(record[["client"]], token, record[["token"]]),
     "requires fhirUser", class = "shinyOAuth_token_error")
 
   claims[["nonce"]] <- NULL
   local_mocked_bindings(req_with_retry = function(req, ...) {
-    httr2::response(url = req$url, status = 200L,
+    httr2::response(url = req[["url"]], status = 200L,
       headers = list("content-type" = "application/json"),
       body = charToRaw(jsonlite::toJSON(response(), auto_unbox = TRUE, null = "null")))
   }, .package = "shinyOAuth")
-  expect_error(refresh_token(record$client, record$token),
+  expect_error(refresh_token(record[["client"]], record[["token"]]),
     "fhirUser", class = "shinyOAuth_id_token_error")
-  expect_identical(record$token@refresh_token, "example-refresh")
-  expect_identical(record$token@smart_context[["fhirUser"]], "Practitioner/example")
+  expect_identical(record[["token"]]@refresh_token, "example-refresh")
+  expect_identical(record[["token"]]@smart_context[["fhirUser"]], "Practitioner/example")
 
   # A valid exact claim wins; explicit null never falls back to the extension.
   claims[["fhirUser"]] <- "Practitioner/example"
   claims[["fhirUserAlias"]] <- "Practitioner/someone-else"
-  accepted <- refresh_token(record$client, record$token)
+  accepted <- refresh_token(record[["client"]], record[["token"]])
   expect_identical(accepted@smart_context[["fhirUser"]], "Practitioner/example")
   expect_identical(accepted@id_token_claims[["fhirUserAlias"]], "Practitioner/someone-else")
   # jose::jwt_claim drops R NULLs; NA is encoded as an explicit JSON null.
@@ -209,22 +209,22 @@ test_that("a signed fhirUser extension cannot establish or refresh SMART identit
   null_claims <- parse_jwt_payload(signed())
   expect_true("fhirUser" %in% names(null_claims))
   expect_null(null_claims[["fhirUser"]])
-  expect_error(refresh_token(record$client, accepted),
+  expect_error(refresh_token(record[["client"]], accepted),
     "fhirUser", class = "shinyOAuth_id_token_error")
 })
 
 test_that("SMART ID token extensions do not replace an omitted refresh ID token", {
   record <- smart_identity_fixture()
   local_mocked_bindings(req_with_retry = function(req, ...) {
-    httr2::response(url = req$url, status = 200L,
+    httr2::response(url = req[["url"]], status = 200L,
       headers = list("content-type" = "application/json"),
       body = charToRaw(jsonlite::toJSON(list(access_token = "rotated-access",
         token_type = "Bearer", expires_in = 300, scope = "openid fhirUser",
         id_tokenAlias = "uninterpreted-extension"), auto_unbox = TRUE)))
   }, .package = "shinyOAuth")
-  accepted <- refresh_token(record$client, record$token)
-  expect_identical(accepted@smart_context, record$token@smart_context)
-  expect_identical(accepted@id_token, record$token@id_token)
+  accepted <- refresh_token(record[["client"]], record[["token"]])
+  expect_identical(accepted@smart_context, record[["token"]]@smart_context)
+  expect_identical(accepted@id_token, record[["token"]]@id_token)
   expect_identical(accepted@extra_fields[["id_tokenAlias"]], "uninterpreted-extension")
 })
 

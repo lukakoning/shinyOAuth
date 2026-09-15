@@ -106,7 +106,7 @@ testthat::test_that("refresh_token async resolves to OAuthToken directly", {
   testthat::expect_s3_class(p, "promise")
 
   val <- NULL
-  p$then(function(x) {
+  p[["then"]](function(x) {
     val <<- x
   })
 
@@ -139,7 +139,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
     req_with_retry = function(req, ...) {
       url <- as.character(req[["url"]])
       if (grepl("/token", url, fixed = TRUE)) {
-        calls$token <<- calls$token + 1L
+        calls[["token"]] <<- calls[["token"]] + 1L
         httr2::response(
           url = url,
           status = 200,
@@ -149,7 +149,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
           )
         )
       } else if (grepl("/userinfo", url, fixed = TRUE)) {
-        calls$userinfo <<- calls$userinfo + 1L
+        calls[["userinfo"]] <<- calls[["userinfo"]] + 1L
         httr2::response(
           url = url,
           status = 200,
@@ -157,7 +157,7 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
           body = charToRaw('{"sub":"u-42"}')
         )
       } else if (grepl("/introspect", url, fixed = TRUE)) {
-        calls$introspection <<- calls$introspection + 1L
+        calls[["introspection"]] <<- calls[["introspection"]] + 1L
         httr2::response(
           url = url,
           status = 200,
@@ -182,11 +182,11 @@ testthat::test_that("refresh_token can fetch userinfo and optionally introspect"
   testthat::expect_true(is.list(t4@userinfo))
   testthat::expect_identical(t4@userinfo[["sub"]], "u-42")
   # We expect at least one token call and one userinfo call
-  testthat::expect_gte(calls$token, 1L)
-  testthat::expect_gte(calls$userinfo, 1L)
+  testthat::expect_gte(calls[["token"]], 1L)
+  testthat::expect_gte(calls[["userinfo"]], 1L)
   # With introspect = TRUE and an endpoint configured, refresh should enforce
   # the same introspection policy as login.
-  testthat::expect_gte(calls$introspection, 1L)
+  testthat::expect_gte(calls[["introspection"]], 1L)
 })
 
 expect_refresh_introspection_error <- function(
@@ -461,7 +461,7 @@ testthat::test_that("refresh_token validates token_type before fetching userinfo
     req_with_retry = function(req, ...) {
       url <- as.character(req[["url"]])
       if (grepl("/token", url, fixed = TRUE)) {
-        calls$token <<- calls$token + 1L
+        calls[["token"]] <<- calls[["token"]] + 1L
         httr2::response(
           url = url,
           status = 200,
@@ -471,7 +471,7 @@ testthat::test_that("refresh_token validates token_type before fetching userinfo
           )
         )
       } else if (grepl("/userinfo", url, fixed = TRUE)) {
-        calls$userinfo <<- calls$userinfo + 1L
+        calls[["userinfo"]] <<- calls[["userinfo"]] + 1L
         httr2::response(
           url = url,
           status = 200,
@@ -497,7 +497,7 @@ testthat::test_that("refresh_token validates token_type before fetching userinfo
     regexp = "token_type|Unsupported token_type",
     class = "shinyOAuth_token_error"
   )
-  testthat::expect_identical(calls$userinfo, 0L)
+  testthat::expect_identical(calls[["userinfo"]], 0L)
 })
 
 testthat::test_that("refresh_token rejects expires_in = 0 before acceptance", {
@@ -1475,7 +1475,7 @@ testthat::test_that("refresh_token validates userinfo_id_token_match when both p
     id_token_required = FALSE,
     userinfo_required = TRUE,
     userinfo_id_token_match = TRUE,
-    userinfo_id_selector = function(ui) ui$sub,
+    userinfo_id_selector = function(ui) ui[["sub"]],
     use_nonce = FALSE,
     use_pkce = TRUE,
     token_auth_style = "body"
@@ -1584,7 +1584,7 @@ testthat::test_that("refresh_token errors when userinfo_id_token_match lacks an 
     id_token_required = FALSE,
     userinfo_required = TRUE,
     userinfo_id_token_match = TRUE,
-    userinfo_id_selector = function(ui) ui$sub,
+    userinfo_id_selector = function(ui) ui[["sub"]],
     use_nonce = FALSE,
     use_pkce = TRUE,
     token_auth_style = "body"
@@ -1651,7 +1651,7 @@ testthat::test_that("refresh_token rejects refreshed userinfo that mismatches pr
     id_token_required = FALSE,
     userinfo_required = TRUE,
     userinfo_id_token_match = TRUE,
-    userinfo_id_selector = function(ui) ui$sub,
+    userinfo_id_selector = function(ui) ui[["sub"]],
     use_nonce = FALSE,
     use_pkce = TRUE,
     token_auth_style = "body"
@@ -1735,7 +1735,7 @@ testthat::test_that("refresh_token still binds refreshed userinfo to a preserved
     id_token_required = FALSE,
     userinfo_required = TRUE,
     userinfo_id_token_match = FALSE,
-    userinfo_id_selector = function(ui) ui$sub,
+    userinfo_id_selector = function(ui) ui[["sub"]],
     use_nonce = FALSE,
     use_pkce = TRUE,
     token_auth_style = "body"
@@ -1823,7 +1823,7 @@ testthat::test_that("refresh_token succeeds when userinfo and id_token subjects 
     id_token_required = FALSE,
     userinfo_required = TRUE,
     userinfo_id_token_match = TRUE,
-    userinfo_id_selector = function(ui) ui$sub,
+    userinfo_id_selector = function(ui) ui[["sub"]],
     use_nonce = FALSE,
     use_pkce = TRUE,
     token_auth_style = "body"
@@ -1939,7 +1939,7 @@ testthat::test_that("refresh_token updates userinfo when it matches the preserve
     id_token_required = FALSE,
     userinfo_required = TRUE,
     userinfo_id_token_match = TRUE,
-    userinfo_id_selector = function(ui) ui$sub,
+    userinfo_id_selector = function(ui) ui[["sub"]],
     use_nonce = FALSE,
     use_pkce = TRUE,
     token_auth_style = "body"

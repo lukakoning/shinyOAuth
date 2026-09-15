@@ -33,6 +33,6 @@ test_that("OAuthProvider validator accepts duck-typed jwks_cache", {
   # If validation passed, class should be OAuthProvider and cache retained
   expect_s3_class(prov, "S7_object")
   expect_true(is.list(prov@jwks_cache))
-  expect_true(is.function(prov@jwks_cache$get))
-  expect_true(is.function(prov@jwks_cache$set))
+  expect_true(is.function(prov@jwks_cache[["get"]]))
+  expect_true(is.function(prov@jwks_cache[["set"]]))
 })

@@ -5,13 +5,13 @@ testthat::test_that("use_shinyOAuth injects referrer meta by default", {
   testthat::expect_true(
     grepl(
       "<meta[^>]+name=\"referrer\"[^>]+content=\"no-referrer\"",
-      rt$head
+      rt[["head"]]
     )
   )
   testthat::expect_false(
     grepl(
       "<meta[^>]+name=\"referrer\"[^>]+content=\"no-referrer\"",
-      rt$html
+      rt[["html"]]
     )
   )
 })
@@ -23,13 +23,13 @@ testthat::test_that("use_shinyOAuth can disable referrer meta injection", {
   testthat::expect_false(
     grepl(
       "<meta[^>]+name=\"referrer\"",
-      rt$head
+      rt[["head"]]
     )
   )
   testthat::expect_false(
     grepl(
       "<meta[^>]+name=\"referrer\"",
-      rt$html
+      rt[["html"]]
     )
   )
 })

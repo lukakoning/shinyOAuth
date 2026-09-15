@@ -178,7 +178,7 @@ error.
 unexpected values: \code{"warn"} continues with a warning, \code{"strict"} stops
 login, and \code{"none"} skips the check. When omitted, \code{\link[=oauth_client]{oauth_client()}} uses
 \code{"warn"} if \code{claims} includes \code{essential = TRUE}, \code{value}, or \code{values}
-requirements, and \code{"none"} otherwise. Checks on \code{claims$id_token} require
+requirements, and \code{"none"} otherwise. Checks on \code{claims[["id_token"]]} require
 ID token validation (\code{id_token_validation = TRUE} or \code{use_nonce = TRUE}).}
 
 \item{required_acr_values}{Optional character vector of acceptable login
@@ -227,7 +227,7 @@ introspection responses.)
 \item{state_store}{Storage for pending logins. The default
 \code{cachem::cache_mem(max_age = 300)} is suitable for one R process.
 For multiple app processes, supply a shared \code{\link[=custom_cache]{custom_cache()}} with atomic
-\verb{$take()} and use the same \code{state_key} on every process.
+\verb{[["take"]]()} and use the same \code{state_key} on every process.
 Plain \code{cachem::cache_disk()} is unsafe for shared login state because its
 separate read and delete operations do not prevent simultaneous reuse.
 See \code{\link[=custom_cache]{custom_cache()}} for method and stored-value requirements.}
@@ -357,7 +357,7 @@ to allow Bearer access tokens, such as deployments where DPoP is used only
 to bind refresh tokens.}
 
 \item{dpop_require_observed_cnf}{Logical. When \code{TRUE}, shinyOAuth rejects
-\code{token_type = "DPoP"} access tokens unless it can observe \code{cnf$jkt}
+\code{token_type = "DPoP"} access tokens unless it can observe \code{cnf[["jkt"]]}
 locally, from the token response, introspection, or optional JWT access-token
 inspection. Set \code{options(shinyOAuth.access_token_cnf = "opaque")} to disable
 access-token decoding for both DPoP and mTLS; the compatibility default
@@ -502,7 +502,7 @@ Extra token headers apply only to token exchange and refresh; set
 \code{extra_headers} explicitly for every other endpoint that needs them.}
 
 \item{mtls_require_observed_cnf}{Logical, default \code{TRUE}. When
-\code{mtls_certificate_bound_access_tokens = TRUE}, require \code{cnf$x5t#S256}
+\code{mtls_certificate_bound_access_tokens = TRUE}, require \code{cnf[["x5t#S256"]]}
 in the token response, JWT access token, or introspection and verify that
 it matches the configured certificate. The default preserves strict
 local assurance. Set \code{FALSE} for server-enforced opaque bindings that

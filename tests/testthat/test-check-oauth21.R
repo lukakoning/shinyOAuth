@@ -23,7 +23,7 @@ oauth21_test_client <- function(provider_args = list(), ...) {
 }
 
 oauth21_finding <- function(report, id) {
-  report$checks[report$checks$id == id, , drop = FALSE]
+  report[["checks"]][report[["checks"]][["id"]] == id, , drop = FALSE]
 }
 
 test_that("a supported public client passes a bounded, deterministic assessment", {
@@ -31,9 +31,9 @@ test_that("a supported public client passes a bounded, deterministic assessment"
   client <- oauth21_test_client()
   report <- check_oauth21(client)
   expect_s3_class(report, "shinyOAuth_oauth21_assessment")
-  expect_true(report$configuration_compliant)
+  expect_true(report[["configuration_compliant"]])
   expect_identical(
-    names(report$checks),
+    names(report[["checks"]]),
     c(
       "id",
       "scope",
@@ -47,28 +47,28 @@ test_that("a supported public client passes a bounded, deterministic assessment"
       "affects_verdict"
     )
   )
-  expect_identical(report$operations, c("authorization", "code", "refresh"))
-  expect_identical(report$draft, "draft-ietf-oauth-v2-1-16")
-  expect_identical(report$ruleset_version, "1.1.0")
+  expect_identical(report[["operations"]], c("authorization", "code", "refresh"))
+  expect_identical(report[["draft"]], "draft-ietf-oauth-v2-1-16")
+  expect_identical(report[["ruleset_version"]], "1.1.0")
   expect_true(all(
-    report$checks$status %in% c("pass", "fail", "unknown", "not_applicable")
+    report[["checks"]][["status"]] %in% c("pass", "fail", "unknown", "not_applicable")
   ))
-  expect_false(anyDuplicated(report$checks$id) > 0L)
-  expect_identical(check_oauth21(client)$checks, report$checks)
+  expect_false(anyDuplicated(report[["checks"]][["id"]]) > 0L)
+  expect_identical(check_oauth21(client)[["checks"]], report[["checks"]])
   raw <- do.call(OAuthClient, S7::props(client))
-  expect_identical(check_oauth21(raw)$checks, report$checks)
+  expect_identical(check_oauth21(raw)[["checks"]], report[["checks"]])
   expect_output(print(report), "Mandatory configuration checks passed")
   expect_output(print(report), "unknown external/request checks: [1-9]")
   expect_identical(
-    oauth21_finding(report, "jwt_audience.token")$status,
+    oauth21_finding(report, "jwt_audience.token")[["status"]],
     "not_applicable"
   )
   expect_identical(
-    oauth21_finding(report, "refresh.server_protection")$status,
+    oauth21_finding(report, "refresh.server_protection")[["status"]],
     "unknown"
   )
   expect_identical(
-    oauth21_finding(report, "identity.validation")$status,
+    oauth21_finding(report, "identity.validation")[["status"]],
     "not_applicable"
   )
 })
@@ -77,17 +77,17 @@ test_that("legacy choices remain constructible while mandatory failures outrank 
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   client <- oauth21_test_client(list(pkce_method = "plain"))
   report <- check_oauth21(client)
-  expect_false(report$configuration_compliant)
-  expect_identical(oauth21_finding(report, "pkce.method")$status, "fail")
+  expect_false(report[["configuration_compliant"]])
+  expect_identical(oauth21_finding(report, "pkce.method")[["status"]], "fail")
   expect_output(print(report), "Mandatory configuration checks failed")
   partial <- check_oauth21(client@provider)
-  expect_false(partial$configuration_compliant)
+  expect_false(partial[["configuration_compliant"]])
   expect_identical(
-    oauth21_finding(partial, "client.configuration")$status,
+    oauth21_finding(partial, "client.configuration")[["status"]],
     "unknown"
   )
   provider <- oauth21_test_client()@provider
-  expect_identical(check_oauth21(provider)$configuration_compliant, NA)
+  expect_identical(check_oauth21(provider)[["configuration_compliant"]], NA)
   expect_output(
     print(check_oauth21(provider)),
     "Mandatory configuration checks are unresolved"
@@ -122,30 +122,30 @@ test_that("JWT audience is mandatory while legacy typing remains an advisory", {
     ),
     client_secret = strrep("s", 32)
   )
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
   client@client_assertion_audience <- client@provider@issuer
   report <- check_oauth21(client)
-  expect_true(report$configuration_compliant)
+  expect_true(report[["configuration_compliant"]])
   type <- oauth21_finding(report, "jwt_typ.token")
-  expect_identical(type$status, "fail")
-  expect_identical(type$requirement, "SHOULD")
-  expect_false(type$affects_verdict)
+  expect_identical(type[["status"]], "fail")
+  expect_identical(type[["requirement"]], "SHOULD")
+  expect_false(type[["affects_verdict"]])
   req <- httr2::request(client@provider@token_url)
   assertion <- apply_direct_client_auth(
     req,
     list(),
     client,
     "token"
-  )$params$client_assertion
-  expect_identical(parse_jwt_payload(assertion)$aud, client@provider@issuer)
-  expect_identical(parse_jwt_header(assertion)$typ, "JWT")
+  )[["params"]][["client_assertion"]]
+  expect_identical(parse_jwt_payload(assertion)[["aud"]], client@provider@issuer)
+  expect_identical(parse_jwt_header(assertion)[["typ"]], "JWT")
   client@client_assertion_typ <- "client-authentication+jwt"
   expect_identical(
-    oauth21_finding(check_oauth21(client), "jwt_typ.token")$status,
+    oauth21_finding(check_oauth21(client), "jwt_typ.token")[["status"]],
     "pass"
   )
   client@client_assertion_audience <- paste0(client@provider@issuer, "/")
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
 })
 
 test_that("endpoint scope and effective overrides agree with actual requests", {
@@ -168,16 +168,16 @@ test_that("endpoint scope and effective overrides agree with actual requests", {
     )
   )
   base <- check_oauth21(client)
-  expect_true(base$configuration_compliant)
-  expect_true("par" %in% base$operations)
-  expect_false("revocation" %in% base$operations)
+  expect_true(base[["configuration_compliant"]])
+  expect_true("par" %in% base[["operations"]])
+  expect_false("revocation" %in% base[["operations"]])
   report <- check_oauth21(
     client,
     context = list(operations = c("revocation", "introspection"))
   )
-  expect_false(report$configuration_compliant)
+  expect_false(report[["configuration_compliant"]])
   expect_identical(
-    oauth21_finding(report, "jwt_audience.revocation")$status,
+    oauth21_finding(report, "jwt_audience.revocation")[["status"]],
     "fail"
   )
   effective <- endpoint_auth_client(client, "revocation")
@@ -186,22 +186,22 @@ test_that("endpoint scope and effective overrides agree with actual requests", {
     list(),
     effective,
     "revocation"
-  )$params$client_assertion
-  expect_identical(parse_jwt_payload(jwt)$aud, client@provider@revocation_url)
+  )[["params"]][["client_assertion"]]
+  expect_identical(parse_jwt_payload(jwt)[["aud"]], client@provider@revocation_url)
   client@endpoint_auth <- list(revocation = list(token_auth_style = "header"))
   report <- check_oauth21(client, context = list(operations = "revocation"))
-  expect_true(report$configuration_compliant)
+  expect_true(report[["configuration_compliant"]])
   expect_identical(
-    oauth21_finding(report, "jwt_audience.revocation")$status,
+    oauth21_finding(report, "jwt_audience.revocation")[["status"]],
     "not_applicable"
   )
   client@provider@endpoint_auth_metadata <- list(
     introspection = list(methods = "client_secret_basic", signing_algs = NULL)
   )
   report <- check_oauth21(client, context = list(operations = "introspection"))
-  expect_true(report$configuration_compliant)
+  expect_true(report[["configuration_compliant"]])
   expect_identical(
-    oauth21_endpoint_settings(client, client@provider, "introspection")$style,
+    oauth21_endpoint_settings(client, client@provider, "introspection")[["style"]],
     endpoint_auth_client(client, "introspection")@provider@token_auth_style
   )
   client@endpoint_auth <- list(
@@ -211,30 +211,30 @@ test_that("endpoint scope and effective overrides agree with actual requests", {
     check_oauth21(
       client,
       context = list(operations = "introspection")
-    )$configuration_compliant
+    )[["configuration_compliant"]]
   )
 })
 
 test_that("selected HTTP endpoints fail while unused allowances and aliases do not", {
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   client <- oauth21_test_client(list(token_url = "http://localhost:8000/token"))
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
   client <- oauth21_test_client(list(
     revocation_url = "http://localhost:8000/revoke"
   ))
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   expect_false(
     check_oauth21(
       client,
       context = list(operations = "revocation")
-    )$configuration_compliant
+    )[["configuration_compliant"]]
   )
   client <- oauth21_test_client(list(
     mtls_endpoint_aliases = list(token_endpoint = "http://localhost:8000/token")
   ))
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   client@redirect_uri <- "http://127.0.0.1:8100/callback"
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   expect_false(oauth21_redirect_ok(
     "https://name:password@app.example/callback"
   ))
@@ -256,10 +256,10 @@ test_that("mTLS endpoint selection is shared with request construction", {
     mtls_client_key_file = mtls_pem_fixture("client-key.pem")
   )
   report <- check_oauth21(client)
-  expect_false(report$configuration_compliant)
-  expect_identical(oauth21_finding(report, "https.token")$status, "fail")
+  expect_false(report[["configuration_compliant"]])
+  expect_identical(oauth21_finding(report, "https.token")[["status"]], "fail")
   expect_identical(
-    oauth21_endpoint_settings(client, client@provider, "token")$url,
+    oauth21_endpoint_settings(client, client@provider, "token")[["url"]],
     resolve_provider_endpoint_url(
       client@provider,
       "token_endpoint",
@@ -277,11 +277,11 @@ test_that("runtime TLS defaults are unknown unless the linked curl default is kn
     },
     .package = "curl"
   )
-  expect_identical(check_oauth21(client)$configuration_compliant, NA)
+  expect_identical(check_oauth21(client)[["configuration_compliant"]], NA)
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   withr::local_options(list(shinyOAuth.tls_min_version = "invalid"))
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
   withr::local_options(list(shinyOAuth.tls_min_version = NULL))
   local_mocked_bindings(
     curl_version = function() {
@@ -289,7 +289,7 @@ test_that("runtime TLS defaults are unknown unless the linked curl default is kn
     },
     .package = "curl"
   )
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
 })
 
 test_that("the no-PKCE exception distinguishes ineligible, unresolved and declared prerequisites", {
@@ -302,7 +302,7 @@ test_that("the no-PKCE exception distinguishes ineligible, unresolved and declar
     check_oauth21(
       client,
       context = list(nonce_exception = TRUE)
-    )$configuration_compliant
+    )[["configuration_compliant"]]
   )
   client <- oauth21_test_client(
     list(
@@ -314,17 +314,17 @@ test_that("the no-PKCE exception distinguishes ineligible, unresolved and declar
     client_secret = strrep("s", 32),
     scopes = "openid"
   )
-  expect_identical(check_oauth21(client)$configuration_compliant, NA)
+  expect_identical(check_oauth21(client)[["configuration_compliant"]], NA)
   expect_false(
     check_oauth21(
       client,
       context = list(nonce_exception = FALSE)
-    )$configuration_compliant
+    )[["configuration_compliant"]]
   )
   report <- check_oauth21(client, context = list(nonce_exception = TRUE))
-  expect_true(report$configuration_compliant)
+  expect_true(report[["configuration_compliant"]])
   expect_identical(
-    oauth21_finding(report, "pkce.method")$evidence_source,
+    oauth21_finding(report, "pkce.method")[["evidence_source"]],
     "configuration_and_declared_context"
   )
   # Nonce use itself makes the ID token mandatory in verify_token_set().
@@ -333,10 +333,10 @@ test_that("the no-PKCE exception distinguishes ineligible, unresolved and declar
     check_oauth21(
       client,
       context = list(nonce_exception = TRUE)
-    )$configuration_compliant
+    )[["configuration_compliant"]]
   )
   expect_identical(
-    oauth21_finding(report, "pkce.exception_assurance")$status,
+    oauth21_finding(report, "pkce.exception_assurance")[["status"]],
     "unknown"
   )
   withr::local_options(list(shinyOAuth.skip_id_sig = TRUE))
@@ -344,7 +344,7 @@ test_that("the no-PKCE exception distinguishes ineligible, unresolved and declar
     check_oauth21(
       client,
       context = list(nonce_exception = TRUE)
-    )$configuration_compliant
+    )[["configuration_compliant"]]
   )
 })
 
@@ -358,12 +358,12 @@ test_that("issuer participation respects single-server opt-out and advertised su
     ),
     enforce_callback_issuer = FALSE
   )
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   client@compare_callback_issuer <- TRUE
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
   client@enforce_callback_issuer <- TRUE
   client@authorization_server_mode <- "multi_issuer"
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   client <- oauth21_test_client(
     authorization_server_mode = "multi_redirect_uri",
     authorization_server_redirect_uris = c(
@@ -371,7 +371,7 @@ test_that("issuer participation respects single-server opt-out and advertised su
       "https://app.example/second"
     )
   )
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
 })
 
 test_that("parameter assessment preserves repeatable extensions and defers dynamic values", {
@@ -379,22 +379,22 @@ test_that("parameter assessment preserves repeatable extensions and defers dynam
   client <- oauth21_test_client(list(
     auth_url = "https://issuer.example/auth?client_id=client&resource=one&resource=two"
   ))
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   client@provider@auth_url <- "https://issuer.example/auth?client_id=different"
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
   client@provider@auth_url <- "https://issuer.example/auth?state=future"
-  expect_identical(check_oauth21(client)$configuration_compliant, NA)
+  expect_identical(check_oauth21(client)[["configuration_compliant"]], NA)
   client@provider@auth_url <- "https://issuer.example/auth?Client_id=unrelated"
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   withr::local_options(list(
     shinyOAuth.unblock_auth_params = c("scope", "redirect_uri")
   ))
   client@provider@extra_auth_params <- list(scope = "custom")
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   client@provider@extra_auth_params <- list(
     redirect_uri = "https://app.example/different"
   )
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
 })
 
 test_that("active relaxations and capacity findings have appropriate applicability", {
@@ -408,13 +408,13 @@ test_that("active relaxations and capacity findings have appropriate applicabili
     shinyOAuth.allow_redirect = TRUE
   ))
   report <- check_oauth21(client)
-  expect_true(report$configuration_compliant)
-  expect_identical(oauth21_finding(report, "callback.capacity")$status, "fail")
-  expect_false(oauth21_finding(report, "callback.capacity")$affects_verdict)
+  expect_true(report[["configuration_compliant"]])
+  expect_identical(oauth21_finding(report, "callback.capacity")[["status"]], "fail")
+  expect_false(oauth21_finding(report, "callback.capacity")[["affects_verdict"]])
   withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
   local_mocked_bindings(.is_test_or_interactive = function() FALSE)
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
 })
 
 test_that("assessment recommendations preserve valid legacy configurations and identify owners", {
@@ -430,27 +430,27 @@ test_that("assessment recommendations preserve valid legacy configurations and i
       client_assertion_audience = "https://issuer.example"
     )
     report <- check_oauth21(client)
-    expect_true(report$configuration_compliant)
+    expect_true(report[["configuration_compliant"]])
     advice <- oauth21_finding(report, "client_auth.asymmetric.token")
-    expect_identical(advice$status, "fail")
-    expect_false(advice$affects_verdict)
-    expect_identical(advice$requirement_source, "oauth_security_bcp")
+    expect_identical(advice[["status"]], "fail")
+    expect_false(advice[["affects_verdict"]])
+    expect_identical(advice[["requirement_source"]], "oauth_security_bcp")
     expect_identical(
-      oauth21_finding(report, "refresh.public_client_protection")$status,
+      oauth21_finding(report, "refresh.public_client_protection")[["status"]],
       "not_applicable"
     )
   }
   client <- oauth21_test_client()
   client@redirect_uri <- "http://localhost:8100/callback"
   report <- check_oauth21(client)
-  expect_true(report$configuration_compliant)
+  expect_true(report[["configuration_compliant"]])
   expect_identical(
-    oauth21_finding(report, "redirect.loopback_literal")$status,
+    oauth21_finding(report, "redirect.loopback_literal")[["status"]],
     "fail"
   )
   client@redirect_uri <- "http://127.0.0.1:8100/callback"
   expect_identical(
-    oauth21_finding(check_oauth21(client), "redirect.loopback_literal")$status,
+    oauth21_finding(check_oauth21(client), "redirect.loopback_literal")[["status"]],
     "pass"
   )
   client <- oauth21_test_client(
@@ -461,27 +461,27 @@ test_that("assessment recommendations preserve valid legacy configurations and i
     )
   )
   report <- check_oauth21(client)
-  expect_true(report$configuration_compliant)
-  expect_identical(oauth21_finding(report, "issuer.mixup")$status, "pass")
+  expect_true(report[["configuration_compliant"]])
+  expect_identical(oauth21_finding(report, "issuer.mixup")[["status"]], "pass")
   expect_identical(
-    oauth21_finding(report, "issuer.identification_recommended")$status,
+    oauth21_finding(report, "issuer.identification_recommended")[["status"]],
     "fail"
   )
   expect_identical(
-    oauth21_finding(report, "refresh.public_client_protection")$status,
+    oauth21_finding(report, "refresh.public_client_protection")[["status"]],
     "unknown"
   )
   expect_match(
-    oauth21_finding(report, "refresh.public_client_protection")$reference,
+    oauth21_finding(report, "refresh.public_client_protection")[["reference"]],
     "section-4.3.1",
     fixed = TRUE
   )
   expect_identical(
-    oauth21_finding(report, "tokens.application_policy")$requirement,
+    oauth21_finding(report, "tokens.application_policy")[["requirement"]],
     "info"
   )
   expect_identical(
-    oauth21_finding(report, "tokens.application_policy")$requirement_source,
+    oauth21_finding(report, "tokens.application_policy")[["requirement_source"]],
     "application_policy"
   )
   for (id in c(
@@ -489,13 +489,13 @@ test_that("assessment recommendations preserve valid legacy configurations and i
     "tokens.early_invalidation"
   )) {
     row <- oauth21_finding(report, id)
-    expect_identical(row$requirement, "MUST")
-    expect_identical(row$scope, "external")
-    expect_false(row$affects_verdict)
+    expect_identical(row[["requirement"]], "MUST")
+    expect_identical(row[["scope"]], "external")
+    expect_false(row[["affects_verdict"]])
   }
   for (id in c("callback.capacity", "transport.redirects")) {
     expect_identical(
-      oauth21_finding(report, id)$requirement_source,
+      oauth21_finding(report, id)[["requirement_source"]],
       "package_policy"
     )
   }
@@ -511,7 +511,7 @@ test_that("assessment recommendations preserve valid legacy configurations and i
     oauth21_finding(
       check_oauth21(oidc),
       "identity.userinfo_subject"
-    )$requirement_source,
+    )[["requirement_source"]],
     "oidc"
   )
 })
@@ -539,9 +539,9 @@ test_that("capacity advice covers all callback field caps without changing verdi
       ),
       {
         report <- check_oauth21(client)
-        expect_true(report$configuration_compliant)
+        expect_true(report[["configuration_compliant"]])
         expect_identical(
-          oauth21_finding(report, "callback.capacity")$status,
+          oauth21_finding(report, "callback.capacity")[["status"]],
           "fail"
         )
       }
@@ -565,7 +565,7 @@ test_that("assessment has no protocol, random, cache, object or option side effe
     client_assertion_audience = "https://issuer.example"
   )
   store_environment <- new.env(parent = baseenv())
-  store_environment$store_calls <- 0L
+  store_environment[["store_calls"]] <- 0L
   store <- evalq(
     list(
       get = function(key, missing = NULL) {
@@ -615,8 +615,8 @@ test_that("assessment has no protocol, random, cache, object or option side effe
   expect_true(identical(after, before))
   expect_identical(after_options, opts)
   expect_identical(after_rng, rng)
-  expect_identical(store_environment$store_calls, 0L)
-  expect_true(report$configuration_compliant)
+  expect_identical(store_environment[["store_calls"]], 0L)
+  expect_true(report[["configuration_compliant"]])
 })
 
 test_that("JARM and validated OIDC policies are assessed when selected", {
@@ -633,10 +633,10 @@ test_that("JARM and validated OIDC policies are assessed when selected", {
     jarm_signed_response_alg = "RS256"
   )
   report <- check_oauth21(client)
-  expect_true(report$configuration_compliant)
-  expect_true("jwks" %in% report$operations)
+  expect_true(report[["configuration_compliant"]])
+  expect_true("jwks" %in% report[["operations"]])
   expect_identical(
-    oauth21_finding(report, "issuer.participation")$status,
+    oauth21_finding(report, "issuer.participation")[["status"]],
     "not_applicable"
   )
   client <- oauth21_test_client(
@@ -647,13 +647,13 @@ test_that("JARM and validated OIDC policies are assessed when selected", {
     ),
     scopes = "openid"
   )
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   client@provider@userinfo_id_token_match <- FALSE
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   withr::local_options(list(shinyOAuth.unblock_auth_params = "scope"))
   client@provider@extra_auth_params <- list(scope = "profile")
   expect_identical(
-    oauth21_finding(check_oauth21(client), "parameters.authorization")$status,
+    oauth21_finding(check_oauth21(client), "parameters.authorization")[["status"]],
     "fail"
   )
 })
@@ -683,20 +683,20 @@ test_that("HMAC-only JARM needs no JWKS but independent key operations still do"
     client@client_secret
   )
   expect_silent(verify_jarm_signature(client, signed, "HS256"))
-  expect_true(check_oauth21(client)$configuration_compliant)
-  expect_false("jwks" %in% check_oauth21(client)$operations)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
+  expect_false("jwks" %in% check_oauth21(client)[["operations"]])
   client@provider@jwks_uri <- "http://localhost:8000/keys"
-  expect_true(check_oauth21(client)$configuration_compliant)
-  expect_false("jwks" %in% check_oauth21(client)$operations)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
+  expect_false("jwks" %in% check_oauth21(client)[["operations"]])
   asymmetric <- client
   asymmetric@jarm_signed_response_alg <- "RS256"
   expect_identical(
-    oauth21_finding(check_oauth21(asymmetric), "https.jwks")$status,
+    oauth21_finding(check_oauth21(asymmetric), "https.jwks")[["status"]],
     "fail"
   )
   client@provider@id_token_validation <- TRUE
   expect_identical(
-    oauth21_finding(check_oauth21(client), "https.jwks")$status,
+    oauth21_finding(check_oauth21(client), "https.jwks")[["status"]],
     "fail"
   )
 })
@@ -716,7 +716,7 @@ test_that("UserInfo assessment follows the validated baseline and call context",
     oauth21_finding(
       check_oauth21(client, context = context),
       "identity.userinfo_subject"
-    )$status
+    )[["status"]]
   }
   expect_identical(finding(), "pass")
   expect_identical(finding(list(operations = "userinfo")), "unknown")
@@ -743,7 +743,7 @@ test_that("encrypted Request Objects assess the actual recipient key source with
     request_object_encryption_enc = "A128CBC-HS256"
   )
   explicit <- client
-  explicit@provider@request_object_encryption_jwk <- key$pubkey
+  explicit@provider@request_object_encryption_jwk <- key[["pubkey"]]
   local_mocked_bindings(
     fetch_jwks = function(...) stop("assessment must not retrieve keys"),
     normalize_jwe_recipient_public_key = function(...) {
@@ -752,21 +752,21 @@ test_that("encrypted Request Objects assess the actual recipient key source with
     .package = "shinyOAuth"
   )
   expect_identical(
-    oauth21_finding(check_oauth21(client), "https.jwks")$status,
+    oauth21_finding(check_oauth21(client), "https.jwks")[["status"]],
     "unknown"
   )
   client@provider@jwks_uri <- "http://localhost:8000/keys"
   expect_identical(
-    oauth21_finding(check_oauth21(client), "https.jwks")$status,
+    oauth21_finding(check_oauth21(client), "https.jwks")[["status"]],
     "fail"
   )
   client@provider@jwks_uri <- "https://issuer.example/keys"
   expect_identical(
-    oauth21_finding(check_oauth21(client), "https.jwks")$status,
+    oauth21_finding(check_oauth21(client), "https.jwks")[["status"]],
     "pass"
   )
-  expect_false("jwks" %in% check_oauth21(explicit)$operations)
-  expect_true(check_oauth21(explicit)$configuration_compliant)
+  expect_false("jwks" %in% check_oauth21(explicit)[["operations"]])
+  expect_true(check_oauth21(explicit)[["configuration_compliant"]])
 })
 
 test_that("private-key assessment does not probe signatures or require optional extensions", {
@@ -786,15 +786,15 @@ test_that("private-key assessment does not probe signatures or require optional 
     .package = "jose"
   )
   report <- check_oauth21(client)
-  expect_true(report$configuration_compliant)
-  expect_false(any(grepl("BEGIN|PRIVATE KEY", unlist(report$checks))))
-  expect_identical(oauth21_finding(report, "jwt_audience.token")$status, "pass")
+  expect_true(report[["configuration_compliant"]])
+  expect_false(any(grepl("BEGIN|PRIVATE KEY", unlist(report[["checks"]]))))
+  expect_identical(oauth21_finding(report, "jwt_audience.token")[["status"]], "pass")
   for (style in c("header", "body")) {
     ordinary <- oauth21_test_client(
       list(token_auth_style = style),
       client_secret = "secret"
     )
-    expect_true(check_oauth21(ordinary)$configuration_compliant)
+    expect_true(check_oauth21(ordinary)[["configuration_compliant"]])
   }
 })
 
@@ -826,15 +826,15 @@ test_that("assessment canonicalizes local HMAC algorithm names for every endpoin
     client,
     context = list(operations = c("introspection", "revocation"))
   )
-  expect_true(report$configuration_compliant)
+  expect_true(report[["configuration_compliant"]])
   for (endpoint in c("token", "par", "introspection", "revocation")) {
     expect_identical(
-      oauth21_finding(report, paste0("client_auth.", endpoint))$status,
+      oauth21_finding(report, paste0("client_auth.", endpoint))[["status"]],
       "pass"
     )
     effective <- endpoint_auth_client(client, endpoint)
     jwt <- build_client_assertion(effective, client@provider@issuer)
-    expect_identical(parse_jwt_header(jwt)$alg, "HS256")
+    expect_identical(parse_jwt_header(jwt)[["alg"]], "HS256")
   }
 })
 
@@ -859,9 +859,9 @@ test_that("assessment checks private-key endpoint overrides without signing", {
   )
   expect_error(endpoint_auth_client(client, "introspection"), "incompatible")
   report <- check_oauth21(client)
-  expect_false(report$configuration_compliant)
+  expect_false(report[["configuration_compliant"]])
   expect_identical(
-    oauth21_finding(report, "client_auth.introspection")$status,
+    oauth21_finding(report, "client_auth.introspection")[["status"]],
     "fail"
   )
   local_mocked_bindings(
@@ -872,15 +872,15 @@ test_that("assessment checks private-key endpoint overrides without signing", {
     rand_bytes = function(...) stop("must not draw randomness"),
     .package = "openssl"
   )
-  client@endpoint_auth$introspection$client_assertion_alg <- "rs256"
-  expect_true(check_oauth21(client)$configuration_compliant)
-  client@endpoint_auth$introspection$client_assertion_private_key <- openssl::write_pem(
+  client@endpoint_auth[["introspection"]][["client_assertion_alg"]] <- "rs256"
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
+  client@endpoint_auth[["introspection"]][["client_assertion_private_key"]] <- openssl::write_pem(
     key
   )
   report <- check_oauth21(client)
-  expect_identical(report$configuration_compliant, NA)
+  expect_identical(report[["configuration_compliant"]], NA)
   expect_identical(
-    oauth21_finding(report, "client_auth.introspection")$status,
+    oauth21_finding(report, "client_auth.introspection")[["status"]],
     "unknown"
   )
   expect_identical(private_key_jws_alg_compatibility(list(), "RS256"), NA)
@@ -900,21 +900,21 @@ test_that("assessment and PEM mTLS construction agree on the active backend", {
     )
     supported <- startsWith(backend, "OpenSSL")
     report <- check_oauth21(client)
-    expect_identical(report$configuration_compliant, supported)
+    expect_identical(report[["configuration_compliant"]], supported)
     expect_identical(
-      oauth21_finding(report, "client_auth.token")$status,
+      oauth21_finding(report, "client_auth.token")[["status"]],
       if (supported) "pass" else "fail"
     )
     expect_identical(
-      oauth21_finding(report, "mtls.backend.token")$status,
+      oauth21_finding(report, "mtls.backend.token")[["status"]],
       if (supported) "pass" else "fail"
     )
     expect_identical(
-      oauth21_finding(report, "mtls.backend.token")$requirement_source,
+      oauth21_finding(report, "mtls.backend.token")[["requirement_source"]],
       "package_policy"
     )
     expect_identical(
-      oauth21_finding(report, "mtls.backend.token")$evidence_source,
+      oauth21_finding(report, "mtls.backend.token")[["evidence_source"]],
       "runtime"
     )
     request <- httr2::request(client@provider@token_url)
@@ -936,14 +936,14 @@ test_that("development bypass assessment follows legacy numeric flag semantics",
   ))
   client <- oauth21_test_client()
   expect_true(allow_skip_browser_token())
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
   withr::local_options(list(shinyOAuth.skip_browser_token = NA))
-  expect_identical(check_oauth21(client)$configuration_compliant, NA)
+  expect_identical(check_oauth21(client)[["configuration_compliant"]], NA)
   withr::local_options(list(
     shinyOAuth.skip_browser_token = 0,
     shinyOAuth.skip_id_sig = 1
   ))
-  expect_true(check_oauth21(client)$configuration_compliant)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   client <- oauth21_test_client(
     list(
       issuer = "https://issuer.example",
@@ -952,7 +952,7 @@ test_that("development bypass assessment follows legacy numeric flag semantics",
     scopes = "openid"
   )
   expect_true(allow_skip_signature())
-  expect_false(check_oauth21(client)$configuration_compliant)
+  expect_false(check_oauth21(client)[["configuration_compliant"]])
 })
 
 test_that("malformed API arguments are programming errors with redacted diagnostics", {

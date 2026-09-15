@@ -301,7 +301,7 @@ test_that("prepare_call encrypts signed request objects when configured", {
     provider = make_jar_test_provider(
       request_object_encryption_alg_values_supported = "RSA-OAEP",
       request_object_encryption_enc_values_supported = "A256CBC-HS512",
-      request_object_encryption_jwk = encryption_key$pubkey
+      request_object_encryption_jwk = encryption_key[["pubkey"]]
     ),
     request_object_encryption_alg = "RSA-OAEP",
     request_object_encryption_enc = "A256CBC-HS512",
@@ -485,8 +485,8 @@ test_that("request_uri mode publishes signed request objects", {
   request_payload <- shinyOAuth:::parse_jwt_payload(published[[
     "request_object"
   ]])
-  expect_identical(request_payload$client_id, "abc")
-  expect_identical(request_payload$redirect_uri, "http://localhost:8100")
+  expect_identical(request_payload[["client_id"]], "abc")
+  expect_identical(request_payload[["redirect_uri"]], "http://localhost:8100")
   expect_lt(
     as.numeric(difftime(published[["expires_at"]], Sys.time(), units = "secs")),
     60
@@ -500,7 +500,7 @@ test_that("request_uri mode publishes encrypted request objects", {
     provider = make_jar_test_provider(
       request_object_encryption_alg_values_supported = "RSA-OAEP",
       request_object_encryption_enc_values_supported = "A256CBC-HS512",
-      request_object_encryption_jwk = encryption_key$pubkey
+      request_object_encryption_jwk = encryption_key[["pubkey"]]
     ),
     request_object_mode = "request_uri",
     request_object_encryption_alg = "RSA-OAEP",
@@ -845,7 +845,7 @@ test_that("request mode through PAR pushes encrypted request objects", {
       par_url = "https://example.com/par",
       request_object_encryption_alg_values_supported = "RSA-OAEP",
       request_object_encryption_enc_values_supported = "A256CBC-HS512",
-      request_object_encryption_jwk = encryption_key$pubkey
+      request_object_encryption_jwk = encryption_key[["pubkey"]]
     ),
     request_object_encryption_alg = "RSA-OAEP",
     request_object_encryption_enc = "A256CBC-HS512"
@@ -890,8 +890,8 @@ test_that("request mode through PAR pushes encrypted request objects", {
 test_that("encrypted request objects accept SPKI and PKCS#1 public PEM", {
   encryption_key <- openssl::rsa_keygen(bits = 2048)
   public_pems <- list(
-    spki = openssl::write_pem(encryption_key$pubkey),
-    pkcs1 = as_pkcs1_public_pem(encryption_key$pubkey)
+    spki = openssl::write_pem(encryption_key[["pubkey"]]),
+    pkcs1 = as_pkcs1_public_pem(encryption_key[["pubkey"]])
   )
 
   for (public_pem in public_pems) {
@@ -910,10 +910,10 @@ test_that("encrypted request objects accept SPKI and PKCS#1 public PEM", {
     request_jwe <- parse_query_param(auth_url, "request", decode = TRUE)
     decrypted <- shinyOAuth:::jwe_compact_decrypt(request_jwe, encryption_key)
 
-    expect_identical(decrypted$header$alg, "RSA-OAEP")
-    expect_identical(decrypted$header$enc, "A128CBC-HS256")
+    expect_identical(decrypted[["header"]][["alg"]], "RSA-OAEP")
+    expect_identical(decrypted[["header"]][["enc"]], "A128CBC-HS256")
     expect_identical(
-      shinyOAuth:::parse_jwt_payload(decrypted$plaintext)$client_id,
+      shinyOAuth:::parse_jwt_payload(decrypted[["plaintext"]])[["client_id"]],
       "abc"
     )
   }
@@ -927,13 +927,13 @@ test_that("request object encryption only selects pinned recipient keys", {
   signing_key <- openssl::rsa_keygen(bits = 2048)
   encryption_key <- openssl::rsa_keygen(bits = 2048)
   signing_jwk <- jsonlite::fromJSON(
-    write_test_jwk(signing_key$pubkey),
+    write_test_jwk(signing_key[["pubkey"]]),
     simplifyVector = FALSE
   )
   signing_jwk[["kid"]] <- "pinned-signing-key"
   signing_jwk[["use"]] <- "sig"
   encryption_jwk <- jsonlite::fromJSON(
-    write_test_jwk(encryption_key$pubkey),
+    write_test_jwk(encryption_key[["pubkey"]]),
     simplifyVector = FALSE
   )
   encryption_jwk[["kid"]] <- "unpinned-encryption-key"
@@ -981,7 +981,7 @@ test_that("request object encryption only selects pinned recipient keys", {
     jwks_host_allow_only = provider@jwks_host_allow_only,
     jwks_uri_override = jwks_uri
   )
-  jwks_cache$set(
+  jwks_cache[["set"]](
     cache_key,
     list(
       jwks = jwks,
@@ -1009,7 +1009,7 @@ test_that("JAR encryption recovers from a rotated key with a throttled refresh",
   old_key <- openssl::rsa_keygen()
   new_key <- openssl::rsa_keygen()
   as_enc_jwk <- function(key, kid) {
-    jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey))
+    jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]))
     c(jwk, list(kid = kid, use = "enc", alg = "RSA-OAEP"))
   }
   old <- as_enc_jwk(old_key, "old")
@@ -1036,8 +1036,8 @@ test_that("JAR encryption recovers from a rotated key with a throttled refresh",
   url <- prepare_call(client, valid_browser_token())
   encrypted <- parse_query_param(url, "request", decode = TRUE)
   decrypted <- jwe_compact_decrypt(encrypted, new_key)
-  expect_identical(decrypted$header$kid, "new")
-  expect_identical(parse_jwt_payload(decrypted$plaintext)$client_id, "abc")
+  expect_identical(decrypted[["header"]][["kid"]], "new")
+  expect_identical(parse_jwt_payload(decrypted[["plaintext"]])[["client_id"]], "abc")
   expect_identical(refreshes, 1L)
   # A persistent cache/key miss must not trigger unbounded fetches.
   expect_error(
@@ -1050,7 +1050,7 @@ test_that("JAR encryption recovers from a rotated key with a throttled refresh",
 test_that("JWK list and JSON encryption inputs enforce alg metadata", {
   encryption_key <- openssl::rsa_keygen(bits = 2048)
   encryption_jwk <- jsonlite::fromJSON(
-    write_test_jwk(encryption_key$pubkey),
+    write_test_jwk(encryption_key[["pubkey"]]),
     simplifyVector = FALSE
   )
   encryption_jwk[["kid"]] <- "encryption-key-7"
@@ -1083,7 +1083,7 @@ test_that("JWK list and JSON encryption inputs enforce alg metadata", {
 test_that("JWK list and JSON encryption inputs retain kid and key policy", {
   encryption_key <- openssl::rsa_keygen(bits = 2048)
   encryption_jwk <- jsonlite::fromJSON(
-    write_test_jwk(encryption_key$pubkey),
+    write_test_jwk(encryption_key[["pubkey"]]),
     simplifyVector = FALSE
   )
   encryption_jwk[["kid"]] <- "encryption-key-7"
@@ -1111,7 +1111,7 @@ test_that("JWK list and JSON encryption inputs retain kid and key policy", {
     request_jwe <- parse_query_param(auth_url, "request", decode = TRUE)
     decrypted <- shinyOAuth:::jwe_compact_decrypt(request_jwe, encryption_key)
 
-    expect_identical(decrypted$header$kid, "encryption-key-7")
+    expect_identical(decrypted[["header"]][["kid"]], "encryption-key-7")
   }
 
   encryption_jwk[["use"]] <- "sig"
@@ -1175,7 +1175,7 @@ test_that("oauth_client validates request-object encryption configuration", {
   provider_with_key <- make_jar_test_provider(
     request_object_encryption_alg_values_supported = "RSA-OAEP",
     request_object_encryption_enc_values_supported = "A256CBC-HS512",
-    request_object_encryption_jwk = encryption_key$pubkey
+    request_object_encryption_jwk = encryption_key[["pubkey"]]
   )
 
   expect_error(
@@ -1207,7 +1207,7 @@ test_that("oauth_client validates request-object encryption configuration", {
       provider = make_jar_test_provider(
         request_object_encryption_alg_values_supported = "RSA1_5",
         request_object_encryption_enc_values_supported = "A256CBC-HS512",
-        request_object_encryption_jwk = encryption_key$pubkey
+        request_object_encryption_jwk = encryption_key[["pubkey"]]
       ),
       request_object_encryption_alg = "RSA-OAEP",
       request_object_encryption_enc = "A256CBC-HS512"
@@ -1223,7 +1223,7 @@ test_that("oauth_client validates request-object encryption configuration", {
     make_jar_test_provider(
       request_object_encryption_alg_values_supported = "RSA-OAEP",
       request_object_encryption_enc_values_supported = "A128CBC-HS256",
-      request_object_encryption_jwk = weak_encryption_key$pubkey
+      request_object_encryption_jwk = weak_encryption_key[["pubkey"]]
     ),
     regexp = "RSA public key with a modulus of at least 2048 bits"
   )
@@ -1366,8 +1366,8 @@ test_that("request mode through PAR supports client_secret_jwt client auth", {
   expect_false("client_secret" %in% names(body_data))
   expect_false("response_type" %in% names(body_data))
   expect_false("redirect_uri" %in% names(body_data))
-  expect_identical(request_payload$client_id, "abc")
-  expect_identical(assertion_payload$aud, cli@provider@issuer)
+  expect_identical(request_payload[["client_id"]], "abc")
+  expect_identical(assertion_payload[["aud"]], cli@provider@issuer)
 })
 
 test_that("request mode through PAR supports private_key_jwt client auth", {
@@ -1426,14 +1426,14 @@ test_that("request mode through PAR supports private_key_jwt client auth", {
   expect_false("client_secret" %in% names(body_data))
   expect_false("response_type" %in% names(body_data))
   expect_false("redirect_uri" %in% names(body_data))
-  expect_identical(request_header$typ, "oauth-authz-req+jwt")
-  expect_identical(request_header$kid, "kid-123")
-  expect_identical(request_payload$client_id, "abc")
-  expect_identical(assertion_header$typ, "JWT")
-  expect_identical(assertion_header$kid, "kid-123")
-  expect_identical(assertion_payload$iss, "abc")
-  expect_identical(assertion_payload$sub, "abc")
-  expect_identical(assertion_payload$aud, cli@provider@issuer)
+  expect_identical(request_header[["typ"]], "oauth-authz-req+jwt")
+  expect_identical(request_header[["kid"]], "kid-123")
+  expect_identical(request_payload[["client_id"]], "abc")
+  expect_identical(assertion_header[["typ"]], "JWT")
+  expect_identical(assertion_header[["kid"]], "kid-123")
+  expect_identical(assertion_payload[["iss"]], "abc")
+  expect_identical(assertion_payload[["sub"]], "abc")
+  expect_identical(assertion_payload[["aud"]], cli@provider@issuer)
 })
 
 test_that("request object preserves repeated resource indicators", {
@@ -1637,7 +1637,7 @@ test_that("HMAC request objects use the expected signature bytes", {
 
     expect_identical(length(parts), 3L, info = alg)
     expect_identical(
-      shinyOAuth:::parse_jwt_header(request_jwt)$alg,
+      shinyOAuth:::parse_jwt_header(request_jwt)[["alg"]],
       alg,
       info = alg
     )

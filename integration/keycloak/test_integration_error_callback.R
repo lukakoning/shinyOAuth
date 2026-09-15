@@ -5,7 +5,7 @@
 ## error fields after callback issuer and state validation have succeeded.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 keycloak_error_query <- function(
@@ -53,9 +53,9 @@ keycloak_error_query <- function(
 }
 
 clear_oauth_error_values <- function(values) {
-  values$error <- NULL
-  values$error_description <- NULL
-  values$error_uri <- NULL
+  values[["error"]] <- NULL
+  values[["error_description"]] <- NULL
+  values[["error_uri"]] <- NULL
   invisible(NULL)
 }
 
@@ -71,7 +71,7 @@ testthat::test_that("authorization error callback consumes state and blocks repl
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       state <- parse_query_param(url, "state")
       state_info <- get_state_info(client, url)
       query <- keycloak_error_query(
@@ -82,29 +82,29 @@ testthat::test_that("authorization error callback consumes state and blocks repl
         iss = prov@issuer
       )
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "access_denied")
-      testthat::expect_null(values$error_description)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "access_denied")
+      testthat::expect_null(values[["error_description"]])
       testthat::expect_identical(
-        values$error_uri,
+        values[["error_uri"]],
         expected_error_uri
       )
       expect_state_store_entry_consumed(client, state_info)
 
       clear_oauth_error_values(values)
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )
-      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
     }
   )
 })
@@ -120,19 +120,19 @@ testthat::test_that("authorization error callback issuer is checked before state
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       state <- parse_query_param(url, "state")
       state_info <- get_state_info(client, url)
 
-      values$.process_query(keycloak_error_query(
+      values[[".process_query"]](keycloak_error_query(
         error = "access_denied",
         error_description = "Wrong issuer should not be trusted",
         state = state,
         iss = "http://localhost:8080/realms/attacker"
       ))
-      session$flushReact()
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "issuer_mismatch")
+      testthat::expect_identical(values[["error"]], "issuer_mismatch")
       expect_state_store_entry_present(
         client,
         state_info,
@@ -140,16 +140,16 @@ testthat::test_that("authorization error callback issuer is checked before state
       )
 
       clear_oauth_error_values(values)
-      values$.process_query(keycloak_error_query(
+      values[[".process_query"]](keycloak_error_query(
         error = "access_denied",
         error_description = "Consent denied by user",
         state = state,
         iss = prov@issuer
       ))
-      session$flushReact()
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "access_denied")
-      testthat::expect_null(values$error_description)
+      testthat::expect_identical(values[["error"]], "access_denied")
+      testthat::expect_null(values[["error_description"]])
       expect_state_store_entry_consumed(client, state_info)
     }
   )
@@ -166,20 +166,20 @@ testthat::test_that("unsolicited authorization error is rejected as invalid stat
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      values$.process_query(keycloak_error_query(
+      values[[".process_query"]](keycloak_error_query(
         error = "access_denied",
         error_description = "Unbound provider error",
         iss = prov@issuer
       ))
-      session$flushReact()
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )
-      testthat::expect_false(isTRUE(values$authenticated))
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
     }
   )
 })

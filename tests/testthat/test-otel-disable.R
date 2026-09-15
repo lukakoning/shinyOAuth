@@ -35,8 +35,8 @@ testthat::test_that("tracing disabled: with_otel_span executes without spans", {
   )
 
   testthat::expect_equal(span_out, 42)
-  testthat::expect_null(parent$span)
-  testthat::expect_null(parent$headers)
+  testthat::expect_null(parent[["span"]])
+  testthat::expect_null(parent[["headers"]])
   testthat::expect_null(ctx)
 })
 
@@ -115,8 +115,8 @@ testthat::test_that("otel_start_async_parent degrades to NULL on otel error", {
     }
   )
 
-  testthat::expect_null(parent$span)
-  testthat::expect_null(parent$headers)
+  testthat::expect_null(parent[["span"]])
+  testthat::expect_null(parent[["headers"]])
 })
 
 testthat::test_that("otel_start_async_parent does not capture ambient headers on start failure", {
@@ -161,8 +161,8 @@ testthat::test_that("otel_start_async_parent does not capture ambient headers on
 
   testthat::expect_true(warned)
   testthat::expect_equal(capture_calls, 0L)
-  testthat::expect_null(parent$span)
-  testthat::expect_null(parent$headers)
+  testthat::expect_null(parent[["span"]])
+  testthat::expect_null(parent[["headers"]])
 })
 
 testthat::test_that("otel_start_async_parent does not activate main-thread span", {
@@ -173,7 +173,7 @@ testthat::test_that("otel_start_async_parent does not activate main-thread span"
   after <- otel::pack_http_context()
 
   testthat::expect_identical(after, before)
-  if (!is.null(parent$span)) {
+  if (!is.null(parent[["span"]])) {
     shinyOAuth:::otel_end_async_parent(parent, status = "ok")
   }
 })

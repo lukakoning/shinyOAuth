@@ -10,7 +10,7 @@ local({
 
   r_binary <- file.path(
     R.home("bin"),
-    if (.Platform$OS.type == "windows") "R.exe" else "R"
+    if (.Platform[["OS.type"]] == "windows") "R.exe" else "R"
   )
   install_result <- processx::run(
     r_binary,
@@ -23,7 +23,7 @@ local({
     echo = TRUE,
     error_on_status = FALSE
   )
-  if (!identical(install_result$status, 0L)) {
+  if (!identical(install_result[["status"]], 0L)) {
     stop(
       "R CMD INSTALL failed; integration tests were not started",
       call. = FALSE
@@ -48,7 +48,7 @@ local({
     )
   }
 
-  integration_library_path <- paste(.libPaths(), collapse = .Platform$path.sep)
+  integration_library_path <- paste(.libPaths(), collapse = .Platform[["path.sep"]])
   Sys.setenv(
     R_LIBS = integration_library_path,
     R_LIBS_USER = integration_library_path
@@ -78,7 +78,7 @@ local({
   }
 
   summary <- as.data.frame(results)
-  skip_count <- sum(summary$skipped)
+  skip_count <- sum(summary[["skipped"]])
   message(
     "[run-integration] Skip budget: ",
     skip_count,
@@ -86,7 +86,7 @@ local({
     skip_budget
   )
   if (skip_count > skip_budget) {
-    skipped_tests <- summary$test[summary$skipped]
+    skipped_tests <- summary[["test"]][summary[["skipped"]]]
     stop(
       paste0(
         "Integration skip budget exceeded (",

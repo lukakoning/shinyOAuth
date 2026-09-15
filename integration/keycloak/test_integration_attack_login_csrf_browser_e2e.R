@@ -6,7 +6,7 @@
 ## verified subject and userinfo claims exposed by the token.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
@@ -17,7 +17,7 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
     shinyOAuth::use_shinyOAuth(),
     shiny::titlePanel(title),
     shiny::actionButton("prepare_login_btn", "Prepare login"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::verbatimTextOutput("ready_state"),
     shiny::verbatimTextOutput("auth_state"),
     shiny::verbatimTextOutput("auth_url"),
@@ -31,10 +31,10 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
       auto_redirect = FALSE
     )
 
-    shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
+    shiny::observeEvent(input[["prepare_login_btn"]], ignoreInit = TRUE, {
       tryCatch(
         {
-          promises::then(auth$build_auth_url(), published_auth_url)
+          promises::then(auth[["build_auth_url"]](), published_auth_url)
           invisible(NULL)
           published_auth_error(NULL)
         },
@@ -44,24 +44,24 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
       )
     })
 
-    output$ready_state <- shiny::renderText({
-      paste("browser_ready:", isTRUE(auth$has_browser_token()))
+    output[["ready_state"]] <- shiny::renderText({
+      paste("browser_ready:", isTRUE(auth[["has_browser_token"]]()))
     })
 
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "has_token:",
-        !is.null(auth$token),
+        !is.null(auth[["token"]]),
         "error:",
-        auth$error %||% "<none>",
+        auth[["error"]] %||% "<none>",
         "error_description:",
-        auth$error_description %||% "<none>"
+        auth[["error_description"]] %||% "<none>"
       )
     })
 
-    output$auth_url <- shiny::renderText({
+    output[["auth_url"]] <- shiny::renderText({
       auth_error <- published_auth_error() %||% NULL
       if (
         is.character(auth_error) &&
@@ -84,8 +84,8 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
       auth_url
     })
 
-    output$browser_state <- shiny::renderText({
-      token <- auth$token
+    output[["browser_state"]] <- shiny::renderText({
+      token <- auth[["token"]]
       userinfo <- if (is.null(token)) {
         list()
       } else {
@@ -100,13 +100,13 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
 
       jsonlite::toJSON(
         list(
-          authenticated = isTRUE(auth$authenticated),
+          authenticated = isTRUE(auth[["authenticated"]]),
           has_token = !is.null(token),
-          error = auth$error %||% NULL,
-          error_description = auth$error_description %||% NULL,
+          error = auth[["error"]] %||% NULL,
+          error_description = auth[["error_description"]] %||% NULL,
           preferred_username = username,
           userinfo_sub = userinfo[["sub"]] %||% NULL,
-          id_sub = id_claims$sub %||% NULL,
+          id_sub = id_claims[["sub"]] %||% NULL,
           app_policy_rejected = !is.null(token) && !identical(username, "alice")
         ),
         auto_unbox = TRUE,
@@ -120,7 +120,7 @@ make_login_csrf_browser_app <- function(client, title, module_id = "auth") {
 }
 
 read_login_csrf_browser_state <- function(drv) {
-  raw <- drv$get_js(
+  raw <- drv[["get_js"]](
     "
     JSON.stringify((function () {
       var ready = document.querySelector('#ready_state');
@@ -138,16 +138,16 @@ read_login_csrf_browser_state <- function(drv) {
   )
 
   state <- jsonlite::fromJSON(raw)
-  browser_state <- state$browser_state %||% "{}"
+  browser_state <- state[["browser_state"]] %||% "{}"
   if (!is.character(browser_state) || length(browser_state) != 1L) {
     browser_state <- "{}"
   }
-  state$browser_state <- jsonlite::fromJSON(browser_state)
+  state[["browser_state"]] <- jsonlite::fromJSON(browser_state)
   state
 }
 
 wait_for_login_csrf_auth_url <- function(drv, timeout = 15000) {
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_url');
@@ -162,7 +162,7 @@ wait_for_login_csrf_auth_url <- function(drv, timeout = 15000) {
 
 navigate_browser_to_url <- function(drv, url) {
   url_json <- jsonlite::toJSON(url, auto_unbox = TRUE)
-  drv$run_js(paste0("window.location.href = ", url_json, ";"))
+  drv[["run_js"]](paste0("window.location.href = ", url_json, ";"))
 }
 
 testthat::test_that("browser login CSRF exposes the substituted subject for app-side rejection", {
@@ -188,7 +188,7 @@ testthat::test_that("browser login CSRF exposes the substituted subject for app-
     scopes = c("openid", "profile", "email")
   )
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     make_login_csrf_browser_app(
       client,
       title = "Login CSRF browser E2E",
@@ -205,7 +205,7 @@ testthat::test_that("browser login CSRF exposes the substituted subject for app-
   )
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -215,31 +215,31 @@ testthat::test_that("browser login CSRF exposes the substituted subject for app-
     timeout = 15000
   )
 
-  drv$set_inputs(prepare_login_btn = "click")
+  drv[["set_inputs"]](prepare_login_btn = "click")
   browser_state <- wait_for_login_csrf_auth_url(drv)
 
   testthat::expect_match(
-    browser_state$ready_state,
+    browser_state[["ready_state"]],
     "browser_ready: TRUE",
     fixed = TRUE
   )
   testthat::expect_true(
-    is.character(browser_state$auth_url) && nzchar(browser_state$auth_url)
+    is.character(browser_state[["auth_url"]]) && nzchar(browser_state[["auth_url"]])
   )
 
   login <- perform_login_form_as(
-    browser_state$auth_url,
+    browser_state[["auth_url"]],
     username = "bob",
     password = "bob",
     redirect_uri = client@redirect_uri
   )
   testthat::expect_true(
-    is.character(login$callback_url) && nzchar(login$callback_url)
+    is.character(login[["callback_url"]]) && nzchar(login[["callback_url"]])
   )
 
-  navigate_browser_to_url(drv, login$callback_url)
+  navigate_browser_to_url(drv, login[["callback_url"]])
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_state');
@@ -254,18 +254,18 @@ testthat::test_that("browser login CSRF exposes the substituted subject for app-
 
   auth_state <- keycloak_get_auth_state_robust(drv)
   browser_state <- read_login_csrf_browser_state(drv)
-  claims <- browser_state$browser_state
+  claims <- browser_state[["browser_state"]]
 
   testthat::expect_match(auth_state, "authenticated: TRUE", fixed = TRUE)
-  testthat::expect_true(isTRUE(claims$authenticated))
-  testthat::expect_true(isTRUE(claims$has_token))
-  testthat::expect_identical(claims$preferred_username, "bob")
+  testthat::expect_true(isTRUE(claims[["authenticated"]]))
+  testthat::expect_true(isTRUE(claims[["has_token"]]))
+  testthat::expect_identical(claims[["preferred_username"]], "bob")
   testthat::expect_true(
-    is.character(claims$userinfo_sub) && nzchar(claims$userinfo_sub)
+    is.character(claims[["userinfo_sub"]]) && nzchar(claims[["userinfo_sub"]])
   )
-  testthat::expect_identical(claims$id_sub, claims$userinfo_sub)
+  testthat::expect_identical(claims[["id_sub"]], claims[["userinfo_sub"]])
   testthat::expect_true(
-    isTRUE(claims$app_policy_rejected),
+    isTRUE(claims[["app_policy_rejected"]]),
     info = paste0(
       "Expected app policy to reject non-alice subject. Browser state: ",
       jsonlite::toJSON(claims, auto_unbox = TRUE, null = "null")

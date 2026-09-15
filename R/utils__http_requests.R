@@ -126,7 +126,7 @@ resolve_http_timeout <- function() {
   }
 
   # curl represents timeout_ms as a signed 32-bit integer.
-  min(timeout, as.double(.Machine$integer.max) / 1000)
+  min(timeout, as.double(.Machine[["integer.max"]]) / 1000)
 }
 
 #' Internal: HTTP defaults (timeout and User-Agent)
@@ -366,7 +366,7 @@ resolve_max_body_bytes <- function() {
   # Leave room for that sentinel without overflowing readBin()'s integer n.
   max_bytes <- min(
     max_bytes,
-    as.double(.Machine$integer.max) - 1
+    as.double(.Machine[["integer.max"]]) - 1
   )
   as.integer(max_bytes)
 }
@@ -466,7 +466,7 @@ req_perform_bounded <- function(req) {
     check_resp_body_size(resp)
     return(resp)
   }
-  if (file.info(path)$size > max_bytes) {
+  if (file.info(path)[["size"]] > max_bytes) {
     err_parse(
       "Response body too large during encoded download",
       context = list(reason = "body_too_large", max_bytes = max_bytes)
@@ -588,7 +588,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
     attempt_req <- prepare_attempt_req(1L)
     resp <- try(req_perform_bounded(attempt_req), silent = TRUE)
     if (inherits(resp, "try-error")) {
-      parent <- attr(resp, "condition")
+      parent <- attr(resp, "condition", exact = TRUE)
       if (inherits(parent, "shinyOAuth_parse_error")) {
         stop(parent)
       }
@@ -657,7 +657,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
     resp <- try(req_perform_bounded(attempt_req), silent = TRUE)
     # Transport error -> retry
     if (inherits(resp, "try-error")) {
-      parent <- attr(resp, "condition")
+      parent <- attr(resp, "condition", exact = TRUE)
       if (inherits(parent, "shinyOAuth_parse_error")) {
         stop(parent)
       }
@@ -703,7 +703,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
     return(last_err[["response"]])
   }
   # Otherwise, rethrow transport error as a simple error for caller logic
-  parent <- attr(last_err, "condition")
+  parent <- attr(last_err, "condition", exact = TRUE)
   if (is.null(parent) && inherits(last_err, "try-error")) {
     parent <- simpleError(as.character(last_err))
   }

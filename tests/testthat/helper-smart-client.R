@@ -14,8 +14,8 @@ smart_client_fixture <- function(launch = "standalone", oidc = FALSE) {
     token_endpoint_auth_signing_alg_values_supported = list("RS384", "ES384")
   )
   if (oidc) {
-    metadata$issuer <- "https://ehr.example"
-    metadata$jwks_uri <- "https://ehr.example/jwks"
+    metadata[["issuer"]] <- "https://ehr.example"
+    metadata[["jwks_uri"]] <- "https://ehr.example/jwks"
   }
   list(fhir_base = "https://ehr.example/fhir/R4", smart_version = "2.2.0",
     discovery_url = "https://ehr.example/fhir/R4/.well-known/smart-configuration",
@@ -25,7 +25,7 @@ smart_identity_fixture <- function(reference = "Practitioner/example") {
   client <- smart_client(smart_client_fixture(oidc = TRUE), "example",
     "https://app.example/callback", scopes = character(), identity = "fhirUser")
   key <- openssl::rsa_keygen(2048)
-  jwks <- list(keys = list(jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = FALSE)))
+  jwks <- list(keys = list(jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = FALSE)))
   claims <- list(iss = "https://ehr.example", aud = "example", sub = "example-user",
     nonce = "expected-nonce", iat = as.numeric(Sys.time()), exp = as.numeric(Sys.time()) + 300,
     fhirUser = reference)
@@ -34,10 +34,10 @@ smart_identity_fixture <- function(reference = "Practitioner/example") {
   verified <- verify_token_set(client,
     list(access_token = "example-access", token_type = "Bearer", expires_in = 300,
       scope = "openid fhirUser", id_token = signed), nonce = "expected-nonce")
-  token <- OAuthToken(access_token = verified$access_token, refresh_token = "example-refresh",
+  token <- OAuthToken(access_token = verified[["access_token"]], refresh_token = "example-refresh",
     token_type = "Bearer", expires_at = as.numeric(Sys.time()) + 300,
-    granted_scopes = verified$granted_scopes, granted_scopes_verified = TRUE,
-    id_token = signed, id_token_validated = verified$.id_token_validated)
+    granted_scopes = verified[["granted_scopes"]], granted_scopes_verified = TRUE,
+    id_token = signed, id_token_validated = verified[[".id_token_validated"]])
   list(client = client, token = smart_update_token_context(client, token),
     key = key, jwks = jwks, claims = claims)
 }

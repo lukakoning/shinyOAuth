@@ -2,15 +2,15 @@ test_that("client_secret_basic form-encodes credentials on the wire", {
   testthat::skip_if_not_installed("webfakes")
 
   app <- webfakes::new_app()
-  app$post("/token", function(req, res) {
-    res$send(req$get_header("authorization"))
+  app[["post"]]("/token", function(req, res) {
+    res[["send"]](req[["get_header"]]("authorization"))
   })
   server <- webfakes::local_app_process(app)
 
   provider <- oauth_provider(
     name = "basic-auth-test",
     auth_url = "https://example.com/authorize",
-    token_url = paste0(server$url(), "/token"),
+    token_url = paste0(server[["url"]](), "/token"),
     token_auth_style = "header"
   )
   client <- oauth_client(

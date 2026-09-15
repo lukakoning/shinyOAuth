@@ -42,7 +42,7 @@ test_that("OAuthClient state_entropy fails fast on NA and non-scalar", {
       client_id = "id",
       client_secret = "",
       redirect_uri = "https://app.example.com/callback",
-      state_entropy = as.double(.Machine$integer.max) + 1
+      state_entropy = as.double(.Machine[["integer.max"]]) + 1
     ),
     regexp = "state_entropy must be between 22 and 128"
   )

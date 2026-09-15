@@ -86,18 +86,18 @@ client <- oauth_client(
 )
 
 ui <- fluidPage(
-  tags$h3("shinyOAuth + otel-tui"),
-  tags$p(
+  tags[["h3"]]("shinyOAuth + otel-tui"),
+  tags[["p"]](
     "Collector endpoint:",
-    tags$code(otel_endpoint)
+    tags[["code"]](otel_endpoint)
   ),
-  tags$p(
+  tags[["p"]](
     "Run ",
-    tags$code("otel-tui"),
+    tags[["code"]]("otel-tui"),
     " in another terminal, then click login and watch traces/logs appear."
   ),
   actionButton("login", "Login with GitHub"),
-  tags$hr(),
+  tags[["hr"]](),
   uiOutput("oauth_error"),
   verbatimTextOutput("auth_status"),
   verbatimTextOutput("userinfo")
@@ -113,30 +113,30 @@ server <- function(input, output, session) {
     async = TRUE
   )
 
-  observeEvent(input$login, {
-    auth$request_login()
+  observeEvent(input[["login"]], {
+    auth[["request_login"]]()
   })
 
   observeEvent(
-    list(auth$error, auth$error_description),
+    list(auth[["error"]], auth[["error_description"]]),
     {
-      if (interactive() && !is.null(auth$error_description)) {
+      if (interactive() && !is.null(auth[["error_description"]])) {
         rlang::inform(c(
           "OAuth error details",
-          "i" = paste0("error: ", auth$error),
-          "i" = paste0("error_description: ", auth$error_description)
+          "i" = paste0("error: ", auth[["error"]]),
+          "i" = paste0("error_description: ", auth[["error_description"]])
         ))
       }
     },
     ignoreInit = TRUE
   )
 
-  output$oauth_error <- renderUI({
-    if (is.null(auth$error)) {
+  output[["oauth_error"]] <- renderUI({
+    if (is.null(auth[["error"]])) {
       return(NULL)
     }
 
-    msg <- if (identical(auth$error, "access_denied")) {
+    msg <- if (identical(auth[["error"]], "access_denied")) {
       "Sign-in was canceled or denied. Please try again."
     } else {
       "Authentication failed. Please try again."
@@ -145,24 +145,24 @@ server <- function(input, output, session) {
     div(class = "alert alert-danger", role = "alert", msg)
   })
 
-  output$auth_status <- renderPrint({
+  output[["auth_status"]] <- renderPrint({
     list(
-      authenticated = auth$authenticated,
-      has_token = !is.null(auth$token),
-      error = auth$error,
-      has_error_description = !is.null(auth$error_description),
-      expires_at = if (!is.null(auth$token)) auth$token@expires_at else NULL
+      authenticated = auth[["authenticated"]],
+      has_token = !is.null(auth[["token"]]),
+      error = auth[["error"]],
+      has_error_description = !is.null(auth[["error_description"]]),
+      expires_at = if (!is.null(auth[["token"]])) auth[["token"]]@expires_at else NULL
     )
   })
 
-  output$userinfo <- renderPrint({
-    req(auth$token)
-    auth$token@userinfo
+  output[["userinfo"]] <- renderPrint({
+    req(auth[["token"]])
+    auth[["token"]]@userinfo
   })
 
   onStop(function() {
-    try(otel::get_default_tracer_provider()$flush(), silent = TRUE)
-    try(otel::get_default_logger_provider()$flush(), silent = TRUE)
+    try(otel::get_default_tracer_provider()[["flush"]](), silent = TRUE)
+    try(otel::get_default_logger_provider()[["flush"]](), silent = TRUE)
     try(mirai::daemons(0), silent = TRUE)
   })
 }

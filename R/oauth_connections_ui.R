@@ -56,7 +56,7 @@ oauth_connections_ui <- function(
   additional_clients = list()
 ) {
   connection_manager_bind(manager, id)
-  clients <- manager$clients
+  clients <- manager[["clients"]]
   names(clients) <- shiny::NS(id)(names(clients))
   if (!is.list(additional_clients) || length(additional_clients) > 64L) {
     err_config("additional_clients must be a named list of at most 64 ordinary clients")
@@ -64,7 +64,7 @@ oauth_connections_ui <- function(
   if (length(additional_clients)) {
     additional_clients <- oauth_callback_registry(additional_clients, mark_ui = FALSE)
     for (client in additional_clients) {
-      if (!connection_manager_same_origin(client@redirect_uri, manager$app_origin)) {
+      if (!connection_manager_same_origin(client@redirect_uri, manager[["app_origin"]])) {
         err_config("Additional callbacks must use the configured application origin")
       }
       if (any(vapply(clients, function(managed) {
@@ -84,16 +84,16 @@ oauth_connections_ui <- function(
     err_config("app_base_path must be an absolute application directory path")
   }
   app_base <- resource_binding_components(
-    paste0(manager$app_origin, app_base_path),
+    paste0(manager[["app_origin"]], app_base_path),
     base = TRUE
-  )$url
+  )[["url"]]
   app_base <- paste0(sub("/$", "", app_base), "/")
   if (
     !all(vapply(
       clients,
       function(client) {
         startsWith(
-          resource_binding_components(client@redirect_uri)$path,
+          resource_binding_components(client@redirect_uri)[["path"]],
           app_base_path
         )
       },
@@ -111,21 +111,21 @@ oauth_connections_ui <- function(
     base_ui,
     clients = clients,
     request_uri_resolver = resolver,
-    allow_shared_issuer = identical(manager$callback_policy, "shared_routes"),
-    select_client = if (identical(manager$callback_policy, "shared_routes")) {
+    allow_shared_issuer = identical(manager[["callback_policy"]], "shared_routes"),
+    select_client = if (identical(manager[["callback_policy"]], "shared_routes")) {
       function(candidates, payload) connection_router_select(manager, candidates, payload)
     } else NULL
   )
   handler <- function(req) {
     connection_manager_document_base(callback_handler(req), app_base)
   }
-  state <- manager$state
-  state$app_base <- app_base
-  state$ui_bound <- TRUE
+  state <- manager[["state"]]
+  state[["app_base"]] <- app_base
+  state[["ui_bound"]] <- TRUE
   ui <- function(req) {
     connection_manager_check(manager)
     uri <- tryCatch(resolver(req), error = function(...) NULL)
-    if (!connection_manager_same_origin(uri, manager$app_origin)) {
+    if (!connection_manager_same_origin(uri, manager[["app_origin"]])) {
       return(oauth_get_setup_error(
         "Request does not match the configured application origin."
       ))
@@ -137,14 +137,14 @@ oauth_connections_ui <- function(
     query <- req[["QUERY_STRING"]] %||% ""
     raw_callback <- oauth_get_query_is_callback(query)
     if (
-      !identical(manager$retention, "browser") ||
+      !identical(manager[["retention"]], "browser") ||
         !identical(req[["REQUEST_METHOD"]], "GET") ||
         raw_callback
     ) {
       response <- handler(req)
-      if (identical(manager$retention, "browser") &&
-          identical(manager$owner$same_site, "Strict")) {
-        response <- connection_manager_callback_document(response, uri, manager$app_origin)
+      if (identical(manager[["retention"]], "browser") &&
+          identical(manager[["owner"]][["same_site"]], "Strict")) {
+        response <- connection_manager_callback_document(response, uri, manager[["app_origin"]])
       }
       return(response)
     }
@@ -152,7 +152,7 @@ oauth_connections_ui <- function(
     if (
       !is.null(supplied_origin) &&
         (!is_valid_string(supplied_origin) ||
-          !identical(supplied_origin, manager$app_origin))
+          !identical(supplied_origin, manager[["app_origin"]]))
     ) {
       return(oauth_get_setup_error(
         "Cross-origin owner requests are not accepted."
@@ -160,9 +160,9 @@ oauth_connections_ui <- function(
     }
     tryCatch(
       {
-        owners <- manager$state$owners
-        cookie <- connection_owner_cookie_read(req, owners$cookie_name)
-        owner <- owners$resolve(cookie)
+        owners <- manager[["state"]][["owners"]]
+        cookie <- connection_owner_cookie_read(req, owners[["cookie_name"]])
+        owner <- owners[["resolve"]](cookie)
         continuation <- length(oauth_module_query_raw_values(
           query,
           oauth_form_post_handle_param
@@ -183,10 +183,10 @@ oauth_connections_ui <- function(
             headers = list(
               Location = sub("[?#].*$", "", uri),
               "Set-Cookie" = connection_owner_cookie_header(
-                owners$cookie_name,
+                owners[["cookie_name"]],
                 NULL,
-                manager$app_origin,
-                manager$owner,
+                manager[["app_origin"]],
+                manager[["owner"]],
                 clear = TRUE
               ),
               "Cache-Control" = "no-store",
@@ -198,19 +198,19 @@ oauth_connections_ui <- function(
         if (
           is.null(owner) &&
             !is.null(response) &&
-            isTRUE(response$status == 200L) &&
-            grepl("^text/html", response$content_type, ignore.case = TRUE)
+            isTRUE(response[["status"]] == 200L) &&
+            grepl("^text/html", response[["content_type"]], ignore.case = TRUE)
         ) {
-          created <- owners$create()
+          created <- owners[["create"]]()
           # Preserve independent Set-Cookie headers from a request-dependent UI.
-          response$headers <- c(
-            response$headers,
+          response[["headers"]] <- c(
+            response[["headers"]],
             list(
               "Set-Cookie" = connection_owner_cookie_header(
-                owners$cookie_name,
-                created$cookie,
-                manager$app_origin,
-                manager$owner
+                owners[["cookie_name"]],
+                created[["cookie"]],
+                manager[["app_origin"]],
+                manager[["owner"]]
               )
             )
           )
@@ -224,7 +224,8 @@ oauth_connections_ui <- function(
   }
   attr(ui, "http_methods_supported") <- attr(
     callback_handler,
-    "http_methods_supported"
+    "http_methods_supported",
+    exact = TRUE
   )
   ui
 }
@@ -233,11 +234,11 @@ oauth_connections_ui <- function(
 # same-origin hop. Commit a document before navigating to the bridge's opaque
 # continuation; the next request still has to prove the existing live owner.
 connection_manager_callback_document <- function(response, uri, origin) {
-  location <- response$headers$Location
+  location <- response[["headers"]][["Location"]]
   if (is_valid_string(location) && startsWith(location, "?")) {
     location <- paste0(sub("[?#].*$", "", uri), location)
   }
-  if (is.null(response) || !isTRUE(response$status == 303L) ||
+  if (is.null(response) || !isTRUE(response[["status"]] == 303L) ||
       !connection_manager_same_origin(location, origin) ||
       length(oauth_module_query_raw_values(url_raw_query(location), oauth_form_post_handle_param)) != 1L) {
     return(response)
@@ -270,7 +271,7 @@ connection_ordinary_continuation <- function(query, uri, clients) {
     client <- clients[[id]]
     if (!oauth_callback_route_matches(paste0(sub("[?#].*$", "", uri), "?", query), client@redirect_uri)) return(FALSE)
     key <- oauth_form_post_cache_key(id, handle, client)
-    sealed <- state_store_backend_call(client@state_store$get(key, missing = NULL), "form_post_store_get")
+    sealed <- state_store_backend_call(client@state_store[["get"]](key, missing = NULL), "form_post_store_get")
     payload <- oauth_form_post_unseal_payload(client, id, handle, sealed)
     oauth_form_post_validate_handle_freshness(client, payload)
     payload <- oauth_form_post_validate_payload(payload, client = client)
@@ -286,12 +287,12 @@ connection_ordinary_continuation <- function(query, uri, clients) {
 connection_manager_document_base <- function(response, app_base) {
   if (
     is.null(response) ||
-      !isTRUE(response$status == 200L) ||
-      !grepl("^text/html", response$content_type, ignore.case = TRUE)
+      !isTRUE(response[["status"]] == 200L) ||
+      !grepl("^text/html", response[["content_type"]], ignore.case = TRUE)
   ) {
     return(response)
   }
-  html <- response$content
+  html <- response[["content"]]
   if (
     !is.character(html) ||
       length(html) != 1L ||
@@ -300,7 +301,7 @@ connection_manager_document_base <- function(response, app_base) {
   ) {
     err_config("Managed HTML must have a head and no separate base element")
   }
-  response$content <- sub(
+  response[["content"]] <- sub(
     "(<head\\b[^>]*>)",
     paste0(
       "\\1<base href=\"",
@@ -313,8 +314,8 @@ connection_manager_document_base <- function(response, app_base) {
   )
   # A request-dependent UI can supply response headers. Body metadata from the
   # original HTML no longer describes the document after adding the base tag.
-  response$headers <- response$headers[
-    !tolower(names(response$headers)) %in%
+  response[["headers"]] <- response[["headers"]][
+    !tolower(names(response[["headers"]])) %in%
       c("content-length", "etag", "content-md5")
   ]
   response

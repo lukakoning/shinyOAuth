@@ -91,8 +91,8 @@ site <- smart_discover(
   "https://ehr.example/fhir/R4",
   endpoint_hosts = c("ehr.example", "login.example")
 )
-site$metadata$token_endpoint
-site$metadata$capabilities
+site[["metadata"]][["token_endpoint"]]
+site[["metadata"]][["capabilities"]]
 
 }
 }

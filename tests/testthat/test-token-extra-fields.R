@@ -44,7 +44,7 @@ test_that("login preserves provider extras separately from token metadata", {
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -54,17 +54,17 @@ test_that("login preserves provider extras separately from token metadata", {
   )
 
   token <- extra_fields_test_callback(client)
-  expect_identical(token@extra_fields$patient, "synthetic-patient")
+  expect_identical(token@extra_fields[["patient"]], "synthetic-patient")
   expect_true("encounter" %in% names(token@extra_fields))
-  expect_null(token@extra_fields$encounter)
-  expect_identical(token@extra_fields$need_patient_banner, FALSE)
-  expect_identical(token@extra_fields$fhirContext, list(list(
+  expect_null(token@extra_fields[["encounter"]])
+  expect_identical(token@extra_fields[["need_patient_banner"]], FALSE)
+  expect_identical(token@extra_fields[["fhirContext"]], list(list(
     reference = "Observation/example",
     codes = list("one", "two"),
     optional = NULL
   )))
   expect_identical(
-    token@extra_fields$authorization_details[[1]]$locations,
+    token@extra_fields[["authorization_details"]][[1]][["locations"]],
     list("https://example.com/fhir")
   )
   expect_identical(
@@ -75,15 +75,15 @@ test_that("login preserves provider extras separately from token metadata", {
     "access_token", "refresh_token", "token_type", "id_token",
     "expires_in", "scope", "cnf"
   ) %in% names(token@extra_fields)))
-  expect_true(token@extra_fields$id_token_validated)
+  expect_true(token@extra_fields[["id_token_validated"]])
   expect_true(token@extra_fields[[".id_token_validated"]])
   expect_false(token@id_token_validated)
   expect_identical(token@userinfo, list())
   expect_identical(token@granted_scopes, c("launch/patient", "patient/Patient.r"))
   expect_true(token@granted_scopes_verified)
-  expect_identical(token@extra_fields$extra_fields$patient, "nested-id")
+  expect_identical(token@extra_fields[["extra_fields"]][["patient"]], "nested-id")
   expect_identical(
-    token@extra_fields$initial_extra_fields$patient,
+    token@extra_fields[["initial_extra_fields"]][["patient"]],
     "nested-initial-id"
   )
   expect_identical(token@initial_extra_fields, token@extra_fields)
@@ -91,8 +91,8 @@ test_that("login preserves provider extras separately from token metadata", {
   # The initial snapshot and worker/session serialization retain all values.
   restored <- unserialize(serialize(token, NULL))
   expect_identical(restored@initial_extra_fields, token@extra_fields)
-  token@extra_fields$patient <- "changed-locally"
-  expect_identical(token@initial_extra_fields$patient, "synthetic-patient")
+  token@extra_fields[["patient"]] <- "changed-locally"
+  expect_identical(token@initial_extra_fields[["patient"]], "synthetic-patient")
   expect_gt(length(events), 0L)
   expect_false(any(grepl(
     "synthetic-patient|synthetic-name|nested-initial-id",
@@ -106,7 +106,7 @@ test_that("login handles form extras and does not expose generated metadata", {
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/x-www-form-urlencoded"),
         body = charToRaw(body)
@@ -137,7 +137,7 @@ test_that("refresh replaces extras while retaining the original launch context",
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(c(
@@ -186,7 +186,7 @@ test_that("rejected refresh cannot publish replacement extra fields", {
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(paste0(
@@ -209,17 +209,17 @@ test_that("rejected refresh cannot publish replacement extra fields", {
 test_that("the module exposes extras and clears them with the login session", {
   local_options(shinyOAuth.skip_browser_token = TRUE)
   response_body <- new.env(parent = emptyenv())
-  response_body$value <- paste0(
+  response_body[["value"]] <- paste0(
     '{"access_token":"first-access","token_type":"Bearer",',
     '"expires_in":3600,"patient":"first-patient"}'
   )
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
-        body = charToRaw(response_body$value)
+        body = charToRaw(response_body[["value"]])
       )
     },
     revoke_token = function(...) invisible(NULL),
@@ -229,29 +229,29 @@ test_that("the module exposes extras and clears them with the login session", {
     oauth_module_server,
     args = list(id = "auth", client = make_test_client(), auto_redirect = FALSE, async = FALSE),
     expr = {
-      state <- parse_query_param(values$build_auth_url(), "state")
-      values$.process_query(paste0("?code=first&state=", state))
-      session$flushReact()
-      expect_true(values$authenticated)
-      expect_identical(values$token@extra_fields$patient, "first-patient")
-      expect_identical(values$token@initial_extra_fields$patient, "first-patient")
+      state <- parse_query_param(values[["build_auth_url"]](), "state")
+      values[[".process_query"]](paste0("?code=first&state=", state))
+      session[["flushReact"]]()
+      expect_true(values[["authenticated"]])
+      expect_identical(values[["token"]]@extra_fields[["patient"]], "first-patient")
+      expect_identical(values[["token"]]@initial_extra_fields[["patient"]], "first-patient")
 
-      values$logout()
-      session$flushReact()
-      expect_null(values$token)
-      expect_false(values$authenticated)
+      values[["logout"]]()
+      session[["flushReact"]]()
+      expect_null(values[["token"]])
+      expect_false(values[["authenticated"]])
 
-      response_body$value <- paste0(
+      response_body[["value"]] <- paste0(
         '{"access_token":"second-access","token_type":"Bearer",',
         '"expires_in":3600}'
       )
-      values$browser_token <- "__SKIPPED__"
-      state <- parse_query_param(values$build_auth_url(), "state")
-      values$.process_query(paste0("?code=second&state=", state))
-      session$flushReact()
-      expect_true(values$authenticated)
-      expect_identical(values$token@extra_fields, list())
-      expect_identical(values$token@initial_extra_fields, list())
+      values[["browser_token"]] <- "__SKIPPED__"
+      state <- parse_query_param(values[["build_auth_url"]](), "state")
+      values[[".process_query"]](paste0("?code=second&state=", state))
+      session[["flushReact"]]()
+      expect_true(values[["authenticated"]])
+      expect_identical(values[["token"]]@extra_fields, list())
+      expect_identical(values[["token"]]@initial_extra_fields, list())
     }
   )
 })

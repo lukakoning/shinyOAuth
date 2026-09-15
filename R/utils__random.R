@@ -155,7 +155,7 @@ validate_code_verifier <- function(verifier) {
 #' and avoid accepting mixed/uppercase variants. Used when callbacks and module
 #' state must stay bound to one browser instance.
 #'
-#' @param token String to validate (e.g., input$shinyOAuth_sid)
+#' @param token String to validate (e.g., `input[["shinyOAuth_sid"]]`)
 #' @param expected_bytes Expected number of random bytes before hex-encoding.
 #'   Defaults to 64 to match the JS `randomHex(64)` call.
 #'

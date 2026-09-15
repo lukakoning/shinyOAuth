@@ -145,11 +145,11 @@ dpop_nonce_cache_get <- function(
   if (!is_valid_string(cache_key)) {
     return(NULL)
   }
-  if (!isTRUE(dpop_nonce_cache$exists(cache_key))) {
+  if (!isTRUE(dpop_nonce_cache[["exists"]](cache_key))) {
     return(NULL)
   }
 
-  nonce <- dpop_nonce_cache$get(cache_key)
+  nonce <- dpop_nonce_cache[["get"]](cache_key)
   nonce <- normalize_dpop_nonce(nonce)
   if (!is_valid_string(nonce)) {
     return(NULL)
@@ -182,7 +182,7 @@ dpop_nonce_cache_set <- function(
     return(invisible(nonce))
   }
 
-  dpop_nonce_cache$set(cache_key, nonce)
+  dpop_nonce_cache[["set"]](cache_key, nonce)
   invisible(nonce)
 }
 
@@ -247,7 +247,7 @@ client_dpop_jkt <- function(client) {
 #' @param token Optional [OAuthToken] object or raw access-token string.
 #' @param access_token Optional raw access-token string.
 #' @param cnf Optional explicit cnf claim data.
-#' @return `cnf$jkt` as a scalar string, or `NA_character_` when absent.
+#' @return `cnf[["jkt"]]` as a scalar string, or `NA_character_` when absent.
 #' @keywords internal
 #' @noRd
 token_cnf_jkt <- function(token = NULL, access_token = NULL, cnf = NULL) {
@@ -273,7 +273,7 @@ token_cnf_jkt <- function(token = NULL, access_token = NULL, cnf = NULL) {
 #' Detect whether DPoP cnf.jkt was observable on a token surface
 #'
 #' Used to defer a required binding observation until introspection when no
-#' actual `cnf$jkt` has been supplied by a configured token surface.
+#' actual `cnf[["jkt"]]` has been supplied by a configured token surface.
 #'
 #' @param access_token Optional raw access-token string.
 #' @param cnf Optional explicit cnf claim data.
@@ -505,7 +505,7 @@ dpop_public_jwk <- function(key) {
     err_config("Failed to derive public key from dpop_private_key")
   }
   if (inherits(pub, "ed25519")) {
-    public_bytes <- as.list(pub)$data
+    public_bytes <- as.list(pub)[["data"]]
     if (!is.raw(public_bytes) || length(public_bytes) != 32L) {
       err_config("Invalid Ed25519 public key")
     }
@@ -850,10 +850,10 @@ parse_http_auth_challenges <- function(value) {
         param_parts = character()
       )
       if (length(scheme_fields) >= 3L && nzchar(trimws(scheme_fields[[3]]))) {
-        current_challenge$param_parts <- trimws(scheme_fields[[3]])
+        current_challenge[["param_parts"]] <- trimws(scheme_fields[[3]])
       }
     } else if (!is.null(current_challenge)) {
-      current_challenge$param_parts <- c(current_challenge$param_parts, part)
+      current_challenge[["param_parts"]] <- c(current_challenge[["param_parts"]], part)
     }
   }
   if (!is.null(current_challenge)) {
@@ -862,7 +862,7 @@ parse_http_auth_challenges <- function(value) {
 
   lapply(challenges, function(challenge) {
     params <- list()
-    for (part in challenge$param_parts) {
+    for (part in challenge[["param_parts"]]) {
       param_match <- regexec(
         paste0(
           "^(",
@@ -885,7 +885,7 @@ parse_http_auth_challenges <- function(value) {
       }
       params[[tolower(fields[[2]])]] <- param_value
     }
-    list(scheme = challenge$scheme, params = params)
+    list(scheme = challenge[["scheme"]], params = params)
   })
 }
 

@@ -14,7 +14,7 @@
 ## from duplicate-parameter precedence.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 attacker_outer_redirect_uri <- "http://localhost:3000/attacker"
@@ -113,7 +113,7 @@ attempt_attacker_client_id_auth <- function(auth_url, redirect_uri) {
   )
 
   if (!inherits(attacked, "try-error")) {
-    attacker_code <- attacked$code %||% NA_character_
+    attacker_code <- attacked[["code"]] %||% NA_character_
     testthat::expect_false(
       is.character(attacker_code) &&
         length(attacker_code) == 1L &&
@@ -121,7 +121,7 @@ attempt_attacker_client_id_auth <- function(auth_url, redirect_uri) {
         nzchar(attacker_code),
       info = paste0(
         "Expected outer client_id confusion to be rejected. Callback: ",
-        attacked$callback_url %||% "<no callback>"
+        attacked[["callback_url"]] %||% "<no callback>"
       )
     )
 
@@ -130,13 +130,13 @@ attempt_attacker_client_id_auth <- function(auth_url, redirect_uri) {
 
   inspected <- inspect_auth_request_once(auth_url)
   combo <- paste(
-    inspected$status,
-    inspected$location %||% "",
-    inspected$body %||% ""
+    inspected[["status"]],
+    inspected[["location"]] %||% "",
+    inspected[["body"]] %||% ""
   )
 
   testthat::expect_true(
-    inspected$status %in% c(400L, 401L, 403L),
+    inspected[["status"]] %in% c(400L, 401L, 403L),
     info = combo
   )
 
@@ -152,7 +152,7 @@ expect_outer_client_id_confusion_preserves_legitimate_state <- function(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state_info <- get_state_info(client, auth_url)
       tampered_url <- tamper_outer_client_id(auth_url)
       attacked <- attempt_attacker_client_id_auth(
@@ -170,18 +170,18 @@ expect_outer_client_id_confusion_preserves_legitimate_state <- function(
       )
       expect_state_store_entry_present(client, state_info)
 
-      if (identical(attacked$kind, "callback")) {
-        values$.process_query(callback_query(attacked$value))
-        session$flushReact()
+      if (identical(attacked[["kind"]], "callback")) {
+        values[[".process_query"]](callback_query(attacked[["value"]]))
+        session[["flushReact"]]()
 
-        testthat::expect_false(isTRUE(values$authenticated))
-        testthat::expect_true(is.null(values$token))
-        testthat::expect_false(is.null(values$error))
+        testthat::expect_false(isTRUE(values[["authenticated"]]))
+        testthat::expect_true(is.null(values[["token"]]))
+        testthat::expect_false(is.null(values[["error"]]))
         expect_state_store_entry_present(client, state_info)
 
-        values$error <- NULL
-        values$error_description <- NULL
-        values$error_uri <- NULL
+        values[["error"]] <- NULL
+        values[["error_description"]] <- NULL
+        values[["error_uri"]] <- NULL
       }
 
       if (isTRUE(retry_legitimate_flow)) {
@@ -189,15 +189,15 @@ expect_outer_client_id_confusion_preserves_legitimate_state <- function(
           auth_url,
           redirect_uri = client@redirect_uri
         )
-        values$.process_query(callback_query(legitimate_login))
-        session$flushReact()
+        values[[".process_query"]](callback_query(legitimate_login))
+        session[["flushReact"]]()
 
         expect_keycloak_module_login_invariants(
-          authenticated = values$authenticated,
-          error = values$error,
-          error_description = values$error_description,
-          error_uri = values$error_uri,
-          token = values$token,
+          authenticated = values[["authenticated"]],
+          error = values[["error"]],
+          error_description = values[["error_description"]],
+          error_uri = values[["error_uri"]],
+          token = values[["token"]],
           client = client,
           expected_username = expected_username
         )
@@ -224,12 +224,12 @@ expect_jar_outer_params_do_not_override <- function(client) {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       request_jwt <- parse_query_param(auth_url, "request", decode = TRUE)
       payload <- decode_compact_jwt_payload(request_jwt)
       state <- get_state_store_entry(client, auth_url)
       original_challenge <- pkce_code_challenge_from_verifier(
-        state$entry$pkce_code_verifier,
+        state[["entry"]][["pkce_code_verifier"]],
         client@provider@pkce_method
       )
       tampered_url <- tamper_outer_authorization_url(
@@ -242,14 +242,14 @@ expect_jar_outer_params_do_not_override <- function(client) {
       )
 
       testthat::expect_true(
-        startsWith(login$callback_url %||% "", client@redirect_uri),
-        info = login$callback_url %||% "<no callback>"
+        startsWith(login[["callback_url"]] %||% "", client@redirect_uri),
+        info = login[["callback_url"]] %||% "<no callback>"
       )
       testthat::expect_false(
-        startsWith(login$callback_url %||% "", attacker_outer_redirect_uri),
-        info = login$callback_url %||% "<no callback>"
+        startsWith(login[["callback_url"]] %||% "", attacker_outer_redirect_uri),
+        info = login[["callback_url"]] %||% "<no callback>"
       )
-      testthat::expect_identical(login$state_payload, payload[["state"]])
+      testthat::expect_identical(login[["state_payload"]], payload[["state"]])
       testthat::expect_identical(payload[["redirect_uri"]], client@redirect_uri)
       testthat::expect_identical(payload[["client_id"]], client@client_id)
       testthat::expect_false(identical(
@@ -257,18 +257,18 @@ expect_jar_outer_params_do_not_override <- function(client) {
         attacker_outer_state
       ))
       testthat::expect_false(identical(
-        login$state_payload,
+        login[["state_payload"]],
         attacker_outer_state
       ))
       testthat::expect_true(is.na(parse_query_param(
-        login$callback_url,
+        login[["callback_url"]],
         "error",
         decode = TRUE
       )))
       testthat::expect_true(
-        is.character(state$entry$nonce) && nzchar(state$entry$nonce)
+        is.character(state[["entry"]][["nonce"]]) && nzchar(state[["entry"]][["nonce"]])
       )
-      testthat::expect_identical(payload[["nonce"]], state$entry$nonce)
+      testthat::expect_identical(payload[["nonce"]], state[["entry"]][["nonce"]])
       testthat::expect_identical(
         payload[["code_challenge"]],
         original_challenge
@@ -311,10 +311,10 @@ expect_par_outer_params_do_not_override <- function(client, expected_resource) {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state <- get_state_store_entry(client, auth_url)
       original_challenge <- pkce_code_challenge_from_verifier(
-        state$entry$pkce_code_verifier,
+        state[["entry"]][["pkce_code_verifier"]],
         client@provider@pkce_method
       )
       tampered_url <- tamper_outer_authorization_url(
@@ -327,51 +327,51 @@ expect_par_outer_params_do_not_override <- function(client, expected_resource) {
       )
 
       testthat::expect_true(
-        startsWith(login$callback_url %||% "", client@redirect_uri)
+        startsWith(login[["callback_url"]] %||% "", client@redirect_uri)
       )
       testthat::expect_false(identical(
-        login$state_payload,
+        login[["state_payload"]],
         attacker_outer_state
       ))
       testthat::expect_true(
-        is.character(state$entry$nonce) && nzchar(state$entry$nonce)
+        is.character(state[["entry"]][["nonce"]]) && nzchar(state[["entry"]][["nonce"]])
       )
       testthat::expect_true(
         is.character(original_challenge) && nzchar(original_challenge)
       )
-      testthat::expect_false(identical(state$entry$nonce, attacker_outer_nonce))
+      testthat::expect_false(identical(state[["entry"]][["nonce"]], attacker_outer_nonce))
       testthat::expect_false(
         identical(original_challenge, attacker_outer_code_challenge)
       )
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
       testthat::expect_false(
-        "admin" %in% normalize_claim_values(values$token@granted_scopes)
+        "admin" %in% normalize_claim_values(values[["token"]]@granted_scopes)
       )
 
       intros <- shinyOAuth::introspect_token(
         client,
-        values$token,
+        values[["token"]],
         which = "access"
       )
       token_aud <- normalize_claim_values(
-        decode_compact_jwt_payload(values$token@access_token)$aud %||% NULL
+        decode_compact_jwt_payload(values[["token"]]@access_token)[["aud"]] %||% NULL
       )
-      intros_aud <- normalize_claim_values(intros$raw[["aud"]] %||% NULL)
+      intros_aud <- normalize_claim_values(intros[["raw"]][["aud"]] %||% NULL)
 
-      testthat::expect_true(isTRUE(intros$supported))
-      testthat::expect_true(isTRUE(intros$active))
+      testthat::expect_true(isTRUE(intros[["supported"]]))
+      testthat::expect_true(isTRUE(intros[["active"]]))
       testthat::expect_true(expected_resource %in% token_aud)
       testthat::expect_true(expected_resource %in% intros_aud)
       testthat::expect_false(attacker_outer_resource %in% token_aud)
@@ -405,7 +405,7 @@ testthat::test_that("tampered JAR outer parameters still authenticate using the 
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state_info <- get_state_info(client, auth_url)
       tampered_url <- tamper_outer_authorization_url(
         auth_url,
@@ -417,24 +417,24 @@ testthat::test_that("tampered JAR outer parameters still authenticate using the 
       )
 
       testthat::expect_true(
-        startsWith(tampered_login$callback_url %||% "", client@redirect_uri),
-        info = tampered_login$callback_url %||% "<no callback>"
+        startsWith(tampered_login[["callback_url"]] %||% "", client@redirect_uri),
+        info = tampered_login[["callback_url"]] %||% "<no callback>"
       )
       testthat::expect_true(is.na(parse_query_param(
-        tampered_login$callback_url,
+        tampered_login[["callback_url"]],
         "error",
         decode = TRUE
       )))
 
-      values$.process_query(callback_query(tampered_login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(tampered_login))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
@@ -491,7 +491,7 @@ testthat::test_that("Keycloak PAR-required client rejects direct authorization r
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       testthat::expect_false(grepl("[?&]request_uri=", auth_url))
 
       result <- try(
@@ -500,7 +500,7 @@ testthat::test_that("Keycloak PAR-required client rejects direct authorization r
       )
 
       if (inherits(result, "try-error")) {
-        testthat::expect_s3_class(attr(result, "condition"), "condition")
+        testthat::expect_s3_class(attr(result, "condition", exact = TRUE), "condition")
       } else {
         code <- result[["code"]] %||% NA_character_
         testthat::expect_false(

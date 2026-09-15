@@ -293,7 +293,7 @@ read_mtls_registration_certificate_info <- function(oauth_client) {
     )
   }
 
-  # openssl::as.list(cert)$alt_names contains untyped strings. Even strings
+  # openssl::as.list(cert)[["alt_names"]] contains untyped strings. Even strings
   # resembling "DNS:" or IP literals do not prove a GeneralName tag.
   info[["alt_names_typed"]] <- FALSE
   info

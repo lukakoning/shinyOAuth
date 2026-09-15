@@ -14,34 +14,34 @@ for (base in c("/", "/app/")) for (method in c("GET", "POST")) for (async in c(F
     work <- new.env(parent = emptyenv())
     local_mocked_bindings(send_oauth_module_redirect = function(session, url) sent <<- url,
       async_dispatch = function(expr, args, ...) {
-        work$args <- args
-        promises::promise(function(resolve, reject) work$resolve <- resolve)
+        work[["args"]] <- args
+        promises::promise(function(resolve, reject) work[["resolve"]] <- resolve)
       })
     shiny::testServer(oauth_connections_server,
       args = list(id = "health", manager = manager, async = async),
       session = manager_test_session(), {
-        health <- session$getReturned()
-        health$connect("site")
+        health <- session[["getReturned"]]()
+        health[["connect"]]("site")
         if (async) {
           expect_null(sent)
-          work$resolve(build_prepared_authorization(work$args$worker, work$args$prepared))
+          work[["resolve"]](build_prepared_authorization(work[["args"]][["worker"]], work[["args"]][["prepared"]]))
           poll_for_async(function() !is.null(sent), session)
         }
         fields <- if (method == "GET") {
           expect_type(sent, "character")
           decode_form_pairs(url_raw_query(sent), "test")
         } else {
-          expect_identical(sent$method, "POST")
-          stats::setNames(lapply(sent$fields, `[[`, "value"), vapply(sent$fields, `[[`, "", "name"))
+          expect_identical(sent[["method"]], "POST")
+          stats::setNames(lapply(sent[["fields"]], `[[`, "value"), vapply(sent[["fields"]], `[[`, "", "name"))
         }
-        uri <- fields$request_uri
+        uri <- fields[["request_uri"]]
         expect_identical(sub("[?].*$", "", uri), paste0("https://app.example", base))
         response <- ui(manager_test_request(path = base, query = url_raw_query(uri)))
-        expect_identical(response$status, 200L)
-        expect_identical(response$content_type, "application/oauth-authz-req+jwt")
-        claims <- parse_jwt_payload(response$content)
-        expect_identical(claims$redirect_uri, client@redirect_uri)
-        expect_identical(claims$client_id, client@client_id)
+        expect_identical(response[["status"]], 200L)
+        expect_identical(response[["content_type"]], "application/oauth-authz-req+jwt")
+        claims <- parse_jwt_payload(response[["content"]])
+        expect_identical(claims[["redirect_uri"]], client@redirect_uri)
+        expect_identical(claims[["client_id"]], client@client_id)
       })
   })
 }

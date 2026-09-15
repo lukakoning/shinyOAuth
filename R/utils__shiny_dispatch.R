@@ -20,7 +20,7 @@ mirai_daemons_active <- function() {
 
 #' Get the number of mirai daemon connections
 #'
-#' Uses `mirai::info()$connections`, which is the stable interface recommended
+#' Uses `mirai::info()[["connections"]]`, which is the stable interface recommended
 #' by mirai.
 #'
 #' @return Integer count of connections, or `0L` on error.
@@ -52,13 +52,13 @@ resolve_async_timeout <- function(timeout = NULL) {
       !is.finite(timeout) ||
       timeout < 0 ||
       timeout != floor(timeout) ||
-      timeout > .Machine$integer.max
+      timeout > .Machine[["integer.max"]]
   ) {
     err_config(c(
       "Invalid async timeout",
       "i" = paste0(
         "Use NULL or one whole number from 0 to ",
-        .Machine$integer.max,
+        .Machine[["integer.max"]],
         " milliseconds."
       )
     ))
@@ -106,11 +106,11 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     .otel_option_gates <- .(captured_otel_option_gates)
     .otel_context <- .(otel_context)
     if (!is.null(.otel_option_gates) && length(.otel_option_gates) > 0) {
-      .otel_option_state <- .ns$apply_async_otel_option_gates(
+      .otel_option_state <- .ns[["apply_async_otel_option_gates"]](
         .otel_option_gates
       )
       on.exit(
-        .ns$restore_async_otel_option_gates(.otel_option_state[[
+        .ns[["restore_async_otel_option_gates"]](.otel_option_state[[
           "old_options",
           exact = TRUE
         ]]),
@@ -118,7 +118,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
       )
     }
     if (!is.null(.otel_envvars) && length(.otel_envvars) > 0) {
-      .otel_env_state <- .ns$apply_async_otel_envvars(.otel_envvars)
+      .otel_env_state <- .ns[["apply_async_otel_envvars"]](.otel_envvars)
       if (!isTRUE(.otel_env_state[["cache_reset"]])) {
         options(
           shinyOAuth.otel_tracing_enabled = FALSE,
@@ -127,7 +127,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
       }
       if (isTRUE(.otel_env_state[["changed"]])) {
         on.exit(
-          .ns$restore_async_otel_envvars(.otel_env_state[[
+          .ns[["restore_async_otel_envvars"]](.otel_env_state[[
             "old_envvars",
             exact = TRUE
           ]]),
@@ -136,7 +136,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
       }
     }
     if (!is.null(.otel_context)) {
-      .otel_worker_span <- .ns$otel_restore_parent_in_worker(
+      .otel_worker_span <- .ns[["otel_restore_parent_in_worker"]](
         otel_headers = if (!is.null(.otel_context[["headers"]])) {
           .otel_context[["headers"]]
         } else {
@@ -160,7 +160,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
       )
     }
     on.exit(
-      .ns$otel_end_async_parent(
+      .ns[["otel_end_async_parent"]](
         list(span = .otel_worker_span),
         status = if (is.null(.async_error)) "ok" else "error",
         error = .async_error,
@@ -176,7 +176,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     .async_messages <- list()
     .async_value <- tryCatch(
       withCallingHandlers(
-        .ns$otel_with_active_span(.otel_worker_span, {
+        .ns[["otel_with_active_span"]](.otel_worker_span, {
           .(expr)
         }),
         warning = function(w) {

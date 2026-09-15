@@ -32,7 +32,7 @@ test_that("registered JARM metadata takes precedence and conflicting aliases fai
         document[[legacy]] <- as.list(rev(expected))
       }
       provider <- oauth_provider_oidc_discover(
-        metadata$issuer,
+        metadata[["issuer"]],
         id_token_validation = FALSE
       )
       expect_identical(
@@ -44,13 +44,13 @@ test_that("registered JARM metadata takes precedence and conflicting aliases fai
     document[[registered]] <- as.list(expected)
     document[[legacy]] <- as.list(expected[[1L]])
     expect_error(
-      oauth_provider_oidc_discover(metadata$issuer),
+      oauth_provider_oidc_discover(metadata[["issuer"]]),
       "Conflicting discovery metadata",
       class = "shinyOAuth_config_error"
     )
     document[[registered]] <- list()
     expect_error(
-      oauth_provider_oidc_discover(metadata$issuer),
+      oauth_provider_oidc_discover(metadata[["issuer"]]),
       "must be a non-empty JSON array",
       class = "shinyOAuth_parse_error"
     )

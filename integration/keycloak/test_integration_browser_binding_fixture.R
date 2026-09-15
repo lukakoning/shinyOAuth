@@ -27,68 +27,68 @@ testthat::test_that("browser fixtures resolve the active transaction and restore
         client,
         auto_redirect = FALSE
       )
-      output$binding <- shiny::renderText(auth$browser_token)
-      shiny::observeEvent(input$clear, auth$clear_browser_token())
-      shiny::observeEvent(input$set, auth$set_browser_token())
+      output[["binding"]] <- shiny::renderText(auth[["browser_token"]])
+      shiny::observeEvent(input[["clear"]], auth[["clear_browser_token"]]())
+      shiny::observeEvent(input[["set"]], auth[["set_browser_token"]]())
       auth_url <- shiny::reactiveVal("")
-      shiny::observeEvent(input$prepare, {
-        promises::then(auth$build_auth_url(), auth_url)
+      shiny::observeEvent(input[["prepare"]], {
+        promises::then(auth[["build_auth_url"]](), auth_url)
         invisible(NULL)
       })
-      output$auth_url <- shiny::renderText(auth_url())
+      output[["auth_url"]] <- shiny::renderText(auth_url())
     }
   )
-  drv <- shinytest2::AppDriver$new(app, load_timeout = 15000)
+  drv <- shinytest2::AppDriver[["new"]](app, load_timeout = 15000)
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
-  drv$wait_for_js("document.getElementById('binding').innerText.length === 128")
-  initial <- drv$get_value(output = "binding")
+  drv[["wait_for_js"]]("document.getElementById('binding').innerText.length === 128")
+  initial <- drv[["get_value"]](output = "binding")
   cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   snapshot <- snapshot_browser_binding(drv, cookie)
-  testthat::expect_false(jsonlite::fromJSON(snapshot$record)$transaction)
-  testthat::expect_false(identical(cookie$value, initial))
-  drv$click("clear")
-  drv$click("set")
-  testthat::expect_false(identical(drv$get_value(output = "binding"), initial))
+  testthat::expect_false(jsonlite::fromJSON(snapshot[["record"]])[["transaction"]])
+  testthat::expect_false(identical(cookie[["value"]], initial))
+  drv[["click"]]("clear")
+  drv[["click"]]("set")
+  testthat::expect_false(identical(drv[["get_value"]](output = "binding"), initial))
   restore_browser_binding(drv, snapshot)
-  drv$click("set")
-  testthat::expect_identical(drv$get_value(output = "binding"), initial)
+  drv[["click"]]("set")
+  testthat::expect_identical(drv[["get_value"]](output = "binding"), initial)
   testthat::expect_identical(
-    get_browser_cookie(drv, cookie$name)$value,
-    cookie$value
+    get_browser_cookie(drv, cookie[["name"]])[["value"]],
+    cookie[["value"]]
   )
 
-  drv$click("prepare")
-  drv$wait_for_js("document.getElementById('auth_url').innerText.length > 0")
+  drv[["click"]]("prepare")
+  drv[["wait_for_js"]]("document.getElementById('auth_url').innerText.length > 0")
   current <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_false(is.null(current))
-  testthat::expect_false(identical(current$name, cookie$name))
+  testthat::expect_false(identical(current[["name"]], cookie[["name"]]))
   # Preparing a login removes its idle predecessor once the new marker is ready.
-  testthat::expect_null(get_browser_cookie(drv, cookie$name))
-  active <- jsonlite::fromJSON(snapshot_browser_binding(drv, current)$record)
-  testthat::expect_true(active$transaction)
-  testthat::expect_identical(active$cookie, current$value)
-  testthat::expect_identical(active$token, drv$get_value(output = "binding"))
+  testthat::expect_null(get_browser_cookie(drv, cookie[["name"]]))
+  active <- jsonlite::fromJSON(snapshot_browser_binding(drv, current)[["record"]])
+  testthat::expect_true(active[["transaction"]])
+  testthat::expect_identical(active[["cookie"]], current[["value"]])
+  testthat::expect_identical(active[["token"]], drv[["get_value"]](output = "binding"))
 
   # A pending predecessor must survive, and the helper must select the new marker.
-  first_auth_url <- drv$get_value(output = "auth_url")
-  drv$click("prepare")
-  drv$wait_for_js(paste0(
+  first_auth_url <- drv[["get_value"]](output = "auth_url")
+  drv[["click"]]("prepare")
+  drv[["wait_for_js"]](paste0(
     "document.getElementById('auth_url').innerText !== ",
     jsonlite::toJSON(first_auth_url, auto_unbox = TRUE)
   ))
   next_cookie <- find_browser_token_cookie(drv, "auth", client@redirect_uri)
   testthat::expect_false(is.null(next_cookie))
-  testthat::expect_false(identical(next_cookie$name, current$name))
+  testthat::expect_false(identical(next_cookie[["name"]], current[["name"]]))
   testthat::expect_identical(
-    get_browser_cookie(drv, current$name)$value,
-    current$value
+    get_browser_cookie(drv, current[["name"]])[["value"]],
+    current[["value"]]
   )
   active <- jsonlite::fromJSON(
-    snapshot_browser_binding(drv, next_cookie)$record
+    snapshot_browser_binding(drv, next_cookie)[["record"]]
   )
-  testthat::expect_true(active$transaction)
-  testthat::expect_identical(active$cookie, next_cookie$value)
-  testthat::expect_identical(active$token, drv$get_value(output = "binding"))
+  testthat::expect_true(active[["transaction"]])
+  testthat::expect_identical(active[["cookie"]], next_cookie[["value"]])
+  testthat::expect_identical(active[["token"]], drv[["get_value"]](output = "binding"))
   testthat::expect_null(find_browser_token_cookie(
     drv,
     "auth",

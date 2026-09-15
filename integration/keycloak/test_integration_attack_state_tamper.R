@@ -9,7 +9,7 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 ## Helper: build an auth URL and get a valid code+state, then test a tampered state
@@ -24,7 +24,7 @@ run_tampered_state_test <- function(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       original_state <- parse_query_param(url, "state")
 
       # Apply tamper function to the state
@@ -34,12 +34,12 @@ run_tampered_state_test <- function(
       res <- perform_login_form(url)
 
       # Callback with valid code but TAMPERED state
-      values$.process_query(callback_query(res, state = tampered))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res, state = tampered))
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
+      combo <- paste(values[["error"]], values[["error_description"]])
       testthat::expect_true(grepl(
         error_pattern,
         combo,
@@ -97,15 +97,15 @@ testthat::test_that("State tamper: empty state parameter", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       res <- perform_login_form(url)
 
       # Callback with empty state
-      values$.process_query(callback_query(res, state = ""))
-      session$flushReact()
+      values[[".process_query"]](callback_query(res, state = ""))
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
     }
   )
 })
@@ -161,7 +161,7 @@ testthat::test_that("State tamper: state encrypted with different key", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_a),
     expr = {
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       captured_login <<- perform_login_form(url)
     }
   )
@@ -171,12 +171,12 @@ testthat::test_that("State tamper: state encrypted with different key", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_b),
     expr = {
-      values$.process_query(callback_query(captured_login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(captured_login))
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
-      combo <- paste(values$error, values$error_description)
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
+      combo <- paste(values[["error"]], values[["error_description"]])
       testthat::expect_true(grepl(
         "state|State|decrypt|validation|GCM",
         combo,

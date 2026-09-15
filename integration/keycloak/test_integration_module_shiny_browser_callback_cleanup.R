@@ -1,7 +1,7 @@
 ## Browser E2E: callback URL/title cleanup after real Keycloak login
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("browser callback cleanup removes OAuth parameters from URL and title", {
@@ -37,15 +37,15 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
   )
   server <- function(input, output, session) {
     auth <- shinyOAuth::oauth_module_server("auth", client)
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "error:",
-        if (!is.null(auth$error)) auth$error else "<none>",
+        if (!is.null(auth[["error"]])) auth[["error"]] else "<none>",
         "error_description:",
-        if (!is.null(auth$error_description)) {
-          auth$error_description
+        if (!is.null(auth[["error_description"]])) {
+          auth[["error_description"]]
         } else {
           "<none>"
         }
@@ -53,7 +53,7 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
     })
   }
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     shiny::shinyApp(ui, server),
     name = "keycloak-callback-cleanup",
     load_timeout = 15000,
@@ -68,7 +68,7 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
 
   keycloak_submit_browser_login(drv)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_state');
@@ -78,7 +78,7 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
     timeout = 20000
   )
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var forbidden = [
@@ -95,7 +95,7 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
     timeout = 5000
   )
 
-  observed <- jsonlite::fromJSON(drv$get_js(
+  observed <- jsonlite::fromJSON(drv[["get_js"]](
     "
     JSON.stringify({
       href: window.location.href || '',
@@ -114,21 +114,21 @@ testthat::test_that("browser callback cleanup removes OAuth parameters from URL 
 
   for (key in forbidden) {
     testthat::expect_false(
-      grepl(key, observed$href, fixed = TRUE),
+      grepl(key, observed[["href"]], fixed = TRUE),
       info = paste0(
         "Callback key leaked in href: ",
         key,
         " href=",
-        observed$href
+        observed[["href"]]
       )
     )
     testthat::expect_false(
-      grepl(key, observed$title, fixed = TRUE),
+      grepl(key, observed[["title"]], fixed = TRUE),
       info = paste0(
         "Callback key leaked in title: ",
         key,
         " title=",
-        observed$title
+        observed[["title"]]
       )
     )
   }

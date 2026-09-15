@@ -132,7 +132,7 @@ oauth_account_owner <- function(
 print.OAuthOwnerPolicy <- function(x, ...) {
   cat(
     "<OAuthOwnerPolicy: ",
-    x$mode,
+    x[["mode"]],
     "; local ownership configuration>\n",
     sep = ""
   )
@@ -158,12 +158,12 @@ connection_owner_timeouts <- function(idle, absolute) {
 connection_owner_origin <- function(origin, policy) {
   parsed <- resource_binding_components(origin, base = TRUE)
   if (
-    parsed$path != "/" ||
-      (parsed$scheme != "https" && !isTRUE(policy$allow_http_loopback))
+    parsed[["path"]] != "/" ||
+      (parsed[["scheme"]] != "https" && !isTRUE(policy[["allow_http_loopback"]]))
   ) {
     err_config("Owner origin must be HTTPS without a path, query or fragment")
   }
-  sub("/$", "", parsed$url)
+  sub("/$", "", parsed[["url"]])
 }
 
 connection_owner_cookie_name <- function(origin, namespace, policy) {
@@ -233,8 +233,8 @@ connection_owner_cookie_header <- function(
     !is.logical(clear) ||
       length(clear) != 1L ||
       is.na(clear) ||
-      !is_valid_string(policy$same_site) ||
-      !policy$same_site %in% c("Lax", "Strict") ||
+      !is_valid_string(policy[["same_site"]]) ||
+      !policy[["same_site"]] %in% c("Lax", "Strict") ||
       !is_valid_string(name) ||
       !grepl(
         "^(?:__Host-)?shinyOAuth-owner-[0-9a-f]{24}$",
@@ -251,7 +251,7 @@ connection_owner_cookie_header <- function(
     "=",
     if (clear) "" else value,
     "; Path=/; HttpOnly; SameSite=",
-    policy$same_site,
+    policy[["same_site"]],
     if (startsWith(origin, "https://")) "; Secure" else "",
     if (clear) "; Max-Age=0" else ""
   )
@@ -266,7 +266,7 @@ connection_browser_sessions <- function(
   clock = function() as.numeric(Sys.time())
 ) {
   if (
-    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy$mode, "browser")
+    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy[["mode"]], "browser")
   ) {
     err_config("Browser sessions require a browser owner policy")
   }
@@ -299,7 +299,7 @@ connection_browser_sessions <- function(
   expire <- function(id) {
     record <- owners[[id]]
     if (!is.null(record)) {
-      rm(list = record$cookie_digest, envir = cookies)
+      rm(list = record[["cookie_digest"]], envir = cookies)
       rm(list = id, envir = owners)
     }
     invisible(NULL)
@@ -311,13 +311,13 @@ connection_browser_sessions <- function(
       return(NULL)
     }
     if (
-      at >= record$expires_at || at >= record$last_seen + policy$idle_timeout
+      at >= record[["expires_at"]] || at >= record[["last_seen"]] + policy[["idle_timeout"]]
     ) {
       expire(id)
       return(NULL)
     }
     if (touch) {
-      record$last_seen <- at
+      record[["last_seen"]] <- at
       owners[[id]] <- record
     }
     record
@@ -325,16 +325,16 @@ connection_browser_sessions <- function(
   validate <- function(owner, touch = FALSE) {
     if (
       !is.list(owner) ||
-        !is_valid_string(owner$id) ||
-        !is_valid_string(owner$generation)
+        !is_valid_string(owner[["id"]]) ||
+        !is_valid_string(owner[["generation"]])
     ) {
       return(NULL)
     }
-    record <- current(owner$id)
-    if (is.null(record) || !identical(record$generation, owner$generation)) {
+    record <- current(owner[["id"]])
+    if (is.null(record) || !identical(record[["generation"]], owner[["generation"]])) {
       return(NULL)
     }
-    snapshot(current(owner$id, touch))
+    snapshot(current(owner[["id"]], touch))
   }
   resolve <- function(cookie, touch = FALSE) {
     now()
@@ -355,12 +355,12 @@ connection_browser_sessions <- function(
     cookie <- random_urlsafe(43L)
     cookie_digest <- digest(cookie)
     # Prepare randomness before replacing an existing cookie mapping.
-    if (!is.null(record$cookie_digest)) {
-      rm(list = record$cookie_digest, envir = cookies)
+    if (!is.null(record[["cookie_digest"]])) {
+      rm(list = record[["cookie_digest"]], envir = cookies)
     }
-    record$cookie_digest <- cookie_digest
-    owners[[record$id]] <- record
-    cookies[[record$cookie_digest]] <- record$id
+    record[["cookie_digest"]] <- cookie_digest
+    owners[[record[["id"]]]] <- record
+    cookies[[record[["cookie_digest"]]]] <- record[["id"]]
     list(cookie = cookie, owner = snapshot(record))
   }
   create <- function() {
@@ -376,7 +376,7 @@ connection_browser_sessions <- function(
       generation = random_urlsafe(32L),
       created_at = at,
       last_seen = at,
-      expires_at = at + policy$absolute_timeout
+      expires_at = at + policy[["absolute_timeout"]]
     ))
   }
   rotate <- function(owner) {
@@ -384,9 +384,9 @@ connection_browser_sessions <- function(
     if (is.null(verified)) {
       err_token("Owner session is unavailable")
     }
-    record <- current(owner$id)
-    record$generation <- random_urlsafe(32L)
-    record$last_seen <- now()
+    record <- current(owner[["id"]])
+    record[["generation"]] <- random_urlsafe(32L)
+    record[["last_seen"]] <- now()
     issue(record)
   }
   revoke <- function(owner) {
@@ -394,7 +394,7 @@ connection_browser_sessions <- function(
     if (is.null(verified)) {
       return(FALSE)
     }
-    expire(owner$id)
+    expire(owner[["id"]])
     TRUE
   }
   list(
@@ -417,7 +417,7 @@ connection_account_identity <- function(
   clock = function() as.numeric(Sys.time())
 ) {
   if (
-    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy$mode, "account")
+    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy[["mode"]], "account")
   ) {
     err_config("Account ownership requires an account owner policy")
   }
@@ -426,7 +426,7 @@ connection_account_identity <- function(
   if (!is.raw(key) || length(key) != 32L) {
     err_config("Account owners require a 32-byte deployment key")
   }
-  identity <- tryCatch(policy$resolver(session), error = function(...) {
+  identity <- tryCatch(policy[["resolver"]](session), error = function(...) {
     err_token("Local account session validation failed")
   })
   if (is.null(identity)) {
@@ -465,10 +465,10 @@ connection_account_identity <- function(
   }
   at <- clock()
   if (
-    identity$authenticated_at > at ||
-      identity$authenticated_at < 0 ||
-      identity$expires_at <= at ||
-      at >= identity$authenticated_at + policy$reauth_after_seconds
+    identity[["authenticated_at"]] > at ||
+      identity[["authenticated_at"]] < 0 ||
+      identity[["expires_at"]] <= at ||
+      at >= identity[["authenticated_at"]] + policy[["reauth_after_seconds"]]
   ) {
     return(NULL)
   }
@@ -485,21 +485,21 @@ connection_account_identity <- function(
       purpose = "shinyOAuth/account-owner/v1",
       origin = origin,
       namespace = namespace,
-      subject = identity$subject
+      subject = identity[["subject"]]
     )),
     generation = make_id(list(
       purpose = "shinyOAuth/account-session/v1",
       origin = origin,
       namespace = namespace,
-      subject = identity$subject,
-      session = identity$session_id,
-      generation = identity$generation,
-      authenticated_at = identity$authenticated_at
+      subject = identity[["subject"]],
+      session = identity[["session_id"]],
+      generation = identity[["generation"]],
+      authenticated_at = identity[["authenticated_at"]]
     )),
-    authenticated_at = identity$authenticated_at,
+    authenticated_at = identity[["authenticated_at"]],
     expires_at = min(
-      identity$expires_at,
-      identity$authenticated_at + policy$reauth_after_seconds
+      identity[["expires_at"]],
+      identity[["authenticated_at"]] + policy[["reauth_after_seconds"]]
     )
   )
 }
@@ -539,7 +539,7 @@ connection_account_sessions <- function(
   clock = function() as.numeric(Sys.time())
 ) {
   if (
-    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy$mode, "account")
+    !inherits(policy, "OAuthOwnerPolicy") || !identical(policy[["mode"]], "account")
   ) {
     err_config("Account sessions require an account owner policy")
   }
@@ -570,13 +570,13 @@ connection_account_sessions <- function(
       return(NULL)
     }
     at <- now()
-    record <- records[[verified$generation]]
+    record <- records[[verified[["generation"]]]]
     if (is.null(record)) {
       if (!establish) {
         return(NULL)
       }
       for (generation in ls(records, all.names = TRUE)) {
-        if (at >= records[[generation]]$retain_until) {
+        if (at >= records[[generation]][["retain_until"]]) {
           rm(list = generation, envir = records)
         }
       }
@@ -588,30 +588,30 @@ connection_account_sessions <- function(
         list(
           created_at = at,
           last_seen = at,
-          retain_until = verified$authenticated_at +
-            policy$reauth_after_seconds,
+          retain_until = verified[["authenticated_at"]] +
+            policy[["reauth_after_seconds"]],
           retired = FALSE
         )
       )
-      record$expires_at <- min(
-        verified$expires_at,
-        at + policy$absolute_timeout
+      record[["expires_at"]] <- min(
+        verified[["expires_at"]],
+        at + policy[["absolute_timeout"]]
       )
     }
-    if (!identical(record$id, verified$id)) {
+    if (!identical(record[["id"]], verified[["id"]])) {
       err_token("Owner session is unavailable")
     }
-    record$expires_at <- min(record$expires_at, verified$expires_at)
+    record[["expires_at"]] <- min(record[["expires_at"]], verified[["expires_at"]])
     if (
-      at >= record$expires_at || at >= record$last_seen + policy$idle_timeout
+      at >= record[["expires_at"]] || at >= record[["last_seen"]] + policy[["idle_timeout"]]
     ) {
-      record$retired <- TRUE
+      record[["retired"]] <- TRUE
     }
-    if (touch && !record$retired) {
-      record$last_seen <- at
+    if (touch && !record[["retired"]]) {
+      record[["last_seen"]] <- at
     }
-    records[[record$generation]] <- record
-    if (record$retired) NULL else snapshot(record)
+    records[[record[["generation"]]]] <- record
+    if (record[["retired"]]) NULL else snapshot(record)
   }
   resolve <- function(session, touch = FALSE) {
     lookup(identity(session), touch)
@@ -624,8 +624,8 @@ connection_account_sessions <- function(
     if (
       is.null(verified) ||
         !is.list(owner) ||
-        !identical(owner$id, verified$id) ||
-        !identical(owner$generation, verified$generation)
+        !identical(owner[["id"]], verified[["id"]]) ||
+        !identical(owner[["generation"]], verified[["generation"]])
     ) {
       return(NULL)
     }
@@ -633,15 +633,15 @@ connection_account_sessions <- function(
   }
   revoke <- function(owner) {
     now()
-    if (!is.list(owner) || !is_valid_string(owner$generation)) {
+    if (!is.list(owner) || !is_valid_string(owner[["generation"]])) {
       return(FALSE)
     }
-    record <- records[[owner$generation]]
-    if (is.null(record) || !identical(record$id, owner$id) || record$retired) {
+    record <- records[[owner[["generation"]]]]
+    if (is.null(record) || !identical(record[["id"]], owner[["id"]]) || record[["retired"]]) {
       return(FALSE)
     }
-    record$retired <- TRUE
-    records[[record$generation]] <- record
+    record[["retired"]] <- TRUE
+    records[[record[["generation"]]]] <- record
     TRUE
   }
   list(

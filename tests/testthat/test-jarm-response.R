@@ -49,9 +49,9 @@ make_jarm_test_client <- function(
 }
 
 make_jarm_public_jwk <- function(key, kid = "sig-1", use = "sig") {
-  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = TRUE)
-  jwk$kid <- kid
-  jwk$use <- use
+  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = TRUE)
+  jwk[["kid"]] <- kid
+  jwk[["use"]] <- use
   jwk
 }
 
@@ -63,7 +63,7 @@ make_signed_jarm <- function(
 ) {
   header <- list(alg = alg)
   if (!is.null(kid)) {
-    header$kid <- kid
+    header[["kid"]] <- kid
   }
 
   jose::jwt_encode_sig(
@@ -90,10 +90,10 @@ make_encrypted_jarm <- function(
 
   header <- list(alg = alg, enc = enc)
   if (!is.null(kid)) {
-    header$kid <- kid
+    header[["kid"]] <- kid
   }
   if (!is.null(cty)) {
-    header$cty <- cty
+    header[["cty"]] <- cty
   }
   if (length(extra_header) > 0L) {
     header <- utils::modifyList(header, extra_header)
@@ -109,22 +109,22 @@ make_encrypted_jarm <- function(
     charToRaw(enc2utf8(header_json))
   )
 
-  cek_raw <- openssl::rand_bytes(spec$cek_bytes)
+  cek_raw <- openssl::rand_bytes(spec[["cek_bytes"]])
   key_parts <- shinyOAuth:::split_jwe_cbc_hmac_cek(cek_raw, enc)
   encrypted_key_raw <- openssl::rsa_encrypt(
     cek_raw,
     pubkey = recipient_key,
     oaep = TRUE
   )
-  iv_raw <- openssl::rand_bytes(spec$iv_bytes)
+  iv_raw <- openssl::rand_bytes(spec[["iv_bytes"]])
   ciphertext_raw <- openssl::aes_cbc_encrypt(
     plaintext_raw,
-    key = key_parts$enc_key,
+    key = key_parts[["enc_key"]],
     iv = iv_raw
   )
   tag_raw <- shinyOAuth:::compute_compact_jwe_auth_tag(
     enc = enc,
-    mac_key = key_parts$mac_key,
+    mac_key = key_parts[["mac_key"]],
     protected_header_b64 = protected_header_b64,
     iv_raw = iv_raw,
     ciphertext_raw = ciphertext_raw
@@ -149,14 +149,14 @@ make_jarm_form_post_req <- function(
   authority = "localhost:8100"
 ) {
   req <- new.env(parent = emptyenv())
-  req$REQUEST_METHOD <- "POST"
-  req$rook.url_scheme <- scheme
-  req$HTTP_HOST <- authority
-  req$PATH_INFO <- path
-  req$QUERY_STRING <- query
-  req$CONTENT_TYPE <- content_type
-  req$CONTENT_LENGTH <- as.character(nchar(body, type = "bytes"))
-  req$rook.input <- list(read = function(n) charToRaw(body))
+  req[["REQUEST_METHOD"]] <- "POST"
+  req[["rook.url_scheme"]] <- scheme
+  req[["HTTP_HOST"]] <- authority
+  req[["PATH_INFO"]] <- path
+  req[["QUERY_STRING"]] <- query
+  req[["CONTENT_TYPE"]] <- content_type
+  req[["CONTENT_LENGTH"]] <- as.character(nchar(body, type = "bytes"))
+  req[["rook.input"]] <- list(read = function(n) charToRaw(body))
   req
 }
 
@@ -327,7 +327,7 @@ test_that("handle_callback rejects direct code/state callbacks for JARM clients"
     auth_url <- shinyOAuth::prepare_call(client, browser_token = browser_token)
     state <- parse_query_param(auth_url, "state")
 
-    expect_length(client@state_store$keys(), 1L)
+    expect_length(client@state_store[["keys"]](), 1L)
 
     expect_error(
       shinyOAuth::handle_callback(
@@ -340,7 +340,7 @@ test_that("handle_callback rejects direct code/state callbacks for JARM clients"
       regexp = "does not accept direct code/state callbacks for JARM clients"
     )
 
-    expect_length(client@state_store$keys(), 1L)
+    expect_length(client@state_store[["keys"]](), 1L)
   }
 })
 
@@ -355,7 +355,7 @@ test_that("OIDC discovery records JARM metadata", {
     )
 
     oauth_provider_oidc_discover(
-      issuer = metadata$issuer,
+      issuer = metadata[["issuer"]],
       id_token_validation = FALSE
     )
   }
@@ -404,7 +404,7 @@ test_that("oauth_client rejects non-canonical JARM discovery metadata casing", {
     )
 
     oauth_provider_oidc_discover(
-      issuer = metadata$issuer,
+      issuer = metadata[["issuer"]],
       id_token_validation = FALSE
     )
   }
@@ -546,10 +546,10 @@ test_that("validate_jarm_response verifies signed JARM payloads", {
 
   normalized <- shinyOAuth:::validate_jarm_response(client, response)
 
-  expect_identical(normalized$type, "code")
-  expect_identical(normalized$code, "ok")
-  expect_identical(normalized$state, "state-1")
-  expect_identical(normalized$iss, client@provider@issuer)
+  expect_identical(normalized[["type"]], "code")
+  expect_identical(normalized[["code"]], "ok")
+  expect_identical(normalized[["state"]], "state-1")
+  expect_identical(normalized[["iss"]], client@provider@issuer)
 })
 
 test_that("JARM authenticates sealed state before any JWKS lookup", {
@@ -619,7 +619,7 @@ test_that("validate_jarm_response refreshes JWKS once when JARM kid is missing",
     fetch_jwks = function(...) {
       fetch_call_count <<- fetch_call_count + 1L
       args <- list(...)
-      if (isTRUE(args$force_refresh)) {
+      if (isTRUE(args[["force_refresh"]])) {
         fresh_jwks
       } else {
         stale_jwks
@@ -631,8 +631,8 @@ test_that("validate_jarm_response refreshes JWKS once when JARM kid is missing",
 
   normalized <- shinyOAuth:::validate_jarm_response(client, response)
 
-  expect_identical(normalized$type, "code")
-  expect_identical(normalized$code, "ok")
+  expect_identical(normalized[["type"]], "code")
+  expect_identical(normalized[["code"]], "ok")
   expect_identical(fetch_call_count, 2L)
 })
 
@@ -670,7 +670,7 @@ test_that("validate_jarm_response refreshes rotated material with the same kid",
   )
 
   normalized <- shinyOAuth:::validate_jarm_response(client, response)
-  expect_identical(normalized$code, "ok")
+  expect_identical(normalized[["code"]], "ok")
   expect_identical(fetches, 2L)
 })
 
@@ -789,8 +789,8 @@ test_that("validate_jarm_response accepts signed JARM with explicit JWT media ty
 
   normalized <- shinyOAuth:::validate_jarm_response(client, response)
 
-  expect_identical(normalized$code, "ok")
-  expect_identical(normalized$state, "state-1")
+  expect_identical(normalized[["code"]], "ok")
+  expect_identical(normalized[["state"]], "state-1")
 })
 
 test_that("validate_jarm_response rejects signed JARM with non-JWT typ header", {
@@ -1035,7 +1035,7 @@ test_that("validate_jarm_response rejects aud and exp failures before JWKS fetch
 
   for (case in cases) {
     response <- make_signed_jarm(
-      payload_list = case$payload,
+      payload_list = case[["payload"]],
       key = sig_key,
       kid = "sig-1"
     )
@@ -1043,8 +1043,8 @@ test_that("validate_jarm_response rejects aud and exp failures before JWKS fetch
     expect_error(
       shinyOAuth:::validate_jarm_response(client, response),
       class = "shinyOAuth_state_error",
-      regexp = case$regexp,
-      info = case$name
+      regexp = case[["regexp"]],
+      info = case[["name"]]
     )
   }
 })
@@ -1364,7 +1364,7 @@ test_that("validate_jarm_response rejects partially matched JARM claim names", {
 
   for (case in cases) {
     response <- make_signed_jarm(
-      payload_list = case$payload,
+      payload_list = case[["payload"]],
       key = sig_key,
       kid = "sig-1"
     )
@@ -1372,8 +1372,8 @@ test_that("validate_jarm_response rejects partially matched JARM claim names", {
     expect_error(
       shinyOAuth:::validate_jarm_response(client, response),
       class = "shinyOAuth_state_error",
-      regexp = case$regexp,
-      info = case$name
+      regexp = case[["regexp"]],
+      info = case[["name"]]
     )
   }
 })
@@ -1404,7 +1404,7 @@ test_that("validate_jarm_response validates JARM callback claim sizes and types"
         aud = client@client_id,
         exp = now + 300,
         code = "ok",
-        state = strrep("s", limits$state + 1L)
+        state = strrep("s", limits[["state"]] + 1L)
       ),
       regexp = "Callback query parameter 'state' exceeded maximum length"
     ),
@@ -1429,7 +1429,7 @@ test_that("validate_jarm_response validates JARM callback claim sizes and types"
         aud = client@client_id,
         exp = now + 300,
         error = "access_denied",
-        error_description = strrep("d", limits$error_description + 1L),
+        error_description = strrep("d", limits[["error_description"]] + 1L),
         state = "state-1"
       ),
       regexp = paste(
@@ -1455,7 +1455,7 @@ test_that("validate_jarm_response validates JARM callback claim sizes and types"
         aud = client@client_id,
         exp = now + 300,
         error = "access_denied",
-        error_uri = strrep("u", limits$error_uri + 1L),
+        error_uri = strrep("u", limits[["error_uri"]] + 1L),
         state = "state-1"
       ),
       regexp = "Callback query parameter 'error_uri' exceeded maximum length"
@@ -1469,7 +1469,7 @@ test_that("validate_jarm_response validates JARM callback claim sizes and types"
 
   for (case in cases) {
     response <- make_signed_jarm(
-      payload_list = case$payload,
+      payload_list = case[["payload"]],
       key = sig_key,
       kid = "sig-1"
     )
@@ -1477,8 +1477,8 @@ test_that("validate_jarm_response validates JARM callback claim sizes and types"
     expect_error(
       shinyOAuth:::validate_jarm_response(client, response),
       class = "shinyOAuth_state_error",
-      regexp = case$regexp,
-      info = case$name
+      regexp = case[["regexp"]],
+      info = case[["name"]]
     )
   }
 })
@@ -1587,10 +1587,10 @@ test_that("validate_jarm_response tolerates duplicate identical iss claims when 
 
   normalized <- shinyOAuth:::validate_jarm_response(client, response)
 
-  expect_identical(normalized$type, "code")
-  expect_identical(normalized$code, "ok")
-  expect_identical(normalized$state, "state-1")
-  expect_identical(normalized$iss, client@provider@issuer)
+  expect_identical(normalized[["type"]], "code")
+  expect_identical(normalized[["code"]], "ok")
+  expect_identical(normalized[["state"]], "state-1")
+  expect_identical(normalized[["iss"]], client@provider@issuer)
 })
 
 test_that("validate_jarm_response rejects nested duplicate iss claims", {
@@ -1681,8 +1681,8 @@ test_that("validate_jarm_response accepts matching outer iss parameter", {
         outer_iss = client@provider@issuer
       )
 
-      expect_identical(normalized$type, "code")
-      expect_identical(normalized$iss, client@provider@issuer)
+      expect_identical(normalized[["type"]], "code")
+      expect_identical(normalized[["iss"]], client@provider@issuer)
     }
   )
 })
@@ -1736,9 +1736,9 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
   jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
   browser_token <- valid_browser_token()
   cleared <- list()
-  sess <- shiny::MockShinySession$new()
-  orig <- sess$sendCustomMessage
-  sess$sendCustomMessage <- function(type, message) {
+  sess <- shiny::MockShinySession[["new"]]()
+  orig <- sess[["sendCustomMessage"]]
+  sess[["sendCustomMessage"]] <- function(type, message) {
     if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
       cleared[[length(cleared) + 1L]] <<- message
     }
@@ -1764,8 +1764,8 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
         ),
         session = sess,
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -1780,21 +1780,21 @@ test_that("oauth_module_server rejects mixed query.jwt and direct callback param
             kid = "sig-1"
           )
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store[["keys"]](), 1L)
 
-          values$.process_query(paste0(
+          values[[".process_query"]](paste0(
             "?response=",
             utils::URLencode(response, reserved = TRUE),
             "&code=attack"
           ))
-          session$flushReact()
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_callback_query")
-          expect_match(values$error_description %||% "", "must not be combined")
-          expect_length(client@state_store$keys(), 1L)
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], "invalid_callback_query")
+          expect_match(values[["error_description"]] %||% "", "must not be combined")
+          expect_length(client@state_store[["keys"]](), 1L)
           expect_length(cleared, 1L)
-          expect_true(isTRUE(cleared[[1L]]$dropResponse))
+          expect_true(isTRUE(cleared[[1L]][["dropResponse"]]))
         }
       )
     }
@@ -1811,9 +1811,9 @@ test_that("oauth_module_server drops reserved response for oversized query JARM 
     client <- make_jarm_test_client(response_mode = mode)
     browser_token <- valid_browser_token()
     cleared <- list()
-    sess <- shiny::MockShinySession$new()
-    orig <- sess$sendCustomMessage
-    sess$sendCustomMessage <- function(type, message) {
+    sess <- shiny::MockShinySession[["new"]]()
+    orig <- sess[["sendCustomMessage"]]
+    sess[["sendCustomMessage"]] <- function(type, message) {
       if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
         cleared[[length(cleared) + 1L]] <<- message
       }
@@ -1830,26 +1830,26 @@ test_that("oauth_module_server drops reserved response for oversized query JARM 
       ),
       session = sess,
       expr = {
-        values$browser_token <- browser_token
-        values$build_auth_url()
+        values[["browser_token"]] <- browser_token
+        values[["build_auth_url"]]()
 
-        expect_length(client@state_store$keys(), 1L)
+        expect_length(client@state_store[["keys"]](), 1L)
 
-        values$.process_query(
+        values[[".process_query"]](
           paste0(
             "?response=",
             utils::URLencode(oversized_response, reserved = TRUE)
           ),
           current_path = "/"
         )
-        session$flushReact()
+        session[["flushReact"]]()
 
-        expect_false(isTRUE(values$authenticated))
-        expect_identical(values$error, "invalid_callback_query")
-        expect_match(values$error_description %||% "", "query string")
-        expect_length(client@state_store$keys(), 1L)
+        expect_false(isTRUE(values[["authenticated"]]))
+        expect_identical(values[["error"]], "invalid_callback_query")
+        expect_match(values[["error_description"]] %||% "", "query string")
+        expect_length(client@state_store[["keys"]](), 1L)
         expect_length(cleared, 1L)
-        expect_true(isTRUE(cleared[[1L]]$dropResponse))
+        expect_true(isTRUE(cleared[[1L]][["dropResponse"]]))
       }
     )
   }
@@ -1870,9 +1870,9 @@ test_that("oauth_module_server drops reserved response for duplicate query JARM 
     client <- make_jarm_test_client(response_mode = mode)
     browser_token <- valid_browser_token()
     cleared <- list()
-    sess <- shiny::MockShinySession$new()
-    orig <- sess$sendCustomMessage
-    sess$sendCustomMessage <- function(type, message) {
+    sess <- shiny::MockShinySession[["new"]]()
+    orig <- sess[["sendCustomMessage"]]
+    sess[["sendCustomMessage"]] <- function(type, message) {
       if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
         cleared[[length(cleared) + 1L]] <<- message
       }
@@ -1889,23 +1889,23 @@ test_that("oauth_module_server drops reserved response for duplicate query JARM 
       ),
       session = sess,
       expr = {
-        values$browser_token <- browser_token
-        values$build_auth_url()
+        values[["browser_token"]] <- browser_token
+        values[["build_auth_url"]]()
 
-        expect_length(client@state_store$keys(), 1L)
+        expect_length(client@state_store[["keys"]](), 1L)
 
-        values$.process_query(duplicate_response_query, current_path = "/")
-        session$flushReact()
+        values[[".process_query"]](duplicate_response_query, current_path = "/")
+        session[["flushReact"]]()
 
-        expect_false(isTRUE(values$authenticated))
-        expect_identical(values$error, "invalid_callback_query")
+        expect_false(isTRUE(values[["authenticated"]]))
+        expect_identical(values[["error"]], "invalid_callback_query")
         expect_match(
-          values$error_description %||% "",
+          values[["error_description"]] %||% "",
           "duplicate OAuth parameter: response"
         )
-        expect_length(client@state_store$keys(), 1L)
+        expect_length(client@state_store[["keys"]](), 1L)
         expect_length(cleared, 1L)
-        expect_true(isTRUE(cleared[[1L]]$dropResponse))
+        expect_true(isTRUE(cleared[[1L]][["dropResponse"]]))
       }
     )
   }
@@ -1935,8 +1935,8 @@ test_that("oauth_module_server accepts matching outer iss with query.jwt callbac
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -1951,16 +1951,16 @@ test_that("oauth_module_server accepts matching outer iss with query.jwt callbac
             kid = "sig-1"
           )
 
-          values$.process_query(paste0(
+          values[[".process_query"]](paste0(
             "?response=",
             utils::URLencode(response, reserved = TRUE),
             "&iss=",
             utils::URLencode(client@provider@issuer, reserved = TRUE)
           ))
-          session$flushReact()
+          session[["flushReact"]]()
 
-          expect_true(isTRUE(values$authenticated))
-          expect_identical(values$error, NULL)
+          expect_true(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], NULL)
         }
       )
     }
@@ -1994,25 +1994,25 @@ test_that("oauth_module_server rejects direct query callbacks for query.jwt clie
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store[["keys"]](), 1L)
 
-          values$.process_query(paste0(
+          values[[".process_query"]](paste0(
             "?code=attack",
             "&state=",
             utils::URLencode(enc_state, reserved = TRUE),
             "&iss=",
             utils::URLencode(client@provider@issuer, reserved = TRUE)
           ))
-          session$flushReact()
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_callback_query")
-          expect_match(values$error_description %||% "", "response parameter")
-          expect_length(client@state_store$keys(), 1L)
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], "invalid_callback_query")
+          expect_match(values[["error_description"]] %||% "", "response parameter")
+          expect_length(client@state_store[["keys"]](), 1L)
         }
       )
     }
@@ -2047,26 +2047,26 @@ test_that("oauth_module_server rejects direct query callbacks for form_post.jwt 
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store[["keys"]](), 1L)
 
-          values$.process_query(paste0(
+          values[[".process_query"]](paste0(
             "?code=attack",
             "&state=",
             utils::URLencode(enc_state, reserved = TRUE),
             "&iss=",
             utils::URLencode(client@provider@issuer, reserved = TRUE)
           ))
-          session$flushReact()
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_callback_query")
-          expect_match(values$error_description %||% "", "form_post")
-          expect_length(client@state_store$keys(), 1L)
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], "invalid_callback_query")
+          expect_match(values[["error_description"]] %||% "", "form_post")
+          expect_length(client@state_store[["keys"]](), 1L)
           expect_identical(exchanged_codes, character(0))
 
           response <- make_signed_jarm(
@@ -2087,23 +2087,23 @@ test_that("oauth_module_server rejects direct query callbacks for form_post.jwt 
               utils::URLencode(response, reserved = TRUE)
             )
           ))
-          expect_identical(post_resp$status, 303L)
+          expect_identical(post_resp[["status"]], 303L)
 
           handle <- parse_query_param(
-            post_resp$headers$Location,
+            post_resp[["headers"]][["Location"]],
             "shinyOAuth_form_post",
             decode = TRUE
           )
-          values$error <- NULL
-          values$error_description <- NULL
+          values[["error"]] <- NULL
+          values[["error_description"]] <- NULL
 
-          values$.process_query(jarm_form_post_query(handle, "auth"))
-          session$flushReact()
+          values[[".process_query"]](jarm_form_post_query(handle, "auth"))
+          session[["flushReact"]]()
 
-          expect_true(isTRUE(values$authenticated))
-          expect_identical(values$error, NULL)
+          expect_true(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], NULL)
           expect_identical(exchanged_codes, "ok")
-          expect_length(client@state_store$keys(), 0L)
+          expect_length(client@state_store[["keys"]](), 0L)
         }
       )
     }
@@ -2116,9 +2116,9 @@ test_that("oauth_module_server ignores query response params for form_post.jwt c
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
   browser_token <- valid_browser_token()
   cleared <- list()
-  sess <- shiny::MockShinySession$new()
-  orig <- sess$sendCustomMessage
-  sess$sendCustomMessage <- function(type, message) {
+  sess <- shiny::MockShinySession[["new"]]()
+  orig <- sess[["sendCustomMessage"]]
+  sess[["sendCustomMessage"]] <- function(type, message) {
     if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
       cleared[[length(cleared) + 1L]] <<- message
     }
@@ -2154,18 +2154,18 @@ test_that("oauth_module_server ignores query response params for form_post.jwt c
         ),
         session = sess,
         expr = {
-          values$browser_token <- browser_token
-          values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          values[["build_auth_url"]]()
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store[["keys"]](), 1L)
 
-          values$.process_query("?response=not-a-compact-jwt")
-          session$flushReact()
+          values[[".process_query"]]("?response=not-a-compact-jwt")
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
-          expect_null(values$error)
-          expect_null(values$error_description)
-          expect_length(client@state_store$keys(), 1L)
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_null(values[["error"]])
+          expect_null(values[["error_description"]])
+          expect_length(client@state_store[["keys"]](), 1L)
           expect_length(cleared, 0L)
         }
       )
@@ -2189,23 +2189,23 @@ test_that("oauth_module_server rejects form_post.jwt handles mixed with compact 
       indefinite_session = TRUE
     ),
     expr = {
-      values$browser_token <- browser_token
-      values$build_auth_url()
+      values[["browser_token"]] <- browser_token
+      values[["build_auth_url"]]()
       handle <- shinyOAuth:::oauth_form_post_store_set(
         client,
         "auth",
         list(response = "header.payload.signature")
       )
 
-      values$.process_query(paste0(
+      values[[".process_query"]](paste0(
         jarm_form_post_query(handle, "auth"),
         "&response=header.payload.signature"
       ))
-      session$flushReact()
+      session[["flushReact"]]()
 
-      expect_identical(values$error, "invalid_callback_query")
-      expect_match(values$error_description %||% "", "must not be combined")
-      expect_false(isTRUE(values$authenticated))
+      expect_identical(values[["error"]], "invalid_callback_query")
+      expect_match(values[["error_description"]] %||% "", "must not be combined")
+      expect_false(isTRUE(values[["authenticated"]]))
     }
   )
 })
@@ -2217,9 +2217,9 @@ test_that("oauth_module_server rejects invalid query response params for query.j
   client <- make_jarm_test_client(response_mode = "query.jwt")
   browser_token <- valid_browser_token()
   cleared <- list()
-  sess <- shiny::MockShinySession$new()
-  orig <- sess$sendCustomMessage
-  sess$sendCustomMessage <- function(type, message) {
+  sess <- shiny::MockShinySession[["new"]]()
+  orig <- sess[["sendCustomMessage"]]
+  sess[["sendCustomMessage"]] <- function(type, message) {
     if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
       cleared[[length(cleared) + 1L]] <<- message
     }
@@ -2255,23 +2255,23 @@ test_that("oauth_module_server rejects invalid query response params for query.j
         ),
         session = sess,
         expr = {
-          values$browser_token <- browser_token
-          values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          values[["build_auth_url"]]()
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store[["keys"]](), 1L)
 
-          values$.process_query(
+          values[[".process_query"]](
             "?response=not-a-compact-jwt",
             current_path = "/"
           )
-          session$flushReact()
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_callback_query")
-          expect_match(values$error_description %||% "", "compact JWT")
-          expect_length(client@state_store$keys(), 1L)
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], "invalid_callback_query")
+          expect_match(values[["error_description"]] %||% "", "compact JWT")
+          expect_length(client@state_store[["keys"]](), 1L)
           expect_length(cleared, 1L)
-          expect_true(isTRUE(cleared[[1L]]$dropResponse))
+          expect_true(isTRUE(cleared[[1L]][["dropResponse"]]))
         }
       )
     }
@@ -2285,9 +2285,9 @@ test_that("oauth_module_server rejects invalid query response params for jwt ali
   client <- make_jarm_test_client(response_mode = "jwt")
   browser_token <- valid_browser_token()
   cleared <- list()
-  sess <- shiny::MockShinySession$new()
-  orig <- sess$sendCustomMessage
-  sess$sendCustomMessage <- function(type, message) {
+  sess <- shiny::MockShinySession[["new"]]()
+  orig <- sess[["sendCustomMessage"]]
+  sess[["sendCustomMessage"]] <- function(type, message) {
     if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
       cleared[[length(cleared) + 1L]] <<- message
     }
@@ -2323,23 +2323,23 @@ test_that("oauth_module_server rejects invalid query response params for jwt ali
         ),
         session = sess,
         expr = {
-          values$browser_token <- browser_token
-          values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          values[["build_auth_url"]]()
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store[["keys"]](), 1L)
 
-          values$.process_query(
+          values[[".process_query"]](
             "?response=not-a-compact-jwt",
             current_path = "/"
           )
-          session$flushReact()
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_callback_query")
-          expect_match(values$error_description %||% "", "compact JWT")
-          expect_length(client@state_store$keys(), 1L)
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], "invalid_callback_query")
+          expect_match(values[["error_description"]] %||% "", "compact JWT")
+          expect_length(client@state_store[["keys"]](), 1L)
           expect_length(cleared, 1L)
-          expect_true(isTRUE(cleared[[1L]]$dropResponse))
+          expect_true(isTRUE(cleared[[1L]][["dropResponse"]]))
         }
       )
     }
@@ -2353,9 +2353,9 @@ test_that("oauth_module_server ignores response app params off the query JARM ca
     client <- make_jarm_test_client(response_mode = mode)
     browser_token <- valid_browser_token()
     cleared <- list()
-    sess <- shiny::MockShinySession$new()
-    orig <- sess$sendCustomMessage
-    sess$sendCustomMessage <- function(type, message) {
+    sess <- shiny::MockShinySession[["new"]]()
+    orig <- sess[["sendCustomMessage"]]
+    sess[["sendCustomMessage"]] <- function(type, message) {
       if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
         cleared[[length(cleared) + 1L]] <<- message
       }
@@ -2391,21 +2391,21 @@ test_that("oauth_module_server ignores response app params off the query JARM ca
           ),
           session = sess,
           expr = {
-            values$browser_token <- browser_token
-            values$build_auth_url()
+            values[["browser_token"]] <- browser_token
+            values[["build_auth_url"]]()
 
-            expect_length(client@state_store$keys(), 1L)
+            expect_length(client@state_store[["keys"]](), 1L)
 
-            values$.process_query(
+            values[[".process_query"]](
               "?response=not-a-compact-jwt",
               current_path = "/dashboard"
             )
-            session$flushReact()
+            session[["flushReact"]]()
 
-            expect_false(isTRUE(values$authenticated))
-            expect_null(values$error)
-            expect_null(values$error_description)
-            expect_length(client@state_store$keys(), 1L)
+            expect_false(isTRUE(values[["authenticated"]]))
+            expect_null(values[["error"]])
+            expect_null(values[["error_description"]])
+            expect_length(client@state_store[["keys"]](), 1L)
             expect_length(cleared, 0L)
           }
         )
@@ -2428,9 +2428,9 @@ test_that("oauth_module_server rejects malformed query JARM response params", {
     client <- make_jarm_test_client(response_mode = mode)
     browser_token <- valid_browser_token()
     cleared <- list()
-    sess <- shiny::MockShinySession$new()
-    orig <- sess$sendCustomMessage
-    sess$sendCustomMessage <- function(type, message) {
+    sess <- shiny::MockShinySession[["new"]]()
+    orig <- sess[["sendCustomMessage"]]
+    sess[["sendCustomMessage"]] <- function(type, message) {
       if (identical(type, "shinyOAuth:clearQueryAndFixTitle")) {
         cleared[[length(cleared) + 1L]] <<- message
       }
@@ -2466,26 +2466,26 @@ test_that("oauth_module_server rejects malformed query JARM response params", {
           ),
           session = sess,
           expr = {
-            values$browser_token <- browser_token
-            values$build_auth_url()
+            values[["browser_token"]] <- browser_token
+            values[["build_auth_url"]]()
 
-            expect_length(client@state_store$keys(), 1L)
+            expect_length(client@state_store[["keys"]](), 1L)
 
-            values$.process_query(
+            values[[".process_query"]](
               paste0(
                 "?response=",
                 utils::URLencode(malformed_response, reserved = TRUE)
               ),
               current_path = "/"
             )
-            session$flushReact()
+            session[["flushReact"]]()
 
-            expect_false(isTRUE(values$authenticated))
-            expect_identical(values$error, "invalid_callback_query")
-            expect_match(values$error_description %||% "", "compact JWT")
-            expect_length(client@state_store$keys(), 1L)
+            expect_false(isTRUE(values[["authenticated"]]))
+            expect_identical(values[["error"]], "invalid_callback_query")
+            expect_match(values[["error_description"]] %||% "", "compact JWT")
+            expect_length(client@state_store[["keys"]](), 1L)
             expect_length(cleared, 1L)
-            expect_true(isTRUE(cleared[[1L]]$dropResponse))
+            expect_true(isTRUE(cleared[[1L]][["dropResponse"]]))
           }
         )
       }
@@ -2520,8 +2520,8 @@ test_that("oauth_module_server handles query.jwt error callbacks and blocks repl
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -2541,25 +2541,25 @@ test_that("oauth_module_server handles query.jwt error callbacks and blocks repl
             utils::URLencode(response, reserved = TRUE)
           )
 
-          values$.process_query(query)
-          session$flushReact()
+          values[[".process_query"]](query)
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "access_denied")
-          expect_identical(values$error_description, "Denied")
-          expect_null(values$error_uri)
-          expect_length(client@state_store$keys(), 0L)
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], "access_denied")
+          expect_identical(values[["error_description"]], "Denied")
+          expect_null(values[["error_uri"]])
+          expect_length(client@state_store[["keys"]](), 0L)
 
-          values$error <- NULL
-          values$error_description <- NULL
-          values$error_uri <- NULL
+          values[["error"]] <- NULL
+          values[["error_description"]] <- NULL
+          values[["error_uri"]] <- NULL
 
-          values$.process_query(query)
-          session$flushReact()
+          values[[".process_query"]](query)
+          session[["flushReact"]]()
 
-          expect_identical(values$error, "invalid_state")
+          expect_identical(values[["error"]], "invalid_state")
           expect_match(
-            values$error_description %||% "",
+            values[["error_description"]] %||% "",
             "state",
             ignore.case = TRUE
           )
@@ -2594,7 +2594,7 @@ test_that("validate_jarm_response decrypts encrypted JARM payloads", {
   )
   response <- shinyOAuth:::jwe_compact_encrypt(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-1",
@@ -2609,9 +2609,9 @@ test_that("validate_jarm_response decrypts encrypted JARM payloads", {
 
   normalized <- shinyOAuth:::validate_jarm_response(client, response)
 
-  expect_identical(normalized$type, "code")
-  expect_identical(normalized$code, "ok")
-  expect_identical(normalized$state, "state-1")
+  expect_identical(normalized[["type"]], "code")
+  expect_identical(normalized[["code"]], "ok")
+  expect_identical(normalized[["state"]], "state-1")
 })
 
 test_that("validate_jarm_response rejects non-canonical encrypted JARM header casing", {
@@ -2637,7 +2637,7 @@ test_that("validate_jarm_response rejects non-canonical encrypted JARM header ca
   )
   lower_alg <- make_encrypted_jarm(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-1",
@@ -2646,7 +2646,7 @@ test_that("validate_jarm_response rejects non-canonical encrypted JARM header ca
   )
   lower_enc <- make_encrypted_jarm(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-1",
@@ -2706,7 +2706,7 @@ test_that("validate_jarm_response rejects encrypted JARM crit headers", {
   )
   response <- make_encrypted_jarm(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-1",
@@ -2758,14 +2758,14 @@ test_that("validate_jarm_response rejects encrypted JARM without JWT cty", {
   )
   missing_cty <- make_encrypted_jarm(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-1"
   )
   wrong_cty <- make_encrypted_jarm(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-1",
@@ -2871,7 +2871,7 @@ test_that("validate_jarm_response rejects encrypted JARM with wrong kid", {
   )
   response <- make_encrypted_jarm(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-actual",
@@ -2917,7 +2917,7 @@ test_that("validate_jarm_response wraps malformed encrypted JARM failures", {
   )
   encrypted_response <- shinyOAuth:::jwe_compact_encrypt(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-1",
@@ -2971,7 +2971,7 @@ test_that("oauth_form_post_ui returns 400 for malformed encrypted JARM callbacks
   client@provider@jarm_encryption_enc_values_supported <-
     "A256CBC-HS512"
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
-  keys_before <- sort(client@state_store$keys())
+  keys_before <- sort(client@state_store[["keys"]]())
 
   resp <- ui(make_jarm_form_post_req(
     body = "response=a.b.c.d.e"
@@ -2984,7 +2984,7 @@ test_that("oauth_form_post_ui returns 400 for malformed encrypted JARM callbacks
     fixed = TRUE
   )
   expect_false("Location" %in% names(resp[["headers"]]))
-  expect_identical(sort(client@state_store$keys()), keys_before)
+  expect_identical(sort(client@state_store[["keys"]]()), keys_before)
 })
 
 test_that("oauth_module_server handles query.jwt callbacks", {
@@ -3011,8 +3011,8 @@ test_that("oauth_module_server handles query.jwt callbacks", {
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -3027,14 +3027,14 @@ test_that("oauth_module_server handles query.jwt callbacks", {
             kid = "sig-1"
           )
 
-          values$.process_query(paste0(
+          values[[".process_query"]](paste0(
             "?response=",
             utils::URLencode(response, reserved = TRUE)
           ))
-          session$flushReact()
+          session[["flushReact"]]()
 
-          expect_true(isTRUE(values$authenticated))
-          expect_identical(values$error, NULL)
+          expect_true(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], NULL)
         }
       )
     }
@@ -3088,8 +3088,8 @@ test_that("oauth_module_server exposes one encrypted query.jwt decryption failur
             indefinite_session = TRUE
           ),
           expr = {
-            values$browser_token <- browser_token
-            url <- values$build_auth_url()
+            values[["browser_token"]] <- browser_token
+            url <- values[["build_auth_url"]]()
             enc_state <- parse_query_param(url, "state")
             now <- floor(as.numeric(Sys.time()))
             inner_response <- make_signed_jarm(
@@ -3105,7 +3105,7 @@ test_that("oauth_module_server exposes one encrypted query.jwt decryption failur
             )
             encrypted_response <- make_encrypted_jarm(
               plaintext = inner_response,
-              public_key = enc_key$pubkey,
+              public_key = enc_key[["pubkey"]],
               alg = "RSA-OAEP",
               enc = "A256CBC-HS512",
               cty = "JWT"
@@ -3122,22 +3122,22 @@ test_that("oauth_module_server exposes one encrypted query.jwt decryption failur
               tampered_part
             )
 
-            values$.process_query(paste0(
+            values[[".process_query"]](paste0(
               "?response=",
               utils::URLencode(paste(parts, collapse = "."), reserved = TRUE)
             ))
-            session$flushReact()
+            session[["flushReact"]]()
 
-            expect_false(isTRUE(values$authenticated), info = case[["label"]])
+            expect_false(isTRUE(values[["authenticated"]]), info = case[["label"]])
             expect_identical(
-              values$error,
+              values[["error"]],
               "invalid_state",
               info = case[["label"]]
             )
             description <- gsub(
               "\\s+",
               " ",
-              trimws(values$error_description %||% "")
+              trimws(values[["error_description"]] %||% "")
             )
 
             expect_match(
@@ -3170,8 +3170,8 @@ test_that("oauth_module_server ignores prefixed direct code callbacks for query 
   )
 
   for (idx in seq_len(nrow(cases))) {
-    response_mode <- cases$response_mode[[idx]]
-    async <- cases$async[[idx]]
+    response_mode <- cases[["response_mode"]][[idx]]
+    async <- cases[["async"]][[idx]]
     info <- paste("response_mode =", response_mode, ", async =", async)
     client <- make_jarm_test_client(response_mode = response_mode)
     browser_token <- valid_browser_token()
@@ -3201,26 +3201,26 @@ test_that("oauth_module_server ignores prefixed direct code callbacks for query 
             indefinite_session = TRUE
           ),
           expr = {
-            values$browser_token <- browser_token
-            url <- values$build_auth_url()
+            values[["browser_token"]] <- browser_token
+            url <- values[["build_auth_url"]]()
             enc_state <- parse_query_param(url, "state")
-            keys_before <- sort(client@state_store$keys())
+            keys_before <- sort(client@state_store[["keys"]]())
 
             expect_equal(length(keys_before), 1L, info = info)
 
-            values$.process_query(paste0(
+            values[[".process_query"]](paste0(
               "?code_alias=ok",
               "&state_alias=",
               enc_state,
               "&iss_alias=",
               utils::URLencode(client@provider@issuer, reserved = TRUE)
             ))
-            session$flushReact()
+            session[["flushReact"]]()
 
-            expect_false(isTRUE(values$authenticated), info = info)
-            expect_null(values$error, info = info)
+            expect_false(isTRUE(values[["authenticated"]]), info = info)
+            expect_null(values[["error"]], info = info)
             expect_identical(
-              sort(client@state_store$keys()),
+              sort(client@state_store[["keys"]]()),
               keys_before,
               info = info
             )
@@ -3241,8 +3241,8 @@ test_that("oauth_module_server ignores prefixed error callbacks for query JARM c
   )
 
   for (idx in seq_len(nrow(cases))) {
-    response_mode <- cases$response_mode[[idx]]
-    async <- cases$async[[idx]]
+    response_mode <- cases[["response_mode"]][[idx]]
+    async <- cases[["async"]][[idx]]
     info <- paste("response_mode =", response_mode, ", async =", async)
     client <- make_jarm_test_client(response_mode = response_mode)
     browser_token <- valid_browser_token()
@@ -3257,26 +3257,26 @@ test_that("oauth_module_server ignores prefixed error callbacks for query JARM c
         indefinite_session = TRUE
       ),
       expr = {
-        values$browser_token <- browser_token
-        url <- values$build_auth_url()
+        values[["browser_token"]] <- browser_token
+        url <- values[["build_auth_url"]]()
         enc_state <- parse_query_param(url, "state")
-        keys_before <- sort(client@state_store$keys())
+        keys_before <- sort(client@state_store[["keys"]]())
 
         expect_equal(length(keys_before), 1L, info = info)
 
-        values$.process_query(paste0(
+        values[[".process_query"]](paste0(
           "?error_alias=access_denied",
           "&state_alias=",
           enc_state,
           "&iss_alias=",
           utils::URLencode(client@provider@issuer, reserved = TRUE)
         ))
-        session$flushReact()
+        session[["flushReact"]]()
 
-        expect_false(isTRUE(values$authenticated), info = info)
-        expect_null(values$error, info = info)
+        expect_false(isTRUE(values[["authenticated"]]), info = info)
+        expect_null(values[["error"]], info = info)
         expect_identical(
-          sort(client@state_store$keys()),
+          sort(client@state_store[["keys"]]()),
           keys_before,
           info = info
         )
@@ -3321,8 +3321,8 @@ test_that("oauth_module_server rejects query JARM responses for form_post.jwt cl
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -3337,18 +3337,18 @@ test_that("oauth_module_server rejects query JARM responses for form_post.jwt cl
             kid = "sig-1"
           )
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store[["keys"]](), 1L)
 
-          values$.process_query(paste0(
+          values[[".process_query"]](paste0(
             "?response=",
             utils::URLencode(response, reserved = TRUE)
           ))
-          session$flushReact()
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_callback_query")
-          expect_match(values$error_description %||% "", "form_post")
-          expect_length(client@state_store$keys(), 1L)
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], "invalid_callback_query")
+          expect_match(values[["error_description"]] %||% "", "form_post")
+          expect_length(client@state_store[["keys"]](), 1L)
         }
       )
     }
@@ -3358,7 +3358,7 @@ test_that("oauth_module_server rejects query JARM responses for form_post.jwt cl
 test_that("oauth_form_post_ui rejects form_post.jwt bodies that mix response with direct callback params", {
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
-  keys_before <- sort(client@state_store$keys())
+  keys_before <- sort(client@state_store[["keys"]]())
   events <- list()
   old <- options(shinyOAuth.audit_hook = function(e) {
     events[[length(events) + 1L]] <<- e
@@ -3381,18 +3381,18 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies that mix response wit
     )
   )
   expect_false("Location" %in% names(resp[["headers"]]))
-  expect_identical(sort(client@state_store$keys()), keys_before)
+  expect_identical(sort(client@state_store[["keys"]]()), keys_before)
 
   reject_events <- Filter(
     function(e) {
-      identical(e$type, "audit_callback_validation_failed") &&
-        identical(e$phase, "form_post_request_validation")
+      identical(e[["type"]], "audit_callback_validation_failed") &&
+        identical(e[["phase"]], "form_post_request_validation")
     },
     events
   )
   expect_length(reject_events, 1L)
   expect_match(
-    reject_events[[1L]]$error_class %||% "",
+    reject_events[[1L]][["error_class"]] %||% "",
     "shinyOAuth_form_post_http_error",
     fixed = TRUE
   )
@@ -3401,7 +3401,7 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies that mix response wit
 test_that("oauth_form_post_ui rejects direct form_post callbacks for form_post.jwt clients", {
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
-  keys_before <- sort(client@state_store$keys())
+  keys_before <- sort(client@state_store[["keys"]]())
 
   resp <- ui(make_jarm_form_post_req(
     body = paste0(
@@ -3421,7 +3421,7 @@ test_that("oauth_form_post_ui rejects direct form_post callbacks for form_post.j
     )
   )
   expect_false("Location" %in% names(resp[["headers"]]))
-  expect_identical(sort(client@state_store$keys()), keys_before)
+  expect_identical(sort(client@state_store[["keys"]]()), keys_before)
 })
 
 test_that("oauth_form_post_ui rejects prefixed response fields for form_post.jwt clients", {
@@ -3445,7 +3445,7 @@ test_that("oauth_form_post_ui rejects prefixed response fields for form_post.jwt
     key = sig_key,
     kid = "sig-1"
   )
-  keys_before <- sort(client@state_store$keys())
+  keys_before <- sort(client@state_store[["keys"]]())
 
   testthat::with_mocked_bindings(
     fetch_jwks = function(...) {
@@ -3471,7 +3471,7 @@ test_that("oauth_form_post_ui rejects prefixed response fields for form_post.jwt
         )
       )
       expect_false("Location" %in% names(resp[["headers"]]))
-      expect_identical(sort(client@state_store$keys()), keys_before)
+      expect_identical(sort(client@state_store[["keys"]]()), keys_before)
     }
   )
 })
@@ -3516,7 +3516,7 @@ test_that("oauth_form_post_ui accepts matching outer iss in form_post.jwt bodies
 
   expect_identical(resp[["status"]], 303L)
   handle <- parse_query_param(
-    resp[["headers"]]$Location,
+    resp[["headers"]][["Location"]],
     "shinyOAuth_form_post",
     decode = TRUE
   )
@@ -3526,7 +3526,7 @@ test_that("oauth_form_post_ui accepts matching outer iss in form_post.jwt bodies
   expect_null(payload[["response"]])
   expect_identical(payload[["iss"]], client@provider@issuer)
   expect_identical(
-    payload[["normalized_response"]]$iss,
+    payload[["normalized_response"]][["iss"]],
     client@provider@issuer
   )
 })
@@ -3568,7 +3568,7 @@ test_that("oauth_form_post_ui stores compact encrypted form_post.jwt bridge payl
   )
   response <- shinyOAuth:::jwe_compact_encrypt(
     plaintext = inner_jwt,
-    public_key = enc_key$pubkey,
+    public_key = enc_key[["pubkey"]],
     alg = "RSA-OAEP",
     enc = "A256CBC-HS512",
     kid = "enc-1",
@@ -3590,12 +3590,12 @@ test_that("oauth_form_post_ui stores compact encrypted form_post.jwt bridge payl
 
   expect_identical(resp[["status"]], 303L)
   handle <- parse_query_param(
-    resp[["headers"]]$Location,
+    resp[["headers"]][["Location"]],
     "shinyOAuth_form_post",
     decode = TRUE
   )
   cache_key <- shinyOAuth:::oauth_form_post_cache_key("auth", handle, client)
-  sealed_payload <- client@state_store$get(cache_key, missing = NULL)
+  sealed_payload <- client@state_store[["get"]](cache_key, missing = NULL)
 
   expect_type(sealed_payload, "character")
   expect_lte(nchar(sealed_payload, type = "bytes"), 3200)
@@ -3603,7 +3603,7 @@ test_that("oauth_form_post_ui stores compact encrypted form_post.jwt bridge payl
   payload <- shinyOAuth:::oauth_form_post_store_take(client, "auth", handle)
 
   expect_null(payload[["response"]])
-  expect_identical(payload[["normalized_response"]]$code, "ok")
+  expect_identical(payload[["normalized_response"]][["code"]], "ok")
 })
 
 test_that("oauth_form_post_ui records form_post.jwt telemetry for JARM bodies", {
@@ -3675,7 +3675,7 @@ test_that("oauth_form_post_ui rejects mismatched outer iss in form_post.jwt bodi
     key = sig_key,
     kid = "sig-1"
   )
-  keys_before <- sort(client@state_store$keys())
+  keys_before <- sort(client@state_store[["keys"]]())
 
   resp <- testthat::with_mocked_bindings(
     fetch_jwks = function(...) {
@@ -3706,7 +3706,7 @@ test_that("oauth_form_post_ui rejects mismatched outer iss in form_post.jwt bodi
     fixed = TRUE
   )
   expect_false("Location" %in% names(resp[["headers"]]))
-  expect_identical(sort(client@state_store$keys()), keys_before)
+  expect_identical(sort(client@state_store[["keys"]]()), keys_before)
 })
 
 test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner state before storing", {
@@ -3714,7 +3714,7 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner st
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
   jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
-  keys_before <- sort(client@state_store$keys())
+  keys_before <- sort(client@state_store[["keys"]]())
   now <- floor(as.numeric(Sys.time()))
   response <- make_signed_jarm(
     payload_list = list(
@@ -3742,7 +3742,7 @@ test_that("oauth_form_post_ui rejects form_post.jwt bodies with invalid inner st
       expect_identical(resp[["status"]], 400L)
       expect_match(resp[["content"]], "Invalid OAuth state", fixed = TRUE)
       expect_false("Location" %in% names(resp[["headers"]]))
-      expect_identical(sort(client@state_store$keys()), keys_before)
+      expect_identical(sort(client@state_store[["keys"]]()), keys_before)
     }
   )
 })
@@ -3786,11 +3786,11 @@ test_that("oauth_form_post_ui emits one audit event for invalid inner-state form
   )
 
   reject_events <- Filter(
-    function(e) identical(e$type, "audit_callback_validation_failed"),
+    function(e) identical(e[["type"]], "audit_callback_validation_failed"),
     events
   )
   expect_length(reject_events, 1L)
-  expect_identical(reject_events[[1L]]$phase %||% NULL, "payload_validation")
+  expect_identical(reject_events[[1L]][["phase"]] %||% NULL, "payload_validation")
 })
 
 test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
@@ -3798,7 +3798,7 @@ test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
   client <- make_jarm_test_client(response_mode = "form_post.jwt")
   ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
   jwks <- list(keys = list(make_jarm_public_jwk(sig_key, kid = "sig-1")))
-  keys_before <- sort(client@state_store$keys())
+  keys_before <- sort(client@state_store[["keys"]]())
   now <- floor(as.numeric(Sys.time()))
   response <- make_signed_jarm(
     payload_list = list(
@@ -3835,20 +3835,20 @@ test_that("oauth_form_post_ui audits form_post.jwt validation failures", {
         fixed = TRUE
       )
       expect_false("Location" %in% names(resp[["headers"]]))
-      expect_identical(sort(client@state_store$keys()), keys_before)
+      expect_identical(sort(client@state_store[["keys"]]()), keys_before)
     }
   )
 
   reject_events <- Filter(
     function(e) {
-      identical(e$type, "audit_callback_validation_failed") &&
-        identical(e$phase, "form_post_request_validation")
+      identical(e[["type"]], "audit_callback_validation_failed") &&
+        identical(e[["phase"]], "form_post_request_validation")
     },
     events
   )
   expect_length(reject_events, 1L)
   expect_match(
-    reject_events[[1L]]$error_class %||% "",
+    reject_events[[1L]][["error_class"]] %||% "",
     "shinyOAuth_state_error",
     fixed = TRUE
   )
@@ -3879,8 +3879,8 @@ test_that("oauth_module_server handles bridged form_post.jwt callbacks", {
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -3901,18 +3901,18 @@ test_that("oauth_module_server handles bridged form_post.jwt callbacks", {
               utils::URLencode(response, reserved = TRUE)
             )
           ))
-          expect_identical(post_resp$status, 303L)
+          expect_identical(post_resp[["status"]], 303L)
           handle <- parse_query_param(
-            post_resp$headers$Location,
+            post_resp[["headers"]][["Location"]],
             "shinyOAuth_form_post",
             decode = TRUE
           )
 
-          values$.process_query(jarm_form_post_query(handle, "auth"))
-          session$flushReact()
+          values[[".process_query"]](jarm_form_post_query(handle, "auth"))
+          session[["flushReact"]]()
 
-          expect_true(isTRUE(values$authenticated))
-          expect_identical(values$error, NULL)
+          expect_true(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], NULL)
         }
       )
     }
@@ -3957,8 +3957,8 @@ test_that("oauth_module_server reuses bridged form_post.jwt validation after the
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -3979,18 +3979,18 @@ test_that("oauth_module_server reuses bridged form_post.jwt validation after the
               utils::URLencode(response, reserved = TRUE)
             )
           ))
-          expect_identical(post_resp$status, 303L)
+          expect_identical(post_resp[["status"]], 303L)
           handle <- parse_query_param(
-            post_resp$headers$Location,
+            post_resp[["headers"]][["Location"]],
             "shinyOAuth_form_post",
             decode = TRUE
           )
 
-          values$.process_query(jarm_form_post_query(handle, "auth"))
-          session$flushReact()
+          values[[".process_query"]](jarm_form_post_query(handle, "auth"))
+          session[["flushReact"]]()
 
-          expect_true(isTRUE(values$authenticated))
-          expect_identical(values$error, NULL)
+          expect_true(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], NULL)
           expect_identical(fetch_calls, 1L)
         }
       )
@@ -4025,8 +4025,8 @@ test_that("oauth_module_server rejects tampered bridged form_post.jwt payloads",
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           state_payload <- shinyOAuth:::state_decrypt_gcm(
             enc_state,
@@ -4051,14 +4051,14 @@ test_that("oauth_module_server rejects tampered bridged form_post.jwt payloads",
               utils::URLencode(response, reserved = TRUE)
             )
           ))
-          expect_identical(post_resp$status, 303L)
+          expect_identical(post_resp[["status"]], 303L)
           handle <- parse_query_param(
-            post_resp$headers$Location,
+            post_resp[["headers"]][["Location"]],
             "shinyOAuth_form_post",
             decode = TRUE
           )
 
-          client@state_store$set(
+          client@state_store[["set"]](
             shinyOAuth:::oauth_form_post_cache_key("auth", handle, client),
             list(
               type = "response",
@@ -4083,12 +4083,12 @@ test_that("oauth_module_server rejects tampered bridged form_post.jwt payloads",
             )
           )
 
-          values$.process_query(jarm_form_post_query(handle, "auth"))
-          session$flushReact()
+          values[[".process_query"]](jarm_form_post_query(handle, "auth"))
+          session[["flushReact"]]()
 
-          expect_false(isTRUE(values$authenticated))
+          expect_false(isTRUE(values[["authenticated"]]))
           expect_length(exchanged_codes, 0L)
-          expect_false(is.null(values$error))
+          expect_false(is.null(values[["error"]]))
         }
       )
     }
@@ -4133,11 +4133,11 @@ test_that("oauth_module_server rejects bridged form_post.jwt callbacks after JAR
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
+          values[["browser_token"]] <- browser_token
           url <- testthat::with_mocked_bindings(
             Sys.time = function() fixed_now,
             .package = "base",
-            values$build_auth_url()
+            values[["build_auth_url"]]()
           )
           enc_state <- parse_query_param(url, "state")
           response <- testthat::with_mocked_bindings(
@@ -4166,9 +4166,9 @@ test_that("oauth_module_server rejects bridged form_post.jwt callbacks after JAR
               )
             ))
           )
-          expect_identical(post_resp$status, 303L)
+          expect_identical(post_resp[["status"]], 303L)
           handle <- parse_query_param(
-            post_resp$headers$Location,
+            post_resp[["headers"]][["Location"]],
             "shinyOAuth_form_post",
             decode = TRUE
           )
@@ -4177,14 +4177,14 @@ test_that("oauth_module_server rejects bridged form_post.jwt callbacks after JAR
             Sys.time = function() expired_now,
             .package = "base",
             {
-              values$.process_query(jarm_form_post_query(handle, "auth"))
-              session$flushReact()
+              values[[".process_query"]](jarm_form_post_query(handle, "auth"))
+              session[["flushReact"]]()
             }
           )
 
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, "invalid_state")
-          expect_match(values$error_description %||% "", "JARM payload expired")
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], "invalid_state")
+          expect_match(values[["error_description"]] %||% "", "JARM payload expired")
           expect_identical(fetch_calls, 1L)
         }
       )
@@ -4225,14 +4225,14 @@ test_that("oauth_module_server rechecks pending query.jwt callbacks after JARM e
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- state_browser_token
+          values[["browser_token"]] <- state_browser_token
           url <- testthat::with_mocked_bindings(
             Sys.time = function() fixed_now,
             .package = "base",
             prepare_call(client, browser_token = state_browser_token)
           )
           enc_state <- parse_query_param(url, "state")
-          values$browser_token <- NULL
+          values[["browser_token"]] <- NULL
 
           response <- testthat::with_mocked_bindings(
             Sys.time = function() fixed_now,
@@ -4254,31 +4254,31 @@ test_that("oauth_module_server rechecks pending query.jwt callbacks after JARM e
             Sys.time = function() fixed_now,
             .package = "base",
             {
-              values$.process_query(paste0(
+              values[[".process_query"]](paste0(
                 "?response=",
                 utils::URLencode(response, reserved = TRUE)
               ))
-              session$flushReact()
+              session[["flushReact"]]()
             }
           )
 
-          expect_null(values$error)
-          expect_type(values$pending_callback, "list")
-          expect_identical(values$pending_callback$type, "jarm")
+          expect_null(values[["error"]])
+          expect_type(values[["pending_callback"]], "list")
+          expect_identical(values[["pending_callback"]][["type"]], "jarm")
 
           testthat::with_mocked_bindings(
             Sys.time = function() expired_now,
             .package = "base",
             {
-              session$setInputs(shinyOAuth_sid = state_browser_token)
-              session$flushReact()
+              session[["setInputs"]](shinyOAuth_sid = state_browser_token)
+              session[["flushReact"]]()
             }
           )
 
-          expect_identical(values$error, "invalid_state")
-          expect_match(values$error_description %||% "", "JARM payload expired")
-          expect_null(values$pending_callback)
-          expect_false(isTRUE(values$authenticated))
+          expect_identical(values[["error"]], "invalid_state")
+          expect_match(values[["error_description"]] %||% "", "JARM payload expired")
+          expect_null(values[["pending_callback"]])
+          expect_false(isTRUE(values[["authenticated"]]))
         }
       )
     }
@@ -4311,8 +4311,8 @@ test_that("oauth_module_server accepts bridged form_post.jwt callbacks with fixe
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -4334,21 +4334,21 @@ test_that("oauth_module_server accepts bridged form_post.jwt callbacks with fixe
               utils::URLencode(response, reserved = TRUE)
             )
           ))
-          expect_identical(post_resp$status, 303L)
+          expect_identical(post_resp[["status"]], 303L)
           expect_identical(
             parse_query_param(
-              post_resp$headers$Location,
+              post_resp[["headers"]][["Location"]],
               "tenant",
               decode = TRUE
             ),
             "keep-me"
           )
 
-          values$.process_query(post_resp$headers$Location)
-          session$flushReact()
+          values[[".process_query"]](post_resp[["headers"]][["Location"]])
+          session[["flushReact"]]()
 
-          expect_true(isTRUE(values$authenticated))
-          expect_identical(values$error, NULL)
+          expect_true(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], NULL)
         }
       )
     }
@@ -4373,7 +4373,7 @@ test_that("deferred JARM resume ignores partial matches in pending callback payl
       state_browser_token <- valid_browser_token()
       enc_state <- "state-payload"
 
-      values$pending_callback <- list(
+      values[["pending_callback"]] <- list(
         type_hint = "error",
         normalized_response = list(
           type_hint = "error",
@@ -4410,14 +4410,14 @@ test_that("deferred JARM resume ignores partial matches in pending callback payl
         },
         .package = "shinyOAuth",
         {
-          values$browser_token <- state_browser_token
-          session$flushReact()
+          values[["browser_token"]] <- state_browser_token
+          session[["flushReact"]]()
         }
       )
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_null(values$pending_callback)
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
+      testthat::expect_null(values[["pending_callback"]])
       testthat::expect_identical(callback_args[["code"]], "ok")
       testthat::expect_identical(callback_args[["payload"]], enc_state)
       testthat::expect_identical(
@@ -4464,8 +4464,8 @@ test_that("oauth_module_server rejects bridged form_post JARM callbacks for quer
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
           response <- make_signed_jarm(
@@ -4486,16 +4486,16 @@ test_that("oauth_module_server rejects bridged form_post JARM callbacks for quer
               utils::URLencode(response, reserved = TRUE)
             )
           ))
-          expect_identical(post_resp$status, 400L)
+          expect_identical(post_resp[["status"]], 400L)
           expect_match(
-            post_resp$content,
+            post_resp[["content"]],
             "JARM callback transport mismatch",
             fixed = TRUE
           )
-          expect_false("Location" %in% names(post_resp$headers))
-          expect_false(isTRUE(values$authenticated))
-          expect_length(client@state_store$keys(), 1L)
-          expect_identical(values$error, NULL)
+          expect_false("Location" %in% names(post_resp[["headers"]]))
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_length(client@state_store[["keys"]](), 1L)
+          expect_identical(values[["error"]], NULL)
         }
       )
     }
@@ -4534,8 +4534,8 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
           indefinite_session = TRUE
         ),
         expr = {
-          values$browser_token <- browser_token
-          url <- values$build_auth_url()
+          values[["browser_token"]] <- browser_token
+          url <- values[["build_auth_url"]]()
           enc_state <- parse_query_param(url, "state")
           now <- floor(as.numeric(Sys.time()))
 
@@ -4551,7 +4551,7 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
             kid = "sig-1"
           )
 
-          expect_length(client@state_store$keys(), 1L)
+          expect_length(client@state_store[["keys"]](), 1L)
 
           bad_post_resp <- ui(make_jarm_form_post_req(
             body = paste0(
@@ -4559,20 +4559,20 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
               utils::URLencode(bad_response, reserved = TRUE)
             )
           ))
-          expect_identical(bad_post_resp$status, 400L)
+          expect_identical(bad_post_resp[["status"]], 400L)
           expect_match(
-            bad_post_resp$content,
+            bad_post_resp[["content"]],
             "JARM aud claim does not include client_id",
             fixed = TRUE
           )
-          expect_false("Location" %in% names(bad_post_resp$headers))
-          expect_false(isTRUE(values$authenticated))
-          expect_identical(values$error, NULL)
-          expect_length(client@state_store$keys(), 1L)
+          expect_false("Location" %in% names(bad_post_resp[["headers"]]))
+          expect_false(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], NULL)
+          expect_length(client@state_store[["keys"]](), 1L)
           expect_identical(exchanged_codes, character(0))
           expect_false(any(vapply(
             events,
-            function(e) identical(e$type, "audit_callback_validation_success"),
+            function(e) identical(e[["type"]], "audit_callback_validation_success"),
             logical(1)
           )))
 
@@ -4593,23 +4593,23 @@ test_that("oauth_module_server rejects bridged form_post.jwt aud mismatches with
               utils::URLencode(good_response, reserved = TRUE)
             )
           ))
-          expect_identical(good_post_resp$status, 303L)
+          expect_identical(good_post_resp[["status"]], 303L)
           good_handle <- parse_query_param(
-            good_post_resp$headers$Location,
+            good_post_resp[["headers"]][["Location"]],
             "shinyOAuth_form_post",
             decode = TRUE
           )
 
-          values$.process_query(jarm_form_post_query(good_handle, "auth"))
-          session$flushReact()
+          values[[".process_query"]](jarm_form_post_query(good_handle, "auth"))
+          session[["flushReact"]]()
 
-          expect_true(isTRUE(values$authenticated))
-          expect_identical(values$error, NULL)
+          expect_true(isTRUE(values[["authenticated"]]))
+          expect_identical(values[["error"]], NULL)
           expect_identical(exchanged_codes, "ok")
-          expect_length(client@state_store$keys(), 0L)
+          expect_length(client@state_store[["keys"]](), 0L)
           expect_true(any(vapply(
             events,
-            function(e) identical(e$type, "audit_callback_validation_success"),
+            function(e) identical(e[["type"]], "audit_callback_validation_success"),
             logical(1)
           )))
         }
@@ -4658,7 +4658,7 @@ test_that("signed and encrypted form_post JARM keep response candidates independ
               if (encrypted) {
                 response <- make_encrypted_jarm(
                   response,
-                  decrypt_key$pubkey,
+                  decrypt_key[["pubkey"]],
                   cty = "JWT"
                 )
               }
@@ -4709,7 +4709,7 @@ test_that("JARM verifies Ed25519 signatures and rejects corruption", {
     .package = "shinyOAuth"
   )
   expect_identical(
-    shinyOAuth:::validate_jarm_response(client, response)$code,
+    shinyOAuth:::validate_jarm_response(client, response)[["code"]],
     "ok"
   )
   sig[1] <- as.raw(bitwXor(as.integer(sig[1]), 1L))
@@ -4720,8 +4720,8 @@ test_that("JARM verifies Ed25519 signatures and rejects corruption", {
     ),
     "signature"
   )
-  jwk$x <- shinyOAuth:::base64url_encode(raw(31))
+  jwk[["x"]] <- shinyOAuth:::base64url_encode(raw(31))
   expect_error(shinyOAuth:::jwk_to_pubkey(jwk), "32 bytes")
-  jwk$crv <- "Ed448"
+  jwk[["crv"]] <- "Ed448"
   expect_error(shinyOAuth:::jwk_to_pubkey(jwk), "only Ed25519")
 })

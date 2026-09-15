@@ -4,13 +4,13 @@ test_that("accepted leaf-first certificate layouts complete an mTLS exchange", {
     python <- Sys.which("python")
   }
   skip_if(!nzchar(python), "Python is required for the loopback TLS fixture")
-  server <- processx::process$new(
+  server <- processx::process[["new"]](
     python,
     mtls_pem_fixture("roundtrip-server.py"),
     stdout = "|",
     stderr = "|"
   )
-  withr::defer(server$kill())
+  withr::defer(server[["kill"]]())
   port <- wait_for_mtls_server_port(server)
   cert <- mtls_pem_fixture("client-cert.pem")
   ca <- mtls_pem_fixture("ca-cert.pem")

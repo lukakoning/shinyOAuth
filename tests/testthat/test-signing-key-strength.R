@@ -18,7 +18,7 @@ test_that("RSA signing keys are rejected below 2048 bits at construction", {
       redirect_uri = "http://localhost/callback"
     )
     if (mode == "jar") {
-      args$request_object_mode <- "request"
+      args[["request_object_mode"]] <- "request"
     }
     field <- if (mode == "dpop") {
       "dpop_private_key"

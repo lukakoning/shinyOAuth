@@ -40,7 +40,7 @@ testthat::test_that("get_userinfo errors consistently on malformed/non-JSON resp
   # Our failure path sets status = "parse_error"
   statuses <- vapply(
     ui_events,
-    function(e) e$status %||% NA_character_,
+    function(e) e[["status"]] %||% NA_character_,
     character(1)
   )
   testthat::expect_true(any(statuses == "parse_error"))

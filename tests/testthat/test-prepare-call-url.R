@@ -29,7 +29,7 @@ test_that("prepare_call checks generated state against callback and envelope lim
   )
   expect_gt(nchar(state, type = "bytes"), 1024)
   expect_lt(nchar(state, type = "bytes"), 8192)
-  initial_keys <- client@state_store$keys()
+  initial_keys <- client@state_store[["keys"]]()
   pushed <- 0L
   local_mocked_bindings(push_authorization_request = function(...) {
     pushed <<- pushed + 1L
@@ -48,7 +48,7 @@ test_that("prepare_call checks generated state against callback and envelope lim
         "Generated state exceeds shinyOAuth.callback_max_state_bytes",
         class = "shinyOAuth_config_error"
       )
-      expect_setequal(client@state_store$keys(), initial_keys)
+      expect_setequal(client@state_store[["keys"]](), initial_keys)
     }
   }
   withr::local_options(
@@ -58,7 +58,7 @@ test_that("prepare_call checks generated state against callback and envelope lim
   )
   expect_error(prepare_call(client, browser), class = "shinyOAuth_state_error")
   expect_identical(pushed, 0L)
-  expect_setequal(client@state_store$keys(), initial_keys)
+  expect_setequal(client@state_store[["keys"]](), initial_keys)
 })
 
 test_that("authorization queries preserve fixed bytes and deduplicate managed values", {
@@ -101,7 +101,7 @@ test_that("prepare_call validates configured authorization query against generat
   url <- prepare_call(client, browser_token = valid_browser_token())
   fields <- shinyOAuth:::decode_form_pairs(shinyOAuth:::url_raw_query(url))
   expect_equal(sum(names(fields) == "response_type"), 1L)
-  expect_identical(fields$fixed, "a+b")
+  expect_identical(fields[["fixed"]], "a+b")
   client@provider@auth_url <- "https://example.com/auth?response_type=unexpected"
   expect_error(
     prepare_call(client, browser_token = valid_browser_token()),
@@ -124,7 +124,7 @@ test_that("fixed DPoP thumbprints must agree with the active key and occur once"
   url <- prepare_call(client, valid_browser_token())
   fields <- decode_form_pairs(url_raw_query(url))
   expect_equal(sum(names(fields) == "dpop_jkt"), 1L)
-  expect_identical(fields$dpop_jkt, thumbprint)
+  expect_identical(fields[["dpop_jkt"]], thumbprint)
   client@provider@auth_url <- "https://example.com/auth?dpop_jkt=stale"
   expect_error(prepare_call(client, valid_browser_token()), "conflicts with managed")
   expect_error({
@@ -186,5 +186,5 @@ test_that("PAR and JAR outer requests share authorization query composition", {
   jar_url <- build(client)
   fields <- shinyOAuth:::decode_form_pairs(shinyOAuth:::url_raw_query(jar_url))
   expect_equal(sum(names(fields) == "client_id"), 1L)
-  expect_identical(fields$request, "signed-object")
+  expect_identical(fields[["request"]], "signed-object")
 })

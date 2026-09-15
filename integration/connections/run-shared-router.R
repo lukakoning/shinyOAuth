@@ -17,16 +17,16 @@ run_shared_router_browser_tests <- function() {
     modes = c("sync", "async"), responses = c("query", "form_post"),
     versions = stats::setNames(lapply(required, function(package) as.character(utils::packageVersion(package))), required))
   on.exit({
-    evidence$chrome <- retention_evidence_env$chrome
+    evidence[["chrome"]] <- retention_evidence_env[["chrome"]]
     jsonlite::write_json(evidence, file.path(artifacts, "evidence.json"), auto_unbox = TRUE, pretty = TRUE)
   }, add = TRUE)
   results <- testthat::test_file("integration/connections/test-browser-shared-router.R",
     env = environment(), reporter = "summary", stop_on_failure = FALSE)
   counts <- as.data.frame(results)
-  evidence$passed <- sum(counts$passed)
-  evidence$skipped <- sum(counts$skipped)
-  if (sum(counts$failed) || sum(counts$error) || evidence$skipped) stop("Shared callback browser gate did not fully pass")
-  evidence$status <- "passed"
-  cat("Shared callback browser gate:", evidence$passed, "assertions passed; no skips.\n")
+  evidence[["passed"]] <- sum(counts[["passed"]])
+  evidence[["skipped"]] <- sum(counts[["skipped"]])
+  if (sum(counts[["failed"]]) || sum(counts[["error"]]) || evidence[["skipped"]]) stop("Shared callback browser gate did not fully pass")
+  evidence[["status"]] <- "passed"
+  cat("Shared callback browser gate:", evidence[["passed"]], "assertions passed; no skips.\n")
 }
 run_shared_router_browser_tests()

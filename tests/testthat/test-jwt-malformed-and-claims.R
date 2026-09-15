@@ -146,9 +146,9 @@ test_that("JWT parsing rejects padded, invalid, and empty compact segments", {
     payload,
     "."
   ))
-  expect_true(is.raw(parts$data))
-  expect_true(is.raw(parts$sig))
-  expect_length(parts$sig, 0)
+  expect_true(is.raw(parts[["data"]]))
+  expect_true(is.raw(parts[["sig"]]))
+  expect_length(parts[["sig"]], 0)
 })
 
 test_that("JWT parsing rejects embedded NUL and invalid UTF-8 JSON text", {
@@ -262,12 +262,12 @@ test_that("signed JWT scalar claims cannot be encoded as arrays", {
   now <- floor(as.numeric(Sys.time()))
   key <- openssl::rsa_keygen(bits = 2048)
   jwk <- jsonlite::fromJSON(
-    write_test_jwk(key$pubkey),
+    write_test_jwk(key[["pubkey"]]),
     simplifyVector = TRUE
   )
-  jwk$kid <- "raw-json-types"
-  jwk$use <- "sig"
-  jwk$alg <- "RS256"
+  jwk[["kid"]] <- "raw-json-types"
+  jwk[["use"]] <- "sig"
+  jwk[["alg"]] <- "RS256"
   jwks <- list(keys = list(jwk))
   header_json <- '{"alg":"RS256","kid":"raw-json-types"}'
   values <- c(
@@ -470,9 +470,9 @@ test_that("signed RS256 temporal boundaries respect package leeway", {
   jwk <- jsonlite::fromJSON(write_test_jwk(rsa), simplifyVector = TRUE)
   jwks <- list(
     keys = list(list(
-      kty = jwk$kty,
-      n = jwk$n,
-      e = jwk$e,
+      kty = jwk[["kty"]],
+      n = jwk[["n"]],
+      e = jwk[["e"]],
       kid = "k1",
       use = "sig",
       alg = "RS256"
@@ -627,47 +627,47 @@ test_that("verify_jws_signature_no_time enforces exact JOSE ECDSA signature widt
   now <- floor(as.numeric(Sys.time()))
 
   for (case in alg_cases) {
-    key <- try(openssl::ec_keygen(curve = case$curve), silent = TRUE)
+    key <- try(openssl::ec_keygen(curve = case[["curve"]]), silent = TRUE)
     if (inherits(key, "try-error")) {
-      testthat::skip(paste("EC key generation not supported for", case$curve))
+      testthat::skip(paste("EC key generation not supported for", case[["curve"]]))
     }
 
     jwt <- jose::jwt_encode_sig(
       jose::jwt_claim(
         iss = "https://issuer.example.com",
         aud = "client-es",
-        sub = paste0("user-", tolower(case$alg)),
+        sub = paste0("user-", tolower(case[["alg"]])),
         iat = now - 1,
         exp = now + 60
       ),
       key = key,
-      header = list(alg = case$alg, typ = "JWT")
+      header = list(alg = case[["alg"]], typ = "JWT")
     )
 
     expect_true(shinyOAuth:::verify_jws_signature_no_time(
       jwt,
-      key$pubkey,
-      case$alg
+      key[["pubkey"]],
+      case[["alg"]]
     ))
 
     parts <- strsplit(jwt, ".", fixed = TRUE)[[1]]
     sig <- shinyOAuth:::base64url_decode_raw(parts[3])
-    expect_length(sig, case$width)
+    expect_length(sig, case[["width"]])
 
     short_sig <- sig[-seq_len(2L)]
     parts[3] <- shinyOAuth:::base64url_encode(short_sig)
     expect_false(shinyOAuth:::verify_jws_signature_no_time(
       paste(parts, collapse = "."),
-      key$pubkey,
-      case$alg
+      key[["pubkey"]],
+      case[["alg"]]
     ))
 
     long_sig <- c(sig, as.raw(c(0L, 0L)))
     parts[3] <- shinyOAuth:::base64url_encode(long_sig)
     expect_false(shinyOAuth:::verify_jws_signature_no_time(
       paste(parts, collapse = "."),
-      key$pubkey,
-      case$alg
+      key[["pubkey"]],
+      case[["alg"]]
     ))
   }
 })

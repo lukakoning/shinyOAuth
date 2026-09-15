@@ -41,7 +41,7 @@ prepare_authorization_request <- function(oauth_client, browser_token,
     .authorization_request = TRUE)
   if (is.list(result)) return(result)
   request <- list(method = "GET", url = as.character(result), fields = list())
-  for (name in names(attributes(result))) attr(request, name) <- attr(result, name)
+  for (name in names(attributes(result))) attr(request, name) <- attr(result, name, exact = TRUE)
   request
 }
 
@@ -52,8 +52,8 @@ authorization_front_channel <- function(client, url, params) {
     return(authorization_url_append(url, params))
   }
   resolved <- authorization_query_resolution(url, params)
-  if (!is.null(resolved$problem)) err_config(resolved$problem)
-  params <- resolved$params
+  if (!is.null(resolved[["problem"]])) err_config(resolved[["problem"]])
+  params <- resolved[["params"]]
   fields <- list()
   for (i in seq_along(params)) {
     for (value in as.character(params[[i]])) {

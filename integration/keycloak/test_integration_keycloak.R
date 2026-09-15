@@ -44,7 +44,7 @@ testthat::test_that("Keycloak discovery and introspection (integration)", {
   testthat::expect_false(httr2::resp_is_error(token_resp))
   parsed <- httr2::resp_body_json(token_resp, simplifyVector = TRUE)
   testthat::expect_true(is.list(parsed))
-  at <- parsed$access_token
+  at <- parsed[["access_token"]]
   testthat::expect_true(is.character(at) && length(at) == 1 && nzchar(at))
 
   # Build an OAuthClient for introspection auth and introspect the access token
@@ -63,7 +63,7 @@ testthat::test_that("Keycloak discovery and introspection (integration)", {
     async = FALSE
   )
 
-  testthat::expect_true(isTRUE(intros$supported))
+  testthat::expect_true(isTRUE(intros[["supported"]]))
   # We expect the service account token to be active; if not determinable, NA is allowed
-  testthat::expect_true(isTRUE(intros$active) || is.na(intros$active))
+  testthat::expect_true(isTRUE(intros[["active"]]) || is.na(intros[["active"]]))
 })

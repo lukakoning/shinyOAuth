@@ -1,7 +1,7 @@
 ## Integration tests: live Keycloak JWKS key rotation
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 keycloak_base_url <- function() {
@@ -83,17 +83,17 @@ keycloak_realm_id <- function(token) {
 }
 
 keycloak_active_rs256_kid <- function(keys) {
-  active <- keys$active %||% list()
-  active_kid <- active$RS256 %||% active$rs256 %||% NA_character_
+  active <- keys[["active"]] %||% list()
+  active_kid <- active[["RS256"]] %||% active[["rs256"]] %||% NA_character_
   if (keycloak_nonempty_string(active_kid)) {
     return(active_kid)
   }
 
-  for (key in keys$keys %||% list()) {
-    alg <- toupper(key$algorithm %||% "")
-    status <- toupper(key$status %||% "")
-    use <- toupper(key$use %||% key$type %||% "")
-    kid <- key$kid %||% NA_character_
+  for (key in keys[["keys"]] %||% list()) {
+    alg <- toupper(key[["algorithm"]] %||% "")
+    status <- toupper(key[["status"]] %||% "")
+    use <- toupper(key[["use"]] %||% key[["type"]] %||% "")
+    kid <- key[["kid"]] %||% NA_character_
     if (
       identical(alg, "RS256") &&
         identical(status, "ACTIVE") &&
@@ -194,15 +194,15 @@ jwks_rotation_login_via_module <- function(client) {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
       result <<- list(
-        authenticated = isTRUE(values$authenticated),
-        error = values$error,
-        error_description = values$error_description,
-        token = values$token
+        authenticated = isTRUE(values[["authenticated"]]),
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        token = values[["token"]]
       )
     }
   )
@@ -213,8 +213,8 @@ jwks_rotation_login_via_module <- function(client) {
 make_rogue_id_token_with_kid <- function(id_token, kid) {
   claims <- shinyOAuth:::parse_jwt_payload(id_token)
   now <- floor(as.numeric(Sys.time()))
-  claims$iat <- now - 1
-  claims$exp <- now + 300
+  claims[["iat"]] <- now - 1
+  claims[["exp"]] <- now + 300
 
   jose::jwt_encode_sig(
     do.call(jose::jwt_claim, as.list(claims)),
@@ -234,12 +234,12 @@ testthat::test_that("JWKS cache refreshes on live Keycloak signing-key rotation"
   first <- jwks_rotation_login_via_module(client)
   testthat::expect_true(isTRUE(first[["authenticated"]]))
   first_header <- shinyOAuth:::parse_jwt_header(first[["token"]]@id_token)
-  first_kid <- first_header$kid %||% NA_character_
+  first_kid <- first_header[["kid"]] %||% NA_character_
   testthat::expect_true(keycloak_nonempty_string(first_kid))
 
   admin_token <- keycloak_admin_token()
   component <- keycloak_create_generated_rsa_key_provider(admin_token)
-  on.exit(keycloak_delete_component(admin_token, component$id), add = TRUE)
+  on.exit(keycloak_delete_component(admin_token, component[["id"]]), add = TRUE)
 
   new_kid <- wait_for_active_rs256_kid(admin_token, previous_kid = first_kid)
   testthat::expect_true(keycloak_nonempty_string(new_kid))
@@ -248,7 +248,7 @@ testthat::test_that("JWKS cache refreshes on live Keycloak signing-key rotation"
   second <- jwks_rotation_login_via_module(client)
   testthat::expect_true(isTRUE(second[["authenticated"]]))
   second_header <- shinyOAuth:::parse_jwt_header(second[["token"]]@id_token)
-  testthat::expect_identical(second_header$kid, new_kid)
+  testthat::expect_identical(second_header[["kid"]], new_kid)
   testthat::expect_true(isTRUE(second[["token"]]@id_token_validated))
 
   rogue_old_kid <- make_rogue_id_token_with_kid(

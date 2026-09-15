@@ -192,8 +192,8 @@ test_that("oauth_client treats jwt as the query.jwt alias", {
   expect_identical(client@response_mode, "jwt")
 
   response_mode_info <- shinyOAuth:::resolve_oauth_client_response_mode(client)
-  expect_identical(response_mode_info$mode, "query.jwt")
-  expect_identical(response_mode_info$explicit_mode, "jwt")
+  expect_identical(response_mode_info[["mode"]], "query.jwt")
+  expect_identical(response_mode_info[["explicit_mode"]], "jwt")
 
   url <- shinyOAuth:::prepare_call(
     client,
@@ -286,8 +286,8 @@ test_that("oauth_client preserves provider jwt response_mode when inherited", {
   expect_true(is.na(client@response_mode))
 
   response_mode_info <- shinyOAuth:::resolve_oauth_client_response_mode(client)
-  expect_identical(response_mode_info$mode, "query.jwt")
-  expect_identical(response_mode_info$explicit_mode, "jwt")
+  expect_identical(response_mode_info[["mode"]], "query.jwt")
+  expect_identical(response_mode_info[["explicit_mode"]], "jwt")
 
   url <- shinyOAuth:::prepare_call(
     client,
@@ -425,7 +425,7 @@ test_that("OIDC discovery records supported response modes", {
     )
 
     oauth_provider_oidc_discover(
-      issuer = metadata$issuer,
+      issuer = metadata[["issuer"]],
       id_token_validation = FALSE
     )
   }

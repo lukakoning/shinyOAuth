@@ -33,11 +33,11 @@ req_perform_tls_fixture <- function(req, minimum) {
       # certificate, handshake and connection failures must still surface.
       if (
         identical(minimum, "1.3") &&
-          inherits(err$parent, "curl_error_not_built_in")
+          inherits(err[["parent"]], "curl_error_not_built_in")
       ) {
         testthat::skip(paste0(
           "TLS 1.3 is not built into the linked libcurl (",
-          curl::curl_version()$ssl_version,
+          curl::curl_version()[["ssl_version"]],
           ")"
         ))
       }
@@ -51,9 +51,9 @@ wait_for_mtls_server_port <- function(server, timeout = 30) {
   diagnostics <- ""
   repeat {
     # poll_io() can wake for stderr or process exit before stdout is ready.
-    server$poll_io(100)
-    diagnostics <- paste0(diagnostics, server$read_error())
-    line <- server$read_output_lines(n = 1L)
+    server[["poll_io"]](100)
+    diagnostics <- paste0(diagnostics, server[["read_error"]]())
+    line <- server[["read_output_lines"]](n = 1L)
     if (length(line)) {
       port <- suppressWarnings(as.integer(line))
       if (
@@ -63,13 +63,13 @@ wait_for_mtls_server_port <- function(server, timeout = 30) {
       }
       return(port)
     }
-    if (!server$is_alive()) {
+    if (!server[["is_alive"]]()) {
       stop(
         "TLS fixture exited before publishing its port (status ",
-        server$get_exit_status(),
+        server[["get_exit_status"]](),
         "): ",
         diagnostics,
-        server$read_all_error(),
+        server[["read_all_error"]](),
         call. = FALSE
       )
     }

@@ -98,38 +98,38 @@ test_that("CBC-HMAC modes match the RFC 7518 Appendix B known answers", {
   rsa_key <- openssl::read_key(mtls_pem_fixture("client-key.pem"))
   for (enc in names(vectors)) {
     vector <- vectors[[enc]]
-    keys <- split_jwe_cbc_hmac_cek(vector$cek, enc)
-    expect_identical(keys$mac_key, vector$mac_key, info = enc)
-    expect_identical(keys$enc_key, vector$enc_key, info = enc)
+    keys <- split_jwe_cbc_hmac_cek(vector[["cek"]], enc)
+    expect_identical(keys[["mac_key"]], vector[["mac_key"]], info = enc)
+    expect_identical(keys[["enc_key"]], vector[["enc_key"]], info = enc)
     expect_identical(uint64_to_big_endian_raw(length(aad) * 8), al, info = enc)
     # Appendix B supplies generic AAD, not a compact JWE protected header.
     # Exercise the same byte-level tag helper with that published AAD.
     tag <- compute_compact_jwe_auth_tag(
       enc,
-      keys$mac_key,
+      keys[["mac_key"]],
       rawToChar(aad),
       iv,
-      vector$ciphertext
+      vector[["ciphertext"]]
     )
-    expect_identical(as.vector(tag), vector$tag, info = enc)
+    expect_identical(as.vector(tag), vector[["tag"]], info = enc)
 
     # Use the RFC CEK and IV in the real compact encryptor to check ciphertext,
     # padding, and key selection. RSA-OAEP wrapping still uses real encryption.
     local_mocked_bindings(
-      rand_bytes = function(n) if (n == 16L) iv else vector$cek,
+      rand_bytes = function(n) if (n == 16L) iv else vector[["cek"]],
       .package = "openssl"
     )
-    compact <- jwe_compact_encrypt(plaintext, rsa_key$pubkey, "RSA-OAEP", enc)
+    compact <- jwe_compact_encrypt(plaintext, rsa_key[["pubkey"]], "RSA-OAEP", enc)
     parts <- jwe_compact_parts(compact)
-    expect_identical(parts$ciphertext_raw, vector$ciphertext, info = enc)
-    expect_identical(parts$iv_raw, iv, info = enc)
+    expect_identical(parts[["ciphertext_raw"]], vector[["ciphertext"]], info = enc)
+    expect_identical(parts[["iv_raw"]], iv, info = enc)
     expect_identical(
-      openssl::rsa_decrypt(parts$encrypted_key_raw, rsa_key, oaep = TRUE),
-      vector$cek,
+      openssl::rsa_decrypt(parts[["encrypted_key_raw"]], rsa_key, oaep = TRUE),
+      vector[["cek"]],
       info = enc
     )
     expect_identical(
-      charToRaw(jwe_compact_decrypt(compact, rsa_key)$plaintext),
+      charToRaw(jwe_compact_decrypt(compact, rsa_key)[["plaintext"]]),
       plaintext,
       info = enc
     )

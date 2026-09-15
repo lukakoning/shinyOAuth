@@ -12,15 +12,15 @@ run_inferno_preflight <- function() {
   evidence <- list(status = "failed", application_flow = "not_attempted")
   on.exit(jsonlite::write_json(evidence, file.path(output, "evidence.json"),
     auto_unbox = TRUE, pretty = TRUE), add = TRUE)
-  evidence$provenance <- inferno_build(root, output)
-  evidence$simulator_regressions <- inferno_test_simulator(root, output)
+  evidence[["provenance"]] <- inferno_build(root, output)
+  evidence[["simulator_regressions"]] <- inferno_test_simulator(root, output)
   stack <- inferno_start(root, output)
-  withr::local_envvar(CURL_CA_BUNDLE = stack$ca)
-  discovery <- shinyOAuth::smart_discover(stack$fhir_base)
-  stopifnot("sso-openid-connect" %in% discovery$metadata$capabilities)
-  evidence$discovery_accepted <- TRUE
-  evidence$transport <- "loopback HTTPS; R verifies the repository test CA"
-  evidence$status <- "passed"
+  withr::local_envvar(CURL_CA_BUNDLE = stack[["ca"]])
+  discovery <- shinyOAuth::smart_discover(stack[["fhir_base"]])
+  stopifnot("sso-openid-connect" %in% discovery[["metadata"]][["capabilities"]])
+  evidence[["discovery_accepted"]] <- TRUE
+  evidence[["transport"]] <- "loopback HTTPS; R verifies the repository test CA"
+  evidence[["status"]] <- "passed"
   cat("Inferno preflight passed; simulator modified; no app flow attempted.\n")
 }
 run_inferno_preflight()

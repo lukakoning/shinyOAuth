@@ -120,7 +120,7 @@ test_that("callback rejects missing token_type before DPoP userinfo", {
   url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
   enc <- parse_query_param(url, "state")
   seen <- new.env(parent = emptyenv())
-  seen$token_type <- NA_character_
+  seen[["token_type"]] <- NA_character_
 
   expect_error(
     testthat::with_mocked_bindings(
@@ -137,7 +137,7 @@ test_that("callback rejects missing token_type before DPoP userinfo", {
         token_type = NULL,
         shiny_session = NULL
       ) {
-        seen$token_type <- token@token_type
+        seen[["token_type"]] <- token@token_type
         list(sub = "user-1")
       },
       .package = "shinyOAuth",
@@ -152,7 +152,7 @@ test_that("callback rejects missing token_type before DPoP userinfo", {
     class = "shinyOAuth_token_error"
   )
 
-  expect_true(is.na(seen$token_type))
+  expect_true(is.na(seen[["token_type"]]))
 })
 
 test_that("DPoP clients still reject missing token_type on refresh", {
@@ -232,7 +232,7 @@ test_that("refresh rejects missing token_type before DPoP userinfo", {
     userinfo = list()
   )
   seen <- new.env(parent = emptyenv())
-  seen$token_type <- NA_character_
+  seen[["token_type"]] <- NA_character_
 
   testthat::local_mocked_bindings(
     req_with_dpop_retry = function(
@@ -256,7 +256,7 @@ test_that("refresh rejects missing token_type before DPoP userinfo", {
       token_type = NULL,
       shiny_session = NULL
     ) {
-      seen$token_type <- token@token_type
+      seen[["token_type"]] <- token@token_type
       list(sub = "user-1")
     },
     .package = "shinyOAuth"
@@ -268,7 +268,7 @@ test_that("refresh rejects missing token_type before DPoP userinfo", {
     class = "shinyOAuth_token_error"
   )
 
-  expect_true(is.na(seen$token_type))
+  expect_true(is.na(seen[["token_type"]]))
 })
 
 test_that("resolve_effective_access_token_type does not infer DPoP from cnf", {

@@ -664,18 +664,18 @@ state_client_policy_fingerprint <- function(client) {
 
   # Preserve the fingerprint of existing GET transactions.
   if (!identical(client@authorization_method, "GET")) {
-    components$authorization_method <- client@authorization_method
+    components[["authorization_method"]] <- client@authorization_method
   }
   if (client_uses_smart_scopes(client)) {
-    components$scope_policy <- client@scope_policy
+    components[["scope_policy"]] <- client@scope_policy
   }
-  if (client_uses_smart(client)) components$smart <- client@smart
+  if (client_uses_smart(client)) components[["smart"]] <- client@smart
   if (length(client@resource_bases)) {
     bases <- normalize_resource_bases(client@resource_bases)
-    components$resource_bases <- as.list(bases[sort(names(bases))])
+    components[["resource_bases"]] <- as.list(bases[sort(names(bases))])
   }
   if (length(client@required_scopes)) {
-    components$required_scopes <- normalize_scope_tokens(client@required_scopes)
+    components[["required_scopes"]] <- normalize_scope_tokens(client@required_scopes)
   }
   state_policy_digest(components)
 }
@@ -916,7 +916,7 @@ state_store_get <- function(client, state, shiny_session = NULL) {
   tryCatch(
     {
       ssv <- state_store_backend_call(
-        store$get(key, missing = NULL),
+        store[["get"]](key, missing = NULL),
         "state_store_lookup"
       )
       ssv <- validate_state_store_value(
@@ -970,11 +970,11 @@ state_store_get <- function(client, state, shiny_session = NULL) {
 #' Uses the client's `state_store` to read and remove the state-bound values
 #' after the encrypted callback payload has been decrypted and validated.
 #'
-#' When the store exposes an atomic `$take(key, missing)` method (see
+#' When the store exposes an atomic `[["take"]](key, missing)` method (see
 #' [custom_cache()]), that path is used first so single-use semantics still
 #' hold under concurrent access.
-#' When `$take()` is unavailable, the function falls back to `$get()` +
-#' `$remove()` with a post-removal absence check.
+#' When `[["take"]]()` is unavailable, the function falls back to `[["get"]]()` +
+#' `[["remove"]]()` with a post-removal absence check.
 #' That fallback is safe for per-process caches such as [cachem::cache_mem()].
 #' For shared stores it errors by default, because non-atomic get+remove cannot
 #' guarantee single-use semantics under concurrent access; operators may opt in
@@ -1016,8 +1016,8 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
   key <- state_cache_key(state)
   store <- client@state_store
 
-  # Prefer atomic $take() when available; fall back to $get() + $remove().
-  has_take <- !is.null(store$take) && is.function(store$take)
+  # Prefer atomic [["take"]]() when available; fall back to [["get"]]() + [["remove"]]().
+  has_take <- !is.null(store[["take"]]) && is.function(store[["take"]])
 
   if (has_take) {
     ssv <- state_store_consume_atomic(store, key, client, state, shiny_session)
@@ -1025,7 +1025,7 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
     # Fail closed: the non-atomic get()+remove() fallback is only safe for
     # per-process caches.  cachem::cache_mem() is the only built-in backend
     # that is inherently per-process; cachem::cache_disk() and any other
-    # shared or custom stores MUST provide an atomic $take() method to
+    # shared or custom stores MUST provide an atomic [["take"]]() method to
     # guarantee single-use state consumption under concurrent access.
     #
     # Users can opt in to the non-atomic fallback for shared stores by setting
@@ -1097,7 +1097,7 @@ state_store_get_remove <- function(client, state, shiny_session = NULL) {
 
 #' Consume a state-store entry atomically
 #'
-#' @param store State-store backend exposing `$take()`.
+#' @param store State-store backend exposing `[["take"]]()`.
 #' @param key Computed store key.
 #' @param client OAuth client used for audit context.
 #' @param state Raw state string.
@@ -1119,7 +1119,7 @@ state_store_consume_atomic <- function(
   tryCatch(
     {
       ssv <- state_store_backend_call(
-        store$take(key, missing = NULL),
+        store[["take"]](key, missing = NULL),
         "state_store_atomic_take"
       )
       # Validate the returned value in the same tryCatch so failures are
@@ -1173,7 +1173,7 @@ state_store_consume_atomic <- function(
 
 #' Consume a state-store entry with a fallback path
 #'
-#' @param store State-store backend exposing `$get()` and `$remove()`.
+#' @param store State-store backend exposing `[["get"]]()` and `[["remove"]]()`.
 #' @param key Computed store key.
 #' @param client OAuth client used for audit context.
 #' @param state Raw state string.
@@ -1199,7 +1199,7 @@ state_store_consume_fallback <- function(
   tryCatch(
     {
       ssv <- state_store_backend_call(
-        store$get(key, missing = NULL),
+        store[["get"]](key, missing = NULL),
         "state_store_lookup"
       )
       ssv <- validate_state_store_value(
@@ -1230,18 +1230,18 @@ state_store_consume_fallback <- function(
   )
 
   # -- Step 2: Remove + post-check -------------------------------------------
-  # Do NOT trust the return value of $remove() (e.g., cachem::cache_mem()
+  # Do NOT trust the return value of [["remove"]]() (e.g., cachem::cache_mem()
   # returns TRUE even for already-absent keys).  Instead, always verify
-  # absence via a post-removal $get().
+  # absence via a post-removal [["get"]]().
   tryCatch(
     {
-      state_store_backend_call(store$remove(key), "state_store_removal")
+      state_store_backend_call(store[["remove"]](key), "state_store_removal")
       # Post-check: the key MUST be absent now.  If the store is shared and
       # another consumer already removed the entry, the key is absent and
       # remove was a no-op — that is the expected single-use path. However,
       # if the key is *still present* after our remove, something went wrong.
       post <- state_store_backend_call(
-        store$get(key, missing = NA),
+        store[["get"]](key, missing = NA),
         "state_store_removal"
       )
       remove_succeeded <- isTRUE(is.na(post))
@@ -1336,7 +1336,7 @@ validate_state_store_value <- function(
       class = c("shinyOAuth_state_error", "shinyOAuth_error")
     )
   }
-  if (!is_valid_string(ssv$browser_token)) {
+  if (!is_valid_string(ssv[["browser_token"]])) {
     abort_pkg(
       "State store entry is malformed: browser_token must be a non-empty string",
       class = c("shinyOAuth_state_error", "shinyOAuth_error")
@@ -1346,7 +1346,7 @@ validate_state_store_value <- function(
   if (
     isTRUE(validate_policy_fields) &&
       isTRUE(client@provider@use_pkce) &&
-      !is_valid_string(ssv$pkce_code_verifier)
+      !is_valid_string(ssv[["pkce_code_verifier"]])
   ) {
     abort_pkg(
       paste0(
@@ -1360,7 +1360,7 @@ validate_state_store_value <- function(
   if (
     isTRUE(validate_policy_fields) &&
       isTRUE(client@provider@use_nonce) &&
-      !is_valid_string(ssv$nonce)
+      !is_valid_string(ssv[["nonce"]])
   ) {
     abort_pkg(
       paste0(

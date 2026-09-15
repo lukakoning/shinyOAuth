@@ -43,7 +43,7 @@ testthat::test_that("helper-otel does not disable OTel outside testthat", {
     spinner = FALSE
   )
 
-  testthat::expect_true(isTRUE(res$tracing))
-  testthat::expect_true(isTRUE(res$logging))
-  testthat::expect_true(all(res$env == "console"))
+  testthat::expect_true(isTRUE(res[["tracing"]]))
+  testthat::expect_true(isTRUE(res[["logging"]]))
+  testthat::expect_true(all(res[["env"]] == "console"))
 })

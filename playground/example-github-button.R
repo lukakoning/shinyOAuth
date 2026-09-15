@@ -30,14 +30,14 @@ ui <- oauth_ui(ui, id = "auth", client = client)
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client, auto_redirect = FALSE)
 
-  observeEvent(input$login, ignoreInit = TRUE, {
-    auth$request_login()
+  observeEvent(input[["login"]], ignoreInit = TRUE, {
+    auth[["request_login"]]()
   })
 
-  output$auth_print <- renderText({
-    authenticated <- auth$authenticated
-    tok <- auth$token
-    err <- auth$error
+  output[["auth_print"]] <- renderText({
+    authenticated <- auth[["authenticated"]]
+    tok <- auth[["token"]]
+    err <- auth[["error"]]
 
     paste0(
       "Authenticated?",

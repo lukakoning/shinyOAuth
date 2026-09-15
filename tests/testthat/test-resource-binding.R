@@ -58,7 +58,7 @@ test_that("resource paths and opaque pagination queries survive normalization", 
     expected <- paste0(base, "/", reference)
     expect_identical(resolve_bound_resource(base, reference), expected)
     expect_identical(resolve_bound_resource(base, expected), expected)
-    expect_identical(resource_binding_components(expected)$url, expected)
+    expect_identical(resource_binding_components(expected)[["url"]], expected)
   }
   encoded_base <- "https://api.example/caf%C3%A9"
   expect_identical(normalize_resource_bases(c(api = encoded_base)), c(api = encoded_base))
@@ -66,7 +66,7 @@ test_that("resource paths and opaque pagination queries survive normalization", 
     c(api = encoded_base))
   expect_identical(resolve_bound_resource(encoded_base, "records/123"),
     paste0(encoded_base, "/records/123"))
-  expect_identical(resource_binding_components("https://api.example/caf\u00e9")$url, encoded_base)
+  expect_identical(resource_binding_components("https://api.example/caf\u00e9")[["url"]], encoded_base)
 })
 
 test_that("ambiguous paths fail closed before destination normalization", {

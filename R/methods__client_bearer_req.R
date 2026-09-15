@@ -67,7 +67,7 @@
 #'   is supplied as a raw string. Supported values are `Bearer` and `DPoP`.
 #'   Invalid or multi-valued inputs are rejected. When omitted, shinyOAuth
 #'   preserves `OAuthToken@token_type`, and may infer `DPoP` from explicit
-#'   `OAuthToken@cnf$jkt` metadata. Raw access-token strings default to
+#'   `OAuthToken@cnf[["jkt"]]` metadata. Raw access-token strings default to
 #'   `Bearer` unless you pass `token_type = "DPoP"` explicitly.
 #' @param dpop_nonce Optional DPoP nonce to embed in the proof for this
 #'   request. This is primarily useful after a resource server challenges with
@@ -613,7 +613,7 @@ validate_client_bearer_token_context <- function(token_type, oauth_client) {
 #' Validate sender-constraint bindings for an authorized API request
 #'
 #' Used by [resource_req()] before an outbound request is built. This
-#' keeps locally configured DPoP keys aligned with any DPoP token `cnf$jkt`
+#' keeps locally configured DPoP keys aligned with any DPoP token `cnf[["jkt"]]`
 #' binding before a proof is signed.
 #'
 #' @param token Original token input supplied to [resource_req()].
@@ -869,24 +869,24 @@ validate_resource_token_transport <- function(req) {
   }
   fields <- decode(url_raw_query(req[["url"]]))
   body <- req[["body"]]
-  if (identical(body$type, "form")) {
-    fields <- c(fields, body$data)
-  } else if (isTRUE(body$type %in% c("raw", "string"))) {
+  if (identical(body[["type"]], "form")) {
+    fields <- c(fields, body[["data"]])
+  } else if (isTRUE(body[["type"]] %in% c("raw", "string"))) {
     headers <- req[["headers"]]
     header_index <- which(tolower(names(headers)) == "content-type")
     content_type <- if (length(header_index)) {
       headers[[header_index[[1L]]]]
     } else {
-      body$content_type %||% ""
+      body[["content_type"]] %||% ""
     }
     content_type <- tolower(trimws(sub(";.*$", "", content_type)))
     if (identical(content_type, "application/x-www-form-urlencoded")) {
-      text <- if (is.raw(body$data)) {
-        tryCatch(rawToChar(body$data), error = function(e) {
+      text <- if (is.raw(body[["data"]])) {
+        tryCatch(rawToChar(body[["data"]]), error = function(e) {
           err_input("Resource request contains malformed form encoding")
         })
       } else {
-        body$data
+        body[["data"]]
       }
       fields <- c(fields, decode(text))
     }

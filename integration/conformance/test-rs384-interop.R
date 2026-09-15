@@ -72,22 +72,22 @@ testthat::test_that("RS384 interoperates with Python cryptography in both direct
       timeout = 30000,
       error_on_status = FALSE
     )
-    testthat::expect_identical(oracle$status, 0L, info = oracle$stderr)
-    if (oracle$status != 0L) {
+    testthat::expect_identical(oracle[["status"]], 0L, info = oracle[["stderr"]])
+    if (oracle[["status"]] != 0L) {
       stop("Independent RS384 oracle failed")
     }
     vectors <- jsonlite::read_json(file.path(root, "verified.json"))
-    testthat::expect_identical(unlist(vectors$verified), names(outbound))
+    testthat::expect_identical(unlist(vectors[["verified"]]), names(outbound))
     public <- openssl::read_pubkey(file.path(root, "inbound-public.pem"))
     testthat::expect_true(shinyOAuth:::verify_jws_signature_no_time(
-      vectors$valid,
+      vectors[["valid"]],
       public,
       "RS384"
     ))
     # Only the JWKS transport is substituted. Python supplies its public JWK;
     # the package performs its real key selection, signature and claim checks.
     testthat::with_mocked_bindings(
-      fetch_jwks = function(...) vectors$jwks,
+      fetch_jwks = function(...) vectors[["jwks"]],
       .package = "shinyOAuth",
       {
         validate <- function(jwt) {
@@ -99,9 +99,9 @@ testthat::test_that("RS384 interoperates with Python cryptography in both direct
             expected_access_token = "synthetic-access"
           )
         }
-        testthat::expect_silent(validate(vectors$valid))
-        for (case in names(vectors$invalid)) {
-          jwt <- vectors$invalid[[case]]
+        testthat::expect_silent(validate(vectors[["valid"]]))
+        for (case in names(vectors[["invalid"]])) {
+          jwt <- vectors[["invalid"]][[case]]
           testthat::expect_false(
             shinyOAuth:::verify_jws_signature_no_time(jwt, public, "RS384"),
             info = paste(bits, case)
@@ -114,7 +114,7 @@ testthat::test_that("RS384 interoperates with Python cryptography in both direct
           )
         }
         testthat::expect_error(
-          validate(vectors$wrong_at_hash),
+          validate(vectors[["wrong_at_hash"]]),
           regexp = "at_hash",
           class = "shinyOAuth_id_token_error"
         )

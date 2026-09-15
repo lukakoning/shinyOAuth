@@ -2,9 +2,9 @@
 
 test_that("AppDriver ignores a load event from the initial blank document", {
   skip_if_not(tolower(Sys.getenv("SHINYOAUTH_BROWSER_TESTS")) == "true")
-  browser <- chromote::ChromoteSession$new()
-  on.exit(browser$close(), add = TRUE)
-  browser$go_to("about:blank")
+  browser <- chromote::ChromoteSession[["new"]]()
+  on.exit(browser[["close"]](), add = TRUE)
+  browser[["go_to"]]("about:blank")
 
   local_mocked_bindings(
     app_init_browser_log = function(...) invisible(NULL),
@@ -18,32 +18,32 @@ test_that("AppDriver ignores a load event from the initial blank document", {
   )
   # Load the initial document again so its load event arrives before the
   # destination navigation, as can happen during Chrome startup.
-  browser$Page$reload()
+  browser[["Page"]][["reload"]]()
   url <- "data:text/html,destination-ready"
   later::later(
-    function() browser$Page$navigate(url, wait_ = FALSE),
+    function() browser[["Page"]][["navigate"]](url, wait_ = FALSE),
     delay = 0.1,
-    loop = browser$get_child_loop()
+    loop = browser[["get_child_loop"]]()
   )
   shinytest2:::chromote_eval(
     browser,
     "window.shinyOAuth_navigation_probe = window.location.href"
   )
   expect_identical(
-    browser$Runtime$evaluate(
+    browser[["Runtime"]][["evaluate"]](
       "window.shinyOAuth_navigation_probe",
       returnByValue = TRUE
-    )$result$value,
+    )[["result"]][["value"]],
     url
   )
 })
 
 test_that("AppDriver document wait times out when navigation never happens", {
   skip_if_not(tolower(Sys.getenv("SHINYOAUTH_BROWSER_TESTS")) == "true")
-  browser <- chromote::ChromoteSession$new()
-  on.exit(browser$close(), add = TRUE)
-  browser$go_to("about:blank")
-  initial <- browser$Page$getFrameTree()$frameTree$frame
+  browser <- chromote::ChromoteSession[["new"]]()
+  on.exit(browser[["close"]](), add = TRUE)
+  browser[["go_to"]]("about:blank")
+  initial <- browser[["Page"]][["getFrameTree"]]()[["frameTree"]][["frame"]]
   expect_error(
     wait_for_app_driver_document(browser, initial, timeout = 0.1),
     "destination document did not finish loading",
@@ -82,15 +82,15 @@ test_that("AppDriver idle failures retain their JavaScript diagnostic", {
 
 test_that("AppDriver rejects a ready document from the previous execution context", {
   skip_if_not(tolower(Sys.getenv("SHINYOAUTH_BROWSER_TESTS")) == "true")
-  browser <- chromote::ChromoteSession$new()
-  on.exit(browser$close(), add = TRUE)
-  browser$go_to("about:blank")
-  initial <- browser$Page$getFrameTree()$frameTree$frame
+  browser <- chromote::ChromoteSession[["new"]]()
+  on.exit(browser[["close"]](), add = TRUE)
+  browser[["go_to"]]("about:blank")
+  initial <- browser[["Page"]][["getFrameTree"]]()[["frameTree"]][["frame"]]
   destination <- "data:text/html,current-document"
   # Reproduce CDP's transition: the frame reports a new loader while evaluation
   # still runs in the old, already-complete document. Keep Runtime real.
   frames <- new.env(parent = emptyenv())
-  frames$getFrameTree <- function() {
+  frames[["getFrameTree"]] <- function() {
     list(
       frameTree = list(
         frame = list(
@@ -102,15 +102,15 @@ test_that("AppDriver rejects a ready document from the previous execution contex
   }
   session <- list(
     Page = frames,
-    Runtime = browser$Runtime,
-    get_child_loop = browser$get_child_loop
+    Runtime = browser[["Runtime"]],
+    get_child_loop = browser[["get_child_loop"]]
   )
   expect_error(
     wait_for_app_driver_document(session, initial, timeout = 0.1),
     "destination document did not finish loading",
     fixed = TRUE
   )
-  browser$go_to(destination)
+  browser[["go_to"]](destination)
   expect_no_error(wait_for_app_driver_document(session, initial, timeout = 1))
 })
 
@@ -138,12 +138,12 @@ test_that("AppDriver waits through a temporary document at the application URL",
       )
     },
     server = function(input, output, session) {
-      output$count <- shiny::renderText(input$increment)
+      output[["count"]] <- shiny::renderText(input[["increment"]])
     }
   )
-  driver <- shinytest2::AppDriver$new(app, load_timeout = 10000)
+  driver <- shinytest2::AppDriver[["new"]](app, load_timeout = 10000)
   on.exit(stop_test_app_driver(driver), add = TRUE)
-  expect_identical(driver$get_value(output = "count"), "0")
-  driver$click("increment")
-  expect_identical(driver$get_value(output = "count"), "1")
+  expect_identical(driver[["get_value"]](output = "count"), "0")
+  driver[["click"]]("increment")
+  expect_identical(driver[["get_value"]](output = "count"), "1")
 })

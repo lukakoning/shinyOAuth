@@ -6,7 +6,7 @@
 ## issued, both directly and through PAR.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 query_param_names <- function(url) {
@@ -100,8 +100,8 @@ testthat::test_that("signed DPoP JAR emits dpop_jkt but live Keycloak rejects th
   fixture <- create_dpop_jar_fixture()
   on.exit(
     keycloak_delete_client(
-      fixture$admin_token,
-      id = fixture$fixture$id
+      fixture[["admin_token"]],
+      id = fixture[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -109,7 +109,7 @@ testthat::test_that("signed DPoP JAR emits dpop_jkt but live Keycloak rejects th
   provider <- make_provider(allowed_token_types = c("Bearer", "DPoP"))
   client <- make_dynamic_dpop_jar_client(
     provider = provider,
-    client_id = fixture$fixture$client_id
+    client_id = fixture[["fixture"]][["client_id"]]
   )
 
   browser_token <- valid_browser_token()
@@ -139,8 +139,8 @@ testthat::test_that("live Keycloak rejects the same DPoP plus JAR combination wh
   fixture <- create_dpop_jar_fixture()
   on.exit(
     keycloak_delete_client(
-      fixture$admin_token,
-      id = fixture$fixture$id
+      fixture[["admin_token"]],
+      id = fixture[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -151,7 +151,7 @@ testthat::test_that("live Keycloak rejects the same DPoP plus JAR combination wh
   )
   client <- make_dynamic_dpop_jar_client(
     provider = provider,
-    client_id = fixture$fixture$client_id
+    client_id = fixture[["fixture"]][["client_id"]]
   )
 
   testthat::expect_error(

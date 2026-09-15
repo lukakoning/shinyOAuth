@@ -13,7 +13,7 @@
 #' handling itself but needs shinyOAuth to construct the OAuth 2.0 authorization
 #' request. Pair it with [handle_callback()] to complete the code flow.
 #'
-#' In a Shiny app using [oauth_module_server()], call `auth$request_login()`
+#' In a Shiny app using [oauth_module_server()], call `auth[["request_login"]]()`
 #' to start login through the module, which manages both operations and the
 #' reactive session state.
 #'
@@ -187,7 +187,7 @@ prepare_call <- function(
 
         # Apply both callback and envelope budgets before persisting the login
         # or sending a PAR/Request Object. The finalizer rechecks freshness.
-        if (nchar(payload, type = "bytes") > oauth_callback_limits()$state) {
+        if (nchar(payload, type = "bytes") > oauth_callback_limits()[["state"]]) {
           err_config(
             "Generated state exceeds shinyOAuth.callback_max_state_bytes; reduce login state or increase the callback limit within the state envelope limits.",
             context = list(phase = "prepare_call::state_size")
@@ -209,7 +209,7 @@ prepare_call <- function(
         # key from the high-entropy state to store associated values
         tryCatch(
           {
-            oauth_client@state_store$set(
+            oauth_client@state_store[["set"]](
               key = state_cache_key(state),
               value = state_store_seal(
                 c(list(
@@ -266,7 +266,7 @@ prepare_call <- function(
             redirect_uri = oauth_client@redirect_uri %||% NA_character_
           )
         )
-        if (!is.null(.smart_launch)) prepared$build_args$.smart_launch <- .smart_launch
+        if (!is.null(.smart_launch)) prepared[["build_args"]][[".smart_launch"]] <- .smart_launch
         if (isTRUE(.defer_build)) {
           prepared
         } else {
@@ -279,7 +279,7 @@ prepare_call <- function(
             ),
             error = function(e) {
               try(
-                oauth_client@state_store$remove(prepared$state_key),
+                oauth_client@state_store[["remove"]](prepared[["state_key"]]),
                 silent = TRUE
               )
               stop(e)
@@ -534,7 +534,7 @@ build_authorization_params <- function(
   }
 
   # Drop NULLs before building query strings or form bodies.
-  if (!is.null(.smart_launch)) params$launch <- .smart_launch
+  if (!is.null(.smart_launch)) params[["launch"]] <- .smart_launch
   compact_list(params)
 }
 
@@ -890,7 +890,7 @@ build_auth_url <- function(
   query_problem <- authorization_query_resolution(
     oauth_client@provider@auth_url,
     params
-  )$problem
+  )[["problem"]]
   if (!is.null(query_problem)) {
     err_config(query_problem)
   }
@@ -1258,7 +1258,7 @@ handle_callback <- function(
   }
 
   callback_hint <- otel_callback_parent_hint(oauth_client, payload)
-  async_attr <- isTRUE(tryCatch(shiny_session$is_async, error = function(...) {
+  async_attr <- isTRUE(tryCatch(shiny_session[["is_async"]], error = function(...) {
     NULL
   })) ||
     isTRUE(get_async_session_context()[["is_async"]]) ||
@@ -1975,7 +1975,7 @@ handle_callback_internal <- function(
 #' Resolve the authenticated subject from a userinfo payload
 #'
 #' Uses the provider's `userinfo_id_selector` when configured, falling back to
-#' `userinfo$sub` only when no selector is configured. Used by login auditing
+#' `userinfo[["sub"]]` only when no selector is configured. Used by login auditing
 #' and token-introspection subject checks.
 #'
 #' @param oauth_client [OAuthClient] carrying the provider selector.
@@ -2221,7 +2221,7 @@ enforce_token_introspection_policy <- function(
       } else {
         intro_scopes <- normalize_scope_tokens(intro_scope_raw)
 
-        missing <- evaluate_scope_coverage(requested_scopes, intro_scopes)$missing
+        missing <- evaluate_scope_coverage(requested_scopes, intro_scopes)[["missing"]]
         if (length(missing) > 0) {
           msg <- paste0(
             "Introspected scopes missing requested entries: ",
@@ -2760,7 +2760,7 @@ verify_token_set <- function(
           length(requested_scopes) > 0 &&
           !scope_is_omitted
       ) {
-        missing <- evaluate_scope_coverage(requested_scopes, granted_scopes)$missing
+        missing <- evaluate_scope_coverage(requested_scopes, granted_scopes)[["missing"]]
         if (length(missing) > 0) {
           msg <- paste0(
             "Granted scopes missing requested entries: ",
@@ -3356,12 +3356,12 @@ compare_refresh_id_token_continuity <- function(
 # is safe to dispatch with a serialization-safe client and performs provider IO.
 build_prepared_authorization <- function(oauth_client, prepared) {
   with_trace_id(
-    prepared$trace_id,
+    prepared[["trace_id"]],
     do.call(
       build_auth_url,
       c(
         list(oauth_client = oauth_client, .defer_publication = TRUE),
-        prepared$build_args
+        prepared[["build_args"]]
       )
     )
   )
@@ -3373,14 +3373,14 @@ finish_prepared_authorization <- function(
   prepared,
   request_uri_publisher = NULL
 ) {
-  with_trace_id(prepared$trace_id, {
+  with_trace_id(prepared[["trace_id"]], {
     payload <- state_payload_decrypt_validate(
       oauth_client,
-      prepared$build_args$payload
+      prepared[["build_args"]][["payload"]]
     )
-    state_store_get(oauth_client, payload$state)
-    if (is.list(result) && !is.null(result$request_object)) {
-      if (Sys.time() >= result$expires_at) {
+    state_store_get(oauth_client, payload[["state"]])
+    if (is.list(result) && !is.null(result[["request_object"]])) {
+      if (Sys.time() >= result[["expires_at"]]) {
         err_invalid_state("Prepared Request Object expired")
       }
       result <- do.call(
@@ -3388,19 +3388,19 @@ finish_prepared_authorization <- function(
         c(
           list(
             oauth_client = oauth_client,
-            .request_object = result$request_object,
-            .request_object_expires_at = result$expires_at,
+            .request_object = result[["request_object"]],
+            .request_object_expires_at = result[["expires_at"]],
             request_uri_publisher = request_uri_publisher
           ),
-          prepared$build_args
+          prepared[["build_args"]]
         )
       )
     }
-    expiry <- attr(result, "shinyOAuth.par_expires_at")
+    expiry <- attr(result, "shinyOAuth.par_expires_at", exact = TRUE)
     if (!is.null(expiry) && Sys.time() >= expiry) {
       err_invalid_state("Prepared PAR request expired")
     }
-    audit_event("redirect_issued", context = prepared$audit_context)
+    audit_event("redirect_issued", context = prepared[["audit_context"]])
     result
   })
 }

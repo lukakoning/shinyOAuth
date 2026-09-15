@@ -10,7 +10,7 @@ smart_scope_test_client <- function(
 
 test_that("SMART v2 covers unions, interaction subsets and resource wildcards", {
   coverage <- function(want, have) {
-    evaluate_scope_coverage(want, have, profile = "smart")$status
+    evaluate_scope_coverage(want, have, profile = "smart")[["status"]]
   }
   cases <- list(
     list("patient/Observation.rs", c("patient/Observation.r", "patient/Observation.s"), "covered"),
@@ -47,10 +47,10 @@ test_that("SMART v1 aliases require explicit policy and keep wire spellings", {
   granted <- c("patient/Observation.rs", "patient/Patient.cud")
   expect_identical(evaluate_scope_coverage(requested, granted,
     profile = "smart", allow_v1 = TRUE
-  )$status, "covered")
+  )[["status"]], "covered")
   expect_identical(evaluate_scope_coverage("patient/Patient.cruds", "patient/*.*",
     profile = "smart", allow_v1 = TRUE
-  )$status, "covered")
+  )[["status"]], "covered")
   client <- smart_scope_test_client(
     required = requested,
     scopes = requested, allow_v1 = TRUE
@@ -69,27 +69,27 @@ test_that("granular scope comparisons never guess query implication", {
     "patient/Observation.r?category=http://example.org|laboratory",
     "patient/Observation.s?category=http://example.org|laboratory"
   )
-  expect_identical(smart_scope_coverage(scope, same_parts)$status, "covered")
-  expect_identical(smart_scope_coverage(scope, "patient/*.rs")$status, "covered")
+  expect_identical(smart_scope_coverage(scope, same_parts)[["status"]], "covered")
+  expect_identical(smart_scope_coverage(scope, "patient/*.rs")[["status"]], "covered")
   expect_identical(
-    smart_scope_coverage("patient/Observation.rs", scope)$status,
+    smart_scope_coverage("patient/Observation.rs", scope)[["status"]],
     "insufficient"
   )
   other <- "patient/Observation.rs?category=http://example.org|vital-signs"
   result <- smart_scope_coverage(scope, other)
-  expect_identical(result$status, "indeterminate")
-  expect_identical(result$indeterminate, scope)
-  expect_identical(result$missing, character())
+  expect_identical(result[["status"]], "indeterminate")
+  expect_identical(result[["indeterminate"]], scope)
+  expect_identical(result[["missing"]], character())
   for (query in c("code:in=x", "patient.birthdate=1990", "_filter=x",
       "code=x&_filter=y", "_id:exact=x", "_has:Observation:patient:code=x",
       "code=%zz", "code=", "")) {
     unknown <- paste0("patient/Observation.rs?", query)
-    expect_identical(smart_scope_coverage(unknown, unknown)$status, "indeterminate")
+    expect_identical(smart_scope_coverage(unknown, unknown)[["status"]], "indeterminate")
   }
   expect_identical(
     smart_scope_coverage(
       "patient/Observation.rs?a=1&b=2", "patient/Observation.rs?b=2&a=1"
-    )$status,
+    )[["status"]],
     "indeterminate"
   )
 })
@@ -99,15 +99,15 @@ test_that("granular scopes accept simple common FHIR search parameters", {
       "_tag=http://example.org|reviewed", "_profile=http://example.org/Patient",
       "_security=http://example.org|R", "code=example&_id=example")) {
     scope <- paste0("user/Patient.rs?", query)
-    expect_identical(smart_scope_coverage(scope, scope)$status, "covered")
-    expect_identical(smart_scope_coverage(scope, "user/Patient.rs")$status, "covered")
-    expect_identical(smart_scope_coverage("user/Patient.rs", scope)$status, "insufficient")
+    expect_identical(smart_scope_coverage(scope, scope)[["status"]], "covered")
+    expect_identical(smart_scope_coverage(scope, "user/Patient.rs")[["status"]], "covered")
+    expect_identical(smart_scope_coverage("user/Patient.rs", scope)[["status"]], "insufficient")
     different <- paste0(scope, "-other")
-    expect_identical(smart_scope_coverage(scope, different)$status, "indeterminate")
+    expect_identical(smart_scope_coverage(scope, different)[["status"]], "indeterminate")
     client <- smart_client(smart_client_fixture(), "example", "https://app.example/callback",
       scopes = scope)
-    request <- httr2::url_parse(prepare_call(client, browser_token = valid_browser_token()))$query
-    expect_identical(request$scope, scope)
+    request <- httr2::url_parse(prepare_call(client, browser_token = valid_browser_token()))[["query"]]
+    expect_identical(request[["scope"]], scope)
   }
 })
 
@@ -122,8 +122,8 @@ test_that("SMART response scope is explicit, including the empty grant", {
       prior_granted_scopes = character()
     ), "explicit scope")
     verified <- verify_token_set(client, c(base, list(scope = "")), nonce = NULL)
-    expect_identical(verified$granted_scopes, character())
-    expect_true(verified$granted_scopes_verified)
+    expect_identical(verified[["granted_scopes"]], character())
+    expect_true(verified[["granted_scopes_verified"]])
   }
   for (bad in list(NULL, NA_character_, c("a", "b"), list("a"), 1, "a  b", "a\tb")) {
     expect_error(verify_token_set(client, c(base, list(scope = bad)), nonce = NULL),
@@ -149,7 +149,7 @@ test_that("SMART parsing accepts empty scope only with explicit opt-in", {
       headers = list("content-type" = kind)
     )
     expect_error(parse_token_response(response), "Response scope")
-    expect_identical(parse_token_response(response, allow_empty_scope = TRUE)$scope, "")
+    expect_identical(parse_token_response(response, allow_empty_scope = TRUE)[["scope"]], "")
   }
   for (value in c("null", "[]", "[\"x\"]", "false", "42")) {
     body <- paste0('{"scope":', value, "}")
@@ -169,17 +169,17 @@ test_that("SMART required permissions and refresh continuity use semantics", {
     c(base, list(scope = "patient/Patient.rs")),
     nonce = NULL
   )
-  expect_identical(initial$granted_scopes, "patient/Patient.rs")
-  expect_true(initial$granted_scopes_verified)
+  expect_identical(initial[["granted_scopes"]], "patient/Patient.rs")
+  expect_true(initial[["granted_scopes_verified"]])
   smaller <- c(base, list(scope = "patient/Patient.r"))
   expect_no_warning(verify_token_set(client, smaller,
     nonce = NULL,
-    is_refresh = TRUE, prior_granted_scopes = initial$granted_scopes
+    is_refresh = TRUE, prior_granted_scopes = initial[["granted_scopes"]]
   ))
   for (scope in c("patient/Patient.cruds", "patient/*.rs", "patient/Patient.r custom")) {
     expect_error(verify_token_set(client, c(base, list(scope = scope)),
       nonce = NULL,
-      is_refresh = TRUE, prior_granted_scopes = initial$granted_scopes
+      is_refresh = TRUE, prior_granted_scopes = initial[["granted_scopes"]]
     ), "prior grant")
   }
   expect_error(verify_token_set(client, c(base, list(scope = "patient/Observation.rs")),
@@ -212,11 +212,11 @@ test_that("SMART policy binds transactions and connection permissions", {
   )
   record <- list(client = client, token = token)
   expect_identical(connection_record_status(record), "limited")
-  record$token@granted_scopes <- c("patient/Patient.r", "patient/Observation.r", "patient/Observation.s")
+  record[["token"]]@granted_scopes <- c("patient/Patient.r", "patient/Observation.r", "patient/Observation.s")
   expect_identical(connection_record_status(record), "active")
-  record$token@granted_scopes_verified <- FALSE
+  record[["token"]]@granted_scopes_verified <- FALSE
   expect_identical(connection_record_status(record), "insufficient_scope")
-  record$token <- token
+  record[["token"]] <- token
   called <- FALSE
   local_mocked_bindings(perform_resource_req = function(...) {
     called <<- TRUE
@@ -246,9 +246,9 @@ test_that("SMART scope evidence survives the actual callback and refresh paths",
       access_token = "example-access", refresh_token = "rotated-refresh",
       token_type = "Bearer", expires_in = 60
     )
-    if (!is.null(response_scope)) fields$scope <- response_scope
+    if (!is.null(response_scope)) fields[["scope"]] <- response_scope
     httr2::response(
-      url = req$url, status = 200,
+      url = req[["url"]], status = 200,
       headers = list("content-type" = "application/json"),
       body = charToRaw(jsonlite::toJSON(fields, auto_unbox = TRUE))
     )

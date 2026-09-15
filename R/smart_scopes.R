@@ -56,38 +56,38 @@ smart_scope_coverage <- function(requested, granted, allow_v1 = FALSE) {
   missing <- indeterminate <- character()
   for (scope in requested) {
     need <- smart_scope_parse(scope, allow_v1)
-    if (identical(need$kind, "literal")) {
+    if (identical(need[["kind"]], "literal")) {
       if (!scope %in% granted) missing <- c(missing, scope)
       next
     }
-    if (identical(need$kind, "unknown")) {
+    if (identical(need[["kind"]], "unknown")) {
       indeterminate <- c(indeterminate, scope)
       next
     }
     covered <- possible <- character()
     for (grant in grants) {
-      if (identical(grant$kind, "unknown")) {
+      if (identical(grant[["kind"]], "unknown")) {
         # Unknown syntax cannot establish coverage, even if spelled identically.
-        possible <- union(possible, need$interactions)
+        possible <- union(possible, need[["interactions"]])
         next
       }
       if (
-        !identical(grant$kind, "resource") ||
-          !identical(need$context, grant$context) ||
-          !(identical(grant$resource, "*") ||
-            identical(need$resource, grant$resource))
+        !identical(grant[["kind"]], "resource") ||
+          !identical(need[["context"]], grant[["context"]]) ||
+          !(identical(grant[["resource"]], "*") ||
+            identical(need[["resource"]], grant[["resource"]]))
       ) {
         next
       }
-      if (!nzchar(grant$constraint) ||
-        identical(need$constraint, grant$constraint)) {
-        covered <- union(covered, grant$interactions)
-      } else if (nzchar(need$constraint)) {
-        possible <- union(possible, grant$interactions)
+      if (!nzchar(grant[["constraint"]]) ||
+        identical(need[["constraint"]], grant[["constraint"]])) {
+        covered <- union(covered, grant[["interactions"]])
+      } else if (nzchar(need[["constraint"]])) {
+        possible <- union(possible, grant[["interactions"]])
       }
     }
-    if (all(need$interactions %in% covered)) next
-    if (all(need$interactions %in% union(covered, possible))) {
+    if (all(need[["interactions"]] %in% covered)) next
+    if (all(need[["interactions"]] %in% union(covered, possible))) {
       indeterminate <- c(indeterminate, scope)
     } else {
       missing <- c(missing, scope)
@@ -106,7 +106,7 @@ smart_scope_coverage <- function(requested, granted, allow_v1 = FALSE) {
 }
 
 client_uses_smart_scopes <- function(client) {
-  identical(client@scope_policy$profile, "smart")
+  identical(client@scope_policy[["profile"]], "smart")
 }
 
 client_scope_coverage <- function(client, requested, granted) {
@@ -119,8 +119,8 @@ client_scope_coverage <- function(client, requested, granted) {
     requested[requested == "online_access"] <- "offline_access"
   }
   evaluate_scope_coverage(requested, granted,
-    profile = policy$profile,
-    version = policy$version, allow_v1 = policy$allow_v1
+    profile = policy[["profile"]],
+    version = policy[["version"]], allow_v1 = policy[["allow_v1"]]
   )
 }
 
@@ -134,16 +134,16 @@ validate_client_scope_policy <- function(policy) {
         sort(names(policy)),
         sort(c("profile", "version", "allow_v1"))
       ) ||
-      !is_valid_string(policy$profile) ||
-      !policy$profile %in% c("oauth", "smart") ||
-      !identical(policy$version, 1L) ||
-      !is.logical(policy$allow_v1) || length(policy$allow_v1) != 1L ||
-      is.na(policy$allow_v1)
+      !is_valid_string(policy[["profile"]]) ||
+      !policy[["profile"]] %in% c("oauth", "smart") ||
+      !identical(policy[["version"]], 1L) ||
+      !is.logical(policy[["allow_v1"]]) || length(policy[["allow_v1"]]) != 1L ||
+      is.na(policy[["allow_v1"]])
   ) {
     return("OAuthClient: invalid scope policy")
   }
-  if (identical(policy$profile, "oauth") &&
-    isTRUE(policy$allow_v1)) {
+  if (identical(policy[["profile"]], "oauth") &&
+    isTRUE(policy[["allow_v1"]])) {
     return("OAuthClient: generic scope policy cannot contain SMART settings")
   }
   NULL
@@ -151,7 +151,7 @@ validate_client_scope_policy <- function(policy) {
 
 smart_verify_scope_grant <- function(client, granted, is_refresh, prior) {
   # Validate even an optional-only grant before a status/request can use it.
-  smart_scope_coverage(character(), granted, client@scope_policy$allow_v1)
+  smart_scope_coverage(character(), granted, client@scope_policy[["allow_v1"]])
   if (client_uses_smart(client) &&
       !identical(client@smart[["online_access_policy"]], "allow_offline") &&
       "online_access" %in% effective_client_scopes(client) &&
@@ -162,14 +162,14 @@ smart_verify_scope_grant <- function(client, granted, is_refresh, prior) {
   if (!identical(client_scope_coverage(
     client,
     client@required_scopes, granted
-  )$status, "covered")) {
+  )[["status"]], "covered")) {
     err_token("SMART grant does not establish all required permissions")
   }
   if (isTRUE(is_refresh) &&
     (is.null(prior) || !identical(client_scope_coverage(
       client,
       granted, prior
-    )$status, "covered"))) {
+    )[["status"]], "covered"))) {
     err_token("SMART refresh grant exceeds or cannot be compared with the prior grant")
   }
   invisible(TRUE)

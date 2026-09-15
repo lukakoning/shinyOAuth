@@ -37,15 +37,15 @@ test_that("optional JWT claims distinguish omission, null, scalars and arrays", 
     )
   )
   for (surface in surfaces) {
-    for (claim in names(surface$values)) {
+    for (claim in names(surface[["values"]])) {
       claims <- base
       claims[[claim]] <- NULL
-      expect_no_error(surface$validate(encode(claims)))
-      claims[[claim]] <- surface$values[[claim]]
-      expect_no_error(surface$validate(encode(claims)))
-      for (invalid in list(NULL, list(surface$values[[claim]]), list(), TRUE)) {
+      expect_no_error(surface[["validate"]](encode(claims)))
+      claims[[claim]] <- surface[["values"]][[claim]]
+      expect_no_error(surface[["validate"]](encode(claims)))
+      for (invalid in list(NULL, list(surface[["values"]][[claim]]), list(), TRUE)) {
         claims[claim] <- list(invalid)
-        expect_error(surface$validate(encode(claims)), class = surface$error)
+        expect_error(surface[["validate"]](encode(claims)), class = surface[["error"]])
       }
     }
   }

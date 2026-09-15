@@ -31,7 +31,7 @@ test_that("audit events fire on malformed state tokens", {
   # 3) Oversized envelope versions fail cleanly without integer overflow
   huge_version_env <- jsonlite::toJSON(
     list(
-      v = as.double(.Machine$integer.max) + 1,
+      v = as.double(.Machine[["integer.max"]]) + 1,
       iv = "?",
       tg = "?",
       ct = "?"

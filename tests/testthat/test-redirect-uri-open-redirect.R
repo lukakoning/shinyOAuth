@@ -8,7 +8,7 @@ test_that("handle_callback rejects tampered redirect_uri in state payload", {
 
   # Decrypt, tamper redirect_uri, and re-encrypt with the same key (simulating an on-path attacker with state token)
   p <- shinyOAuth:::state_decrypt_gcm(enc, key = cli@state_key)
-  p$redirect_uri <- "http://attacker.example.com/callback"
+  p[["redirect_uri"]] <- "http://attacker.example.com/callback"
   tampered <- shinyOAuth:::state_encrypt_gcm(p, key = cli@state_key)
 
   # Token swap is not reached due to early binding failure; mock to be safe

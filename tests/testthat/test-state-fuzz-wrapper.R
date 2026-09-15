@@ -48,50 +48,50 @@ test_that("state_decrypt_gcm rejects malformed state wrappers (fuzz)", {
     switch(
       choice,
       drop_v = {
-        o$v <- NULL
+        o[["v"]] <- NULL
       },
       v_wrong_type = {
-        o$v <- "1"
+        o[["v"]] <- "1"
       },
       v_wrong_val = {
-        o$v <- 999L
+        o[["v"]] <- 999L
       },
 
       drop_iv = {
-        o$iv <- NULL
+        o[["iv"]] <- NULL
       },
       iv_not_b64 = {
-        o$iv <- "***"
+        o[["iv"]] <- "***"
       },
       iv_wrong_len = {
-        o$iv <- shinyOAuth:::base64url_encode(as.raw(1:8))
+        o[["iv"]] <- shinyOAuth:::base64url_encode(as.raw(1:8))
       },
 
       drop_tg = {
-        o$tg <- NULL
+        o[["tg"]] <- NULL
       },
       tg_not_b64 = {
-        o$tg <- "!@#"
+        o[["tg"]] <- "!@#"
       },
       tg_wrong_len = {
-        o$tg <- shinyOAuth:::base64url_encode(as.raw(1:8))
+        o[["tg"]] <- shinyOAuth:::base64url_encode(as.raw(1:8))
       },
 
       drop_ct = {
-        o$ct <- NULL
+        o[["ct"]] <- NULL
       },
       ct_not_b64 = {
-        o$ct <- "??"
+        o[["ct"]] <- "??"
       },
       ct_empty = {
-        o$ct <- shinyOAuth:::base64url_encode(raw(0))
+        o[["ct"]] <- shinyOAuth:::base64url_encode(raw(0))
       },
 
       junk_field = {
-        o$junk <- 123
+        o[["junk"]] <- 123
       },
       nested_obj = {
-        o$iv <- jsonlite::toJSON(list(x = 1))
+        o[["iv"]] <- jsonlite::toJSON(list(x = 1))
       },
       non_json = {
         return("not-json-base64url-token")

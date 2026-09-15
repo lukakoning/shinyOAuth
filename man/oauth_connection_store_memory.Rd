@@ -45,22 +45,22 @@ owner or connection ID does not authenticate a user.
 Records contain ciphertext only. Encryption keys stay with the manager, outside
 this adapter. Never expose these methods or credential imports as HTTP routes.
 \itemize{
-\item \verb{$create(owner, id, transaction, client, fingerprint, sealed, expires_at)}
+\item \verb{[["create"]](owner, id, transaction, client, fingerprint, sealed, expires_at)}
 returns a record with a new revision, or \code{NULL} for a duplicate connection/transaction.
-\item \verb{$read(owner, id)} returns the owner's record, or \code{NULL} when absent, expired,
+\item \verb{[["read"]](owner, id)} returns the owner's record, or \code{NULL} when absent, expired,
 or owned by someone else. It includes the sealed envelope for internal use.
-\item \verb{$list(owner)} returns metadata lists without ciphertext or operation IDs.
-\item \verb{$begin_refresh(owner, id, revision)} claims an active record and returns its
+\item \verb{[["list"]](owner)} returns metadata lists without ciphertext or operation IDs.
+\item \verb{[["begin_refresh"]](owner, id, revision)} claims an active record and returns its
 new revision and operation ID. A conflicting claim returns \code{NULL}.
-\item \verb{$commit_refresh(owner, id, operation, revision, sealed)} installs credentials
+\item \verb{[["commit_refresh"]](owner, id, operation, revision, sealed)} installs credentials
 only for the current claim, returning the updated record or \code{NULL}.
-\item \verb{$fail_refresh(owner, id, operation, revision, outcome)} releases a claim only
+\item \verb{[["fail_refresh"]](owner, id, operation, revision, outcome)} releases a claim only
 for \code{"not_consumed"}; \code{"possibly_consumed"} and \code{"consumed"} remove the old
 envelope and mark the record \code{"uncertain"}. Returns the record or \code{NULL}.
-\item \verb{$disconnect(owner, id, revision)} first installs a credential-free tombstone,
+\item \verb{[["disconnect"]](owner, id, revision)} first installs a credential-free tombstone,
 then returns \code{list(record, previous)} for bounded remote cleanup. Conflicts
 return \code{NULL}; the caller must reload before retrying.
-\item \verb{$disconnect_owner(owner)} tombstones all of that owner's records and returns
+\item \verb{[["disconnect_owner"]](owner)} tombstones all of that owner's records and returns
 the previous records for bounded cleanup. Other owners are unaffected.
 }
 

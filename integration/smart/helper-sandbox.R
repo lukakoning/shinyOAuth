@@ -21,7 +21,7 @@ smart_sandbox_json <- function(url) {
 
 smart_sandbox_environment <- function() {
   body <- httr2::resp_body_string(smart_sandbox_get(paste0(
-    smart_sandbox_urls()$launcher,
+    smart_sandbox_urls()[["launcher"]],
     "/env.js"
   )))
   # Parse the JSON assignment without executing JavaScript. This also contains

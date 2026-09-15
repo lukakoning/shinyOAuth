@@ -35,10 +35,10 @@ test_that("get_userinfo rejects JSON response missing sub for OIDC provider", {
     regexp = "sub.*claim"
   )
 
-  ui_events <- Filter(function(e) identical(e$type, "audit_userinfo"), events)
+  ui_events <- Filter(function(e) identical(e[["type"]], "audit_userinfo"), events)
   expect_true(any(vapply(
     ui_events,
-    function(e) identical(e$status, "userinfo_missing_sub"),
+    function(e) identical(e[["status"]], "userinfo_missing_sub"),
     logical(1)
   )))
 })
@@ -136,10 +136,10 @@ test_that("get_userinfo rejects direct OAuthToken calls with mismatched sub", {
     regexp = "does not match"
   )
 
-  ui_events <- Filter(function(e) identical(e$type, "audit_userinfo"), events)
+  ui_events <- Filter(function(e) identical(e[["type"]], "audit_userinfo"), events)
   statuses <- vapply(
     ui_events,
-    function(e) e$status %||% NA_character_,
+    function(e) e[["status"]] %||% NA_character_,
     character(1)
   )
   expect_false(any(statuses == "ok"))
@@ -246,10 +246,10 @@ test_that("validate_signed_userinfo_claims accepts valid sub", {
 
 test_that("get_userinfo rejects signed JWT missing sub for OIDC provider", {
   key <- openssl::rsa_keygen(2048)
-  jwk_json <- write_test_jwk(key$pubkey)
+  jwk_json <- write_test_jwk(key[["pubkey"]])
   jwk <- jsonlite::fromJSON(jwk_json, simplifyVector = TRUE)
-  jwk$kid <- "test-kid-sub"
-  jwk$use <- "sig"
+  jwk[["kid"]] <- "test-kid-sub"
+  jwk[["use"]] <- "sig"
   jwks <- list(keys = list(jwk))
 
   # Claims without sub
@@ -292,10 +292,10 @@ test_that("get_userinfo rejects signed JWT missing sub for OIDC provider", {
     regexp = "sub.*claim"
   )
 
-  ui_events <- Filter(function(e) identical(e$type, "audit_userinfo"), events)
+  ui_events <- Filter(function(e) identical(e[["type"]], "audit_userinfo"), events)
   expect_true(any(vapply(
     ui_events,
-    function(e) identical(e$status, "userinfo_jwt_missing_sub"),
+    function(e) identical(e[["status"]], "userinfo_jwt_missing_sub"),
     logical(1)
   )))
 })

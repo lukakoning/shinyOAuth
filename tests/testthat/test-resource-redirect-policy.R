@@ -9,7 +9,7 @@ test_that("per-call redirect policy takes precedence over global and input polic
         "https://example.com/data",
         follow_redirect = call_policy
       )
-      expect_identical(req$options$followlocation, expected)
+      expect_identical(req[["options"]][["followlocation"]], expected)
       for (input_policy in c(FALSE, TRUE)) {
         input <- httr2::request("https://example.com/data") |>
           httr2::req_options(followlocation = input_policy)
@@ -18,11 +18,11 @@ test_that("per-call redirect policy takes precedence over global and input polic
           input,
           follow_redirect = call_policy
         )
-        expect_identical(result$options$followlocation, expected)
+        expect_identical(result[["options"]][["followlocation"]], expected)
       }
     }
     expect_false(
-      resource_req("fixture", "https://example.com")$options$followlocation
+      resource_req("fixture", "https://example.com")[["options"]][["followlocation"]]
     )
   }
   for (bad in list(NA, c(TRUE, FALSE), "FALSE", 1)) {

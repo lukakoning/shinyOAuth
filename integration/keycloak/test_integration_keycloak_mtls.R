@@ -1,7 +1,7 @@
 ## Integration tests: RFC 8705 mTLS client auth and certificate-bound tokens
 
 if (!exists("make_mtls_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 perform_mtls_module_login <- function(
@@ -15,32 +15,32 @@ perform_mtls_module_login <- function(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form_as(
         auth_url,
         username = username,
         password = password,
         redirect_uri = client@redirect_uri
       )
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
-      if (isTRUE(values$authenticated)) {
+      if (isTRUE(values[["authenticated"]])) {
         expect_keycloak_module_login_invariants(
-          values$authenticated,
-          values$error,
-          values$error_description,
-          values$error_uri,
-          values$token,
+          values[["authenticated"]],
+          values[["error"]],
+          values[["error_description"]],
+          values[["error_uri"]],
+          values[["token"]],
           client
         )
       }
 
       result <<- list(
-        authenticated = isTRUE(values$authenticated),
-        error = values$error,
-        error_description = values$error_description,
-        token = values$token
+        authenticated = isTRUE(values[["authenticated"]]),
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        token = values[["token"]]
       )
     }
   )
@@ -53,8 +53,8 @@ testthat::test_that("strict OIDC validation and mTLS work across the token lifec
   local_test_options()
   client <- make_mtls_confidential_client(make_mtls_provider())
   login <- perform_mtls_module_login(client)
-  testthat::expect_true(login$authenticated)
-  token <- login$token
+  testthat::expect_true(login[["authenticated"]])
+  token <- login[["token"]]
   testthat::expect_true(token@id_token_validated)
   testthat::expect_identical(
     token@cnf[["x5t#S256"]],
@@ -68,38 +68,38 @@ testthat::test_that("strict OIDC validation and mTLS work across the token lifec
   )
   testthat::expect_true(refreshed@id_token_validated)
   testthat::expect_identical(
-    refreshed@id_token_claims$iss,
+    refreshed@id_token_claims[["iss"]],
     client@provider@issuer
   )
   testthat::expect_identical(
-    refreshed@id_token_claims$sub,
-    token@id_token_claims$sub
+    refreshed@id_token_claims[["sub"]],
+    token@id_token_claims[["sub"]]
   )
   testthat::expect_identical(
     refreshed@cnf[["x5t#S256"]],
     tls_client_thumbprint("valid")
   )
   intro <- shinyOAuth::introspect_token(client, refreshed, async = FALSE)
-  testthat::expect_true(intro$active)
+  testthat::expect_true(intro[["active"]])
   testthat::expect_identical(
-    intro$raw$cnf[["x5t#S256"]],
+    intro[["raw"]][["cnf"]][["x5t#S256"]],
     tls_client_thumbprint("valid")
   )
   ui <- shinyOAuth::get_userinfo(client, refreshed)
-  testthat::expect_identical(ui$sub, token@id_token_claims$sub)
+  testthat::expect_identical(ui[["sub"]], token@id_token_claims[["sub"]])
   response <- shinyOAuth::perform_resource_req(
     refreshed,
     get_mtls_endpoint_url(client@provider, "userinfo_endpoint"),
     oauth_client = client
   )
-  testthat::expect_identical(httr2::resp_body_json(response)$sub, ui$sub)
+  testthat::expect_identical(httr2::resp_body_json(response)[["sub"]], ui[["sub"]])
   revoked <- shinyOAuth::revoke_token(
     client,
     refreshed,
     which = "access",
     async = FALSE
   )
-  testthat::expect_true(revoked$revoked)
+  testthat::expect_true(revoked[["revoked"]])
 })
 
 expect_mtls_par_build_auth_url_failure <- function(
@@ -116,17 +116,17 @@ expect_mtls_par_build_auth_url_failure <- function(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_true(is.na(auth_url))
-      testthat::expect_identical(values$error, "auth_url_error")
-      testthat::expect_null(values$error_uri)
+      testthat::expect_identical(values[["error"]], "auth_url_error")
+      testthat::expect_null(values[["error_uri"]])
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         description_pattern,
         ignore.case = TRUE
       )
-      testthat::expect_length(client@state_store$keys(), 0L)
+      testthat::expect_length(client@state_store[["keys"]](), 0L)
     }
   )
 }
@@ -197,8 +197,8 @@ raw_mtls_par_request <- function(
     client = client,
     context = "pushed_authorization_request"
   )
-  req <- prepared$req
-  params <- prepared$params
+  req <- prepared[["req"]]
+  params <- prepared[["params"]]
 
   if (!identical(cert_variant, "none")) {
     req <- req_apply_keycloak_client_certificate(req, cert_variant)
@@ -320,21 +320,21 @@ build_prepared_mtls_par_request <- function(
     context = "pushed_authorization_request"
   )
 
-  client_assertion <- prepared$params$client_assertion %||% NA_character_
+  client_assertion <- prepared[["params"]][["client_assertion"]] %||% NA_character_
   assertion_payload <- if (keycloak_nonempty_string(client_assertion)) {
     shinyOAuth:::parse_jwt_payload(client_assertion)
   } else {
     list()
   }
 
-  req <- prepared$req
+  req <- prepared[["req"]]
   if (!identical(cert_variant, "none")) {
     req <- req_apply_keycloak_client_certificate(req, cert_variant)
   }
 
   list(
     url = endpoint,
-    req = do.call(httr2::req_body_form, c(list(req), prepared$params)),
+    req = do.call(httr2::req_body_form, c(list(req), prepared[["params"]])),
     client_assertion = client_assertion,
     assertion_payload = assertion_payload
   )
@@ -371,18 +371,18 @@ testthat::test_that("Keycloak HTTPS discovery wires mTLS metadata into make_mtls
   testthat::expect_true(isTRUE(
     prov@mtls_client_certificate_bound_access_tokens
   ))
-  testthat::expect_identical(prov@issuer, disc$issuer)
+  testthat::expect_identical(prov@issuer, disc[["issuer"]])
   testthat::expect_identical(
-    prov@mtls_endpoint_aliases$token_endpoint,
-    disc$mtls_endpoint_aliases$token_endpoint
+    prov@mtls_endpoint_aliases[["token_endpoint"]],
+    disc[["mtls_endpoint_aliases"]][["token_endpoint"]]
   )
   testthat::expect_identical(
-    prov@mtls_endpoint_aliases$userinfo_endpoint,
-    disc$mtls_endpoint_aliases$userinfo_endpoint
+    prov@mtls_endpoint_aliases[["userinfo_endpoint"]],
+    disc[["mtls_endpoint_aliases"]][["userinfo_endpoint"]]
   )
   testthat::expect_identical(
     prov@par_url,
-    disc$pushed_authorization_request_endpoint
+    disc[["pushed_authorization_request_endpoint"]]
   )
 })
 
@@ -406,29 +406,29 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
 
   login <- perform_mtls_module_login(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_null(login$error)
-  testthat::expect_false(is.null(login$token))
-  testthat::expect_true(nzchar(login$token@access_token))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_null(login[["error"]])
+  testthat::expect_false(is.null(login[["token"]]))
+  testthat::expect_true(nzchar(login[["token"]]@access_token))
 
-  access_x5t <- access_token_cnf_x5t_s256(login$token@access_token)
+  access_x5t <- access_token_cnf_x5t_s256(login[["token"]]@access_token)
   testthat::expect_identical(access_x5t, tls_client_thumbprint("valid"))
-  testthat::expect_identical(login$token@cnf[["x5t#S256"]], access_x5t)
+  testthat::expect_identical(login[["token"]]@cnf[["x5t#S256"]], access_x5t)
 
-  userinfo <- shinyOAuth::get_userinfo(client, login$token)
+  userinfo <- shinyOAuth::get_userinfo(client, login[["token"]])
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo[["sub"]], login$token@userinfo[["sub"]])
+  testthat::expect_identical(userinfo[["sub"]], login[["token"]]@userinfo[["sub"]])
 
   no_cert_resp <- raw_mtls_userinfo_request(
     client,
-    login$token@access_token,
+    login[["token"]]@access_token,
     cert_variant = "none"
   )
   expect_mtls_sender_constraint_rejection(no_cert_resp)
 
   wrong_cert_resp <- raw_mtls_userinfo_request(
     client,
-    login$token@access_token,
+    login[["token"]]@access_token,
     cert_variant = "wrong"
   )
   expect_mtls_sender_constraint_rejection(wrong_cert_resp)
@@ -436,7 +436,7 @@ testthat::test_that("Keycloak mTLS auth-code flow binds tokens and protects user
   testthat::expect_error(
     raw_mtls_userinfo_request(
       client,
-      login$token@access_token,
+      login[["token"]]@access_token,
       cert_variant = "rogue"
     ),
     class = "httr2_failure",
@@ -451,8 +451,8 @@ testthat::test_that("Keycloak can issue certificate-bound tokens for a public cl
   fixture <- create_temp_certificate_bound_public_client()
   on.exit(
     keycloak_delete_client(
-      fixture$admin_token,
-      id = fixture$fixture$id
+      fixture[["admin_token"]],
+      id = fixture[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -460,7 +460,7 @@ testthat::test_that("Keycloak can issue certificate-bound tokens for a public cl
   prov <- make_mtls_provider(token_auth_style = "body")
   client <- make_certificate_bound_public_client(
     prov,
-    client_id = fixture$fixture$client_id
+    client_id = fixture[["fixture"]][["client_id"]]
   )
 
   testthat::expect_identical(prov@token_auth_style, "body")
@@ -473,7 +473,7 @@ testthat::test_that("Keycloak can issue certificate-bound tokens for a public cl
       "token_endpoint",
       prefer_mtls = TRUE
     ),
-    client@provider@mtls_endpoint_aliases$token_endpoint
+    client@provider@mtls_endpoint_aliases[["token_endpoint"]]
   )
   testthat::expect_identical(
     shinyOAuth:::resolve_provider_endpoint_url(
@@ -481,34 +481,34 @@ testthat::test_that("Keycloak can issue certificate-bound tokens for a public cl
       "userinfo_endpoint",
       prefer_mtls = TRUE
     ),
-    client@provider@mtls_endpoint_aliases$userinfo_endpoint
+    client@provider@mtls_endpoint_aliases[["userinfo_endpoint"]]
   )
 
   login <- perform_mtls_module_login(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_null(login$error)
-  testthat::expect_false(is.null(login$token))
-  testthat::expect_true(nzchar(login$token@access_token %||% ""))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_null(login[["error"]])
+  testthat::expect_false(is.null(login[["token"]]))
+  testthat::expect_true(nzchar(login[["token"]]@access_token %||% ""))
 
-  access_x5t <- access_token_cnf_x5t_s256(login$token@access_token)
+  access_x5t <- access_token_cnf_x5t_s256(login[["token"]]@access_token)
   testthat::expect_identical(access_x5t, tls_client_thumbprint("valid"))
-  testthat::expect_identical(login$token@cnf[["x5t#S256"]], access_x5t)
+  testthat::expect_identical(login[["token"]]@cnf[["x5t#S256"]], access_x5t)
 
-  userinfo <- shinyOAuth::get_userinfo(client, login$token)
+  userinfo <- shinyOAuth::get_userinfo(client, login[["token"]])
   testthat::expect_true(is.list(userinfo))
-  testthat::expect_identical(userinfo[["sub"]], login$token@userinfo[["sub"]])
+  testthat::expect_identical(userinfo[["sub"]], login[["token"]]@userinfo[["sub"]])
 
   no_cert_resp <- raw_mtls_userinfo_request(
     client,
-    login$token@access_token,
+    login[["token"]]@access_token,
     cert_variant = "none"
   )
   expect_mtls_sender_constraint_rejection(no_cert_resp)
 
   wrong_cert_resp <- raw_mtls_userinfo_request(
     client,
-    login$token@access_token,
+    login[["token"]]@access_token,
     cert_variant = "wrong"
   )
   expect_mtls_sender_constraint_rejection(wrong_cert_resp)
@@ -521,8 +521,8 @@ testthat::test_that("Keycloak PAR over the mTLS alias accepts issuer-audience cl
   fixture <- create_temp_certificate_bound_client_secret_jwt_client()
   on.exit(
     keycloak_delete_client(
-      fixture$admin_token,
-      id = fixture$fixture$id
+      fixture[["admin_token"]],
+      id = fixture[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -533,20 +533,20 @@ testthat::test_that("Keycloak PAR over the mTLS alias accepts issuer-audience cl
   )
   client <- make_certificate_bound_client_secret_jwt_client(
     prov,
-    client_id = fixture$fixture$client_id
+    client_id = fixture[["fixture"]][["client_id"]]
   )
   prepared <- build_prepared_mtls_par_request(client)
 
   testthat::expect_identical(
-    prepared$url,
-    client@provider@mtls_endpoint_aliases$par_endpoint
+    prepared[["url"]],
+    client@provider@mtls_endpoint_aliases[["par_endpoint"]]
   )
   testthat::expect_identical(
-    prepared$assertion_payload$aud,
+    prepared[["assertion_payload"]][["aud"]],
     client@provider@issuer
   )
 
-  resp <- httr2::req_perform(prepared$req)
+  resp <- httr2::req_perform(prepared[["req"]])
   body <- safe_resp_body_json(resp)
 
   testthat::expect_identical(httr2::resp_status(resp), 201L)
@@ -556,16 +556,16 @@ testthat::test_that("Keycloak PAR over the mTLS alias accepts issuer-audience cl
   )
 
   login <- perform_mtls_module_login(client)
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_false(is.null(login$token))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_false(is.null(login[["token"]]))
   testthat::expect_identical(
-    access_token_cnf_x5t_s256(login$token@access_token),
+    access_token_cnf_x5t_s256(login[["token"]]@access_token),
     tls_client_thumbprint("valid")
   )
 
   wrong_audience_client <- make_certificate_bound_client_secret_jwt_client(
     prov,
-    client_id = fixture$fixture$client_id,
+    client_id = fixture[["fixture"]][["client_id"]],
     client_assertion_audience = "https://example.com/not-keycloak"
   )
 
@@ -573,21 +573,21 @@ testthat::test_that("Keycloak PAR over the mTLS alias accepts issuer-audience cl
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(wrong_audience_client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_true(is.na(auth_url))
-      testthat::expect_identical(values$error, "auth_url_error")
+      testthat::expect_identical(values[["error"]], "auth_url_error")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "HTTP request failed",
         fixed = TRUE
       )
       testthat::expect_no_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "Authentication failed.",
         fixed = TRUE
       )
-      testthat::expect_length(wrong_audience_client@state_store$keys(), 0L)
+      testthat::expect_length(wrong_audience_client@state_store[["keys"]](), 0L)
     }
   )
 })
@@ -601,21 +601,21 @@ testthat::test_that("Keycloak mTLS protected resource helper reaches the userinf
 
   login <- perform_mtls_module_login(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_false(is.null(login$token))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_false(is.null(login[["token"]]))
 
   resp <- shinyOAuth::perform_resource_req(
-    token = login$token,
+    token = login[["token"]],
     url = get_mtls_endpoint_url(client@provider, "userinfo_endpoint"),
     oauth_client = client
   )
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
 
   testthat::expect_identical(httr2::resp_status(resp), 200L)
-  testthat::expect_identical(body[["sub"]], login$token@userinfo[["sub"]])
+  testthat::expect_identical(body[["sub"]], login[["token"]]@userinfo[["sub"]])
   testthat::expect_identical(
     body[["preferred_username"]],
-    login$token@userinfo[["preferred_username"]]
+    login[["token"]]@userinfo[["preferred_username"]]
   )
 })
 
@@ -634,14 +634,14 @@ testthat::test_that("Keycloak mTLS auth-code flow supports PAR via discovered en
     prov@par_url,
     get_https_discovery_document(
       force = TRUE
-    )$pushed_authorization_request_endpoint
+    )[["pushed_authorization_request_endpoint"]]
   )
 
   shiny::testServer(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
 
       testthat::expect_match(auth_url, "[?&]request_uri=")
       testthat::expect_match(auth_url, "[?&]client_id=shiny-mtls-confidential")
@@ -654,21 +654,21 @@ testthat::test_that("Keycloak mTLS auth-code flow supports PAR via discovered en
         redirect_uri = client@redirect_uri
       )
 
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
-      testthat::expect_null(values$error_description)
-      testthat::expect_null(values$error_uri)
-      testthat::expect_false(is.null(values$token))
-      testthat::expect_true(nzchar(values$token@access_token %||% ""))
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
+      testthat::expect_null(values[["error_description"]])
+      testthat::expect_null(values[["error_uri"]])
+      testthat::expect_false(is.null(values[["token"]]))
+      testthat::expect_true(nzchar(values[["token"]]@access_token %||% ""))
       testthat::expect_identical(
-        values$token@userinfo[["preferred_username"]],
+        values[["token"]]@userinfo[["preferred_username"]],
         "alice"
       )
       testthat::expect_identical(
-        access_token_cnf_x5t_s256(values$token@access_token),
+        access_token_cnf_x5t_s256(values[["token"]]@access_token),
         tls_client_thumbprint("valid")
       )
     }
@@ -688,9 +688,9 @@ testthat::test_that("Keycloak mTLS PAR endpoint rejects a missing client certifi
   no_cert_body <- safe_resp_body_json(no_cert_resp)
 
   testthat::expect_identical(httr2::resp_status(no_cert_resp), 401L)
-  testthat::expect_identical(no_cert_body$error, "invalid_request")
+  testthat::expect_identical(no_cert_body[["error"]], "invalid_request")
   testthat::expect_identical(
-    no_cert_body$error_description,
+    no_cert_body[["error_description"]],
     "Authentication failed."
   )
 })
@@ -726,7 +726,7 @@ testthat::test_that("Keycloak mTLS auth-code flow surfaces wrong certificate err
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(wrong_client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state_info <- get_state_info(wrong_client, auth_url)
       login <- perform_login_form_as(
         auth_url,
@@ -734,32 +734,32 @@ testthat::test_that("Keycloak mTLS auth-code flow surfaces wrong certificate err
       )
       query <- callback_query(login)
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(is.null(values$token))
-      testthat::expect_identical(values$error, "token_exchange_error")
-      combo <- paste(values$error_description %||% "")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(is.null(values[["token"]]))
+      testthat::expect_identical(values[["error"]], "token_exchange_error")
+      combo <- paste(values[["error_description"]] %||% "")
       testthat::expect_match(
         combo,
         "^(HTTP request failed|Transport failure)",
         ignore.case = TRUE
       )
       testthat::expect_null(
-        wrong_client@state_store$get(state_info$key, missing = NULL)
+        wrong_client@state_store[["get"]](state_info[["key"]], missing = NULL)
       )
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )
@@ -776,10 +776,10 @@ testthat::test_that("Keycloak mTLS userinfo surfaces wrong certificate errors th
   wrong_client <- make_mtls_confidential_client(prov, cert_variant = "wrong")
 
   login <- perform_mtls_module_login(client)
-  testthat::expect_true(isTRUE(login$authenticated))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
 
   err <- rlang::catch_cnd(
-    shinyOAuth::get_userinfo(wrong_client, login$token),
+    shinyOAuth::get_userinfo(wrong_client, login[["token"]]),
     classes = "error"
   )
 
@@ -804,15 +804,15 @@ testthat::test_that("Keycloak mTLS AS endpoints ignore local cnf mismatches on r
 
   login <- perform_mtls_module_login(client)
 
-  testthat::expect_true(isTRUE(login$authenticated))
-  testthat::expect_false(is.null(login$token))
-  testthat::expect_true(nzchar(login$token@access_token %||% ""))
-  testthat::expect_true(nzchar(login$token@refresh_token %||% ""))
+  testthat::expect_true(isTRUE(login[["authenticated"]]))
+  testthat::expect_false(is.null(login[["token"]]))
+  testthat::expect_true(nzchar(login[["token"]]@access_token %||% ""))
+  testthat::expect_true(nzchar(login[["token"]]@refresh_token %||% ""))
 
-  access_x5t <- access_token_cnf_x5t_s256(login$token@access_token)
+  access_x5t <- access_token_cnf_x5t_s256(login[["token"]]@access_token)
   testthat::expect_identical(access_x5t, tls_client_thumbprint("valid"))
 
-  tampered_refresh_token <- login$token
+  tampered_refresh_token <- login[["token"]]
   tampered_refresh_token@cnf <- list(`x5t#S256` = "mismatched-thumbprint")
 
   refreshed <- shinyOAuth::refresh_token(
@@ -828,7 +828,7 @@ testthat::test_that("Keycloak mTLS AS endpoints ignore local cnf mismatches on r
     tls_client_thumbprint("valid")
   )
 
-  tampered_access_token <- login$token
+  tampered_access_token <- login[["token"]]
   tampered_access_token@cnf <- list(`x5t#S256` = "mismatched-thumbprint")
 
   introspection <- shinyOAuth::introspect_token(
@@ -837,9 +837,9 @@ testthat::test_that("Keycloak mTLS AS endpoints ignore local cnf mismatches on r
     which = "access",
     async = FALSE
   )
-  testthat::expect_true(isTRUE(introspection$supported))
-  testthat::expect_true(isTRUE(introspection$active))
-  testthat::expect_identical(introspection$status, "ok")
+  testthat::expect_true(isTRUE(introspection[["supported"]]))
+  testthat::expect_true(isTRUE(introspection[["active"]]))
+  testthat::expect_identical(introspection[["status"]], "ok")
 
   revocation <- shinyOAuth::revoke_token(
     client,
@@ -847,9 +847,9 @@ testthat::test_that("Keycloak mTLS AS endpoints ignore local cnf mismatches on r
     which = "access",
     async = FALSE
   )
-  testthat::expect_true(isTRUE(revocation$supported))
-  testthat::expect_true(isTRUE(revocation$revoked))
-  testthat::expect_identical(revocation$status, "ok")
+  testthat::expect_true(isTRUE(revocation[["supported"]]))
+  testthat::expect_true(isTRUE(revocation[["revoked"]]))
+  testthat::expect_identical(revocation[["status"]], "ok")
 })
 
 testthat::test_that("Keycloak mTLS refresh rejects the wrong certificate", {
@@ -864,19 +864,19 @@ testthat::test_that("Keycloak mTLS refresh rejects the wrong certificate", {
   client <- make_mtls_confidential_client(prov)
 
   wrong_login <- perform_mtls_module_login(client)
-  testthat::expect_true(isTRUE(wrong_login$authenticated))
+  testthat::expect_true(isTRUE(wrong_login[["authenticated"]]))
   wrong_resp <- raw_mtls_refresh_request(
     client,
-    wrong_login$token@refresh_token,
+    wrong_login[["token"]]@refresh_token,
     cert_variant = "wrong"
   )
   expect_mtls_invalid_client(wrong_resp)
 
   no_cert_login <- perform_mtls_module_login(client)
-  testthat::expect_true(isTRUE(no_cert_login$authenticated))
+  testthat::expect_true(isTRUE(no_cert_login[["authenticated"]]))
   no_cert_resp <- raw_mtls_refresh_request(
     client,
-    no_cert_login$token@refresh_token,
+    no_cert_login[["token"]]@refresh_token,
     cert_variant = "none"
   )
   expect_mtls_invalid_client(no_cert_resp)
@@ -897,9 +897,9 @@ testthat::test_that("Keycloak mTLS auth-code token exchange requires the registe
   )
   testthat::expect_identical(httr2::resp_status(ok_resp), 200L)
   ok_body <- httr2::resp_body_json(ok_resp, simplifyVector = TRUE)
-  testthat::expect_true(nzchar(ok_body$access_token %||% ""))
+  testthat::expect_true(nzchar(ok_body[["access_token"]] %||% ""))
   testthat::expect_identical(
-    access_token_cnf_x5t_s256(ok_body$access_token),
+    access_token_cnf_x5t_s256(ok_body[["access_token"]]),
     tls_client_thumbprint("valid")
   )
 
@@ -944,22 +944,22 @@ testthat::test_that("Keycloak mTLS client-credentials flow issues certificate-bo
   )
   testthat::expect_identical(httr2::resp_status(ok_resp), 200L)
   ok_body <- httr2::resp_body_json(ok_resp, simplifyVector = TRUE)
-  testthat::expect_true(nzchar(ok_body$access_token %||% ""))
+  testthat::expect_true(nzchar(ok_body[["access_token"]] %||% ""))
   testthat::expect_identical(
-    access_token_cnf_x5t_s256(ok_body$access_token),
+    access_token_cnf_x5t_s256(ok_body[["access_token"]]),
     tls_client_thumbprint("valid")
   )
 
-  tok <- shinyOAuth::OAuthToken(access_token = ok_body$access_token)
+  tok <- shinyOAuth::OAuthToken(access_token = ok_body[["access_token"]])
   introspection <- shinyOAuth::introspect_token(
     client,
     tok,
     which = "access",
     async = FALSE
   )
-  testthat::expect_identical(introspection$supported, TRUE)
-  testthat::expect_identical(introspection$status, "ok")
-  testthat::expect_identical(introspection$active, TRUE)
+  testthat::expect_identical(introspection[["supported"]], TRUE)
+  testthat::expect_identical(introspection[["status"]], "ok")
+  testthat::expect_identical(introspection[["active"]], TRUE)
 
   no_cert_resp <- raw_mtls_client_credentials_request(
     client,

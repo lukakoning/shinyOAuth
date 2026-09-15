@@ -44,7 +44,7 @@ test_that("custom_cache validates and exposes atomic set_if_absent", {
     }
   )
 
-  expect_true(cache$set_if_absent("claim", 1, ttl = 30))
+  expect_true(cache[["set_if_absent"]]("claim", 1, ttl = 30))
   expect_identical(seen_ttl, 30)
 })
 
@@ -67,12 +67,12 @@ test_that("custom_cache stores and retrieves values", {
     info = function() list(max_age = 600)
   )
 
-  expect_identical(cache$get("missing", missing = 5), 5)
-  cache$set("a", 1)
-  expect_identical(cache$get("a", missing = NULL), 1)
-  cache$remove("a")
-  expect_identical(cache$get("a", missing = 2), 2)
-  expect_equal(cache$info()$max_age, 600)
+  expect_identical(cache[["get"]]("missing", missing = 5), 5)
+  cache[["set"]]("a", 1)
+  expect_identical(cache[["get"]]("a", missing = NULL), 1)
+  cache[["remove"]]("a")
+  expect_identical(cache[["get"]]("a", missing = 2), 2)
+  expect_equal(cache[["info"]]()[["max_age"]], 600)
 })
 
 test_that("custom_cache supplies benign defaults", {
@@ -81,7 +81,7 @@ test_that("custom_cache supplies benign defaults", {
     set = function(key, value) invisible(NULL),
     remove = function(key) invisible(NULL)
   )
-  expect_identical(cache$info(), list())
-  expect_null(cache$remove("anything"))
-  expect_identical(cache$get("something", missing = 42), 42)
+  expect_identical(cache[["info"]](), list())
+  expect_null(cache[["remove"]]("anything"))
+  expect_identical(cache[["get"]]("something", missing = 42), 42)
 })

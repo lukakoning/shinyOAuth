@@ -19,7 +19,7 @@ test_that("Slack registration profiles work with recorded discovery metadata", {
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(metadata, auto_unbox = TRUE))
@@ -48,7 +48,7 @@ test_that("Slack registration profiles work with recorded discovery metadata", {
     client,
     "swap_code_for_token_set"
   )
-  expect_identical(auth$params$client_id, "slack-client")
-  expect_null(auth$params$client_secret)
-  expect_null(auth$req$headers$Authorization)
+  expect_identical(auth[["params"]][["client_id"]], "slack-client")
+  expect_null(auth[["params"]][["client_secret"]])
+  expect_null(auth[["req"]][["headers"]][["Authorization"]])
 })

@@ -1,6 +1,6 @@
-# Tests for atomic $take() state store API and TOCTOU hardening
+# Tests for atomic [["take"]]() state store API and TOCTOU hardening
 
-# -- Helper: atomic in-memory store with $take() ----------------------------
+# -- Helper: atomic in-memory store with [["take"]]() ----------------------------
 
 make_atomic_store <- function() {
   env <- new.env(parent = emptyenv())
@@ -52,7 +52,7 @@ make_client_with_store <- function(store) {
 }
 
 
-# -- Tests for atomic $take() path ------------------------------------------
+# -- Tests for atomic [["take"]]() path ------------------------------------------
 
 test_that("backend secrets never enter public state errors or audit attributes", {
   for (operation in c("get", "take", "set")) {
@@ -107,15 +107,15 @@ test_that("state_store_get_remove uses $take() when available (single-use)", {
   state <- "TAKE-SINGLE-USE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  store[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # First call succeeds via atomic take
   out <- shinyOAuth:::state_store_get_remove(cli, state)
   expect_type(out, "list")
-  expect_equal(out$browser_token, "bt")
+  expect_equal(out[["browser_token"]], "bt")
 
   # Entry is gone after take
-  expect_null(store$get(key, missing = NULL))
+  expect_null(store[["get"]](key, missing = NULL))
 
   # Second call fails (entry was atomically consumed)
   expect_error(
@@ -126,7 +126,7 @@ test_that("state_store_get_remove uses $take() when available (single-use)", {
 
 
 test_that("atomic $take() prevents simulated stale-read replay", {
-  # Simulate a backend where regular $get() exhibits stale reads but $take()
+  # Simulate a backend where regular [["get"]]() exhibits stale reads but [["take"]]()
 
   # is truly atomic (like Redis GETDEL).
   env <- new.env(parent = emptyenv())
@@ -143,7 +143,7 @@ test_that("atomic $take() prevents simulated stale-read replay", {
 
   store <- list(
     get = function(key, missing = NULL) {
-      # Deliberately return stale reads (to show $take bypasses this path)
+      # Deliberately return stale reads (to show [["take"]] bypasses this path)
       base::get0(key, envir = env, ifnotfound = missing, inherits = FALSE)
     },
     set = function(key, value) {
@@ -179,9 +179,9 @@ test_that("atomic $take() prevents simulated stale-read replay", {
 
   # First consumer succeeds
   out <- shinyOAuth:::state_store_get_remove(cli, state)
-  expect_equal(out$browser_token, "bt_atomic")
+  expect_equal(out[["browser_token"]], "bt_atomic")
 
-  # Second consumer fails even though $get() would still return stale data
+  # Second consumer fails even though [["get"]]() would still return stale data
   expect_error(
     shinyOAuth:::state_store_get_remove(cli, state),
     class = "shinyOAuth_state_error"
@@ -220,7 +220,7 @@ test_that("custom_cache() with take passes OAuthClient validation and works", {
     info = function() list(max_age = 300)
   )
 
-  # OAuthClient construction should succeed with $take()
+  # OAuthClient construction should succeed with [["take"]]()
   prov <- shinyOAuth::oauth_provider(
     name = "test",
     auth_url = "http://localhost:10098/auth",
@@ -234,17 +234,17 @@ test_that("custom_cache() with take passes OAuthClient validation and works", {
     state_store = cc
   )
 
-  # Verify $take is present and functional
-  expect_true(is.function(cc$take))
+  # Verify [["take"]] is present and functional
+  expect_true(is.function(cc[["take"]]))
 
   # End-to-end: set + take via state_store_get_remove
   state <- "CC-TAKE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt_cc", pkce_code_verifier = "cv", nonce = "n")
-  cc$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  cc[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   out <- shinyOAuth:::state_store_get_remove(cli, state)
-  expect_equal(out$browser_token, "bt_cc")
+  expect_equal(out[["browser_token"]], "bt_cc")
 
   # Second call fails
   expect_error(
@@ -261,12 +261,12 @@ test_that("custom_cache() without take has $take == NULL", {
     remove = function(key) TRUE,
     info = function() list(max_age = 60)
   )
-  expect_null(cc$take)
-  expect_false(is.function(cc$take))
+  expect_null(cc[["take"]])
+  expect_false(is.function(cc[["take"]]))
 })
 
 
-# -- Tests for fallback (no $take) path -------------------------------------
+# -- Tests for fallback (no [["take"]]) path -------------------------------------
 
 test_that("fallback errors for non-cachem store without $take()", {
   store <- list(
@@ -280,9 +280,9 @@ test_that("fallback errors for non-cachem store without $take()", {
   state <- "ERR-NO-TAKE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  store[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
-  # Non-cache_mem store without $take() must error (fail closed)
+  # Non-cache_mem store without [["take"]]() must error (fail closed)
   expect_error(
     shinyOAuth:::state_store_get_remove(cli, state),
     class = "shinyOAuth_config_error"
@@ -314,9 +314,9 @@ test_that("fallback errors for cachem::cache_disk() (shared store)", {
   state <- "ERR-CACHE-DISK"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  disk_store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  disk_store[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
-  # cache_disk() without $take() must error (fail closed)
+  # cache_disk() without [["take"]]() must error (fail closed)
   expect_error(
     shinyOAuth:::state_store_get_remove(cli, state),
     class = "shinyOAuth_config_error"
@@ -326,18 +326,18 @@ test_that("fallback errors for cachem::cache_disk() (shared store)", {
 
 test_that("fallback post-check catches no-op remove (exact TOCTOU vector)", {
   # This test reproduces the exact vulnerability reported in the issue:
-  # cachem::cache_mem()$remove() returns TRUE even for absent keys.
+  # cachem::cache_mem()[["remove"]]() returns TRUE even for absent keys.
   # A store where remove() says TRUE but doesn't actually delete must be
   # caught by the post-removal absence check.
   backing <- cachem::cache_mem()
   state <- "NOOP-REMOVE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt_noop", pkce_code_verifier = "cv", nonce = "n")
-  backing$set(key, ssv)
+  backing[["set"]](key, ssv)
 
   noop_store <- list(
-    get = function(key, missing = NULL) backing$get(key, missing = missing),
-    set = function(key, value) backing$set(key, value),
+    get = function(key, missing = NULL) backing[["get"]](key, missing = missing),
+    set = function(key, value) backing[["set"]](key, value),
     # remove() does nothing but returns TRUE (the vulnerability)
     remove = function(key) TRUE,
     info = function() list(max_age = 300)
@@ -345,7 +345,7 @@ test_that("fallback post-check catches no-op remove (exact TOCTOU vector)", {
 
   cli <- make_client_with_store(noop_store)
 
-  # Non-cache_mem store without $take() now errors before reaching the
+  # Non-cache_mem store without [["take"]]() now errors before reaching the
   # fallback path, so we never even get to the no-op remove scenario.
   expect_error(
     shinyOAuth:::state_store_get_remove(cli, state),
@@ -353,7 +353,7 @@ test_that("fallback post-check catches no-op remove (exact TOCTOU vector)", {
   )
 
   # Key is still in backing (nothing was consumed)
-  expect_true(!is.null(backing$get(key, missing = NULL)))
+  expect_true(!is.null(backing[["get"]](key, missing = NULL)))
 })
 
 

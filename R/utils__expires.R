@@ -84,7 +84,7 @@ coerce_expires_in <- function(x) {
 #' Used by [oauth_module_server()] when setting the browser-token cookie lifetime.
 #'
 #' Falls back to 5 minutes (300s) when the cache backend does not expose a
-#' finite `max_age` via `$info()`.
+#' finite `max_age` via `[["info"]]()`.
 #'
 #' When falling back, emits a once-per-session warning to help operators
 #' understand that browser cookie lifetimes will use the default rather than
@@ -97,7 +97,7 @@ coerce_expires_in <- function(x) {
 #' @noRd
 client_state_store_max_age <- function(client, default = 300) {
   max_age_raw <- tryCatch(
-    client@state_store$info(),
+    client@state_store[["info"]](),
     error = function(...) NULL
   )
 

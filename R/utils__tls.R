@@ -12,9 +12,9 @@ resolve_tls_policy <- function(
   ) {
     problem <- "shinyOAuth.tls_min_version must be NULL, '1.2' or '1.3'"
   }
-  version <- request_options$sslversion
-  peer <- request_options$ssl_verifypeer
-  host <- request_options$ssl_verifyhost
+  version <- request_options[["sslversion"]]
+  peer <- request_options[["ssl_verifypeer"]]
+  host <- request_options[["ssl_verifyhost"]]
   verification <- (is.null(peer) ||
     identical(peer, TRUE) ||
     isTRUE(peer == 1)) &&
@@ -40,7 +40,7 @@ resolve_tls_policy <- function(
       !is.finite(value) ||
       value != floor(value) ||
       value < 0 ||
-      value > .Machine$integer.max
+      value > .Machine[["integer.max"]]
   ) {
     return(list(
       problem = "Supplied TLS version constraints cannot be resolved"
@@ -73,29 +73,29 @@ req_apply_tls_policy <- function(req) {
   local_minimum <- req[["shinyOAuth_tls_minimum"]]
   if (!is.null(local_minimum)) {
     checked <- resolve_tls_policy(minimum = local_minimum)
-    if (!is.null(checked$problem)) err_config(checked$problem)
+    if (!is.null(checked[["problem"]])) err_config(checked[["problem"]])
     minimum <- if (identical(minimum, "1.3") || identical(local_minimum, "1.3")) "1.3" else "1.2"
   }
-  policy <- resolve_tls_policy(minimum = minimum, request_options = req$options %||% list())
-  if (!is.null(policy$problem)) {
-    err_config(policy$problem)
+  policy <- resolve_tls_policy(minimum = minimum, request_options = req[["options"]] %||% list())
+  if (!is.null(policy[["problem"]])) {
+    err_config(policy[["problem"]])
   }
   if (
-    is.null(policy$minimum) || !grepl("^https://", req$url, ignore.case = TRUE)
+    is.null(policy[["minimum"]]) || !grepl("^https://", req[["url"]], ignore.case = TRUE)
   ) {
     return(req)
   }
   runtime <- curl::curl_version()
   # Older wolfSSL curl integrations interpreted minima as exact versions.
   if (
-    grepl("wolfSSL", runtime$ssl_version, ignore.case = TRUE) &&
-      utils::compareVersion(runtime$version, "8.10.0") < 0L
+    grepl("wolfSSL", runtime[["ssl_version"]], ignore.case = TRUE) &&
+      utils::compareVersion(runtime[["version"]], "8.10.0") < 0L
   ) {
     err_config(
       "Explicit TLS minima require libcurl 8.10.0 or later with wolfSSL"
     )
   }
-  httr2::req_options(req, sslversion = policy$sslversion)
+  httr2::req_options(req, sslversion = policy[["sslversion"]])
 }
 
 client_tls_minimum <- function(client = NULL) {
@@ -106,8 +106,8 @@ client_tls_minimum <- function(client = NULL) {
 
 configured_tls_minimum <- function() {
   policy <- resolve_tls_policy()
-  if (!is.null(policy$problem)) {
-    err_config(policy$problem)
+  if (!is.null(policy[["problem"]])) {
+    err_config(policy[["problem"]])
   }
-  policy$minimum
+  policy[["minimum"]]
 }

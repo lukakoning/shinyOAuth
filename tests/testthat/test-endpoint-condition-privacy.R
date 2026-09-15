@@ -107,11 +107,11 @@ test_that("token type and introspection client conditions bound exposed values",
       ),
       error = identity
     )
-    expect_identical(token_error$context$claim, "token_type")
-    expect_identical(introspection_error$context$claim, "client_id")
+    expect_identical(token_error[["context"]][["claim"]], "token_type")
+    expect_identical(introspection_error[["context"]][["claim"]], "client_id")
     for (error in list(token_error, introspection_error)) {
       expect_s3_class(error, "shinyOAuth_token_error")
-      expect_match(error$context$received_claim_digest, "^[a-f0-9]{64}$")
+      expect_match(error[["context"]][["received_claim_digest"]], "^[a-f0-9]{64}$")
       message <- conditionMessage(error)
       expect_lt(nchar(message, type = "bytes"), 1500)
       if (expose) {

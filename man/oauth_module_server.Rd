@@ -28,7 +28,7 @@ oauth_module_server(
 \item{client}{The app configuration created with \code{\link[=oauth_client]{oauth_client()}}.}
 
 \item{auto_redirect}{If \code{TRUE} (default), start login automatically for unauthenticated
-sessions. If \code{FALSE}, call \code{auth$request_login()} to start it.}
+sessions. If \code{FALSE}, call \code{auth[["request_login"]]()} to start it.}
 
 \item{async}{If \code{TRUE}, run the module's network work through a background
 backend. Configure mirai daemons or a non-sequential future plan first;
@@ -119,35 +119,35 @@ these broader cookie-sending rules.}
 A \code{\link[shiny:reactiveValues]{shiny::reactiveValues()}} object. If you assign it to \code{auth},
 its main fields are:
 \itemize{
-\item \code{auth$authenticated}: \code{TRUE} when a token is present and the configured
+\item \code{auth[["authenticated"]]}: \code{TRUE} when a token is present and the configured
 checks have passed, otherwise \code{FALSE}. With \code{indefinite_session = TRUE},
 the flag stays true while a token is kept, including after refresh errors.
-\item \code{auth$token}: an \link{OAuthToken}, or \code{NULL} before login or after clearing
-the session. Read properties with \code{@}, for example \code{auth$token@userinfo}.
+\item \code{auth[["token"]]}: an \link{OAuthToken}, or \code{NULL} before login or after clearing
+the session. Read properties with \code{@}, for example \code{auth[["token"]]@userinfo}.
 Additional token response parameters are available in
-\code{auth$token@extra_fields}; \code{auth$token@initial_extra_fields} preserves
+\code{auth[["token"]]@extra_fields}; \code{auth[["token"]]@initial_extra_fields} preserves
 the parameters from the initial code exchange across refreshes.
-\item \code{auth$error}, \code{auth$error_description}: the error code and available
+\item \code{auth[["error"]]}, \code{auth[["error_description"]]}: the error code and available
 diagnostic detail. Use your own user-facing message; these fields can
 include sensitive provider information.
-\item \code{auth$error_uri}: an optional provider help URL. Only absolute HTTPS
+\item \code{auth[["error_uri"]]}: an optional provider help URL. Only absolute HTTPS
 URLs on provider or explicitly allowed hosts are surfaced. Treat it as
 untrusted navigation input. \code{NULL} means the provider omitted the URL or
 supplied a value that did not pass validation.
-\item \code{auth$token_stale}: \code{TRUE} when an indefinite session keeps an expired
+\item \code{auth[["token_stale"]]}: \code{TRUE} when an indefinite session keeps an expired
 token or one whose refresh failed. Resets after successful login,
 refresh, or logout.
 }
 
 The object also supplies:
 \itemize{
-\item \code{auth$request_login()}: start login. Waits for browser setup when needed
+\item \code{auth[["request_login"]]()}: start login. Waits for browser setup when needed
 and does nothing if the session is already authenticated. Uses a browser
 form when the client selects \code{authorization_method = "POST"}; the app's
 Content Security Policy \code{form-action} must permit the provider endpoint.
-\item \code{auth$logout()}: clear the local login and attempt to revoke tokens when
+\item \code{auth[["logout"]]()}: clear the local login and attempt to revoke tokens when
 supported, following \code{async}. It does not sign out of the provider account.
-\item \code{auth$build_auth_url()}: advanced helper for a custom login link.
+\item \code{auth[["build_auth_url"]]()}: advanced helper for a custom login link.
 Rejects POST clients; use \code{request_login()} for their form submission.
 Creates pending login state as well as the URL, so retain the result for
 the link instead of rebuilding it on every UI update.
@@ -160,13 +160,13 @@ handles these details for button-based login.
 Inside \code{observeEvent()}, register the promise handler and then return
 \code{invisible(NULL)} so Shiny can process the browser acknowledgment. Do not
 return the pending promise from the observer itself.
-\item \code{auth$has_browser_token()}: reports whether the browser token is
+\item \code{auth[["has_browser_token"]]()}: reports whether the browser token is
 available. Use it before building a custom login URL; it does not report
 whether the user is authenticated.
-\item \code{auth$set_browser_token()}: asks the browser to establish its binding
+\item \code{auth[["set_browser_token"]]()}: asks the browser to establish its binding
 when missing. The token becomes available after the browser reports it
 back to Shiny. An existing token is left unchanged.
-\item \code{auth$clear_browser_token()}: clears the cookie, local record, and reactive value,
+\item \code{auth[["clear_browser_token"]]()}: clears the cookie, local record, and reactive value,
 for example when resetting browser setup in a custom integration.
 \code{request_login()} manages cookie setup automatically, and \code{logout()}
 handles cookie rotation when ending a session.
@@ -186,8 +186,8 @@ identity checks when configured for an OIDC provider.
 }
 \details{
 Login starts automatically by default. Use \code{auto_redirect = FALSE} and
-\code{auth$request_login()} to start it from a button. Read \code{auth$authenticated}
-in reactive code, and use \code{req(auth$authenticated)} before server operations
+\code{auth[["request_login"]]()} to start it from a button. Read \code{auth[["authenticated"]]}
+in reactive code, and use \code{req(auth[["authenticated"]])} before server operations
 that require login. Your app must also enforce its own access rules.
 
 See the \href{https://lukakoning.github.io/shinyOAuth/articles/usage.html}{usage vignette} for a complete app and
@@ -224,7 +224,7 @@ the tab that started it. Starting another login in the same tab and module
 replaces that tab's pending binding. Pending logins must be restarted after
 upgrading from versions that used local storage.
 Private browser-binding inputs are excluded from Shiny bookmarks. Do not
-copy \code{auth$browser_token} into custom bookmark values, URLs, or logs.
+copy \code{auth[["browser_token"]]} into custom bookmark values, URLs, or logs.
 Treat the entire hostname as a trust boundary: cookies are shared across
 ports, even with \verb{__Host-}, \code{Secure}, or \code{HttpOnly}. Use a dedicated hostname
 when other services are not trusted. The origin-scoped check prevents cookie
@@ -293,15 +293,15 @@ if (
       auto_redirect = TRUE
     )
 
-    output$login <- renderUI({
-      if (auth$authenticated) {
-        user_info <- auth$token@userinfo
+    output[["login"]] <- renderUI({
+      if (auth[["authenticated"]]) {
+        user_info <- auth[["token"]]@userinfo
         tagList(
-          tags$p("You are logged in!"),
-          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+          tags[["p"]]("You are logged in!"),
+          tags[["pre"]](paste(capture.output(str(user_info)), collapse = "\n"))
         )
       } else {
-        tags$p("You are not logged in.")
+        tags[["p"]]("You are not logged in.")
       }
     })
   }
@@ -334,22 +334,22 @@ if (
       auto_redirect = FALSE
     )
 
-    observeEvent(input$login_btn, {
-      auth$request_login()
+    observeEvent(input[["login_btn"]], {
+      auth[["request_login"]]()
     })
-    observeEvent(input$logout_btn, {
-      auth$logout()
+    observeEvent(input[["logout_btn"]], {
+      auth[["logout"]]()
     })
 
-    output$login <- renderUI({
-      if (auth$authenticated) {
-        user_info <- auth$token@userinfo
+    output[["login"]] <- renderUI({
+      if (auth[["authenticated"]]) {
+        user_info <- auth[["token"]]@userinfo
         tagList(
-          tags$p("You are logged in!"),
-          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+          tags[["p"]]("You are logged in!"),
+          tags[["pre"]](paste(capture.output(str(user_info)), collapse = "\n"))
         )
       } else {
-        tags$p("You are not logged in.")
+        tags[["p"]]("You are not logged in.")
       }
     })
   }
@@ -387,7 +387,7 @@ if (
     repository_error <- reactiveVal(FALSE)
 
     observe({
-      req(auth$authenticated)
+      req(auth[["authenticated"]])
 
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
@@ -395,7 +395,7 @@ if (
       repos_data <- tryCatch(
         {
           resp <- perform_resource_req(
-            auth$token,
+            auth[["token"]],
             "https://api.github.com/user/repos",
             query = list(per_page = 30)
           )
@@ -410,45 +410,45 @@ if (
     })
 
     # Render username + their repositories
-    output$ui <- renderUI({
-      if (isTRUE(auth$authenticated)) {
-        user_info <- auth$token@userinfo
+    output[["ui"]] <- renderUI({
+      if (isTRUE(auth[["authenticated"]])) {
+        user_info <- auth[["token"]]@userinfo
         repos <- repositories()
 
         return(tagList(
-          tags$p(paste("You are logged in as:", user_info$login)),
-          tags$h4("Your repositories:"),
+          tags[["p"]](paste("You are logged in as:", user_info[["login"]])),
+          tags[["h4"]]("Your repositories:"),
           if (repository_error()) {
-            tags$p("Could not load repositories.")
+            tags[["p"]]("Could not load repositories.")
           } else if (!is.null(repos) && length(repos) == 0) {
-            tags$p("No repositories returned.")
+            tags[["p"]]("No repositories returned.")
           } else if (!is.null(repos)) {
-            tags$ul(
+            tags[["ul"]](
               Map(
                 function(url, name) {
                   # Render names as text; accept only GitHub HTTPS links.
                   if (isTRUE(grepl("^https://github\\\\.com/", url))) {
-                    tags$li(tags$a(
+                    tags[["li"]](tags[["a"]](
                       href = url,
                       target = "_blank",
                       rel = "noopener noreferrer",
                       name
                     ))
                   } else {
-                    tags$li(name)
+                    tags[["li"]](name)
                   }
                 },
-                repos$html_url,
-                repos$full_name
+                repos[["html_url"]],
+                repos[["full_name"]]
               )
             )
           } else {
-            tags$p("Loading repositories...")
+            tags[["p"]]("Loading repositories...")
           }
         ))
       }
 
-      return(tags$p("You are not logged in."))
+      return(tags[["p"]]("You are not logged in."))
     })
   }
 

@@ -33,10 +33,10 @@ client <- oauth_client(
 ui <- fluidPage(
   h3("OAuth demo (Keycloak)"),
   uiOutput("oauth_error"),
-  tags$hr(),
+  tags[["hr"]](),
   h4("Auth object (summary)"),
   verbatimTextOutput("auth_print"),
-  tags$hr(),
+  tags[["hr"]](),
   h4("User info"),
   verbatimTextOutput("user_info")
 )
@@ -48,10 +48,10 @@ server <- function(input, output, session) {
   # Start OAuth flow via module and receive results
   auth <- oauth_module_server("auth", client)
 
-  output$auth_print <- renderText({
-    authenticated <- auth$authenticated
-    tok <- auth$token
-    err <- auth$error
+  output[["auth_print"]] <- renderText({
+    authenticated <- auth[["authenticated"]]
+    tok <- auth[["token"]]
+    err <- auth[["error"]]
 
     paste0(
       "Authenticated?",
@@ -77,31 +77,31 @@ server <- function(input, output, session) {
     )
   })
 
-  output$user_info <- renderPrint({
-    req(auth$token)
-    auth$token@userinfo
+  output[["user_info"]] <- renderPrint({
+    req(auth[["token"]])
+    auth[["token"]]@userinfo
   })
 
   observeEvent(
-    list(auth$error, auth$error_description),
+    list(auth[["error"]], auth[["error_description"]]),
     {
-      if (interactive() && !is.null(auth$error_description)) {
+      if (interactive() && !is.null(auth[["error_description"]])) {
         rlang::inform(c(
           "OAuth error details",
-          "i" = paste0("error: ", auth$error),
-          "i" = paste0("error_description: ", auth$error_description)
+          "i" = paste0("error: ", auth[["error"]]),
+          "i" = paste0("error_description: ", auth[["error_description"]])
         ))
       }
     },
     ignoreInit = TRUE
   )
 
-  output$oauth_error <- renderUI({
-    if (is.null(auth$error)) {
+  output[["oauth_error"]] <- renderUI({
+    if (is.null(auth[["error"]])) {
       return(NULL)
     }
 
-    msg <- if (identical(auth$error, "access_denied")) {
+    msg <- if (identical(auth[["error"]], "access_denied")) {
       "Sign-in was canceled or denied. Please try again."
     } else {
       "Authentication failed. Please try again."

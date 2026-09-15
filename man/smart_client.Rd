@@ -73,7 +73,7 @@ metadata must support the selected algorithm. Other styles omit assertions.}
 
 \item{identity}{\code{"none"} (default), \code{"openid"} for a validated OIDC subject, or
 \code{"fhirUser"} to also require the user's FHIR reference. \code{"openid"} does not
-interpret a \code{fhirUser} claim or populate \code{smart_context()$fhirUser}.
+interpret a \code{fhirUser} claim or populate \code{smart_context()[["fhirUser"]]}.
 A validated \code{fhirUser}
 claim may be an absolute URL or a supported resource instance reference
 relative to this client's FHIR base, such as \code{"Practitioner/example"} or
@@ -153,7 +153,7 @@ site <- smart_discover("https://ehr.example/fhir/R4")
 client <- smart_client(site, "registered-app", "https://app.example/callback",
   scopes = c("launch/patient", "patient/Patient.r"),
   required_scopes = "patient/Patient.r", token_auth_style = "public")
-client@smart$launch
+client@smart[["launch"]]
 }
 }
 \references{

@@ -147,7 +147,7 @@
 #' @param extra_auth_params Extra parameters for authorization URL
 #' @param extra_token_params Extra parameters for token exchange.
 #'   `scope` is reserved and cannot be unblocked. For explicit refresh scope
-#'   narrowing use a managed connection's `$refresh(scopes = ...)`. Configure
+#'   narrowing use a managed connection's `[["refresh"]](scopes = ...)`. Configure
 #'   login scopes on [oauth_client()] instead.
 #' @param extra_token_headers Extra headers for back-channel token-style
 #'   requests (named character vector), applied only to token exchange and
@@ -1108,7 +1108,7 @@ oauth_provider_validate <- function(self) {
     }
   }
 
-  query_problem <- authorization_query_resolution(self@auth_url)$problem
+  query_problem <- authorization_query_resolution(self@auth_url)[["problem"]]
   if (!is.null(query_problem)) {
     return(query_problem)
   }
@@ -1386,10 +1386,10 @@ oauth_provider_validate <- function(self) {
     }
   }
 
-  has_get <- !is.null(self@jwks_cache$get) &&
-    is.function(self@jwks_cache$get)
-  has_set <- !is.null(self@jwks_cache$set) &&
-    is.function(self@jwks_cache$set)
+  has_get <- !is.null(self@jwks_cache[["get"]]) &&
+    is.function(self@jwks_cache[["get"]])
+  has_set <- !is.null(self@jwks_cache[["set"]]) &&
+    is.function(self@jwks_cache[["set"]])
   if (!isTRUE(has_get && has_set)) {
     return(
       paste(
@@ -1398,7 +1398,7 @@ oauth_provider_validate <- function(self) {
       )
     )
   }
-  jget_formals <- try(formals(self@jwks_cache$get), silent = TRUE)
+  jget_formals <- try(formals(self@jwks_cache[["get"]]), silent = TRUE)
   jget_args <- if (!inherits(jget_formals, "try-error")) {
     names(jget_formals)
   } else {
@@ -1409,7 +1409,7 @@ oauth_provider_validate <- function(self) {
       "OAuthProvider: jwks_cache$get must accept argument 'missing' (expected signature get(key, missing = NULL))"
     )
   }
-  jset_formals <- try(formals(self@jwks_cache$set), silent = TRUE)
+  jset_formals <- try(formals(self@jwks_cache[["set"]]), silent = TRUE)
   jset_args <- if (!inherits(jset_formals, "try-error")) {
     names(jset_formals)
   } else {
@@ -1420,8 +1420,8 @@ oauth_provider_validate <- function(self) {
   ) {
     return("OAuthProvider: jwks_cache$set must accept (key, value)")
   }
-  if (!is.null(self@jwks_cache$remove) && is.function(self@jwks_cache$remove)) {
-    jrm_formals <- try(formals(self@jwks_cache$remove), silent = TRUE)
+  if (!is.null(self@jwks_cache[["remove"]]) && is.function(self@jwks_cache[["remove"]])) {
+    jrm_formals <- try(formals(self@jwks_cache[["remove"]]), silent = TRUE)
     jrm_args <- if (!inherits(jrm_formals, "try-error")) {
       names(jrm_formals)
     } else {
@@ -1434,10 +1434,10 @@ oauth_provider_validate <- function(self) {
     }
   }
   if (
-    !is.null(self@jwks_cache$set_if_absent) &&
-      is.function(self@jwks_cache$set_if_absent)
+    !is.null(self@jwks_cache[["set_if_absent"]]) &&
+      is.function(self@jwks_cache[["set_if_absent"]])
   ) {
-    jsia_formals <- try(formals(self@jwks_cache$set_if_absent), silent = TRUE)
+    jsia_formals <- try(formals(self@jwks_cache[["set_if_absent"]]), silent = TRUE)
     jsia_args <- if (!inherits(jsia_formals, "try-error")) {
       names(jsia_formals)
     } else {

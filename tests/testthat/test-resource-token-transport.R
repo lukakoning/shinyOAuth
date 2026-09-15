@@ -31,7 +31,7 @@ test_that("resource builders reject additional query token transport after shapi
     "managed",
     "https://api.example.com?token=business&Access_token=case-sensitive"
   )
-  expect_match(req$url, "token=business", fixed = TRUE)
+  expect_match(req[["url"]], "token=business", fixed = TRUE)
   err <- tryCatch(
     resource_req(
       "managed-credential",
@@ -85,7 +85,7 @@ test_that("JSON and unrelated form fields retain ordinary header authentication"
   testthat::local_mocked_bindings(
     req_perform = function(req, ...) {
       dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      expect_identical(dry$headers$authorization, "Bearer managed")
+      expect_identical(dry[["headers"]][["authorization"]], "Bearer managed")
       httr2::response(status = 200, body = charToRaw("ok"))
     },
     .package = "httr2"

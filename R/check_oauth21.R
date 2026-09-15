@@ -70,7 +70,7 @@
 #'   redirect_uri = "https://app.example/callback"
 #' )
 #' assessment <- check_oauth21(client)
-#' assessment$checks[assessment$checks$status != "pass", ]
+#' assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 #' @export
 check_oauth21 <- function(
   client,
@@ -165,11 +165,11 @@ check_oauth21 <- function(
   } else {
     NULL
   }
-  jarm <- has_client && response$mode %in% c("query.jwt", "form_post.jwt")
+  jarm <- has_client && response[["mode"]] %in% c("query.jwt", "form_post.jwt")
   oidc <- provider_uses_oidc(provider)
   validates_id <- isTRUE(provider@id_token_validation) ||
     isTRUE(provider@use_nonce) ||
-    !is.null(inspect_auth_max_age(provider@extra_auth_params)$value)
+    !is.null(inspect_auth_max_age(provider@extra_auth_params)[["value"]])
   par <- is_valid_string(provider@par_url) &&
     (isTRUE(provider@par_required) ||
       (has_client && client@request_object_mode != "request_uri"))
@@ -183,7 +183,7 @@ check_oauth21 <- function(
   if (has_client && isTRUE(client@introspect)) {
     operations <- c(operations, "introspection")
   }
-  operations <- unique(c(operations, context$operations))
+  operations <- unique(c(operations, context[["operations"]]))
   endpoints <- c(
     "token",
     intersect(c("par", "userinfo", "introspection", "revocation"), operations)
@@ -218,7 +218,7 @@ check_oauth21 <- function(
     auth_settings[[endpoint]] <- effective
     add(
       paste0("https.", endpoint),
-      status(oauth21_https(effective$url)),
+      status(oauth21_https(effective[["url"]])),
       paste(
         "The selected",
         endpoint,
@@ -227,10 +227,10 @@ check_oauth21 <- function(
       "Configure an HTTPS URL for the selected endpoint.",
       section = "1.5"
     )
-    if (effective$mtls) {
+    if (effective[["mtls"]]) {
       add(
         paste0("mtls.backend.", endpoint),
-        status(effective$mtls_backend),
+        status(effective[["mtls_backend"]]),
         "The active curl TLS backend must support the configured PEM mTLS credentials.",
         "Select the OpenSSL curl backend before loading curl on Windows, then restart R.",
         evidence = "runtime",
@@ -244,7 +244,7 @@ check_oauth21 <- function(
     auth_ok <- if (!has_client) {
       NA
     } else {
-      effective$credentials && is.null(effective$problem)
+      effective[["credentials"]] && is.null(effective[["problem"]])
     }
     add(
       paste0("client_auth.", endpoint),
@@ -259,15 +259,15 @@ check_oauth21 <- function(
     )
     add(
       paste0("client_auth.asymmetric.", endpoint),
-      if (effective$style == "public") {
+      if (effective[["style"]] == "public") {
         "not_applicable"
       } else if (!has_client) {
         "unknown"
-      } else if (!isTRUE(effective$confidential)) {
+      } else if (!isTRUE(effective[["confidential"]])) {
         "not_applicable"
       } else {
         status(
-          effective$style %in%
+          effective[["style"]] %in%
             c(
               "private_key_jwt",
               "tls_client_auth",
@@ -280,7 +280,7 @@ check_oauth21 <- function(
       requirement = "SHOULD",
       reference = "https://www.rfc-editor.org/rfc/rfc9700.html#section-2.5"
     )
-    jwt <- effective$style %in% c("client_secret_jwt", "private_key_jwt")
+    jwt <- effective[["style"]] %in% c("client_secret_jwt", "private_key_jwt")
     audience_ok <- if (!jwt) {
       TRUE
     } else if (!has_client || !is_valid_string(provider@issuer)) {
@@ -289,8 +289,8 @@ check_oauth21 <- function(
       identical(
         resolve_client_assertion_audience_url(
           provider,
-          effective$url,
-          effective$audience
+          effective[["url"]],
+          effective[["audience"]]
         ),
         provider@issuer
       )
@@ -309,7 +309,7 @@ check_oauth21 <- function(
       } else if (!has_client) {
         "unknown"
       } else {
-        status(identical(effective$typ, "client-authentication+jwt"))
+        status(identical(effective[["typ"]], "client-authentication+jwt"))
       },
       "Explicit client-authentication+jwt typing is recommended; legacy JWT typing remains supported.",
       "Select client_assertion_typ = 'client-authentication+jwt' when supported by the server.",
@@ -330,13 +330,13 @@ check_oauth21 <- function(
   }
   tls <- resolve_tls_policy()
   runtime <- curl::curl_version()
-  old_wolf <- grepl("wolfSSL", runtime$ssl_version, ignore.case = TRUE) &&
-    utils::compareVersion(runtime$version, "8.10.0") < 0L
-  tls_ok <- if (!is.null(tls$problem) || (!is.null(tls$minimum) && old_wolf)) {
+  old_wolf <- grepl("wolfSSL", runtime[["ssl_version"]], ignore.case = TRUE) &&
+    utils::compareVersion(runtime[["version"]], "8.10.0") < 0L
+  tls_ok <- if (!is.null(tls[["problem"]]) || (!is.null(tls[["minimum"]]) && old_wolf)) {
     FALSE
   } else if (
-    !is.null(tls$minimum) ||
-      utils::compareVersion(runtime$version, "8.16.0") >= 0L
+    !is.null(tls[["minimum"]]) ||
+      utils::compareVersion(runtime[["version"]], "8.16.0") >= 0L
   ) {
     TRUE
   } else {
@@ -348,7 +348,7 @@ check_oauth21 <- function(
     "A configured minimum of TLS 1.2 or later, or a known suitable libcurl default, is required by this ruleset.",
     "Select shinyOAuth.tls_min_version = '1.2' or '1.3' on a supporting TLS backend.",
     reference = "https://www.rfc-editor.org/rfc/rfc9325.html#section-3.1.1",
-    evidence = if (is.null(tls$minimum)) {
+    evidence = if (is.null(tls[["minimum"]])) {
       "runtime_default"
     } else {
       "configuration_and_runtime"
@@ -369,7 +369,7 @@ check_oauth21 <- function(
 
   pkce <- isTRUE(provider@use_pkce)
   s256 <- pkce && identical(normalize_pkce_method(provider@pkce_method), "S256")
-  confidential <- has_client && isTRUE(auth_settings$token$confidential)
+  confidential <- has_client && isTRUE(auth_settings[["token"]][["confidential"]])
   exception_local <- confidential &&
     oidc &&
     isTRUE(provider@use_nonce) &&
@@ -381,7 +381,7 @@ check_oauth21 <- function(
   } else if (!exception_local) {
     FALSE
   } else {
-    context$nonce_exception %||% NA
+    context[["nonce_exception"]] %||% NA
   }
   add(
     "pkce.method",
@@ -449,7 +449,7 @@ check_oauth21 <- function(
       (isTRUE(provider@userinfo_required) && validates_id && !skip_signature)
     if (
       !isTRUE(provider@userinfo_id_token_match) &&
-        "userinfo" %in% context$operations &&
+        "userinfo" %in% context[["operations"]] &&
         !isFALSE(validates_id && !skip_signature)
     ) {
       userinfo_subject_ok <- NA
@@ -487,8 +487,8 @@ check_oauth21 <- function(
     add(
       "parameters.token",
       status(
-        is.null(token_params$problem) &&
-          identical(token_params$params$redirect_uri, client@redirect_uri)
+        is.null(token_params[["problem"]]) &&
+          identical(token_params[["params"]][["redirect_uri"]], client@redirect_uri)
       ),
       "Token parameter overrides must preserve the code transaction and its redirect URI.",
       "Keep transaction parameters managed and retain the registered redirect URI.",
@@ -496,14 +496,14 @@ check_oauth21 <- function(
     )
     add(
       "parameters.authorization",
-      query$status,
+      query[["status"]],
       "Known authorization fields use the shared singleton composition rules; dynamic transaction fields cannot be precomputed.",
       "Remove conflicting fixed managed fields and keep transaction values package-managed.",
       section = "4.1.1"
     )
     add(
       "redirect.uri",
-      status(oauth21_redirect_ok(query$redirect_uri)),
+      status(oauth21_redirect_ok(query[["redirect_uri"]])),
       "The selected callback URI must be absolute HTTPS or an HTTP loopback URI without a fragment or credentials.",
       "Configure the intended HTTPS callback URI or a supported loopback redirect.",
       section = "2.3"
@@ -542,7 +542,7 @@ check_oauth21 <- function(
       requirement = "SHOULD"
     )
     redirect_host <- tolower(
-      oauth21_url_parts(client@redirect_uri)$hostname %||% ""
+      oauth21_url_parts(client@redirect_uri)[["hostname"]] %||% ""
     )
     add(
       "redirect.loopback_literal",
@@ -579,7 +579,7 @@ check_oauth21 <- function(
       section = "2.3.3"
     )
     atomic <- inherits(client@state_store, "cache_mem") ||
-      is.function(client@state_store$take)
+      is.function(client@state_store[["take"]])
     add(
       "state.consume",
       status(atomic),
@@ -591,7 +591,7 @@ check_oauth21 <- function(
     query <- authorization_query_resolution(provider@auth_url)
     add(
       "parameters.authorization",
-      if (is.null(query$problem)) "unknown" else "fail",
+      if (is.null(query[["problem"]])) "unknown" else "fail",
       "Provider query syntax is inspectable; generated client fields are absent.",
       "Assess a client to resolve managed authorization fields.",
       section = "4.1.1"
@@ -763,24 +763,24 @@ check_oauth21 <- function(
 
 #' @export
 print.shinyOAuth_oauth21_assessment <- function(x, ...) {
-  verdict <- if (is.na(x$configuration_compliant)) {
+  verdict <- if (is.na(x[["configuration_compliant"]])) {
     "Mandatory configuration checks are unresolved"
-  } else if (x$configuration_compliant) {
+  } else if (x[["configuration_compliant"]]) {
     "Mandatory configuration checks passed"
   } else {
     "Mandatory configuration checks failed"
   }
   cat(verdict, "\n", sep = "")
-  cat(x$draft, "; ruleset ", x$ruleset_version, "\n", sep = "")
-  cat("Scope: ", x$assessment_scope, "\n", sep = "")
+  cat(x[["draft"]], "; ruleset ", x[["ruleset_version"]], "\n", sep = "")
+  cat("Scope: ", x[["assessment_scope"]], "\n", sep = "")
   cat(
     "Unmet recommendations: ",
-    sum(x$checks$requirement == "SHOULD" & x$checks$status == "fail"),
+    sum(x[["checks"]][["requirement"]] == "SHOULD" & x[["checks"]][["status"]] == "fail"),
     "; unknown external/request checks: ",
     sum(
-      x$checks$scope %in%
+      x[["checks"]][["scope"]] %in%
         c("external", "request") &
-        x$checks$status == "unknown"
+        x[["checks"]][["status"]] == "unknown"
     ),
     "\n",
     sep = ""

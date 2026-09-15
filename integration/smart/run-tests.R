@@ -37,9 +37,9 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
       error_on_status = FALSE,
       timeout = 600000
     )
-    if (check && result$status != 0L) {
+    if (check && result[["status"]] != 0L) {
       stop(paste(
-        c("Docker command failed:", result$stderr, result$stdout),
+        c("Docker command failed:", result[["stderr"]], result[["stdout"]]),
         collapse = "\n"
       ))
     }
@@ -49,7 +49,7 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
     docker(c("compose", "-f", compose_file, "-p", project, args), check = check)
   }
   docker_version <- trimws(
-    docker(c("info", "--format", "{{.ServerVersion}}"))$stdout
+    docker(c("info", "--format", "{{.ServerVersion}}"))[["stdout"]]
   )
   compose(c("config", "--quiet"))
   if (!existing) {
@@ -60,8 +60,8 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
           c("down", "--volumes", "--timeout", "10"),
           check = FALSE
         )
-        if (cleanup$status != 0L) {
-          warning("Sandbox cleanup failed: ", cleanup$stderr)
+        if (cleanup[["status"]] != 0L) {
+          warning("Sandbox cleanup failed: ", cleanup[["stderr"]])
         }
       },
       add = TRUE
@@ -76,9 +76,9 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
 
   urls <- smart_sandbox_urls()
   ready_urls <- c(
-    paste0(urls$raw_fhir, "/metadata"),
-    paste0(urls$fhir, "/.well-known/smart-configuration"),
-    urls$picker
+    paste0(urls[["raw_fhir"]], "/metadata"),
+    paste0(urls[["fhir"]], "/.well-known/smart-configuration"),
+    urls[["picker"]]
   )
   deadline <- Sys.time() + 300
   message("Waiting for FHIR R4, SMART discovery and the patient picker")
@@ -108,19 +108,19 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
   # Record only image identity and public server metadata, never token responses
   # or patient resources. Check the running images against the pinned config.
   services <- jsonlite::fromJSON(
-    compose(c("config", "--format", "json"))$stdout
-  )$services
+    compose(c("config", "--format", "json"))[["stdout"]]
+  )[["services"]]
   images <- lapply(names(services), function(service) {
-    image <- services[[service]]$image
-    container <- trimws(compose(c("ps", "-q", service))$stdout)
+    image <- services[[service]][["image"]]
+    container <- trimws(compose(c("ps", "-q", service))[["stdout"]])
     if (!nzchar(container)) {
       stop("Missing sandbox service: ", service)
     }
     actual <- trimws(
-      docker(c("inspect", "--format", "{{.Image}}", container))$stdout
+      docker(c("inspect", "--format", "{{.Image}}", container))[["stdout"]]
     )
     expected <- trimws(
-      docker(c("image", "inspect", "--format", "{{.Id}}", image))$stdout
+      docker(c("image", "inspect", "--format", "{{.Id}}", image))[["stdout"]]
     )
     if (!identical(actual, expected)) {
       stop("Running image differs from the pin: ", service)
@@ -128,18 +128,18 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
     list(service = service, reference = image, image_id = actual)
   })
   discovery <- smart_sandbox_json(paste0(
-    urls$fhir,
+    urls[["fhir"]],
     "/.well-known/smart-configuration"
   ))
   discovery_probe <- tryCatch(
-    shinyOAuth::smart_discover(urls$fhir, allow_http_loopback = TRUE),
+    shinyOAuth::smart_discover(urls[["fhir"]], allow_http_loopback = TRUE),
     error = identity
   )
   discovery_accepted <- !inherits(discovery_probe, "error")
-  fhir <- smart_sandbox_json(paste0(urls$raw_fhir, "/metadata"))
+  fhir <- smart_sandbox_json(paste0(urls[["raw_fhir"]], "/metadata"))
   launcher_version <- jsonlite::fromJSON(
-    compose(c("exec", "-T", "launcher", "cat", "package.json"))$stdout
-  )$version
+    compose(c("exec", "-T", "launcher", "cat", "package.json"))[["stdout"]]
+  )[["version"]]
   artifact_dir <- file.path("integration/smart/.artifacts", project)
   dir.create(artifact_dir, recursive = TRUE, showWarnings = FALSE)
   evidence <- list(
@@ -162,8 +162,8 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
     project = project,
     images = images,
     smart_metadata = discovery,
-    fhir_version = fhir$fhirVersion,
-    fhir_software = fhir$software,
+    fhir_version = fhir[["fhirVersion"]],
+    fhir_software = fhir[["software"]],
     status = "started"
   )
   report <- file.path(artifact_dir, "evidence.json")
@@ -192,13 +192,13 @@ run_smart_sandbox <- function(args = commandArgs(trailingOnly = TRUE)) {
   )])
   passed <- all(totals[c("failed", "error", "skipped")] == 0) &&
     totals[["passed"]] > 0
-  evidence$status <- if (passed) "passed" else "failed"
-  evidence$discovery_release_gate <- if (passed && discovery_accepted) {
+  evidence[["status"]] <- if (passed) "passed" else "failed"
+  evidence[["discovery_release_gate"]] <- if (passed && discovery_accepted) {
     "passed"
   } else {
     "not_met"
   }
-  evidence$tests <- as.list(totals)
+  evidence[["tests"]] <- as.list(totals)
   jsonlite::write_json(
     evidence,
     report,

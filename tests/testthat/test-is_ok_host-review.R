@@ -57,7 +57,7 @@ test_that("Unicode hosts survive valid UTF-8 bytes marked unknown", {
 })
 
 test_that("Unicode host parsing survives Windows non-UTF locales", {
-  skip_if(.Platform$OS.type != "windows")
+  skip_if(.Platform[["OS.type"]] != "windows")
 
   old_locale <- Sys.getlocale("LC_CTYPE")
   on.exit(

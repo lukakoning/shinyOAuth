@@ -60,22 +60,22 @@ ui <- oauth_ui(fluidPage(
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
 
-  tracks <- eventReactive(input$load, {
-    req(auth$authenticated)
+  tracks <- eventReactive(input[["load"]], {
+    req(auth[["authenticated"]])
     tryCatch({
       response <- perform_resource_req(
-        auth$token,
+        auth[["token"]],
         "https://api.spotify.com/v1/me/top/tracks",
         query = list(limit = 10, time_range = "short_term")
       )
       httr2::resp_check_status(response)
       body <- httr2::resp_body_json(response, simplifyVector = FALSE)
-      vapply(body$items, function(track) track$name, character(1))
+      vapply(body[["items"]], function(track) track[["name"]], character(1))
     }, error = function(e) NULL)
   })
 
-  output$tracks <- renderTable({
-    req(auth$authenticated)
+  output[["tracks"]] <- renderTable({
+    req(auth[["authenticated"]])
     values <- tracks()
     validate(need(!is.null(values), "Could not load tracks. Try again later."))
     validate(need(length(values) > 0, "No listening data to show yet."))

@@ -6,7 +6,7 @@
 ## - UserInfo subject binding against validated ID tokens
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 make_protocol_confidential_client <- function(
@@ -33,23 +33,23 @@ protocol_login_via_module <- function(client, username = "alice") {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form_as(
         auth_url,
         username = username,
         password = username,
         redirect_uri = client@redirect_uri
       )
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       result <<- list(
         auth_url = auth_url,
         login = login,
-        authenticated = isTRUE(values$authenticated),
-        error = values$error,
-        error_description = values$error_description,
-        token = values$token
+        authenticated = isTRUE(values[["authenticated"]]),
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        token = values[["token"]]
       )
     }
   )
@@ -117,7 +117,7 @@ testthat::test_that("OIDC max_age requests produce and validate auth_time", {
   testthat::expect_true(isTRUE(result[["token"]]@id_token_validated))
 
   id_payload <- shinyOAuth:::parse_jwt_payload(result[["token"]]@id_token)
-  auth_time <- suppressWarnings(as.numeric(id_payload$auth_time))
+  auth_time <- suppressWarnings(as.numeric(id_payload[["auth_time"]]))
 
   testthat::expect_true(is.finite(auth_time))
   testthat::expect_lte(abs(as.numeric(Sys.time()) - auth_time), 120)
@@ -148,11 +148,11 @@ testthat::test_that("Keycloak introspection validates sub client_id and scope", 
     result[["token"]],
     which = "access"
   )
-  raw <- intros$raw %||% list()
+  raw <- intros[["raw"]] %||% list()
   intro_scopes <- strsplit(raw[["scope"]] %||% "", "\\s+")[[1]]
 
-  testthat::expect_true(isTRUE(intros$supported))
-  testthat::expect_true(isTRUE(intros$active))
+  testthat::expect_true(isTRUE(intros[["supported"]]))
+  testthat::expect_true(isTRUE(intros[["active"]]))
   testthat::expect_identical(raw[["client_id"]], client@client_id)
   testthat::expect_identical(raw[["sub"]], result[["token"]]@userinfo[["sub"]])
   testthat::expect_true(all(c("openid", "profile", "email") %in% intro_scopes))
@@ -173,7 +173,7 @@ testthat::test_that("introspection client_id mix-up is rejected for a live token
     result[["token"]],
     which = "access"
   )
-  testthat::expect_true(isTRUE(intros$active))
+  testthat::expect_true(isTRUE(intros[["active"]]))
 
   wrong_client <- make_protocol_confidential_client(
     prov,
@@ -205,21 +205,21 @@ testthat::test_that("UserInfo subject substitution is rejected across real users
   alice <- protocol_login_via_module(client, username = "alice")
   bob <- protocol_login_via_module(client, username = "bob")
 
-  testthat::expect_true(isTRUE(alice$authenticated))
-  testthat::expect_true(isTRUE(bob$authenticated))
-  testthat::expect_true(isTRUE(alice$token@id_token_validated))
-  testthat::expect_true(isTRUE(bob$token@id_token_validated))
+  testthat::expect_true(isTRUE(alice[["authenticated"]]))
+  testthat::expect_true(isTRUE(bob[["authenticated"]]))
+  testthat::expect_true(isTRUE(alice[["token"]]@id_token_validated))
+  testthat::expect_true(isTRUE(bob[["token"]]@id_token_validated))
   testthat::expect_false(identical(
-    alice$token@userinfo[["sub"]],
-    bob$token@userinfo[["sub"]]
+    alice[["token"]]@userinfo[["sub"]],
+    bob[["token"]]@userinfo[["sub"]]
   ))
 
   testthat::expect_error(
     shinyOAuth:::enforce_userinfo_id_token_subject_match(
       oauth_client = client,
-      userinfo = bob$token@userinfo,
+      userinfo = bob[["token"]]@userinfo,
       token_set = list(
-        id_token = alice$token@id_token,
+        id_token = alice[["token"]]@id_token,
         .id_token_validated = TRUE
       )
     ),

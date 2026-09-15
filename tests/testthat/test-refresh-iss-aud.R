@@ -122,7 +122,7 @@ test_that("successive refreshes retain login continuity after omitted claims", {
     cli <- make_refresh_client()
     token <- make_existing_refresh_token(original_jwt)
     refresh_with <- function(claims, token, use_async = async) {
-      claims$iat <- as.numeric(Sys.time())
+      claims[["iat"]] <- as.numeric(Sys.time())
       mock_refresh_response(make_fake_jwt(claims), function() {
         resolve(refresh_token(
           cli,
@@ -133,16 +133,16 @@ test_that("successive refreshes retain login continuity after omitted claims", {
       })
     }
     omitted <- original
-    omitted$nonce <- omitted$auth_time <- NULL
+    omitted[["nonce"]] <- omitted[["auth_time"]] <- NULL
     first <- refresh_with(omitted, token)
-    expect_null(first@id_token_claims$nonce)
-    expect_null(first@id_token_claims$auth_time)
+    expect_null(first@id_token_claims[["nonce"]])
+    expect_null(first@id_token_claims[["auth_time"]])
     expect_identical(first@original_id_token, original_jwt)
     # A worker/process round trip must retain the original baseline.
     first <- unserialize(serialize(first, NULL))
     second <- refresh_with(original, first)
     expect_identical(second@original_id_token, original_jwt)
-    expect_identical(second@id_token_claims$nonce, "login-nonce")
+    expect_identical(second@id_token_claims[["nonce"]], "login-nonce")
     for (claim in c("nonce", "auth_time")) {
       changed <- original
       changed[[claim]] <- if (claim == "nonce") "different-nonce" else now - 10
@@ -161,7 +161,7 @@ test_that("successive refreshes retain login continuity after omitted claims", {
 test_that("signed refresh nonce distinguishes omission from null and malformed values", {
   client <- make_refresh_client()
   key <- openssl::rsa_keygen()
-  jwk <- jsonlite::fromJSON(write_test_jwk(key$pubkey), simplifyVector = FALSE)
+  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]), simplifyVector = FALSE)
   local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)))
   now <- floor(as.numeric(Sys.time()))
   sign <- function(nonce, include = TRUE) {
@@ -209,21 +209,21 @@ test_that("refresh requires a newly issued ID token with clock tolerance", {
       )
     })
     fresh <- original
-    fresh$iat <- now
+    fresh[["iat"]] <- now
     mock_refresh_response(make_fake_jwt(fresh), function() {
       expect_no_error(refresh_token(cli, token))
     })
   }
   for (skew in c(0, 30)) {
     fresh <- original
-    fresh$iat <- now - skew
+    fresh[["iat"]] <- now - skew
     expect_no_error(shinyOAuth:::compare_refresh_id_token_continuity(
       fresh,
       original,
       request_started_at = now + 0.9,
       leeway = skew
     ))
-    fresh$iat <- now - skew - 1
+    fresh[["iat"]] <- now - skew - 1
     expect_error(
       shinyOAuth:::compare_refresh_id_token_continuity(
         fresh,

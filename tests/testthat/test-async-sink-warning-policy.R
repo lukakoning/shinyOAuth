@@ -40,12 +40,12 @@ test_that("captured sink warnings cannot reject successful async results", {
     )
   }
   result <- replay(wrapped)
-  expect_identical(result$value, "successful result")
-  expect_identical(result$warn, 2L)
+  expect_identical(result[["value"]], "successful result")
+  expect_identical(result[["warn"]], 2L)
 
-  wrapped$warnings <- list(simpleWarning("business warning"))
+  wrapped[["warnings"]] <- list(simpleWarning("business warning"))
   result <- replay(wrapped)
-  expect_s3_class(result$value, "error")
-  expect_match(conditionMessage(result$value), "business warning")
-  expect_identical(result$warn, 2L)
+  expect_s3_class(result[["value"]], "error")
+  expect_match(conditionMessage(result[["value"]]), "business warning")
+  expect_identical(result[["warn"]], 2L)
 })

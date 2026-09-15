@@ -17,7 +17,7 @@ test_that("authorization names are omitted from real spans unless explicitly ena
     record <- otelsdk::with_otel_record({
       prepare_call(client, valid_browser_token())
     })
-    attrs <- record$traces[["shinyOAuth.login.request"]]$attributes
+    attrs <- record[["traces"]][["shinyOAuth.login.request"]][["attributes"]]
     expect_identical(as.integer(attrs[["oauth.scopes.requested_count"]]), 2L)
     expect_identical(as.integer(attrs[["oauth.claims.targets_count"]]), 1L)
     expect_identical(as.integer(attrs[["oauth.required_acr_values_count"]]), 1L)
@@ -35,10 +35,10 @@ test_that("authorization names are omitted from real spans unless explicitly ena
       expect_null(attrs[["oauth.scopes.requested"]])
       expect_null(attrs[["oauth.claims.targets"]])
       expect_null(attrs[["oauth.required_acr_values"]])
-      for (span in record$traces) {
+      for (span in record[["traces"]]) {
         expect_false(any(grepl(
           "tenant-health-read|urn:finance:stepup",
-          unlist(span$attributes)
+          unlist(span[["attributes"]])
         )))
       }
     }
@@ -48,7 +48,7 @@ test_that("authorization names are omitted from real spans unless explicitly ena
 test_that("worker telemetry gates reset stale authorization-detail opt-ins", {
   withr::local_options(shinyOAuth.otel_include_authorization_details = NULL)
   gates <- capture_async_otel_option_gates()
-  expect_identical(gates$shinyOAuth.otel_include_authorization_details, FALSE)
+  expect_identical(gates[["shinyOAuth.otel_include_authorization_details"]], FALSE)
   withr::with_options(
     list(shinyOAuth.otel_include_authorization_details = TRUE),
     {
@@ -60,7 +60,7 @@ test_that("worker telemetry gates reset stale authorization-detail opt-ins", {
         otel_claim_target_count(list(private_target = list())),
         1L
       )
-      restore_async_otel_option_gates(previous$old_options)
+      restore_async_otel_option_gates(previous[["old_options"]])
       expect_identical(otel_scope_string("private-scope"), "private-scope")
     }
   )

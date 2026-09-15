@@ -10,7 +10,7 @@
 
 # Shared helpers (auto-sourced by testthat::test_dir; explicit for standalone use)
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("Concurrent flows: multiple auth URLs have independent state entries", {
@@ -25,9 +25,9 @@ testthat::test_that("Concurrent flows: multiple auth URLs have independent state
     args = default_module_args(client),
     expr = {
       # Build three auth URLs (three independent state entries)
-      url1 <- values$build_auth_url()
-      url2 <- values$build_auth_url()
-      url3 <- values$build_auth_url()
+      url1 <- values[["build_auth_url"]]()
+      url2 <- values[["build_auth_url"]]()
+      url3 <- values[["build_auth_url"]]()
 
       # Verify all three states are different
       s1 <- parse_query_param(url1, "state")
@@ -41,34 +41,34 @@ testthat::test_that("Concurrent flows: multiple auth URLs have independent state
       si1 <- get_state_info(client, url1)
       si2 <- get_state_info(client, url2)
       si3 <- get_state_info(client, url3)
-      testthat::expect_false(identical(si1$key, si2$key))
-      testthat::expect_false(identical(si2$key, si3$key))
+      testthat::expect_false(identical(si1[["key"]], si2[["key"]]))
+      testthat::expect_false(identical(si2[["key"]], si3[["key"]]))
 
       # Each entry has unique PKCE verifier and nonce
-      e1 <- client@state_store$get(si1$key, missing = NULL)
-      e2 <- client@state_store$get(si2$key, missing = NULL)
-      e3 <- client@state_store$get(si3$key, missing = NULL)
+      e1 <- client@state_store[["get"]](si1[["key"]], missing = NULL)
+      e2 <- client@state_store[["get"]](si2[["key"]], missing = NULL)
+      e3 <- client@state_store[["get"]](si3[["key"]], missing = NULL)
       testthat::expect_false(identical(
-        e1$pkce_code_verifier,
-        e2$pkce_code_verifier
+        e1[["pkce_code_verifier"]],
+        e2[["pkce_code_verifier"]]
       ))
-      testthat::expect_false(identical(e1$nonce, e2$nonce))
+      testthat::expect_false(identical(e1[["nonce"]], e2[["nonce"]]))
 
       # Process the LAST one (Keycloak SSO session means already-used codes
       # from the same session get invalidated, so we only process one)
       res3 <- perform_login_form(url3)
-      values$.process_query(callback_query(res3))
-      session$flushReact()
-      testthat::expect_true(isTRUE(values$authenticated))
+      values[[".process_query"]](callback_query(res3))
+      session[["flushReact"]]()
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
 
       # The consumed state entry (flow 3) is removed from the store
-      consumed <- client@state_store$get(si3$key, missing = NULL)
+      consumed <- client@state_store[["get"]](si3[["key"]], missing = NULL)
       testthat::expect_null(consumed)
 
       # But flows 1 and 2's state store entries are still intact
       # (they were never consumed)
-      still1 <- client@state_store$get(si1$key, missing = NULL)
-      still2 <- client@state_store$get(si2$key, missing = NULL)
+      still1 <- client@state_store[["get"]](si1[["key"]], missing = NULL)
+      still2 <- client@state_store[["get"]](si2[["key"]], missing = NULL)
       testthat::expect_true(is.list(still1))
       testthat::expect_true(is.list(still2))
     }
@@ -93,7 +93,7 @@ testthat::test_that("Concurrent flows: parallel sessions with same client config
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_1),
     expr = {
-      url_1 <<- values$build_auth_url()
+      url_1 <<- values[["build_auth_url"]]()
       res_1 <<- perform_login_form(url_1)
     }
   )
@@ -106,7 +106,7 @@ testthat::test_that("Concurrent flows: parallel sessions with same client config
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_2),
     expr = {
-      url_2 <<- values$build_auth_url()
+      url_2 <<- values[["build_auth_url"]]()
       res_2 <<- perform_login_form(url_2)
     }
   )
@@ -119,11 +119,11 @@ testthat::test_that("Concurrent flows: parallel sessions with same client config
     expr = {
       # Re-build URL to populate internal state (since testServer is stateless)
       # Actually, the state was already stored in client_1's state_store,
-      # and the sealed payload is in res_1$state_payload, so we can process directly
-      values$.process_query(callback_query(res_1))
-      session$flushReact()
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
+      # and the sealed payload is in res_1[["state_payload"]], so we can process directly
+      values[[".process_query"]](callback_query(res_1))
+      session[["flushReact"]]()
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
     }
   )
 
@@ -132,10 +132,10 @@ testthat::test_that("Concurrent flows: parallel sessions with same client config
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_2),
     expr = {
-      values$.process_query(callback_query(res_2))
-      session$flushReact()
-      testthat::expect_true(isTRUE(values$authenticated))
-      testthat::expect_null(values$error)
+      values[[".process_query"]](callback_query(res_2))
+      session[["flushReact"]]()
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
+      testthat::expect_null(values[["error"]])
     }
   )
 })
@@ -157,7 +157,7 @@ testthat::test_that("Concurrent flows: alice and bob login simultaneously withou
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_alice),
     expr = {
-      url_a <- values$build_auth_url()
+      url_a <- values[["build_auth_url"]]()
       res_alice <<- perform_login_form_as(url_a, "alice", "alice")
     }
   )
@@ -166,7 +166,7 @@ testthat::test_that("Concurrent flows: alice and bob login simultaneously withou
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_bob),
     expr = {
-      url_b <- values$build_auth_url()
+      url_b <- values[["build_auth_url"]]()
       res_bob <<- perform_login_form_as(url_b, "bob", "bob")
     }
   )
@@ -176,11 +176,11 @@ testthat::test_that("Concurrent flows: alice and bob login simultaneously withou
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_alice),
     expr = {
-      values$.process_query(callback_query(res_alice))
-      session$flushReact()
-      testthat::expect_true(isTRUE(values$authenticated))
+      values[[".process_query"]](callback_query(res_alice))
+      session[["flushReact"]]()
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
       testthat::expect_identical(
-        values$token@userinfo[["preferred_username"]],
+        values[["token"]]@userinfo[["preferred_username"]],
         "alice"
       )
     }
@@ -191,11 +191,11 @@ testthat::test_that("Concurrent flows: alice and bob login simultaneously withou
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_bob),
     expr = {
-      values$.process_query(callback_query(res_bob))
-      session$flushReact()
-      testthat::expect_true(isTRUE(values$authenticated))
+      values[[".process_query"]](callback_query(res_bob))
+      session[["flushReact"]]()
+      testthat::expect_true(isTRUE(values[["authenticated"]]))
       testthat::expect_identical(
-        values$token@userinfo[["preferred_username"]],
+        values[["token"]]@userinfo[["preferred_username"]],
         "bob"
       )
     }
@@ -216,7 +216,7 @@ testthat::test_that("Concurrent flows: swapped callbacks fail (alice's code in b
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client_alice),
     expr = {
-      url_a <- values$build_auth_url()
+      url_a <- values[["build_auth_url"]]()
       res_alice <<- perform_login_form_as(url_a, "alice", "alice")
     }
   )
@@ -227,10 +227,10 @@ testthat::test_that("Concurrent flows: swapped callbacks fail (alice's code in b
     args = default_module_args(client_bob),
     expr = {
       # Alice's state is in client_alice's store, not client_bob's
-      values$.process_query(callback_query(res_alice))
-      session$flushReact()
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_true(!is.null(values$error))
+      values[[".process_query"]](callback_query(res_alice))
+      session[["flushReact"]]()
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_true(!is.null(values[["error"]]))
     }
   )
 })

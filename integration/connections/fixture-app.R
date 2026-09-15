@@ -109,13 +109,13 @@ retention_fixture_app <- function(
     }
     id_for <- function(site) {
       rows <- Filter(
-        function(row) identical(row$client_label, paste("Site", site)),
-        health$connections()
+        function(row) identical(row[["client_label"]], paste("Site", site)),
+        health[["connections"]]()
       )
       if (!length(rows)) {
         stop("Connection is unavailable")
       }
-      rows[[1L]]$connection_id
+      rows[[1L]][["connection_id"]]
     }
     perform <- function(action) {
       tryCatch(
@@ -139,30 +139,30 @@ retention_fixture_app <- function(
         selected <- site
         shiny::observeEvent(
           input[[paste0("connect_", selected)]],
-          health$connect(selected)
+          health[["connect"]](selected)
         )
         shiny::observeEvent(
           input[[paste0("read_", selected)]],
           perform(function() {
-            response <- health$connection(id_for(selected))$request(
+            response <- health[["connection"]](id_for(selected))[["request"]](
               "api",
               "records"
             )
             body <- httr2::resp_body_json(response)
-            paste0(body$site, ":", body$revision)
+            paste0(body[["site"]], ":", body[["revision"]])
           })
         )
         shiny::observeEvent(
           input[[paste0("refresh_", selected)]],
           perform(function() {
-            value <- health$connection(id_for(selected))$refresh()
+            value <- health[["connection"]](id_for(selected))[["refresh"]]()
             if (inherits(value, "promise")) value else "refreshed"
           })
         )
         shiny::observeEvent(input[[paste0("write_", selected)]], perform(function() {
-          response <- health$connection(id_for(selected))$request("api", "records",
+          response <- health[["connection"]](id_for(selected))[["request"]]("api", "records",
             method = "POST", required_scopes = "write")
-          paste0(httr2::resp_body_json(response)$site, ":written")
+          paste0(httr2::resp_body_json(response)[["site"]], ":written")
         }))
       })
     }
@@ -170,53 +170,53 @@ retention_fixture_app <- function(
       selected_action <- action
       scopes <- switch(selected_action, narrow_a = "read", widen_a = c("read", "write"), drop_required = "write")
       shiny::observeEvent(input[[selected_action]], perform(function() {
-        value <- health$connection(id_for("a"))$refresh(scopes = scopes)
+        value <- health[["connection"]](id_for("a"))[["refresh"]](scopes = scopes)
         if (inherits(value, "promise")) value else "refreshed"
       }))
     })
     shiny::observeEvent(
-      input$disconnect_b,
+      input[["disconnect_b"]],
       perform(function() {
-        health$disconnect(id_for("b"))
+        health[["disconnect"]](id_for("b"))
         "disconnected"
       })
     )
-    shiny::observeEvent(input$logout, health$logout())
-    shiny::observeEvent(input$read_selected, perform(function() {
-      response <- health$connection(input$selected_id)$request("api", "records")
+    shiny::observeEvent(input[["logout"]], health[["logout"]]())
+    shiny::observeEvent(input[["read_selected"]], perform(function() {
+      response <- health[["connection"]](input[["selected_id"]])[["request"]]("api", "records")
       body <- httr2::resp_body_json(response)
-      paste(body$site, body$account, body$revision, sep = ":")
+      paste(body[["site"]], body[["account"]], body[["revision"]], sep = ":")
     }))
-    shiny::observeEvent(input$refresh_selected, perform(function() {
-      value <- health$connection(input$selected_id)$refresh()
+    shiny::observeEvent(input[["refresh_selected"]], perform(function() {
+      value <- health[["connection"]](input[["selected_id"]])[["refresh"]]()
       if (inherits(value, "promise")) value else "refreshed"
     }))
-    shiny::observeEvent(input$disconnect_selected, perform(function() {
-      health$disconnect(input$selected_id, revoke = FALSE)
+    shiny::observeEvent(input[["disconnect_selected"]], perform(function() {
+      health[["disconnect"]](input[["selected_id"]], revoke = FALSE)
       "disconnected"
     }))
-    shiny::observeEvent(input$cross_resource, perform(function() {
-      health$connection(id_for("a"))$request("api", "../b/records")
+    shiny::observeEvent(input[["cross_resource"]], perform(function() {
+      health[["connection"]](id_for("a"))[["request"]]("api", "../b/records")
       "unexpected access"
     }))
     shiny::observeEvent(
-      input$probe,
+      input[["probe"]],
       perform(function() {
-        if (health$connection(input$probe_id)$is_usable()) {
+        if (health[["connection"]](input[["probe_id"]])[["is_usable"]]()) {
           "usable"
         } else {
           "unavailable"
         }
       })
     )
-    output$result <- shiny::renderText(result())
-    output$snapshot <- shiny::renderText(jsonlite::toJSON(
+    output[["result"]] <- shiny::renderText(result())
+    output[["snapshot"]] <- shiny::renderText(jsonlite::toJSON(
       list(
         session = session_number,
         result = result(),
         result_revision = result_revision(),
-        connections = health$connections(),
-        errors = health$errors(),
+        connections = health[["connections"]](),
+        errors = health[["errors"]](),
         post_owner_cookies = post_owner_cookies,
         callback_owner_cookies = callback_owner_cookies
       ),
@@ -226,29 +226,30 @@ retention_fixture_app <- function(
   }
   wrapped_ui <- shinyOAuth::oauth_connections_ui(base_ui, "health", manager)
   ui <- function(req) {
-    if (startsWith(req$PATH_INFO, "/callback/") &&
-        (identical(req$REQUEST_METHOD, "POST") ||
-          grepl("(^[?]?|&)code=", req$QUERY_STRING))) {
+    if (startsWith(req[["PATH_INFO"]], "/callback/") &&
+        (identical(req[["REQUEST_METHOD"]], "POST") ||
+          grepl("(^[?]?|&)code=", req[["QUERY_STRING"]]))) {
       callback_owner_cookies <<- c(callback_owner_cookies,
-        is.character(req$HTTP_COOKIE) &&
-          grepl("shinyOAuth-owner-", req$HTTP_COOKIE, fixed = TRUE))
+        is.character(req[["HTTP_COOKIE"]]) &&
+          grepl("shinyOAuth-owner-", req[["HTTP_COOKIE"]], fixed = TRUE))
     }
     if (
-      identical(req$REQUEST_METHOD, "POST") &&
-        startsWith(req$PATH_INFO, "/callback/")
+      identical(req[["REQUEST_METHOD"]], "POST") &&
+        startsWith(req[["PATH_INFO"]], "/callback/")
     ) {
       # Record presence only, never the cookie value or callback body.
       post_owner_cookies <<- c(
         post_owner_cookies,
-        is.character(req$HTTP_COOKIE) &&
-          grepl("shinyOAuth-owner-", req$HTTP_COOKIE, fixed = TRUE)
+        is.character(req[["HTTP_COOKIE"]]) &&
+          grepl("shinyOAuth-owner-", req[["HTTP_COOKIE"]], fixed = TRUE)
       )
     }
     wrapped_ui(req)
   }
   attr(ui, "http_methods_supported") <- attr(
     wrapped_ui,
-    "http_methods_supported"
+    "http_methods_supported",
+    exact = TRUE
   )
   app <- shiny::shinyApp(
     ui,
@@ -258,7 +259,7 @@ retention_fixture_app <- function(
   shiny::runApp(
     app,
     host = "127.0.0.1",
-    port = as.integer(httr2::url_parse(origin)$port),
+    port = as.integer(httr2::url_parse(origin)[["port"]]),
     launch.browser = FALSE,
     quiet = TRUE
   )

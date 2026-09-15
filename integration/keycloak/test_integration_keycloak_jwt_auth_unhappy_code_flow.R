@@ -5,15 +5,15 @@
 ## client-auth failures are surfaced by the module and consume state.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 extract_login_callback_response <- function(login) {
-  response <- login$response %||% NA_character_
+  response <- login[["response"]] %||% NA_character_
 
   if (!keycloak_nonempty_string(response)) {
     response <- parse_query_param(
-      login$callback_url %||% NA_character_,
+      login[["callback_url"]] %||% NA_character_,
       "response",
       decode = TRUE
     )
@@ -30,7 +30,7 @@ expect_jwt_auth_code_flow_failure <- function(
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state_info <- get_state_info(client, auth_url)
       login <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
       query <- callback_query(login)
@@ -39,38 +39,38 @@ expect_jwt_auth_code_flow_failure <- function(
         response <- extract_login_callback_response(login)
 
         testthat::expect_true(keycloak_nonempty_string(response))
-        testthat::expect_false(grepl("[?&]code=", login$callback_url))
-        testthat::expect_false(grepl("[?&]state=", login$callback_url))
+        testthat::expect_false(grepl("[?&]code=", login[["callback_url"]]))
+        testthat::expect_false(grepl("[?&]state=", login[["callback_url"]]))
       } else {
-        testthat::expect_true(nzchar(login$code %||% ""))
+        testthat::expect_true(nzchar(login[["code"]] %||% ""))
       }
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_false(isTRUE(values$authenticated))
-      testthat::expect_identical(values$error, "token_exchange_error")
+      testthat::expect_false(isTRUE(values[["authenticated"]]))
+      testthat::expect_identical(values[["error"]], "token_exchange_error")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "HTTP request failed",
         fixed = TRUE
       )
-      testthat::expect_null(values$token)
+      testthat::expect_null(values[["token"]])
       testthat::expect_null(
-        client@state_store$get(state_info$key, missing = NULL),
+        client@state_store[["get"]](state_info[["key"]], missing = NULL),
         info = "State should be single-use even when token exchange fails"
       )
 
-      values$error <- NULL
-      values$error_description <- NULL
-      values$error_uri <- NULL
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
 
-      values$.process_query(query)
-      session$flushReact()
+      values[[".process_query"]](query)
+      session[["flushReact"]]()
 
-      testthat::expect_identical(values$error, "invalid_state")
+      testthat::expect_identical(values[["error"]], "invalid_state")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "state",
         ignore.case = TRUE
       )

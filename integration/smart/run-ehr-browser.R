@@ -21,18 +21,18 @@ run_smart_ehr_browser_tests <- function() {
     engines = if (quick) "sync" else c("sync", "mirai"),
     versions = setNames(lapply(packages, function(p) as.character(utils::packageVersion(p))), packages))
   on.exit({
-    evidence$chrome <- retention_evidence_env$chrome
+    evidence[["chrome"]] <- retention_evidence_env[["chrome"]]
     jsonlite::write_json(evidence, file.path(output, "evidence.json"), auto_unbox = TRUE, pretty = TRUE)
   }, add = TRUE)
   results <- testthat::test_file("integration/smart/test-browser-ehr-launch.R",
     env = environment(), reporter = "summary", stop_on_failure = FALSE)
   counts <- as.data.frame(results)
-  evidence$passed <- sum(counts$passed)
-  evidence$failures <- sum(counts$failed)
-  evidence$errors <- sum(counts$error)
-  evidence$skipped <- sum(counts$skipped)
-  if (evidence$failures || evidence$errors || evidence$skipped) stop("Incomplete EHR browser gate")
-  evidence$status <- "passed"
-  cat("EHR browser assertions:", evidence$passed, "; sanitized evidence:", output, "\n")
+  evidence[["passed"]] <- sum(counts[["passed"]])
+  evidence[["failures"]] <- sum(counts[["failed"]])
+  evidence[["errors"]] <- sum(counts[["error"]])
+  evidence[["skipped"]] <- sum(counts[["skipped"]])
+  if (evidence[["failures"]] || evidence[["errors"]] || evidence[["skipped"]]) stop("Incomplete EHR browser gate")
+  evidence[["status"]] <- "passed"
+  cat("EHR browser assertions:", evidence[["passed"]], "; sanitized evidence:", output, "\n")
 }
 run_smart_ehr_browser_tests()

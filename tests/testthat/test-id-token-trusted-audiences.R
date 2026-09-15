@@ -27,7 +27,7 @@ test_that("RSA-signed multi-audience ID tokens allow absent azp with explicit tr
   signing_key <- openssl::rsa_keygen(2048)
   jwks <- list(
     keys = list(jsonlite::fromJSON(
-      write_test_jwk(signing_key$pubkey),
+      write_test_jwk(signing_key[["pubkey"]]),
       simplifyVector = FALSE
     ))
   )
@@ -48,24 +48,24 @@ test_that("RSA-signed multi-audience ID tokens allow absent azp with explicit tr
     state_client_policy_fingerprint(client),
     initial_policy
   ))
-  expect_identical(validate_id_token(client, sign())$sub, "user")
+  expect_identical(validate_id_token(client, sign())[["sub"]], "user")
   for (aud in list(
     "trusted-service",
     c("client", "untrusted"),
     c("client", "Trusted-Service")
   )) {
     invalid <- claims
-    invalid$aud <- aud
+    invalid[["aud"]] <- aud
     expect_error(
       validate_id_token(client, sign(invalid)),
       class = "shinyOAuth_id_token_error"
     )
   }
-  claims$azp <- NULL
-  expect_identical(validate_id_token(client, sign())$sub, "user")
+  claims[["azp"]] <- NULL
+  expect_identical(validate_id_token(client, sign())[["sub"]], "user")
   for (azp in list("other", c("client", "other"))) {
     invalid <- claims
-    invalid$azp <- azp
+    invalid[["azp"]] <- azp
     expect_error(
       validate_id_token(client, sign(invalid)),
       class = "shinyOAuth_id_token_error"
@@ -75,9 +75,9 @@ test_that("RSA-signed multi-audience ID tokens allow absent azp with explicit tr
     validate_id_token(client, sign(key = openssl::rsa_keygen(2048))),
     class = "shinyOAuth_id_token_error"
   )
-  claims$aud <- "client"
-  claims$azp <- NULL
-  expect_identical(validate_id_token(client, sign())$sub, "user")
+  claims[["aud"]] <- "client"
+  claims[["azp"]] <- NULL
+  expect_identical(validate_id_token(client, sign())[["sub"]], "user")
 })
 
 test_that("trusted ID token audiences have safe constructor defaults and validation", {

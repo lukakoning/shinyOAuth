@@ -14,16 +14,16 @@ run_smart_mixed <- function() {
     external_conformance = FALSE, scenarios = cases, transport = "HTTPS cross-site",
     versions = setNames(lapply(packages, function(p) as.character(utils::packageVersion(p))), packages))
   on.exit({
-    evidence$chrome <- retention_evidence_env$chrome
+    evidence[["chrome"]] <- retention_evidence_env[["chrome"]]
     jsonlite::write_json(evidence, file.path(output, "evidence.json"), auto_unbox = TRUE, pretty = TRUE)
   }, add = TRUE)
   results <- testthat::test_file("integration/smart/test-browser-mixed.R", env = environment(),
     reporter = "summary", stop_on_failure = FALSE)
   counts <- as.data.frame(results)
-  evidence$tests <- as.list(colSums(counts[c("passed", "failed", "error", "skipped")]))
-  if (nrow(counts) != nrow(cases) || evidence$tests$passed == 0 ||
-      any(unlist(evidence$tests[c("failed", "error", "skipped")]) != 0)) stop("Incomplete mixed browser matrix")
-  evidence$status <- "passed"
-  message("Mixed OIDC/SMART browser assertions: ", evidence$tests$passed, "; scenarios: ", nrow(cases))
+  evidence[["tests"]] <- as.list(colSums(counts[c("passed", "failed", "error", "skipped")]))
+  if (nrow(counts) != nrow(cases) || evidence[["tests"]][["passed"]] == 0 ||
+      any(unlist(evidence[["tests"]][c("failed", "error", "skipped")]) != 0)) stop("Incomplete mixed browser matrix")
+  evidence[["status"]] <- "passed"
+  message("Mixed OIDC/SMART browser assertions: ", evidence[["tests"]][["passed"]], "; scenarios: ", nrow(cases))
 }
 run_smart_mixed()

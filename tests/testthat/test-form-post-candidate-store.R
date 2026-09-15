@@ -2,12 +2,12 @@ test_that("candidate storage has a per-namespace bound even without backend expi
   client <- make_test_client(response_mode = "form_post")
   backing <- cachem::cache_mem(max_age = Inf, max_n = Inf)
   client@state_store <- custom_cache(
-    get = backing$get,
-    set = backing$set,
-    remove = backing$remove,
+    get = backing[["get"]],
+    set = backing[["set"]],
+    remove = backing[["remove"]],
     take = function(key, missing = NULL) {
-      value <- backing$get(key, missing = missing)
-      backing$remove(key)
+      value <- backing[["get"]](key, missing = missing)
+      backing[["remove"]](key)
       value
     }
   )
@@ -32,13 +32,13 @@ test_that("candidate storage has a per-namespace bound even without backend expi
       )
     }
   }
-  expect_length(backing$keys(), 2048L)
+  expect_length(backing[["keys"]](), 2048L)
 })
 
 test_that("malformed and pre-upgrade handles are rejected before store access", {
   client <- make_test_client(response_mode = "form_post")
   store <- client@state_store
-  store$get <- function(...) {
+  store[["get"]] <- function(...) {
     testthat::fail("Invalid handles must not query storage")
   }
   client@state_store <- store
@@ -113,7 +113,7 @@ test_that("evicted and foreign-module handles cannot consume a replacement", {
     "auth",
     handles[[9L]]
   )
-  expect_identical(payload$code, "response-9")
+  expect_identical(payload[["code"]], "response-9")
   expect_error(
     shinyOAuth:::oauth_form_post_store_take(client, "auth", handles[[9L]]),
     "missing or already consumed"
@@ -141,15 +141,15 @@ test_that("a slot replacement racing atomic take never supplies another response
   backing <- client@state_store
   takes <- 0L
   client@state_store <- custom_cache(
-    get = backing$get,
-    set = backing$set,
-    remove = backing$remove,
+    get = backing[["get"]],
+    set = backing[["set"]],
+    remove = backing[["remove"]],
     take = function(key, missing = NULL) {
       takes <<- takes + 1L
       # Interleave another writer after the preliminary authenticated read.
-      backing$set(key, replacement)
-      value <- backing$get(key, missing = missing)
-      backing$remove(key)
+      backing[["set"]](key, replacement)
+      value <- backing[["get"]](key, missing = missing)
+      backing[["remove"]](key)
       value
     }
   )
@@ -158,7 +158,7 @@ test_that("a slot replacement racing atomic take never supplies another response
     "handle mismatch"
   )
   expect_identical(takes, 1L)
-  expect_null(backing$get(key, missing = NULL))
+  expect_null(backing[["get"]](key, missing = NULL))
 })
 
 test_that("racing candidate writers keep distinct identities within the same slot", {
@@ -167,9 +167,9 @@ test_that("racing candidate writers keep distinct identities within the same slo
   interleave <- TRUE
   concurrent_handle <- NULL
   client@state_store <- custom_cache(
-    get = backing$get,
-    remove = backing$remove,
-    info = backing$info,
+    get = backing[["get"]],
+    remove = backing[["remove"]],
+    info = backing[["info"]],
     set = function(key, value) {
       if (interleave) {
         interleave <<- FALSE
@@ -179,11 +179,11 @@ test_that("racing candidate writers keep distinct identities within the same slo
           list(code = "concurrent", state = "fixture-state")
         )
       }
-      backing$set(key, value)
+      backing[["set"]](key, value)
     },
     take = function(key, missing = NULL) {
-      value <- backing$get(key, missing = missing)
-      backing$remove(key)
+      value <- backing[["get"]](key, missing = missing)
+      backing[["remove"]](key)
       value
     }
   )
@@ -193,13 +193,13 @@ test_that("racing candidate writers keep distinct identities within the same slo
     list(code = "original", state = "fixture-state")
   )
   expect_false(identical(handle, concurrent_handle))
-  expect_length(backing$keys(), 1L)
+  expect_length(backing[["keys"]](), 1L)
   expect_error(
     shinyOAuth:::oauth_form_post_store_take(client, "auth", concurrent_handle),
     "handle mismatch"
   )
   expect_identical(
-    shinyOAuth:::oauth_form_post_store_take(client, "auth", handle)$code,
+    shinyOAuth:::oauth_form_post_store_take(client, "auth", handle)[["code"]],
     "original"
   )
 })
@@ -233,10 +233,10 @@ test_that("sibling cleanup preserves other transactions sharing a partition", {
     key <- shinyOAuth:::oauth_form_post_cache_key("auth", handles[[i]], client)
     envelope <- shinyOAuth:::oauth_form_post_candidate_envelope(
       client,
-      client@state_store$get(key)
+      client@state_store[["get"]](key)
     )
-    envelope$payload$state_payload <- list(state = states[[i]])
-    client@state_store$set(
+    envelope[["payload"]][["state_payload"]] <- list(state = states[[i]])
+    client@state_store[["set"]](
       key,
       shinyOAuth:::state_encrypt_gcm(envelope, client@state_key)
     )
@@ -247,7 +247,7 @@ test_that("sibling cleanup preserves other transactions sharing a partition", {
     "missing or already consumed"
   )
   expect_identical(
-    shinyOAuth:::oauth_form_post_store_take(client, "auth", handles[[2L]])$code,
+    shinyOAuth:::oauth_form_post_store_take(client, "auth", handles[[2L]])[["code"]],
     states[[2L]]
   )
 })

@@ -19,7 +19,7 @@ test_that("async parent and PAR spans describe resolved endpoint authentication"
       force(code)
     },
     req_with_retry = function(req, ...) {
-      expect_null(req$headers[["X-Token"]])
+      expect_null(req[["headers"]][["X-Token"]])
       httr2::response(
         status = 201,
         headers = list("content-type" = "application/json"),
@@ -33,12 +33,12 @@ test_that("async parent and PAR spans describe resolved endpoint authentication"
     introspect_token(client, token, async = TRUE),
     revoke_token(client, token, async = TRUE)
   )) {
-    expect_identical(attrs$oauth.client_auth_style, "body")
-    expect_identical(attrs$oauth.extra_token_headers_count, 0L)
+    expect_identical(attrs[["oauth.client_auth_style"]], "body")
+    expect_identical(attrs[["oauth.extra_token_headers_count"]], 0L)
   }
   push_authorization_request(client, list(client_id = client@client_id))
-  expect_identical(captured$oauth.client_auth_style, "body")
-  expect_identical(captured$oauth.extra_token_headers_count, 0L)
+  expect_identical(captured[["oauth.client_auth_style"]], "body")
+  expect_identical(captured[["oauth.extra_token_headers_count"]], 0L)
 })
 
 test_that("endpoint metadata order cannot overwrite explicit assertion policy", {
@@ -58,7 +58,7 @@ test_that("endpoint metadata order cannot overwrite explicit assertion policy", 
     )
     auth <- endpoint_auth_client(client, endpoint)
     jwt <- build_client_assertion(auth, "https://example.com/audience")
-    expect_identical(parse_jwt_header(jwt)$alg, "HS384")
+    expect_identical(parse_jwt_header(jwt)[["alg"]], "HS384")
     client@provider@endpoint_auth_metadata <- setNames(
       list(list(
         methods = "client_secret_jwt",
@@ -84,7 +84,7 @@ test_that("private-key endpoint policy checks the explicitly selected algorithm"
   )
   auth <- endpoint_auth_client(client, "introspection")
   expect_identical(
-    parse_jwt_header(build_client_assertion(auth, "https://example.com"))$alg,
+    parse_jwt_header(build_client_assertion(auth, "https://example.com"))[["alg"]],
     "ES384"
   )
   client@provider@endpoint_auth_metadata <- list(
@@ -107,16 +107,16 @@ test_that("discovery preserves independent authentication metadata and omission 
     subject_types_supported = list("public"),
     id_token_signing_alg_values_supported = list("RS256")
   )
-  doc$introspection_endpoint <- paste0(issuer, "/introspect")
-  doc$revocation_endpoint <- paste0(issuer, "/revoke")
-  doc$token_endpoint_auth_methods_supported <- list("private_key_jwt")
-  doc$token_endpoint_auth_signing_alg_values_supported <- list("RS256")
-  doc$introspection_endpoint_auth_methods_supported <- list("client_secret_jwt")
-  doc$introspection_endpoint_auth_signing_alg_values_supported <- list("HS512")
+  doc[["introspection_endpoint"]] <- paste0(issuer, "/introspect")
+  doc[["revocation_endpoint"]] <- paste0(issuer, "/revoke")
+  doc[["token_endpoint_auth_methods_supported"]] <- list("private_key_jwt")
+  doc[["token_endpoint_auth_signing_alg_values_supported"]] <- list("RS256")
+  doc[["introspection_endpoint_auth_methods_supported"]] <- list("client_secret_jwt")
+  doc[["introspection_endpoint_auth_signing_alg_values_supported"]] <- list("HS512")
   local_mocked_bindings(
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(doc, auto_unbox = TRUE))
@@ -129,16 +129,16 @@ test_that("discovery preserves independent authentication metadata and omission 
     token_auth_style = "private_key_jwt"
   )
   expect_identical(
-    provider@endpoint_auth_metadata$introspection,
+    provider@endpoint_auth_metadata[["introspection"]],
     list(methods = "client_secret_jwt", signing_algs = "HS512")
   )
   expect_identical(
-    provider@endpoint_auth_metadata$revocation$methods,
+    provider@endpoint_auth_metadata[["revocation"]][["methods"]],
     "client_secret_basic"
   )
   omitted <- discover_endpoint_auth_metadata(list())
-  expect_null(omitted$introspection$methods)
-  expect_null(omitted$introspection$signing_algs)
+  expect_null(omitted[["introspection"]][["methods"]])
+  expect_null(omitted[["introspection"]][["signing_algs"]])
   expect_error(
     discover_endpoint_auth_metadata(list(
       introspection_endpoint_auth_methods_supported = list("private_key_jwt")
@@ -174,9 +174,9 @@ test_that("JWT token clients use independent Basic credentials and headers at ot
       force(code)
     },
     req_with_retry = function(req, ...) {
-      requests[[req$url]] <<- req
+      requests[[req[["url"]]]] <<- req
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw('{"active":true}')
@@ -189,31 +189,31 @@ test_that("JWT token clients use independent Basic credentials and headers at ot
     refresh_token = "refresh",
     expires_at = as.numeric(Sys.time()) + 60
   )
-  expect_true(introspect_token(client, token)$active)
-  expect_true(revoke_token(client, token)$revoked)
+  expect_true(introspect_token(client, token)[["active"]])
+  expect_true(revoke_token(client, token)[["revoked"]])
   expect_identical(
-    spans[["shinyOAuth.token.introspect"]]$oauth.client_auth_style,
+    spans[["shinyOAuth.token.introspect"]][["oauth.client_auth_style"]],
     "header"
   )
   expect_identical(
-    spans[["shinyOAuth.token.introspect"]]$oauth.extra_token_headers_count,
+    spans[["shinyOAuth.token.introspect"]][["oauth.extra_token_headers_count"]],
     1L
   )
   expect_identical(
-    spans[["shinyOAuth.token.revoke"]]$oauth.client_auth_style,
+    spans[["shinyOAuth.token.revoke"]][["oauth.client_auth_style"]],
     "header"
   )
   expect_identical(
-    spans[["shinyOAuth.token.revoke"]]$oauth.extra_token_headers_count,
+    spans[["shinyOAuth.token.revoke"]][["oauth.extra_token_headers_count"]],
     0L
   )
   inspect <- requests[[client@provider@introspection_url]]
   revoke <- requests[[client@provider@revocation_url]]
-  expect_null(inspect$headers[["X-Token-Secret"]])
-  expect_null(revoke$headers[["X-Token-Secret"]])
-  expect_identical(inspect$headers[["X-Inspect"]], "inspect-only")
-  expect_null(revoke$headers[["X-Inspect"]])
-  authorization <- inspect$headers$Authorization
+  expect_null(inspect[["headers"]][["X-Token-Secret"]])
+  expect_null(revoke[["headers"]][["X-Token-Secret"]])
+  expect_identical(inspect[["headers"]][["X-Inspect"]], "inspect-only")
+  expect_null(revoke[["headers"]][["X-Inspect"]])
+  authorization <- inspect[["headers"]][["Authorization"]]
   if (typeof(authorization) == "weakref") {
     authorization <- rlang::wref_value(authorization)
   }
@@ -256,24 +256,24 @@ test_that("endpoint JWT algorithms, audiences and retry assertions are independe
     auth,
     "introspect_token"
   )
-  jwt <- prepared$params$client_assertion
-  expect_identical(parse_jwt_header(jwt)$alg, "HS512")
+  jwt <- prepared[["params"]][["client_assertion"]]
+  expect_identical(parse_jwt_header(jwt)[["alg"]], "HS512")
   expect_identical(
-    parse_jwt_payload(jwt)$aud,
+    parse_jwt_payload(jwt)[["aud"]],
     "https://example.com/inspect-audience"
   )
   expect_silent(jose::jwt_decode_hmac(jwt, secret = strrep("i", 64)))
   req <- req_refresh_jwt_client_assertion_on_retry(
-    prepared$req,
-    prepared$params,
+    prepared[["req"]],
+    prepared[["params"]],
     auth,
     "introspect_token",
     body_mode = "form"
   )
-  retried <- req$shinyOAuth_prepare_attempt(req, 2L)
-  expect_false(identical(retried$body$data$client_assertion, jwt))
+  retried <- req[["shinyOAuth_prepare_attempt"]](req, 2L)
+  expect_false(identical(retried[["body"]][["data"]][["client_assertion"]], jwt))
   expect_identical(
-    parse_jwt_payload(retried$body$data$client_assertion)$aud,
+    parse_jwt_payload(retried[["body"]][["data"]][["client_assertion"]])[["aud"]],
     "https://example.com/inspect-audience"
   )
   expect_identical(
@@ -282,7 +282,7 @@ test_that("endpoint JWT algorithms, audiences and retry assertions are independe
   )
   expect_error(
     {
-      client@endpoint_auth$introspection$client_assertion_alg <- "HS256"
+      client@endpoint_auth[["introspection"]][["client_assertion_alg"]] <- "HS256"
       endpoint_auth_client(client, "introspection")
     },
     "not supported"
@@ -303,7 +303,7 @@ test_that("endpoint RSA defaults are stable as advertised algorithms expand", {
       auth <- endpoint_auth_client(client, endpoint)
       expected <- if ("RS256" %in% algs) "RS256" else "RS384"
       jwt <- build_client_assertion(auth, "https://example.com")
-      expect_identical(parse_jwt_header(jwt)$alg, expected)
+      expect_identical(parse_jwt_header(jwt)[["alg"]], expected)
       expect_true(is.na(client@client_assertion_alg))
     }
     client@endpoint_auth <- setNames(list(list(client_assertion_alg = "RS384")), endpoint)

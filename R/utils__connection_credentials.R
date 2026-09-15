@@ -67,13 +67,13 @@ connection_credential_binding <- function(owner, id, client) {
 # snapshots exactly, without R unserialization or arbitrary object construction.
 connection_data_encode <- function(value) {
   budget <- new.env(parent = emptyenv())
-  budget$nodes <- 0L
-  budget$bytes <- 0
+  budget[["nodes"]] <- 0L
+  budget[["bytes"]] <- 0
   encode <- function(value, depth = 0L) {
-    budget$nodes <- budget$nodes + 1L + length(value)
+    budget[["nodes"]] <- budget[["nodes"]] + 1L + length(value)
     if (
       depth > 16L ||
-        budget$nodes > 20000L ||
+        budget[["nodes"]] > 20000L ||
         is.object(value) ||
         !all(names(attributes(value)) %in% "names")
     ) {
@@ -114,10 +114,10 @@ connection_data_encode <- function(value) {
       as.character(value)
     }
     values[missing_values] <- ""
-    budget$bytes <- budget$bytes +
+    budget[["bytes"]] <- budget[["bytes"]] +
       sum(nchar(values, type = "bytes")) +
       sum(nchar(labels, type = "bytes"))
-    if (budget$bytes > 512 * 1024) {
+    if (budget[["bytes"]] > 512 * 1024) {
       err_token("Connection credential data exceeds the size limit")
     }
     list(
@@ -133,68 +133,68 @@ connection_data_encode <- function(value) {
 connection_data_decode <- function(node) {
   budget <- 0L
   decode <- function(node, depth = 0L) {
-    budget <<- budget + 1L + length(node$values)
+    budget <<- budget + 1L + length(node[["values"]])
     bad <- function() err_token("Invalid stored connection credential schema")
     if (
       depth > 16L ||
         budget > 20000L ||
         !is.list(node) ||
-        !is_valid_string(node$kind)
+        !is_valid_string(node[["kind"]])
     ) {
       bad()
     }
-    if (identical(node$kind, "NULL")) {
+    if (identical(node[["kind"]], "NULL")) {
       if (!identical(names(node), "kind")) {
         bad()
       }
       return(NULL)
     }
     fields <- c("kind", "names", "values")
-    if (!identical(node$kind, "list")) {
+    if (!identical(node[["kind"]], "list")) {
       fields <- c(fields, "missing")
     }
     if (
       !identical(names(node), fields) ||
-        !is.list(node$values) ||
-        !is.list(node$names)
+        !is.list(node[["values"]]) ||
+        !is.list(node[["names"]])
     ) {
       bad()
     }
-    labels <- unlist(node$names, use.names = FALSE)
+    labels <- unlist(node[["names"]], use.names = FALSE)
     if (
       length(labels) &&
         (!is.character(labels) ||
-          length(labels) != length(node$values) ||
+          length(labels) != length(node[["values"]]) ||
           anyNA(labels) ||
           anyDuplicated(labels) ||
           !all(nzchar(labels)))
     ) {
       bad()
     }
-    if (identical(node$kind, "list")) {
-      value <- lapply(node$values, decode, depth = depth + 1L)
+    if (identical(node[["kind"]], "list")) {
+      value <- lapply(node[["values"]], decode, depth = depth + 1L)
     } else {
       if (
-        !node$kind %in% c("character", "logical", "integer", "double") ||
-          !is.list(node$missing) ||
-          length(node$missing) != length(node$values) ||
+        !node[["kind"]] %in% c("character", "logical", "integer", "double") ||
+          !is.list(node[["missing"]]) ||
+          length(node[["missing"]]) != length(node[["values"]]) ||
           !all(vapply(
-            node$values,
+            node[["values"]],
             function(x) is.character(x) && length(x) == 1L && !is.na(x),
             logical(1)
           )) ||
           !all(vapply(
-            node$missing,
+            node[["missing"]],
             function(x) is.logical(x) && length(x) == 1L && !is.na(x),
             logical(1)
           ))
       ) {
         bad()
       }
-      text <- unlist(node$values, use.names = FALSE) %||% character()
-      absent <- unlist(node$missing, use.names = FALSE) %||% logical()
+      text <- unlist(node[["values"]], use.names = FALSE) %||% character()
+      absent <- unlist(node[["missing"]], use.names = FALSE) %||% logical()
       value <- switch(
-        node$kind,
+        node[["kind"]],
         character = text,
         logical = {
           if (any(!absent & !text %in% c("TRUE", "FALSE"))) {
@@ -215,9 +215,9 @@ connection_data_decode <- function(node) {
         })
       )
       if (
-        node$kind %in%
+        node[["kind"]] %in%
           c("integer", "double") &&
-          any(!absent & is.na(value) & !(node$kind == "double" & text == "NaN"))
+          any(!absent & is.na(value) & !(node[["kind"]] == "double" & text == "NaN"))
       ) {
         bad()
       }
@@ -261,7 +261,7 @@ connection_credentials_seal <- function(
   )
   # Omitted for existing records. This local policy flag does not claim that
   # the authorization server reduced the refresh token's original grant.
-  if (refresh_scope_narrowed) payload$refresh_scope_narrowed <- TRUE
+  if (refresh_scope_narrowed) payload[["refresh_scope_narrowed"]] <- TRUE
   json <- jsonlite::toJSON(
     payload,
     auto_unbox = TRUE,
@@ -279,7 +279,7 @@ connection_credentials_open <- function(sealed, owner, id, client, key,
   derived_key <- connection_credential_key(key)
   binding <- connection_credential_binding(owner, id, client)
   if (!is.null(expected_fingerprint) &&
-      !identical(binding$fingerprint, expected_fingerprint)) {
+      !identical(binding[["fingerprint"]], expected_fingerprint)) {
     err_token("Connection credentials are unavailable or incompatible")
   }
   tryCatch(
@@ -297,16 +297,16 @@ connection_credentials_open <- function(sealed, owner, id, client, key,
       if (
         !(identical(names(payload), c("binding", "authenticated_at", "credentials")) ||
           (identical(names(payload), c("binding", "authenticated_at", "credentials", "refresh_scope_narrowed")) &&
-            identical(payload$refresh_scope_narrowed, TRUE))) ||
-          !identical(payload$binding, binding) ||
-          !is.numeric(payload$authenticated_at) ||
-          length(payload$authenticated_at) != 1L ||
-          !is.finite(payload$authenticated_at) ||
-          payload$authenticated_at < 0
+            identical(payload[["refresh_scope_narrowed"]], TRUE))) ||
+          !identical(payload[["binding"]], binding) ||
+          !is.numeric(payload[["authenticated_at"]]) ||
+          length(payload[["authenticated_at"]]) != 1L ||
+          !is.finite(payload[["authenticated_at"]]) ||
+          payload[["authenticated_at"]] < 0
       ) {
         err_token("Invalid stored connection credential schema")
       }
-      fields <- connection_data_decode(payload$credentials)
+      fields <- connection_data_decode(payload[["credentials"]])
       if (
         !is.list(fields) || !identical(names(fields), connection_token_fields)
       ) {
@@ -314,8 +314,8 @@ connection_credentials_open <- function(sealed, owner, id, client, key,
       }
       list(
         token = do.call(OAuthToken, fields),
-        authenticated_at = payload$authenticated_at,
-        refresh_scope_narrowed = isTRUE(payload$refresh_scope_narrowed)
+        authenticated_at = payload[["authenticated_at"]],
+        refresh_scope_narrowed = isTRUE(payload[["refresh_scope_narrowed"]])
       )
     },
     error = function(...) {

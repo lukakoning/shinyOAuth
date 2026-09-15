@@ -139,7 +139,7 @@ fetch_authorization_server_metadata <- function(issuer, tls_minimum = NULL) {
       silent = TRUE
     )
     if (inherits(resp, "try-error")) {
-      cnd <- attr(resp, "condition")
+      cnd <- attr(resp, "condition", exact = TRUE)
       while (!is.null(cnd) && !is.null(cnd[["parent"]])) {
         cnd <- cnd[["parent"]]
       }
@@ -156,7 +156,7 @@ fetch_authorization_server_metadata <- function(issuer, tls_minimum = NULL) {
     if (inherits(redirect_check, "try-error")) {
       if (allow_expose_error_body()) {
         last_error_message <- sanitize_diagnostic_text(
-          conditionMessage(attr(redirect_check, "condition"))
+          conditionMessage(attr(redirect_check, "condition", exact = TRUE))
         )
       }
       next
@@ -231,14 +231,14 @@ fetch_authorization_server_metadata <- function(issuer, tls_minimum = NULL) {
 fetch_client_jwks <- function(client, ...) {
   args <- list(...)
   minimum <- client_tls_minimum(client)
-  if (!is.null(minimum)) args$tls_minimum <- minimum
+  if (!is.null(minimum)) args[["tls_minimum"]] <- minimum
   do.call(fetch_jwks, args)
 }
 
 force_refresh_client_jwks <- function(client, ...) {
   args <- list(...)
   minimum <- client_tls_minimum(client)
-  if (!is.null(minimum)) args$tls_minimum <- minimum
+  if (!is.null(minimum)) args[["tls_minimum"]] <- minimum
   do.call(force_refresh_provider_jwks, args)
 }
 
@@ -287,8 +287,8 @@ fetch_jwks <- function(
   tls_minimum = NULL
 ) {
   # Duck-type the cache interface instead of enforcing cachem inheritance
-  has_get <- !is.null(jwks_cache$get) && is.function(jwks_cache$get)
-  has_set <- !is.null(jwks_cache$set) && is.function(jwks_cache$set)
+  has_get <- !is.null(jwks_cache[["get"]]) && is.function(jwks_cache[["get"]])
+  has_set <- !is.null(jwks_cache[["set"]]) && is.function(jwks_cache[["set"]])
   if (!isTRUE(has_get && has_set)) {
     err_config(c(
       "x" = "Invalid jwks_cache backend",
@@ -322,7 +322,7 @@ fetch_jwks <- function(
     jwks_uri_override = jwks_uri_override,
     tls_minimum = tls_minimum
   )
-  entry <- jwks_cache$get(cache_key, missing = NULL)
+  entry <- jwks_cache[["get"]](cache_key, missing = NULL)
 
   cached_jwks_source_valid <- function(entry) {
     cached_jwks_uri <- entry[["jwks_uri"]] %||% NULL
@@ -376,7 +376,7 @@ fetch_jwks <- function(
   }
 
   # Rely entirely on cachem's own eviction policy (max_age). If an entry is
-  # present, treat it as fresh; if it has been evicted/expired, $get() will
+  # present, treat it as fresh; if it has been evicted/expired, [["get"]]() will
   # return NULL and we'll refetch. We still record fetched_at for diagnostics.
   if (!force_refresh && !is.null(entry) && !is.null(entry[["jwks"]])) {
     # Defense-in-depth: re-validate cached JWKS under current pinning policy
@@ -390,8 +390,8 @@ fetch_jwks <- function(
     )
     if (inherits(ok, "try-error")) {
       # Evict incompatible/invalid cached entry and continue to refetch
-      if (!is.null(jwks_cache$remove) && is.function(jwks_cache$remove)) {
-        jwks_cache$remove(cache_key)
+      if (!is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])) {
+        jwks_cache[["remove"]](cache_key)
       }
     } else {
       discovery_issuer <- entry[["discovery_issuer"]]
@@ -410,23 +410,23 @@ fetch_jwks <- function(
           silent = TRUE
         )
         if (inherits(issuer_ok, "try-error")) {
-          if (!is.null(jwks_cache$remove) && is.function(jwks_cache$remove)) {
-            jwks_cache$remove(cache_key)
+          if (!is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])) {
+            jwks_cache[["remove"]](cache_key)
           }
         } else {
           if (isTRUE(cached_jwks_source_valid(entry))) {
             return(entry[["jwks"]])
           }
-          if (!is.null(jwks_cache$remove) && is.function(jwks_cache$remove)) {
-            jwks_cache$remove(cache_key)
+          if (!is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])) {
+            jwks_cache[["remove"]](cache_key)
           }
         }
       } else {
         if (isTRUE(cached_jwks_source_valid(entry))) {
           return(entry[["jwks"]])
         }
-        if (!is.null(jwks_cache$remove) && is.function(jwks_cache$remove)) {
-          jwks_cache$remove(cache_key)
+        if (!is.null(jwks_cache[["remove"]]) && is.function(jwks_cache[["remove"]])) {
+          jwks_cache[["remove"]](cache_key)
         }
       }
     }
@@ -504,7 +504,7 @@ fetch_jwks <- function(
     jwks_uri_host = fetched_jwks_host,
     discovery_issuer = discovery_issuer
   )
-  jwks_cache$set(cache_key, new_entry)
+  jwks_cache[["set"]](cache_key, new_entry)
   jwks
 }
 
@@ -578,7 +578,7 @@ jwks_force_refresh_allowed <- function(
   # Shared caches must claim the throttle window atomically. A backend-provided
   # set-if-absent primitive both elects one worker and expires the claim after
   # the interval. Fail closed when a potentially shared backend lacks it.
-  set_if_absent <- jwks_cache$set_if_absent %||% NULL
+  set_if_absent <- jwks_cache[["set_if_absent"]] %||% NULL
   if (is.function(set_if_absent)) {
     claimed <- try(
       set_if_absent(throttle_key, now, ttl = min_interval),
@@ -591,7 +591,7 @@ jwks_force_refresh_allowed <- function(
   }
 
   # cache_mem is process-local and R evaluates these operations serially.
-  last <- jwks_cache$get(throttle_key, missing = NULL)
+  last <- jwks_cache[["get"]](throttle_key, missing = NULL)
   if (is.numeric(last) && length(last) == 1L && !is.na(last)) {
     if ((now - last) < min_interval) {
       return(FALSE)
@@ -599,7 +599,7 @@ jwks_force_refresh_allowed <- function(
   }
 
   # Record the attempt time before any network work happens.
-  jwks_cache$set(throttle_key, now)
+  jwks_cache[["set"]](throttle_key, now)
   TRUE
 }
 
@@ -657,7 +657,7 @@ force_refresh_provider_jwks <- function(
     pin_mode = pin_mode,
     provider = provider
   )
-  if (!is.null(tls_minimum)) args$tls_minimum <- tls_minimum
+  if (!is.null(tls_minimum)) args[["tls_minimum"]] <- tls_minimum
   do.call(fetch_jwks, args)
 }
 
@@ -796,7 +796,7 @@ jwks_cache_key <- function(
   key <- paste0(ih, "x", ch)
   if (!is.null(tls_minimum)) {
     policy <- resolve_tls_policy(minimum = tls_minimum)
-    if (!is.null(policy$problem)) err_config(policy$problem)
+    if (!is.null(policy[["problem"]])) err_config(policy[["problem"]])
     key <- paste0(key, "tls", gsub(".", "", tls_minimum, fixed = TRUE))
   }
   key

@@ -28,8 +28,8 @@ test_that("SMART callbacks retain registered queries and HTTPS policy", {
     scopes = "user/Patient.r", ...)
   for (mode in c("query", "form_post")) {
     client <- create(registered, response_mode = mode)
-    request <- httr2::url_parse(prepare_call(client, browser_token = valid_browser_token()))$query
-    expect_identical(request$redirect_uri, registered)
+    request <- httr2::url_parse(prepare_call(client, browser_token = valid_browser_token()))[["query"]]
+    expect_identical(request[["redirect_uri"]], registered)
     expect_identical(oauth_callback_route_matches(
       paste0(registered, "&code=example&state=example"), client@redirect_uri), TRUE)
     expect_identical(oauth_callback_route_matches(
@@ -41,9 +41,9 @@ test_that("SMART callbacks retain registered queries and HTTPS policy", {
     expect_error(create(uri), "SMART redirect_uri")
   }
   expect_error(create("https://app.example/callback?%73tate=fixed"), "callback-reserved")
-  site$allow_http_loopback <- TRUE
+  site[["allow_http_loopback"]] <- TRUE
   expect_no_error(create("http://localhost/callback?tenant=one"))
-  site$fhir_base <- paste0(site$fhir_base, "?tenant=one")
+  site[["fhir_base"]] <- paste0(site[["fhir_base"]], "?tenant=one")
   expect_error(create(registered), "SMART fhir_base")
 })
 
@@ -98,8 +98,8 @@ test_that("the live Shiny callback URI includes fixed query context", {
 
 test_that("form-post routing checks fixed parameters even with a trusted proxy resolver", {
   req <- new.env(parent = emptyenv())
-  req$REQUEST_METHOD <- "POST"
-  req$QUERY_STRING <- "tenant=two"
+  req[["REQUEST_METHOD"]] <- "POST"
+  req[["QUERY_STRING"]] <- "tenant=two"
   matches <- function() {
     oauth_form_post_request_matches(
       req,
@@ -110,7 +110,7 @@ test_that("form-post routing checks fixed parameters even with a trusted proxy r
     )
   }
   expect_false(matches())
-  req$QUERY_STRING <- "tenant=one&extra=discard"
+  req[["QUERY_STRING"]] <- "tenant=one&extra=discard"
   expect_true(matches())
   location <- oauth_form_post_redirect_location(
     req,
@@ -133,12 +133,12 @@ test_that("a mismatched fixed query cannot dispatch a callback", {
     auth <- oauth_module_server("auth", client, auto_redirect = FALSE)
   }
   shiny::testServer(server, {
-    auth$.process_query(
+    auth[[".process_query"]](
       "?tenant=two&code=synthetic&state=unparsed",
       current_uri = "https://app.example/callback?tenant=two&code=synthetic&state=unparsed"
     )
-    session$flushReact()
-    expect_null(auth$error)
-    expect_null(auth$token)
+    session[["flushReact"]]()
+    expect_null(auth[["error"]])
+    expect_null(auth[["token"]])
   })
 })

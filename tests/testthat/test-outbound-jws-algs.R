@@ -88,15 +88,15 @@ expect_hmac_jwt_verifies <- function(jwt, alg, secret) {
   expect_jws_alg(jwt, alg)
   parts <- outbound_alg_parts(jwt)
   testthat::expect_identical(
-    parts$sig,
-    unclass(outbound_alg_hmac(parts$data, alg, secret))
+    parts[["sig"]],
+    unclass(outbound_alg_hmac(parts[["data"]], alg, secret))
   )
 }
 
 expect_sig_jwt_verifies <- function(jwt, alg, key) {
   expect_jws_alg(jwt, alg)
   parts <- outbound_alg_parts(jwt)
-  sig <- parts$sig
+  sig <- parts[["sig"]]
   if (startsWith(alg, "ES")) {
     bitsize <- length(sig) / 2L
     r <- sig[seq_len(bitsize)]
@@ -104,7 +104,7 @@ expect_sig_jwt_verifies <- function(jwt, alg, key) {
     sig <- openssl::ecdsa_write(r, s)
   }
   testthat::expect_true(openssl::signature_verify(
-    outbound_alg_hash(parts$data, alg),
+    outbound_alg_hash(parts[["data"]], alg),
     sig,
     hash = NULL,
     pubkey = outbound_alg_public_key(key)

@@ -30,15 +30,15 @@ testthat::test_that("audit events from async worker include shiny session token"
       indefinite_session = TRUE
     ),
     expr = {
-      testthat::expect_true(values$has_browser_token())
+      testthat::expect_true(values[["has_browser_token"]]())
 
-      expected_session_token <- .scalar_chr(session$token)
+      expected_session_token <- .scalar_chr(session[["token"]])
       testthat::expect_true(
         is.character(expected_session_token) && nzchar(expected_session_token)
       )
 
       # Build the authorization URL and capture encoded state
-      url <- values$build_auth_url()
+      url <- values[["build_auth_url"]]()
       enc <- parse_query_param(url, "state")
       testthat::expect_true(is.character(enc) && nzchar(enc))
 
@@ -54,13 +54,13 @@ testthat::test_that("audit events from async worker include shiny session token"
         },
         .package = "shinyOAuth",
         {
-          values$.process_query(paste0("?code=ok&state=", enc))
+          values[[".process_query"]](paste0("?code=ok&state=", enc))
 
           # Allow promise handlers to run
           deadline <- Sys.time() + 3
-          while (is.null(values$token) && Sys.time() < deadline) {
+          while (is.null(values[["token"]]) && Sys.time() < deadline) {
             later::run_now(0.05)
-            session$flushReact()
+            session[["flushReact"]]()
             Sys.sleep(0.01)
           }
         }
@@ -70,7 +70,7 @@ testthat::test_that("audit events from async worker include shiny session token"
       deadline <- Sys.time() + 3
       while (length(audit_events) == 0 && Sys.time() < deadline) {
         later::run_now(0.05)
-        session$flushReact()
+        session[["flushReact"]]()
         Sys.sleep(0.01)
       }
 

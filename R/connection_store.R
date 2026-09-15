@@ -21,22 +21,22 @@
 #' Records contain ciphertext only. Encryption keys stay with the manager, outside
 #' this adapter. Never expose these methods or credential imports as HTTP routes.
 #'
-#' * `$create(owner, id, transaction, client, fingerprint, sealed, expires_at)`
+#' * `[["create"]](owner, id, transaction, client, fingerprint, sealed, expires_at)`
 #'   returns a record with a new revision, or `NULL` for a duplicate connection/transaction.
-#' * `$read(owner, id)` returns the owner's record, or `NULL` when absent, expired,
+#' * `[["read"]](owner, id)` returns the owner's record, or `NULL` when absent, expired,
 #'   or owned by someone else. It includes the sealed envelope for internal use.
-#' * `$list(owner)` returns metadata lists without ciphertext or operation IDs.
-#' * `$begin_refresh(owner, id, revision)` claims an active record and returns its
+#' * `[["list"]](owner)` returns metadata lists without ciphertext or operation IDs.
+#' * `[["begin_refresh"]](owner, id, revision)` claims an active record and returns its
 #'   new revision and operation ID. A conflicting claim returns `NULL`.
-#' * `$commit_refresh(owner, id, operation, revision, sealed)` installs credentials
+#' * `[["commit_refresh"]](owner, id, operation, revision, sealed)` installs credentials
 #'   only for the current claim, returning the updated record or `NULL`.
-#' * `$fail_refresh(owner, id, operation, revision, outcome)` releases a claim only
+#' * `[["fail_refresh"]](owner, id, operation, revision, outcome)` releases a claim only
 #'   for `"not_consumed"`; `"possibly_consumed"` and `"consumed"` remove the old
 #'   envelope and mark the record `"uncertain"`. Returns the record or `NULL`.
-#' * `$disconnect(owner, id, revision)` first installs a credential-free tombstone,
+#' * `[["disconnect"]](owner, id, revision)` first installs a credential-free tombstone,
 #'   then returns `list(record, previous)` for bounded remote cleanup. Conflicts
 #'   return `NULL`; the caller must reload before retrying.
-#' * `$disconnect_owner(owner)` tombstones all of that owner's records and returns
+#' * `[["disconnect_owner"]](owner)` tombstones all of that owner's records and returns
 #'   the previous records for bounded cleanup. Other owners are unaffected.
 #'
 #' Reads expire abandoned refresh claims before returning data. Tombstones and
@@ -120,12 +120,12 @@ connection_store_memory_impl <- function(
     }
   }
   save <- function(record) {
-    records[[record$id]] <- record
+    records[[record[["id"]]]] <- record
     record
   }
   remove_expired <- function(now) {
     for (id in ls(records, all.names = TRUE)) {
-      if (records[[id]]$expires_at <= now) {
+      if (records[[id]][["expires_at"]] <= now) {
         rm(list = id, envir = records)
       }
     }
@@ -140,38 +140,38 @@ connection_store_memory_impl <- function(
     id_check(owner)
     id_check(id)
     record <- records[[id]]
-    if (is.null(record) || !identical(record$owner, owner)) {
+    if (is.null(record) || !identical(record[["owner"]], owner)) {
       return(NULL)
     }
-    if (record$expires_at <= now) {
+    if (record[["expires_at"]] <= now) {
       rm(list = id, envir = records)
       return(NULL)
     }
     if (
-      identical(record$status, "refreshing") &&
-        record$operation_expires_at <= now
+      identical(record[["status"]], "refreshing") &&
+        record[["operation_expires_at"]] <= now
     ) {
-      record$status <- "uncertain"
-      record$sealed <- NULL
-      record$operation <- NULL
-      record$operation_expires_at <- NULL
-      record$revision <- next_revision()
+      record[["status"]] <- "uncertain"
+      record[["sealed"]] <- NULL
+      record[["operation"]] <- NULL
+      record[["operation_expires_at"]] <- NULL
+      record[["revision"]] <- next_revision()
       save(record)
     }
     record
   }
   matches <- function(record, revision, status = NULL, operation = NULL) {
     !is.null(record) &&
-      identical(record$revision, as.numeric(revision)) &&
-      (is.null(status) || identical(record$status, status)) &&
-      (is.null(operation) || identical(record$operation, operation))
+      identical(record[["revision"]], as.numeric(revision)) &&
+      (is.null(status) || identical(record[["status"]], status)) &&
+      (is.null(operation) || identical(record[["operation"]], operation))
   }
   finish <- function(record, status, sealed) {
-    record$status <- status
-    record$sealed <- sealed
-    record$operation <- NULL
-    record$operation_expires_at <- NULL
-    record$revision <- next_revision()
+    record[["status"]] <- status
+    record[["sealed"]] <- sealed
+    record[["operation"]] <- NULL
+    record[["operation_expires_at"]] <- NULL
+    record[["revision"]] <- next_revision()
     save(record)
   }
   create <- function(
@@ -233,13 +233,13 @@ connection_store_memory_impl <- function(
     if (!matches(record, revision, "active")) {
       return(NULL)
     }
-    record$status <- "refreshing"
-    record$operation <- random_urlsafe(32L)
-    record$operation_expires_at <- min(
+    record[["status"]] <- "refreshing"
+    record[["operation"]] <- random_urlsafe(32L)
+    record[["operation_expires_at"]] <- min(
       guard() + refresh_timeout,
-      record$expires_at
+      record[["expires_at"]]
     )
-    record$revision <- next_revision()
+    record[["revision"]] <- next_revision()
     save(record)
   }
   commit_refresh <- function(owner, id, operation, revision, sealed) {
@@ -269,7 +269,7 @@ connection_store_memory_impl <- function(
     finish(
       record,
       if (retryable) "active" else "uncertain",
-      if (retryable) record$sealed else NULL
+      if (retryable) record[["sealed"]] else NULL
     )
   }
   disconnect <- function(owner, id, revision) {
@@ -278,7 +278,7 @@ connection_store_memory_impl <- function(
     if (!matches(record, revision)) {
       return(NULL)
     }
-    if (identical(record$status, "disconnected")) {
+    if (identical(record[["status"]], "disconnected")) {
       return(list(record = record, previous = NULL))
     }
     list(record = finish(record, "disconnected", NULL), previous = record)
@@ -306,7 +306,7 @@ connection_store_memory_impl <- function(
   disconnect_owner <- function(owner) {
     rows <- list_records(owner)
     lapply(rows, function(record) {
-      disconnect(owner, record$id, record$revision)$previous
+      disconnect(owner, record[["id"]], record[["revision"]])[["previous"]]
     })
   }
   structure(

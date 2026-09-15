@@ -38,10 +38,10 @@ testthat::test_that("revoke_on_session_end calls revoke_token when session ends"
             expires_at = as.numeric(Sys.time()) + 3600,
             id_token = NA_character_
           )
-          values$token <- t
-          session$flushReact()
+          values[["token"]] <- t
+          session[["flushReact"]]()
 
-          testthat::expect_true(values$authenticated)
+          testthat::expect_true(values[["authenticated"]])
         }
       )
     }
@@ -51,11 +51,11 @@ testthat::test_that("revoke_on_session_end calls revoke_token when session ends"
   # Verify both refresh and access tokens were revoked
   testthat::expect_length(revoke_calls, 2)
 
-  which_values <- vapply(revoke_calls, function(x) x$which, character(1))
+  which_values <- vapply(revoke_calls, function(x) x[["which"]], character(1))
   testthat::expect_true("refresh" %in% which_values)
   testthat::expect_true("access" %in% which_values)
 
-  async_values <- vapply(revoke_calls, function(x) isTRUE(x$async), logical(1))
+  async_values <- vapply(revoke_calls, function(x) isTRUE(x[["async"]]), logical(1))
   testthat::expect_true(!any(async_values))
 })
 
@@ -129,17 +129,17 @@ testthat::test_that("revoke_on_session_end uses async only when module async = T
             expires_at = as.numeric(Sys.time()) + 3600,
             id_token = NA_character_
           )
-          values$token <- t
-          session$flushReact()
+          values[["token"]] <- t
+          session[["flushReact"]]()
 
-          testthat::expect_true(values$authenticated)
+          testthat::expect_true(values[["authenticated"]])
         }
       )
     }
   )
 
   testthat::expect_length(revoke_calls, 2)
-  async_values <- vapply(revoke_calls, function(x) isTRUE(x$async), logical(1))
+  async_values <- vapply(revoke_calls, function(x) isTRUE(x[["async"]]), logical(1))
   testthat::expect_true(all(async_values))
 })
 
@@ -189,17 +189,17 @@ testthat::test_that("logout propagates shiny session context to revoke_token", {
           indefinite_session = TRUE
         ),
         expr = {
-          session_token <<- .scalar_chr(session$token)
+          session_token <<- .scalar_chr(session[["token"]])
 
-          values$token <- OAuthToken(
+          values[["token"]] <- OAuthToken(
             access_token = "access_tok",
             refresh_token = "refresh_tok",
             expires_at = as.numeric(Sys.time()) + 3600,
             id_token = NA_character_
           )
-          session$flushReact()
+          session[["flushReact"]]()
 
-          values$logout()
+          values[["logout"]]()
         }
       )
     }
@@ -207,20 +207,20 @@ testthat::test_that("logout propagates shiny session context to revoke_token", {
 
   testthat::expect_length(revoke_calls, 2)
   for (call in revoke_calls) {
-    testthat::expect_true(isTRUE(call$async))
-    testthat::expect_false(is.null(call$shiny_session))
+    testthat::expect_true(isTRUE(call[["async"]]))
+    testthat::expect_false(is.null(call[["shiny_session"]]))
     testthat::expect_identical(
-      call$shiny_session$token %||% NA_character_,
+      call[["shiny_session"]][["token"]] %||% NA_character_,
       session_token
     )
-    testthat::expect_true(isTRUE(call$shiny_session$is_async))
+    testthat::expect_true(isTRUE(call[["shiny_session"]][["is_async"]]))
   }
 
   types <- vapply(audit_events, function(e) e[["type"]] %||% "", character(1))
   logout_idx <- match("audit_logout", types)
   testthat::expect_false(is.na(logout_idx))
   testthat::expect_false(isTRUE(
-    audit_events[[logout_idx]]$shiny_session$is_async
+    audit_events[[logout_idx]][["shiny_session"]][["is_async"]]
   ))
 })
 
@@ -264,10 +264,10 @@ testthat::test_that("revoke_on_session_end does NOT call revoke_token when FALSE
             expires_at = as.numeric(Sys.time()) + 3600,
             id_token = NA_character_
           )
-          values$token <- t
-          session$flushReact()
+          values[["token"]] <- t
+          session[["flushReact"]]()
 
-          testthat::expect_true(values$authenticated)
+          testthat::expect_true(values[["authenticated"]])
         }
       )
     }
@@ -312,8 +312,8 @@ testthat::test_that("revoke_on_session_end skips revoke if no token present", {
         ),
         expr = {
           # No token set - user never authenticated
-          testthat::expect_null(values$token)
-          testthat::expect_false(values$authenticated)
+          testthat::expect_null(values[["token"]])
+          testthat::expect_false(values[["authenticated"]])
         }
       )
     }
@@ -363,7 +363,7 @@ testthat::test_that("revoke_on_session_end emits audit event", {
           revoke_on_session_end = TRUE
         ),
         expr = {
-          session_token <<- .scalar_chr(session$token)
+          session_token <<- .scalar_chr(session[["token"]])
 
           # Seed a valid token
           t <- OAuthToken(
@@ -372,8 +372,8 @@ testthat::test_that("revoke_on_session_end emits audit event", {
             expires_at = as.numeric(Sys.time()) + 3600,
             id_token = NA_character_
           )
-          values$token <- t
-          session$flushReact()
+          values[["token"]] <- t
+          session[["flushReact"]]()
         }
       )
     }
@@ -386,14 +386,14 @@ testthat::test_that("revoke_on_session_end emits audit event", {
   testthat::expect_true(is.character(session_token) && nzchar(session_token))
   idx <- match("audit_session_ended_revoke", types)
   ev <- audit_events[[idx]]
-  seen <- (ev$shiny_session %||% list())$session_token_digest %||%
+  seen <- (ev[["shiny_session"]] %||% list())[["session_token_digest"]] %||%
     NA_character_
   testthat::expect_identical(
     seen,
     shinyOAuth:::string_digest(session_token)
   )
-  testthat::expect_null((ev$shiny_session %||% list())$token)
-  testthat::expect_false(isTRUE((ev$shiny_session %||% list())$is_async))
+  testthat::expect_null((ev[["shiny_session"]] %||% list())[["token"]])
+  testthat::expect_false(isTRUE((ev[["shiny_session"]] %||% list())[["is_async"]]))
 })
 
 testthat::test_that("session_ended event is emitted even without revoke_on_session_end", {
@@ -426,10 +426,10 @@ testthat::test_that("session_ended event is emitted even without revoke_on_sessi
         expires_at = as.numeric(Sys.time()) + 3600,
         id_token = NA_character_
       )
-      values$token <- t
-      session$flushReact()
+      values[["token"]] <- t
+      session[["flushReact"]]()
 
-      testthat::expect_true(values$authenticated)
+      testthat::expect_true(values[["authenticated"]])
     }
   )
 
@@ -440,8 +440,8 @@ testthat::test_that("session_ended event is emitted even without revoke_on_sessi
   # Verify session_ended contains was_authenticated = TRUE
   idx <- match("audit_session_ended", types)
   ev <- audit_events[[idx]]
-  testthat::expect_true(isTRUE(ev$was_authenticated))
-  testthat::expect_false(isTRUE((ev$shiny_session %||% list())$is_async))
+  testthat::expect_true(isTRUE(ev[["was_authenticated"]]))
+  testthat::expect_false(isTRUE((ev[["shiny_session"]] %||% list())[["is_async"]]))
 })
 
 testthat::test_that("authenticated_changed event is emitted on token set", {
@@ -467,7 +467,7 @@ testthat::test_that("authenticated_changed event is emitted on token set", {
     ),
     expr = {
       # Initially not authenticated
-      testthat::expect_false(values$authenticated)
+      testthat::expect_false(values[["authenticated"]])
 
       # Seed a valid token -> should trigger authenticated_changed
       t <- OAuthToken(
@@ -476,10 +476,10 @@ testthat::test_that("authenticated_changed event is emitted on token set", {
         expires_at = as.numeric(Sys.time()) + 3600,
         id_token = NA_character_
       )
-      values$token <- t
-      session$flushReact()
+      values[["token"]] <- t
+      session[["flushReact"]]()
 
-      testthat::expect_true(values$authenticated)
+      testthat::expect_true(values[["authenticated"]])
     }
   )
 
@@ -492,7 +492,7 @@ testthat::test_that("authenticated_changed event is emitted on token set", {
   to_true <- vapply(
     auth_changed_events,
     function(e) {
-      isTRUE(e$authenticated) && !isTRUE(e$previous_authenticated)
+      isTRUE(e[["authenticated"]]) && !isTRUE(e[["previous_authenticated"]])
     },
     logical(1)
   )

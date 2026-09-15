@@ -54,8 +54,8 @@ testthat::test_that("revoke and introspect apply extra_token_headers with identi
   testthat::expect_false(is.null(captured_introspect_req))
 
   # Both must have the exact same custom headers
-  rev_hdrs <- captured_revoke_req$headers
-  intr_hdrs <- captured_introspect_req$headers
+  rev_hdrs <- captured_revoke_req[["headers"]]
+  intr_hdrs <- captured_introspect_req[["headers"]]
 
   testthat::expect_identical(
     rev_hdrs[["X-Request-Source"]],
@@ -128,8 +128,8 @@ testthat::test_that("reserved Authorization header in extra_token_headers is rej
 
   testthat::expect_true(revoke_called)
   testthat::expect_true(introspect_called)
-  testthat::expect_identical(res_rev$status, "ok")
-  testthat::expect_identical(res_int$status, "ok")
+  testthat::expect_identical(res_rev[["status"]], "ok")
+  testthat::expect_identical(res_int[["status"]], "ok")
 })
 
 testthat::test_that("extra_token_headers with special characters are preserved", {
@@ -162,9 +162,9 @@ testthat::test_that("extra_token_headers with special characters are preserved",
     req_with_retry = function(req, ...) {
       url <- as.character(req[["url"]])
       if (grepl("revoke", url)) {
-        captured_revoke_hdrs <<- req$headers
+        captured_revoke_hdrs <<- req[["headers"]]
       } else {
-        captured_introspect_hdrs <<- req$headers
+        captured_introspect_hdrs <<- req[["headers"]]
       }
       httr2::response(
         url = url,
@@ -235,10 +235,10 @@ testthat::test_that("extra_token_headers include Content-Type without breaking b
 
   # These should not error — the form body builder should take precedence
   res_rev <- revoke_token(cli, tok, which = "access", async = FALSE)
-  testthat::expect_identical(res_rev$status, "ok")
+  testthat::expect_identical(res_rev[["status"]], "ok")
 
   res_intr <- introspect_token(cli, tok, which = "access", async = FALSE)
-  testthat::expect_identical(res_intr$status, "ok")
+  testthat::expect_identical(res_intr[["status"]], "ok")
 })
 
 testthat::test_that("revoke and introspect both apply add_req_defaults", {
@@ -284,14 +284,14 @@ testthat::test_that("revoke and introspect both apply add_req_defaults", {
   testthat::expect_false(is.null(captured_introspect_req))
 
   # Both should have a User-Agent header set by add_req_defaults()
-  rev_ua <- captured_revoke_req$headers[["User-Agent"]] %||%
-    captured_revoke_req$options$useragent
-  intr_ua <- captured_introspect_req$headers[["User-Agent"]] %||%
-    captured_introspect_req$options$useragent
+  rev_ua <- captured_revoke_req[["headers"]][["User-Agent"]] %||%
+    captured_revoke_req[["options"]][["useragent"]]
+  intr_ua <- captured_introspect_req[["headers"]][["User-Agent"]] %||%
+    captured_introspect_req[["options"]][["useragent"]]
   # We don't assert the exact value but both should be non-NULL or set via
   # the options path. At minimum, the request should have been modified by
 
   # add_req_defaults.
-  testthat::expect_false(is.null(captured_revoke_req$policies))
-  testthat::expect_false(is.null(captured_introspect_req$policies))
+  testthat::expect_false(is.null(captured_revoke_req[["policies"]]))
+  testthat::expect_false(is.null(captured_introspect_req[["policies"]]))
 })

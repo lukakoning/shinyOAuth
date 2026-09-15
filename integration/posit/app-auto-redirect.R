@@ -61,10 +61,10 @@ ui <- fluidPage(
     div(
       class = "alert alert-danger",
       role = "alert",
-      tags$p(
+      tags[["p"]](
         "OAUTH_REDIRECT_URI points at the default embedded Connect Cloud content URL."
       ),
-      tags$p(
+      tags[["p"]](
         paste(
           "Use a top-level app URL instead, either a claimed Posit Connect",
           "Cloud URL or your own custom domain, and register that same URL",
@@ -77,13 +77,13 @@ ui <- fluidPage(
     div(
       class = "alert alert-warning",
       role = "alert",
-      tags$p(
+      tags[["p"]](
         "Auto-redirect is disabled until the required environment variables are set."
       ),
-      tags$ul(
-        lapply(missing_env, function(var) tags$li(tags$code(var)))
+      tags[["ul"]](
+        lapply(missing_env, function(var) tags[["li"]](tags[["code"]](var)))
       ),
-      tags$p(
+      tags[["p"]](
         "The GitHub OAuth callback URL must exactly match OAUTH_REDIRECT_URI."
       )
     )
@@ -91,10 +91,10 @@ ui <- fluidPage(
     uiOutput("login_controls")
   },
   uiOutput("oauth_error"),
-  tags$hr(),
+  tags[["hr"]](),
   h4("Auth summary"),
   verbatimTextOutput("auth_print"),
-  tags$hr(),
+  tags[["hr"]](),
   h4("User info"),
   verbatimTextOutput("user_info")
 )
@@ -119,7 +119,7 @@ if (is.null(client)) {
 
 server <- function(input, output, session) {
   if (is.null(client)) {
-    output$auth_print <- renderText({
+    output[["auth_print"]] <- renderText({
       paste(
         c(
           "Missing or invalid OAuth configuration.",
@@ -136,23 +136,23 @@ server <- function(input, output, session) {
       )
     })
 
-    output$user_info <- renderText({
+    output[["user_info"]] <- renderText({
       "No user information is available until GitHub OAuth is configured."
     })
 
-    output$oauth_error <- renderUI(NULL)
+    output[["oauth_error"]] <- renderUI(NULL)
 
     return(invisible(NULL))
   }
 
   auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
 
-  observeEvent(input$logout_btn, ignoreInit = TRUE, {
-    auth$logout()
+  observeEvent(input[["logout_btn"]], ignoreInit = TRUE, {
+    auth[["logout"]]()
   })
 
-  output$login_controls <- renderUI({
-    if (isTRUE(auth$authenticated)) {
+  output[["login_controls"]] <- renderUI({
+    if (isTRUE(auth[["authenticated"]])) {
       return(
         div(
           style = "margin-bottom: 1rem;",
@@ -171,20 +171,20 @@ server <- function(input, output, session) {
     )
   })
 
-  output$auth_print <- renderText({
-    token <- auth$token
+  output[["auth_print"]] <- renderText({
+    token <- auth[["token"]]
     refresh_token <- if (!is.null(token)) token@refresh_token else NULL
     id_token <- if (!is.null(token)) token@id_token else NA_character_
 
     paste0(
       "Authenticated? ",
-      if (isTRUE(auth$authenticated)) "YES" else "NO",
+      if (isTRUE(auth[["authenticated"]])) "YES" else "NO",
       "\n",
       "Has token? ",
       if (!is.null(token)) "YES" else "NO",
       "\n",
       "Has error? ",
-      if (!is.null(auth$error)) "YES" else "NO",
+      if (!is.null(auth[["error"]])) "YES" else "NO",
       "\n\n",
       "Token present: ",
       !is.null(token),
@@ -200,20 +200,20 @@ server <- function(input, output, session) {
     )
   })
 
-  output$user_info <- renderPrint({
-    req(isTRUE(auth$authenticated), !is.null(auth$token))
-    auth$token@userinfo
+  output[["user_info"]] <- renderPrint({
+    req(isTRUE(auth[["authenticated"]]), !is.null(auth[["token"]]))
+    auth[["token"]]@userinfo
   })
 
-  output$oauth_error <- renderUI({
-    if (is.null(auth$error)) {
+  output[["oauth_error"]] <- renderUI({
+    if (is.null(auth[["error"]])) {
       return(NULL)
     }
 
-    message <- if (identical(auth$error, "access_denied")) {
+    message <- if (identical(auth[["error"]], "access_denied")) {
       "Sign-in was canceled or denied. Reload the app to try again."
     } else {
-      auth$error_description %||%
+      auth[["error_description"]] %||%
         "Authentication failed. Reload the app to try again."
     }
 

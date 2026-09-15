@@ -74,7 +74,7 @@ test_that("oauth_provider_github returns valid OAuthProvider with expected defau
     "application/json"
   )
 
-  # userinfo_id_selector should extract $id (not $sub)
+  # userinfo_id_selector should extract [["id"]] (not [["sub"]])
   fake_ui <- list(id = 12345, login = "octocat")
   expect_identical(p@userinfo_id_selector(fake_ui), "12345")
 })

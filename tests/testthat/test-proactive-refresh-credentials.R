@@ -25,13 +25,13 @@ test_that("proactive refresh preserves valid tokens without refresh credentials"
             access_token = "still-valid",
             expires_at = as.numeric(Sys.time()) + 30
           )
-          values$token <- original
-          values$auth_started_at <- as.numeric(Sys.time())
-          session$flushReact()
-          expect_identical(values$token, original)
-          expect_null(values$error)
-          expect_true(values$authenticated)
-          expect_false(values$refresh_in_progress)
+          values[["token"]] <- original
+          values[["auth_started_at"]] <- as.numeric(Sys.time())
+          session[["flushReact"]]()
+          expect_identical(values[["token"]], original)
+          expect_null(values[["error"]])
+          expect_true(values[["authenticated"]])
+          expect_false(values[["refresh_in_progress"]])
         }
       )
     }

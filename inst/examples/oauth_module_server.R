@@ -59,15 +59,15 @@ if (
       auto_redirect = TRUE
     )
 
-    output$login <- renderUI({
-      if (auth$authenticated) {
-        user_info <- auth$token@userinfo
+    output[["login"]] <- renderUI({
+      if (auth[["authenticated"]]) {
+        user_info <- auth[["token"]]@userinfo
         tagList(
-          tags$p("You are logged in!"),
-          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+          tags[["p"]]("You are logged in!"),
+          tags[["pre"]](paste(capture.output(str(user_info)), collapse = "\n"))
         )
       } else {
-        tags$p("You are not logged in.")
+        tags[["p"]]("You are not logged in.")
       }
     })
   }
@@ -100,22 +100,22 @@ if (
       auto_redirect = FALSE
     )
 
-    observeEvent(input$login_btn, {
-      auth$request_login()
+    observeEvent(input[["login_btn"]], {
+      auth[["request_login"]]()
     })
-    observeEvent(input$logout_btn, {
-      auth$logout()
+    observeEvent(input[["logout_btn"]], {
+      auth[["logout"]]()
     })
 
-    output$login <- renderUI({
-      if (auth$authenticated) {
-        user_info <- auth$token@userinfo
+    output[["login"]] <- renderUI({
+      if (auth[["authenticated"]]) {
+        user_info <- auth[["token"]]@userinfo
         tagList(
-          tags$p("You are logged in!"),
-          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+          tags[["p"]]("You are logged in!"),
+          tags[["pre"]](paste(capture.output(str(user_info)), collapse = "\n"))
         )
       } else {
-        tags$p("You are not logged in.")
+        tags[["p"]]("You are not logged in.")
       }
     })
   }
@@ -153,7 +153,7 @@ if (
     repository_error <- reactiveVal(FALSE)
 
     observe({
-      req(auth$authenticated)
+      req(auth[["authenticated"]])
 
       # Example additional API request using the access token
       # (e.g., fetch user repositories from GitHub)
@@ -161,7 +161,7 @@ if (
       repos_data <- tryCatch(
         {
           resp <- perform_resource_req(
-            auth$token,
+            auth[["token"]],
             "https://api.github.com/user/repos",
             query = list(per_page = 30)
           )
@@ -176,45 +176,45 @@ if (
     })
 
     # Render username + their repositories
-    output$ui <- renderUI({
-      if (isTRUE(auth$authenticated)) {
-        user_info <- auth$token@userinfo
+    output[["ui"]] <- renderUI({
+      if (isTRUE(auth[["authenticated"]])) {
+        user_info <- auth[["token"]]@userinfo
         repos <- repositories()
 
         return(tagList(
-          tags$p(paste("You are logged in as:", user_info$login)),
-          tags$h4("Your repositories:"),
+          tags[["p"]](paste("You are logged in as:", user_info[["login"]])),
+          tags[["h4"]]("Your repositories:"),
           if (repository_error()) {
-            tags$p("Could not load repositories.")
+            tags[["p"]]("Could not load repositories.")
           } else if (!is.null(repos) && length(repos) == 0) {
-            tags$p("No repositories returned.")
+            tags[["p"]]("No repositories returned.")
           } else if (!is.null(repos)) {
-            tags$ul(
+            tags[["ul"]](
               Map(
                 function(url, name) {
                   # Render names as text; accept only GitHub HTTPS links.
                   if (isTRUE(grepl("^https://github\\.com/", url))) {
-                    tags$li(tags$a(
+                    tags[["li"]](tags[["a"]](
                       href = url,
                       target = "_blank",
                       rel = "noopener noreferrer",
                       name
                     ))
                   } else {
-                    tags$li(name)
+                    tags[["li"]](name)
                   }
                 },
-                repos$html_url,
-                repos$full_name
+                repos[["html_url"]],
+                repos[["full_name"]]
               )
             )
           } else {
-            tags$p("Loading repositories...")
+            tags[["p"]]("Loading repositories...")
           }
         ))
       }
 
-      return(tags$p("You are not logged in."))
+      return(tags[["p"]]("You are not logged in."))
     })
   }
 

@@ -69,7 +69,7 @@ poll_for_async <- function(
   while (!isTRUE(condition_fn()) && Sys.time() < deadline) {
     later::run_now(interval)
     if (!is.null(session)) {
-      session$flushReact()
+      session[["flushReact"]]()
     }
     Sys.sleep(interval / 5)
   }

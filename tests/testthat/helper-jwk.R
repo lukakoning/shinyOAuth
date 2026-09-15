@@ -2,7 +2,7 @@
 # Test issuers must publish minimal Base64urlUInt values (RFC 7518 Section 2).
 write_test_jwk <- function(key) {
   jwk <- jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = FALSE)
-  if (identical(jwk$kty, "RSA")) {
+  if (identical(jwk[["kty"]], "RSA")) {
     for (field in c("n", "e")) {
       bytes <- shinyOAuth:::base64url_decode_raw(jwk[[field]])
       while (length(bytes) > 1L && bytes[[1]] == as.raw(0)) {

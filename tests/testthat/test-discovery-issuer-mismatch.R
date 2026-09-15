@@ -198,11 +198,11 @@ test_that("oauth_provider_oidc_discover accepts a full discovery URL", {
 
   tenant_path <- "/tenant-a"
   app <- webfakes::new_app()
-  app$get(
+  app[["get"]](
     paste0(tenant_path, "/.well-known/openid-configuration"),
     function(req, res) {
-      issuer_url <- paste0("http://", req$get_header("host"), tenant_path)
-      res$set_status(200)$set_type("application/json")$send(
+      issuer_url <- paste0("http://", req[["get_header"]]("host"), tenant_path)
+      res[["set_status"]](200)[["set_type"]]("application/json")[["send"]](
         jsonlite::toJSON(
           list(
             issuer = issuer_url,
@@ -220,7 +220,7 @@ test_that("oauth_provider_oidc_discover accepts a full discovery URL", {
   )
 
   srv <- webfakes::local_app_process(app)
-  issuer_url <- paste0(sub("/$", "", srv$url()), tenant_path)
+  issuer_url <- paste0(sub("/$", "", srv[["url"]]()), tenant_path)
 
   prov <- oauth_provider_oidc_discover(
     issuer = paste0(issuer_url, "/.well-known/openid-configuration")

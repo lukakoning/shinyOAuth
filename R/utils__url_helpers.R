@@ -200,10 +200,10 @@ authorization_query_resolution <- function(url, params = list()) {
 
 authorization_url_append <- function(url, params) {
   resolved <- authorization_query_resolution(url, params)
-  if (!is.null(resolved$problem)) {
-    err_config(resolved$problem)
+  if (!is.null(resolved[["problem"]])) {
+    err_config(resolved[["problem"]])
   }
-  url_append_query_params(url, resolved$params)
+  url_append_query_params(url, resolved[["params"]])
 }
 
 #' Internal: Resolve issuer from discovery with issuer matching policy

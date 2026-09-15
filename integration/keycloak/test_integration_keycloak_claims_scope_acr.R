@@ -4,7 +4,7 @@
 ## and required ACR enforcement against real Keycloak authorization-code tokens.
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 make_validation_public_client <- function(
@@ -37,23 +37,23 @@ validation_login_via_module <- function(client, username = "alice") {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       login <- perform_login_form_as(
         auth_url,
         username = username,
         password = username,
         redirect_uri = client@redirect_uri
       )
-      values$.process_query(callback_query(login))
-      session$flushReact()
+      values[[".process_query"]](callback_query(login))
+      session[["flushReact"]]()
 
       result <<- list(
         auth_url = auth_url,
         login = login,
-        authenticated = isTRUE(values$authenticated),
-        error = values$error,
-        error_description = values$error_description,
-        token = values$token
+        authenticated = isTRUE(values[["authenticated"]]),
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        token = values[["token"]]
       )
     }
   )
@@ -65,13 +65,13 @@ exchange_keycloak_code_for_token_set <- function(client, auth_url, login) {
   state <- get_state_store_entry(client, auth_url)
   params <- list(
     grant_type = "authorization_code",
-    code = login$code,
+    code = login[["code"]],
     redirect_uri = client@redirect_uri,
-    code_verifier = state$entry$pkce_code_verifier,
+    code_verifier = state[["entry"]][["pkce_code_verifier"]],
     client_id = client@client_id
   )
   if (is.character(client@client_secret) && nzchar(client@client_secret)) {
-    params$client_secret <- client@client_secret
+    params[["client_secret"]] <- client@client_secret
   }
 
   req <- httr2::request(client@provider@token_url) |>
@@ -204,7 +204,7 @@ testthat::test_that("strict scope validation rejects a real Keycloak token set m
     shinyOAuth:::verify_token_set(
       client,
       token_set = token_set,
-      nonce = state$entry$nonce,
+      nonce = state[["entry"]][["nonce"]],
       requested_scopes = c("openid", "shinyoauth-withheld-scope")
     ),
     regexp = "Granted scopes missing|scope_validation",

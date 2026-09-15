@@ -19,7 +19,7 @@ test_that("login and refresh reject ineligible introspection before UserInfo", {
     swap_code_for_token_set = function(...) token_set,
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = 200,
         headers = list("content-type" = "application/json"),
         body = charToRaw(jsonlite::toJSON(token_set, auto_unbox = TRUE))

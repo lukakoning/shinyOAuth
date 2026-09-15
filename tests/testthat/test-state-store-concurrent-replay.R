@@ -1,11 +1,11 @@
 # Tests for concurrent state replay prevention across processes
 #
-# These tests verify that the atomic $take() path prevents two concurrent
+# These tests verify that the atomic [["take"]]() path prevents two concurrent
 # consumers from both successfully consuming the same state entry when
 # sharing a backend, and that non-atomic shared stores correctly error
 # (fail closed).
 
-# -- Helper: file-backed store with atomic $take() via file.rename() ---------
+# -- Helper: file-backed store with atomic [["take"]]() via file.rename() ---------
 #
 # file.rename() is atomic on POSIX and effectively atomic on NTFS, making this
 # a simple but realistic simulation of atomic consume semantics (like Redis
@@ -48,12 +48,12 @@ make_shared_atomic_store <- function(dir) {
 }
 
 
-# -- Test: concurrent $take() across parallel workers -----------------------
+# -- Test: concurrent [["take"]]() across parallel workers -----------------------
 
 test_that("atomic $take() prevents concurrent replay across parallel workers", {
   skip_on_cran()
   skip_if(
-    identical(.Platform$OS.type, "windows"),
+    identical(.Platform[["OS.type"]], "windows"),
     "file.rename() not reliably atomic on Windows"
   )
 
@@ -67,12 +67,12 @@ test_that("atomic $take() prevents concurrent replay across parallel workers", {
     pkce_code_verifier = "cv",
     nonce = "nn"
   )
-  store$set(key, ssv)
+  store[["set"]](key, ssv)
 
   # Verify the entry exists before the race
-  expect_false(is.null(store$get(key, missing = NULL)))
+  expect_false(is.null(store[["get"]](key, missing = NULL)))
 
-  # Spin up a 2-worker cluster; each worker attempts to $take() the same key
+  # Spin up a 2-worker cluster; each worker attempts to [["take"]]() the same key
   cl <- parallel::makePSOCKcluster(2)
   on.exit(parallel::stopCluster(cl), add = TRUE)
 
@@ -102,12 +102,12 @@ test_that("atomic $take() prevents concurrent replay across parallel workers", {
   )
 
   # Exactly one worker should have succeeded
-  successes <- vapply(results, function(r) isTRUE(r$success), logical(1))
+  successes <- vapply(results, function(r) isTRUE(r[["success"]]), logical(1))
   expect_equal(sum(successes), 1L)
 
   # The winning worker should have the correct value
   winner <- results[[which(successes)]]
-  expect_equal(winner$value$browser_token, "bt_conc")
+  expect_equal(winner[["value"]][["browser_token"]], "bt_conc")
 })
 
 
@@ -116,7 +116,7 @@ test_that("atomic $take() prevents concurrent replay across parallel workers", {
 test_that("shared store without $take() errors at consume time (not just warns)", {
   skip_on_cran()
 
-  # A custom shared-like store without $take() — non-cache_mem
+  # A custom shared-like store without [["take"]]() — non-cache_mem
   env <- new.env(parent = emptyenv())
   store <- list(
     get = function(key, missing = NULL) {
@@ -153,7 +153,7 @@ test_that("shared store without $take() errors at consume time (not just warns)"
   state <- "REPLAY-FAIL-CLOSED"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  store[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # Must error (shinyOAuth_config_error), not just warn
   expect_error(
@@ -162,11 +162,11 @@ test_that("shared store without $take() errors at consume time (not just warns)"
   )
 
   # The entry should still be in the store (nothing was consumed)
-  expect_false(is.null(store$get(key, missing = NULL)))
+  expect_false(is.null(store[["get"]](key, missing = NULL)))
 })
 
 
-# -- Test: cache_disk without $take() errors (fail closed) ------------------
+# -- Test: cache_disk without [["take"]]() errors (fail closed) ------------------
 
 test_that("cache_disk() without $take() errors at consume time", {
   skip_on_cran()
@@ -190,9 +190,9 @@ test_that("cache_disk() without $take() errors at consume time", {
   state <- "DISK-FAIL-CLOSED"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  disk$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  disk[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
-  # cache_disk without $take() must error
+  # cache_disk without [["take"]]() must error
   expect_error(
     shinyOAuth:::state_store_get_remove(cli, state),
     class = "shinyOAuth_config_error"
@@ -223,11 +223,11 @@ test_that("cache_mem fallback works without $take() (per-process safe)", {
   state <- "MEM-FALLBACK-OK"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  mem$set(key, ssv)
+  mem[["set"]](key, ssv)
 
   # cache_mem is per-process; fallback is safe, no error
   out <- shinyOAuth:::state_store_get_remove(cli, state)
-  expect_equal(out$browser_token, "bt")
+  expect_equal(out[["browser_token"]], "bt")
 
   # Second call must fail (single-use consumed)
   expect_error(
@@ -279,7 +279,7 @@ test_that("allow_non_atomic_state_store option enables fallback for shared store
   state <- "OPT-IN-FALLBACK"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt_opt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  store[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # Without the option, must error
   expect_error(
@@ -288,7 +288,7 @@ test_that("allow_non_atomic_state_store option enables fallback for shared store
   )
 
   # Entry should still be there (error happened before consume)
-  expect_false(is.null(store$get(key, missing = NULL)))
+  expect_false(is.null(store[["get"]](key, missing = NULL)))
 
   # With the option enabled, should succeed with a warning
   withr::local_options(shinyOAuth.allow_non_atomic_state_store = TRUE)
@@ -298,10 +298,10 @@ test_that("allow_non_atomic_state_store option enables fallback for shared store
     },
     class = "shinyOAuth_non_atomic_state_store_warning"
   )
-  expect_equal(out$browser_token, "bt_opt")
+  expect_equal(out[["browser_token"]], "bt_opt")
 
   # Entry should be consumed (removed)
-  expect_null(store$get(key, missing = NULL))
+  expect_null(store[["get"]](key, missing = NULL))
 })
 
 
@@ -332,7 +332,7 @@ test_that("allow_non_atomic_state_store option works with cache_disk", {
     pkce_code_verifier = "cv",
     nonce = "nn"
   )
-  disk$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  disk[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   # Without the option, errors
   expect_error(
@@ -348,7 +348,7 @@ test_that("allow_non_atomic_state_store option works with cache_disk", {
     },
     class = "shinyOAuth_non_atomic_state_store_warning"
   )
-  expect_equal(out$browser_token, "bt_disk")
+  expect_equal(out[["browser_token"]], "bt_disk")
 })
 
 
@@ -389,7 +389,7 @@ test_that("allow_non_atomic_state_store = FALSE (explicit) still errors", {
   state <- "EXPLICIT-FALSE"
   key <- shinyOAuth:::state_cache_key(state)
   ssv <- list(browser_token = "bt", pkce_code_verifier = "cv", nonce = "nn")
-  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  store[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
   withr::local_options(shinyOAuth.allow_non_atomic_state_store = FALSE)
 
@@ -403,7 +403,7 @@ test_that("allow_non_atomic_state_store = FALSE (explicit) still errors", {
 test_that("allow_non_atomic_state_store does not affect stores with $take()", {
   skip_on_cran()
 
-  # A store with $take() should use the atomic path regardless of the option
+  # A store with [["take"]]() should use the atomic path regardless of the option
   env <- new.env(parent = emptyenv())
   store <- list(
     get = function(key, missing = NULL) {
@@ -454,12 +454,12 @@ test_that("allow_non_atomic_state_store does not affect stores with $take()", {
     pkce_code_verifier = "cv",
     nonce = "nn"
   )
-  store$set(key, shinyOAuth:::state_store_seal(ssv, cli, state))
+  store[["set"]](key, shinyOAuth:::state_store_seal(ssv, cli, state))
 
-  # Should succeed via atomic $take(), no warning
+  # Should succeed via atomic [["take"]](), no warning
   withr::local_options(shinyOAuth.allow_non_atomic_state_store = TRUE)
   expect_no_warning({
     out <- shinyOAuth:::state_store_get_remove(cli, state)
   })
-  expect_equal(out$browser_token, "bt_take")
+  expect_equal(out[["browser_token"]], "bt_take")
 })

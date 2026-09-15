@@ -31,9 +31,9 @@ reset_test_otel_cache <- function() {
   # isolation we want to drop exporter state, not flush buffered data to
   # whatever OTLP endpoint happened to be configured earlier in the process.
   otel_test_cache <- get("otel_save_cache", envir = asNamespace("otel"))()
-  otel_test_cache[["tracer_provider"]] <- otel::tracer_provider_noop$new()
-  otel_test_cache[["logger_provider"]] <- otel::logger_provider_noop$new()
-  otel_test_cache[["meter_provider"]] <- otel::meter_provider_noop$new()
+  otel_test_cache[["tracer_provider"]] <- otel::tracer_provider_noop[["new"]]()
+  otel_test_cache[["logger_provider"]] <- otel::logger_provider_noop[["new"]]()
+  otel_test_cache[["meter_provider"]] <- otel::meter_provider_noop[["new"]]()
   otel_test_cache[["tracer_app"]] <- NULL
   otel_test_cache[["instruments"]] <- NULL
   get("otel_restore_cache", envir = asNamespace("otel"))(otel_test_cache)

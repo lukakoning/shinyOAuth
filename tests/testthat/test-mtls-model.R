@@ -40,7 +40,7 @@ test_that("mTLS token auth styles accept certificate-backed clients", {
     expect_identical(prov@token_auth_style, style)
     expect_true(isTRUE(prov@mtls_client_certificate_bound_access_tokens))
     expect_identical(
-      prov@mtls_endpoint_aliases$token_endpoint,
+      prov@mtls_endpoint_aliases[["token_endpoint"]],
       "https://example.com/mtls/token"
     )
     expect_identical(cli@mtls_client_cert_file, cert_file)

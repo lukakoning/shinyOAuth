@@ -1,7 +1,7 @@
 ## Integration tests: Keycloak JAR unhappy paths
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 expect_jar_auth_request_rejected <- function(
@@ -31,7 +31,7 @@ expect_jar_auth_request_rejected <- function(
     list(is_callback = FALSE, code = NA_character_, state = NA_character_)
   }
 
-  if (status >= 300 && status < 400 && isTRUE(callback$is_callback)) {
+  if (status >= 300 && status < 400 && isTRUE(callback[["is_callback"]])) {
     callback_url <- loc %||% ""
     callback_error <- parse_query_param(callback_url, "error", decode = TRUE)
     callback_description <- parse_query_param(
@@ -42,16 +42,16 @@ expect_jar_auth_request_rejected <- function(
 
     testthat::expect_identical(callback_error, "invalid_request")
 
-    values$.process_query(callback_query(list(
-      code = callback$code,
-      state_payload = callback$state,
+    values[[".process_query"]](callback_query(list(
+      code = callback[["code"]],
+      state_payload = callback[["state"]],
       callback_url = callback_url
     )))
-    session$flushReact()
+    session[["flushReact"]]()
 
-    testthat::expect_identical(values$error, "invalid_request")
-    testthat::expect_null(client@state_store$get(
-      state_info$key,
+    testthat::expect_identical(values[["error"]], "invalid_request")
+    testthat::expect_null(client@state_store[["get"]](
+      state_info[["key"]],
       missing = NULL
     ))
 
@@ -66,8 +66,8 @@ expect_jar_auth_request_rejected <- function(
     testthat::expect_true(status %in% c(400L, 401L), info = combo)
   }
 
-  testthat::expect_false(isTRUE(values$authenticated))
-  testthat::expect_true(is.null(values$token))
+  testthat::expect_false(isTRUE(values[["authenticated"]]))
+  testthat::expect_true(is.null(values[["token"]]))
   testthat::expect_match(combo, description_pattern, ignore.case = TRUE)
 }
 
@@ -84,7 +84,7 @@ testthat::test_that("Keycloak request-object rejects wrong signing key", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       expect_jar_auth_request_rejected(
         auth_url = auth_url,
         client = client,
@@ -126,7 +126,7 @@ testthat::test_that("Keycloak PAR rejects request-object wrong signing key", {
     },
     req_with_retry = function(req, ...) {
       resp <- perform(req, ...)
-      if (identical(req$url, prov@par_url)) {
+      if (identical(req[["url"]], prov@par_url)) {
         par_error <<- httr2::resp_body_json(resp, simplifyVector = FALSE)
       }
       resp
@@ -138,23 +138,23 @@ testthat::test_that("Keycloak PAR rejects request-object wrong signing key", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       testthat::expect_true(is.na(auth_url))
-      testthat::expect_identical(values$error, "auth_url_error")
+      testthat::expect_identical(values[["error"]], "auth_url_error")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "HTTP request failed",
         fixed = TRUE
       )
       testthat::expect_no_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "invalid_request|request object|signature|jwt",
         ignore.case = TRUE
       )
-      testthat::expect_length(client@state_store$keys(), 0L)
+      testthat::expect_length(client@state_store[["keys"]](), 0L)
       # Keycloak reports invalid_client for failed client authentication. This
       # code and description instead identify Request Object verification.
-      testthat::expect_identical(par_error$error, "invalid_request_object")
+      testthat::expect_identical(par_error[["error"]], "invalid_request_object")
     }
   )
 })
@@ -168,7 +168,7 @@ testthat::test_that("Keycloak request-object rejects wrong encryption key", {
     token_auth_style = "private_key_jwt",
     request_object_encryption_alg_values_supported = c("RSA-OAEP"),
     request_object_encryption_enc_values_supported = c("A256CBC-HS512"),
-    request_object_encryption_jwk = rogue_key$pubkey
+    request_object_encryption_jwk = rogue_key[["pubkey"]]
   )
   client <- make_private_key_jar_jwe_client(prov)
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
@@ -177,7 +177,7 @@ testthat::test_that("Keycloak request-object rejects wrong encryption key", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       expect_jar_auth_request_rejected(
         auth_url = auth_url,
         client = client,
@@ -199,7 +199,7 @@ testthat::test_that("Keycloak PAR rejects request-object wrong encryption key", 
     use_par = TRUE,
     request_object_encryption_alg_values_supported = c("RSA-OAEP"),
     request_object_encryption_enc_values_supported = c("A256CBC-HS512"),
-    request_object_encryption_jwk = rogue_key$pubkey
+    request_object_encryption_jwk = rogue_key[["pubkey"]]
   )
   client <- make_private_key_jar_jwe_client(prov)
   testthat::skip_if(is.null(client), "private_key_jwt test key not available")
@@ -208,20 +208,20 @@ testthat::test_that("Keycloak PAR rejects request-object wrong encryption key", 
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       testthat::expect_true(is.na(auth_url))
-      testthat::expect_identical(values$error, "auth_url_error")
+      testthat::expect_identical(values[["error"]], "auth_url_error")
       testthat::expect_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "HTTP request failed",
         fixed = TRUE
       )
       testthat::expect_no_match(
-        values$error_description %||% "",
+        values[["error_description"]] %||% "",
         "invalid_request|request object|decrypt|encryption|jwt",
         ignore.case = TRUE
       )
-      testthat::expect_length(client@state_store$keys(), 0L)
+      testthat::expect_length(client@state_store[["keys"]](), 0L)
     }
   )
 })

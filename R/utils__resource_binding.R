@@ -75,12 +75,12 @@ resource_binding_components <- function(
   parsed <- tryCatch(httr2::url_parse(url), error = function(...) {
     resource_binding_error()
   })
-  scheme <- tolower(parsed$scheme %||% "")
-  host <- tolower(parsed$hostname %||% "")
+  scheme <- tolower(parsed[["scheme"]] %||% "")
+  host <- tolower(parsed[["hostname"]] %||% "")
   if (
     !nzchar(host) ||
-      !is.null(parsed$username) ||
-      !is.null(parsed$password) ||
+      !is.null(parsed[["username"]]) ||
+      !is.null(parsed[["password"]]) ||
       grepl("[@%*?]", host) ||
       endsWith(host, ".") ||
       (base && grepl("?", url, fixed = TRUE))
@@ -96,7 +96,7 @@ resource_binding_components <- function(
   ) {
     resource_binding_error()
   }
-  port <- parsed$port %||% if (scheme == "https") "443" else "80"
+  port <- parsed[["port"]] %||% if (scheme == "https") "443" else "80"
   port <- suppressWarnings(as.integer(port))
   if (length(port) != 1L || is.na(port) || port < 1L || port > 65535L) {
     resource_binding_error()
@@ -104,17 +104,17 @@ resource_binding_components <- function(
   if (base && path != "/") {
     path <- sub("/$", "", path)
   }
-  parsed$scheme <- scheme
-  parsed$hostname <- host
-  parsed$port <- if (port == if (scheme == "https") 443L else 80L) {
+  parsed[["scheme"]] <- scheme
+  parsed[["hostname"]] <- host
+  parsed[["port"]] <- if (port == if (scheme == "https") 443L else 80L) {
     NULL
   } else {
     port
   }
   # Rebuild only the authority. url_parse/url_build treat queries as form data
   # and paths as decoded strings; round-tripping either changes opaque URLs.
-  parsed$path <- "/"
-  parsed$query <- NULL
+  parsed[["path"]] <- "/"
+  parsed[["query"]] <- NULL
   origin <- if (canonicalize) sub("/$", "", httr2::url_build(parsed)) else NULL
   query <- if (grepl("?", url, fixed = TRUE)) sub("^[^?]*", "", url) else ""
   list(
@@ -145,7 +145,7 @@ normalize_resource_bases <- function(resource_bases) {
   }
   result <- vapply(
     resource_bases,
-    function(base) resource_binding_components(base, base = TRUE)$url,
+    function(base) resource_binding_components(base, base = TRUE)[["url"]],
     ""
   )
   if (anyDuplicated(result)) {
@@ -165,15 +165,15 @@ resolve_bound_resource <- function(base, reference = "") {
   ) {
     resource_binding_error()
   }
-  if (!nzchar(reference)) return(approved$url)
+  if (!nzchar(reference)) return(approved[["url"]])
   if (grepl("^[A-Za-z][A-Za-z0-9+.-]*:", reference)) {
     candidate <- reference
   } else if (startsWith(reference, "/")) {
-    root <- httr2::url_parse(approved$url)
-    root$path <- "/"
+    root <- httr2::url_parse(approved[["url"]])
+    root[["path"]] <- "/"
     candidate <- paste0(sub("/$", "", httr2::url_build(root)), reference)
   } else {
-    candidate <- paste0(sub("/$", "", approved$url), "/", reference)
+    candidate <- paste0(sub("/$", "", approved[["url"]]), "/", reference)
   }
   resolved <- resource_binding_components(candidate)
   if (
@@ -181,11 +181,11 @@ resolve_bound_resource <- function(base, reference = "") {
       approved[c("scheme", "host", "port")],
       resolved[c("scheme", "host", "port")]
     ) ||
-      !(approved$path == "/" ||
-        resolved$path == approved$path ||
-        startsWith(resolved$path, paste0(approved$path, "/")))
+      !(approved[["path"]] == "/" ||
+        resolved[["path"]] == approved[["path"]] ||
+        startsWith(resolved[["path"]], paste0(approved[["path"]], "/")))
   ) {
     resource_binding_error()
   }
-  resolved$url
+  resolved[["url"]]
 }

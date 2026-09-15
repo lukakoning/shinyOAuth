@@ -21,8 +21,8 @@
 #'
 #' @details
 #' Login starts automatically by default. Use `auto_redirect = FALSE` and
-#' `auth$request_login()` to start it from a button. Read `auth$authenticated`
-#' in reactive code, and use `req(auth$authenticated)` before server operations
+#' `auth[["request_login"]]()` to start it from a button. Read `auth[["authenticated"]]`
+#' in reactive code, and use `req(auth[["authenticated"]])` before server operations
 #' that require login. Your app must also enforce its own access rules.
 #'
 #' See the [usage vignette](https://lukakoning.github.io/shinyOAuth/articles/usage.html) for a complete app and
@@ -56,7 +56,7 @@
 #' replaces that tab's pending binding. Pending logins must be restarted after
 #' upgrading from versions that used local storage.
 #' Private browser-binding inputs are excluded from Shiny bookmarks. Do not
-#' copy `auth$browser_token` into custom bookmark values, URLs, or logs.
+#' copy `auth[["browser_token"]]` into custom bookmark values, URLs, or logs.
 #' Treat the entire hostname as a trust boundary: cookies are shared across
 #' ports, even with `__Host-`, `Secure`, or `HttpOnly`. Use a dedicated hostname
 #' when other services are not trusted. The origin-scoped check prevents cookie
@@ -67,7 +67,7 @@
 #' @param client The app configuration created with [oauth_client()].
 #'
 #' @param auto_redirect If `TRUE` (default), start login automatically for unauthenticated
-#'   sessions. If `FALSE`, call `auth$request_login()` to start it.
+#'   sessions. If `FALSE`, call `auth[["request_login"]]()` to start it.
 #'
 #' @param async If `TRUE`, run the module's network work through a background
 #'   backend. Configure mirai daemons or a non-sequential future plan first;
@@ -154,34 +154,34 @@
 #' @return A [shiny::reactiveValues()] object. If you assign it to `auth`,
 #'   its main fields are:
 #'
-#'   - `auth$authenticated`: `TRUE` when a token is present and the configured
+#'   - `auth[["authenticated"]]`: `TRUE` when a token is present and the configured
 #'     checks have passed, otherwise `FALSE`. With `indefinite_session = TRUE`,
 #'     the flag stays true while a token is kept, including after refresh errors.
-#'   - `auth$token`: an [OAuthToken], or `NULL` before login or after clearing
-#'     the session. Read properties with `@`, for example `auth$token@userinfo`.
+#'   - `auth[["token"]]`: an [OAuthToken], or `NULL` before login or after clearing
+#'     the session. Read properties with `@`, for example `auth[["token"]]@userinfo`.
 #'     Additional token response parameters are available in
-#'     `auth$token@extra_fields`; `auth$token@initial_extra_fields` preserves
+#'     `auth[["token"]]@extra_fields`; `auth[["token"]]@initial_extra_fields` preserves
 #'     the parameters from the initial code exchange across refreshes.
-#'   - `auth$error`, `auth$error_description`: the error code and available
+#'   - `auth[["error"]]`, `auth[["error_description"]]`: the error code and available
 #'     diagnostic detail. Use your own user-facing message; these fields can
 #'     include sensitive provider information.
-#'   - `auth$error_uri`: an optional provider help URL. Only absolute HTTPS
+#'   - `auth[["error_uri"]]`: an optional provider help URL. Only absolute HTTPS
 #'     URLs on provider or explicitly allowed hosts are surfaced. Treat it as
 #'     untrusted navigation input. `NULL` means the provider omitted the URL or
 #'     supplied a value that did not pass validation.
-#'   - `auth$token_stale`: `TRUE` when an indefinite session keeps an expired
+#'   - `auth[["token_stale"]]`: `TRUE` when an indefinite session keeps an expired
 #'     token or one whose refresh failed. Resets after successful login,
 #'     refresh, or logout.
 #'
 #'   The object also supplies:
 #'
-#'   - `auth$request_login()`: start login. Waits for browser setup when needed
+#'   - `auth[["request_login"]]()`: start login. Waits for browser setup when needed
 #'     and does nothing if the session is already authenticated. Uses a browser
 #'     form when the client selects `authorization_method = "POST"`; the app's
 #'     Content Security Policy `form-action` must permit the provider endpoint.
-#'   - `auth$logout()`: clear the local login and attempt to revoke tokens when
+#'   - `auth[["logout"]]()`: clear the local login and attempt to revoke tokens when
 #'     supported, following `async`. It does not sign out of the provider account.
-#'   - `auth$build_auth_url()`: advanced helper for a custom login link.
+#'   - `auth[["build_auth_url"]]()`: advanced helper for a custom login link.
 #'     Rejects POST clients; use `request_login()` for their form submission.
 #'     Creates pending login state as well as the URL, so retain the result for
 #'     the link instead of rebuilding it on every UI update.
@@ -194,13 +194,13 @@
 #'     Inside `observeEvent()`, register the promise handler and then return
 #'     `invisible(NULL)` so Shiny can process the browser acknowledgment. Do not
 #'     return the pending promise from the observer itself.
-#'   - `auth$has_browser_token()`: reports whether the browser token is
+#'   - `auth[["has_browser_token"]]()`: reports whether the browser token is
 #'     available. Use it before building a custom login URL; it does not report
 #'     whether the user is authenticated.
-#'   - `auth$set_browser_token()`: asks the browser to establish its binding
+#'   - `auth[["set_browser_token"]]()`: asks the browser to establish its binding
 #'     when missing. The token becomes available after the browser reports it
 #'     back to Shiny. An existing token is left unchanged.
-#'   - `auth$clear_browser_token()`: clears the cookie, local record, and reactive value,
+#'   - `auth[["clear_browser_token"]]()`: clears the cookie, local record, and reactive value,
 #'     for example when resetting browser setup in a custom integration.
 #'     `request_login()` manages cookie setup automatically, and `logout()`
 #'     handles cookie rotation when ending a session.
@@ -563,7 +563,7 @@ oauth_module_server_impl <- function(
     callback_module_id <- if (is.null(.managed)) {
       id
     } else {
-      sub("-$", "", session$ns(""))
+      sub("-$", "", session[["ns"]](""))
     }
     if (!is.null(.managed)) {
       warn_about_missing_form_post_ui(callback_module_id, client)
@@ -604,21 +604,21 @@ oauth_module_server_impl <- function(
     # non-reactive lifecycle epoch and per-operation owner IDs so late promise
     # callbacks cannot install credentials or overwrite newer state.
     auth_operations <- new.env(parent = emptyenv())
-    auth_operations$epoch <- 0
-    auth_operations$next_id <- 0
-    auth_operations$active_login_id <- NULL
-    auth_operations$active_refresh_id <- NULL
-    auth_operations$session_active <- TRUE
-    auth_operations$force_oidc_reauth <- FALSE
+    auth_operations[["epoch"]] <- 0
+    auth_operations[["next_id"]] <- 0
+    auth_operations[["active_login_id"]] <- NULL
+    auth_operations[["active_refresh_id"]] <- NULL
+    auth_operations[["session_active"]] <- TRUE
+    auth_operations[["force_oidc_reauth"]] <- FALSE
 
     .advance_auth_epoch <- function() {
-      auth_operations$epoch <- auth_operations$epoch + 1
-      auth_operations$active_login_id <- NULL
-      auth_operations$active_refresh_id <- NULL
-      values$refresh_in_progress <- FALSE
-      values$refresh_next_attempt_at <- 0
-      values$refresh_failure_count <- 0L
-      invisible(auth_operations$epoch)
+      auth_operations[["epoch"]] <- auth_operations[["epoch"]] + 1
+      auth_operations[["active_login_id"]] <- NULL
+      auth_operations[["active_refresh_id"]] <- NULL
+      values[["refresh_in_progress"]] <- FALSE
+      values[["refresh_next_attempt_at"]] <- 0
+      values[["refresh_failure_count"]] <- 0L
+      invisible(auth_operations[["epoch"]])
     }
 
     .begin_auth_operation <- function(kind, source_token, new_epoch = FALSE) {
@@ -626,31 +626,31 @@ oauth_module_server_impl <- function(
         .advance_auth_epoch()
       }
 
-      auth_operations$next_id <- auth_operations$next_id + 1
+      auth_operations[["next_id"]] <- auth_operations[["next_id"]] + 1
       operation <- list(
-        epoch = auth_operations$epoch,
-        id = auth_operations$next_id,
+        epoch = auth_operations[["epoch"]],
+        id = auth_operations[["next_id"]],
         source_token = source_token
       )
-      auth_operations[[paste0("active_", kind, "_id")]] <- operation$id
+      auth_operations[[paste0("active_", kind, "_id")]] <- operation[["id"]]
       if (identical(kind, "refresh")) {
-        values$refresh_in_progress <- TRUE
+        values[["refresh_in_progress"]] <- TRUE
       }
       operation
     }
 
     .auth_operation_is_owner <- function(operation, kind) {
-      isTRUE(auth_operations$session_active) &&
-        identical(auth_operations$epoch, operation$epoch) &&
+      isTRUE(auth_operations[["session_active"]]) &&
+        identical(auth_operations[["epoch"]], operation[["epoch"]]) &&
         identical(
           auth_operations[[paste0("active_", kind, "_id")]],
-          operation$id
+          operation[["id"]]
         )
     }
 
     .auth_operation_can_apply <- function(operation, kind) {
       .auth_operation_is_owner(operation, kind) &&
-        identical(values$token, operation$source_token)
+        identical(values[["token"]], operation[["source_token"]])
     }
 
     .finish_auth_operation <- function(operation, kind) {
@@ -660,7 +660,7 @@ oauth_module_server_impl <- function(
 
       auth_operations[[paste0("active_", kind, "_id")]] <- NULL
       if (identical(kind, "refresh")) {
-        values$refresh_in_progress <- FALSE
+        values[["refresh_in_progress"]] <- FALSE
       }
       invisible(TRUE)
     }
@@ -671,7 +671,7 @@ oauth_module_server_impl <- function(
       }
 
       if (!is.null(.managed)) {
-        try(if (is.null(cleanup)) .managed$discard(tok) else cleanup$discard(tok),
+        try(if (is.null(cleanup)) .managed[["discard"]](tok) else cleanup[["discard"]](tok),
           silent = TRUE)
         return(invisible(NULL))
       }
@@ -721,40 +721,40 @@ oauth_module_server_impl <- function(
     .accept_login_token <- function(tok, context) {
       if (is.null(.managed)) {
         validate_token_acceptance_deadline(tok)
-        values$token <- tok
-        values$auth_started_at <- .interactive_auth_started_at(tok)
+        values[["token"]] <- tok
+        values[["auth_started_at"]] <- .interactive_auth_started_at(tok)
       } else {
         tryCatch(
           {
             validate_token_acceptance_deadline(tok)
-            if (!isTRUE(.managed$validate(context$data))) {
+            if (!isTRUE(.managed[["validate"]](context[["data"]]))) {
               err_invalid_state("Managed authorization owner is unavailable")
             }
-            .managed$accept(
+            .managed[["accept"]](
               tok,
-              context$data,
+              context[["data"]],
               .interactive_auth_started_at(tok)
             )
           },
           error = function(e) {
-            .revoke_stale_credentials(tok, cleanup = context$cleanup)
+            .revoke_stale_credentials(tok, cleanup = context[["cleanup"]])
             stop(e)
           }
         )
         # The existing module must never refresh or revoke a retained grant.
-        values$token <- NULL
-        values$auth_started_at <- NULL
+        values[["token"]] <- NULL
+        values[["auth_started_at"]] <- NULL
       }
       invisible(NULL)
     }
 
     form_post_module_registry <- tryCatch(
-      session$userData$shinyOAuth_form_post_module_registry,
+      session[["userData"]][["shinyOAuth_form_post_module_registry"]],
       error = function(...) NULL
     )
     if (!is.environment(form_post_module_registry)) {
       form_post_module_registry <- new.env(parent = emptyenv())
-      session$userData$shinyOAuth_form_post_module_registry <-
+      session[["userData"]][["shinyOAuth_form_post_module_registry"]] <-
         form_post_module_registry
     }
     assign(callback_module_id, TRUE, envir = form_post_module_registry)
@@ -775,44 +775,44 @@ oauth_module_server_impl <- function(
     .mark_unclaimed_form_post_query <- function(query_string) {
       raw_query <- query_string %||% ""
       last_query <- tryCatch(
-        session$userData$shinyOAuth_last_unclaimed_form_post_query,
+        session[["userData"]][["shinyOAuth_last_unclaimed_form_post_query"]],
         error = function(...) NULL
       )
       if (identical(last_query, raw_query)) {
         return(FALSE)
       }
 
-      session$userData$shinyOAuth_last_unclaimed_form_post_query <- raw_query
+      session[["userData"]][["shinyOAuth_last_unclaimed_form_post_query"]] <- raw_query
       TRUE
     }
 
     # Test snapshots are browser-accessible in Shiny test mode. Keep credentials,
     # callback payloads and provider-controlled text out of this surface.
     shiny::exportTestValues(
-      token_present = !is.null(values$token),
-      token_expires_at = if (!is.null(values$token)) {
-        values$token@expires_at
+      token_present = !is.null(values[["token"]]),
+      token_expires_at = if (!is.null(values[["token"]])) {
+        values[["token"]]@expires_at
       } else {
         NULL
       },
-      id_token_validated = !is.null(values$token) &&
-        isTRUE(values$token@id_token_validated),
-      error_present = !is.null(values$error),
-      authenticated = values$authenticated,
-      browser_token_present = is_valid_string(values$browser_token),
-      callback_pending = !is.null(values$pending_callback),
-      pending_login = values$pending_login,
-      auto_redirected = values$auto_redirected,
-      reauth_triggered = values$reauth_triggered,
-      auth_started_at = values$auth_started_at,
-      token_stale = values$token_stale,
-      last_login_async_used = values$last_login_async_used,
-      refresh_in_progress = values$refresh_in_progress,
-      refresh_last_attempt_at = values$refresh_last_attempt_at,
-      refresh_last_success_at = values$refresh_last_success_at,
-      refresh_next_attempt_at = values$refresh_next_attempt_at,
-      refresh_success_generation = values$refresh_success_generation,
-      refresh_failure_count = values$refresh_failure_count
+      id_token_validated = !is.null(values[["token"]]) &&
+        isTRUE(values[["token"]]@id_token_validated),
+      error_present = !is.null(values[["error"]]),
+      authenticated = values[["authenticated"]],
+      browser_token_present = is_valid_string(values[["browser_token"]]),
+      callback_pending = !is.null(values[["pending_callback"]]),
+      pending_login = values[["pending_login"]],
+      auto_redirected = values[["auto_redirected"]],
+      reauth_triggered = values[["reauth_triggered"]],
+      auth_started_at = values[["auth_started_at"]],
+      token_stale = values[["token_stale"]],
+      last_login_async_used = values[["last_login_async_used"]],
+      refresh_in_progress = values[["refresh_in_progress"]],
+      refresh_last_attempt_at = values[["refresh_last_attempt_at"]],
+      refresh_last_success_at = values[["refresh_last_success_at"]],
+      refresh_next_attempt_at = values[["refresh_next_attempt_at"]],
+      refresh_success_generation = values[["refresh_success_generation"]],
+      refresh_failure_count = values[["refresh_failure_count"]]
     )
 
     with_otel_span(
@@ -823,7 +823,7 @@ oauth_module_server_impl <- function(
             "session_started",
             context = list(
               module_id = id,
-              ns_prefix = tryCatch(session$ns(""), error = function(...) {
+              ns_prefix = tryCatch(session[["ns"]](""), error = function(...) {
                 NA_character_
               }),
               client_provider = client@provider@name %||% NA_character_,
@@ -867,13 +867,13 @@ oauth_module_server_impl <- function(
     )
 
     # Always log session end, regardless of revoke_on_session_end setting
-    session$onSessionEnded(function() {
-      auth_operations$session_active <- FALSE
+    session[["onSessionEnded"]](function() {
+      auth_operations[["session_active"]] <- FALSE
       .advance_auth_epoch()
 
       # Capture authentication state at session end
       was_authenticated <- tryCatch(
-        isTRUE(shiny::isolate(values$authenticated)),
+        isTRUE(shiny::isolate(values[["authenticated"]])),
         error = function(...) FALSE
       )
 
@@ -895,9 +895,9 @@ oauth_module_server_impl <- function(
 
     # Session-end revocation: revoke tokens if configured
     if (isTRUE(revoke_on_session_end)) {
-      session$onSessionEnded(function() {
+      session[["onSessionEnded"]](function() {
         # Capture token at session end; may be NULL if never authenticated
-        tok <- shiny::isolate(values$token)
+        tok <- shiny::isolate(values[["token"]])
         if (!is.null(tok)) {
           with_trace_id(
             NULL,
@@ -964,20 +964,20 @@ oauth_module_server_impl <- function(
     # @param e Optional condition to format.
     # @param phase Optional phase label passed to `oauth_module_compose_error()`.
     # @param description Optional explicit user-facing description.
-    # @return No return value; mutates `values$error`,
-    #   `values$error_description`, and `values$error_uri`.
+    # @return No return value; mutates `values[["error"]]`,
+    #   `values[["error_description"]]`, and `values[["error_uri"]]`.
     .set_error <- function(code, e = NULL, phase = NULL, description = NULL) {
-      values$error <- code
-      values$error_description <- description %||%
+      values[["error"]] <- code
+      values[["error_description"]] <- description %||%
         if (!is.null(e)) oauth_module_compose_error(e, phase) else NULL
       # Internal errors never carry error_uri; clear any stale provider value.
-      values$error_uri <- NULL
+      values[["error_uri"]] <- NULL
     }
 
     ## 2.4 Browser token cookie ------------------------------------------------
 
     # Manage a first-party cookie marker plus an origin-scoped binding record.
-    # Only the binding token is mirrored into input$shinyOAuth_sid; the marker
+    # Only the binding token is mirrored into input[["shinyOAuth_sid"]]; the marker
     # alone cannot restore the binding on another origin.
     shiny::observeEvent(
       TRUE,
@@ -987,15 +987,15 @@ oauth_module_server_impl <- function(
       once = TRUE
     )
 
-    # Mirror input to values$browser_token with validation and auto-repair
+    # Mirror input to values[["browser_token"]] with validation and auto-repair
     shiny::observeEvent(
-      input$shinyOAuth_sid,
+      input[["shinyOAuth_sid"]],
       {
-        if (!isTRUE(browser_ack$accept_input)) {
+        if (!isTRUE(browser_ack[["accept_input"]])) {
           return(invisible(NULL))
         }
         tok <- tryCatch(
-          as.character(input$shinyOAuth_sid)[1],
+          as.character(input[["shinyOAuth_sid"]])[1],
           error = function(...) NULL
         )
         # In test/interactive mode when skip_browser_token is enabled, keep the
@@ -1015,10 +1015,10 @@ oauth_module_server_impl <- function(
           )
         }
         if (is_valid) {
-          values$browser_token <- tok
+          values[["browser_token"]] <- tok
         } else {
           # Do not accept invalid tokens; attempt regeneration via JS and audit once
-          values$browser_token <- NULL
+          values[["browser_token"]] <- NULL
           # Emit an audit trail entry for visibility (no sensitive values)
           len <- tryCatch(nchar(tok, type = "bytes"), error = function(...) {
             NA_integer_
@@ -1046,9 +1046,9 @@ oauth_module_server_impl <- function(
     # Observe cookie/WebCrypto errors reported by the injected JS. If cookies
     # are blocked or WebCrypto is unavailable, authentication can't proceed.
     shiny::observeEvent(
-      input$shinyOAuth_cookie_error,
+      input[["shinyOAuth_cookie_error"]],
       {
-        reason <- input$shinyOAuth_cookie_error
+        reason <- input[["shinyOAuth_cookie_error"]]
         if (
           !is.character(reason) ||
             length(reason) != 1L ||
@@ -1066,24 +1066,24 @@ oauth_module_server_impl <- function(
 
         # Surface a stable machine code and a concise description (do not show
         # description directly to end users; app authors can decide how to render).
-        values$error <- "browser_cookie_error"
-        values$error_description <- sprintf(
+        values[["error"]] <- "browser_cookie_error"
+        values[["error_description"]] <- sprintf(
           "Browser cookie/storage/WebCrypto error: %s. Cookies, session storage, and Web Crypto must be available; authentication cannot proceed.",
           reason %||% "unknown"
         )
 
         # Stop any pending login loop to avoid repeated redirects while the
         # browser cannot store/read the cookie.
-        values$pending_login <- FALSE
-        if (!is.null(browser_ack$reject)) {
-          browser_ack$reject(simpleError("Browser cookie unavailable"))
-          browser_ack$reject <- NULL
-          browser_ack$resolve <- NULL
+        values[["pending_login"]] <- FALSE
+        if (!is.null(browser_ack[["reject"]])) {
+          browser_ack[["reject"]](simpleError("Browser cookie unavailable"))
+          browser_ack[["reject"]] <- NULL
+          browser_ack[["resolve"]] <- NULL
         }
 
         # Emit an audit event with safe context
         proto <- tryCatch(
-          session$clientData$url_protocol %||% NA_character_,
+          session[["clientData"]][["url_protocol"]] %||% NA_character_,
           error = function(...) NA_character_
         )
         try(
@@ -1110,7 +1110,7 @@ oauth_module_server_impl <- function(
     # @return No return value; computes cookie settings and asks the browser to
     #   set the token.
     .set_browser_token <- function(request_id = NULL, token = NULL) {
-      browser_ack$accept_input <- TRUE
+      browser_ack[["accept_input"]] <- TRUE
       # Max age (sec); defaults to 300s (5 min) if state_store TTL is unavailable
       max_age_sec <- client_state_store_max_age(client)
       instance <- build_oauth_module_browser_token_instance(
@@ -1134,36 +1134,36 @@ oauth_module_server_impl <- function(
     # alone does not prevent a client from adopting a disclosed browser token.
     # The acknowledgment confirms delivery; it is not cookie-possession proof.
     browser_ack <- new.env(parent = emptyenv())
-    browser_ack$generation <- 0L
-    browser_ack$accept_input <- TRUE
+    browser_ack[["generation"]] <- 0L
+    browser_ack[["accept_input"]] <- TRUE
     .with_fresh_browser_token <- function(body) {
       if (isTRUE(allow_skip_browser_token())) {
         return(body())
       }
-      if (!is.null(browser_ack$reject)) {
-        browser_ack$reject(simpleError("Browser cookie request superseded"))
+      if (!is.null(browser_ack[["reject"]])) {
+        browser_ack[["reject"]](simpleError("Browser cookie request superseded"))
       }
       request_id <- random_urlsafe(32)
       token <- paste(format(openssl::rand_bytes(64)), collapse = "")
-      epoch <- auth_operations$epoch
-      generation <- browser_ack$generation
+      epoch <- auth_operations[["epoch"]]
+      generation <- browser_ack[["generation"]]
       promise <- promises::promise(function(resolve, reject) {
-        browser_ack$id <- request_id
-        browser_ack$token <- token
-        browser_ack$resolve <- resolve
-        browser_ack$reject <- reject
+        browser_ack[["id"]] <- request_id
+        browser_ack[["token"]] <- token
+        browser_ack[["resolve"]] <- resolve
+        browser_ack[["reject"]] <- reject
         .set_browser_token(request_id, token)
         later::later(
           function() {
             if (
-              identical(browser_ack$id, request_id) &&
-                !is.null(browser_ack$reject)
+              identical(browser_ack[["id"]], request_id) &&
+                !is.null(browser_ack[["reject"]])
             ) {
-              browser_ack$reject(simpleError(
+              browser_ack[["reject"]](simpleError(
                 "Browser cookie acknowledgment timed out"
               ))
-              browser_ack$resolve <- NULL
-              browser_ack$reject <- NULL
+              browser_ack[["resolve"]] <- NULL
+              browser_ack[["reject"]] <- NULL
             }
           },
           delay = 10
@@ -1171,49 +1171,49 @@ oauth_module_server_impl <- function(
       })
       promises::then(promise, function(token) {
         if (
-          !isTRUE(auth_operations$session_active) ||
-            !identical(epoch, auth_operations$epoch) ||
-            !identical(generation, browser_ack$generation) ||
-            !identical(browser_ack$id, request_id)
+          !isTRUE(auth_operations[["session_active"]]) ||
+            !identical(epoch, auth_operations[["epoch"]]) ||
+            !identical(generation, browser_ack[["generation"]]) ||
+            !identical(browser_ack[["id"]], request_id)
         ) {
           return(NA_character_)
         }
-        values$browser_token <- token
-        values$pending_login <- FALSE
+        values[["browser_token"]] <- token
+        values[["pending_login"]] <- FALSE
         body()
       }) |>
         promises::catch(function(e) {
           if (
-            identical(browser_ack$id, request_id) &&
-              identical(epoch, auth_operations$epoch) &&
-              isTRUE(auth_operations$session_active)
+            identical(browser_ack[["id"]], request_id) &&
+              identical(epoch, auth_operations[["epoch"]]) &&
+              isTRUE(auth_operations[["session_active"]])
           ) {
-            values$pending_login <- FALSE
+            values[["pending_login"]] <- FALSE
             .set_error("browser_cookie_error", e, phase = "browser_cookie_ack")
           }
           NA_character_
         })
     }
     shiny::observeEvent(
-      input$shinyOAuth_cookie_ack,
+      input[["shinyOAuth_cookie_ack"]],
       {
-        ack <- input$shinyOAuth_cookie_ack
+        ack <- input[["shinyOAuth_cookie_ack"]]
         if (
           is.list(ack) &&
-            identical(ack$requestId, browser_ack$id) &&
-            !is.null(browser_ack$resolve)
+            identical(ack[["requestId"]], browser_ack[["id"]]) &&
+            !is.null(browser_ack[["resolve"]])
         ) {
           valid <- tryCatch(
             {
-              validate_browser_token(input$shinyOAuth_sid)
-              constant_time_compare(input$shinyOAuth_sid, browser_ack$token)
+              validate_browser_token(input[["shinyOAuth_sid"]])
+              constant_time_compare(input[["shinyOAuth_sid"]], browser_ack[["token"]])
             },
             error = function(e) FALSE
           )
           if (valid) {
-            browser_ack$resolve(browser_ack$token)
-            browser_ack$resolve <- NULL
-            browser_ack$reject <- NULL
+            browser_ack[["resolve"]](browser_ack[["token"]])
+            browser_ack[["resolve"]] <- NULL
+            browser_ack[["reject"]] <- NULL
           }
         }
       },
@@ -1228,13 +1228,13 @@ oauth_module_server_impl <- function(
     .clear_browser_token <- function() {
       # Invalidate both pending acknowledgments and already-queued promise
       # continuations before clearing the browser or reactive state.
-      reject <- browser_ack$reject
-      browser_ack$generation <- browser_ack$generation + 1L
-      browser_ack$accept_input <- FALSE
-      browser_ack$id <- NULL
-      browser_ack$token <- NULL
-      browser_ack$resolve <- NULL
-      browser_ack$reject <- NULL
+      reject <- browser_ack[["reject"]]
+      browser_ack[["generation"]] <- browser_ack[["generation"]] + 1L
+      browser_ack[["accept_input"]] <- FALSE
+      browser_ack[["id"]] <- NULL
+      browser_ack[["token"]] <- NULL
+      browser_ack[["resolve"]] <- NULL
+      browser_ack[["reject"]] <- NULL
       if (!is.null(reject)) {
         reject(simpleError("Browser binding cleared"))
       }
@@ -1249,23 +1249,23 @@ oauth_module_server_impl <- function(
         instance = instance,
         same_site = browser_cookie_samesite,
         path = if (is.null(browser_cookie_path)) NULL else browser_cookie_path,
-        token = values$browser_token
+        token = values[["browser_token"]]
       )
-      values$browser_token <- NULL
+      values[["browser_token"]] <- NULL
       # Reset redirect guard after a successful round-trip so future
       # logins/reauths that need to reissue the cookie won't stall.
-      values$auto_redirected <- FALSE
+      values[["auto_redirected"]] <- FALSE
       # Clear any pending login request; a fresh request will be set if needed
-      values$pending_login <- FALSE
+      values[["pending_login"]] <- FALSE
     }
 
     # Internal helper: check whether the module currently has a usable browser
     # token. Used before login and callback work that depends on
     # browser-session binding.
-    # @return `TRUE` when `values$browser_token` is usable, otherwise `FALSE`.
+    # @return `TRUE` when `values[["browser_token"]]` is usable, otherwise `FALSE`.
     .has_browser_token <- function() {
       # Check if we have a browser token
-      if (is_valid_string(values$browser_token)) {
+      if (is_valid_string(values[["browser_token"]])) {
         return(TRUE)
       }
       return(FALSE)
@@ -1284,9 +1284,9 @@ oauth_module_server_impl <- function(
       no_error <- if (isTRUE(indefinite_session)) {
         TRUE
       } else {
-        is.null(values$error) && is.null(values$error_description)
+        is.null(values[["error"]]) && is.null(values[["error_description"]])
       }
-      tok <- values$token
+      tok <- values[["token"]]
       if (is.null(tok) || !no_error) {
         return(FALSE)
       }
@@ -1296,7 +1296,7 @@ oauth_module_server_impl <- function(
       # Optional maximum interactive-authentication age (reauth window).
       # Ignored when indefinite_session = TRUE
       if (!isTRUE(indefinite_session) && !is.null(reauth_after_seconds)) {
-        started <- tryCatch(values$auth_started_at, error = function(...) {
+        started <- tryCatch(values[["auth_started_at"]], error = function(...) {
           NA_real_
         })
         if (is.finite(started) && !is.na(started)) {
@@ -1322,7 +1322,7 @@ oauth_module_server_impl <- function(
 
     # Internal helper: read the latest authenticated state immediately.
     # Used by login helpers during redirect decisions without waiting for the
-    # observer to flush `values$authenticated`.
+    # observer to flush `values[["authenticated"]]`.
     # @return Latest authentication boolean computed from current module state.
     .is_authenticated_now <- function() {
       # Refresh failures can clear token/error and immediately request reauth
@@ -1335,10 +1335,10 @@ oauth_module_server_impl <- function(
     .previous_authenticated <- FALSE
     shiny::observe({
       # depend on these so we recalc when any changes
-      values$token
-      values$error
-      values$error_description
-      values$browser_token
+      values[["token"]]
+      values[["error"]]
+      values[["error_description"]]
+      values[["browser_token"]]
       new_authenticated <- .compute_authenticated()
 
       # Schedule a timer to re-evaluate at the next relevant expiry boundary
@@ -1346,7 +1346,7 @@ oauth_module_server_impl <- function(
       # This addresses the gap where .compute_authenticated() uses Sys.time()
       # but the observer only recalculates on reactive dependency changes.
       if (isTRUE(new_authenticated) && !isTRUE(indefinite_session)) {
-        tok <- values$token
+        tok <- values[["token"]]
         now <- as.numeric(Sys.time())
         next_boundary <- Inf
 
@@ -1360,7 +1360,7 @@ oauth_module_server_impl <- function(
 
         # Check reauth_after_seconds boundary
         if (!is.null(reauth_after_seconds)) {
-          started <- tryCatch(values$auth_started_at, error = function(...) {
+          started <- tryCatch(values[["auth_started_at"]], error = function(...) {
             NA_real_
           })
           if (is.finite(started) && !is.na(started)) {
@@ -1386,9 +1386,9 @@ oauth_module_server_impl <- function(
         # Derive reason from current state
         reason <- if (isTRUE(new_authenticated)) {
           "login"
-        } else if (!is.null(values$error)) {
-          values$error
-        } else if (is.null(values$token)) {
+        } else if (!is.null(values[["error"]])) {
+          values[["error"]]
+        } else if (is.null(values[["token"]])) {
           "token_cleared"
         } else {
           "unknown"
@@ -1411,34 +1411,34 @@ oauth_module_server_impl <- function(
         .previous_authenticated <<- new_authenticated
       }
 
-      values$authenticated <- new_authenticated
+      values[["authenticated"]] <- new_authenticated
     })
 
     # Keep token_stale consistent when the token changes directly
     # If a fresh (non-expired) token is set, or the token is cleared,
     # reset the stale flag to FALSE. This covers unit tests and manual
-    # flows that assign values$token without going through login/refresh
+    # flows that assign values[["token"]] without going through login/refresh
     # helpers where we also reset the flag.
     shiny::observeEvent(
-      values$token,
+      values[["token"]],
       {
-        tok <- values$token
+        tok <- values[["token"]]
         # Retiring renewal alone does not make a failed refresh fresh again.
         if (
           !is.null(tok) &&
-            identical(tok, auth_operations$retired_refresh_snapshot)
+            identical(tok, auth_operations[["retired_refresh_snapshot"]])
         ) {
           return(invisible(NULL))
         }
-        auth_operations$retired_refresh_snapshot <- NULL
+        auth_operations[["retired_refresh_snapshot"]] <- NULL
         if (is.null(tok)) {
-          values$token_stale <- FALSE
+          values[["token_stale"]] <- FALSE
         } else {
           exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
           now <- as.numeric(Sys.time())
           # If expiry is unknown (NA/Inf) or in the future, this token isn't stale
           if (!is.finite(exp) || is.na(exp) || now < exp) {
-            values$token_stale <- FALSE
+            values[["token_stale"]] <- FALSE
           }
         }
       },
@@ -1475,7 +1475,7 @@ oauth_module_server_impl <- function(
 
     # Internal helper: build the next login URL and convert failures into
     # module error state. Used by `.initiate_login()` and the public
-    # `values$build_auth_url()` helper.
+    # `values[["build_auth_url"]]()` helper.
     # @return Authorization URL string, or `NA_character_` after recording a
     #   module error.
     .build_auth_url <- function(.authorization_request = FALSE) {
@@ -1524,7 +1524,7 @@ oauth_module_server_impl <- function(
         )
       }
       requested_max_age <- if (
-        isTRUE(auth_operations$force_oidc_reauth) &&
+        isTRUE(auth_operations[["force_oidc_reauth"]]) &&
           provider_uses_oidc(client@provider)
       ) {
         0
@@ -1534,7 +1534,7 @@ oauth_module_server_impl <- function(
       provider_work <- is_valid_string(client@provider@par_url) ||
         !identical(client@request_object_mode, "parameters")
       managed_context <- tryCatch(
-        if (!is.null(.managed)) .managed$prepare() else NULL,
+        if (!is.null(.managed)) .managed[["prepare"]]() else NULL,
         error = function(e) {
           .set_error("auth_url_error", e, phase = "build_auth_url")
           NA
@@ -1544,8 +1544,8 @@ oauth_module_server_impl <- function(
         return(NA_character_)
       }
       managed_launch <- tryCatch(
-        if (!is.null(.managed) && is.function(.managed$parameters)) {
-          .managed$parameters(managed_context)$launch
+        if (!is.null(.managed) && is.function(.managed[["parameters"]])) {
+          .managed[["parameters"]](managed_context)[["launch"]]
         } else {
           NULL
         },
@@ -1556,30 +1556,30 @@ oauth_module_server_impl <- function(
       )
       if (identical(managed_launch, NA)) {
         if (!is.null(.managed)) {
-          .managed$cancel(managed_context)
+          .managed[["cancel"]](managed_context)
         }
         return(NA_character_)
       }
       register_prepared <- function(prepared) {
-        if (!is.null(.managed) && is.function(.managed$prepared)) {
-          .managed$prepared(prepared, managed_context)
+        if (!is.null(.managed) && is.function(.managed[["prepared"]])) {
+          .managed[["prepared"]](prepared, managed_context)
         }
         invisible(NULL)
       }
       prepared <- NULL
       cleanup <- function() {
         if (!is.null(prepared)) {
-          try(client@state_store$remove(prepared$state_key), silent = TRUE)
+          try(client@state_store[["remove"]](prepared[["state_key"]]), silent = TRUE)
         }
-        if (!is.null(.managed)) .managed$cancel(managed_context)
+        if (!is.null(.managed)) .managed[["cancel"]](managed_context)
       }
       if (!isTRUE(async) || !provider_work) {
         return(tryCatch(
           {
-            if (!is.null(.managed) && is.function(.managed$prepared)) {
+            if (!is.null(.managed) && is.function(.managed[["prepared"]])) {
               prepared <- prepare_call(
                 client,
-                values$browser_token,
+                values[["browser_token"]],
                 .requested_max_age = requested_max_age,
                 .defer_build = TRUE,
                 .transaction_context = managed_context,
@@ -1595,7 +1595,7 @@ oauth_module_server_impl <- function(
             } else {
               prepare_call(
                 client,
-                values$browser_token,
+                values[["browser_token"]],
                 publisher,
                 requested_max_age,
                 .transaction_context = managed_context,
@@ -1614,10 +1614,10 @@ oauth_module_server_impl <- function(
 
       operation <- .begin_auth_operation(
         "authorization",
-        source_token = values$token,
+        source_token = values[["token"]],
         new_epoch = TRUE
       )
-      browser <- values$browser_token
+      browser <- values[["browser_token"]]
       fail <- function(e) {
         cleanup()
         if (.auth_operation_can_apply(operation, "authorization")) {
@@ -1646,10 +1646,10 @@ oauth_module_server_impl <- function(
           async_dispatch(
             quote({
               .ns <- asNamespace("shinyOAuth")
-              .ns$with_async_options(captured_options, {
-                .ns$with_async_session_context(
+              .ns[["with_async_options"]](captured_options, {
+                .ns[["with_async_session_context"]](
                   captured_session,
-                  .ns$build_prepared_authorization(worker, prepared)
+                  .ns[["build_prepared_authorization"]](worker, prepared)
                 )
               })
             }),
@@ -1660,7 +1660,7 @@ oauth_module_server_impl <- function(
               captured_session = capture_shiny_session_context()
             ),
             otel_context = list(
-              headers = prepared$otel_headers,
+              headers = prepared[["otel_headers"]],
               worker_span_name = "shinyOAuth.login.request.worker",
               shiny_session = capture_shiny_session_context(),
               attributes = otel_client_attributes(
@@ -1674,9 +1674,9 @@ oauth_module_server_impl <- function(
             promises::then(function(raw) {
               if (
                 !.auth_operation_can_apply(operation, "authorization") ||
-                  !identical(values$browser_token, browser) ||
+                  !identical(values[["browser_token"]], browser) ||
                   (!is.null(.managed) &&
-                    !isTRUE(.managed$validate(managed_context)))
+                    !isTRUE(.managed[["validate"]](managed_context)))
               ) {
                 cleanup()
                 return(NA_character_)
@@ -1713,24 +1713,24 @@ oauth_module_server_impl <- function(
     # Internal helper: start the browser redirect for a login request. Used by
     # `.request_login()` and pending-login resume logic.
     # @return No return value; may redirect the browser and set
-    #   `values$auto_redirected`.
+    #   `values[["auto_redirected"]]`.
     .initiate_login <- function(cookie_acknowledged = FALSE) {
       if (!cookie_acknowledged) {
         return(.with_fresh_browser_token(function() .initiate_login(TRUE)))
       }
-      values$pending_login <- FALSE
+      values[["pending_login"]] <- FALSE
       url <- .build_auth_url(.authorization_request = TRUE)
-      epoch <- auth_operations$epoch
+      epoch <- auth_operations[["epoch"]]
       redirect <- function(url) {
         if (
-          !isTRUE(auth_operations$session_active) ||
-            !identical(epoch, auth_operations$epoch) ||
+          !isTRUE(auth_operations[["session_active"]]) ||
+            !identical(epoch, auth_operations[["epoch"]]) ||
             .is_authenticated_now()
         ) {
           return(invisible(FALSE))
         }
         if (isTRUE(.redirect_to(url))) {
-          values$auto_redirected <- TRUE
+          values[["auto_redirected"]] <- TRUE
         }
         invisible(NULL)
       }
@@ -1751,7 +1751,7 @@ oauth_module_server_impl <- function(
         return(invisible(FALSE))
       }
 
-      values$pending_login <- TRUE
+      values[["pending_login"]] <- TRUE
       if (isTRUE(allow_skip_browser_token()) && !.has_browser_token()) {
         .set_browser_token()
       } else {
@@ -1766,7 +1766,7 @@ oauth_module_server_impl <- function(
     # Used by app code when manual login flows need to prepare the browser
     # session before building an authorization URL.
     # @return No return value; sends a browser-token message.
-    values$set_browser_token <- function() {
+    values[["set_browser_token"]] <- function() {
       .set_browser_token()
     }
 
@@ -1774,14 +1774,14 @@ oauth_module_server_impl <- function(
     # Used by app code when it needs to reset the browser-session binding
     # outside the built-in logout flow.
     # @return No return value; clears browser and server token state.
-    values$clear_browser_token <- function() {
+    values[["clear_browser_token"]] <- function() {
       .clear_browser_token()
     }
 
     # Module value helper: report browser-token availability.
     # Used by app code to decide whether an auth URL can be built yet.
     # @return `TRUE` when a browser token is available, otherwise `FALSE`.
-    values$has_browser_token <- function() {
+    values[["has_browser_token"]] <- function() {
       .has_browser_token()
     }
 
@@ -1790,7 +1790,7 @@ oauth_module_server_impl <- function(
     # button target instead of redirecting immediately.
     # @return Authorization URL string, or `NA_character_` after recording a
     #   module error.
-    values$build_auth_url <- function() {
+    values[["build_auth_url"]] <- function() {
       .with_fresh_browser_token(.build_auth_url)
     }
 
@@ -1799,16 +1799,16 @@ oauth_module_server_impl <- function(
     # start authentication.
     # @return Invisibly returns `FALSE` only when the request is rejected
     #   because the session is already authenticated.
-    values$request_login <- function() {
+    values[["request_login"]] <- function() {
       .request_login()
     }
 
     # Internal helper: expose a logout helper that revokes tokens best-effort
-    # and clears session state. Used by app code through `values$logout()`.
+    # and clears session state. Used by app code through `values[["logout"]]()`.
     # @param reason Optional logout reason string for audit trails.
     # @return No return value; clears module auth state, rotates the browser
     #   token, and emits logout side effects.
-    values$logout <- function(reason = "manual_logout") {
+    values[["logout"]] <- function(reason = "manual_logout") {
       logout_shiny_session <- capture_shiny_session_context(is_async = FALSE)
       logout_async_shiny_session <- if (isTRUE(async)) {
         capture_shiny_session_context(is_async = TRUE)
@@ -1822,9 +1822,9 @@ oauth_module_server_impl <- function(
           {
             # Best-effort: revoke provider tokens asynchronously if supported.
             # Fire-and-forget so logout returns immediately.
-            tok <- values$token
+            tok <- values[["token"]]
             .advance_auth_epoch()
-            auth_operations$force_oidc_reauth <- FALSE
+            auth_operations[["force_oidc_reauth"]] <- FALSE
             if (!is.null(tok)) {
               # Async revocation follows module async setting
               use_async_revocation <- isTRUE(async)
@@ -1865,11 +1865,11 @@ oauth_module_server_impl <- function(
                 shiny_session = logout_shiny_session
               )
             )
-            values$token <- NULL
-            values$error <- "logged_out"
-            values$error_description <- NULL
-            values$error_uri <- NULL
-            values$token_stale <- FALSE
+            values[["token"]] <- NULL
+            values[["error"]] <- "logged_out"
+            values[["error_description"]] <- NULL
+            values[["error_uri"]] <- NULL
+            values[["token_stale"]] <- FALSE
             .clear_browser_token()
             # Proactively re-issue a fresh browser token so that a subsequent
             # manual login can redirect immediately without a preparatory click.
@@ -1888,12 +1888,12 @@ oauth_module_server_impl <- function(
 
     ## 2.7 Callback handling and auto-redirect ---------------------------------
 
-    # Handle OAuth flow by listening to clientData$url_search
+    # Handle OAuth flow by listening to clientData[["url_search"]]
     shiny::observeEvent(
-      session$clientData$url_search,
+      session[["clientData"]][["url_search"]],
       {
         .process_query(
-          shiny::isolate(session$clientData$url_search) %||% "",
+          shiny::isolate(session[["clientData"]][["url_search"]]) %||% "",
           current_uri = shiny::isolate(
             oauth_shiny_session_callback_uri(session)
           ) %||%
@@ -1976,7 +1976,7 @@ oauth_module_server_impl <- function(
     ) {
       configured_jarm_transport <- resolve_jarm_callback_transport(client)
       query_jarm_client <- identical(
-        configured_jarm_transport$transport %||% NULL,
+        configured_jarm_transport[["transport"]] %||% NULL,
         "query"
       )
       response_is_callback <- .query_response_is_reserved_callback(
@@ -2148,7 +2148,7 @@ oauth_module_server_impl <- function(
           current_uri = current_uri
         )
 
-      if (!is.null(values$token)) {
+      if (!is.null(values[["token"]])) {
         if (
           isTRUE(.should_clear_authenticated_callback_query(
             query_string,
@@ -2564,7 +2564,7 @@ oauth_module_server_impl <- function(
         .reject_callback_query(
           description = paste(
             "JARM clients configured for",
-            configured_jarm_transport$mode,
+            configured_jarm_transport[["mode"]],
             "must not receive compact query response parameters; resume from",
             "the validated form_post callback handle instead."
           ),
@@ -2703,8 +2703,8 @@ oauth_module_server_impl <- function(
       # an error re-triggers this observer but we must not re-initiate login.
       if (
         isTRUE(auto_redirect) &&
-          is.null(values$pending_callback) &&
-          is.null(values$error)
+          is.null(values[["pending_callback"]]) &&
+          is.null(values[["error"]])
       ) {
         .request_login()
       }
@@ -2810,14 +2810,14 @@ oauth_module_server_impl <- function(
         return(invisible(NULL))
       }
 
-      if (!is_valid_string(values$browser_token)) {
+      if (!is_valid_string(values[["browser_token"]])) {
         clear_oauth_module_callback_query(
           session,
           tab_title_replacement,
           tab_title_cleaning,
           drop_response = drop_response
         )
-        values$pending_callback <- list(
+        values[["pending_callback"]] <- list(
           type = "jarm",
           normalized_response = normalized,
           decrypted_payload = decrypted_payload,
@@ -2947,7 +2947,7 @@ oauth_module_server_impl <- function(
         # crosses the worker boundary; logical state remains browser-bound.
         operation <- .begin_auth_operation(
           "jarm",
-          source_token = values$token,
+          source_token = values[["token"]],
           new_epoch = TRUE
         )
         return(tryCatch(
@@ -2959,18 +2959,18 @@ oauth_module_server_impl <- function(
             async_dispatch(
               quote({
                 .ns <- asNamespace("shinyOAuth")
-                .ns$with_async_options(captured_options, {
-                  .ns$with_async_session_context(captured_session, {
-                    .ns$verify_jarm_signature(
+                .ns[["with_async_options"]](captured_options, {
+                  .ns[["with_async_session_context"]](captured_session, {
+                    .ns[["verify_jarm_signature"]](
                       worker,
-                      preflight$jwt_str,
-                      preflight$alg,
-                      preflight$kid
+                      preflight[["jwt_str"]],
+                      preflight[["alg"]],
+                      preflight[["kid"]]
                     )
-                    .ns$validate_jarm_claims(
+                    .ns[["validate_jarm_claims"]](
                       worker,
-                      preflight$claims,
-                      prechecked = preflight$prechecked
+                      preflight[["claims"]],
+                      prechecked = preflight[["prechecked"]]
                     )
                   })
                 })
@@ -3033,8 +3033,8 @@ oauth_module_server_impl <- function(
 
       # Mirror the code-callback path: wait for the browser token before
       # consuming state or surfacing provider-controlled error text.
-      if (!is_valid_string(values$browser_token)) {
-        values$pending_callback <- list(
+      if (!is_valid_string(values[["browser_token"]])) {
+        values[["pending_callback"]] <- list(
           type = "error",
           error = error,
           error_description = error_description,
@@ -3101,9 +3101,9 @@ oauth_module_server_impl <- function(
             .managed,
             client,
             state,
-            values$browser_token,
-            consumed_state$payload,
-            consumed_state$state_store_values
+            values[["browser_token"]],
+            consumed_state[["payload"]],
+            consumed_state[["state_store_values"]]
           )
           if (!isTRUE(state_was_preconsumed)) {
             consumed_state <- .consume_error_state(
@@ -3115,7 +3115,7 @@ oauth_module_server_impl <- function(
             )
           }
           if (!is.null(.managed)) {
-            .managed$cancel(managed_context$data)
+            .managed[["cancel"]](managed_context[["data"]])
           }
           TRUE
         },
@@ -3137,13 +3137,13 @@ oauth_module_server_impl <- function(
       # Keep the raw value in deferred state so replay/resume paths preserve
       # provider error context, but sanitize before surfacing it to callers.
       error_uri <- sanitize_callback_error_uri(error_uri, client@provider)
-      values$error <- error
-      values$error_description <- if (allow_expose_error_body()) {
+      values[["error"]] <- error
+      values[["error_description"]] <- if (allow_expose_error_body()) {
         sanitize_diagnostic_text(error_description)
       } else {
         NULL
       }
-      values$error_uri <- error_uri %||% NULL
+      values[["error_uri"]] <- error_uri %||% NULL
       invisible(NULL)
     }
 
@@ -3198,8 +3198,8 @@ oauth_module_server_impl <- function(
                       client,
                       payload[["state"]]
                     ),
-                    .transaction_context = managed_context$json,
-                    .transaction_context_digest = payload$transaction_context_digest
+                    .transaction_context = managed_context[["json"]],
+                    .transaction_context_digest = payload[["transaction_context_digest"]]
                   )
                 }
 
@@ -3298,7 +3298,7 @@ oauth_module_server_impl <- function(
             payload[["trace_id"]] %||% NULL,
             {
               tryCatch(
-                validate_browser_token(values$browser_token),
+                validate_browser_token(values[["browser_token"]]),
                 error = function(e) {
                   err_invalid_state(
                     "Invalid browser token",
@@ -3312,7 +3312,7 @@ oauth_module_server_impl <- function(
               if (
                 !constant_time_compare(
                   state_store_values[["browser_token"]],
-                  values$browser_token
+                  values[["browser_token"]]
                 )
               ) {
                 err_invalid_state("Browser token mismatch")
@@ -3336,7 +3336,7 @@ oauth_module_server_impl <- function(
                     payload[["state"]] %||% NA_character_
                   ),
                   browser_token_digest = string_digest(
-                    values$browser_token %||% NA_character_
+                    values[["browser_token"]] %||% NA_character_
                   ),
                   error_class = paste(class(e), collapse = ", "),
                   phase = "browser_token_validation"
@@ -3375,7 +3375,7 @@ oauth_module_server_impl <- function(
       managed_cleanup <- NULL
       cleanup_deferred <- FALSE
       on.exit(if (!cleanup_deferred && !is.null(managed_cleanup)) {
-        managed_cleanup$finish()
+        managed_cleanup[["finish"]]()
       }, add = TRUE)
       callback_hint <- otel_callback_parent_hint(client, state)
       # Always clear callback params once we've parsed them (success or failure)
@@ -3399,8 +3399,8 @@ oauth_module_server_impl <- function(
       }
 
       # If browser token isn't here yet, defer (set as pending) and wait for browser token
-      if (!is_valid_string(values$browser_token)) {
-        values$pending_callback <- list(
+      if (!is_valid_string(values[["browser_token"]])) {
+        values[["pending_callback"]] <- list(
           type = "code",
           code = code,
           state = state,
@@ -3415,7 +3415,7 @@ oauth_module_server_impl <- function(
 
       login_operation <- .begin_auth_operation(
         "login",
-        source_token = values$token,
+        source_token = values[["token"]],
         new_epoch = TRUE
       )
 
@@ -3425,13 +3425,13 @@ oauth_module_server_impl <- function(
             .managed,
             client,
             state,
-            values$browser_token,
+            values[["browser_token"]],
             decrypted_payload,
             state_store_values
           )
-          if (!is.null(.managed$begin_cleanup)) {
-            managed_cleanup <- .managed$begin_cleanup(managed_context$data)
-            managed_context$cleanup <- managed_cleanup
+          if (!is.null(.managed[["begin_cleanup"]])) {
+            managed_cleanup <- .managed[["begin_cleanup"]](managed_context[["data"]])
+            managed_context[["cleanup"]] <- managed_cleanup
           }
           with_trace_id(
             callback_hint[["trace_id"]] %||% NULL,
@@ -3477,7 +3477,7 @@ oauth_module_server_impl <- function(
                 )
 
                 otel_with_active_span(
-                  callback_parent$span,
+                  callback_parent[["span"]],
                   {
                     # Capture shinyOAuth.* options for propagation to the async worker.
                     # This ensures audit hooks, HTTP settings, and other options are
@@ -3552,7 +3552,7 @@ oauth_module_server_impl <- function(
                           )
                         ) {
                           otel_set_span_attributes(
-                            span = callback_parent$span,
+                            span = callback_parent[["span"]],
                             attributes = list(
                               shinyoauth.trace_id = captured_trace_id
                             )
@@ -3562,8 +3562,8 @@ oauth_module_server_impl <- function(
                         # Capture the browser token value on the main thread to avoid
                         # touching reactive values inside the worker.
                         captured_browser_token <- tryCatch(
-                          shiny::isolate(values$browser_token),
-                          error = function(...) values$browser_token
+                          shiny::isolate(values[["browser_token"]]),
+                          error = function(...) values[["browser_token"]]
                         )
 
                         pre_state <- state_store_values
@@ -3687,7 +3687,7 @@ oauth_module_server_impl <- function(
                                   pre_payload[["state"]],
                                   expected_record = pre_state,
                                   shiny_session = captured_shiny_session,
-                                  .transaction_context = managed_context$json,
+                                  .transaction_context = managed_context[["json"]],
                                   .transaction_context_digest = pre_payload[[
                                     "transaction_context_digest"
                                   ]]
@@ -3745,7 +3745,7 @@ oauth_module_server_impl <- function(
                             decrypted_payload = pre_payload,
                             state_store_values = pre_state,
                             shiny_session = captured_shiny_session,
-                            .transaction_context = managed_context$json
+                            .transaction_context = managed_context[["json"]]
                           )
                         } else {
                           # Use namespace-qualified calls to avoid passing function closures to mirai
@@ -3754,13 +3754,13 @@ oauth_module_server_impl <- function(
                             expr = quote({
                               .ns <- asNamespace("shinyOAuth")
                               # Restore shinyOAuth.* options in the async worker
-                              .ns$with_trace_id(captured_trace_id, {
-                                .ns$with_async_options(captured_async_options, {
+                              .ns[["with_trace_id"]](captured_trace_id, {
+                                .ns[["with_async_options"]](captured_async_options, {
                                   # Set async context so errors include session info with is_async = TRUE
-                                  .ns$with_async_session_context(
+                                  .ns[["with_async_session_context"]](
                                     captured_shiny_session,
                                     {
-                                      .ns$handle_callback_internal(
+                                      .ns[["handle_callback_internal"]](
                                         oauth_client = client_for_worker,
                                         code = code,
                                         payload = state,
@@ -3783,12 +3783,12 @@ oauth_module_server_impl <- function(
                               code = code,
                               state = state,
                               captured_browser_token = captured_browser_token,
-                              captured_managed_context = managed_context$json,
+                              captured_managed_context = managed_context[["json"]],
                               pre_payload = pre_payload,
                               pre_state = pre_state
                             ),
                             otel_context = list(
-                              headers = callback_parent$headers,
+                              headers = callback_parent[["headers"]],
                               worker_span_name = "shinyOAuth.callback.worker",
                               shiny_session = captured_shiny_session,
                               attributes = otel_client_attributes(
@@ -3820,17 +3820,17 @@ oauth_module_server_impl <- function(
                     oauth_client = client,
                     code = code,
                     payload = state,
-                    browser_token = values$browser_token,
+                    browser_token = values[["browser_token"]],
                     decrypted_payload = decrypted_payload,
                     state_store_values = state_store_values,
-                    .transaction_context = managed_context$json
+                    .transaction_context = managed_context[["json"]]
                   )
                 } else {
                   handle_callback(
                     oauth_client = client,
                     code = code,
                     payload = state,
-                    browser_token = values$browser_token,
+                    browser_token = values[["browser_token"]],
                     iss = iss
                   )
                 }
@@ -3839,7 +3839,7 @@ oauth_module_server_impl <- function(
               # Handle async/sync
               if (isTRUE(async) && !isTRUE(async_fallback)) {
                 # Mark that we exercised the async pathway (testing aid)
-                values$last_login_async_used <- TRUE
+                values[["last_login_async_used"]] <- TRUE
 
                 res |>
                   promises::then(function(raw) {
@@ -3862,17 +3862,17 @@ oauth_module_server_impl <- function(
                       return(invisible(NULL))
                     }
                     .accept_login_token(tok, managed_context)
-                    values$error <- NULL
-                    values$error_description <- NULL
-                    values$error_uri <- NULL
-                    values$token_stale <- FALSE
+                    values[["error"]] <- NULL
+                    values[["error_description"]] <- NULL
+                    values[["error_uri"]] <- NULL
+                    values[["token_stale"]] <- FALSE
                     .clear_browser_token()
                     # Immediately re-issue a fresh browser token so that
                     # subsequent manual logins can redirect on the first click.
                     .set_browser_token()
                     # A successful login completes any prior reauth cycle
-                    values$reauth_triggered <- FALSE
-                    auth_operations$force_oidc_reauth <- FALSE
+                    values[["reauth_triggered"]] <- FALSE
+                    auth_operations[["force_oidc_reauth"]] <- FALSE
                     .finish_auth_operation(login_operation, "login")
                     if (!is.null(callback_parent)) {
                       otel_end_async_parent(callback_parent, status = "ok")
@@ -3927,7 +3927,7 @@ oauth_module_server_impl <- function(
                     }
                   }) |>
                   promises::finally(function() {
-                    if (!is.null(managed_cleanup)) managed_cleanup$finish()
+                    if (!is.null(managed_cleanup)) managed_cleanup[["finish"]]()
                   })
                 cleanup_deferred <- TRUE
               } else {
@@ -3942,17 +3942,17 @@ oauth_module_server_impl <- function(
                   return(invisible(NULL))
                 }
                 .accept_login_token(res, managed_context)
-                values$error <- NULL
-                values$error_description <- NULL
-                values$error_uri <- NULL
-                values$token_stale <- FALSE
+                values[["error"]] <- NULL
+                values[["error_description"]] <- NULL
+                values[["error_uri"]] <- NULL
+                values[["token_stale"]] <- FALSE
                 .clear_browser_token()
                 # Immediately re-issue a fresh browser token so that
                 # subsequent manual logins can redirect on the first click.
                 .set_browser_token()
                 # Reset reauth guard on successful sync login
-                values$reauth_triggered <- FALSE
-                auth_operations$force_oidc_reauth <- FALSE
+                values[["reauth_triggered"]] <- FALSE
+                auth_operations[["force_oidc_reauth"]] <- FALSE
                 .finish_auth_operation(login_operation, "login")
                 if (!is.null(callback_parent)) {
                   otel_end_async_parent(callback_parent, status = "ok")
@@ -4004,11 +4004,11 @@ oauth_module_server_impl <- function(
 
     # Resume the deferred callback once the JS cookie has populated the input
     shiny::observeEvent(
-      values$browser_token,
+      values[["browser_token"]],
       {
-        pc <- shiny::isolate(values$pending_callback)
+        pc <- shiny::isolate(values[["pending_callback"]])
         if (!is.null(pc) && .has_browser_token()) {
-          values$pending_callback <- NULL
+          values[["pending_callback"]] <- NULL
           pending_type <- pc[["type"]] %||%
             if (!is.null(pc[["normalized_response"]])) {
               "jarm"
@@ -4057,25 +4057,25 @@ oauth_module_server_impl <- function(
 
     # If a login was requested while no cookie was present, proceed once it is.
     shiny::observeEvent(
-      values$browser_token,
+      values[["browser_token"]],
       {
         if (
           isTRUE(allow_skip_browser_token()) &&
-            isTRUE(shiny::isolate(values$pending_login)) &&
+            isTRUE(shiny::isolate(values[["pending_login"]])) &&
             .has_browser_token()
         ) {
           # Guard against running during callback processing
           qs <- tryCatch(
-            shiny::parseQueryString(session$clientData$url_search %||% ""),
+            shiny::parseQueryString(session[["clientData"]][["url_search"]] %||% ""),
             error = function(...) list()
           )
           if (
             is.null(qs[["code"]]) &&
               is.null(qs[["error"]]) &&
-              is.null(shiny::isolate(values$pending_callback)) &&
-              !isTRUE(shiny::isolate(values$auto_redirected))
+              is.null(shiny::isolate(values[["pending_callback"]])) &&
+              !isTRUE(shiny::isolate(values[["auto_redirected"]]))
           ) {
-            values$pending_login <- FALSE
+            values[["pending_login"]] <- FALSE
             .initiate_login()
           }
         }
@@ -4086,8 +4086,8 @@ oauth_module_server_impl <- function(
     # Track whether we've already auto-redirected to avoid repeated attempts
 
     # Testing hooks: expose helpers for unit tests
-    values$.process_query <- .process_query
-    values$.strip_oauth_query <- strip_oauth_module_callback_query
+    values[[".process_query"]] <- .process_query
+    values[[".strip_oauth_query"]] <- strip_oauth_module_callback_query
 
     ## 2.8 Proactive refresh ---------------------------------------------------
 
@@ -4103,7 +4103,7 @@ oauth_module_server_impl <- function(
           .auth_operation_can_apply(operation, "refresh")
         } else {
           .auth_operation_is_owner(operation, "refresh") &&
-            identical(values$token, token)
+            identical(values[["token"]], token)
         }
         if (!isTRUE(can_record)) {
           .finish_auth_operation(operation, "refresh")
@@ -4113,37 +4113,37 @@ oauth_module_server_impl <- function(
         now <- as.numeric(Sys.time())
 
         if (!is.null(token)) {
-          values$refresh_failure_count <- 0L
-          values$refresh_last_success_at <- now
-          values$refresh_success_generation <-
-            values$refresh_success_generation + 1L
+          values[["refresh_failure_count"]] <- 0L
+          values[["refresh_last_success_at"]] <- now
+          values[["refresh_success_generation"]] <-
+            values[["refresh_success_generation"]] + 1L
           delay <- proactive_refresh_success_delay(
             token,
             now,
             refresh_lead_seconds
           )
         } else {
-          values$refresh_failure_count <- values$refresh_failure_count + 1L
+          values[["refresh_failure_count"]] <- values[["refresh_failure_count"]] + 1L
           if (
-            !refresh_credential_retryable(condition) && !is.null(values$token)
+            !refresh_credential_retryable(condition) && !is.null(values[["token"]])
           ) {
-            retained <- values$token
+            retained <- values[["token"]]
             retained@refresh_token <- NA_character_
-            auth_operations$retired_refresh_snapshot <- retained
-            values$token <- retained
+            auth_operations[["retired_refresh_snapshot"]] <- retained
+            values[["token"]] <- retained
           }
           delay <- proactive_refresh_failure_delay(
-            values$refresh_failure_count,
+            values[["refresh_failure_count"]],
             refresh_condition_retry_after(condition)
           )
         }
 
-        values$refresh_next_attempt_at <- now + delay
+        values[["refresh_next_attempt_at"]] <- now + delay
         TRUE
       }
 
       shiny::observe({
-        tok <- values$token
+        tok <- values[["token"]]
 
         # Default: wake up on a coarse interval when token missing/unknown
         wake_ms <- refresh_check_interval
@@ -4168,7 +4168,7 @@ oauth_module_server_impl <- function(
             } else {
               # We are within the lead window or past it. Respect pacing from a
               # recent short-lived success or failed attempt before retrying.
-              next_attempt_at <- values$refresh_next_attempt_at
+              next_attempt_at <- values[["refresh_next_attempt_at"]]
               if (is.finite(next_attempt_at) && next_attempt_at > now) {
                 wake_ms <- shiny_timer_delay_ms(next_attempt_at - now)
               } else {
@@ -4177,8 +4177,8 @@ oauth_module_server_impl <- function(
               # Avoid concurrent refresh attempts: if one is already running,
               # skip starting another and try again shortly.
               if (
-                isTRUE(values$refresh_in_progress) ||
-                  !is.null(auth_operations$active_login_id) ||
+                isTRUE(values[["refresh_in_progress"]]) ||
+                  !is.null(auth_operations[["active_login_id"]]) ||
                   (is.finite(next_attempt_at) && next_attempt_at > now)
               ) {
                 # Keep wake_ms short and bail out of starting a new refresh
@@ -4201,7 +4201,7 @@ oauth_module_server_impl <- function(
                       "refresh",
                       source_token = tok
                     )
-                    values$refresh_last_attempt_at <- as.numeric(Sys.time())
+                    values[["refresh_last_attempt_at"]] <- as.numeric(Sys.time())
                     res <- refresh_token(
                       client,
                       tok,
@@ -4229,13 +4229,13 @@ oauth_module_server_impl <- function(
                             return(invisible(NULL))
                           }
                           validate_refresh_delivery(res_resolved, tok)
-                          values$token <- res_resolved
-                          values$error <- NULL
-                          values$error_description <- NULL
-                          values$error_uri <- NULL
-                          values$token_stale <- FALSE
+                          values[["token"]] <- res_resolved
+                          values[["error"]] <- NULL
+                          values[["error_description"]] <- NULL
+                          values[["error_uri"]] <- NULL
+                          values[["token_stale"]] <- FALSE
                           # Successful refresh should allow future reauth cycles
-                          values$reauth_triggered <- FALSE
+                          values[["reauth_triggered"]] <- FALSE
                           .record_refresh_result(
                             refresh_operation,
                             token = res_resolved
@@ -4263,8 +4263,8 @@ oauth_module_server_impl <- function(
                           # On failure, either keep token (indefinite_session)
                           # or clear it (default behavior)
                           if (!isTRUE(indefinite_session)) {
-                            values$token <- NULL
-                            values$token_stale <- FALSE
+                            values[["token"]] <- NULL
+                            values[["token_stale"]] <- FALSE
                           }
 
                           .set_error(
@@ -4274,7 +4274,7 @@ oauth_module_server_impl <- function(
                           )
                           # Mark token stale when we kept it due to indefinite_session
                           if (isTRUE(indefinite_session)) {
-                            values$token_stale <- TRUE
+                            values[["token_stale"]] <- TRUE
                           }
                           .finish_auth_operation(refresh_operation, "refresh")
                           if (isTRUE(indefinite_session)) {
@@ -4331,10 +4331,10 @@ oauth_module_server_impl <- function(
                           if (!isTRUE(indefinite_session)) {
                             if (
                               isTRUE(auto_redirect) &&
-                                !isTRUE(values$reauth_triggered)
+                                !isTRUE(values[["reauth_triggered"]])
                             ) {
-                              values$reauth_triggered <- TRUE
-                              try(values$request_login())
+                              values[["reauth_triggered"]] <- TRUE
+                              try(values[["request_login"]]())
                             }
                           }
                         })
@@ -4352,13 +4352,13 @@ oauth_module_server_impl <- function(
                         return(invisible(NULL))
                       }
                       validate_refresh_delivery(new_tok, tok)
-                      values$token <- new_tok
-                      values$error <- NULL
-                      values$error_description <- NULL
-                      values$error_uri <- NULL
-                      values$token_stale <- FALSE
+                      values[["token"]] <- new_tok
+                      values[["error"]] <- NULL
+                      values[["error_description"]] <- NULL
+                      values[["error_uri"]] <- NULL
+                      values[["token_stale"]] <- FALSE
                       # Successful sync refresh resets reauth guard as well
-                      values$reauth_triggered <- FALSE
+                      values[["reauth_triggered"]] <- FALSE
                       .record_refresh_result(refresh_operation, token = new_tok)
                       .finish_auth_operation(refresh_operation, "refresh")
                     }
@@ -4375,8 +4375,8 @@ oauth_module_server_impl <- function(
                     }
                     # Set error; clear token unless indefinite_session
                     if (!isTRUE(indefinite_session)) {
-                      values$token <- NULL
-                      values$token_stale <- FALSE
+                      values[["token"]] <- NULL
+                      values[["token_stale"]] <- FALSE
                     }
                     .set_error(
                       "token_refresh_error",
@@ -4385,7 +4385,7 @@ oauth_module_server_impl <- function(
                     )
                     # Mark token stale when we kept it due to indefinite_session
                     if (isTRUE(indefinite_session)) {
-                      values$token_stale <- TRUE
+                      values[["token_stale"]] <- TRUE
                     }
                     .finish_auth_operation(refresh_operation, "refresh")
                     if (isTRUE(indefinite_session)) {
@@ -4423,10 +4423,10 @@ oauth_module_server_impl <- function(
                     if (!isTRUE(indefinite_session)) {
                       if (
                         isTRUE(auto_redirect) &&
-                          !isTRUE(values$reauth_triggered)
+                          !isTRUE(values[["reauth_triggered"]])
                       ) {
-                        values$reauth_triggered <- TRUE
-                        try(values$request_login())
+                        values[["reauth_triggered"]] <- TRUE
+                        try(values[["request_login"]]())
                       }
                     }
                   }
@@ -4445,7 +4445,7 @@ oauth_module_server_impl <- function(
 
     # Always-on expiry watcher to clear expired tokens and optionally reauth
     shiny::observe({
-      tok <- values$token
+      tok <- values[["token"]]
 
       # default wake
       wake_ms <- refresh_check_interval
@@ -4455,7 +4455,7 @@ oauth_module_server_impl <- function(
 
         # Reauth-after window (max session age); ignored when indefinite_session
         if (!isTRUE(indefinite_session) && !is.null(reauth_after_seconds)) {
-          started <- tryCatch(values$auth_started_at, error = function(...) {
+          started <- tryCatch(values[["auth_started_at"]], error = function(...) {
             NA_real_
           })
           if (is.finite(started) && !is.na(started)) {
@@ -4473,11 +4473,11 @@ oauth_module_server_impl <- function(
               # Default behavior clears token and triggers reauth; skip when indefinite_session
               if (!isTRUE(indefinite_session)) {
                 .advance_auth_epoch()
-                auth_operations$force_oidc_reauth <-
+                auth_operations[["force_oidc_reauth"]] <-
                   provider_uses_oidc(client@provider)
-                values$token <- NULL
-                values$error <- "reauth_required"
-                values$error_description <- paste0(
+                values[["token"]] <- NULL
+                values[["error"]] <- "reauth_required"
+                values[["error_description"]] <- paste0(
                   "Reauthentication required after ",
                   format(
                     reauth_after_seconds,
@@ -4500,10 +4500,10 @@ oauth_module_server_impl <- function(
                 )
                 if (
                   isTRUE(auto_redirect) &&
-                    !isTRUE(values$reauth_triggered)
+                    !isTRUE(values[["reauth_triggered"]])
                 ) {
-                  values$reauth_triggered <- TRUE
-                  try(values$request_login())
+                  values[["reauth_triggered"]] <- TRUE
+                  try(values[["request_login"]]())
                 }
                 # schedule soon to continue flow
                 shiny::invalidateLater(250L, session)
@@ -4533,16 +4533,16 @@ oauth_module_server_impl <- function(
 
             if (!is.na(remaining) && remaining <= 0) {
               # Skip clearing if a refresh is in progress and we're within grace
-              if (isTRUE(values$refresh_in_progress) && in_grace_window) {
+              if (isTRUE(values[["refresh_in_progress"]]) && in_grace_window) {
                 # Defer: wake soon and check again after refresh completes
                 shiny::invalidateLater(500L, session)
                 return()
               }
               .advance_auth_epoch()
-              auth_operations$force_oidc_reauth <- FALSE
-              values$token <- NULL
-              values$error <- "token_expired"
-              values$error_description <- "Access token expired"
+              auth_operations[["force_oidc_reauth"]] <- FALSE
+              values[["token"]] <- NULL
+              values[["error"]] <- "token_expired"
+              values[["error_description"]] <- "Access token expired"
               try(
                 audit_event(
                   "session_cleared",
@@ -4557,10 +4557,10 @@ oauth_module_server_impl <- function(
               )
               if (
                 isTRUE(auto_redirect) &&
-                  !isTRUE(values$reauth_triggered)
+                  !isTRUE(values[["reauth_triggered"]])
               ) {
-                values$reauth_triggered <- TRUE
-                try(values$request_login())
+                values[["reauth_triggered"]] <- TRUE
+                try(values[["request_login"]]())
               }
               shiny::invalidateLater(250L, session)
               return()
@@ -4573,7 +4573,7 @@ oauth_module_server_impl <- function(
           exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
           if (is.finite(exp) && !is.na(exp)) {
             if (now >= exp) {
-              values$token_stale <- TRUE
+              values[["token_stale"]] <- TRUE
             }
           }
         }
@@ -4602,15 +4602,15 @@ exclude_oauth_module_bookmarks <- function(session) {
     "shinyOAuth_cookie_error"
   )
   shiny::setBookmarkExclude(
-    union(session$getBookmarkExclude(), private_inputs),
+    union(session[["getBookmarkExclude"]](), private_inputs),
     session = session
   )
-  private_names <- session$ns(private_inputs)
+  private_names <- session[["ns"]](private_inputs)
   shiny::onBookmark(
     function(state) {
-      state$exclude <- union(state$exclude, private_names)
+      state[["exclude"]] <- union(state[["exclude"]], private_names)
     },
-    session = session$rootScope()
+    session = session[["rootScope"]]()
   )
   invisible(NULL)
 }
@@ -4639,7 +4639,7 @@ build_oauth_module_browser_token_instance <- function(
   id,
   redirect_uri = NULL
 ) {
-  ns_prefix <- tryCatch(session$ns(""), error = function(...) id %||% "")
+  ns_prefix <- tryCatch(session[["ns"]](""), error = function(...) id %||% "")
   instance <- sub("-$", "", ns_prefix)
   route <- oauth_callback_route(redirect_uri)
   identity <- if (is.null(route)) {
@@ -4682,18 +4682,18 @@ send_oauth_module_set_browser_token <- function(
   request_id = NULL,
   token = NULL
 ) {
-  session$sendCustomMessage(
+  session[["sendCustomMessage"]](
     type = "shinyOAuth:setBrowserToken",
     message = list(
       instance = instance,
       maxAgeMs = max_age_ms,
       sameSite = same_site,
       path = path,
-      inputId = session$ns("shinyOAuth_sid"),
+      inputId = session[["ns"]]("shinyOAuth_sid"),
       requestId = request_id,
       token = token,
-      ackInputId = session$ns("shinyOAuth_cookie_ack"),
-      errorInputId = session$ns("shinyOAuth_cookie_error")
+      ackInputId = session[["ns"]]("shinyOAuth_cookie_ack"),
+      errorInputId = session[["ns"]]("shinyOAuth_cookie_error")
     )
   )
 
@@ -4723,7 +4723,7 @@ send_oauth_module_clear_browser_token <- function(
   path,
   token = NULL
 ) {
-  session$sendCustomMessage(
+  session[["sendCustomMessage"]](
     type = "shinyOAuth:clearBrowserToken",
     message = list(
       instance = instance,
@@ -4732,7 +4732,7 @@ send_oauth_module_clear_browser_token <- function(
       token = token,
       # Let the client also clear the mirrored Shiny input so a subsequent
       # cookie reissue will always propagate a changed value back to the server.
-      inputId = session$ns("shinyOAuth_sid")
+      inputId = session[["ns"]]("shinyOAuth_sid")
     )
   )
 
@@ -4753,11 +4753,11 @@ send_oauth_module_clear_browser_token <- function(
 #' @keywords internal
 #' @noRd
 send_oauth_module_redirect <- function(session, url) {
-  if (is.list(url) && identical(url$method, "POST")) {
-    session$sendCustomMessage(type = "shinyOAuth:authorizePost", message = url)
+  if (is.list(url) && identical(url[["method"]], "POST")) {
+    session[["sendCustomMessage"]](type = "shinyOAuth:authorizePost", message = url)
     return(invisible(NULL))
   }
-  session$sendCustomMessage(
+  session[["sendCustomMessage"]](
     type = "shinyOAuth:redirect",
     message = list(url = url)
   )
@@ -4786,7 +4786,7 @@ clear_oauth_module_callback_query <- function(
   clean_title,
   drop_response = FALSE
 ) {
-  session$sendCustomMessage(
+  session[["sendCustomMessage"]](
     type = "shinyOAuth:clearQueryAndFixTitle",
     message = list(
       titleReplacement = if (!is.null(title_replacement)) {
@@ -4946,7 +4946,7 @@ oauth_callback_fixed_query_matches <- function(current, registered) {
 oauth_shiny_session_callback_uri <- function(session) {
   component <- function(name) {
     tryCatch(
-      as.character(session$clientData[[name]] %||% NA_character_),
+      as.character(session[["clientData"]][[name]] %||% NA_character_),
       error = function(...) NA_character_
     )
   }

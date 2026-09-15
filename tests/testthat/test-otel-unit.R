@@ -379,10 +379,10 @@ testthat::test_that("otel_http_attributes extracts host from URL", {
     method = "POST",
     url = "https://example.com/token?secret=1#frag"
   )
-  testthat::expect_identical(attrs$http.request.method, "POST")
-  testthat::expect_identical(attrs$url.full, "https://example.com/")
-  testthat::expect_identical(attrs$server.address, "example.com")
-  testthat::expect_identical(attrs$server.port, 443L)
+  testthat::expect_identical(attrs[["http.request.method"]], "POST")
+  testthat::expect_identical(attrs[["url.full"]], "https://example.com/")
+  testthat::expect_identical(attrs[["server.address"]], "example.com")
+  testthat::expect_identical(attrs[["server.port"]], 443L)
 })
 
 testthat::test_that("otel_http_attributes extracts from httr2 response", {
@@ -394,17 +394,17 @@ testthat::test_that("otel_http_attributes extracts from httr2 response", {
   )
 
   attrs <- shinyOAuth:::otel_http_attributes(resp = resp)
-  testthat::expect_identical(attrs$http.response.status_code, 200L)
+  testthat::expect_identical(attrs[["http.response.status_code"]], 200L)
   testthat::expect_identical(
-    attrs$http.response.content_type,
+    attrs[["http.response.content_type"]],
     "application/json"
   )
   testthat::expect_identical(
-    attrs$url.full,
+    attrs[["url.full"]],
     "https://provider.example.com:8443/"
   )
-  testthat::expect_identical(attrs$server.address, "provider.example.com")
-  testthat::expect_identical(attrs$server.port, 8443L)
+  testthat::expect_identical(attrs[["server.address"]], "provider.example.com")
+  testthat::expect_identical(attrs[["server.port"]], 8443L)
 })
 
 testthat::test_that("otel_http_content_type normalizes media type", {
@@ -428,12 +428,12 @@ testthat::test_that("otel_client_attributes includes expected fields", {
     phase = "callback"
   )
 
-  testthat::expect_identical(attrs$oauth.provider.name, "example")
-  testthat::expect_identical(attrs$shiny.module_id, "my_auth")
-  testthat::expect_identical(attrs$oauth.async, TRUE)
-  testthat::expect_identical(attrs$oauth.phase, "callback")
-  testthat::expect_true(is.character(attrs$oauth.client_id_digest))
-  testthat::expect_true(nzchar(attrs$oauth.client_id_digest))
+  testthat::expect_identical(attrs[["oauth.provider.name"]], "example")
+  testthat::expect_identical(attrs[["shiny.module_id"]], "my_auth")
+  testthat::expect_identical(attrs[["oauth.async"]], TRUE)
+  testthat::expect_identical(attrs[["oauth.phase"]], "callback")
+  testthat::expect_true(is.character(attrs[["oauth.client_id_digest"]]))
+  testthat::expect_true(nzchar(attrs[["oauth.client_id_digest"]]))
 })
 
 testthat::test_that("otel_client_attributes handles NULL client", {
@@ -443,10 +443,10 @@ testthat::test_that("otel_client_attributes handles NULL client", {
     phase = "init"
   )
 
-  testthat::expect_null(attrs$oauth.provider.name)
-  testthat::expect_null(attrs$oauth.client_id_digest)
-  testthat::expect_identical(attrs$shiny.module_id, "test")
-  testthat::expect_identical(attrs$oauth.phase, "init")
+  testthat::expect_null(attrs[["oauth.provider.name"]])
+  testthat::expect_null(attrs[["oauth.client_id_digest"]])
+  testthat::expect_identical(attrs[["shiny.module_id"]], "test")
+  testthat::expect_identical(attrs[["oauth.phase"]], "init")
 })
 
 testthat::test_that("otel_scope_count includes implied openid for OIDC login", {
@@ -531,25 +531,25 @@ testthat::test_that("otel_token_response_attributes captures response shape", {
     scope = "openid,profile"
   ))
 
-  testthat::expect_identical(attrs$oauth.token_type, "Bearer")
-  testthat::expect_identical(attrs$oauth.received_id_token, TRUE)
-  testthat::expect_identical(attrs$oauth.received_refresh_token, TRUE)
-  testthat::expect_identical(attrs$oauth.expires_in_present, TRUE)
-  testthat::expect_identical(attrs$oauth.expires_in_synthesized, FALSE)
-  testthat::expect_identical(attrs$oauth.scope.present, TRUE)
+  testthat::expect_identical(attrs[["oauth.token_type"]], "Bearer")
+  testthat::expect_identical(attrs[["oauth.received_id_token"]], TRUE)
+  testthat::expect_identical(attrs[["oauth.received_refresh_token"]], TRUE)
+  testthat::expect_identical(attrs[["oauth.expires_in_present"]], TRUE)
+  testthat::expect_identical(attrs[["oauth.expires_in_synthesized"]], FALSE)
+  testthat::expect_identical(attrs[["oauth.scope.present"]], TRUE)
   testthat::expect_null(attrs[["oauth.scopes.granted"]])
-  testthat::expect_identical(attrs$oauth.scopes.granted_count, 2L)
+  testthat::expect_identical(attrs[["oauth.scopes.granted_count"]], 2L)
 
   missing_attrs <- shinyOAuth:::otel_token_response_attributes(list(
     access_token = "at",
     scope = ""
   ))
-  testthat::expect_identical(missing_attrs$oauth.expires_in_present, FALSE)
+  testthat::expect_identical(missing_attrs[["oauth.expires_in_present"]], FALSE)
   testthat::expect_identical(
-    missing_attrs$oauth.expires_in_synthesized,
+    missing_attrs[["oauth.expires_in_synthesized"]],
     TRUE
   )
-  testthat::expect_identical(missing_attrs$oauth.scope.present, FALSE)
+  testthat::expect_identical(missing_attrs[["oauth.scope.present"]], FALSE)
   testthat::expect_null(missing_attrs[["oauth.scopes.granted"]])
 })
 
@@ -634,8 +634,8 @@ testthat::test_that("otel_emit_log calls otel::log with correct severity", {
   )
 
   testthat::expect_length(log_calls, 1L)
-  testthat::expect_identical(log_calls[[1]]$severity, "info")
-  testthat::expect_identical(log_calls[[1]]$msg, "audit_login_success")
+  testthat::expect_identical(log_calls[[1]][["severity"]], "info")
+  testthat::expect_identical(log_calls[[1]][["msg"]], "audit_login_success")
 })
 
 testthat::test_that("otel_emit_log uses error severity for error events", {
@@ -659,8 +659,8 @@ testthat::test_that("otel_emit_log uses error severity for error events", {
   )
 
   testthat::expect_length(log_calls, 1L)
-  testthat::expect_identical(log_calls[[1]]$severity, "error")
-  testthat::expect_identical(log_calls[[1]]$msg, "audit_token_exchange_error")
+  testthat::expect_identical(log_calls[[1]][["severity"]], "error")
+  testthat::expect_identical(log_calls[[1]][["msg"]], "audit_token_exchange_error")
 })
 
 testthat::test_that("otel_emit_log uses status-aware severity for multi-outcome events", {
@@ -692,9 +692,9 @@ testthat::test_that("otel_emit_log uses status-aware severity for multi-outcome 
   )
 
   testthat::expect_length(log_calls, 3L)
-  testthat::expect_identical(log_calls[[1]]$severity, "error")
-  testthat::expect_identical(log_calls[[2]]$severity, "warn")
-  testthat::expect_identical(log_calls[[3]]$severity, "error")
+  testthat::expect_identical(log_calls[[1]][["severity"]], "error")
+  testthat::expect_identical(log_calls[[2]][["severity"]], "warn")
+  testthat::expect_identical(log_calls[[3]][["severity"]], "error")
 })
 
 testthat::test_that("otel_emit_log does not call otel::log for empty events", {
@@ -788,19 +788,19 @@ testthat::test_that("otel_note_error sets error status and adds exception event"
   shinyOAuth:::otel_note_error(err, span = mock_span)
 
   testthat::expect_true(length(add_event_calls) >= 1L)
-  testthat::expect_identical(add_event_calls[[1]]$name, "exception")
+  testthat::expect_identical(add_event_calls[[1]][["name"]], "exception")
   testthat::expect_identical(
-    add_event_calls[[1]]$attrs[["exception.type"]],
+    add_event_calls[[1]][["attrs"]][["exception.type"]],
     "simpleError"
   )
-  testthat::expect_null(add_event_calls[[1]]$attrs[["exception.message"]])
-  testthat::expect_null(add_event_calls[[1]]$attrs[["error.type"]])
-  testthat::expect_null(add_event_calls[[1]]$attrs[["error.message"]])
+  testthat::expect_null(add_event_calls[[1]][["attrs"]][["exception.message"]])
+  testthat::expect_null(add_event_calls[[1]][["attrs"]][["error.type"]])
+  testthat::expect_null(add_event_calls[[1]][["attrs"]][["error.message"]])
 
   testthat::expect_true(length(set_status_calls) >= 1L)
-  testthat::expect_identical(set_status_calls[[1]]$status, "error")
+  testthat::expect_identical(set_status_calls[[1]][["status"]], "error")
   testthat::expect_identical(
-    set_status_calls[[1]]$description,
+    set_status_calls[[1]][["description"]],
     "simpleError"
   )
 })
@@ -835,12 +835,12 @@ testthat::test_that("otel_note_error only exposes exception.message when enabled
 
   testthat::expect_true(length(add_event_calls) >= 1L)
   testthat::expect_identical(
-    add_event_calls[[1]]$attrs[["exception.message"]],
+    add_event_calls[[1]][["attrs"]][["exception.message"]],
     "something went wrong"
   )
 
   testthat::expect_true(length(set_status_calls) >= 1L)
-  testthat::expect_identical(set_status_calls[[1]]$description, "simpleError")
+  testthat::expect_identical(set_status_calls[[1]][["description"]], "simpleError")
 })
 
 # ===========================================================================
@@ -1059,7 +1059,7 @@ testthat::test_that("with_otel_span forwards an explicit parent option", {
       activation_scope = parent.frame(),
       ...
     ) {
-      captured_parent <<- options$parent
+      captured_parent <<- options[["parent"]]
       invisible(NULL)
     },
     .package = "otel",

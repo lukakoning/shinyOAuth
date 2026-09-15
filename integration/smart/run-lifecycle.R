@@ -19,12 +19,12 @@ run_smart_lifecycle <- function(args = commandArgs(trailingOnly = TRUE)) {
   results <- testthat::test_file(paste0("integration/smart/test-browser-", scenario, ".R"),
     env = environment(), reporter = "summary", stop_on_failure = FALSE)
   counts <- as.data.frame(results)
-  evidence$tests <- as.list(colSums(counts[c("passed", "failed", "error", "skipped")]))
-  evidence$scenarios <- nrow(counts)
+  evidence[["tests"]] <- as.list(colSums(counts[c("passed", "failed", "error", "skipped")]))
+  evidence[["scenarios"]] <- nrow(counts)
   expected_scenarios <- switch(scenario, interrupted = 5L, consent = 8L, 4L)
-  if (nrow(counts) != expected_scenarios || evidence$tests$passed == 0L ||
-    any(unlist(evidence$tests[c("failed", "error", "skipped")]) != 0)) stop("SMART lifecycle gate failed")
-  evidence$status <- "passed"
-  cat("SMART", scenario, "scenarios:", nrow(counts), "; assertions:", evidence$tests$passed, "\n")
+  if (nrow(counts) != expected_scenarios || evidence[["tests"]][["passed"]] == 0L ||
+    any(unlist(evidence[["tests"]][c("failed", "error", "skipped")]) != 0)) stop("SMART lifecycle gate failed")
+  evidence[["status"]] <- "passed"
+  cat("SMART", scenario, "scenarios:", nrow(counts), "; assertions:", evidence[["tests"]][["passed"]], "\n")
 }
 run_smart_lifecycle()

@@ -637,9 +637,9 @@ start_dpop_protected_resource <- function(
   }
 
   send_problem <- function(res, status, error_code) {
-    res$set_status(status)
-    res$set_type("application/json")
-    res$send(jsonlite::toJSON(
+    res[["set_status"]](status)
+    res[["set_type"]]("application/json")
+    res[["send"]](jsonlite::toJSON(
       list(ok = FALSE, error = error_code),
       auto_unbox = TRUE,
       null = "null"
@@ -649,16 +649,16 @@ start_dpop_protected_resource <- function(
   jti_cache <- new.env(parent = emptyenv())
 
   app <- webfakes::new_app()
-  app$get(resource_path, function(req, res) {
+  app[["get"]](resource_path, function(req, res) {
     tryCatch(
       {
-        auth <- coalesce(req$get_header("authorization"), "")
+        auth <- coalesce(req[["get_header"]]("authorization"), "")
         if (!grepl("^DPoP\\s+", auth, ignore.case = TRUE)) {
           send_problem(res, 401L, "missing_dpop_authorization")
           return()
         }
 
-        proof <- coalesce(req$get_header("dpop"), "")
+        proof <- coalesce(req[["get_header"]]("dpop"), "")
         if (!nzchar(proof)) {
           send_problem(res, 401L, "missing_dpop_proof")
           return()
@@ -678,7 +678,7 @@ start_dpop_protected_resource <- function(
           send_problem(
             res,
             401L,
-            conditionMessage(attr(access_payload, "condition"))
+            conditionMessage(attr(access_payload, "condition", exact = TRUE))
           )
           return()
         }
@@ -699,7 +699,7 @@ start_dpop_protected_resource <- function(
           send_problem(
             res,
             401L,
-            conditionMessage(attr(proof_info, "condition"))
+            conditionMessage(attr(proof_info, "condition", exact = TRUE))
           )
           return()
         }
@@ -730,8 +730,8 @@ start_dpop_protected_resource <- function(
           return()
         }
 
-        res$set_type("application/json")
-        res$send(jsonlite::toJSON(
+        res[["set_type"]]("application/json")
+        res[["send"]](jsonlite::toJSON(
           list(
             ok = TRUE,
             sub = coalesce(
@@ -759,7 +759,7 @@ start_dpop_protected_resource <- function(
   })
 
   srv <- webfakes::local_app_process(app, .local_envir = .local_envir)
-  url <- paste0(sub("/+$", "", srv$url()), resource_path)
+  url <- paste0(sub("/+$", "", srv[["url"]]()), resource_path)
   deadline <- Sys.time() + 5
 
   repeat {

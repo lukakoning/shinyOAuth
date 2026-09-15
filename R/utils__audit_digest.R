@@ -109,8 +109,8 @@ get_audit_digest_key <- function() {
   }
 
   # Auto-generate per-process key on first call
-  if (is.null(audit_digest_key_env$key)) {
-    audit_digest_key_env$key <- openssl::rand_bytes(32L)
+  if (is.null(audit_digest_key_env[["key"]])) {
+    audit_digest_key_env[["key"]] <- openssl::rand_bytes(32L)
   }
-  audit_digest_key_env$key
+  audit_digest_key_env[["key"]]
 }

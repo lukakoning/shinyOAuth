@@ -23,7 +23,7 @@ test_that("normalized token outcomes classify sync and async operation spans", {
     capture_async_otel_envvars = function() NULL,
     req_with_retry = function(req, ...) {
       httr2::response(
-        url = req$url,
+        url = req[["url"]],
         status = http_status,
         headers = list("content-type" = "application/json"),
         body = charToRaw(body)
@@ -107,40 +107,40 @@ test_that("normalized token outcomes classify sync and async operation spans", {
         }
         parents <- Filter(
           function(span) {
-            span$name == paste0("shinyOAuth.token.", operation)
+            span[["name"]] == paste0("shinyOAuth.token.", operation)
           },
-          record$traces
+          record[["traces"]]
         )
         expect_true(length(parents) > 0L)
         for (span in parents) {
           expect_identical(
-            span$status,
+            span[["status"]],
             expected,
             info = paste(operation, case, async)
           )
           expect_identical(
-            span$attributes[["oauth.status"]],
-            record$value$status
+            span[["attributes"]][["oauth.status"]],
+            record[["value"]][["status"]]
           )
         }
         if (!neutral) {
           children <- Filter(
-            function(span) grepl("[.]http$", span$name),
-            record$traces
+            function(span) grepl("[.]http$", span[["name"]]),
+            record[["traces"]]
           )
           expect_true(length(children) > 0L)
           expect_identical(
-            children[[1]]$status,
+            children[[1]][["status"]],
             if (http_status >= 400L) "error" else "unset"
           )
         }
         workers <- Filter(
-          function(span) grepl("[.]worker$", span$name),
-          record$traces
+          function(span) grepl("[.]worker$", span[["name"]]),
+          record[["traces"]]
         )
         if (async) {
           expect_length(workers, 1L)
-          expect_identical(workers[[1]]$status, expected)
+          expect_identical(workers[[1]][["status"]], expected)
         }
       }
     }

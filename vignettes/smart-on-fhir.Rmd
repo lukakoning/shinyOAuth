@@ -157,31 +157,31 @@ ui <- oauth_connections_ui(base_ui, "health", manager)
 
 server <- function(input, output, session) {
   health <- oauth_connections_server("health", manager)
-  observeEvent(input$connect, health$connect("hospital"))
+  observeEvent(input[["connect"]], health[["connect"]]("hospital"))
 
   observe({
-    rows <- health$connections()
-    ids <- vapply(rows, function(x) x$connection_id, character(1))
+    rows <- health[["connections"]]()
+    ids <- vapply(rows, function(x) x[["connection_id"]], character(1))
     labels <- vapply(seq_along(rows), function(i) {
-      paste(rows[[i]]$client_label, i, paste0("(", rows[[i]]$status, ")"))
+      paste(rows[[i]][["client_label"]], i, paste0("(", rows[[i]][["status"]], ")"))
     }, character(1))
-    selected <- isolate(input$connection_id)
+    selected <- isolate(input[["connection_id"]])
     if (!length(selected) || !selected %in% ids) selected <- head(ids, 1)
     updateSelectInput(session, "connection_id",
       choices = setNames(ids, labels), selected = selected)
   })
 
   selected_connection <- reactive({
-    rows <- health$connections()
-    ids <- vapply(rows, function(x) x$connection_id, character(1))
-    req(input$connection_id, input$connection_id %in% ids)
-    connection <- health$connection(input$connection_id)
-    req(connection$is_usable())
+    rows <- health[["connections"]]()
+    ids <- vapply(rows, function(x) x[["connection_id"]], character(1))
+    req(input[["connection_id"]], input[["connection_id"]] %in% ids)
+    connection <- health[["connection"]](input[["connection_id"]])
+    req(connection[["is_usable"]]())
     connection
   })
 
-  patient <- eventReactive(input$load_patient, {
-    health$touch()
+  patient <- eventReactive(input[["load_patient"]], {
+    health[["touch"]]()
     connection <- selected_connection()
     context <- smart_context(connection)
     data <- tryCatch({
@@ -189,26 +189,26 @@ server <- function(input, output, session) {
       httr2::resp_check_status(response)
       httr2::resp_body_json(response, simplifyVector = FALSE)
     }, error = function(e) NULL)
-    list(connection_id = connection$id, revision = context$revision, data = data)
+    list(connection_id = connection[["id"]], revision = context[["revision"]], data = data)
   })
 
-  output$patient <- renderText({
+  output[["patient"]] <- renderText({
     connection <- selected_connection()
     context <- smart_context(connection)
     value <- patient()
     # Clear the display if the selected grant or accepted context has changed.
-    req(identical(value$connection_id, connection$id),
-        identical(value$revision, context$revision))
-    validate(need(!is.null(value$data), "Could not load this patient's record."))
-    paste("Patient resource:", value$data$id)
+    req(identical(value[["connection_id"]], connection[["id"]]),
+        identical(value[["revision"]], context[["revision"]]))
+    validate(need(!is.null(value[["data"]]), "Could not load this patient's record."))
+    paste("Patient resource:", value[["data"]][["id"]])
   })
-  observeEvent(input$disconnect, {
+  observeEvent(input[["disconnect"]], {
     # Allow disconnect even when the connection has become unusable.
-    req(input$connection_id)
-    health$disconnect(input$connection_id)
+    req(input[["connection_id"]])
+    health[["disconnect"]](input[["connection_id"]])
   })
-  output$auth_error <- renderText({
-    if (length(health$errors())) "Authorization is unavailable. Try authorizing again."
+  output[["auth_error"]] <- renderText({
+    if (length(health[["errors"]]())) "Authorization is unavailable. Try authorizing again."
   })
 }
 
@@ -225,7 +225,7 @@ This teaching UI displays only the resource ID. A clinical application needs
 appropriate patient identification and must respect `need_patient_banner` when
 provided. Context and resource bodies contain sensitive data; keep them out of
 general connection tables and logs. Key patient-dependent caches by both
-connection ID and `context$revision`, and discard stale data when either changes.
+connection ID and `context[["revision"]]`, and discard stale data when either changes.
 
 ## Search with the same connection
 
@@ -234,21 +234,21 @@ operations. Add `actionButton("search", "Search observations")` to the UI to
 use this example:
 
 ```{r smart-search, eval = FALSE}
-observeEvent(input$search, {
-  health$touch()
+observeEvent(input[["search"]], {
+  health[["touch"]]()
   connection <- selected_connection()
   context <- smart_context(connection)
-  req(context$patient)
+  req(context[["patient"]])
   tryCatch({
-    response <- connection$request(
+    response <- connection[["request"]](
       "fhir", "Observation",
-      query = list(patient = context$patient, `_count` = 10),
+      query = list(patient = context[["patient"]], `_count` = 10),
       required_scopes = "patient/Observation.s",
       configure = function(req) httr2::req_headers(req, Accept = "application/fhir+json")
     )
     httr2::resp_check_status(response)
     bundle <- httr2::resp_body_json(response, simplifyVector = FALSE)
-    # Process bundle$entry here, associating data with this ID and revision.
+    # Process bundle[["entry"]] here, associating data with this ID and revision.
     showNotification("Observation search completed.")
   }, error = function(e) {
     showNotification("Could not search observations. Check the granted permissions.",
@@ -282,7 +282,7 @@ refresh scope cannot express that limit.
 
 ## Patient context and user identity are different
 
-`smart_context(connection)$patient` identifies the chart in context. A clinician
+`smart_context(connection)[["patient"]]` identifies the chart in context. A clinician
 can be the logged-in user while that patient is someone else. The browser owner
 used for local retention is a third, separate concept.
 
@@ -290,13 +290,13 @@ Identity remains opt-in: the default `identity = "none"` does not enable OIDC.
 For a validated OIDC subject without a FHIR user reference, use
 `identity = "openid"`. This requests and requires only `openid`, validates the
 signed ID token and nonce, and exposes the issuer and subject through
-`connection$identity()`. It leaves `smart_context(connection)$fhirUser` empty.
+`connection[["identity"]]()`. It leaves `smart_context(connection)[["fhirUser"]]` empty.
 
 If the app also needs the authenticated user's FHIR reference, configure
 `identity = "fhirUser"` when constructing its SMART client. This adds and
 requires `openid fhirUser`, signed ID-token validation and nonce binding.
 The server must advertise the corresponding capabilities and signing metadata.
-`smart_context(connection)$fhirUser` then exposes the validated reference.
+`smart_context(connection)[["fhirUser"]]` then exposes the validated reference.
 
 Fetching that resource with `smart_fhir_user(connection)` accepts the granted
 `openid fhirUser` identity scopes, as described by
@@ -349,7 +349,7 @@ starts authorization automatically. Keep the remaining server code and the
 
 The route selects only the configured `hospital` client by its exact FHIR base;
 it does not discover a new server from the incoming `iss`. Each attempt uses a
-fresh launch transaction. Calling `health$connect("hospital")` for an EHR client
+fresh launch transaction. Calling `health[["connect"]]("hospital")` for an EHR client
 reports `fresh_ehr_launch_required`; reconnect by opening the app from the EHR.
 Keep launch handles out of shared client configuration and access-log queries.
 
@@ -433,7 +433,7 @@ omits `expires_in`; an explicit value takes precedence. The default `NULL`
 requires an explicit response lifetime, and generic OAuth lifetime options do
 not apply to SMART.
 
-`connection$refresh(scopes = ...)` can narrow the connection's accepted scopes.
+`connection[["refresh"]](scopes = ...)` can narrow the connection's accepted scopes.
 That local limit is retained and sent on later refreshes; it does not prove the
 server has reduced the original refresh-token grant. Broader access requires a
 new authorization. On refresh, read `smart_context()` again and use its revision

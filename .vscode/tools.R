@@ -221,11 +221,11 @@ run_lint <- function(
     return(list(ok = TRUE, output = "No lints found.", error = NULL))
   }
   df <- data.frame(
-    file = vapply(res, function(x) x$filename, ""),
-    line = vapply(res, function(x) x$line_number, integer(1)),
-    col = vapply(res, function(x) x$column_number, integer(1)),
-    type = vapply(res, function(x) x$type, ""),
-    msg = vapply(res, function(x) x$message, ""),
+    file = vapply(res, function(x) x[["filename"]], ""),
+    line = vapply(res, function(x) x[["line_number"]], integer(1)),
+    col = vapply(res, function(x) x[["column_number"]], integer(1)),
+    type = vapply(res, function(x) x[["type"]], ""),
+    msg = vapply(res, function(x) x[["message"]], ""),
     stringsAsFactors = FALSE
   )
   txt <- paste(

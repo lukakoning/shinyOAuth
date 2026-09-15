@@ -126,15 +126,15 @@ if (
   server <- function(input, output, session) {
     auth <- oauth_module_server("auth", client, auto_redirect = TRUE)
 
-    output$login <- renderUI({
-      if (auth$authenticated) {
-        user_info <- auth$token@userinfo
+    output[["login"]] <- renderUI({
+      if (auth[["authenticated"]]) {
+        user_info <- auth[["token"]]@userinfo
         tagList(
-          tags$p("You are logged in!"),
-          tags$pre(paste(capture.output(str(user_info)), collapse = "\n"))
+          tags[["p"]]("You are logged in!"),
+          tags[["pre"]](paste(capture.output(str(user_info)), collapse = "\n"))
         )
       } else {
-        tags$p("You are not logged in.")
+        tags[["p"]]("You are not logged in.")
       }
     })
   }

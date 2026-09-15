@@ -134,7 +134,7 @@ oauth_ui_impl <- function(
     render_ui,
     server = function(...) {},
     uiPattern = ".*"
-  )$httpHandler
+  )[["httpHandler"]]
   ui <- function(req) {
     query_error <- oauth_http_query_guard(req)
     if (!is.null(query_error)) {
@@ -197,9 +197,9 @@ oauth_ui_impl <- function(
     response <- handler(req)
     if (
       !is.null(response) &&
-        grepl("^text/html", response$content_type, ignore.case = TRUE)
+        grepl("^text/html", response[["content_type"]], ignore.case = TRUE)
     ) {
-      headers <- response$headers
+      headers <- response[["headers"]]
       headers <- headers[
         !tolower(names(headers)) %in%
           c("referrer-policy", "cache-control", "pragma")
@@ -207,7 +207,7 @@ oauth_ui_impl <- function(
       headers[["Referrer-Policy"]] <- "no-referrer"
       headers[["Cache-Control"]] <- "no-store"
       headers[["Pragma"]] <- "no-cache"
-      response$headers <- headers
+      response[["headers"]] <- headers
     }
     response
   }
@@ -248,14 +248,14 @@ oauth_http_query_guard <- function(req) {
     {
       validate_untrusted_query_string(
         req[["QUERY_STRING"]] %||% "",
-        max_bytes = oauth_callback_limits()$query
+        max_bytes = oauth_callback_limits()[["query"]]
       )
       NULL
     },
     shinyOAuth_state_error = function(...) {
       response <- oauth_get_setup_error("Invalid or oversized HTTP query.")
       if (identical(req[["REQUEST_METHOD"]], "HEAD")) {
-        response$content <- ""
+        response[["content"]] <- ""
       }
       response
     }

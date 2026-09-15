@@ -9,9 +9,9 @@ test_that("JWK selection filters use=sig and prefers alg match", {
   priv_jwk_json <- write_test_jwk(rsa)
   priv_jwk <- jsonlite::fromJSON(priv_jwk_json, simplifyVector = TRUE)
   pub_jwk_sig_rs256 <- list(
-    kty = priv_jwk$kty,
-    n = priv_jwk$n,
-    e = priv_jwk$e,
+    kty = priv_jwk[["kty"]],
+    n = priv_jwk[["n"]],
+    e = priv_jwk[["e"]],
     kid = "k-rs256",
     use = "sig",
     alg = "RS256"
@@ -22,9 +22,9 @@ test_that("JWK selection filters use=sig and prefers alg match", {
   priv_jwk_json2 <- write_test_jwk(rsa2)
   priv_jwk2 <- jsonlite::fromJSON(priv_jwk_json2, simplifyVector = TRUE)
   pub_jwk_enc_rs256 <- list(
-    kty = priv_jwk2$kty,
-    n = priv_jwk2$n,
-    e = priv_jwk2$e,
+    kty = priv_jwk2[["kty"]],
+    n = priv_jwk2[["n"]],
+    e = priv_jwk2[["e"]],
     kid = "k-enc",
     use = "enc",
     alg = "RS256"
@@ -35,9 +35,9 @@ test_that("JWK selection filters use=sig and prefers alg match", {
   priv_jwk_json3 <- write_test_jwk(rsa3)
   priv_jwk3 <- jsonlite::fromJSON(priv_jwk_json3, simplifyVector = TRUE)
   pub_jwk_sig_rs384 <- list(
-    kty = priv_jwk3$kty,
-    n = priv_jwk3$n,
-    e = priv_jwk3$e,
+    kty = priv_jwk3[["kty"]],
+    n = priv_jwk3[["n"]],
+    e = priv_jwk3[["e"]],
     kid = "k-rs384",
     use = "sig",
     alg = "RS384"
@@ -67,7 +67,7 @@ test_that("JWK selection filters use=sig and prefers alg match", {
       iat = now - 1
     ),
     key = rsa,
-    header = list(alg = "RS256", kid = pub_jwk_sig_rs256$kid, typ = "JWT")
+    header = list(alg = "RS256", kid = pub_jwk_sig_rs256[["kid"]], typ = "JWT")
   )
 
   # JWKS contains three keys: one enc-only, two sig (one matching alg)
@@ -107,7 +107,7 @@ test_that("JWK selection filters use=sig and prefers alg match", {
       iat = now - 1
     ),
     key = rsa,
-    header = list(alg = "RS256", kid = pub_jwk_sig_rs384$kid, typ = "JWT")
+    header = list(alg = "RS256", kid = pub_jwk_sig_rs384[["kid"]], typ = "JWT")
   )
   expect_error(
     testthat::with_mocked_bindings(

@@ -9,7 +9,7 @@
 #   5. Verifying the refreshed token still works against live UserInfo
 
 if (!exists("keycloak_submit_browser_login", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 testthat::test_that("proactive refresh keeps session alive with short-lived tokens", {
@@ -61,7 +61,7 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
     shinyOAuth::use_shinyOAuth(),
     shiny::h3("Proactive Refresh E2E Test"),
     shiny::actionButton("login_btn", "Login"),
-    shiny::tags$hr(),
+    shiny::tags[["hr"]](),
     shiny::h4("Auth state"),
     shiny::verbatimTextOutput("auth_state"),
     shiny::h4("Token info"),
@@ -97,8 +97,8 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
     )
 
     # Observe token changes to track refresh count
-    shiny::observeEvent(auth$token, {
-      tok <- auth$token
+    shiny::observeEvent(auth[["token"]], {
+      tok <- auth[["token"]]
       if (is.null(tok)) {
         userinfo_probe(list(
           status = "no_token",
@@ -116,36 +116,36 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
             status = "error",
             probe_token_count = current,
             sub = NA_character_,
-            error = conditionMessage(attr(probe, "condition"))
+            error = conditionMessage(attr(probe, "condition", exact = TRUE))
           ))
         } else {
           userinfo_probe(list(
             status = "ok",
             probe_token_count = current,
-            sub = probe$sub %||% NA_character_,
+            sub = probe[["sub"]] %||% NA_character_,
             error = NA_character_
           ))
         }
       }
     })
 
-    shiny::observeEvent(input$login_btn, ignoreInit = TRUE, {
-      auth$request_login()
+    shiny::observeEvent(input[["login_btn"]], ignoreInit = TRUE, {
+      auth[["request_login"]]()
     })
 
-    output$auth_state <- shiny::renderText({
+    output[["auth_state"]] <- shiny::renderText({
       paste(
         "authenticated:",
-        isTRUE(auth$authenticated),
+        isTRUE(auth[["authenticated"]]),
         "has_token:",
-        !is.null(auth$token),
+        !is.null(auth[["token"]]),
         "error:",
-        if (!is.null(auth$error)) auth$error else "<none>"
+        if (!is.null(auth[["error"]])) auth[["error"]] else "<none>"
       )
     })
 
-    output$token_info <- shiny::renderText({
-      tok <- auth$token
+    output[["token_info"]] <- shiny::renderText({
+      tok <- auth[["token"]]
       if (is.null(tok)) {
         return("no_token")
       }
@@ -163,28 +163,28 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
       )
     })
 
-    output$refresh_count <- shiny::renderText({
+    output[["refresh_count"]] <- shiny::renderText({
       paste("token_count:", refresh_count())
     })
 
-    output$userinfo_probe <- shiny::renderText({
+    output[["userinfo_probe"]] <- shiny::renderText({
       probe <- userinfo_probe()
       paste(
         "userinfo_status:",
-        probe$status %||% "<none>",
+        probe[["status"]] %||% "<none>",
         "probe_token_count:",
-        probe$probe_token_count %||% 0L,
+        probe[["probe_token_count"]] %||% 0L,
         "sub:",
-        probe$sub %||% "<none>",
+        probe[["sub"]] %||% "<none>",
         "error:",
-        probe$error %||% "<none>"
+        probe[["error"]] %||% "<none>"
       )
     })
   }
 
   app <- shiny::shinyApp(ui, server)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app,
     name = "proactive-refresh-e2e",
     load_timeout = 15000,
@@ -194,8 +194,8 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
   # Click login button (auto_redirect = FALSE)
-  drv$wait_for_js("document.querySelector('#login_btn')", timeout = 5000)
-  drv$click("login_btn")
+  drv[["wait_for_js"]]("document.querySelector('#login_btn')", timeout = 5000)
+  drv[["click"]]("login_btn")
 
   # Submit the real Keycloak form unless the IdP has already reused an SSO
   # session and completed the flow without showing the login screen.
@@ -206,10 +206,10 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
   auth_state <- ""
   initial_userinfo_state <- ""
   for (i in seq_len(max_wait)) {
-    auth_state <- drv$get_js(
+    auth_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
     )
-    initial_userinfo_state <- drv$get_js(
+    initial_userinfo_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#userinfo_probe'); return el?el.innerText:''; })()"
     )
     if (
@@ -255,7 +255,7 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
   )
 
   # Capture initial token info (expires_at)
-  initial_token_info <- drv$get_js(
+  initial_token_info <- drv[["get_js"]](
     "(function(){ var el=document.querySelector('#token_info'); return el?el.innerText:''; })()"
   )
   message("Initial token info: ", initial_token_info)
@@ -289,13 +289,13 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
   final_auth_state <- ""
   final_userinfo_state <- ""
   for (i in seq_len(20)) {
-    final_auth_state <- drv$get_js(
+    final_auth_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#auth_state'); return el?el.innerText:''; })()"
     )
-    final_token_info <- drv$get_js(
+    final_token_info <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#token_info'); return el?el.innerText:''; })()"
     )
-    final_userinfo_state <- drv$get_js(
+    final_userinfo_state <- drv[["get_js"]](
       "(function(){ var el=document.querySelector('#userinfo_probe'); return el?el.innerText:''; })()"
     )
 
@@ -381,7 +381,7 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
   testthat::expect_identical(final_userinfo_sub, initial_userinfo_sub)
 
   # Check refresh count (should be >= 2: initial login + at least one refresh)
-  refresh_count_text <- drv$get_js(
+  refresh_count_text <- drv[["get_js"]](
     "(function(){ var el=document.querySelector('#refresh_count'); return el?el.innerText:''; })()"
   )
   message("Refresh count: ", refresh_count_text)

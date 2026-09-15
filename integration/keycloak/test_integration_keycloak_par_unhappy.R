@@ -1,7 +1,7 @@
 ## Integration tests: Keycloak PAR unhappy paths
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 build_par_auth_url <- function(client) {
@@ -15,9 +15,9 @@ build_par_auth_url <- function(client) {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      result[["auth_url"]] <<- values$build_auth_url()
-      result[["error"]] <<- values$error
-      result[["error_description"]] <<- values$error_description
+      result[["auth_url"]] <<- values[["build_auth_url"]]()
+      result[["error"]] <<- values[["error"]]
+      result[["error_description"]] <<- values[["error_description"]]
     }
   )
 
@@ -97,8 +97,8 @@ expect_par_auth_request_rejected <- function(
 ) {
   rejected <- capture_par_auth_request_rejection(auth_url, redirect_uri)
 
-  if (identical(rejected$kind, "callback")) {
-    result <- rejected$callback
+  if (identical(rejected[["kind"]], "callback")) {
+    result <- rejected[["callback"]]
     code <- result[["code"]] %||% NA_character_
     testthat::expect_false(
       is.character(code) && length(code) == 1L && !is.na(code) && nzchar(code),
@@ -129,16 +129,16 @@ expect_par_auth_request_rejected <- function(
     return(invisible(rejected))
   }
 
-  inspected <- rejected$inspected
+  inspected <- rejected[["inspected"]]
   location_error <- parse_query_param(
-    inspected$location,
+    inspected[["location"]],
     "error",
     decode = TRUE
   )
   combo <- paste(
-    inspected$status,
-    inspected$location %||% "",
-    inspected$body %||% ""
+    inspected[["status"]],
+    inspected[["location"]] %||% "",
+    inspected[["body"]] %||% ""
   )
 
   if (
@@ -150,7 +150,7 @@ expect_par_auth_request_rejected <- function(
     testthat::expect_identical(location_error, expected_error)
   } else {
     testthat::expect_true(
-      inspected$status %in% c(400L, 401L, 403L),
+      inspected[["status"]] %in% c(400L, 401L, 403L),
       info = combo
     )
   }
@@ -218,20 +218,20 @@ testthat::test_that("Keycloak PAR rejects wrong JWT client assertion audience", 
 
   built <- build_par_auth_url(client)
 
-  testthat::expect_true(is.na(built$auth_url))
-  testthat::expect_identical(built$error, "auth_url_error")
+  testthat::expect_true(is.na(built[["auth_url"]]))
+  testthat::expect_identical(built[["error"]], "auth_url_error")
   testthat::expect_match(
-    built$error_description %||% "",
+    built[["error_description"]] %||% "",
     "HTTP request failed",
     fixed = TRUE
   )
   failures <- Filter(
-    function(event) identical(event$type, "http_error"),
-    audit$events
+    function(event) identical(event[["type"]], "http_error"),
+    audit[["events"]]
   )
   testthat::expect_length(failures, 1L)
-  testthat::expect_identical(failures[[1L]]$status, 401L)
-  testthat::expect_null(failures[[1L]]$oauth_error_description)
+  testthat::expect_identical(failures[[1L]][["status"]], 401L)
+  testthat::expect_null(failures[[1L]][["oauth_error_description"]])
   expect_state_store_size(client, 0L)
 })
 
@@ -246,27 +246,27 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state_info <- get_state_info(client, auth_url)
       testthat::expect_match(auth_url, "[?&]request_uri=")
 
       first <- perform_login_form(auth_url, redirect_uri = client@redirect_uri)
-      values$.process_query(callback_query(first))
-      session$flushReact()
+      values[[".process_query"]](callback_query(first))
+      session[["flushReact"]]()
 
       expect_keycloak_module_login_invariants(
-        authenticated = values$authenticated,
-        error = values$error,
-        error_description = values$error_description,
-        error_uri = values$error_uri,
-        token = values$token,
+        authenticated = values[["authenticated"]],
+        error = values[["error"]],
+        error_description = values[["error_description"]],
+        error_uri = values[["error_uri"]],
+        token = values[["token"]],
         client = client,
         expected_username = "alice"
       )
       expect_state_store_entry_consumed(client, state_info)
 
-      access_token_before <- values$token@access_token %||% ""
-      username_before <- values$token@userinfo[["preferred_username"]] %||%
+      access_token_before <- values[["token"]]@access_token %||% ""
+      username_before <- values[["token"]]@userinfo[["preferred_username"]] %||%
         NA_character_
       rejected <- expect_par_auth_request_rejected(
         auth_url,
@@ -275,30 +275,30 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
         description_pattern = "Invalid Request"
       )
 
-      if (identical(rejected$kind, "callback")) {
-        replay_callback <- rejected$callback
-        replay_state <- parse_query_param(replay_callback$callback_url, "state")
+      if (identical(rejected[["kind"]], "callback")) {
+        replay_callback <- rejected[["callback"]]
+        replay_state <- parse_query_param(replay_callback[["callback_url"]], "state")
         replay_iss <- parse_query_param(
-          replay_callback$callback_url,
+          replay_callback[["callback_url"]],
           "iss",
           decode = TRUE
         )
 
-        values$.process_query(callback_query(replay_callback))
-        session$flushReact()
+        values[[".process_query"]](callback_query(replay_callback))
+        session[["flushReact"]]()
 
-        testthat::expect_true(isTRUE(values$authenticated))
-        testthat::expect_false(is.null(values$token))
+        testthat::expect_true(isTRUE(values[["authenticated"]]))
+        testthat::expect_false(is.null(values[["token"]]))
         testthat::expect_identical(
-          values$token@access_token %||% "",
+          values[["token"]]@access_token %||% "",
           access_token_before
         )
         testthat::expect_identical(
-          values$token@userinfo[["preferred_username"]] %||% NA_character_,
+          values[["token"]]@userinfo[["preferred_username"]] %||% NA_character_,
           username_before
         )
         testthat::expect_true(
-          (values$error %||% "") %in%
+          (values[["error"]] %||% "") %in%
             c(
               "invalid_state",
               "issuer_missing",
@@ -306,14 +306,14 @@ testthat::test_that("Keycloak PAR request_uri is rejected after first use", {
             ),
           info = paste(
             "Unexpected replay error:",
-            values$error %||% "<NULL>",
+            values[["error"]] %||% "<NULL>",
             replay_state %||% "<no state>",
             replay_iss %||% "<no iss>"
           )
         )
       } else {
-        testthat::expect_true(isTRUE(values$authenticated))
-        testthat::expect_false(is.null(values$token))
+        testthat::expect_true(isTRUE(values[["authenticated"]]))
+        testthat::expect_false(is.null(values[["token"]]))
       }
 
       expect_state_store_entry_consumed(client, state_info)
@@ -353,7 +353,7 @@ testthat::test_that("Keycloak PAR request_uri is rejected after realm-configured
     app = shinyOAuth::oauth_module_server,
     args = default_module_args(client),
     expr = {
-      auth_url <- values$build_auth_url()
+      auth_url <- values[["build_auth_url"]]()
       state_info <- get_state_info(client, auth_url)
       testthat::expect_match(auth_url, "[?&]request_uri=")
 
@@ -366,28 +366,28 @@ testthat::test_that("Keycloak PAR request_uri is rejected after realm-configured
         description_pattern = "Invalid Request|expired|request_uri"
       )
 
-      if (identical(rejected$kind, "callback")) {
-        expired_callback <- rejected$callback
+      if (identical(rejected[["kind"]], "callback")) {
+        expired_callback <- rejected[["callback"]]
         callback_state <- parse_query_param(
-          expired_callback$callback_url,
+          expired_callback[["callback_url"]],
           "state"
         )
         callback_iss <- parse_query_param(
-          expired_callback$callback_url,
+          expired_callback[["callback_url"]],
           "iss",
           decode = TRUE
         )
-        callback_bound <- identical(callback_state, state_info$sealed) &&
+        callback_bound <- identical(callback_state, state_info[["sealed"]]) &&
           identical(callback_iss, prov@issuer)
 
-        values$.process_query(callback_query(expired_callback))
-        session$flushReact()
+        values[[".process_query"]](callback_query(expired_callback))
+        session[["flushReact"]]()
 
-        testthat::expect_false(isTRUE(values$authenticated))
+        testthat::expect_false(isTRUE(values[["authenticated"]]))
 
         if (isTRUE(callback_bound)) {
-          testthat::expect_identical(values$error, "invalid_request")
-          testthat::expect_null(values$error_description)
+          testthat::expect_identical(values[["error"]], "invalid_request")
+          testthat::expect_null(values[["error_description"]])
           expect_state_store_entry_consumed(
             client,
             state_info,
@@ -397,7 +397,7 @@ testthat::test_that("Keycloak PAR request_uri is rejected after realm-configured
           )
         } else {
           testthat::expect_true(
-            (values$error %||% "") %in%
+            (values[["error"]] %||% "") %in%
               c(
                 "invalid_state",
                 "issuer_missing",
@@ -405,7 +405,7 @@ testthat::test_that("Keycloak PAR request_uri is rejected after realm-configured
               ),
             info = paste(
               "Unexpected expiry callback error:",
-              values$error %||% "<NULL>",
+              values[["error"]] %||% "<NULL>",
               callback_state %||% "<no state>",
               callback_iss %||% "<no iss>"
             )
@@ -417,8 +417,8 @@ testthat::test_that("Keycloak PAR request_uri is rejected after realm-configured
           )
         }
       } else {
-        testthat::expect_null(values$error)
-        testthat::expect_null(values$error_description)
+        testthat::expect_null(values[["error"]])
+        testthat::expect_null(values[["error_description"]])
         expect_state_store_entry_present(
           client,
           state_info,
@@ -437,12 +437,12 @@ testthat::test_that("PAR request_uri remains bound to the posting client when ou
   client <- make_public_client(prov)
   built <- build_par_auth_url(client)
 
-  testthat::expect_true(is.null(built$error))
-  testthat::expect_match(built$auth_url, "[?&]request_uri=")
-  testthat::expect_match(built$auth_url, "[?&]client_id=shiny-public")
+  testthat::expect_true(is.null(built[["error"]]))
+  testthat::expect_match(built[["auth_url"]], "[?&]request_uri=")
+  testthat::expect_match(built[["auth_url"]], "[?&]client_id=shiny-public")
 
   tampered_url <- replace_client_id_in_auth_url(
-    built$auth_url,
+    built[["auth_url"]],
     new_client_id = "shiny-confidential"
   )
   testthat::expect_match(tampered_url, "[?&]client_id=shiny-confidential")

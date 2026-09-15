@@ -752,8 +752,8 @@ test_that("handle_callback: userinfo/id_token match IS performed after userinfo 
   )
 
   # Verify it was called with the correct arguments
-  expect_equal(match_args$userinfo, list(sub = "user123", name = "Test User"))
-  expect_equal(match_args$id_token, id_token)
+  expect_equal(match_args[["userinfo"]], list(sub = "user123", name = "Test User"))
+  expect_equal(match_args[["id_token"]], id_token)
 })
 
 test_that("handle_callback: userinfo/id_token mismatch aborts login", {

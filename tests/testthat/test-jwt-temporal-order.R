@@ -46,7 +46,7 @@ test_that("clock leeway does not allow contradictory temporal claims", {
     expect_error(validate_id(bad), paste(claim, "claim must not be after exp"))
     expect_error(validate_ui(bad), paste(claim, "claim must not be after exp"))
     boundary <- claims
-    boundary[[claim]] <- boundary$exp
+    boundary[[claim]] <- boundary[["exp"]]
     expect_no_error(validate_id(boundary))
     expect_no_error(validate_ui(boundary))
   }

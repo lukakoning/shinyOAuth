@@ -73,9 +73,9 @@ test_that("HTTP callback bridge rejects a decoded route without consuming state"
   req <- list(REQUEST_METHOD = "GET", rook.url_scheme = "https",
               HTTP_HOST = "app.example", PATH_INFO = "/cb/a", SCRIPT_NAME = "",
               QUERY_STRING = httr2::url_query_build(list(code = "synthetic-code", state = state)))
-  expect_identical(ui(req)$status, 400L)
-  req$PATH_INFO <- "/cb%2Fa"
-  expect_identical(ui(req)$status, 303L)
+  expect_identical(ui(req)[["status"]], 400L)
+  req[["PATH_INFO"]] <- "/cb%2Fa"
+  expect_identical(ui(req)[["status"]], 303L)
 })
 
 test_that("wrong-route callback transports are ignored before dispatch", {
@@ -111,28 +111,28 @@ test_that("wrong-route callback transports are ignored before dispatch", {
   }
 
   shiny::testServer(wrapper_server, {
-    direct$.process_query(
+    direct[[".process_query"]](
       "?code=stolen&state=not-parsed",
       current_uri = "https://app.example/honest/callback"
     )
-    direct$.process_query(
+    direct[[".process_query"]](
       "?error=access_denied&state=not-parsed",
       current_uri = "https://app.example/honest/callback"
     )
-    direct$.process_query(
+    direct[[".process_query"]](
       "?shinyOAuth_form_post=missing&shinyOAuth_form_post_id=direct",
       current_uri = "https://app.example/honest/callback"
     )
-    jarm$.process_query(
+    jarm[[".process_query"]](
       "?response=not-a-compact-jwt",
       current_uri = "https://app.example/honest/callback"
     )
-    session$flushReact()
+    session[["flushReact"]]()
 
-    expect_null(direct$error)
-    expect_null(direct$token)
-    expect_null(jarm$error)
-    expect_null(jarm$token)
+    expect_null(direct[["error"]])
+    expect_null(direct[["token"]])
+    expect_null(jarm[["error"]])
+    expect_null(jarm[["token"]])
   })
 })
 
@@ -176,7 +176,7 @@ test_that("distinct redirect routes stop a public-client provider mix-up", {
   }
 
   shiny::testServer(wrapper_server, {
-    malicious_request <- malicious_auth$build_auth_url()
+    malicious_request <- malicious_auth[["build_auth_url"]]()
     malicious_state <- parse_query_param(malicious_request, "state")
     expect_true(is_valid_string(parse_query_param(
       malicious_request,
@@ -203,24 +203,24 @@ test_that("distinct redirect routes stop a public-client provider mix-up", {
       },
       .package = "shinyOAuth",
       {
-        malicious_auth$.process_query(
+        malicious_auth[[".process_query"]](
           callback_query,
           current_uri = honest@redirect_uri
         )
-        honest_auth$.process_query(
+        honest_auth[[".process_query"]](
           callback_query,
           current_uri = honest@redirect_uri
         )
-        session$flushReact()
+        session[["flushReact"]]()
       }
     )
 
     expect_length(exchanges, 0L)
-    expect_null(malicious_auth$error)
-    expect_null(malicious_auth$token)
-    expect_false(isTRUE(honest_auth$authenticated))
-    expect_true(is_valid_string(honest_auth$error))
-    expect_null(honest_auth$token)
+    expect_null(malicious_auth[["error"]])
+    expect_null(malicious_auth[["token"]])
+    expect_false(isTRUE(honest_auth[["authenticated"]]))
+    expect_true(is_valid_string(honest_auth[["error"]]))
+    expect_null(honest_auth[["token"]])
 
     decoded_state <- shiny::parseQueryString(paste0(
       "?state=",
@@ -271,15 +271,15 @@ test_that("synchronous multi-redirect callbacks complete only on their own route
     )
   }
   shiny::testServer(server, {
-    session$setInputs(`auth-shinyOAuth_sid` = browser)
+    session[["setInputs"]](`auth-shinyOAuth_sid` = browser)
     query <- paste0("?code=ok&state=", utils::URLencode(state, reserved = TRUE))
-    auth$.process_query(query, current_uri = routes[2])
+    auth[[".process_query"]](query, current_uri = routes[2])
     expect_identical(calls, 0L)
-    expect_false(auth$authenticated)
-    auth$.process_query(query, current_uri = routes[1])
-    session$flushReact()
+    expect_false(auth[["authenticated"]])
+    auth[[".process_query"]](query, current_uri = routes[1])
+    session[["flushReact"]]()
     expect_identical(calls, 1L)
-    expect_null(auth$error_description)
-    expect_true(auth$authenticated)
+    expect_null(auth[["error_description"]])
+    expect_true(auth[["authenticated"]])
   })
 })

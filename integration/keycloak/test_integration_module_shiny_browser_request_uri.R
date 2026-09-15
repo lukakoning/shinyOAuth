@@ -1,7 +1,7 @@
 ## Integration test: Browser E2E request_uri flow against Keycloak
 
 if (!exists("make_provider", mode = "function")) {
-  source(file.path(dirname(sys.frame(1)$ofile %||% "."), "helper-keycloak.R"))
+  source(file.path(dirname(sys.frame(1)[["ofile"]] %||% "."), "helper-keycloak.R"))
 }
 
 .request_uri_public_base_url <- function(app_port) {
@@ -18,8 +18,8 @@ if (!exists("make_provider", mode = "function")) {
   .local_envir = parent.frame()
 ) {
   parsed <- httr2::url_parse(base_url)
-  scheme <- tolower(as.character(parsed$scheme %||% ""))
-  host <- tolower(as.character(parsed$hostname %||% ""))
+  scheme <- tolower(as.character(parsed[["scheme"]] %||% ""))
+  host <- tolower(as.character(parsed[["hostname"]] %||% ""))
 
   if (!identical(scheme, "http") || !nzchar(host)) {
     return(invisible(base_url))
@@ -58,25 +58,25 @@ if (!exists("make_provider", mode = "function")) {
     testthat::skip("request_uri private_key_jwt fixture not available")
   }
 
-  template$clientId <- keycloak_temp_client_id(
+  template[["clientId"]] <- keycloak_temp_client_id(
     if (isTRUE(encrypted_request_object)) {
       "shiny-request-uri-pjwt-jwe"
     } else {
       "shiny-request-uri-pjwt"
     }
   )
-  template$redirectUris <- keycloak_default_redirect_uris()
-  template$attributes <- template$attributes %||% list()
+  template[["redirectUris"]] <- keycloak_default_redirect_uris()
+  template[["attributes"]] <- template[["attributes"]] %||% list()
   # Keycloak's URI matcher ignores query values for path wildcards. Register
   # the public app root where independent Request Object handles are served.
-  template$attributes[["request.uris"]] <- paste0(
+  template[["attributes"]][["request.uris"]] <- paste0(
     sub("/+$", "", public_base_url),
     "/*"
   )
-  template$id <- NULL
-  template$secret <- NULL
-  template$registrationAccessToken <- NULL
-  template$access <- NULL
+  template[["id"]] <- NULL
+  template[["secret"]] <- NULL
+  template[["registrationAccessToken"]] <- NULL
+  template[["access"]] <- NULL
 
   fixture <- keycloak_create_client(
     token = admin_token,
@@ -114,13 +114,13 @@ if (!exists("make_provider", mode = "function")) {
 }
 
 .stop_request_uri_app <- function(app_process) {
-  process <- app_process$process
+  process <- app_process[["process"]]
 
   # The background Shiny process owns the TLS proxy used by the default
   # request_uri fixture. Killing only the parent leaves that proxy listening
   # on the public port and prevents the next test from starting.
-  try(process$kill_tree(), silent = TRUE)
-  try(process$wait(timeout = 5000), silent = TRUE)
+  try(process[["kill_tree"]](), silent = TRUE)
+  try(process[["wait"]](timeout = 5000), silent = TRUE)
 
   invisible(NULL)
 }
@@ -180,9 +180,9 @@ if (!exists("make_provider", mode = "function")) {
       source("integration/keycloak/helper-keycloak.R")
 
       parsed_public_base <- httr2::url_parse(public_base_url)
-      public_scheme <- tolower(as.character(parsed_public_base$scheme %||% ""))
-      public_host <- tolower(as.character(parsed_public_base$hostname %||% ""))
-      public_port <- suppressWarnings(as.integer(parsed_public_base$port))
+      public_scheme <- tolower(as.character(parsed_public_base[["scheme"]] %||% ""))
+      public_host <- tolower(as.character(parsed_public_base[["hostname"]] %||% ""))
+      public_port <- suppressWarnings(as.integer(parsed_public_base[["port"]]))
       if (
         identical(public_scheme, "https") &&
           identical(public_host, "host.docker.internal")
@@ -204,7 +204,7 @@ if (!exists("make_provider", mode = "function")) {
           )
         }
 
-        tls_proxy <- processx::process$new(
+        tls_proxy <- processx::process[["new"]](
           python,
           c(
             "integration/keycloak/tls_proxy.py",
@@ -222,13 +222,13 @@ if (!exists("make_provider", mode = "function")) {
           cleanup = TRUE,
           cleanup_tree = TRUE
         )
-        on.exit(try(tls_proxy$kill_tree(), silent = TRUE), add = TRUE)
+        on.exit(try(tls_proxy[["kill_tree"]](), silent = TRUE), add = TRUE)
         Sys.sleep(0.25)
-        if (!tls_proxy$is_alive()) {
+        if (!tls_proxy[["is_alive"]]()) {
           stop(
             paste(
               "request_uri TLS proxy exited during startup:",
-              paste(tls_proxy$read_all_error_lines(), collapse = "\n")
+              paste(tls_proxy[["read_all_error_lines"]](), collapse = "\n")
             ),
             call. = FALSE
           )
@@ -257,7 +257,7 @@ if (!exists("make_provider", mode = "function")) {
           base_url = NULL,
           oauth_client
         ) {
-          session_token <- session$token %||% NA_character_
+          session_token <- session[["token"]] %||% NA_character_
           browser_token <- if (
             is.character(session_token) &&
               length(session_token) == 1L &&
@@ -301,10 +301,10 @@ if (!exists("make_provider", mode = "function")) {
 
       provider_args <- list(token_auth_style = "private_key_jwt")
       if (isTRUE(encrypted_request_object)) {
-        provider_args$request_object_encryption_alg_values_supported <- c(
+        provider_args[["request_object_encryption_alg_values_supported"]] <- c(
           "RSA-OAEP"
         )
-        provider_args$request_object_encryption_enc_values_supported <- c(
+        provider_args[["request_object_encryption_enc_values_supported"]] <- c(
           "A256CBC-HS512"
         )
       }
@@ -348,7 +348,7 @@ if (!exists("make_provider", mode = "function")) {
           if (isTRUE(prepare_only)) "prepare_login_btn" else "login_btn",
           if (isTRUE(prepare_only)) "Prepare login" else "Login"
         ),
-        shiny::tags$hr(),
+        shiny::tags[["hr"]](),
         shiny::h4("Ready state"),
         shiny::verbatimTextOutput("ready_state"),
         shiny::h4("Auth state"),
@@ -366,8 +366,8 @@ if (!exists("make_provider", mode = "function")) {
       )
 
       server <- function(input, output, session) {
-        session$onSessionEnded(function() {
-          session_browser_tokens[[session$token]] <- NULL
+        session[["onSessionEnded"]](function() {
+          session_browser_tokens[[session[["token"]]]] <- NULL
         })
 
         auth <- shinyOAuth::oauth_module_server(
@@ -379,15 +379,15 @@ if (!exists("make_provider", mode = "function")) {
         )
 
         shiny::observe({
-          browser_token <- auth$browser_token %||% NA_character_
+          browser_token <- auth[["browser_token"]] %||% NA_character_
           if (keycloak_nonempty_string(browser_token)) {
-            session_browser_tokens[[session$token]] <- browser_token
+            session_browser_tokens[[session[["token"]]]] <- browser_token
           }
         })
 
         build_and_capture_auth_url <- function() {
-          promises::then(auth$build_auth_url(), function(url) {
-            browser_token <- auth$browser_token %||% NA_character_
+          promises::then(auth[["build_auth_url"]](), function(url) {
+            browser_token <- auth[["browser_token"]] %||% NA_character_
 
             if (keycloak_nonempty_string(browser_token)) {
               published_auth_urls[[browser_token]] <- url
@@ -402,7 +402,7 @@ if (!exists("make_provider", mode = "function")) {
           })
         }
 
-        shiny::observeEvent(input$login_btn, ignoreInit = TRUE, {
+        shiny::observeEvent(input[["login_btn"]], ignoreInit = TRUE, {
           promises::then(build_and_capture_auth_url(), function(url) {
             if (
               is.character(url) &&
@@ -416,40 +416,40 @@ if (!exists("make_provider", mode = "function")) {
           invisible(NULL)
         })
 
-        shiny::observeEvent(input$prepare_login_btn, ignoreInit = TRUE, {
+        shiny::observeEvent(input[["prepare_login_btn"]], ignoreInit = TRUE, {
           build_and_capture_auth_url()
           invisible(NULL)
         })
 
-        output$ready_state <- shiny::renderText({
-          paste("browser_ready:", isTRUE(auth$has_browser_token()))
+        output[["ready_state"]] <- shiny::renderText({
+          paste("browser_ready:", isTRUE(auth[["has_browser_token"]]()))
         })
 
-        output$auth_state <- shiny::renderText({
+        output[["auth_state"]] <- shiny::renderText({
           paste(
             "authenticated:",
-            isTRUE(auth$authenticated),
+            isTRUE(auth[["authenticated"]]),
             "has_token:",
-            !is.null(auth$token),
+            !is.null(auth[["token"]]),
             "error:",
-            if (!is.null(auth$error)) auth$error else "<none>",
+            if (!is.null(auth[["error"]])) auth[["error"]] else "<none>",
             "error_description:",
-            if (!is.null(auth$error_description)) {
-              auth$error_description
+            if (!is.null(auth[["error_description"]])) {
+              auth[["error_description"]]
             } else {
               "<none>"
             }
           )
         })
 
-        output$state_store_count <- shiny::renderText({
+        output[["state_store_count"]] <- shiny::renderText({
           # Count logical login state (SHA-256 keys), excluding Request Objects
           # and callback bridge entries that share this store.
-          as.character(sum(grepl("^[a-f0-9]{64}$", client@state_store$keys())))
+          as.character(sum(grepl("^[a-f0-9]{64}$", client@state_store[["keys"]]())))
         })
 
-        output$auth_url <- shiny::renderText({
-          browser_token <- auth$browser_token %||% NA_character_
+        output[["auth_url"]] <- shiny::renderText({
+          browser_token <- auth[["browser_token"]] %||% NA_character_
           auth_url <- if (keycloak_nonempty_string(browser_token)) {
             published_auth_urls[[browser_token]] %||% NA_character_
           } else {
@@ -467,8 +467,8 @@ if (!exists("make_provider", mode = "function")) {
           auth_url
         })
 
-        output$request_uri_url <- shiny::renderText({
-          browser_token <- auth$browser_token %||% NA_character_
+        output[["request_uri_url"]] <- shiny::renderText({
+          browser_token <- auth[["browser_token"]] %||% NA_character_
           request_uri <- if (keycloak_nonempty_string(browser_token)) {
             published_request_uris[[browser_token]] %||% NA_character_
           } else {
@@ -486,8 +486,8 @@ if (!exists("make_provider", mode = "function")) {
           request_uri
         })
 
-        output$request_object_meta <- shiny::renderText({
-          browser_token <- auth$browser_token %||% NA_character_
+        output[["request_object_meta"]] <- shiny::renderText({
+          browser_token <- auth[["browser_token"]] %||% NA_character_
           request_object <- if (keycloak_nonempty_string(browser_token)) {
             published_request_objects[[browser_token]] %||% NA_character_
           } else {
@@ -504,7 +504,7 @@ if (!exists("make_provider", mode = "function")) {
 
           segments <- strsplit(request_object, ".", fixed = TRUE)[[1]]
           header <- if (identical(length(segments), 5L)) {
-            shinyOAuth:::jwe_compact_parts(request_object)$protected_header
+            shinyOAuth:::jwe_compact_parts(request_object)[["protected_header"]]
           } else {
             shinyOAuth:::parse_jwt_header(request_object)
           }
@@ -519,12 +519,12 @@ if (!exists("make_provider", mode = "function")) {
           )
         })
 
-        output$user_info <- shiny::renderText({
-          if (is.null(auth$token)) {
+        output[["user_info"]] <- shiny::renderText({
+          if (is.null(auth[["token"]])) {
             return("{}")
           }
           jsonlite::toJSON(
-            auth$token@userinfo,
+            auth[["token"]]@userinfo,
             auto_unbox = TRUE,
             null = "null"
           )
@@ -561,11 +561,11 @@ if (!exists("make_provider", mode = "function")) {
   deadline <- Sys.time() + timeout
 
   while (Sys.time() < deadline) {
-    if (!app_process$process$is_alive()) {
+    if (!app_process[["process"]][["is_alive"]]()) {
       stop(
         paste(
           "Shiny request_uri app exited before it was reachable.",
-          .read_log_file(app_process$stderr),
+          .read_log_file(app_process[["stderr"]]),
           sep = "\n"
         ),
         call. = FALSE
@@ -582,7 +582,7 @@ if (!exists("make_provider", mode = "function")) {
   stop(
     paste(
       "Timed out waiting for the Shiny request_uri app to listen.",
-      .read_log_file(app_process$stderr),
+      .read_log_file(app_process[["stderr"]]),
       sep = "\n"
     ),
     call. = FALSE
@@ -590,7 +590,7 @@ if (!exists("make_provider", mode = "function")) {
 }
 
 .read_request_uri_browser_state <- function(drv) {
-  jsonlite::fromJSON(drv$get_js(
+  jsonlite::fromJSON(drv[["get_js"]](
     "
     JSON.stringify((function () {
       var ready = document.querySelector('#ready_state');
@@ -613,13 +613,13 @@ if (!exists("make_provider", mode = "function")) {
 }
 
 .read_request_uri_page_text <- function(drv) {
-  drv$get_js(
+  drv[["get_js"]](
     "(function(){return document.body ? (document.body.innerText || '') : '';})()"
   )
 }
 
 .wait_for_request_uri_auth_url <- function(drv, timeout = 15000) {
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_url');
@@ -637,7 +637,7 @@ if (!exists("make_provider", mode = "function")) {
   timeout = 20000,
   require_request_object = FALSE
 ) {
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     if (isTRUE(require_request_object)) {
       "
       (function () {
@@ -667,7 +667,7 @@ if (!exists("make_provider", mode = "function")) {
 
 .navigate_browser_to_url <- function(drv, url) {
   url_json <- jsonlite::toJSON(url, auto_unbox = TRUE)
-  drv$run_js(paste0("window.location.href = ", url_json, ";"))
+  drv[["run_js"]](paste0("window.location.href = ", url_json, ";"))
 }
 
 .replace_callback_base_url <- function(callback_url, new_base_url) {
@@ -676,7 +676,7 @@ if (!exists("make_provider", mode = "function")) {
 }
 
 .read_request_uri_user_info <- function(drv) {
-  raw <- .read_request_uri_browser_state(drv)$user_info %||% "{}"
+  raw <- .read_request_uri_browser_state(drv)[["user_info"]] %||% "{}"
   if (!is.character(raw) || length(raw) != 1L || !nzchar(raw)) {
     raw <- "{}"
   }
@@ -696,7 +696,7 @@ if (!exists("make_provider", mode = "function")) {
 
   while (Sys.time() < deadline) {
     current_state <- trimws(
-      .read_request_uri_browser_state(drv)$auth_state %||% ""
+      .read_request_uri_browser_state(drv)[["auth_state"]] %||% ""
     )
     if (
       nchar(current_state) > 0 &&
@@ -724,8 +724,8 @@ if (!exists("make_provider", mode = "function")) {
 .read_request_uri_csrf_payload <- function(drv, redirect_uri) {
   payload <- .read_request_uri_browser_state(drv)
   cookie <- find_browser_token_cookie(drv, "auth", redirect_uri)
-  payload$cookie_name <- cookie$name %||% ""
-  payload$cookie_value <- cookie$value %||% ""
+  payload[["cookie_name"]] <- cookie[["name"]] %||% ""
+  payload[["cookie_value"]] <- cookie[["value"]] %||% ""
   payload
 }
 
@@ -733,7 +733,7 @@ if (!exists("make_provider", mode = "function")) {
   cookie_name_json <- jsonlite::toJSON(cookie_name, auto_unbox = TRUE)
   cookie_value_json <- jsonlite::toJSON(cookie_value, auto_unbox = TRUE)
 
-  jsonlite::fromJSON(drv$get_js(
+  jsonlite::fromJSON(drv[["get_js"]](
     paste0(
       "JSON.stringify((function () {",
       "  var cookieName = ",
@@ -796,7 +796,7 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
   on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-e2e-request-uri",
     load_timeout = 15000,
@@ -804,7 +804,7 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
   )
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -814,12 +814,12 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
     timeout = 15000
   )
 
-  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
 
   state <- .wait_for_request_uri_auth_url(drv)
   capture_state <- .wait_for_request_uri_capture(drv)
 
-  request_uri_url <- trimws(capture_state$request_uri_url %||% "")
+  request_uri_url <- trimws(capture_state[["request_uri_url"]] %||% "")
 
   testthat::expect_true(nzchar(request_uri_url))
   testthat::expect_false(identical(request_uri_url, "<none>"))
@@ -835,14 +835,14 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
   testthat::expect_match(request_uri_url, "shinyOAuth_request_object=")
   testthat::expect_false(grepl("/session/", request_uri_url, fixed = TRUE))
 
-  .navigate_browser_to_url(drv, state$auth_url)
+  .navigate_browser_to_url(drv, state[["auth_url"]])
 
   login_state <- keycloak_wait_for_login_or_auth_result(drv, timeout = 10000)
   if (identical(login_state, "login")) {
     keycloak_submit_browser_login(drv)
   }
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_state');
@@ -869,14 +869,14 @@ testthat::test_that("Shiny module E2E request_uri flow succeeds with public base
     info = paste0("Login had error_description. auth_state:\n", auth_state)
   )
 
-  user_info <- drv$get_js(
+  user_info <- drv[["get_js"]](
     "(function(){var el=document.querySelector('#user_info');return el?el.innerText:'';})()"
   ) |>
     jsonlite::fromJSON()
 
-  testthat::expect_identical(user_info$preferred_username, "alice")
-  testthat::expect_identical(user_info$name, "Alice Test")
-  testthat::expect_identical(user_info$email, "alice@example.com")
+  testthat::expect_identical(user_info[["preferred_username"]], "alice")
+  testthat::expect_identical(user_info[["name"]], "Alice Test")
+  testthat::expect_identical(user_info[["email"]], "alice@example.com")
 })
 
 testthat::test_that("Shiny module E2E request_uri replay does not leak stale state into a fresh session", {
@@ -917,7 +917,7 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
   on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-e2e-request-uri-replay",
     load_timeout = 15000,
@@ -925,7 +925,7 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
   )
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -935,12 +935,12 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
     timeout = 15000
   )
 
-  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
 
   prepared <- .wait_for_request_uri_auth_url(drv)
   .wait_for_request_uri_capture(drv)
 
-  .navigate_browser_to_url(drv, prepared$auth_url)
+  .navigate_browser_to_url(drv, prepared[["auth_url"]])
 
   login_state <- keycloak_wait_for_login_or_auth_result(drv, timeout = 10000)
   if (identical(login_state, "login")) {
@@ -949,13 +949,13 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
 
   auth_state <- .wait_for_request_uri_auth_state_transition(
     drv,
-    previous_state = prepared$auth_state
+    previous_state = prepared[["auth_state"]]
   )
   testthat::expect_match(auth_state, "authenticated: TRUE", fixed = TRUE)
   testthat::expect_match(auth_state, "error_description: <none>", fixed = TRUE)
 
-  .navigate_browser_to_url(drv, prepared$auth_url)
-  drv$wait_for_js(
+  .navigate_browser_to_url(drv, prepared[["auth_url"]])
+  drv[["wait_for_js"]](
     "
     (function () {
       var text = document.body ? (document.body.innerText || '') : '';
@@ -973,7 +973,7 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
   )
 
   .navigate_browser_to_url(drv, app_url)
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -985,24 +985,24 @@ testthat::test_that("Shiny module E2E request_uri replay does not leak stale sta
 
   final_state <- .read_request_uri_browser_state(drv)
   testthat::expect_match(
-    final_state$auth_state %||% "",
+    final_state[["auth_state"]] %||% "",
     "authenticated: FALSE",
     fixed = TRUE
   )
   testthat::expect_match(
-    final_state$auth_state %||% "",
+    final_state[["auth_state"]] %||% "",
     "has_token: FALSE",
     fixed = TRUE
   )
   testthat::expect_match(
-    final_state$auth_state %||% "",
+    final_state[["auth_state"]] %||% "",
     "error_description: <none>",
     fixed = TRUE
   )
-  testthat::expect_identical(trimws(final_state$state_store_count %||% ""), "0")
+  testthat::expect_identical(trimws(final_state[["state_store_count"]] %||% ""), "0")
 
   user_info <- .read_request_uri_user_info(drv)
-  testthat::expect_null(user_info$preferred_username)
+  testthat::expect_null(user_info[["preferred_username"]])
 })
 
 testthat::test_that("Shiny module E2E request_uri expiry is rejected before callback and leaves pending state untouched", {
@@ -1044,7 +1044,7 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
   on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-e2e-request-uri-expired",
     load_timeout = 15000,
@@ -1052,7 +1052,7 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
   )
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -1062,15 +1062,15 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
     timeout = 15000
   )
 
-  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
 
   prepared <- .wait_for_request_uri_auth_url(drv)
   .wait_for_request_uri_capture(drv)
 
   Sys.sleep(2)
 
-  .navigate_browser_to_url(drv, prepared$auth_url)
-  drv$wait_for_js(
+  .navigate_browser_to_url(drv, prepared[["auth_url"]])
+  drv[["wait_for_js"]](
     "
     (function () {
       var text = document.body ? (document.body.innerText || '') : '';
@@ -1088,7 +1088,7 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
   )
 
   .navigate_browser_to_url(drv, app_url)
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -1100,22 +1100,22 @@ testthat::test_that("Shiny module E2E request_uri expiry is rejected before call
 
   browser_state <- .read_request_uri_browser_state(drv)
   testthat::expect_match(
-    browser_state$auth_state %||% "",
+    browser_state[["auth_state"]] %||% "",
     "authenticated: FALSE",
     fixed = TRUE
   )
   testthat::expect_match(
-    browser_state$auth_state %||% "",
+    browser_state[["auth_state"]] %||% "",
     "has_token: FALSE",
     fixed = TRUE
   )
   testthat::expect_match(
-    browser_state$auth_state %||% "",
+    browser_state[["auth_state"]] %||% "",
     "error_description: <none>",
     fixed = TRUE
   )
   testthat::expect_identical(
-    trimws(browser_state$state_store_count %||% ""),
+    trimws(browser_state[["state_store_count"]] %||% ""),
     "1"
   )
 })
@@ -1167,7 +1167,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
   on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-e2e-request-uri-jwe",
     load_timeout = 15000,
@@ -1175,7 +1175,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
   )
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
       (function () {
         var el = document.querySelector('#ready_state');
@@ -1185,7 +1185,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
     timeout = 15000
   )
 
-  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
 
   state <- .wait_for_request_uri_auth_url(drv)
   capture_state <- .wait_for_request_uri_capture(
@@ -1193,7 +1193,7 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
     require_request_object = TRUE
   )
 
-  request_uri_url <- trimws(capture_state$request_uri_url %||% "")
+  request_uri_url <- trimws(capture_state[["request_uri_url"]] %||% "")
 
   testthat::expect_true(nzchar(request_uri_url))
   testthat::expect_false(identical(request_uri_url, "<none>"))
@@ -1209,32 +1209,32 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
   testthat::expect_match(request_uri_url, "shinyOAuth_request_object=")
   testthat::expect_false(grepl("/session/", request_uri_url, fixed = TRUE))
 
-  request_object_meta <- drv$get_js(
+  request_object_meta <- drv[["get_js"]](
     "(function(){var el=document.querySelector('#request_object_meta');return el?el.innerText:'';})()"
   ) |>
     trimws() |>
     jsonlite::fromJSON()
 
-  testthat::expect_identical(request_object_meta$segment_count, 5L)
+  testthat::expect_identical(request_object_meta[["segment_count"]], 5L)
   testthat::expect_identical(
-    request_object_meta$header$typ,
+    request_object_meta[["header"]][["typ"]],
     "oauth-authz-req+jwt"
   )
-  testthat::expect_identical(request_object_meta$header$cty, "JWT")
-  testthat::expect_identical(request_object_meta$header$alg, "RSA-OAEP")
+  testthat::expect_identical(request_object_meta[["header"]][["cty"]], "JWT")
+  testthat::expect_identical(request_object_meta[["header"]][["alg"]], "RSA-OAEP")
   testthat::expect_identical(
-    request_object_meta$header$enc,
+    request_object_meta[["header"]][["enc"]],
     "A256CBC-HS512"
   )
 
-  .navigate_browser_to_url(drv, state$auth_url)
+  .navigate_browser_to_url(drv, state[["auth_url"]])
 
   login_state <- keycloak_wait_for_login_or_auth_result(drv, timeout = 10000)
   if (identical(login_state, "login")) {
     keycloak_submit_browser_login(drv)
   }
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
       (function () {
         var el = document.querySelector('#auth_state');
@@ -1261,14 +1261,14 @@ testthat::test_that("Shiny module E2E encrypted request_uri flow succeeds with p
     info = paste0("Login had error_description. auth_state:\n", auth_state)
   )
 
-  user_info <- drv$get_js(
+  user_info <- drv[["get_js"]](
     "(function(){var el=document.querySelector('#user_info');return el?el.innerText:'';})()"
   ) |>
     jsonlite::fromJSON()
 
-  testthat::expect_identical(user_info$preferred_username, "alice")
-  testthat::expect_identical(user_info$name, "Alice Test")
-  testthat::expect_identical(user_info$email, "alice@example.com")
+  testthat::expect_identical(user_info[["preferred_username"]], "alice")
+  testthat::expect_identical(user_info[["name"]], "Alice Test")
+  testthat::expect_identical(user_info[["email"]], "alice@example.com")
 })
 
 testthat::test_that("Shiny module E2E request_uri callback with tampered cookie is rejected", {
@@ -1308,7 +1308,7 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
   on.exit(.stop_request_uri_app(app_process), add = TRUE)
   .wait_for_request_uri_app(app_process, app_port)
 
-  drv <- shinytest2::AppDriver$new(
+  drv <- shinytest2::AppDriver[["new"]](
     app_url,
     name = "keycloak-e2e-request-uri-csrf",
     load_timeout = 15000,
@@ -1316,7 +1316,7 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
   )
   on.exit(keycloak_stop_app_driver(drv), add = TRUE)
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -1326,7 +1326,7 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
     timeout = 15000
   )
 
-  drv$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
   payload <- .wait_for_request_uri_auth_url(drv)
   payload <- c(payload, .read_request_uri_csrf_payload(drv, app_url))
 
@@ -1345,7 +1345,7 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
     cookie_name = payload[["cookie_name"]],
     cookie_value = attacker_cookie
   )
-  testthat::expect_identical(tampered$current_value, attacker_cookie)
+  testthat::expect_identical(tampered[["current_value"]], attacker_cookie)
 
   .navigate_browser_to_url(drv, payload[["auth_url"]])
 
@@ -1354,7 +1354,7 @@ testthat::test_that("Shiny module E2E request_uri callback with tampered cookie 
     keycloak_submit_browser_login(drv)
   }
 
-  drv$wait_for_js(
+  drv[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#auth_state');
@@ -1431,8 +1431,8 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   fixture_b <- .create_request_uri_client_fixture(public_base_url_b)
   on.exit(
     keycloak_delete_client(
-      fixture_b$admin_token,
-      id = fixture_b$fixture$id
+      fixture_b[["admin_token"]],
+      id = fixture_b[["fixture"]][["id"]]
     ),
     add = TRUE
   )
@@ -1454,13 +1454,13 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     public_base_url = public_base_url_b,
     app_url = app_url_b,
     prepare_only = TRUE,
-    client_id = fixture_b$fixture$client_id,
+    client_id = fixture_b[["fixture"]][["client_id"]],
     module_id = module_id_b
   )
   on.exit(.stop_request_uri_app(app_process_b), add = TRUE)
   .wait_for_request_uri_app(app_process_b, port_b)
 
-  drv_a <- shinytest2::AppDriver$new(
+  drv_a <- shinytest2::AppDriver[["new"]](
     app_url_a,
     name = sprintf("keycloak-request-uri-swap-a-%d", port_a),
     load_timeout = 15000,
@@ -1468,7 +1468,7 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   )
   on.exit(keycloak_stop_app_driver(drv_a), add = TRUE)
 
-  drv_b <- shinytest2::AppDriver$new(
+  drv_b <- shinytest2::AppDriver[["new"]](
     app_url_b,
     name = sprintf("keycloak-request-uri-swap-b-%d", port_b),
     load_timeout = 15000,
@@ -1476,7 +1476,7 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   )
   on.exit(keycloak_stop_app_driver(drv_b), add = TRUE)
 
-  drv_a$wait_for_js(
+  drv_a[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -1485,7 +1485,7 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
   ",
     timeout = 15000
   )
-  drv_b$wait_for_js(
+  drv_b[["wait_for_js"]](
     "
     (function () {
       var el = document.querySelector('#ready_state');
@@ -1495,32 +1495,32 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     timeout = 15000
   )
 
-  drv_a$run_js("document.querySelector('#prepare_login_btn').click();")
-  drv_b$run_js("document.querySelector('#prepare_login_btn').click();")
+  drv_a[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
+  drv_b[["run_js"]]("document.querySelector('#prepare_login_btn').click();")
 
   state_a <- .wait_for_request_uri_auth_url(drv_a)
   state_b <- .wait_for_request_uri_auth_url(drv_b)
 
   login_a <- perform_login_form_as(
-    state_a$auth_url,
+    state_a[["auth_url"]],
     username = "alice",
     password = "alice",
     redirect_uri = app_url_a
   )
   login_b <- perform_login_form_as(
-    state_b$auth_url,
+    state_b[["auth_url"]],
     username = "bob",
     password = "bob",
     redirect_uri = app_url_b
   )
 
-  swapped_for_a <- .replace_callback_base_url(login_b$callback_url, app_url_a)
-  legit_for_a <- .replace_callback_base_url(login_a$callback_url, app_url_a)
-  legit_for_b <- .replace_callback_base_url(login_b$callback_url, app_url_b)
+  swapped_for_a <- .replace_callback_base_url(login_b[["callback_url"]], app_url_a)
+  legit_for_a <- .replace_callback_base_url(login_a[["callback_url"]], app_url_a)
+  legit_for_b <- .replace_callback_base_url(login_b[["callback_url"]], app_url_b)
 
   .navigate_browser_to_url(drv_a, swapped_for_a)
   # The GET bridge rejects foreign state before rendering the Shiny app.
-  drv_a$wait_for_js(
+  drv_a[["wait_for_js"]](
     "document.body && document.body.innerText.includes('Invalid OAuth state')",
     timeout = 10000
   )
@@ -1529,27 +1529,27 @@ testthat::test_that("Shiny module E2E request_uri swapped callbacks are rejected
     "Invalid OAuth state",
     fixed = TRUE
   )
-  testthat::expect_true(drv_a$get_js(
+  testthat::expect_true(drv_a[["get_js"]](
     "document.querySelector('#auth_state') === null"
   ))
 
   .navigate_browser_to_url(drv_b, legit_for_b)
   auth_state_b <- .wait_for_request_uri_auth_state_transition(
     drv_b,
-    previous_state = state_b$auth_state,
+    previous_state = state_b[["auth_state"]],
     timeout = 20000
   )
   user_b <- .read_request_uri_user_info(drv_b)
   testthat::expect_match(auth_state_b, "authenticated: TRUE", fixed = TRUE)
-  testthat::expect_identical(user_b$preferred_username, "bob")
+  testthat::expect_identical(user_b[["preferred_username"]], "bob")
 
   .navigate_browser_to_url(drv_a, legit_for_a)
   recovered_state_a <- .wait_for_request_uri_auth_state_transition(
     drv_a,
-    previous_state = state_a$auth_state,
+    previous_state = state_a[["auth_state"]],
     timeout = 20000
   )
   user_a <- .read_request_uri_user_info(drv_a)
   testthat::expect_match(recovered_state_a, "authenticated: TRUE", fixed = TRUE)
-  testthat::expect_identical(user_a$preferred_username, "alice")
+  testthat::expect_identical(user_a[["preferred_username"]], "alice")
 })

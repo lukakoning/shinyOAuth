@@ -86,11 +86,11 @@
 #' ui <- oauth_connections_ui(app_ui, "health", manager)
 #' server <- function(input, output, session) {
 #'   health <- oauth_connections_server("health", manager)
-#'   shiny::observeEvent(input$connect, health$connect(input$client_name))
+#'   shiny::observeEvent(input[["connect"]], health[["connect"]](input[["client_name"]]))
 #'   data <- shiny::reactive({
-#'     connection <- health$connection(input$connection_id)
-#'     shiny::req(connection$is_usable())
-#'     connection$request("fhir", "Patient/123")
+#'     connection <- health[["connection"]](input[["connection_id"]])
+#'     shiny::req(connection[["is_usable"]]())
+#'     connection[["request"]]("fhir", "Patient/123")
 #'   })
 #' }
 #' shiny::shinyApp(ui, server, uiPattern = ".*")
@@ -105,7 +105,7 @@ oauth_connections_server <- function(
   refresh_check_interval = 10000
 ) {
   connection_manager_bind(manager, id)
-  if (!isTRUE(manager$state$ui_bound)) {
+  if (!isTRUE(manager[["state"]][["ui_bound"]])) {
     err_config("Configure oauth_connections_ui() before starting its server")
   }
   connection_manager_flag(async, "async")
@@ -124,27 +124,27 @@ oauth_connections_server <- function(
   }
   shiny::moduleServer(id, function(input, output, session) {
     controller <- connection_manager_controller(manager, session)
-    modules <- lapply(names(manager$clients), function(client_name) {
+    modules <- lapply(names(manager[["clients"]]), function(client_name) {
       oauth_module_server_impl(
         client_name,
-        manager$clients[[client_name]],
+        manager[["clients"]][[client_name]],
         auto_redirect = FALSE,
         async = async,
-        request_uri_base_url = manager$state$app_base,
-        .managed = controller$hooks(client_name)
+        request_uri_base_url = manager[["state"]][["app_base"]],
+        .managed = controller[["hooks"]](client_name)
       )
     })
-    names(modules) <- names(manager$clients)
+    names(modules) <- names(manager[["clients"]])
     lifecycle <- shiny::reactiveVal(NULL)
     launch_error <- shiny::reactiveVal(NULL)
     shiny::observeEvent(
-      input$smart_launch,
+      input[["smart_launch"]],
       {
         tryCatch(
           {
-            client_name <- controller$resume_launch(input$smart_launch)
+            client_name <- controller[["resume_launch"]](input[["smart_launch"]])
             launch_error(NULL)
-            modules[[client_name]]$request_login()
+            modules[[client_name]][["request_login"]]()
           },
           error = function(...) launch_error("fresh_ehr_launch_required")
         )
@@ -152,36 +152,36 @@ oauth_connections_server <- function(
       ignoreInit = FALSE
     )
     connection <- function(connection_id) {
-      record <- controller$read(connection_id)
-      OAuthConnection$new(
+      record <- controller[["read"]](connection_id)
+      OAuthConnection[["new"]](
         connection_id,
-        record$client,
+        record[["client"]],
         resolve = function() {
-          controller$changed()
+          controller[["changed"]]()
           lifecycle()
-          controller$read(connection_id)
+          controller[["read"]](connection_id)
         },
         refresh = function(scopes = NULL) {
-          controller$refresh(connection_id, async = async, scopes = scopes)
+          controller[["refresh"]](connection_id, async = async, scopes = scopes)
         }
       )
     }
     connections <- shiny::reactive({
-      controller$changed()
+      controller[["changed"]]()
       lifecycle()
       tryCatch(
-        lapply(controller$records(), function(record) {
-          connection_record_summary(record, record$stored$id)
+        lapply(controller[["records"]](), function(record) {
+          connection_record_summary(record, record[["stored"]][["id"]])
         }),
         error = function(...) list()
       )
     })
     errors <- shiny::reactive({
-      controller$changed()
+      controller[["changed"]]()
       lifecycle()
       available <- tryCatch(
         {
-          controller$guard()
+          controller[["guard"]]()
           TRUE
         },
         error = function(...) FALSE
@@ -192,36 +192,36 @@ oauth_connections_server <- function(
       Filter(
         Negate(is.null),
         c(
-          lapply(modules, function(module) module$error),
+          lapply(modules, function(module) module[["error"]]),
           list(smart_launch = launch_error())
         )
       )
     })
     shiny::observe({
-      controller$changed()
+      controller[["changed"]]()
       shiny::invalidateLater(refresh_check_interval, session)
-      rows <- tryCatch(controller$records(), error = function(...) NULL)
+      rows <- tryCatch(controller[["records"]](), error = function(...) NULL)
       # Only lifecycle transitions invalidate reference consumers on a poll.
       # Explicit store changes notify this owner's consumers through changed().
       lifecycle(list(
         available = !is.null(rows),
         records = lapply(rows, function(record) {
-          list(id = record$stored$id, status = connection_record_status(record))
+          list(id = record[["stored"]][["id"]], status = connection_record_status(record))
         })
       ))
       for (record in rows) {
-        token <- record$token
+        token <- record[["token"]]
         now <- as.numeric(Sys.time())
         lead <- if (refresh_proactively) refresh_lead_seconds else 0
         if (
-          identical(record$status, "active") &&
+          identical(record[["status"]], "active") &&
             !is.null(token) &&
             !is.na(token@expires_at) &&
             token@expires_at <= now + lead &&
             is_valid_string(token@refresh_token)
         ) {
           result <- tryCatch(
-            controller$refresh(record$stored$id, async = async, touch = FALSE),
+            controller[["refresh"]](record[["stored"]][["id"]], async = async, touch = FALSE),
             error = function(...) NULL
           )
           if (inherits(result, "promise")) {
@@ -232,33 +232,33 @@ oauth_connections_server <- function(
     })
     list(
       connect = function(client_name) {
-        controller$guard(touch = TRUE)
+        controller[["guard"]](touch = TRUE)
         if (!is_valid_string(client_name) || !client_name %in% names(modules)) {
           err_input("Unknown connection client")
         }
-        if (identical(manager$clients[[client_name]]@smart$launch, "ehr")) {
+        if (identical(manager[["clients"]][[client_name]]@smart[["launch"]], "ehr")) {
           launch_error("fresh_ehr_launch_required")
           return(invisible(FALSE))
         }
-        modules[[client_name]]$request_login()
+        modules[[client_name]][["request_login"]]()
       },
       connections = connections,
       connection = connection,
       touch = function() {
-        controller$guard(touch = TRUE)
+        controller[["guard"]](touch = TRUE)
         invisible(TRUE)
       },
       errors = errors,
-      disconnect = controller$disconnect,
-      disconnect_all = controller$disconnect_all,
+      disconnect = controller[["disconnect"]],
+      disconnect_all = controller[["disconnect_all"]],
       logout = function(revoke = TRUE, reload = TRUE) {
         connection_manager_flag(reload, "reload")
-        result <- controller$logout(revoke)
+        result <- controller[["logout"]](revoke)
         for (module in modules) {
-          module$logout()
+          module[["logout"]]()
         }
         if (reload) {
-          session$reload()
+          session[["reload"]]()
         }
         result
       }

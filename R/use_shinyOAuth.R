@@ -78,8 +78,8 @@ use_shinyOAuth <- function(inject_referrer_meta = TRUE) {
 
   referrer_meta <- NULL
   if (isTRUE(inject_referrer_meta)) {
-    referrer_meta <- htmltools::tags$head(
-      htmltools::tags$meta(name = "referrer", content = "no-referrer")
+    referrer_meta <- htmltools::tags[["head"]](
+      htmltools::tags[["meta"]](name = "referrer", content = "no-referrer")
     )
   }
 

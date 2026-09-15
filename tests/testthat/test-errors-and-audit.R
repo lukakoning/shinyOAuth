@@ -142,10 +142,10 @@ test_that("err_http body digests use the configured audit HMAC key", {
   first <- digest_with_key(first_key)
   second <- digest_with_key(second_key)
 
-  expect_identical(first$condition, shinyOAuth:::string_digest(body, first_key))
-  expect_identical(first$event, first$condition)
-  expect_identical(second$event, second$condition)
-  expect_false(identical(first$condition, second$condition))
+  expect_identical(first[["condition"]], shinyOAuth:::string_digest(body, first_key))
+  expect_identical(first[["event"]], first[["condition"]])
+  expect_identical(second[["event"]], second[["condition"]])
+  expect_false(identical(first[["condition"]], second[["condition"]]))
 })
 
 test_that("audit_event emits audit_ events via audit hook", {

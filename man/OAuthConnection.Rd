@@ -9,8 +9,8 @@ client/API configuration supplied by an \link{OAuthClient}. For example, a hospi
 connection selects that hospital's API address and reads the session's current
 token for each request. Create it inside \code{server()} with \code{\link[=oauth_connection]{oauth_connection()}}
 or the \code{connection(id)} method of \code{\link[=oauth_connections_server]{oauth_connections_server()}}.
-Use \verb{$request()} to call an approved API, \verb{$is_usable()}
-to check local availability and \verb{$summary()} for status without credentials.
+Use \verb{[["request"]]()} to call an approved API, \verb{[["is_usable"]]()}
+to check local availability and \verb{[["summary"]]()} for status without credentials.
 }
 \details{
 The existing reactive token already updates on refresh; this object
@@ -22,13 +22,13 @@ These are optional shinyOAuth conveniences, not SMART on FHIR protocol objects.
 Each operation resolves the current credentials, so refresh and logout are
 reflected without replacing the reference. \code{\link[=oauth_module_server]{oauth_module_server()}} owns the
 lifecycle of ordinary references; \code{\link[=oauth_connections_server]{oauth_connections_server()}} owns managed
-references and supplies \verb{$refresh()}. Every reference expires when its Shiny
+references and supplies \verb{[["refresh"]]()}. Every reference expires when its Shiny
 session closes. A manager can retain the underlying grant across redirects;
 a new session obtains a new reference after verifying the local owner.
 
-Call \verb{$is_usable()}, \verb{$summary()} and \verb{$request()} in the owning session's
-reactive context. If the connection cannot be resolved, \verb{$is_usable()} returns
-\code{FALSE}; \verb{$summary()} and \verb{$request()} raise an error. The ID is read-only and
+Call \verb{[["is_usable"]]()}, \verb{[["summary"]]()} and \verb{[["request"]]()} in the owning session's
+reactive context. If the connection cannot be resolved, \verb{[["is_usable"]]()} returns
+\code{FALSE}; \verb{[["summary"]]()} and \verb{[["request"]]()} raise an error. The ID is read-only and
 cloning is disabled. The class generator is internal; the public factories
 establish the session binding required by applications.
 Managed resource and status reads do not count as owner activity. Record user
@@ -46,11 +46,11 @@ client <- oauth_client(
 )
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
-  connection <- oauth_connection(client, shiny::reactive(auth$token))
-  output$status <- shiny::renderText(connection$summary()$status)
+  connection <- oauth_connection(client, shiny::reactive(auth[["token"]]))
+  output[["status"]] <- shiny::renderText(connection[["summary"]]()[["status"]])
   records <- shiny::reactive({
-    shiny::req(connection$is_usable())
-    response <- connection$request("api", "records", required_scopes = "read")
+    shiny::req(connection[["is_usable"]]())
+    response <- connection[["request"]]("api", "records", required_scopes = "read")
     httr2::resp_body_json(response)
   })
 }
@@ -122,7 +122,7 @@ coordinated refresh. Legacy session references leave this \code{NULL}.}
   Check whether the current token is locally usable. This checks token
 presence, known unexpired lifetime and the client's required scopes.
 It does not refresh the token, contact the provider or guarantee remote
-authorization. Request-specific scopes are checked by \verb{$request()}.
+authorization. Request-specific scopes are checked by \verb{[["request"]]()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$is_usable()}
@@ -252,7 +252,7 @@ the validated ID token before any requested profile fields are returned.}
   \subsection{Details}{
     Call inside the owning session's reactive context. The result contains
 sensitive identity data: select only what the application needs and keep
-it out of logs and generic status displays. \verb{$summary()} and printing
+it out of logs and generic status displays. \verb{[["summary"]]()} and printing
 continue to omit identity. Ordinary OAuth connections without validated
 OIDC identity cannot use this accessor.
 
