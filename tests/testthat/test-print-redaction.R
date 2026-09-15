@@ -5,6 +5,39 @@ collect_rendered_output <- function(x) {
   )
 }
 
+test_that("UserInfo member names cannot inject or flood token displays", {
+  member_names <- c(
+    "name\nforged-event\033[31m",
+    "prefix\u202ehidden",
+    paste(rep("\u00e9", 5000), collapse = ""),
+    'https://user:synthetic-name-secret@example.com/path?token=synthetic-query-secret'
+  )
+  token <- OAuthToken(
+    access_token = "access-secret",
+    token_type = "Bearer",
+    userinfo = stats::setNames(as.list(rep("private-value", 4)), member_names)
+  )
+  reference <- collect_rendered_output(OAuthToken(
+    access_token = "access-secret",
+    token_type = "Bearer"
+  ))
+  for (kind in names(reference)) {
+    output <- collect_rendered_output(token)[[kind]]
+    expect_false(grepl("\u001b|\u202e|\nforged-event", output))
+    expect_false(grepl(
+      "synthetic-name-secret|synthetic-query-secret|private-value",
+      output
+    ))
+    expect_match(output, '"name forged-event', fixed = TRUE)
+    expect_match(output, '"prefix hidden"', fixed = TRUE)
+    expect_lt(
+      nchar(output, type = "bytes") - nchar(reference[[kind]], type = "bytes"),
+      700L
+    )
+    expect_true(validUTF8(enc2utf8(output)))
+  }
+})
+
 test_that("multi-redirect clients redact every displayed redirect URI", {
   local_options(shinyOAuth.telemetry_path_scrubber = NULL)
   redirects <- c(

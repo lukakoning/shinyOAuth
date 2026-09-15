@@ -187,7 +187,18 @@
       )
     }
 
-    shown <- utils::head(entry_names, max_items)
+    # Provider-controlled member names can contain terminal controls, URL
+    # credentials, or very long strings. Bound and quote each displayed name.
+    shown <- vapply(
+      utils::head(entry_names, max_items),
+      function(name) {
+        encodeString(
+          sanitize_diagnostic_text(name, max_bytes = 80L) %||% "<invalid name>",
+          quote = '"'
+        )
+      },
+      character(1)
+    )
     suffix <- if (length(entry_names) > max_items) ", ..." else ""
 
     return(paste0(
