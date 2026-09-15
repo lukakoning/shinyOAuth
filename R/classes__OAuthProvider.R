@@ -167,6 +167,9 @@
 #'   `cachem::cache_mem(max_age = 3600)`, an in-memory cache lasting one hour.
 #'   A [custom_cache()] can share keys across processes. Shorter lifetimes
 #'   pick up changed keys sooner; longer lifetimes reduce network requests.
+#'   HTTP cache directives can shorten this lifetime. Responses marked
+#'   `no-store` are not retained, and `no-cache` responses are fetched again
+#'   before reuse. Advertised freshness also accounts for `Age` and `Expires`.
 #'   The package also attempts a rate-limited refresh when a key is missing
 #'   or no longer verifies a signature.
 #'

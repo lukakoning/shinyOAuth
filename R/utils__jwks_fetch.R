@@ -379,10 +379,18 @@ fetch_jwks <- function(
     FALSE
   }
 
-  # Rely entirely on cachem's own eviction policy (max_age). If an entry is
-  # present, treat it as fresh; if it has been evicted/expired, [["get"]]() will
-  # return NULL and we'll refetch. We still record fetched_at for diagnostics.
-  if (!force_refresh && !is.null(entry) && !is.null(entry[["jwks"]])) {
+  # Both the backend's lifetime and the provider's HTTP freshness must permit
+  # reuse. Older entries without HTTP metadata retain the backend's policy.
+  fresh_until <- entry[["fresh_until"]] %||% Inf
+  if (
+    !force_refresh &&
+      !is.null(entry) &&
+      !is.null(entry[["jwks"]]) &&
+      is.numeric(fresh_until) &&
+      length(fresh_until) == 1L &&
+      !is.na(fresh_until) &&
+      now < fresh_until
+  ) {
     # Defense-in-depth: re-validate cached JWKS under current pinning policy
     ok <- try(
       validate_jwks(
@@ -518,15 +526,77 @@ fetch_jwks <- function(
   }
   # Validate structure and (optionally) pin before caching
   validate_jwks(jwks, pins = pins, pin_mode = pin_mode)
+  received_at <- as.numeric(Sys.time())
+  freshness <- jwks_http_freshness(jresp, now, received_at)
   new_entry <- list(
     jwks = jwks,
-    fetched_at = now,
+    fetched_at = received_at,
+    fresh_until = freshness[["fresh_until"]],
     jwks_uri = jwks_uri,
     jwks_uri_host = fetched_jwks_host,
     discovery_issuer = discovery_issuer
   )
-  jwks_cache[["set"]](cache_key, new_entry)
+  if (isTRUE(freshness[["store"]])) {
+    jwks_cache[["set"]](cache_key, new_entry)
+  } else if (is.function(jwks_cache[["remove"]])) {
+    jwks_cache[["remove"]](cache_key)
+  } else {
+    # Custom caches need not implement remove; overwrite any earlier keys.
+    jwks_cache[["set"]](cache_key, list(fresh_until = 0))
+  }
   jwks
+}
+
+# Apply origin freshness to cached public key material (RFC 9111). A full fetch
+# revalidates stale/no-cache entries; no conditional-cache support is required.
+jwks_http_freshness <- function(resp, requested_at, received_at) {
+  directives <- trimws(strsplit(
+    tolower(httr2::resp_header(resp, "cache-control") %||% ""),
+    ",",
+    fixed = TRUE
+  )[[1]])
+  names <- trimws(sub("=.*$", "", directives))
+  store <- !("no-store" %in% names)
+  if (!store || "no-cache" %in% names) {
+    return(list(store = store, fresh_until = received_at))
+  }
+  date <- function(name) {
+    value <- httr2::resp_header(resp, name)
+    if (is.null(value)) {
+      return(NA_real_)
+    }
+    as.numeric(curl::parse_date(value))
+  }
+  date_value <- date("date")
+  if (!is.finite(date_value)) {
+    date_value <- received_at
+  }
+  max_age <- directives[names == "max-age"]
+  lifetime <- Inf
+  if (length(max_age)) {
+    value <- trimws(sub("^[^=]*=", "", max_age))
+    value <- sub('^"([0-9]+)"$', "\\1", value)
+    lifetime <- if (length(value) == 1L && grepl("^[0-9]+$", value)) {
+      as.numeric(value)
+    } else {
+      0
+    }
+  } else if (!is.null(httr2::resp_header(resp, "expires"))) {
+    expires <- date("expires")
+    lifetime <- if (is.finite(expires)) max(0, expires - date_value) else 0
+  }
+  age_value <- httr2::resp_header(resp, "age") %||% "0"
+  age <- if (grepl("^[0-9]+$", age_value)) as.numeric(age_value) else Inf
+  current_age <- max(
+    0,
+    received_at - date_value,
+    age + received_at - requested_at
+  )
+  remaining <- lifetime - current_age
+  if (is.na(remaining)) {
+    remaining <- 0
+  }
+  list(store = TRUE, fresh_until = received_at + max(0, remaining))
 }
 
 #' Internal: Rate-limit forced JWKS refresh attempts

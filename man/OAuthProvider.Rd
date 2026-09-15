@@ -211,6 +211,9 @@ key configuration, including OAuth-only JARM providers.}
 \code{cachem::cache_mem(max_age = 3600)}, an in-memory cache lasting one hour.
 A \code{\link[=custom_cache]{custom_cache()}} can share keys across processes. Shorter lifetimes
 pick up changed keys sooner; longer lifetimes reduce network requests.
+HTTP cache directives can shorten this lifetime. Responses marked
+\code{no-store} are not retained, and \code{no-cache} responses are fetched again
+before reuse. Advertised freshness also accounts for \code{Age} and \code{Expires}.
 The package also attempts a rate-limited refresh when a key is missing
 or no longer verifies a signature.}
 
