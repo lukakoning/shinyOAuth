@@ -756,6 +756,13 @@ validate_jose_header_fields <- function(header, signal_error) {
   if (!is.list(header) || is.null(names(header))) {
     signal_error("JWT header must be a JSON object")
   }
+  for (field in c("crit", "b64")) {
+    if (
+      field %in% names(header) && is.null(jwt_header_field_exact(header, field))
+    ) {
+      signal_error(paste0("JWT ", field, " header must not be null"))
+    }
+  }
   alg <- jwt_validate_scalar_string_field(
     jwt_header_field_exact(header, "alg") %||% NULL,
     "alg",

@@ -131,6 +131,70 @@ test_that("shared JWT typ policy accepts the JWT media type", {
   }
 })
 
+test_that("signed JWT profiles reject explicit null crit and b64 headers", {
+  withr::local_options(shinyOAuth.skip_id_sig = FALSE)
+  key <- openssl::rsa_keygen(2048)
+  jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]))
+  testthat::local_mocked_bindings(
+    fetch_jwks = function(...) list(keys = list(jwk)),
+    .package = "shinyOAuth"
+  )
+  id_client <- make_id_token_header_client()
+  ui_client <- make_userinfo_header_client()
+  jarm_client <- oauth_client(
+    provider = ui_client@provider,
+    client_id = "abc",
+    redirect_uri = "http://localhost:8100",
+    scopes = "openid",
+    response_mode = "query.jwt",
+    jarm_signed_response_alg = "RS256"
+  )
+  claims <- c(
+    base_id_token_claims(),
+    list(state = "state-value", code = "code-value")
+  )
+  for (header in c(
+    '{"alg":"RS256"}',
+    '{"alg":"RS256","crit":null}',
+    '{"alg":"RS256","b64":null}'
+  )) {
+    unsigned <- make_header_jwt(header, claims)
+    signing_input <- sub("\\.$", "", unsigned)
+    jwt <- paste0(
+      unsigned,
+      shinyOAuth:::base64url_encode(openssl::signature_create(
+        charToRaw(signing_input),
+        hash = openssl::sha256,
+        key = key
+      ))
+    )
+    if (grepl("null", header, fixed = TRUE)) {
+      expect_error(
+        shinyOAuth:::validate_id_token(id_client, jwt),
+        "header must not be null",
+        class = "shinyOAuth_id_token_error"
+      )
+      expect_error(
+        get_userinfo_with_jwt(ui_client, jwt),
+        "header must not be null",
+        class = "shinyOAuth_userinfo_error"
+      )
+      expect_error(
+        shinyOAuth:::validate_jarm_response(jarm_client, jwt),
+        "header must not be null",
+        class = "shinyOAuth_state_error"
+      )
+    } else {
+      expect_silent(shinyOAuth:::validate_id_token(id_client, jwt))
+      expect_identical(get_userinfo_with_jwt(ui_client, jwt)[["sub"]], "user-1")
+      expect_identical(
+        shinyOAuth:::validate_jarm_response(jarm_client, jwt)[["code"]],
+        "code-value"
+      )
+    }
+  }
+})
+
 test_that("validate_id_token rejects malformed JOSE header field shapes", {
   cases <- list(
     list(
