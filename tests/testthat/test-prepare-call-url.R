@@ -62,7 +62,7 @@ test_that("prepare_call checks generated state against callback and envelope lim
 })
 
 test_that("authorization queries preserve fixed bytes and deduplicate managed values", {
-  url <- "https://example.com/auth?fixed=a%20b&CLIENT_ID=extension&client%5fid=abc&resource=one"
+  url <- "https://example.com/auth?fixed=a%20b&CLIENT_ID=extension&client%5fid=abc"
   result <- shinyOAuth:::authorization_url_append(
     url,
     list(

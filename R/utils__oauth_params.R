@@ -462,6 +462,11 @@ inspect_auth_max_age <- function(extra_auth_params) {
 #' @keywords internal
 #' @noRd
 provider_auth_max_age <- function(provider) {
+  auth_url <- tryCatch(provider@auth_url, error = function(...) NULL)
+  if (is_valid_string(auth_url)) {
+    problem <- authorization_query_resolution(auth_url)[["problem"]]
+    if (!is.null(problem)) err_config(problem)
+  }
   extra_auth_params <- tryCatch(
     provider@extra_auth_params,
     error = function(...) list()

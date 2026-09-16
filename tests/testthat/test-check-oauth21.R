@@ -388,9 +388,12 @@ test_that("issuer participation respects single-server opt-out and advertised su
 
 test_that("parameter assessment preserves repeatable extensions and defers dynamic values", {
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
-  client <- oauth21_test_client(list(
-    auth_url = "https://issuer.example/auth?client_id=client&resource=one&resource=two"
-  ))
+  client <- oauth21_test_client(
+    list(
+      auth_url = "https://issuer.example/auth?client_id=client&routing=one&routing=two"
+    ),
+    resource = c("https://api.example/one", "https://api.example/two")
+  )
   expect_true(check_oauth21(client)[["configuration_compliant"]])
   client@provider@auth_url <- "https://issuer.example/auth?client_id=different"
   expect_false(check_oauth21(client)[["configuration_compliant"]])

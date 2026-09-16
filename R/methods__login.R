@@ -907,7 +907,8 @@ build_auth_url <- function(
   # Final outer composition also validates request/request_uri once available.
   query_problem <- authorization_query_resolution(
     oauth_client@provider@auth_url,
-    params
+    params,
+    require_managed = TRUE
   )[["problem"]]
   if (!is.null(query_problem)) {
     err_config(query_problem)

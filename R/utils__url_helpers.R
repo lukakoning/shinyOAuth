@@ -161,7 +161,11 @@ authorization_singleton_params <- function() {
 
 # Pure resolver used by constructors, URL composition and configuration checks.
 # Return only a generic problem message, never a configured URL or value.
-authorization_query_resolution <- function(url, params = list()) {
+authorization_query_resolution <- function(
+  url,
+  params = list(),
+  require_managed = FALSE
+) {
   fixed <- tryCatch(
     decode_form_pairs(url_raw_query(url), "Authorization endpoint query"),
     error = function(e) NULL
@@ -180,6 +184,42 @@ authorization_query_resolution <- function(url, params = list()) {
         problem = "Authorization parameters contain repeated managed singleton fields"
       ))
     }
+  }
+  # Policy parameters must flow through their typed configuration so the
+  # callback policy, signed Request Object and PAR body all see the same value.
+  policy_fields <- c(
+    "scope",
+    "resource",
+    "response_mode",
+    "display",
+    "prompt",
+    "max_age",
+    "ui_locales",
+    "id_token_hint",
+    "login_hint",
+    "acr_values",
+    "claims"
+  )
+  if (any(names(fixed) %in% policy_fields)) {
+    return(list(
+      problem = paste(
+        "Authorization endpoint query must not contain policy parameters;",
+        "use client properties or extra_auth_params instead"
+      )
+    ))
+  }
+  if (
+    isTRUE(require_managed) &&
+      any(
+        names(fixed) %in% singletons & !names(fixed) %in% names(params)
+      )
+  ) {
+    return(list(
+      problem = paste(
+        "Authorization endpoint query contains protocol parameters",
+        "that are not enabled in the client configuration"
+      )
+    ))
   }
   shared <- intersect(intersect(names(fixed), names(params)), singletons)
   if (

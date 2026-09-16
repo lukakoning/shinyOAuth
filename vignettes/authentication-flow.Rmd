@@ -100,11 +100,15 @@ The module creates and checks these values automatically. OIDC provider
 helpers enable PKCE and nonce by default.
 Public clients must use PKCE, and `S256` is the default PKCE method.
 
-Configured authorization endpoint queries are preserved. Matching managed
-singleton values are emitted once; conflicting or repeated singleton values
-are rejected before use. Repeated `resource` indicators remain supported, and
-parameter names are case sensitive. The same composition checks apply to
-direct, PAR and JAR browser URLs.
+Fixed routing queries on the authorization endpoint are preserved. Put protocol
+policy parameters such as `prompt` and `max_age` in `extra_auth_params`, and use
+the client properties for `scopes`, `resource`, `claims` and `response_mode`.
+These parameters are rejected in the endpoint query so they cannot bypass local
+policy checks or be omitted from signed Request Objects or PAR. Matching generated
+singleton values are emitted once; conflicting, repeated or disabled protocol
+fields are rejected before use. Repeated `resource` indicators remain supported
+through the client property. Parameter names are case sensitive. The same
+composition checks apply to direct, PAR and JAR browser URLs.
 
 #### State storage and expiry
 
