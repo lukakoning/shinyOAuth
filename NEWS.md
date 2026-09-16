@@ -1,4 +1,4 @@
-# shinyOAuth (development version)
+# shinyOAuth 0.6.0
 
 * Added optional connections for apps using one or more OAuth authorizations:
   - `oauth_connection()` combines a module's current token with the client's
