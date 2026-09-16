@@ -9,7 +9,7 @@
 #'
 #' @param client An [OAuthClient] with non-empty `resource_bases`, created by
 #'   [oauth_client()] or [smart_client()].
-#' @param token A Shiny reactive expression returning the current [OAuthToken]
+#' @param token_reactive A Shiny reactive expression returning the current [OAuthToken]
 #'   or `NULL`, usually `shiny::reactive(auth[["token"]])`. It must come from the
 #'   module using `client`. Supplying that association is trusted server
 #'   application wiring; a resource policy cannot prove an opaque token's audience.
@@ -54,13 +54,13 @@
 #' @export
 oauth_connection <- function(
   client,
-  token,
+  token_reactive,
   session = shiny::getDefaultReactiveDomain()
 ) {
   S7::check_is_S7(client, OAuthClient)
   connection_client_fingerprint(client)
-  if (!shiny::is.reactive(token)) {
-    err_input("token must be a Shiny reactive expression")
+  if (!shiny::is.reactive(token_reactive)) {
+    err_input("token_reactive must be a Shiny reactive expression")
   }
   owner <- connection_session_root(session)
   current <- connection_session_root(shiny::getDefaultReactiveDomain())
@@ -73,7 +73,7 @@ oauth_connection <- function(
   }
   binding <- new.env(parent = emptyenv())
   binding[["owner"]] <- owner
-  binding[["source"]] <- token
+  binding[["source"]] <- token_reactive
   binding[["active"]] <- TRUE
   owner[["onSessionEnded"]](function() {
     binding[["active"]] <- FALSE
@@ -82,7 +82,7 @@ oauth_connection <- function(
   })
   # The resolver and end callback share this frame. Drop argument references so
   # clearing the binding also releases its token source and session references.
-  token <- NULL
+  token_reactive <- NULL
   session <- NULL
   owner <- NULL
   current <- NULL

@@ -4,13 +4,17 @@
 \alias{oauth_connection}
 \title{Make API requests with a Shiny session's current OAuth credentials}
 \usage{
-oauth_connection(client, token, session = shiny::getDefaultReactiveDomain())
+oauth_connection(
+  client,
+  token_reactive,
+  session = shiny::getDefaultReactiveDomain()
+)
 }
 \arguments{
 \item{client}{An \link{OAuthClient} with non-empty \code{resource_bases}, created by
 \code{\link[=oauth_client]{oauth_client()}} or \code{\link[=smart_client]{smart_client()}}.}
 
-\item{token}{A Shiny reactive expression returning the current \link{OAuthToken}
+\item{token_reactive}{A Shiny reactive expression returning the current \link{OAuthToken}
 or \code{NULL}, usually \code{shiny::reactive(auth[["token"]])}. It must come from the
 module using \code{client}. Supplying that association is trusted server
 application wiring; a resource policy cannot prove an opaque token's audience.}
