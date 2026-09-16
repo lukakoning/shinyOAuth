@@ -56,12 +56,26 @@ test_that("wire methods agree with DPoP and retry policy", {
       "method-changing curl options"
     )
   }
+  for (req in list(
+    httr2::req_body_json(base, list(action = "create")),
+    httr2::req_body_form(base, action = "create"),
+    httr2::req_body_raw(base, "create")
+  )) {
+    expect_error(
+      perform_resource_req("fixture", httr2::req_method(req, "HEAD"),
+                           oauth_client = client, token_type = "DPoP"),
+      "HEAD resource requests must not include a body"
+    )
+  }
 
   for (method in c("GET", "HEAD", "POST", "PATCH", "PUT", "DELETE")) {
     req <- if (identical(method, "POST")) {
       httr2::req_body_json(base, list(action = "create"))
     } else {
-      httr2::req_method(base, method)
+      if (identical(method, "HEAD")) httr2::req_method(base, method) else {
+        httr2::req_body_json(base, list(action = "create")) |>
+          httr2::req_method(method)
+      }
     }
     req <- httr2::req_headers(req, `X-Case` = method)
     response <- perform_resource_req(

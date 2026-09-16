@@ -188,6 +188,8 @@ client_bearer_req <- function(
 #'   Inherited httr2 authentication, caching, and retry policies, and curl
 #'   authentication or method-changing options are rejected. Use
 #'   [httr2::req_method()] and httr2 body helpers to configure the request.
+#'   HEAD requests with bodies are rejected because httr2 can transmit them
+#'   as POST despite the explicit method.
 #'   Authenticated response caching is
 #'   unsupported. shinyOAuth owns retries; configure them with `idempotent`
 #'   and the `shinyOAuth.retry_*` options.
@@ -362,7 +364,7 @@ prepare_client_bearer_request <- function(
     validate_resource_request_policies(req)
   }
   request_method <- resolve_client_bearer_method(method = method, req = req)
-  validate_client_bearer_method(method = request_method)
+  validate_client_bearer_method(method = request_method, req = req)
 
   token_info <- resolve_client_bearer_token(
     token = token,
@@ -464,6 +466,10 @@ validate_client_bearer_method <- function(method = NULL, req = NULL) {
         "Authorization and DPoP."
       )
     ))
+  }
+
+  if (identical(request_method, "HEAD") && !is.null(req[["body"]])) {
+    err_input("HEAD resource requests must not include a body")
   }
 
   invisible(TRUE)
