@@ -6,12 +6,13 @@ resolve_argument_alias <- function(
   value_missing,
   alias_missing,
   name,
-  old_name
+  old_name,
+  allow_identical = FALSE
 ) {
   if (alias_missing) {
     return(value)
   }
-  if (!value_missing) {
+  if (!value_missing && !(allow_identical && identical(value, alias))) {
     err_input(paste0("Cannot supply both `", name, "` and `", old_name, "`."))
   }
   alias
@@ -61,7 +62,8 @@ api_class_argument_alias <- function(class, old, new) {
         missing(NEW),
         missing(OLD),
         NEW_NAME,
-        OLD_NAME
+        OLD_NAME,
+        allow_identical = TRUE
       )
     },
     list(OLD = as.name(old), NEW = as.name(new), NEW_NAME = new, OLD_NAME = old)
@@ -96,7 +98,8 @@ api_preserve_constructor <- function(class, released, aliases) {
             missing(NEW),
             missing(OLD),
             NEW_NAME,
-            OLD_NAME
+            OLD_NAME,
+            allow_identical = TRUE
           )
         },
         list(

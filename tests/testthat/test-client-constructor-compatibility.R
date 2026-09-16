@@ -148,3 +148,11 @@ test_that("OAuthClient round-trips every released positional property", {
   positional <- do.call(OAuthClient, values)
   expect_identical(S7::props(positional), S7::props(named))
 })
+
+test_that("S7 property lists reconstruct objects with matching aliases", {
+  client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  rebuilt <- do.call(OAuthClient, S7::props(client))
+  expect_identical(S7::props(rebuilt), S7::props(client))
+  provider <- do.call(OAuthProvider, S7::props(client@provider))
+  expect_identical(S7::props(provider), S7::props(client@provider))
+})
