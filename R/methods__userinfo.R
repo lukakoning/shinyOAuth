@@ -308,7 +308,11 @@ get_userinfo <- function(
                 NULL
               },
               "i" = if (!is.na(status)) paste0("Status: ", status) else NULL,
-              "i" = if (is_valid_string(url)) paste0("URL: ", url) else NULL
+              "i" = if (allow_expose_error_body() && is_valid_string(url)) {
+                paste0("URL: ", otel_http_url_full(url))
+              } else {
+                NULL
+              }
             ),
             context = c(
               list(
