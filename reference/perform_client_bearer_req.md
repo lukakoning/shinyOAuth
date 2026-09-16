@@ -44,9 +44,13 @@ perform_client_bearer_req(
   authentication and request defaults, and then layers any explicit
   `method`, `headers`, `query`, and `follow_redirect` overrides on top.
   Inherited httr2 authentication, caching, and retry policies, and curl
-  authentication options are rejected. Authenticated response caching is
-  unsupported. shinyOAuth owns retries; configure them with `idempotent`
-  and the `shinyOAuth.retry_*` options.
+  authentication or method-changing options are rejected. Use
+  [`httr2::req_method()`](https://httr2.r-lib.org/reference/req_method.html)
+  and httr2 body helpers to configure the request. HEAD requests with
+  bodies are rejected because httr2 can transmit them as POST despite
+  the explicit method. Authenticated response caching is unsupported.
+  shinyOAuth owns retries; configure them with `idempotent` and the
+  `shinyOAuth.retry_*` options.
 
 - method:
 

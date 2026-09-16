@@ -398,6 +398,17 @@ does not register or change the client at the server. If unsigned
 requests remain accepted, signing is optional and cannot prevent a
 downgrade to unsigned authorization requests (<a href="https://www.rfc-editor.org/rfc/rfc9101.html#section-10.5" class="external-link">RFC 9101
 section 10.5</a>).</p>
+<p>Qualify the production authorization server’s exact version, client
+registration, and policies separately. The pinned Keycloak 26.6.1
+integration fixture accepts signed Request Objects with incorrect
+audience or issuer, expired objects, and repeated objects. Its tests
+record those provider limitations; a passing fixture suite does not
+establish strict server-side JAR enforcement. Verify rejection of
+incorrect signatures, audience/issuer and expired objects against your
+deployment, and test the required replay policy. See <a href="https://www.rfc-editor.org/rfc/rfc9101.html#section-6" class="external-link">RFC 9101
+section 6</a>. The separate <code>integration/conformance</code> fixture
+exercises stricter server checks, but does not certify a production
+provider configuration.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-jar"</span>,</span>
