@@ -2649,6 +2649,23 @@ oauth_module_server_impl <- function(
         return(invisible(NULL))
       }
 
+      if (
+        isTRUE(direct_callback_params_present) &&
+          identical(
+            resolve_oauth_client_response_mode(client)[["mode"]],
+            "form_post"
+          )
+      ) {
+        .reject_callback_query(
+          description = paste(
+            "form_post clients must resume from the validated callback handle;",
+            "direct OAuth query parameters are not accepted."
+          ),
+          reason = "wrong_callback_transport"
+        )
+        return(invisible(NULL))
+      }
+
       # Validate the complete direct response shape before error handling or
       # code exchange can validate and consume the single-use state entry.
       if (isTRUE(direct_callback_params_present)) {
