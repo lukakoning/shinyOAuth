@@ -219,7 +219,7 @@
 #'   an unsuccessful check or a response other than `active = TRUE` stops the
 #'   operation. Default `FALSE`.
 #'
-#' @param introspect_elements Optional character vector of additional
+#' @param introspection_checks Optional character vector of additional
 #'   requirements to enforce on the introspection response when
 #'   `introspect = TRUE`. Supported values:
 #'   - `"sub"`: require the introspected `sub` to match the session subject
@@ -513,6 +513,7 @@
 #'
 #' @example inst/examples/oauth_client.R
 #'
+#' @param introspect_elements Compatibility alias for `introspection_checks`.
 #' @export
 OAuthClient <- S7::new_class(
   "OAuthClient",
@@ -766,6 +767,10 @@ OAuthClient <- S7::new_class(
   ),
   validator = function(self) oauth_client_validate(self)
 )
+OAuthClient <- api_class_argument_alias(
+  OAuthClient, "introspect_elements", "introspection_checks"
+)
+
 
 # 2 Helper constructor ---------------------------------------------------------
 
@@ -793,6 +798,7 @@ OAuthClient <- S7::new_class(
 #'
 #' @example inst/examples/oauth_client.R
 #'
+#' @param introspect_elements Compatibility alias for `introspection_checks`. Supply only one spelling.
 #' @export
 oauth_client <- function(
   provider,
@@ -815,7 +821,7 @@ oauth_client <- function(
   required_acr_values = character(0),
   userinfo_jwt_required_time_claims = character(0),
   introspect = FALSE,
-  introspect_elements = character(0),
+  introspection_checks = character(0),
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
   state_entropy = 64,
@@ -857,8 +863,13 @@ oauth_client <- function(
   resource_bases = character(),
   required_scopes = character(),
   label = default_client_label(provider),
-  ...
+  ...,
+  introspect_elements = NULL
 ) {
+  introspect_elements <- resolve_argument_alias(
+    introspection_checks, introspect_elements, missing(introspection_checks), missing(introspect_elements),
+    "introspection_checks", "introspect_elements"
+  )
   compat_args <- resolve_deprecated_constructor_args(
     dots = list(...),
     arg_map = c(
@@ -1155,7 +1166,7 @@ oauth_client <- function(
     trusted_id_token_audiences = trusted_id_token_audiences,
     userinfo_jwt_required_time_claims = userinfo_jwt_required_time_claims,
     introspect = introspect,
-    introspect_elements = introspect_elements,
+    introspection_checks = introspect_elements,
     state_store = state_store,
     state_payload_max_age = state_payload_max_age,
     state_entropy = state_entropy,

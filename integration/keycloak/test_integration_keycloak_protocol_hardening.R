@@ -25,7 +25,7 @@ make_protocol_confidential_client <- function(
     redirect_uri = "http://localhost:3000/callback",
     scopes = scopes,
     introspect = introspect,
-    introspect_elements = introspect_elements
+    introspection_checks = introspect_elements
   )
 }
 

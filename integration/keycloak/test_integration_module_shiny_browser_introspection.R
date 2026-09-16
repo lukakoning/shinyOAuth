@@ -83,7 +83,7 @@
     redirect_uri = sprintf("http://127.0.0.1:%d", as.integer(app_port)),
     scopes = c("openid", "profile", "email"),
     introspect = introspect,
-    introspect_elements = introspect_elements
+    introspection_checks = introspect_elements
   )
 
   ui <- shiny::fluidPage(

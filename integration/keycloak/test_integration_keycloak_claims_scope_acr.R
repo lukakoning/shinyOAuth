@@ -29,7 +29,7 @@ make_validation_public_client <- function(
     claims_validation = claims_validation,
     required_acr_values = required_acr_values,
     introspect = introspect,
-    introspect_elements = introspect_elements
+    introspection_checks = introspect_elements
   )
 }
 

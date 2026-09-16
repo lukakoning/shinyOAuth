@@ -173,6 +173,6 @@ make_test_client <- function(
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     ),
     introspect = introspect,
-    introspect_elements = introspect_elements
+    introspection_checks = introspect_elements
   )
 }

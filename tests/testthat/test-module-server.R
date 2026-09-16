@@ -2035,7 +2035,7 @@ testthat::test_that("oauth_module_server proactive refresh forwards introspectio
     redirect_uri = "http://localhost:8100",
     scopes = character(0),
     introspect = TRUE,
-    introspect_elements = c("sub", "client_id"),
+    introspection_checks = c("sub", "client_id"),
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",

@@ -22,7 +22,7 @@ OAuthClient(
   required_acr_values = character(0),
   userinfo_jwt_required_time_claims = character(0),
   introspect = FALSE,
-  introspect_elements = character(0),
+  introspection_checks = character(0),
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
   state_entropy = 64,
@@ -65,7 +65,8 @@ OAuthClient(
   label = default_client_label(provider),
   authorization_method = "GET",
   scope_policy = list(),
-  smart = list()
+  smart = list(),
+  introspect_elements = NULL
 )
 }
 \arguments{
@@ -220,7 +221,7 @@ before completing login and module refreshes. Requires \code{introspection_url};
 an unsuccessful check or a response other than \code{active = TRUE} stops the
 operation. Default \code{FALSE}.}
 
-\item{introspect_elements}{Optional character vector of additional
+\item{introspection_checks}{Optional character vector of additional
 requirements to enforce on the introspection response when
 \code{introspect = TRUE}. Supported values:
 \itemize{
@@ -579,6 +580,8 @@ This parameter is not an argument to \code{\link[=oauth_client]{oauth_client()}}
 \item{smart}{Internal SMART configuration installed by \code{\link[=smart_client]{smart_client()}}.
 Leave the empty default for ordinary clients. This is not an argument to
 \code{\link[=oauth_client]{oauth_client()}}.}
+
+\item{introspect_elements}{Compatibility alias for \code{introspection_checks}.}
 }
 \description{
 An \code{OAuthClient} holds your app's registration with a provider: its client ID,

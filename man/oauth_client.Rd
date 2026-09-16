@@ -21,7 +21,7 @@ oauth_client(
   required_acr_values = character(0),
   userinfo_jwt_required_time_claims = character(0),
   introspect = FALSE,
-  introspect_elements = character(0),
+  introspection_checks = character(0),
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
   state_entropy = 64,
@@ -63,7 +63,8 @@ oauth_client(
   resource_bases = character(),
   required_scopes = character(),
   label = default_client_label(provider),
-  ...
+  ...,
+  introspect_elements = NULL
 )
 }
 \arguments{
@@ -205,7 +206,7 @@ before completing login and module refreshes. Requires \code{introspection_url};
 an unsuccessful check or a response other than \code{active = TRUE} stops the
 operation. Default \code{FALSE}.}
 
-\item{introspect_elements}{Optional character vector of additional
+\item{introspection_checks}{Optional character vector of additional
 requirements to enforce on the introspection response when
 \code{introspect = TRUE}. Supported values:
 \itemize{
@@ -571,6 +572,8 @@ patient context.}
 
 \item{...}{Deprecated renamed arguments accepted temporarily for backward
 compatibility.}
+
+\item{introspect_elements}{Compatibility alias for \code{introspection_checks}. Supply only one spelling.}
 }
 \value{
 \link{OAuthClient} object

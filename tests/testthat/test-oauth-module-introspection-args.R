@@ -9,7 +9,7 @@ test_that("OAuthClient validates introspection args", {
       client_secret = "xyz",
       redirect_uri = "https://localhost:8100/callback",
       introspect = TRUE,
-      introspect_elements = character(0)
+      introspection_checks = character(0)
     ),
     regexp = "introspection_url"
   )
@@ -22,7 +22,7 @@ test_that("OAuthClient validates introspection args", {
       client_secret = "xyz",
       redirect_uri = "https://localhost:8100/callback",
       introspect = FALSE,
-      introspect_elements = "sub"
+      introspection_checks = "sub"
     ),
     regexp = "introspect_elements.*introspect = FALSE"
   )
@@ -39,7 +39,7 @@ test_that("OAuthClient validates introspection args", {
       client_secret = "xyz",
       redirect_uri = "https://localhost:8100/callback",
       introspect = TRUE,
-      introspect_elements = c("sub", "nope")
+      introspection_checks = c("sub", "nope")
     ),
     regexp = "invalid introspect_elements"
   )
@@ -51,7 +51,7 @@ test_that("OAuthClient validates introspection args", {
     client_secret = "xyz",
     redirect_uri = "https://localhost:8100/callback",
     introspect = TRUE,
-    introspect_elements = c("sub", "client_id")
+    introspection_checks = c("sub", "client_id")
   )
   testthat::expect_true(cli@introspect)
   testthat::expect_equal(cli@introspect_elements, c("sub", "client_id"))

@@ -83,7 +83,8 @@ and positional calls:
   - `handle_callback()` accepts callback state as `state`; introspection and
   revocation helpers select access or refresh tokens with `token_kind`.
   - Provider constructors and discovery use `id_token_allowed_algs` for
-  ID-token signing algorithms; existing `allowed_algs` properties still work.
+  ID-token signing algorithms. Clients use `introspection_checks` for extra
+  introspection requirements. Existing property names remain supported.
 
 * Client and provider constructor arguments have been reorganized and renamed.
 Helper constructors retain compatibility aliases; low-level S7 constructors

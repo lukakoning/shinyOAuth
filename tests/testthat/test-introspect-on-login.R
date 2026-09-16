@@ -104,7 +104,7 @@ test_that("OAuthClient validates introspect configuration at construction time",
       client_secret = "",
       redirect_uri = "http://localhost:8100",
       introspect = TRUE,
-      introspect_elements = c("sub", "nope")
+      introspection_checks = c("sub", "nope")
     ),
     regexp = "invalid introspect_elements"
   )
@@ -117,7 +117,7 @@ test_that("OAuthClient validates introspect configuration at construction time",
       client_secret = "",
       redirect_uri = "http://localhost:8100",
       introspect = TRUE,
-      introspect_elements = c(NA_character_)
+      introspection_checks = c(NA_character_)
     ),
     regexp = "must not contain NA"
   )
@@ -129,7 +129,7 @@ test_that("OAuthClient validates introspect configuration at construction time",
       client_secret = "",
       redirect_uri = "http://localhost:8100",
       introspect = TRUE,
-      introspect_elements = c("")
+      introspection_checks = c("")
     ),
     regexp = "must not contain empty"
   )
@@ -857,7 +857,7 @@ test_that("introspection scope checks use effective OIDC callback scopes", {
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     ),
     introspect = TRUE,
-    introspect_elements = "scope",
+    introspection_checks = "scope",
     scope_validation = "strict"
   )
 
