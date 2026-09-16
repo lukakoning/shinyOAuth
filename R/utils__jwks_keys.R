@@ -25,7 +25,6 @@ normalize_jwk_key_ops <- function(value) {
   }
   if (
     !is.list(value) ||
-      length(value) == 0L ||
       !is.null(names(value))
   ) {
     return(NULL)
@@ -45,6 +44,28 @@ normalize_jwk_key_ops <- function(value) {
   }
 
   vapply(value, identity, character(1))
+}
+
+# RFC 7517 section 4.3 requires use and key_ops to agree when both are present.
+jwk_key_ops_consistent <- function(key, operations) {
+  use <- key[["use"]]
+  if (identical(use, "sig")) {
+    return(all(operations %in% c("sign", "verify")))
+  }
+  if (identical(use, "enc")) {
+    return(all(
+      operations %in%
+        c(
+          "encrypt",
+          "decrypt",
+          "wrapKey",
+          "unwrapKey",
+          "deriveKey",
+          "deriveBits"
+        )
+    ))
+  }
+  TRUE
 }
 
 #' Internal: Select candidate JWKs for signature verification
@@ -138,7 +159,8 @@ select_candidate_jwks <- function(
       if (
         !all(nzchar(ops)) ||
           anyDuplicated(ops) > 0L ||
-          !all(ops %in% valid_key_ops)
+          !all(ops %in% valid_key_ops) ||
+          !jwk_key_ops_consistent(k, ops)
       ) {
         return(FALSE)
       }
@@ -590,12 +612,19 @@ strict_decode_jwk_ec_coordinate <- function(value, field_name, curve) {
 #'   to pin against.
 #' @param pin_mode Either "any" (at least one key matches a pin) or "all"
 #'   (every RSA/EC/OKP key must match a pin).
+#' @param wire Whether the input was parsed directly from network JSON with
+#'   `simplifyVector = FALSE`, so JSON array types must still be preserved.
 #'
 #' @return Invisibly returns `TRUE` on success. Otherwise this function raises a
 #'   parse error.
 #' @keywords internal
 #' @noRd
-validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
+validate_jwks <- function(
+  jwks,
+  pins = NULL,
+  pin_mode = c("any", "all"),
+  wire = FALSE
+) {
   pin_mode <- match.arg(pin_mode)
   if (!is.list(jwks)) {
     err_parse("Invalid JWKS structure")
@@ -653,6 +682,24 @@ validate_jwks <- function(jwks, pins = NULL, pin_mode = c("any", "all")) {
           field,
           " must be a non-empty character scalar"
         ))
+      }
+    }
+    if ("key_ops" %in% names(k)) {
+      value <- k[["key_ops"]]
+      if (wire && (!is.list(value) || !is.null(names(value)))) {
+        err_parse("JWK key_ops must be a JSON array")
+      }
+      operations <- normalize_jwk_key_ops(value)
+      if (
+        is.null(operations) ||
+          anyNA(operations) ||
+          any(!nzchar(operations)) ||
+          anyDuplicated(operations)
+      ) {
+        err_parse("JWK key_ops must contain unique operation strings")
+      }
+      if (!jwk_key_ops_consistent(k, operations)) {
+        err_parse("JWK use and key_ops are inconsistent")
       }
     }
     # No private key parameters in a JWKS

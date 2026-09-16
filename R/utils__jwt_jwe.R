@@ -429,7 +429,8 @@ select_candidate_jwks_for_encryption <- function(
       if (
         !all(nzchar(key_ops)) ||
           anyDuplicated(key_ops) > 0L ||
-          !all(key_ops %in% valid_key_ops)
+          !all(key_ops %in% valid_key_ops) ||
+          !jwk_key_ops_consistent(key, key_ops)
       ) {
         return(FALSE)
       }

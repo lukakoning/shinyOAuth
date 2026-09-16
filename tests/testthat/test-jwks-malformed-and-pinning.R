@@ -35,7 +35,7 @@ test_that("fetch_jwks does not cache on invalid JSON", {
   expect_null(cache[["get"]](cache_key, missing = NULL))
 })
 
-test_that("fetched key_ops arrays are usable and malformed arrays fail closed", {
+test_that("fetched key_ops arrays restrict signature and encryption selection", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran()
 
@@ -57,8 +57,6 @@ test_that("fetched key_ops arrays are usable and malformed arrays fail closed", 
         make_key("sig-verify", "sig", list("verify")),
         make_key("sig-both", "sig", list("sign", "verify")),
         make_key("enc-wrap", "enc", list("encrypt", "wrapKey")),
-        make_key("mixed", "sig", list("verify", 1)),
-        make_key("duplicate", "sig", list("verify", "verify")),
         make_key("empty", "sig", list()),
         make_key("wrong", "sig", list("sign"))
       )

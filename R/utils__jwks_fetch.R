@@ -525,7 +525,7 @@ fetch_jwks <- function(
     err_parse(c("x" = "JWKS JSON did not parse to an object"))
   }
   # Validate structure and (optionally) pin before caching
-  validate_jwks(jwks, pins = pins, pin_mode = pin_mode)
+  validate_jwks(jwks, pins = pins, pin_mode = pin_mode, wire = TRUE)
   received_at <- as.numeric(Sys.time())
   freshness <- jwks_http_freshness(jresp, now, received_at)
   new_entry <- list(
