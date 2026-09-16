@@ -154,6 +154,13 @@ connection_router_cancel <- function(manager, transaction) {
     rm(list = pending[["route_digest"]], envir = manager[["state"]][["routes"]])
   }
   if (!is.null(pending)) {
+    if (manager[["retention"]] == "browser") {
+      context <- pending[["context"]]
+      manager[["state"]][["owners"]][["release"]](
+        list(id = context[["owner"]], generation = context[["generation"]]),
+        transaction
+      )
+    }
     rm(list = transaction, envir = manager[["state"]][["pending"]])
   }
   invisible(NULL)

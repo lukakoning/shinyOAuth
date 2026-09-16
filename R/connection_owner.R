@@ -21,7 +21,9 @@
 #' @param max_entries Maximum owner-registry entries per manager, a positive
 #'   whole number. Browser mode counts browsers that authorize a service. A
 #'   separate provisional visitor pool has the same limit; its oldest entries
-#'   may be replaced and expire after at most five minutes. Account mode counts
+#'   may be replaced and expire after at most five minutes, unless a live
+#'   authorization transaction protects them until its expiry. When all visitor
+#'   entries have pending authorizations, new visitors are rejected. Account mode counts
 #'   authentication generations, including retired generations until their local
 #'   reauthentication deadline. This limit is independent of the connection
 #'   store's `max_entries`.
@@ -314,9 +316,14 @@ connection_browser_sessions <- function(
     if (is.null(record)) {
       return(NULL)
     }
+    record[["pending"]] <- Filter(
+      function(until) at < until,
+      record[["pending"]]
+    )
     if (
       at >= record[["expires_at"]] ||
         (!isTRUE(record[["retained"]]) &&
+          !length(record[["pending"]]) &&
           at >= record[["provisional_until"]]) ||
         at >= record[["last_seen"]] + policy[["idle_timeout"]]
     ) {
@@ -325,8 +332,8 @@ connection_browser_sessions <- function(
     }
     if (touch) {
       record[["last_seen"]] <- at
-      owners[[id]] <- record
     }
+    owners[[id]] <- record
     record
   }
   validate <- function(owner, touch = FALSE) {
@@ -401,6 +408,26 @@ connection_browser_sessions <- function(
     }
     snapshot(record)
   }
+  protect <- function(owner, transaction, expires_at) {
+    if (is.null(validate(owner))) {
+      err_token("Owner session is unavailable")
+    }
+    record <- current(owner[["id"]])
+    record[["pending"]][[transaction]] <- min(
+      expires_at,
+      record[["expires_at"]]
+    )
+    owners[[owner[["id"]]]] <- record
+    invisible(NULL)
+  }
+  release <- function(owner, transaction) {
+    if (!is.null(validate(owner))) {
+      record <- current(owner[["id"]])
+      record[["pending"]][[transaction]] <- NULL
+      owners[[owner[["id"]]]] <- record
+    }
+    invisible(NULL)
+  }
   create <- function(provisional = FALSE) {
     at <- now()
     prune()
@@ -410,6 +437,10 @@ connection_browser_sessions <- function(
     if (provisional) {
       visitors <- Filter(function(x) !isTRUE(x[["retained"]]), as.list(owners))
       if (length(visitors) >= max_entries) {
+        visitors <- Filter(function(x) !length(x[["pending"]]), visitors)
+        if (!length(visitors)) {
+          err_token("Pending owner session capacity reached")
+        }
         oldest <- which.min(vapply(
           visitors,
           function(x) x[["created_at"]],
@@ -424,6 +455,7 @@ connection_browser_sessions <- function(
       created_at = at,
       last_seen = at,
       retained = !provisional,
+      pending = list(),
       provisional_until = at + min(300, policy[["absolute_timeout"]]),
       expires_at = at + policy[["absolute_timeout"]]
     ))
@@ -435,6 +467,7 @@ connection_browser_sessions <- function(
     }
     record <- current(owner[["id"]])
     record[["generation"]] <- random_urlsafe(32L)
+    record[["pending"]] <- list()
     record[["last_seen"]] <- now()
     issue(record)
   }
@@ -451,6 +484,8 @@ connection_browser_sessions <- function(
     origin = origin,
     create = create,
     retain = retain,
+    protect = protect,
+    release = release,
     resolve = resolve,
     validate = validate,
     rotate = rotate,

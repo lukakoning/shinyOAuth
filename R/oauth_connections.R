@@ -596,6 +596,13 @@ connection_manager_controller <- function(manager, session) {
         launch_digest = state_policy_value_digest(launch[["launch"]])
       )
     }
+    if (manager[["retention"]] == "browser") {
+      state[["owners"]][["protect"]](
+        verified,
+        context[["transaction"]],
+        context[["expires_at"]]
+      )
+    }
     state[["pending"]][[context[["transaction"]]]] <- list(
       context = context,
       initiating_owner = owner[["id"]],
