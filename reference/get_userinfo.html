@@ -99,7 +99,9 @@ Normally supplied by the module; leave <code>NULL</code> when calling directly.<
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list containing the user information returned by the provider.</p>
+    <p>A list containing the user information returned by the provider.
+For JSON responses, arrays are simplified to vectors or data frames where
+possible. Signed JWT responses retain arrays as lists.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

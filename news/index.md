@@ -212,7 +212,8 @@
   must match the validated ID token’s `sub`; additional audiences
   require explicit trust and multiple audiences require the correct
   `azp`. Future authentication times are rejected, and requested claim
-  objects compare independently of member order.
+  objects compare independently of member order. JSON profile arrays
+  retain their existing vector and data-frame structure.
 
 - Authentication deadlines are not extended by refresh. Token lifetimes
   are calculated conservatively, and long lifetimes and future

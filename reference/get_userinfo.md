@@ -49,7 +49,9 @@ get_userinfo(
 
 ## Value
 
-A list containing the user information returned by the provider.
+A list containing the user information returned by the provider. For
+JSON responses, arrays are simplified to vectors or data frames where
+possible. Signed JWT responses retain arrays as lists.
 
 ## Details
 
