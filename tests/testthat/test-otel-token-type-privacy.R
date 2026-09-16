@@ -50,6 +50,7 @@ test_that("rejected exchanges and refreshes never export raw token types", {
     )
   })
   for (operation in c("exchange", "refresh")) {
+    log_file <- local_test_otel_log_file()
     browser <- valid_browser_token()
     state <- parse_query_param(prepare_call(client, browser), "state")
     record <- otelsdk::with_otel_record({
@@ -74,9 +75,12 @@ test_that("rejected exchanges and refreshes never export raw token types", {
     }))
     expect_gt(length(types), 0L)
     expect_true(all(types == "unknown"))
+    expect_true(file.exists(log_file))
+    logs <- readLines(log_file, warn = FALSE)
+    expect_true(any(grepl("shinyOAuth_token_error", logs, fixed = TRUE)))
     surfaces <- list(
       record[["traces"]],
-      record[["logs"]],
+      logs,
       events,
       conditionMessage(record[["value"]]),
       record[["value"]][["context"]]

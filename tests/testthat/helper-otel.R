@@ -1,3 +1,23 @@
+local_test_otel_log_file <- function(.local_envir = parent.frame()) {
+  log_file <- tempfile(fileext = ".jsonl")
+  withr::local_envvar(
+    c(
+      OTEL_R_LOGS_EXPORTER = "otlp/file",
+      OTEL_LOGS_EXPORTER = "otlp/file",
+      OTEL_EXPORTER_OTLP_LOGS_FILE = log_file,
+      OTEL_EXPORTER_OTLP_LOGS_FILE_FLUSH_COUNT = "1",
+      OTEL_EXPORTER_OTLP_LOGS_FILE_FLUSH_INTERVAL = "1ms"
+    ),
+    .local_envir = .local_envir
+  )
+  withr::local_options(
+    shinyOAuth.otel_logging_enabled = TRUE,
+    .local_envir = .local_envir
+  )
+  get("otel_clean_cache", envir = asNamespace("otel"))()
+  log_file
+}
+
 reset_test_otel_cache <- function() {
   # Keep tests hermetic even when the developer shell has ambient OTLP exporters
   # configured. Package tests only need local in-process recording.

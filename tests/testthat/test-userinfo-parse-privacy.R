@@ -14,6 +14,7 @@ test_that("UserInfo parse failures redact URLs across conditions, hooks and tele
     )
   })
   for (expose in c(FALSE, TRUE)) {
+    log_file <- local_test_otel_log_file()
     events <- list()
     local_options(
       shinyOAuth.expose_error_body = expose,
@@ -36,12 +37,16 @@ test_that("UserInfo parse failures redact URLs across conditions, hooks and tele
       Filter(function(e) identical(e[["status"]], "parse_error"), events),
       1L
     )
+    expect_true(file.exists(log_file))
+    logs <- readLines(log_file, warn = FALSE)
+    expect_true(any(grepl("audit_userinfo", logs, fixed = TRUE)))
+    expect_true(any(grepl("parse_error", logs, fixed = TRUE)))
     surfaces <- list(
       conditionMessage(error),
       error[["context"]],
       events,
       record[["traces"]],
-      record[["logs"]]
+      logs
     )
     expect_false(any(grepl("private-patient|secret-marker", unlist(surfaces))))
     if (expose) {
