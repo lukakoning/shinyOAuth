@@ -29,8 +29,7 @@ a new session obtains a new reference after verifying the local owner.
 Call \verb{[["is_usable"]]()}, \verb{[["summary"]]()} and \verb{[["request"]]()} in the owning session's
 reactive context. If the connection cannot be resolved, \verb{[["is_usable"]]()} returns
 \code{FALSE}; \verb{[["summary"]]()} and \verb{[["request"]]()} raise an error. The ID is read-only and
-cloning is disabled. The class generator is internal; the public factories
-establish the session binding required by applications.
+cloning is disabled.
 Managed resource and status reads do not count as owner activity. Record user
 actions with the manager's \code{touch()} method in an input event handler; automatic
 reactive updates must not prolong an idle owner's session.
@@ -90,7 +89,6 @@ The ID is never an access token and does not authorize access by itself.}
   Initialize a reference. This constructor is for internal use;
 applications should use \code{\link[=oauth_connection]{oauth_connection()}} or the manager's
 \code{connection(id)} method to establish session ownership.
-Calling it again on an initialized reference is an error.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$new(id, client, resolve, refresh = NULL)}
@@ -138,11 +136,10 @@ connection, otherwise \code{FALSE}, including when resolution fails.
 \if{html}{\out{<a id="method-OAuthConnection-refresh"></a>}}
 \if{latex}{\out{\hypertarget{method-OAuthConnection-refresh}{}}}
 \subsection{\code{OAuthConnection$refresh()}}{
-  Refresh a connection created by \code{\link[=oauth_connections_server]{oauth_connections_server()}} under the
-manager's exclusive store claim. The manager rechecks the owner and current
-record before installing replacement credentials. References created with
-\code{\link[=oauth_connection]{oauth_connection()}} use their existing module's refresh lifecycle and
-cannot invoke this method.
+  Refresh a connection created by \code{\link[=oauth_connections_server]{oauth_connections_server()}}. The manager
+coordinates refresh and verifies ownership before updating credentials.
+References created with \code{\link[=oauth_connection]{oauth_connection()}} use their existing module's
+refresh lifecycle and cannot invoke this method.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$refresh(scopes = NULL)}

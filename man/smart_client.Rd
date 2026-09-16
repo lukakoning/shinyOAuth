@@ -134,11 +134,10 @@ requests and requires \code{openid}, signed ID-token validation and nonce bindin
 \code{"none"} does not enable OIDC because an issuer happens to be present.
 A patient in context is independent of the authenticated user and local owner.
 
-Only direct authorization requests and query/form POST callbacks are currently
-supported. Claims requests (including \code{auth_time}), JAR, PAR, JARM, DPoP,
-mTLS and remote freshness requirements need
-separate SMART composition work; this constructor provides no overrides for
-those features. EHR clients require a fresh registered launch transaction.
+Only direct authorization requests and query/form POST callbacks are supported.
+Claims requests (including \code{auth_time}), JAR, PAR, JARM, DPoP, mTLS and remote
+freshness requirements are not supported by this constructor.
+EHR clients require a fresh registered launch transaction.
 Configure standalone and EHR registrations as separate clients when both are
 needed. No launch handle is stored in shared provider configuration.
 Local usability policy requires a positive lifetime. An initial response may

@@ -373,8 +373,7 @@ because the required signed Request Object is missing. Check its documented
 error response or server audit event for that reason; a generic HTTP error is
 insufficient. A login/consent page, authorization code, or `login_required`
 response does not establish enforcement. Repeat this probe in deployment tests
-alongside a successful signed request. The Keycloak compatibility examples in
-the integration suite do not certify server enforcement of all JAR claims.
+alongside a successful signed request.
 
 Register the signing key with your provider. To encrypt the signed request
 too, configure `request_object_encryption_alg = "RSA-OAEP"` and

@@ -41,8 +41,8 @@ resets it. Browser retention is also capped by the owner's absolute expiry.}
 retained mode. Must be \code{NULL} for session-only retention.}
 
 \item{store}{A store from \code{\link[=oauth_connection_store_memory]{oauth_connection_store_memory()}}. Required for
-retained modes; session-only mode creates a memory store by default. This
-initial manager supports one R process and rejects external adapter claims.}
+retained modes; session-only mode creates a memory store by default. Only
+the supplied memory store in one R process is supported.}
 
 \item{keys}{Named list with \code{credentials} and \code{owner}, each a deployment-held
 raw vector of 32 bytes. Required for retained modes. Session-only mode creates

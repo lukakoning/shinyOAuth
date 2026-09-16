@@ -3,7 +3,7 @@
 #' Call once inside `server()` with the manager and ID used by
 #' [oauth_connections_ui()]. The returned methods select stored connections by
 #' opaque IDs and recheck the local owner for every operation. Tokens are kept
-#' on the server and are not returned by summaries or test exports.
+#' on the server and are not returned by summaries.
 #'
 #' @param id Module ID shared with [oauth_connections_ui()].
 #' @param manager Configuration from [oauth_connections()].
@@ -37,10 +37,9 @@
 #'     provider text. An ended owner is reported as `owner_unavailable`.
 #' @details
 #' References expire with this Shiny session even when their stored grants survive.
-#' A new session obtains new references after owner verification. The existing
-#' module never holds managed tokens, so its refresh observers cannot compete with
-#' the manager. Refresh uses the store's revision and exclusive claim and preserves
-#' the original authentication time and retention expiry.
+#' A new session obtains new references after owner verification. The manager
+#' coordinates refresh across its connections. Refresh preserves the original
+#' authentication time and retention expiry.
 #' Reactive connection reads also recheck expiry at `refresh_check_interval_ms`,
 #' including references used without `connections()` or `errors()`. These checks
 #' notify dependent expressions when lifecycle state changes; unchanged polling
@@ -70,10 +69,7 @@
 #'
 #' Use this API inside its owning session's reactive context. Session setup
 #' requires a matching HTTP Origin on the Shiny request. Raw HTTP routes cannot
-#' import credentials or select an owner. This initial manager supports one R
-#' process. Local browser tests cover two-site retention, account login/logout
-#' and switching, and independent refresh using synthetic providers. Independent
-#' external SMART application interoperability remains a separate validation gate.
+#' import credentials or select an owner. The manager supports one R process.
 #' @examples
 #' \dontrun{
 #' # Outside server(), using clients with resource_bases already configured:

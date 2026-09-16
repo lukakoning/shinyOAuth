@@ -169,8 +169,7 @@ whether the user is authenticated.
 \item \code{auth[["set_browser_token"]]()}: asks the browser to establish its binding
 when missing. The token becomes available after the browser reports it
 back to Shiny. An existing token is left unchanged.
-\item \code{auth[["clear_browser_token"]]()}: clears the cookie, local record, and reactive value,
-for example when resetting browser setup in a custom integration.
+\item \code{auth[["clear_browser_token"]]()}: clears the browser binding.
 \code{request_login()} manages cookie setup automatically, and \code{logout()}
 handles cookie rotation when ending a session.
 }

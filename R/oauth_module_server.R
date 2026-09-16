@@ -200,8 +200,7 @@
 #'   - `auth[["set_browser_token"]]()`: asks the browser to establish its binding
 #'     when missing. The token becomes available after the browser reports it
 #'     back to Shiny. An existing token is left unchanged.
-#'   - `auth[["clear_browser_token"]]()`: clears the cookie, local record, and reactive value,
-#'     for example when resetting browser setup in a custom integration.
+#'   - `auth[["clear_browser_token"]]()`: clears the browser binding.
 #'     `request_login()` manages cookie setup automatically, and `logout()`
 #'     handles cookie rotation when ending a session.
 #'

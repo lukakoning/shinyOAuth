@@ -26,8 +26,7 @@
 #' Call `[["is_usable"]]()`, `[["summary"]]()` and `[["request"]]()` in the owning session's
 #' reactive context. If the connection cannot be resolved, `[["is_usable"]]()` returns
 #' `FALSE`; `[["summary"]]()` and `[["request"]]()` raise an error. The ID is read-only and
-#' cloning is disabled. The class generator is internal; the public factories
-#' establish the session binding required by applications.
+#' cloning is disabled.
 #' Managed resource and status reads do not count as owner activity. Record user
 #' actions with the manager's `touch()` method in an input event handler; automatic
 #' reactive updates must not prolong an idle owner's session.
@@ -101,7 +100,6 @@ OAuthConnection <- R6::R6Class(
     #' Initialize a reference. This constructor is for internal use;
     #' applications should use [oauth_connection()] or the manager's
     #' `connection(id)` method to establish session ownership.
-    #' Calling it again on an initialized reference is an error.
     #' @param id Opaque character string identifying the reference.
     #' @param client The [OAuthClient] to bind to this reference.
     #' @param resolve Internal function with no arguments that enforces session
@@ -137,11 +135,10 @@ OAuthConnection <- R6::R6Class(
       )
     },
     #' @description
-    #' Refresh a connection created by [oauth_connections_server()] under the
-    #' manager's exclusive store claim. The manager rechecks the owner and current
-    #' record before installing replacement credentials. References created with
-    #' [oauth_connection()] use their existing module's refresh lifecycle and
-    #' cannot invoke this method.
+    #' Refresh a connection created by [oauth_connections_server()]. The manager
+    #' coordinates refresh and verifies ownership before updating credentials.
+    #' References created with [oauth_connection()] use their existing module's
+    #' refresh lifecycle and cannot invoke this method.
     #' @param scopes Optional non-empty character vector requesting fewer
     #'   permissions for this connection, or `NULL` (default). Scopes must be
     #'   covered by the current grant and client configuration, and retain the

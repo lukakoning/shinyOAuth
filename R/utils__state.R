@@ -30,6 +30,7 @@
 #'   and consume the single-use state entry before success is final. Failures
 #'   are still audited.
 #' @keywords internal
+#' @noRd
 state_payload_decrypt_validate <- function(
   client,
   encrypted_payload,
@@ -714,7 +715,7 @@ payload_requested_max_age <- function(payload) {
 
 #' Verify encrypted state payload freshness
 #'
-#' Used by [state_payload_decrypt_validate()].
+#' Used by `state_payload_decrypt_validate()`.
 #'
 #' @param client OAuth client carrying the payload age policy.
 #' @param payload Decrypted state payload list.
@@ -759,7 +760,7 @@ payload_verify_issued_at <- function(client, payload) {
 
 #' Verify encrypted state payload client binding
 #'
-#' Used by [state_payload_decrypt_validate()].
+#' Used by `state_payload_decrypt_validate()`.
 #'
 #' @param client OAuth client expected to match the payload.
 #' @param payload Decrypted state payload list.
@@ -882,7 +883,7 @@ payload_verify_client_binding <- function(client, payload) {
 #'
 #' Used when the caller must validate browser-bound data before burning the
 #' single-use state entry. Single-use enforcement must still happen later via
-#' [state_store_get_remove()].
+#' `state_store_get_remove()`.
 #'
 #' @param client [OAuthClient] instance
 #' @param state Plain (decrypted) state string used as the logical key
@@ -995,6 +996,7 @@ state_store_get <- function(client, state, shiny_session = NULL) {
 #' @return Validated state-store value list. On failure this function raises
 #'   `err_invalid_state()` instead of returning a partial result.
 #' @keywords internal
+#' @noRd
 state_store_get_remove <- function(client, state, shiny_session = NULL) {
   S7::check_is_S7(client, class = OAuthClient)
   # Validate state early and emit audited error instead of raw assertion

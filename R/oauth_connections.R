@@ -43,8 +43,8 @@
 #'   `"account"` uses a trusted local application login. Retention does not request
 #'   refresh tokens or extend provider authorization.
 #' @param store A store from [oauth_connection_store_memory()]. Required for
-#'   retained modes; session-only mode creates a memory store by default. This
-#'   initial manager supports one R process and rejects external adapter claims.
+#'   retained modes; session-only mode creates a memory store by default. Only
+#'   the supplied memory store in one R process is supported.
 #' @param owner_policy [oauth_browser_owner()] or [oauth_account_owner()] matching the
 #'   retained mode. Must be `NULL` for session-only retention.
 #' @param keys Named list with `credentials` and `owner`, each a deployment-held

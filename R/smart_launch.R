@@ -25,13 +25,13 @@
 #'   bounded by owner expiry; the handoff deadline does not shorten consent time.
 #' @return A plain route configuration list, with no credentials or live state.
 #' @details
-#' The initial implementation supports top-level GET entry with browser retention
-#' in one R process. Account/session-only retention and iframe deployments are
-#' not supported for EHR entry yet. The ordinary standalone manager remains usable
-#' with its existing retention choices. Up to eight unconsumed launch records are
-#' retained per browser owner across all of a manager's launch routes, with a
-#' total limit of 1,000 per manager. Further entries are rejected without evicting
-#' existing tickets. Consuming or expiring a ticket releases its capacity.
+#' EHR entry supports top-level GET navigation with browser retention in one R
+#' process. Account/session-only retention and iframe deployments are not supported
+#' for EHR entry. Standalone launch supports all manager retention choices.
+#' Up to eight unconsumed launch records are retained per browser owner across all
+#' of a manager's launch routes, with a total limit of 1,000 per manager. Further
+#' entries are rejected without evicting existing tickets. Consuming or expiring
+#' a ticket releases its capacity.
 #' Raw query size is limited to 8 KiB, launch handles to
 #' 2 KiB, and the only allowed initial parameters are `iss` and `launch`.
 #'

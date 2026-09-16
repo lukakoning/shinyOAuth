@@ -362,8 +362,8 @@ or network client, and callers can obtain additional owners, so these quotas
 do not replace those deployment controls. Use the proxy's verified client
 address for rate limits and size the owner registry for the admitted traffic.
 
-The current EHR entry implementation requires **top-level browser navigation,
-browser retention with a Lax owner cookie, and one R process**. Embedded iframe
+EHR launch requires **top-level browser navigation, browser retention with a
+Lax owner cookie, and one R process**. Embedded iframe
 launch is not supported. A route can allow multiple named clients with distinct
 FHIR bases. Separate registrations for the same base need separate entry routes.
 
@@ -380,14 +380,6 @@ interchangeable. To support both standalone and EHR entry, configure separate
 clients for those flows.
 
 ## Other registration and refresh options
-
-For SMART asymmetric registrations, code exchange and refresh identify the
-client through the signed assertion and omit form-body `client_id`. This follows
-the [App Launch token parameter table](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#obtain-access-token)
-and its [asymmetric worked example](https://hl7.org/fhir/smart-app-launch/STU2.2/example-app-launch-asymmetric-auth.html#retrieve-access-token).
-The signature-verification text also describes checking a supplied client ID;
-this package chooses the table's request shape. Ordinary OAuth JWT client
-authentication retains its existing serialization.
 
 Choose authentication to match the server registration:
 
@@ -445,20 +437,3 @@ Outgoing `authorization_method = "POST"` is available when discovery advertises
 controls the returning callback. The default example uses GET authorization
 and query callbacks. SMART composition with JAR, PAR, JARM, DPoP and mTLS is not
 currently exposed through `smart_client()`; consult its reference for scope.
-
-## Testing with fixtures and the Docker sandbox
-
-The repository has browser integration tests for standalone and EHR launch,
-multiple retained connections, supported registration types, refresh, context
-and outgoing POST. Independent cryptographic conformance tests cover client
-assertions. See the [coverage map](https://github.com/lukakoning/shinyOAuth/blob/2200f1bf7d44670a2c7f70a297b4cde787a3cc93/integration/smart/coverage.md)
-for recorded results and runner commands.
-
-The official `smart-on-fhir/smart-dev-sandbox` Docker setup is also included.
-The pinned launcher advertises asymmetric authentication but omits required
-signing-algorithm metadata, so it currently fails strict SMART discovery.
-Passing its diagnostic checks does **not** establish a working external SMART
-authorization flow. Use the [sandbox guide](https://github.com/lukakoning/shinyOAuth/blob/2200f1bf7d44670a2c7f70a297b4cde787a3cc93/integration/smart/sandbox.md)
-for setup and the compatibility gate; external app interoperability remains an
-open release checkpoint. Do not bypass metadata validation to make this example
-appear compatible.
