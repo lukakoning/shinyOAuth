@@ -113,7 +113,9 @@ cannot provide a Secure, host-prefixed owner cookie.</p></dd>
 <dd><p>Maximum owner-registry entries per manager, a positive
 whole number. Browser mode counts browsers that authorize a service. A
 separate provisional visitor pool has the same limit; its oldest entries
-may be replaced and expire after at most five minutes. Account mode counts
+may be replaced and expire after at most five minutes, unless a live
+authorization transaction protects them until its expiry. When all visitor
+entries have pending authorizations, new visitors are rejected. Account mode counts
 authentication generations, including retired generations until their local
 reauthentication deadline. This limit is independent of the connection
 store's <code>max_entries</code>.</p></dd>
