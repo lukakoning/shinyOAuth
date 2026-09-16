@@ -224,25 +224,6 @@ Posit Connect Cloud.
 - [`OAuthConnection`](https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.md)
   : OAuthConnection R6 class
 
-## Multiple retained connections
-
-- [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
-  [`print(`*`<OAuthConnections>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
-  : Configure several independently managed OAuth connections
-- [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
-  : Handle callbacks and establish the connection owner's browser
-  session
-- [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
-  : Connect, restore and use several OAuth authorizations in a Shiny
-  session
-- [`oauth_connection_store_memory()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md)
-  [`print(`*`<OAuthConnectionStore>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md)
-  : Create a process-local store for retained OAuth connections
-- [`oauth_browser_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
-  [`oauth_account_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
-  [`print(`*`<OAuthOwnerPolicy>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
-  : Configure ownership of retained OAuth connections
-
 ## Provider configuration
 
 ### Generic
@@ -274,19 +255,6 @@ Posit Connect Cloud.
   : Create a Slack OAuthProvider (via OIDC discovery)
 - [`oauth_provider_spotify()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.md)
   : Create a Spotify OAuthProvider
-
-## SMART on FHIR
-
-- [`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md)
-  **\[experimental\]** : Discover SMART on FHIR server metadata
-- [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
-  **\[experimental\]** : Configure a SMART on FHIR app registration
-- [`smart_launch_route()`](https://lukakoning.github.io/shinyOAuth/reference/smart_launch_route.md)
-  **\[experimental\]** : Register a SMART EHR launch entry route
-- [`smart_context()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
-  [`smart_patient()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
-  [`smart_fhir_user()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
-  **\[experimental\]** : Read a connection's current SMART context
 
 ## Provider-specific client settings
 
@@ -352,6 +320,38 @@ Posit Connect Cloud.
   : Create a custom state store or signing-key cache
 - [`error_on_softened()`](https://lukakoning.github.io/shinyOAuth/reference/error_on_softened.md)
   **\[deprecated\]** : Check selected debugging options (deprecated)
+
+## Multiple retained connections
+
+- [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
+  [`print(`*`<OAuthConnections>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
+  : Configure several independently managed OAuth connections
+- [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
+  : Handle callbacks and establish the connection owner's browser
+  session
+- [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
+  : Connect, restore and use several OAuth authorizations in a Shiny
+  session
+- [`oauth_connection_store_memory()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md)
+  [`print(`*`<OAuthConnectionStore>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md)
+  : Create a process-local store for retained OAuth connections
+- [`oauth_browser_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+  [`oauth_account_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+  [`print(`*`<OAuthOwnerPolicy>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+  : Configure ownership of retained OAuth connections
+
+## SMART on FHIR
+
+- [`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md)
+  **\[experimental\]** : Discover SMART on FHIR server metadata
+- [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
+  **\[experimental\]** : Configure a SMART on FHIR app registration
+- [`smart_launch_route()`](https://lukakoning.github.io/shinyOAuth/reference/smart_launch_route.md)
+  **\[experimental\]** : Register a SMART EHR launch entry route
+- [`smart_context()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+  [`smart_patient()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+  [`smart_fhir_user()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+  **\[experimental\]** : Read a connection's current SMART context
 
 # Articles
 
