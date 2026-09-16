@@ -112,24 +112,24 @@ smart_client <- function(
   redirect_uri,
   scopes,
   required_scopes = scopes,
+  launch = c("standalone", "ehr"),
+  identity = c("none", "openid", "fhirUser"),
+  allow_v1_scopes = FALSE,
+  online_access_policy = c("online_only", "allow_offline"),
   token_auth_style = c("public", "header", "private_key_jwt"),
   client_secret = character(),
   client_assertion_private_key = NULL,
   client_assertion_private_key_kid = NULL,
   client_assertion_alg = "RS384",
-  launch = c("standalone", "ehr"),
-  identity = c("none", "openid", "fhirUser"),
-  allow_v1_scopes = FALSE,
+  authorization_method = "GET",
   response_mode = NULL,
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(),
+  initial_expires_in_fallback = NULL,
+  label = "FHIR server",
   state_store = cachem::cache_mem(max_age = 300),
   state_key = random_urlsafe(128),
-  state_payload_max_age = 300,
-  label = "FHIR server",
-  authorization_method = "GET",
-  initial_expires_in_fallback = NULL,
-  online_access_policy = c("online_only", "allow_offline")
+  state_payload_max_age = 300
 ) {
   online_access_policy <- match.arg(online_access_policy)
   token_auth_style <- match.arg(token_auth_style)

@@ -10,24 +10,24 @@ smart_client(
   redirect_uri,
   scopes,
   required_scopes = scopes,
+  launch = c("standalone", "ehr"),
+  identity = c("none", "openid", "fhirUser"),
+  allow_v1_scopes = FALSE,
+  online_access_policy = c("online_only", "allow_offline"),
   token_auth_style = c("public", "header", "private_key_jwt"),
   client_secret = character(),
   client_assertion_private_key = NULL,
   client_assertion_private_key_kid = NULL,
   client_assertion_alg = "RS384",
-  launch = c("standalone", "ehr"),
-  identity = c("none", "openid", "fhirUser"),
-  allow_v1_scopes = FALSE,
+  authorization_method = "GET",
   response_mode = NULL,
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(),
+  initial_expires_in_fallback = NULL,
+  label = "FHIR server",
   state_store = cachem::cache_mem(max_age = 300),
   state_key = random_urlsafe(128),
-  state_payload_max_age = 300,
-  label = "FHIR server",
-  authorization_method = "GET",
-  initial_expires_in_fallback = NULL,
-  online_access_policy = c("online_only", "allow_offline")
+  state_payload_max_age = 300
 )
 }
 \arguments{
@@ -51,6 +51,29 @@ closed, including during token acceptance and refresh.}
 subset to accept reduced grants as limited connections. Identity scopes are
 always required when identity is enabled. Unsupported comparisons fail closed.}
 
+\item{launch}{\code{"standalone"} or \code{"ehr"}, matching the registered app flow.}
+
+\item{identity}{\code{"none"} (default), \code{"openid"} for a validated OIDC subject, or
+\code{"fhirUser"} to also require the user's FHIR reference. \code{"openid"} does not
+interpret a \code{fhirUser} claim or populate \code{smart_context()[["fhirUser"]]}.
+A validated \code{fhirUser}
+claim may be an absolute URL or a supported resource instance reference
+relative to this client's FHIR base, such as \code{"Practitioner/example"} or
+\code{"Practitioner/example/_history/2"}. Versioned references retain their version.}
+
+\item{allow_v1_scopes}{Explicit compatibility flag enabling \code{.read}, \code{.write} and
+\verb{.*}. Requesting these spellings requires \code{permission-v1}; requesting v2
+spellings requires \code{permission-v2}, including when this flag is enabled.
+Default \code{FALSE}.}
+
+\item{online_access_policy}{\code{"online_only"} (default) or \code{"allow_offline"}.
+SMART permits an \code{online_access} request to negotiate \code{offline_access}.
+Opt in to \code{"allow_offline"} to accept that longer-lived permission in place
+of required \code{online_access}. The default rejects this substitution, even
+when \code{online_access} is optional. Explicitly requesting \code{offline_access}
+also authorizes offline persistence. Granted scopes retain their actual
+spelling; refresh responses cannot escalate an existing online grant.}
+
 \item{token_auth_style}{Registration type: \code{"public"}, \code{"header"} for a
 symmetric secret using HTTP Basic, or \code{"private_key_jwt"}. Selection must
 agree with advertised capabilities. Confidential methods must also agree
@@ -69,20 +92,11 @@ signing key and registered key ID for asymmetric authentication; see
 \item{client_assertion_alg}{\code{"RS384"} (default) or \code{"ES384"}; the key and server
 metadata must support the selected algorithm. Other styles omit assertions.}
 
-\item{launch}{\code{"standalone"} or \code{"ehr"}, matching the registered app flow.}
-
-\item{identity}{\code{"none"} (default), \code{"openid"} for a validated OIDC subject, or
-\code{"fhirUser"} to also require the user's FHIR reference. \code{"openid"} does not
-interpret a \code{fhirUser} claim or populate \code{smart_context()[["fhirUser"]]}.
-A validated \code{fhirUser}
-claim may be an absolute URL or a supported resource instance reference
-relative to this client's FHIR base, such as \code{"Practitioner/example"} or
-\code{"Practitioner/example/_history/2"}. Versioned references retain their version.}
-
-\item{allow_v1_scopes}{Explicit compatibility flag enabling \code{.read}, \code{.write} and
-\verb{.*}. Requesting these spellings requires \code{permission-v1}; requesting v2
-spellings requires \code{permission-v2}, including when this flag is enabled.
-Default \code{FALSE}.}
+\item{authorization_method}{\code{"GET"} (default) or \code{"POST"} for the outgoing
+browser request. POST requires the discovered \code{authorize-post} capability
+and uses the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}.
+POST supports longer browser requests but retains the scope comparison
+limits described under \code{scopes}.}
 
 \item{response_mode}{\code{NULL}, \code{"query"}, or \code{"form_post"}. Advertised response
 modes, when present, must allow the selection.}
@@ -90,29 +104,15 @@ modes, when present, must allow the selection.}
 \item{authorization_server_mode, authorization_server_redirect_uris}{See
 \code{\link[=oauth_client]{oauth_client()}}. Multiple clients use distinct registered callback routes.}
 
-\item{state_store, state_key, state_payload_max_age}{See \code{\link[=oauth_client]{oauth_client()}}.}
-
-\item{label}{Display label, default \code{"FHIR server"}; no credentials or context.}
-
-\item{authorization_method}{\code{"GET"} (default) or \code{"POST"} for the outgoing
-browser request. POST requires the discovered \code{authorize-post} capability
-and uses the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}.
-POST supports longer browser requests but retains the scope comparison
-limits described under \code{scopes}.}
-
 \item{initial_expires_in_fallback}{Optional positive lifetime in seconds, supplied by
 the authorization server out of band for initial access tokens. Used only
 when an initial response omits \code{expires_in}; an explicit response value
 takes precedence. Default \code{NULL} requires the response to include a lifetime.
 This does not apply to refresh responses or change ordinary OAuth defaults.}
 
-\item{online_access_policy}{\code{"online_only"} (default) or \code{"allow_offline"}.
-SMART permits an \code{online_access} request to negotiate \code{offline_access}.
-Opt in to \code{"allow_offline"} to accept that longer-lived permission in place
-of required \code{online_access}. The default rejects this substitution, even
-when \code{online_access} is optional. Explicitly requesting \code{offline_access}
-also authorizes offline persistence. Granted scopes retain their actual
-spelling; refresh responses cannot escalate an existing online grant.}
+\item{label}{Display label, default \code{"FHIR server"}; no credentials or context.}
+
+\item{state_store, state_key, state_payload_max_age}{See \code{\link[=oauth_client]{oauth_client()}}.}
 }
 \value{
 An \link{OAuthClient}, usable by the existing module or the separate
