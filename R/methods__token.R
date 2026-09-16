@@ -1220,7 +1220,13 @@ refresh_token_impl <- function(
             )
           }
 
-          # Validate token_type immediately after refresh, before any userinfo call.
+          # Validate credentials immediately after refresh, before any userinfo call.
+          if (!is_valid_access_token(tok[["access_token"]])) {
+            err_token(
+              "Token response access_token contains invalid characters",
+              context = list(phase = "refresh_token")
+            )
+          }
           verify_token_type_allowlist(oauth_client, tok)
 
           token_set <- list(

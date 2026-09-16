@@ -756,6 +756,9 @@ build_client_bearer_authorized_request <- function(
   oauth_client = NULL,
   dpop_nonce = NULL
 ) {
+  if (!is_valid_access_token(access_token)) {
+    err_input("access_token contains invalid characters")
+  }
   if (is.null(req)) {
     req <- httr2::request(url)
   }

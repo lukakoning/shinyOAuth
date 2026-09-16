@@ -2574,6 +2574,9 @@ swap_code_for_token_set <- function(
       if (!is_valid_string(token_set[["access_token"]])) {
         err_token("Token response missing access_token")
       }
+      if (!is_valid_access_token(token_set[["access_token"]])) {
+        err_token("Token response access_token contains invalid characters")
+      }
 
       # If ID token is required, verify it's present
       if (
@@ -2674,6 +2677,9 @@ verify_token_set <- function(
 
   if (!is.list(token_set) || length(token_set) == 0) {
     err_token("Invalid token set: must be a non-empty list")
+  }
+  if (!is_valid_access_token(token_set[["access_token"]])) {
+    err_token("Token response access_token contains invalid characters")
   }
   token_set <- smart_verify_token_response(client, token_set, is_refresh)
 

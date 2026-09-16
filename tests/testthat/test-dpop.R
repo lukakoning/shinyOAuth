@@ -140,20 +140,24 @@ test_that("DPoP iat remains valid after the 32-bit integer boundary", {
 test_that("resource_req rejects non-ASCII DPoP access tokens", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   cli <- make_dpop_test_client(prov)
-  tok <- OAuthToken(
-    access_token = "caf\u00e9",
-    token_type = "DPoP",
-    userinfo = list()
+  expect_error(
+    OAuthToken(
+      access_token = "caf\u00e9",
+      token_type = "DPoP",
+      userinfo = list()
+    ),
+    "access_token contains invalid characters"
   )
 
   expect_error(
     resource_req(
-      token = tok,
+      token = "caf\u00e9",
+      token_type = "DPoP",
       url = "https://resource.example.com/api",
       oauth_client = cli
     ),
     class = "shinyOAuth_input_error",
-    regexp = "ASCII"
+    regexp = "invalid characters"
   )
 })
 

@@ -203,6 +203,9 @@ oauth_token_validate <- function(self) {
   if (is.na(self@access_token) || !nzchar(trimws(self@access_token))) {
     return("OAuthToken: access_token must be a non-empty string")
   }
+  if (!is_valid_access_token(self@access_token)) {
+    return("OAuthToken: access_token contains invalid characters")
+  }
 
   for (field in c(
     "token_type",
