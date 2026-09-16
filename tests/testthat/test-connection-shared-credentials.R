@@ -292,8 +292,13 @@ for (outcome in c("not_consumed", "possibly_consumed", "consumed")) {
 
 test_that("successful revocation retires byte-identical credentials across owners", {
   f <- manager_test_fixture()
-  local_mocked_bindings(revoke_token = function(client, token, which, ...) {
-    list(supported = TRUE, revoked = identical(which, "access"))
+  local_mocked_bindings(revoke_token = function(
+    client,
+    token,
+    token_kind,
+    ...
+  ) {
+    list(supported = TRUE, revoked = identical(token_kind, "access"))
   })
   peer_session <- manager_test_session(manager_test_cookie(f))
   withr::defer(peer_session[["close"]]())

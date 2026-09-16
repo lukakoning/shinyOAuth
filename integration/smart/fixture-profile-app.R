@@ -10,7 +10,7 @@ smart_profile_app <- function(
   authorization_method = "GET",
   extra_scopes = character(),
   listen_port = NULL,
-  refresh_check_interval = 10000,
+  refresh_check_interval_ms = 10000,
   expected_context = NULL,
   http_timeout = 5
 ) {
@@ -98,7 +98,7 @@ smart_profile_app <- function(
       "health",
       manager,
       async = async,
-      refresh_check_interval_ms = refresh_check_interval
+      refresh_check_interval_ms = refresh_check_interval_ms
     )
     result <- shiny::reactiveVal("ready")
     revision <- shiny::reactiveVal(0L)

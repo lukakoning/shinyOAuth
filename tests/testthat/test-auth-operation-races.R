@@ -31,8 +31,8 @@ testthat::test_that("logout invalidates a pending async login", {
       testthat::with_mocked_bindings(
         prepare_client_for_worker = function(client) client,
         async_dispatch = function(...) login[["promise"]],
-        revoke_token = function(oauth_client, token, which, ...) {
-          revoked <<- c(revoked, which)
+        revoke_token = function(oauth_client, token, token_kind, ...) {
+          revoked <<- c(revoked, token_kind)
           invisible(NULL)
         },
         .package = "shinyOAuth",
@@ -80,8 +80,11 @@ testthat::test_that("logout invalidates pending refresh and releases its flag", 
     expr = {
       testthat::with_mocked_bindings(
         refresh_token = function(...) refresh[["promise"]],
-        revoke_token = function(oauth_client, token, which, ...) {
-          revoked <<- c(revoked, paste(token@access_token, which, sep = ":"))
+        revoke_token = function(oauth_client, token, token_kind, ...) {
+          revoked <<- c(
+            revoked,
+            paste(token@access_token, token_kind, sep = ":")
+          )
           invisible(NULL)
         },
         .package = "shinyOAuth",
@@ -278,7 +281,7 @@ testthat::test_that("reauthentication invalidates a pending refresh", {
     expr = {
       testthat::with_mocked_bindings(
         refresh_token = function(...) refresh[["promise"]],
-        revoke_token = function(oauth_client, token, which, ...) {
+        revoke_token = function(oauth_client, token, token_kind, ...) {
           if (identical(token@access_token, "stale")) {
             stale_revocations <<- stale_revocations + 1L
           }
