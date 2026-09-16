@@ -28,7 +28,7 @@ minimal_client <- function(
     issuer = issuer,
     id_token_validation = TRUE,
     id_token_required = TRUE,
-    allowed_algs = c("RS256", "ES256")
+    id_token_allowed_algs = c("RS256", "ES256")
   )
   shinyOAuth::oauth_client(
     prov,
@@ -116,7 +116,7 @@ test_that("HS* configuration enforces RFC 7518 HMAC secret lengths by alg", {
       issuer = "https://issuer.example.com",
       id_token_validation = TRUE,
       id_token_required = TRUE,
-      allowed_algs = c("HS512")
+      id_token_allowed_algs = c("HS512")
     )
 
     expect_error(

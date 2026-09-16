@@ -17,7 +17,7 @@ provider <- oauth_provider_oidc_discover(
   name = "example-idp",
   id_token_validation = TRUE,
   # Allow only asymmetric algs by default; include "HS256" only if you use it
-  allowed_algs = c("RS256", "ES256")
+  id_token_allowed_algs = c("RS256", "ES256")
 )
 
 client <- oauth_client(

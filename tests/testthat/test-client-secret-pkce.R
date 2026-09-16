@@ -20,7 +20,7 @@ test_that("client_secret optional when body auth + PKCE", {
     jwks_cache = cachem::cache_mem(max_age = 60),
     jwks_pins = character(),
     jwks_pin_mode = "any",
-    allowed_algs = c("RS256", "ES256"),
+    id_token_allowed_algs = c("RS256", "ES256"),
     leeway = 60
   )
 
@@ -58,7 +58,7 @@ test_that("client_secret optional when public auth", {
     jwks_cache = cachem::cache_mem(max_age = 60),
     jwks_pins = character(),
     jwks_pin_mode = "any",
-    allowed_algs = c("RS256", "ES256"),
+    id_token_allowed_algs = c("RS256", "ES256"),
     leeway = 60
   )
 
@@ -96,7 +96,7 @@ test_that("client_secret required when body auth without PKCE", {
     jwks_cache = cachem::cache_mem(max_age = 60),
     jwks_pins = character(),
     jwks_pin_mode = "any",
-    allowed_algs = c("RS256", "ES256"),
+    id_token_allowed_algs = c("RS256", "ES256"),
     leeway = 60
   )
 
@@ -134,7 +134,7 @@ test_that("client_secret required when header auth", {
     jwks_cache = cachem::cache_mem(max_age = 60),
     jwks_pins = character(),
     jwks_pin_mode = "any",
-    allowed_algs = c("RS256", "ES256"),
+    id_token_allowed_algs = c("RS256", "ES256"),
     leeway = 60
   )
 
@@ -174,7 +174,7 @@ test_that("HS* allowed_algs + ID token validation fails fast without strong secr
     jwks_cache = cachem::cache_mem(max_age = 60),
     jwks_pins = character(),
     jwks_pin_mode = "any",
-    allowed_algs = c("HS256"),
+    id_token_allowed_algs = c("HS256"),
     leeway = 60
   )
 
@@ -234,7 +234,7 @@ test_that("HS* allowed_algs + ID token validation fails fast without strong secr
     jwks_cache = cachem::cache_mem(max_age = 60),
     jwks_pins = character(),
     jwks_pin_mode = "any",
-    allowed_algs = c("HS256"),
+    id_token_allowed_algs = c("HS256"),
     leeway = 60
   )
 

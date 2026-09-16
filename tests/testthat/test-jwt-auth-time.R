@@ -27,7 +27,7 @@ mk_client <- function(extra_auth_params = list()) {
     issuer = "https://issuer.example.com",
     id_token_validation = TRUE,
     id_token_required = TRUE,
-    allowed_algs = c("RS256", "ES256"),
+    id_token_allowed_algs = c("RS256", "ES256"),
     leeway = 5,
     extra_auth_params = extra_auth_params
   )
@@ -58,7 +58,7 @@ test_that("oauth_provider validates extra_auth_params$max_age early", {
         issuer = "https://issuer.example.com",
         id_token_validation = TRUE,
         id_token_required = TRUE,
-        allowed_algs = c("RS256", "ES256"),
+        id_token_allowed_algs = c("RS256", "ES256"),
         extra_auth_params = list(max_age = bad_value)
       ),
       regexp = "extra_auth_params\\$max_age"

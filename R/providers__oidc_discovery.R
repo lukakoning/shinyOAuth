@@ -88,7 +88,7 @@
 #'   `"private_key_jwt"`) and mTLS methods (`"tls_client_auth"`,
 #'   `"self_signed_tls_client_auth"`) must be selected explicitly. See
 #'   [oauth_provider()] for the supported methods and their credentials.
-#' @param allowed_algs Character vector of allowed ID token signing algorithms.
+#' @param id_token_allowed_algs Character vector of allowed ID token signing algorithms.
 #'  Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
 #'  (ES*), Ed25519, and legacy EdDSA. If the discovery document advertises
 #'  supported algorithms, the intersection of advertised and caller-provided
@@ -122,6 +122,7 @@
 #'
 #' @example inst/examples/oauth_provider.R
 #'
+#' @param allowed_algs Compatibility alias for `id_token_allowed_algs`. Supply only one spelling.
 #' @export
 oauth_provider_oidc_discover <- function(
   issuer,
@@ -130,7 +131,7 @@ oauth_provider_oidc_discover <- function(
   use_nonce = TRUE,
   id_token_validation = TRUE,
   token_auth_style = NULL,
-  allowed_algs = c(
+  id_token_allowed_algs = c(
     "RS256",
     "RS384",
     "RS512",
@@ -143,8 +144,13 @@ oauth_provider_oidc_discover <- function(
   allowed_token_types = c('Bearer'),
   jwks_host_issuer_match = TRUE,
   issuer_match = c("url", "host", "none"),
-  ...
+  ...,
+  allowed_algs = NULL
 ) {
+  allowed_algs <- resolve_argument_alias(
+    id_token_allowed_algs, allowed_algs, missing(id_token_allowed_algs), missing(allowed_algs),
+    "id_token_allowed_algs", "allowed_algs"
+  )
   issuer_match <- match.arg(issuer_match)
   original_input <- issuer
   issuer <- .discover_normalize_issuer_input(issuer)

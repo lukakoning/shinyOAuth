@@ -25,7 +25,7 @@ test_that("login flow: get_userinfo is called after validate_id_token", {
     userinfo_id_token_match = FALSE,
     token_auth_style = "body",
     jwks_cache = cachem::cache_mem(max_age = 60),
-    allowed_algs = c("RS256"),
+    id_token_allowed_algs = c("RS256"),
     allowed_token_types = c("Bearer")
   )
 
@@ -121,7 +121,7 @@ test_that("handle_callback binds userinfo to a nonce-validated id_token even whe
     userinfo_id_token_match = FALSE,
     token_auth_style = "body",
     jwks_cache = cachem::cache_mem(max_age = 60),
-    allowed_algs = c("RS256"),
+    id_token_allowed_algs = c("RS256"),
     allowed_token_types = c("Bearer")
   )
 
@@ -245,7 +245,7 @@ test_that("login flow: get_userinfo not called when ID token validation fails", 
     userinfo_id_token_match = FALSE,
     token_auth_style = "body",
     jwks_cache = cachem::cache_mem(max_age = 60),
-    allowed_algs = c("RS256"),
+    id_token_allowed_algs = c("RS256"),
     allowed_token_types = c("Bearer")
   )
 
@@ -674,7 +674,7 @@ test_that("handle_callback: userinfo/id_token match IS performed after userinfo 
     userinfo_id_token_match = TRUE, # This is the key setting
     token_auth_style = "body",
     jwks_cache = cachem::cache_mem(max_age = 60),
-    allowed_algs = c("RS256"),
+    id_token_allowed_algs = c("RS256"),
     allowed_token_types = c("Bearer")
   )
 
@@ -778,7 +778,7 @@ test_that("handle_callback: userinfo/id_token mismatch aborts login", {
     userinfo_id_token_match = TRUE,
     token_auth_style = "body",
     jwks_cache = cachem::cache_mem(max_age = 60),
-    allowed_algs = c("RS256"),
+    id_token_allowed_algs = c("RS256"),
     allowed_token_types = c("Bearer")
   )
 

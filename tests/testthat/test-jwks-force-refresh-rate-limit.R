@@ -22,7 +22,7 @@ test_that("Unknown kid triggers at most one forced JWKS refresh per interval", {
     auth_url = paste0(base, "/auth"),
     token_url = paste0(base, "/token"),
     issuer = base,
-    allowed_algs = c("RS256"),
+    id_token_allowed_algs = c("RS256"),
     jwks_cache = cachem::cache_mem(max_age = 60)
   )
   cli <- oauth_client(
@@ -103,7 +103,7 @@ test_that("ID token verification refreshes rotated key material with the same ki
     auth_url = paste0(issuer, "/authorize"),
     token_url = paste0(issuer, "/token"),
     issuer = issuer,
-    allowed_algs = "RS256",
+    id_token_allowed_algs = "RS256",
     jwks_cache = cachem::cache_mem(max_age = 3600)
   )
   client <- oauth_client(
@@ -166,7 +166,7 @@ test_that("RSA to EC rotations refresh absent and retained kid candidates once",
         issuer = "https://example.com",
         auth_url = "https://example.com/auth",
         token_url = "https://example.com/token",
-        allowed_algs = c("RS256", "ES256"),
+        id_token_allowed_algs = c("RS256", "ES256"),
         jwks_cache = cachem::cache_mem()
       )
       cli <- oauth_client(

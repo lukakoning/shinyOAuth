@@ -7,7 +7,7 @@ test_that("RSA-signed multi-audience ID tokens allow absent azp with explicit tr
     issuer = "https://example.com",
     auth_url = "https://example.com/auth",
     token_url = "https://example.com/token",
-    allowed_algs = "RS256",
+    id_token_allowed_algs = "RS256",
     use_nonce = FALSE
   )
   client <- oauth_client(

@@ -116,7 +116,7 @@ make_test_provider <- function(
     jwks_cache = cachem::cache_mem(max_age = 60),
     jwks_pins = character(),
     jwks_pin_mode = "any",
-    allowed_algs = c("RS256", "ES256"),
+    id_token_allowed_algs = c("RS256", "ES256"),
     # Disable token_type enforcement in test helper; tested separately in test-token-type-policy.R
     allowed_token_types = character(),
     leeway = 60

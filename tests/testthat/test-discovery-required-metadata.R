@@ -185,7 +185,7 @@ test_that("OIDC discovery negotiates from validated algorithm metadata", {
 
   provider <- oauth_provider_oidc_discover(
     issuer = metadata[["issuer"]],
-    allowed_algs = c("ES256", "EdDSA")
+    id_token_allowed_algs = c("ES256", "EdDSA")
   )
 
   expect_identical(provider@allowed_algs, "ES256")

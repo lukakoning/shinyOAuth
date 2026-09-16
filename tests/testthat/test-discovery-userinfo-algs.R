@@ -35,7 +35,7 @@ test_that("discovery negotiates ID token and UserInfo algorithms independently",
   )
   prov <- oauth_provider_oidc_discover(
     issuer,
-    allowed_algs = c("RS256", "ES256"),
+    id_token_allowed_algs = c("RS256", "ES256"),
     userinfo_id_token_match = FALSE
   )
   expect_identical(prov@allowed_algs, "RS256")
@@ -53,7 +53,7 @@ test_that("discovery negotiates ID token and UserInfo algorithms independently",
   )
   restricted <- oauth_provider_oidc_discover(
     issuer,
-    allowed_algs = c("RS256", "ES256"),
+    id_token_allowed_algs = c("RS256", "ES256"),
     userinfo_allowed_algs = "RS256"
   )
   expect_length(restricted@userinfo_allowed_algs, 0L)

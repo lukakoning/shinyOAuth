@@ -36,8 +36,8 @@ OAuthProvider(
     isTRUE(id_token_required)),
   jwks_host_allow_only = NA_character_,
   userinfo_allowed_algs = NULL,
-  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519",
-    "EdDSA"),
+  id_token_allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512",
+    "Ed25519", "EdDSA"),
   allowed_token_types = "Bearer",
   leeway = getOption("shinyOAuth.leeway", 30),
   par_url = NA_character_,
@@ -61,7 +61,8 @@ OAuthProvider(
   endpoint_auth_metadata = list(),
   dpop_signing_alg_values_supported = character(0),
   mtls_endpoint_aliases = list(),
-  mtls_client_certificate_bound_access_tokens = FALSE
+  mtls_client_certificate_bound_access_tokens = FALSE,
+  allowed_algs = NULL
 )
 }
 \arguments{
@@ -256,7 +257,7 @@ single algorithm to enforce the client's registered UserInfo signing choice.
 An empty vector rejects all signed UserInfo algorithms.
 Unlabelled RSA keys follow the same binding policy as \code{allowed_algs}.}
 
-\item{allowed_algs}{Optional vector of allowed JWT algorithms for ID tokens.
+\item{id_token_allowed_algs}{Optional vector of allowed JWT algorithms for ID tokens.
 Use to restrict acceptable \code{alg} values on a per-provider basis. Supported
 asymmetric algorithms include \code{RS256}, \code{RS384}, \code{RS512}, \code{ES256},
 \code{ES384}, \code{ES512}, and \code{Ed25519} or legacy \code{EdDSA} with Ed25519 OKP keys (including \code{at_hash}
@@ -434,6 +435,8 @@ certificate-bound access tokens. This describes server capability; the
 client still has to opt into mTLS separately. When \code{TRUE}, token responses
 may include a \code{cnf} claim with an \code{x5t#S256} thumbprint that downstream
 requests must match with the same certificate.}
+
+\item{allowed_algs}{Compatibility alias for \code{id_token_allowed_algs}.}
 }
 \description{
 An \code{OAuthProvider} describes a service such as Google or GitHub: where users

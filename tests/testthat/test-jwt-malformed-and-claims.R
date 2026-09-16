@@ -44,7 +44,7 @@ mk_client <- function() {
     issuer = "https://issuer.example.com",
     id_token_validation = TRUE,
     id_token_required = TRUE,
-    allowed_algs = c("RS256", "ES256")
+    id_token_allowed_algs = c("RS256", "ES256")
   )
   shinyOAuth::oauth_client(
     prov,
@@ -539,7 +539,7 @@ test_that("signed HS256 exp boundary respects package leeway", {
     issuer = "https://issuer.example.com",
     id_token_validation = TRUE,
     id_token_required = TRUE,
-    allowed_algs = c("HS256"),
+    id_token_allowed_algs = c("HS256"),
     leeway = 120
   )
   client <- shinyOAuth::oauth_client(
@@ -689,7 +689,7 @@ test_that("validate_id_token accepts HS256 tokens with non-ASCII client_secret",
     issuer = "https://issuer.example.com",
     id_token_validation = TRUE,
     id_token_required = TRUE,
-    allowed_algs = c("HS256")
+    id_token_allowed_algs = c("HS256")
   )
   client <- shinyOAuth::oauth_client(
     prov,

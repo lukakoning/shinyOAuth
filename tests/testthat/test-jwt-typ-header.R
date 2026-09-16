@@ -20,7 +20,7 @@ test_that("validate_id_token rejects JWTs with invalid typ header", {
     auth_url = paste0(base, "/auth"),
     token_url = paste0(base, "/token"),
     issuer = base,
-    allowed_algs = c("RS256")
+    id_token_allowed_algs = c("RS256")
   )
   cli <- oauth_client(
     provider = prov,

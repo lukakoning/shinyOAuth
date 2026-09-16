@@ -39,7 +39,7 @@ test_that("validate_id_token still accepts valid JWS tokens (3 segments)", {
     auth_url = paste0(base, "/auth"),
     token_url = paste0(base, "/token"),
     issuer = base,
-    allowed_algs = c("RS256")
+    id_token_allowed_algs = c("RS256")
   )
   cli <- oauth_client(
     provider = prov,

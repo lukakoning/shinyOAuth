@@ -11,12 +11,13 @@ oauth_provider_oidc_discover(
   use_nonce = TRUE,
   id_token_validation = TRUE,
   token_auth_style = NULL,
-  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519",
-    "EdDSA"),
+  id_token_allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512",
+    "Ed25519", "EdDSA"),
   allowed_token_types = c("Bearer"),
   jwks_host_issuer_match = TRUE,
   issuer_match = c("url", "host", "none"),
-  ...
+  ...,
+  allowed_algs = NULL
 )
 }
 \arguments{
@@ -50,7 +51,7 @@ client registration. JWT methods (\code{"client_secret_jwt"},
 \code{"self_signed_tls_client_auth"}) must be selected explicitly. See
 \code{\link[=oauth_provider]{oauth_provider()}} for the supported methods and their credentials.}
 
-\item{allowed_algs}{Character vector of allowed ID token signing algorithms.
+\item{id_token_allowed_algs}{Character vector of allowed ID token signing algorithms.
 Defaults to a broad set of common algorithms, including RSA (RS*), ECDSA
 (ES*), Ed25519, and legacy EdDSA. If the discovery document advertises
 supported algorithms, the intersection of advertised and caller-provided
@@ -84,6 +85,8 @@ when feasible.}
 \item{...}{Additional fields passed to \code{\link[=oauth_provider]{oauth_provider()}} (for example,
 \code{pkce_method = "plain"} when a provider explicitly advertises only plain
 PKCE support and you intentionally want to allow that downgrade).}
+
+\item{allowed_algs}{Compatibility alias for \code{id_token_allowed_algs}. Supply only one spelling.}
 }
 \value{
 \link{OAuthProvider} object configured from discovery

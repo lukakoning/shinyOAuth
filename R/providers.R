@@ -300,7 +300,7 @@ oauth_provider_microsoft <- function(
     extra_token_params = list(),
     extra_token_headers = character(),
 
-    allowed_algs = c("RS256"),
+    id_token_allowed_algs = c("RS256"),
 
     userinfo_required = TRUE,
     userinfo_id_token_match = isTRUE(id_token_validation),

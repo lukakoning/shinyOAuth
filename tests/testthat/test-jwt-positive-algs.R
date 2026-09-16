@@ -45,7 +45,7 @@ for (test_alg in c("Ed25519", "EdDSA", "RS256")) {
       auth_url = paste0(base, "/auth"),
       token_url = paste0(base, "/token"),
       issuer = base,
-      allowed_algs = c("Ed25519", "EdDSA", "RS256")
+      id_token_allowed_algs = c("Ed25519", "EdDSA", "RS256")
     )
     cli <- oauth_client(
       provider = prov,
@@ -153,7 +153,7 @@ test_that("validate_id_token rejects a signed lowercase alg", {
       auth_url = paste0(issuer, "/auth"),
       token_url = paste0(issuer, "/token"),
       issuer = issuer,
-      allowed_algs = "RS256"
+      id_token_allowed_algs = "RS256"
     ),
     client_id = "client-lowercase",
     client_secret = "unused",
@@ -203,7 +203,7 @@ test_that("unlabelled RSA keys use a trusted algorithm binding", {
     auth_url = paste0(base, "/auth"),
     token_url = paste0(base, "/token"),
     issuer = base,
-    allowed_algs = c("RS256", "RS384", "RS512")
+    id_token_allowed_algs = c("RS256", "RS384", "RS512")
   )
   cli <- oauth_client(
     provider = prov,

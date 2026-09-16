@@ -208,7 +208,7 @@
 #'   single algorithm to enforce the client's registered UserInfo signing choice.
 #'   An empty vector rejects all signed UserInfo algorithms.
 #'   Unlabelled RSA keys follow the same binding policy as `allowed_algs`.
-#' @param allowed_algs Optional vector of allowed JWT algorithms for ID tokens.
+#' @param id_token_allowed_algs Optional vector of allowed JWT algorithms for ID tokens.
 #'   Use to restrict acceptable `alg` values on a per-provider basis. Supported
 #'   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
 #'   `ES384`, `ES512`, and `Ed25519` or legacy `EdDSA` with Ed25519 OKP keys (including `at_hash`
@@ -363,6 +363,7 @@
 #'
 #' @example inst/examples/oauth_provider.R
 #'
+#' @param allowed_algs Compatibility alias for `id_token_allowed_algs`.
 #' @export
 OAuthProvider <- S7::new_class(
   "OAuthProvider",
@@ -569,6 +570,10 @@ OAuthProvider <- S7::new_class(
   ),
   validator = function(self) oauth_provider_validate(self)
 )
+OAuthProvider <- api_class_argument_alias(
+  OAuthProvider, "allowed_algs", "id_token_allowed_algs"
+)
+
 
 # 2 Generic provider constructor -----------------------------------------------
 
@@ -624,6 +629,7 @@ normalize_optional_provider_boolean <- function(value, field) {
 #'
 #' @example inst/examples/oauth_provider.R
 #'
+#' @param allowed_algs Compatibility alias for `id_token_allowed_algs`. Supply only one spelling.
 #' @export
 oauth_provider <- function(
   name,
@@ -657,7 +663,7 @@ oauth_provider <- function(
   jwks_pin_mode = "any",
   jwks_host_issuer_match = NULL,
   jwks_host_allow_only = NULL,
-  allowed_algs = c(
+  id_token_allowed_algs = c(
     "RS256",
     "RS384",
     "RS512",
@@ -692,8 +698,13 @@ oauth_provider <- function(
   mtls_endpoint_aliases = list(),
   mtls_client_certificate_bound_access_tokens = FALSE,
   endpoint_auth_metadata = list(),
-  ...
+  ...,
+  allowed_algs = NULL
 ) {
+  allowed_algs <- resolve_argument_alias(
+    id_token_allowed_algs, allowed_algs, missing(id_token_allowed_algs), missing(allowed_algs),
+    "id_token_allowed_algs", "allowed_algs"
+  )
   compat_args <- resolve_deprecated_constructor_args(
     dots = list(...),
     arg_map = c(
@@ -1026,7 +1037,7 @@ oauth_provider <- function(
     jwks_pin_mode = jwks_pin_mode,
     jwks_host_issuer_match = isTRUE(jwks_host_issuer_match),
     jwks_host_allow_only = jwks_host_allow_only,
-    allowed_algs = allowed_algs,
+    id_token_allowed_algs = allowed_algs,
     userinfo_allowed_algs = userinfo_allowed_algs,
     allowed_token_types = allowed_token_types,
     leeway = leeway,

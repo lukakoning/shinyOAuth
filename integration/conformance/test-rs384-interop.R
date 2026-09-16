@@ -16,7 +16,7 @@ testthat::test_that("RS384 interoperates with Python cryptography in both direct
       auth_url = "https://as.example/authorize",
       token_url = "https://as.example/token",
       token_auth_style = "private_key_jwt",
-      allowed_algs = "RS384",
+      id_token_allowed_algs = "RS384",
       token_endpoint_auth_signing_alg_values_supported = "RS384",
       request_object_signing_alg_values_supported = "RS384",
       dpop_signing_alg_values_supported = "RS384",

@@ -245,7 +245,7 @@ testthat::test_that("inbound defaults exclude unsupported RSA-PSS algs", {
       name = "example",
       auth_url = "https://example.com/auth",
       token_url = "https://example.com/token",
-      allowed_algs = c("PS256")
+      id_token_allowed_algs = c("PS256")
     ),
     regexp = "unsupported entries: PS256"
   )

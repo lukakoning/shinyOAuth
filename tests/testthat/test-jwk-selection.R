@@ -48,7 +48,7 @@ test_that("JWK selection filters use=sig and prefers alg match", {
     auth_url = paste0(base, "/auth"),
     token_url = paste0(base, "/token"),
     issuer = base,
-    allowed_algs = c("RS256", "RS384")
+    id_token_allowed_algs = c("RS256", "RS384")
   )
   cli <- oauth_client(
     provider = prov,
