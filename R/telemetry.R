@@ -656,7 +656,8 @@ otel_browser_cookie_path_root <- function(browser_cookie_path) {
 #'
 #' @param content_type Optional explicit content type string.
 #' @param resp Optional httr2 response used when `content_type` is missing.
-#' @return Lowercase media type without parameters, or `NULL`.
+#' @return Bounded lowercase media type without parameters, `"<invalid>"`
+#'   for a malformed value, or `NULL` when unavailable.
 #' @keywords internal
 #' @noRd
 otel_http_content_type <- function(content_type = NULL, resp = NULL) {
@@ -672,10 +673,18 @@ otel_http_content_type <- function(content_type = NULL, resp = NULL) {
     return(NULL)
   }
 
-  content_type <- tolower(trimws(as.character(content_type)[[1]]))
-  content_type <- trimws(strsplit(content_type, ";", fixed = TRUE)[[1]][1])
-  if (!nzchar(content_type)) {
-    return(NULL)
+  content_type <- tolower(trimws(sub(";.*$", "", content_type, perl = TRUE)))
+  # RFC 6838 restricted type/subtype names are each at most 127 characters.
+  # Never truncate malformed values into diagnostics or retain raw parameters.
+  if (
+    nchar(content_type, type = "bytes") > 255L ||
+      !grepl(
+        "^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$",
+        content_type,
+        perl = TRUE
+      )
+  ) {
+    return("<invalid>")
   }
 
   content_type

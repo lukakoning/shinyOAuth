@@ -155,10 +155,7 @@ get_userinfo <- function(
         }
 
         # Detect Content-Type to handle JWT-encoded userinfo (OIDC Core §5.3.2)
-        resp_ct <- try(httr2::resp_content_type(resp), silent = TRUE)
-        if (inherits(resp_ct, "try-error")) {
-          resp_ct <- NA_character_
-        }
+        resp_ct <- otel_http_content_type(resp = resp)
         is_jwt_response <- is_valid_string(resp_ct) &&
           identical(tolower(resp_ct), "application/jwt")
 
@@ -263,11 +260,7 @@ get_userinfo <- function(
           if (inherits(status, "try-error")) {
             status <- NA_integer_
           }
-          headers <- try(httr2::resp_headers(resp), silent = TRUE)
-          ct <- NA_character_
-          if (!inherits(headers, "try-error") && is.list(headers)) {
-            ct <- headers[["content-type"]] %||% NA_character_
-          }
+          ct <- resp_ct %||% NA_character_
           body_str <- try(httr2::resp_body_string(resp), silent = TRUE)
           if (inherits(body_str, "try-error")) {
             body_str <- NA_character_

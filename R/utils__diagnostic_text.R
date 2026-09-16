@@ -75,6 +75,8 @@ sanitize_event_diagnostics <- function(event) {
         }
       }
       event[i] <- list(code)
+    } else if (field %in% c("content_type", "http.response.content_type")) {
+      event[i] <- list(otel_http_content_type(event[[i]]))
     } else if (identical(field, "jwt_alg")) {
       # This field comes from an unverified JOSE header, not a trusted enum.
       known <- c(
