@@ -120,32 +120,28 @@ test_that("JSON and signed JWT UserInfo preserve types through claim policy", {
       role = value
     )
     json <- as.character(jsonlite::toJSON(claims, auto_unbox = TRUE))
-    profiles <- list()
     for (content_type in c("application/json", "application/jwt")) {
       body <- if (content_type == "application/json") {
         json
       } else {
         make_signed_userinfo_json(json, key, "type-parity")
       }
-      ui <- get_userinfo(cli, "synthetic-token")
-      expect_identical(ui[["role"]], value)
       cli@claims <- list(userinfo = list(role = list(value = value)))
-      expect_no_error(shinyOAuth:::validate_essential_claims(
-        cli,
-        ui,
-        "userinfo"
-      ))
+      ui <- shinyOAuth:::fetch_userinfo(cli, "synthetic-token")
+      expected <- jsonlite::fromJSON(
+        json,
+        simplifyVector = content_type == "application/json"
+      )
+      expect_identical(ui, expected)
+
       cli@claims <- list(userinfo = list(role = list(value = "staff")))
       if (is.list(value)) {
-        expect_error(shinyOAuth:::validate_essential_claims(
-          cli,
-          ui,
-          "userinfo"
-        ))
+        expect_error(
+          shinyOAuth:::fetch_userinfo(cli, "synthetic-token"),
+          class = "shinyOAuth_userinfo_error"
+        )
       }
-      profiles[[content_type]] <- ui
     }
-    expect_identical(profiles[[1]], profiles[[2]])
   }
 })
 

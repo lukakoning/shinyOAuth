@@ -47,6 +47,8 @@
 #'   Normally supplied by the module; leave `NULL` when calling directly.
 #'
 #' @return A list containing the user information returned by the provider.
+#'   For JSON responses, arrays are simplified to vectors or data frames where
+#'   possible. Signed JWT responses retain arrays as lists.
 #'
 #' @example inst/examples/token_methods.R
 #'
@@ -67,6 +69,24 @@ get_userinfo <- function(
     "client",
     "oauth_client"
   )
+  fetch_userinfo(
+    oauth_client,
+    token,
+    token_type = token_type,
+    shiny_session = shiny_session,
+    validate_claims = FALSE
+  )
+}
+
+# Login and refresh validate requested claims before JSON simplification can
+# erase the distinction between a scalar and a single-element array.
+fetch_userinfo <- function(
+  oauth_client,
+  token,
+  token_type = NULL,
+  shiny_session = NULL,
+  validate_claims = TRUE
+) {
   # Type checks/helpers --------------------------------------------------------
 
   S7::check_is_S7(oauth_client, OAuthClient)
@@ -331,8 +351,12 @@ get_userinfo <- function(
 
         if (!is_jwt_response) {
           validate_userinfo_json_claim_types(ui, oauth_client, shiny_session)
-          # Preserve JSON arrays as lists, as on the signed JWT path. Login and
-          # refresh still need their original types for exact claim-value checks.
+        }
+        if (validate_claims) {
+          validate_essential_claims(oauth_client, ui, "userinfo")
+        }
+        if (!is_jwt_response) {
+          ui <- jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
         }
 
         otel_set_span_attributes(

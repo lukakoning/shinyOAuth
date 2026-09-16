@@ -131,7 +131,7 @@ test_that("callback rejects missing token_type before DPoP userinfo", {
           expires_in = 5
         )
       },
-      get_userinfo = function(
+      fetch_userinfo = function(
         oauth_client,
         token,
         token_type = NULL,
@@ -250,7 +250,7 @@ test_that("refresh rejects missing token_type before DPoP userinfo", {
         )
       )
     },
-    get_userinfo = function(
+    fetch_userinfo = function(
       oauth_client,
       token,
       token_type = NULL,
@@ -425,7 +425,7 @@ test_that("handle_callback validates token_type before fetching userinfo", {
       swap_code_for_token_set = function(client, code, code_verifier) {
         list(access_token = "t", token_type = "DPoP", expires_in = 5)
       },
-      get_userinfo = function(oauth_client, token) {
+      fetch_userinfo = function(oauth_client, token) {
         stop("userinfo should not be fetched")
       },
       .package = "shinyOAuth",

@@ -1941,7 +1941,7 @@ handle_callback_internal <- function(
 
       if (isTRUE(oauth_client@provider@userinfo_required)) {
         userinfo <- call_with_optional_shiny_session(
-          get_userinfo,
+          fetch_userinfo,
           oauth_client = oauth_client,
           token = token,
           shiny_session = shiny_session
@@ -1956,9 +1956,6 @@ handle_callback_internal <- function(
           userinfo = userinfo,
           token_set = token_set
         )
-
-        # Validate requested claims in userinfo (OIDC Core Section 5.5)
-        validate_essential_claims(oauth_client, userinfo, "userinfo")
 
         token@userinfo <- userinfo
       }

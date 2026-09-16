@@ -29,7 +29,7 @@ test_that("login and refresh reject ineligible introspection before UserInfo", {
       calls <<- c(calls, "introspection")
       intro
     },
-    get_userinfo = function(...) {
+    fetch_userinfo = function(...) {
       calls <<- c(calls, "userinfo")
       list(sub = "user")
     },

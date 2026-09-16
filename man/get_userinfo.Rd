@@ -28,6 +28,8 @@ Normally supplied by the module; leave \code{NULL} when calling directly.}
 }
 \value{
 A list containing the user information returned by the provider.
+For JSON responses, arrays are simplified to vectors or data frames where
+possible. Signed JWT responses retain arrays as lists.
 }
 \description{
 Retrieve profile information using the user's access token. Call this when

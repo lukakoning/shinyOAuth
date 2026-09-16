@@ -405,7 +405,7 @@ for (scope in c("read write", "admin", "write")) {
     userinfo <- 0L
     local_mocked_bindings(
       req_with_retry = function(req, ...) narrowing_response(req, scope),
-      get_userinfo = function(...) {
+      fetch_userinfo = function(...) {
         userinfo <<- userinfo + 1L
         list()
       }

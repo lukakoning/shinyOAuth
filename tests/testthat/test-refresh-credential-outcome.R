@@ -32,7 +32,7 @@ test_that("refresh failures report the renewal credential lifecycle", {
         ))
       )
     },
-    get_userinfo = function(...) stop("UserInfo unavailable"),
+    fetch_userinfo = function(...) stop("UserInfo unavailable"),
     .package = "shinyOAuth"
   )
   expected <- c(

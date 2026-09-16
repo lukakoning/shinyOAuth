@@ -403,7 +403,7 @@ test_that("introspect_elements sub falls back to userinfo before an unvalidated 
         id_token = idt
       )
     },
-    get_userinfo = function(oauth_client, token) {
+    fetch_userinfo = function(oauth_client, token) {
       list(sub = "u2", name = "User Two")
     },
     req_with_retry = function(req, ...) {
@@ -438,7 +438,7 @@ test_that("introspect_elements sub falls back to userinfo before an unvalidated 
         id_token = idt
       )
     },
-    get_userinfo = function(oauth_client, token) {
+    fetch_userinfo = function(oauth_client, token) {
       list(sub = "u2", name = "User Two")
     },
     req_with_retry = function(req, ...) {
@@ -489,7 +489,7 @@ test_that("introspect_elements sub uses userinfo_id_selector for userinfo fallba
         id_token = idt
       )
     },
-    get_userinfo = function(oauth_client, token) {
+    fetch_userinfo = function(oauth_client, token) {
       list(sub = "userinfo-sub", id = 42)
     },
     req_with_retry = function(req, ...) {
@@ -524,7 +524,7 @@ test_that("introspect_elements sub uses userinfo_id_selector for userinfo fallba
         id_token = idt
       )
     },
-    get_userinfo = function(oauth_client, token) {
+    fetch_userinfo = function(oauth_client, token) {
       list(sub = "userinfo-sub", id = 42)
     },
     req_with_retry = function(req, ...) {

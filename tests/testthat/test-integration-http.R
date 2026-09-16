@@ -189,7 +189,7 @@ test_that("userinfo success populates token userinfo when required", {
     swap_code_for_token_set = function(client, code, code_verifier) {
       list(access_token = "t", token_type = "Bearer", expires_in = 60)
     },
-    get_userinfo = function(oauth_client, token) {
+    fetch_userinfo = function(oauth_client, token) {
       list(sub = "u-1", name = "Test")
     },
     .package = "shinyOAuth",

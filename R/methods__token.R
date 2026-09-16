@@ -1513,7 +1513,7 @@ refresh_token_impl <- function(
               userinfo_baseline_id_token_validated
 
             ui <- call_with_optional_shiny_session(
-              get_userinfo,
+              fetch_userinfo,
               oauth_client = oauth_client,
               token = refreshed_token,
               shiny_session = shiny_session
@@ -1529,7 +1529,6 @@ refresh_token_impl <- function(
               token = token
             )
 
-            validate_essential_claims(oauth_client, ui, "userinfo")
             token_set[["userinfo"]] <- ui
             refreshed_token@userinfo <- ui
           }
