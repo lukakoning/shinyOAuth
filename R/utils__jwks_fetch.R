@@ -92,20 +92,21 @@ fetch_authorization_server_metadata <- function(issuer, tls_minimum = NULL) {
       authority <- paste0(authority, ":", port)
     }
 
-    path <- parsed[["path"]] %||% ""
+    # Preserve escaped bytes and empty path segments in issuer identifiers.
+    path <- url_raw_path(normalized_issuer)
     if (identical(path, "/")) {
       path <- ""
     }
 
     if (isTRUE(legacy_append) || !nzchar(path)) {
-      return(normalize_url(paste0(
+      return(paste0(
         normalized_issuer,
         "/.well-known/",
         suffix
-      )))
+      ))
     }
 
-    normalize_url(paste0(authority, "/.well-known/", suffix, path))
+    paste0(authority, "/.well-known/", suffix, path)
   }
 
   targets <- list(
