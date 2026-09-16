@@ -16,62 +16,63 @@ oauth_provider(
   name,
   auth_url,
   token_url,
+  userinfo_url = NA_character_,
+  introspection_url = NA_character_,
+  revocation_url = NA_character_,
+  par_url = NA_character_,
+  par_required = FALSE,
+  authorization_request_front_channel_mode = "compat",
+  request_object_signing_alg_values_supported = character(),
+  request_object_encryption_alg_values_supported = character(),
+  request_object_encryption_enc_values_supported = character(),
+  request_object_encryption_jwk = NULL,
+  signed_request_object_required = FALSE,
+  request_parameter_supported = NA,
+  request_uri_parameter_supported = NA,
+  request_uri_registration_required = NA,
+  token_endpoint_auth_signing_alg_values_supported = character(),
+  dpop_signing_alg_values_supported = character(),
+  authorization_response_iss_parameter_supported = FALSE,
+  response_modes_supported = character(),
+  mtls_endpoint_aliases = list(),
+  mtls_client_certificate_bound_access_tokens = FALSE,
   issuer = NA_character_,
-  issuer_thus_oidc = TRUE,
   issuer_match = "url",
-  token_auth_style = "header",
+  use_nonce = NULL,
   use_pkce = TRUE,
   pkce_method = "S256",
-  use_nonce = NULL,
-  userinfo_url = NA_character_,
   userinfo_required = NULL,
+  userinfo_id_token_match = NULL,
+  userinfo_signed_jwt_required = FALSE,
   userinfo_id_selector = function(userinfo) {
 userinfo[["sub"]]
  },
-  userinfo_id_token_match = NULL,
-  userinfo_signed_jwt_required = FALSE,
   id_token_required = NULL,
   id_token_validation = NULL,
-  id_token_at_hash_required = FALSE,
-  introspection_url = NA_character_,
-  revocation_url = NA_character_,
   extra_auth_params = list(),
   extra_token_params = list(),
   extra_token_headers = character(),
-  jwks_uri = NA_character_,
+  token_auth_style = "header",
   jwks_cache = NULL,
   jwks_pins = character(),
   jwks_pin_mode = "any",
   jwks_host_issuer_match = NULL,
   jwks_host_allow_only = NULL,
-  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519",
-    "EdDSA"),
-  userinfo_allowed_algs = NULL,
+  id_token_allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512",
+    "Ed25519", "EdDSA"),
   allowed_token_types = c("Bearer"),
   leeway = getOption("shinyOAuth.leeway", 30),
-  par_url = NA_character_,
-  par_required = FALSE,
-  signed_request_object_required = FALSE,
-  request_parameter_supported = NA,
-  request_uri_parameter_supported = NA,
-  request_uri_registration_required = NA,
-  request_object_signing_alg_values_supported = character(),
-  request_object_encryption_alg_values_supported = character(),
-  request_object_encryption_enc_values_supported = character(),
-  request_object_encryption_jwk = NULL,
-  authorization_request_front_channel_mode = "compat",
-  authorization_response_iss_parameter_supported = FALSE,
-  response_modes_supported = character(),
+  id_token_at_hash_required = FALSE,
+  infer_oidc_from_issuer = TRUE,
+  jwks_uri = NA_character_,
+  userinfo_allowed_algs = NULL,
   jarm_signing_alg_values_supported = character(),
   jarm_encryption_alg_values_supported = character(),
   jarm_encryption_enc_values_supported = character(),
   jarm_tolerate_duplicate_top_level_iss = FALSE,
-  token_endpoint_auth_signing_alg_values_supported = character(),
-  dpop_signing_alg_values_supported = character(),
-  mtls_endpoint_aliases = list(),
-  mtls_client_certificate_bound_access_tokens = FALSE,
   endpoint_auth_metadata = list(),
-  ...
+  ...,
+  allowed_algs = NULL
 )
 ```
 
@@ -90,19 +91,179 @@ userinfo[["sub"]]
 
   URL where R exchanges the returned code for tokens.
 
+- userinfo_url:
+
+  User info endpoint URL (optional)
+
+- introspection_url:
+
+  Optional URL where the provider can confirm whether a token is still
+  active (RFC 7662).
+
+- revocation_url:
+
+  Optional URL where the app can ask the provider to invalidate a token,
+  for example during logout (RFC 7009).
+
+- par_url:
+
+  Optional Pushed Authorization Request (PAR) URL (RFC 9126). When set,
+  shinyOAuth first sends the authorization request from server to
+  provider and then redirects the browser with the returned
+  `request_uri` handle instead of the full request payload. Use PAR to
+  keep most request details out of the browser URL, submit large
+  requests, or meet a provider's PAR requirement. The provider must
+  support this endpoint.
+
+- par_required:
+
+  Logical. Whether the provider requires authorization requests to be
+  sent via PAR. When `TRUE`, `par_url` must also be configured.
+
+- authorization_request_front_channel_mode:
+
+  Character scalar controlling which browser-visible outer parameters
+  shinyOAuth keeps when the actual authorization request is carried by
+  JAR or PAR. Use `"compat"` (default) to keep OIDC-compatible
+  parameters with outer `client_id`, `response_type`, and `scope` when
+  an issuer is configured. Use `"minimal"` for plain OAuth browser
+  redirects and for PAR deployments whose authorization endpoint accepts
+  only `client_id` plus the provider-issued `request_uri` handle. OpenID
+  Connect by-value `request` and caller-managed `request_uri` transports
+  reject `"minimal"` because OIDC still requires outer `response_type`
+  and an outer `scope` containing `openid`.
+
+- request_object_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  signed Request Objects (RFC 9101). This is mainly used for early
+  validation when an
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  sends `request_object_mode = "request"` or
+  `request_object_mode = "request_uri"`.
+
+- request_object_encryption_alg_values_supported:
+
+  Optional vector of JWE key-management algorithms that the provider
+  advertises for encrypted Request Objects. This metadata is used for
+  early validation when an
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  enables Request Object encryption.
+
+- request_object_encryption_enc_values_supported:
+
+  Optional vector of JWE content-encryption algorithms that the provider
+  advertises for encrypted Request Objects. This metadata is used for
+  early validation when an
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+  enables Request Object encryption.
+
+- request_object_encryption_jwk:
+
+  Optional explicit recipient public key used to encrypt Request Objects
+  when discovery-backed JWKS selection is not available or when you need
+  to pin one specific encryption key. Accepts an OpenSSL public key, a
+  PEM public-key string, a parsed JWK object, or a JWK JSON string.
+
+- signed_request_object_required:
+
+  Logical. Whether the provider requires signed Request Objects for
+  authorization requests. When `TRUE`, clients should use
+  `request_object_mode = "request"` or
+  `request_object_mode = "request_uri"`. This setting enforces local
+  construction only; it does not configure the authorization server.
+  Register `require_signed_request_object = true` (or the server's
+  equivalent) and verify unsigned requests are rejected before relying
+  on downgrade-resistant request integrity.
+
+- request_parameter_supported:
+
+  Logical or `NA`. Whether discovery metadata explicitly advertises
+  support for the authorization-request `request` parameter. `NA` means
+  the provider did not say. Discovery-derived providers apply the OpenID
+  Connect default (`FALSE`) when this metadata is omitted.
+
+- request_uri_parameter_supported:
+
+  Logical or `NA`. Whether discovery metadata explicitly advertises
+  support for the authorization-request `request_uri` parameter for
+  caller-managed request URIs. `NA` means the provider did not say.
+  Discovery-derived providers apply the OpenID Connect default (`TRUE`)
+  when this metadata is omitted. PAR-issued `request_uri` handles remain
+  valid even when this metadata is `FALSE`.
+
+- request_uri_registration_required:
+
+  Logical or `NA`. Whether discovery metadata says caller-managed
+  `request_uri` values must be pre-registered. `NA` means the provider
+  did not say. Discovery-derived providers apply the OpenID Connect
+  default (`FALSE`) when this metadata is omitted. shinyOAuth can
+  publish caller-managed `request_uri` values through
+  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+  When this is `TRUE`, make sure the provider has a matching public
+  request URI or wildcard prefix registered for the client. shinyOAuth
+  stores this metadata for caller awareness, but it cannot verify
+  provider-side registration state automatically.
+
+- token_endpoint_auth_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  JWT-based client authentication (`client_secret_jwt` /
+  `private_key_jwt`) at the token endpoint. This metadata is used for
+  early validation of `OAuthClient@client_assertion_alg` and inferred
+  JWT client-assertion defaults.
+
+- dpop_signing_alg_values_supported:
+
+  Optional vector of JWS algorithms that the provider advertises for
+  DPoP proof JWTs (RFC 9449). This metadata is used for early validation
+  of `OAuthClient@dpop_signing_alg` and inferred outbound DPoP signing
+  defaults.
+
+- authorization_response_iss_parameter_supported:
+
+  Logical. Whether the provider advertises RFC 9207 support for
+  returning an `iss` parameter on the authorization response. When
+  `TRUE`, the
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  helper can auto-enable callback issuer enforcement when the caller
+  leaves `enforce_callback_issuer` unset and the provider also has a
+  configured `issuer`.
+
+- response_modes_supported:
+
+  Optional character vector of OAuth/OIDC `response_mode` values
+  advertised by the provider. Discovery-backed providers use the
+  discovery metadata value, defaulting to `c("query", "fragment")` when
+  omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
+  empty when capabilities are not known. Provider metadata may include
+  response modes that shinyOAuth does not implement; clients still fail
+  fast if they request one of those unsupported modes.
+
+- mtls_endpoint_aliases:
+
+  Optional named list of RFC 8705 mTLS endpoint aliases. Names should
+  follow the metadata keys such as `token_endpoint`,
+  `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
+  `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
+  must be absolute URLs. This is an advanced setting used when a
+  provider publishes separate mTLS-specific endpoints.
+
+- mtls_client_certificate_bound_access_tokens:
+
+  Logical. Whether the authorization server advertises RFC 8705
+  capability to issue certificate-bound access tokens. This describes
+  server capability; the client still has to opt into mTLS separately.
+  When `TRUE`, token responses may include a `cnf` claim with an
+  `x5t#S256` thumbprint that downstream requests must match with the
+  same certificate.
+
 - issuer:
 
   Optional authorization-server issuer URL. You need this for issuer
   validation and features such as ID-token validation. shinyOAuth uses
   it to verify issuer claims and locate signing keys (JWKS), typically
   through an OIDC discovery document.
-
-- issuer_thus_oidc:
-
-  Whether setting `issuer` enables OpenID Connect behavior. Default
-  `TRUE`: helpers enable OIDC nonce/ID token defaults and the client
-  adds the `openid` scope. Set `FALSE` for an OAuth-only server that has
-  an issuer identifier but does not implement OIDC.
 
 - issuer_match:
 
@@ -120,6 +281,108 @@ userinfo[["sub"]]
   In most cases, keep the default `"url"`. Use `"host"` only for
   providers that publish tenant-independent metadata with a templated
   issuer, such as some Microsoft aliases.
+
+- use_nonce:
+
+  Whether to tie the ID token to this login using a random nonce. Keep
+  enabled for OIDC. The nonce is sent in the request and checked in the
+  returned ID token.
+
+- use_pkce:
+
+  Whether to protect the code exchange using Proof Key for Code Exchange
+  (PKCE). Leave enabled; public clients require it. It sends a
+  `code_challenge` with the login request and a matching secret
+  `code_verifier` during token exchange.
+
+- pkce_method:
+
+  PKCE code challenge method ("S256" or "plain"). "S256" is recommended.
+  Use "plain" only if you are working with a provider that does not
+  support "S256".
+
+- userinfo_required:
+
+  Whether to fetch a user profile after token exchange. The result is
+  stored in `token@userinfo`; a failed required fetch stops login. In
+  `oauth_provider()`, this defaults to `TRUE` when `userinfo_url` is
+  supplied and `FALSE` otherwise.
+
+- userinfo_id_token_match:
+
+  Whether fetched userinfo requires a validated ID token for comparison.
+  When both are available, their actual `sub` values are always
+  compared. `TRUE` also stops login if the validated ID token is absent.
+  Requires `userinfo_required` and either `id_token_validation` or
+  `use_nonce`. `oauth_provider()` enables this by default when those
+  requirements are met.
+
+- userinfo_signed_jwt_required:
+
+  Whether to require the user profile to arrive as a signed JWT
+  (`application/jwt`). Default `FALSE`; ordinary JSON userinfo is
+  accepted. When `TRUE`, requires `userinfo_required` and `issuer`; the
+  signature must validate with an asymmetric algorithm from
+  `userinfo_allowed_algs`. Unsigned, HMAC-signed, and encrypted userinfo
+  JWTs are not accepted by the normal configuration. Discovery does not
+  enable this automatically: provider support does not mean your app's
+  registration requests signed userinfo.
+
+- userinfo_id_selector:
+
+  A function that extracts the user ID from the userinfo response.
+  Should take a single argument (the userinfo list) and return the user
+  ID as a string.
+
+  This is used for helpers that need a provider-specific application
+  user identifier, such as audit fields. It does not replace OIDC
+  subject binding: when a validated ID token and UserInfo are both
+  available, their actual `sub` claims are always compared. Helper
+  constructors like `oauth_provider()` and
+  [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
+  provide a default selector that extracts `sub`.
+
+- id_token_required:
+
+  Whether to require an ID token to be returned during token exchange.
+  If no ID token is returned, the token exchange will fail. This only
+  makes sense for OpenID Connect providers and may require the client's
+  scope to include `openid`.
+
+  Both the S7 constructor and `oauth_provider()` enable this when an
+  issuer is supplied and `infer_oidc_from_issuer = TRUE`. Pure OAuth 2.0
+  providers keep this disabled by default.
+
+- id_token_validation:
+
+  Whether to perform ID token validation after token exchange. This
+  requires the provider to be a valid OpenID Connect provider with a
+  configured `issuer` and the token response to include an ID token (may
+  require setting the client's scope to include `openid`).
+
+  Both the S7 constructor and `oauth_provider()` enable this when an
+  issuer is provided and `infer_oidc_from_issuer = TRUE`. Set an
+  explicit `FALSE` only when intentionally opting out of ID token
+  validation.
+
+- extra_auth_params:
+
+  Extra parameters for authorization URL
+
+- extra_token_params:
+
+  Extra parameters for token exchange. `scope` is reserved and cannot be
+  unblocked. For explicit refresh scope narrowing use a managed
+  connection's `[["refresh"]](scopes = ...)`. Configure login scopes on
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+  instead.
+
+- extra_token_headers:
+
+  Extra headers for back-channel token-style requests (named character
+  vector), applied only to token exchange and refresh. Configure
+  `oauth_client(endpoint_auth = ...)` for headers needed by PAR,
+  introspection, or revocation.
 
 - token_auth_style:
 
@@ -145,135 +408,6 @@ userinfo[["sub"]]
 
   - "private_key_jwt": JWT client assertion signed with an asymmetric
     key (RFC 7523)
-
-- use_pkce:
-
-  Whether to protect the code exchange using Proof Key for Code Exchange
-  (PKCE). Leave enabled; public clients require it. It sends a
-  `code_challenge` with the login request and a matching secret
-  `code_verifier` during token exchange.
-
-- pkce_method:
-
-  PKCE code challenge method ("S256" or "plain"). "S256" is recommended.
-  Use "plain" only if you are working with a provider that does not
-  support "S256".
-
-- use_nonce:
-
-  Whether to tie the ID token to this login using a random nonce. Keep
-  enabled for OIDC. The nonce is sent in the request and checked in the
-  returned ID token.
-
-- userinfo_url:
-
-  User info endpoint URL (optional)
-
-- userinfo_required:
-
-  Whether to fetch a user profile after token exchange. The result is
-  stored in `token@userinfo`; a failed required fetch stops login. In
-  `oauth_provider()`, this defaults to `TRUE` when `userinfo_url` is
-  supplied and `FALSE` otherwise.
-
-- userinfo_id_selector:
-
-  A function that extracts the user ID from the userinfo response.
-  Should take a single argument (the userinfo list) and return the user
-  ID as a string.
-
-  This is used for helpers that need a provider-specific application
-  user identifier, such as audit fields. It does not replace OIDC
-  subject binding: when a validated ID token and UserInfo are both
-  available, their actual `sub` claims are always compared. Helper
-  constructors like `oauth_provider()` and
-  [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
-  provide a default selector that extracts `sub`.
-
-- userinfo_id_token_match:
-
-  Whether fetched userinfo requires a validated ID token for comparison.
-  When both are available, their actual `sub` values are always
-  compared. `TRUE` also stops login if the validated ID token is absent.
-  Requires `userinfo_required` and either `id_token_validation` or
-  `use_nonce`. `oauth_provider()` enables this by default when those
-  requirements are met.
-
-- userinfo_signed_jwt_required:
-
-  Whether to require the user profile to arrive as a signed JWT
-  (`application/jwt`). Default `FALSE`; ordinary JSON userinfo is
-  accepted. When `TRUE`, requires `userinfo_required` and `issuer`; the
-  signature must validate with an asymmetric algorithm from
-  `userinfo_allowed_algs`. Unsigned, HMAC-signed, and encrypted userinfo
-  JWTs are not accepted by the normal configuration. Discovery does not
-  enable this automatically: provider support does not mean your app's
-  registration requests signed userinfo.
-
-- id_token_required:
-
-  Whether to require an ID token to be returned during token exchange.
-  If no ID token is returned, the token exchange will fail. This only
-  makes sense for OpenID Connect providers and may require the client's
-  scope to include `openid`.
-
-  Both the S7 constructor and `oauth_provider()` enable this when an
-  issuer is supplied and `issuer_thus_oidc = TRUE`. Pure OAuth 2.0
-  providers keep this disabled by default.
-
-- id_token_validation:
-
-  Whether to perform ID token validation after token exchange. This
-  requires the provider to be a valid OpenID Connect provider with a
-  configured `issuer` and the token response to include an ID token (may
-  require setting the client's scope to include `openid`).
-
-  Both the S7 constructor and `oauth_provider()` enable this when an
-  issuer is provided and `issuer_thus_oidc = TRUE`. Set an explicit
-  `FALSE` only when intentionally opting out of ID token validation.
-
-- id_token_at_hash_required:
-
-  Whether to require the `at_hash` (Access Token hash) claim in the ID
-  token. When `TRUE`, login fails if the ID token does not contain an
-  `at_hash` claim or if the claim does not match the access token. When
-  `FALSE` (default), `at_hash` is validated only when present. Requires
-  `id_token_validation = TRUE`.
-
-- introspection_url:
-
-  Optional URL where the provider can confirm whether a token is still
-  active (RFC 7662).
-
-- revocation_url:
-
-  Optional URL where the app can ask the provider to invalidate a token,
-  for example during logout (RFC 7009).
-
-- extra_auth_params:
-
-  Extra parameters for authorization URL
-
-- extra_token_params:
-
-  Extra parameters for token exchange. `scope` is reserved and cannot be
-  unblocked. For explicit refresh scope narrowing use a managed
-  connection's `[["refresh"]](scopes = ...)`. Configure login scopes on
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  instead.
-
-- extra_token_headers:
-
-  Extra headers for back-channel token-style requests (named character
-  vector), applied only to token exchange and refresh. Configure
-  `oauth_client(endpoint_auth = ...)` for headers needed by PAR,
-  introspection, or revocation.
-
-- jwks_uri:
-
-  Optional URL of the provider's public signing keys (JWKS). Normally
-  these are located through OIDC discovery. Set this for manual key
-  configuration, including OAuth-only JARM providers.
 
 - jwks_cache:
 
@@ -332,7 +466,7 @@ userinfo[["sub"]]
   port is ignored and only the hostname part is used for matching. Takes
   precedence over `jwks_host_issuer_match`.
 
-- allowed_algs:
+- id_token_allowed_algs:
 
   Optional vector of allowed JWT algorithms for ID tokens. Use to
   restrict acceptable `alg` values on a per-provider basis. Supported
@@ -354,15 +488,6 @@ userinfo[["sub"]]
   operation. Only include `HS*` if you are certain the `client_secret`
   is stored strictly server-side and is never shipped to, or derivable
   by, the browser or other untrusted environments.
-
-- userinfo_allowed_algs:
-
-  Optional signing algorithm allowlist for UserInfo JWTs. `NULL`
-  inherits `allowed_algs` for manually configured providers. Discovery
-  negotiates this independently against UserInfo metadata. Use a single
-  algorithm to enforce the client's registered UserInfo signing choice.
-  An empty vector rejects all signed UserInfo algorithms. Unlabelled RSA
-  keys follow the same binding policy as `allowed_algs`.
 
 - allowed_token_types:
 
@@ -386,125 +511,35 @@ userinfo[["sub"]]
   checks and state payload `issued_at` future check. Default 30. Can be
   globally overridden via option `shinyOAuth.leeway`.
 
-- par_url:
+- id_token_at_hash_required:
 
-  Optional Pushed Authorization Request (PAR) URL (RFC 9126). When set,
-  shinyOAuth first sends the authorization request from server to
-  provider and then redirects the browser with the returned
-  `request_uri` handle instead of the full request payload. Use PAR to
-  keep most request details out of the browser URL, submit large
-  requests, or meet a provider's PAR requirement. The provider must
-  support this endpoint.
+  Whether to require the `at_hash` (Access Token hash) claim in the ID
+  token. When `TRUE`, login fails if the ID token does not contain an
+  `at_hash` claim or if the claim does not match the access token. When
+  `FALSE` (default), `at_hash` is validated only when present. Requires
+  `id_token_validation = TRUE`.
 
-- par_required:
+- infer_oidc_from_issuer:
 
-  Logical. Whether the provider requires authorization requests to be
-  sent via PAR. When `TRUE`, `par_url` must also be configured.
+  Whether setting `issuer` enables OpenID Connect behavior. Default
+  `TRUE`: helpers enable OIDC nonce/ID token defaults and the client
+  adds the `openid` scope. Set `FALSE` for an OAuth-only server that has
+  an issuer identifier but does not implement OIDC.
 
-- signed_request_object_required:
+- jwks_uri:
 
-  Logical. Whether the provider requires signed Request Objects for
-  authorization requests. When `TRUE`, clients should use
-  `request_object_mode = "request"` or
-  `request_object_mode = "request_uri"`. This setting enforces local
-  construction only; it does not configure the authorization server.
-  Register `require_signed_request_object = true` (or the server's
-  equivalent) and verify unsigned requests are rejected before relying
-  on downgrade-resistant request integrity.
+  Optional URL of the provider's public signing keys (JWKS). Normally
+  these are located through OIDC discovery. Set this for manual key
+  configuration, including OAuth-only JARM providers.
 
-- request_parameter_supported:
+- userinfo_allowed_algs:
 
-  Logical or `NA`. Whether discovery metadata explicitly advertises
-  support for the authorization-request `request` parameter. `NA` means
-  the provider did not say. Discovery-derived providers apply the OpenID
-  Connect default (`FALSE`) when this metadata is omitted.
-
-- request_uri_parameter_supported:
-
-  Logical or `NA`. Whether discovery metadata explicitly advertises
-  support for the authorization-request `request_uri` parameter for
-  caller-managed request URIs. `NA` means the provider did not say.
-  Discovery-derived providers apply the OpenID Connect default (`TRUE`)
-  when this metadata is omitted. PAR-issued `request_uri` handles remain
-  valid even when this metadata is `FALSE`.
-
-- request_uri_registration_required:
-
-  Logical or `NA`. Whether discovery metadata says caller-managed
-  `request_uri` values must be pre-registered. `NA` means the provider
-  did not say. Discovery-derived providers apply the OpenID Connect
-  default (`FALSE`) when this metadata is omitted. shinyOAuth can
-  publish caller-managed `request_uri` values through
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-  When this is `TRUE`, make sure the provider has a matching public
-  request URI or wildcard prefix registered for the client. shinyOAuth
-  stores this metadata for caller awareness, but it cannot verify
-  provider-side registration state automatically.
-
-- request_object_signing_alg_values_supported:
-
-  Optional vector of JWS algorithms that the provider advertises for
-  signed Request Objects (RFC 9101). This is mainly used for early
-  validation when an
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  sends `request_object_mode = "request"` or
-  `request_object_mode = "request_uri"`.
-
-- request_object_encryption_alg_values_supported:
-
-  Optional vector of JWE key-management algorithms that the provider
-  advertises for encrypted Request Objects. This metadata is used for
-  early validation when an
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  enables Request Object encryption.
-
-- request_object_encryption_enc_values_supported:
-
-  Optional vector of JWE content-encryption algorithms that the provider
-  advertises for encrypted Request Objects. This metadata is used for
-  early validation when an
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  enables Request Object encryption.
-
-- request_object_encryption_jwk:
-
-  Optional explicit recipient public key used to encrypt Request Objects
-  when discovery-backed JWKS selection is not available or when you need
-  to pin one specific encryption key. Accepts an OpenSSL public key, a
-  PEM public-key string, a parsed JWK object, or a JWK JSON string.
-
-- authorization_request_front_channel_mode:
-
-  Character scalar controlling which browser-visible outer parameters
-  shinyOAuth keeps when the actual authorization request is carried by
-  JAR or PAR. Use `"compat"` (default) to keep OIDC-compatible
-  parameters with outer `client_id`, `response_type`, and `scope` when
-  an issuer is configured. Use `"minimal"` for plain OAuth browser
-  redirects and for PAR deployments whose authorization endpoint accepts
-  only `client_id` plus the provider-issued `request_uri` handle. OpenID
-  Connect by-value `request` and caller-managed `request_uri` transports
-  reject `"minimal"` because OIDC still requires outer `response_type`
-  and an outer `scope` containing `openid`.
-
-- authorization_response_iss_parameter_supported:
-
-  Logical. Whether the provider advertises RFC 9207 support for
-  returning an `iss` parameter on the authorization response. When
-  `TRUE`, the
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  helper can auto-enable callback issuer enforcement when the caller
-  leaves `enforce_callback_issuer` unset and the provider also has a
-  configured `issuer`.
-
-- response_modes_supported:
-
-  Optional character vector of OAuth/OIDC `response_mode` values
-  advertised by the provider. Discovery-backed providers use the
-  discovery metadata value, defaulting to `c("query", "fragment")` when
-  omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
-  empty when capabilities are not known. Provider metadata may include
-  response modes that shinyOAuth does not implement; clients still fail
-  fast if they request one of those unsupported modes.
+  Optional signing algorithm allowlist for UserInfo JWTs. `NULL`
+  inherits `allowed_algs` for manually configured providers. Discovery
+  negotiates this independently against UserInfo metadata. Use a single
+  algorithm to enforce the client's registered UserInfo signing choice.
+  An empty vector rejects all signed UserInfo algorithms. Unlabelled RSA
+  keys follow the same binding policy as `allowed_algs`.
 
 - jarm_signing_alg_values_supported:
 
@@ -531,39 +566,6 @@ userinfo[["sub"]]
   duplicate-member rejection. Conflicting duplicates and nested
   duplicate `iss` members still fail closed. Defaults to `FALSE`.
 
-- token_endpoint_auth_signing_alg_values_supported:
-
-  Optional vector of JWS algorithms that the provider advertises for
-  JWT-based client authentication (`client_secret_jwt` /
-  `private_key_jwt`) at the token endpoint. This metadata is used for
-  early validation of `OAuthClient@client_assertion_alg` and inferred
-  JWT client-assertion defaults.
-
-- dpop_signing_alg_values_supported:
-
-  Optional vector of JWS algorithms that the provider advertises for
-  DPoP proof JWTs (RFC 9449). This metadata is used for early validation
-  of `OAuthClient@dpop_signing_alg` and inferred outbound DPoP signing
-  defaults.
-
-- mtls_endpoint_aliases:
-
-  Optional named list of RFC 8705 mTLS endpoint aliases. Names should
-  follow the metadata keys such as `token_endpoint`,
-  `userinfo_endpoint`, `introspection_endpoint`, `revocation_endpoint`,
-  `par_endpoint`, or `pushed_authorization_request_endpoint`, and values
-  must be absolute URLs. This is an advanced setting used when a
-  provider publishes separate mTLS-specific endpoints.
-
-- mtls_client_certificate_bound_access_tokens:
-
-  Logical. Whether the authorization server advertises RFC 8705
-  capability to issue certificate-bound access tokens. This describes
-  server capability; the client still has to opt into mTLS separately.
-  When `TRUE`, token responses may include a `cnf` claim with an
-  `x5t#S256` thumbprint that downstream requests must match with the
-  same certificate.
-
 - endpoint_auth_metadata:
 
   Named list of independent `introspection` and `revocation`
@@ -577,6 +579,11 @@ userinfo[["sub"]]
   Deprecated renamed arguments accepted temporarily for backward
   compatibility.
 
+- allowed_algs:
+
+  Compatibility alias for `id_token_allowed_algs`. Supply only one
+  spelling.
+
 ## Value
 
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
@@ -586,7 +593,7 @@ object
 
 Supply `name`, `auth_url`, and `token_url` to start. Add `userinfo_url`
 to fetch profiles. Supplying `issuer` enables OIDC defaults, including
-ID token validation, unless `issuer_thus_oidc = FALSE`. Advanced
+ID token validation, unless `infer_oidc_from_issuer = FALSE`. Advanced
 arguments must match your provider's capabilities; see the [advanced
 security
 vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html).

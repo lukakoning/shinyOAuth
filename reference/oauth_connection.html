@@ -64,7 +64,11 @@ refresh itself or retain credentials across redirects.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_connection</span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span>, session <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html" class="external-link">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_connection</span><span class="op">(</span></span>
+<span>  <span class="va">client</span>,</span>
+<span>  <span class="va">token_reactive</span>,</span>
+<span>  session <span class="op">=</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/domains.html" class="external-link">getDefaultReactiveDomain</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -76,7 +80,7 @@ refresh itself or retain credentials across redirects.</p>
 <code><a href="oauth_client.html">oauth_client()</a></code> or <code><a href="smart_client.html">smart_client()</a></code>.</p></dd>
 
 
-<dt id="arg-token">token<a class="anchor" aria-label="anchor" href="#arg-token"></a></dt>
+<dt id="arg-token-reactive">token_reactive<a class="anchor" aria-label="anchor" href="#arg-token-reactive"></a></dt>
 <dd><p>A Shiny reactive expression returning the current <a href="OAuthToken.html">OAuthToken</a>
 or <code>NULL</code>, usually <code>shiny::reactive(auth[["token"]])</code>. It must come from the
 module using <code>client</code>. Supplying that association is trusted server

@@ -58,21 +58,16 @@ without changing the configuration or making requests.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">check_oauth21</span><span class="op">(</span><span class="va">client</span>, draft <span class="op">=</span> <span class="st">"draft-ietf-oauth-v2-1-16"</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">check_oauth21</span><span class="op">(</span><span class="va">config</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>, draft <span class="op">=</span> <span class="st">"draft-ietf-oauth-v2-1-16"</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-client">client<a class="anchor" aria-label="anchor" href="#arg-client"></a></dt>
+<dl><dt id="arg-config">config<a class="anchor" aria-label="anchor" href="#arg-config"></a></dt>
 <dd><p>An <a href="OAuthClient.html">OAuthClient</a> or <a href="OAuthProvider.html">OAuthProvider</a>. Provider-only assessments
 are partial and cannot establish missing client settings.</p></dd>
-
-
-<dt id="arg-draft">draft<a class="anchor" aria-label="anchor" href="#arg-draft"></a></dt>
-<dd><p>Implemented target revision. Currently only
-<code>"draft-ietf-oauth-v2-1-16"</code> is supported (an Internet-Draft, not an RFC).</p></dd>
 
 
 <dt id="arg-context">context<a class="anchor" aria-label="anchor" href="#arg-context"></a></dt>
@@ -83,6 +78,11 @@ operations, and <code>nonce_exception</code>, a scalar logical declaration. Sett
 assurance required by draft section 7.5.1.1 for this confidential deployment
 and specific request's correct OIDC nonce use. It does not supply observed
 evidence or excuse missing local prerequisites. Prefer S256 PKCE.</p></dd>
+
+
+<dt id="arg-draft">draft<a class="anchor" aria-label="anchor" href="#arg-draft"></a></dt>
+<dd><p>Implemented target revision. Currently only
+<code>"draft-ietf-oauth-v2-1-16"</code> is supported (an Internet-Draft, not an RFC).</p></dd>
 
 </dl></div>
     <div class="section level2">

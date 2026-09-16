@@ -65,25 +65,6 @@ resolves defaults from the provider and the supplied client settings.</p>
 <span>  provider <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  endpoint_auth <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  response_mode <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  resource <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  enforce_callback_issuer <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  authorization_server_mode <span class="op">=</span> <span class="st">"single"</span>,</span>
-<span>  authorization_server_redirect_uris <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  scope_validation <span class="op">=</span> <span class="st">"warn"</span>,</span>
-<span>  claims_validation <span class="op">=</span> <span class="st">"none"</span>,</span>
-<span>  required_acr_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  userinfo_jwt_required_time_claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  introspect_elements <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
-<span>  state_payload_max_age <span class="op">=</span> <span class="fl">300</span>,</span>
-<span>  state_entropy <span class="op">=</span> <span class="fl">64</span>,</span>
-<span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">128</span><span class="op">)</span>,</span>
 <span>  client_assertion_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  client_assertion_private_key_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  client_assertion_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
@@ -93,12 +74,8 @@ resolves defaults from the provider and the supplied client settings.</p>
 <span>  mtls_client_key_password <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  mtls_client_ca_file <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  dpop_require_access_token <span class="op">=</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">dpop_private_key</span><span class="op">)</span>,</span>
-<span>  dpop_require_observed_cnf <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  request_object_mode <span class="op">=</span> <span class="st">"parameters"</span>,</span>
+<span>  response_mode <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  request_object_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  request_object_audience <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  request_object_encryption_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
@@ -106,6 +83,29 @@ resolves defaults from the provider and the supplied client settings.</p>
 <span>  request_object_encryption_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  request_object_ttl <span class="op">=</span> <span class="fl">45</span>,</span>
 <span>  request_object_nbf_skew <span class="op">=</span> <span class="cn">NA_real_</span>,</span>
+<span>  dpop_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  dpop_private_key_kid <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  dpop_signing_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  dpop_require_access_token <span class="op">=</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">dpop_private_key</span><span class="op">)</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  enforce_callback_issuer <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  resource <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
+<span>  state_payload_max_age <span class="op">=</span> <span class="fl">300</span>,</span>
+<span>  state_entropy <span class="op">=</span> <span class="fl">64</span>,</span>
+<span>  state_key <span class="op">=</span> <span class="fu">random_urlsafe</span><span class="op">(</span>n <span class="op">=</span> <span class="fl">128</span><span class="op">)</span>,</span>
+<span>  scope_validation <span class="op">=</span> <span class="st">"warn"</span>,</span>
+<span>  claims_validation <span class="op">=</span> <span class="st">"none"</span>,</span>
+<span>  userinfo_jwt_required_time_claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  required_acr_values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  introspect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  introspection_checks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  endpoint_auth <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  authorization_server_mode <span class="op">=</span> <span class="st">"single"</span>,</span>
+<span>  authorization_server_redirect_uris <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  dpop_require_observed_cnf <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  jarm_signed_response_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  jarm_encrypted_response_alg <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  jarm_encrypted_response_enc <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
@@ -122,7 +122,24 @@ resolves defaults from the provider and the supplied client settings.</p>
 <span>  label <span class="op">=</span> <span class="fu">default_client_label</span><span class="op">(</span><span class="va">provider</span><span class="op">)</span>,</span>
 <span>  authorization_method <span class="op">=</span> <span class="st">"GET"</span>,</span>
 <span>  scope_policy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  smart <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  smart <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  introspect_elements <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  client_private_key <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  client_private_key_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  userinfo_jwt_required_temporal_claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  mtls_request_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tls_client_cert_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tls_client_key_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tls_client_key_password <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tls_client_ca_file <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_signing_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_audience <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_encryption_alg <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_encryption_enc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_encryption_kid <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_ttl <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  authorization_request_nbf_skew <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -146,214 +163,6 @@ resolves defaults from the provider and the supplied client settings.</p>
 an empty secret is omitted. With <code>"public"</code> (alias <code>"none"</code>), it is never
 sent for client authentication. HMAC-signed ID token validation still
 requires a non-empty secret, regardless of the client authentication method.</p></dd>
-
-
-<dt id="arg-endpoint-auth">endpoint_auth<a class="anchor" aria-label="anchor" href="#arg-endpoint-auth"></a></dt>
-<dd><p>Named list of authentication overrides for <code>par</code>,
-<code>introspection</code>, and <code>revocation</code>. Token exchange and refresh use the
-top-level client/provider authentication settings. Each entry may supply
-<code>token_auth_style</code>, <code>client_secret</code>, <code>client_assertion_private_key</code>,
-<code>client_assertion_private_key_kid</code>, <code>client_assertion_alg</code>,
-<code>client_assertion_audience</code>, <code>client_assertion_typ</code>, <code>extra_headers</code> (named character vector),
-and the <code>mtls_client_*</code> certificate/key/CA fields. Introspection and
-revocation may also use a separate <code>client_id</code>. Unspecified credentials
-inherit the client's settings. Discovered endpoint methods and signing
-algorithms are checked independently. PAR inherits token authentication.
-Extra token headers apply only to token exchange and refresh; set
-<code>extra_headers</code> explicitly for every other endpoint that needs them.</p></dd>
-
-
-<dt id="arg-redirect-uri">redirect_uri<a class="anchor" aria-label="anchor" href="#arg-redirect-uri"></a></dt>
-<dd><p>The URL where users return after login. It must match the
-callback URL registered with your provider, including scheme, host, port,
-and path. Use HTTPS in production.</p></dd>
-
-
-<dt id="arg-scopes">scopes<a class="anchor" aria-label="anchor" href="#arg-scopes"></a></dt>
-<dd><p>Character vector of permissions to request. The provider defines
-the available names. For OIDC (<code>issuer</code> set and <code>issuer_thus_oidc = TRUE</code>),
-shinyOAuth adds <code>"openid"</code> automatically if absent. The resulting set is
-used in the request and subsequent scope checks.</p></dd>
-
-
-<dt id="arg-response-mode">response_mode<a class="anchor" aria-label="anchor" href="#arg-response-mode"></a></dt>
-<dd><p>How the provider returns the login result. Leave <code>NULL</code>
-(default) for a normal callback with parameters in the URL; no
-<code>response_mode</code> parameter is then sent. Use <code>"query"</code> to request that
-format explicitly, or <code>"form_post"</code> when your provider needs an HTTP POST.
-POST callbacks require <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
-<p>Signed responses (JWT Secured Authorization Response Mode, JARM)
-use <code>"jwt"</code>, <code>"query.jwt"</code>, or <code>"form_post.jwt"</code>
-and require <code><a href="oauth_module_server.html">oauth_module_server()</a></code>. <code>"jwt"</code> uses the query transport for
-this authorization-code flow. <code>"form_post.jwt"</code> also needs
-<code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. <code><a href="handle_callback.html">handle_callback()</a></code> does not handle JARM.
-Requested modes must be in <code>response_modes_supported</code> when advertised;
-fragment modes are not supported.</p></dd>
-
-
-<dt id="arg-resource">resource<a class="anchor" aria-label="anchor" href="#arg-resource"></a></dt>
-<dd><p>Optional RFC 8707 resource indicator(s). Supply a character
-vector of absolute URIs to request audience-restricted tokens for one or
-more protected resources. Each value is sent as a repeated <code>resource</code>
-parameter on the authorization request, initial token exchange, and token
-refresh requests. Default is <code>character(0)</code>.</p></dd>
-
-
-<dt id="arg-claims">claims<a class="anchor" aria-label="anchor" href="#arg-claims"></a></dt>
-<dd><p>Optional request for specific OIDC user information, beyond scopes.
-Default <code>NULL</code> sends no request. Supply a list with <code>userinfo</code> and/or
-<code>id_token</code> members, for example
-<code>list(userinfo = list(email = list(essential = TRUE)))</code>.
-Use <code>claims_validation = "strict"</code> if an unmet request must stop login.</p>
-<p>Lists are JSON-encoded with <code>auto_unbox = TRUE</code>. Use <code>NULL</code> for an
-unconstrained claim, <code>value</code> for one required value, or <code>values</code> for a set.
-Wrap a single-element <code>values</code> vector in <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> to keep it a JSON array,
-for example <code>list(values = I("example-acr"))</code>. A pre-encoded JSON string
-is also accepted. Your provider must support the OIDC claims parameter.</p></dd>
-
-
-<dt id="arg-enforce-callback-issuer">enforce_callback_issuer<a class="anchor" aria-label="anchor" href="#arg-enforce-callback-issuer"></a></dt>
-<dd><p>Logical or <code>NULL</code>. When <code>TRUE</code>, enforce that
-authorization responses handled through this client include an RFC 9207
-<code>iss</code> parameter and reject callbacks unless it exactly matches
-<code>provider@issuer</code>. This is recommended when one callback URL can receive
-responses from more than one authorization server. Requires the provider
-to have a configured <code>issuer</code>.</p>
-<p>When <code>NULL</code> (the <code><a href="oauth_client.html">oauth_client()</a></code> helper default), shinyOAuth
-auto-enables this check for providers that advertise
-<code>authorization_response_iss_parameter_supported = TRUE</code> and have a
-configured <code>issuer</code>, such as OIDC discovery providers that expose RFC 9207
-support. Set <code>FALSE</code> to opt out explicitly.</p></dd>
-
-
-<dt id="arg-authorization-server-mode">authorization_server_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-server-mode"></a></dt>
-<dd><p>Declares whether this client is part of an
-application that can interact with more than one authorization server,
-and which RFC 9700 mix-up defense it uses. One of:</p><ul><li><p><code>"single"</code> (default): the application uses only one authorization
-server, so RFC 9700 does not require a mix-up defense.</p></li>
-<li><p><code>"multi_issuer"</code>: authorization responses identify their issuer. JARM
-response modes satisfy this requirement through their validated <code>iss</code>
-claim. Direct response modes require the provider to advertise
-<code>authorization_response_iss_parameter_supported = TRUE</code>; shinyOAuth then
-requires and validates the RFC 9207 <code>iss</code> response parameter. Missing
-support metadata is treated as absence of this defense.</p></li>
-<li><p><code>"multi_redirect_uri"</code>: each authorization server uses a distinct
-redirect URI. Supply the complete set through
-<code>authorization_server_redirect_uris</code>. This mode is supported by
-<code><a href="oauth_module_server.html">oauth_module_server()</a></code>, which compares the browser-visible canonical
-scheme, authority, and path before parsing callback values.</p></li>
-</ul></dd>
-
-
-<dt id="arg-authorization-server-redirect-uris">authorization_server_redirect_uris<a class="anchor" aria-label="anchor" href="#arg-authorization-server-redirect-uris"></a></dt>
-<dd><p>Complete character vector of
-redirect URIs used by the application for its authorization servers when
-<code>authorization_server_mode = "multi_redirect_uri"</code>. It must contain at
-least two canonically distinct scheme/authority/path routes and include
-this client's <code>redirect_uri</code>. Query and fragment components do not make
-routes distinct.</p></dd>
-
-
-<dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>
-<dd><p>Controls how scope discrepancies are handled when
-the authorization server grants fewer scopes than requested. RFC 6749
-Section 3.3 permits servers to issue tokens with reduced scope, and
-Section 5.1 allows token responses to omit <code>scope</code> when it is unchanged
-from the requested scope.</p><ul><li><p><code>"warn"</code> (default): Emits a warning but continues authentication if
-scopes are missing.</p></li>
-<li><p><code>"strict"</code>: Throws an error if any requested scope is missing from the
-granted scopes. Omitted <code>scope</code> is treated as unchanged, not as an
-error.</p></li>
-<li><p><code>"none"</code>: Skips scope validation entirely.</p></li>
-</ul></dd>
-
-
-<dt id="arg-claims-validation">claims_validation<a class="anchor" aria-label="anchor" href="#arg-claims-validation"></a></dt>
-<dd><p>What to do if requested claims are missing or have
-unexpected values: <code>"warn"</code> continues with a warning, <code>"strict"</code> stops
-login, and <code>"none"</code> skips the check. When omitted, <code><a href="oauth_client.html">oauth_client()</a></code> uses
-<code>"warn"</code> if <code>claims</code> includes <code>essential = TRUE</code>, <code>value</code>, or <code>values</code>
-requirements, and <code>"none"</code> otherwise. Checks on <code>claims[["id_token"]]</code> require
-ID token validation (<code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>).</p></dd>
-
-
-<dt id="arg-required-acr-values">required_acr_values<a class="anchor" aria-label="anchor" href="#arg-required-acr-values"></a></dt>
-<dd><p>Optional character vector of acceptable login
-requirements, such as a provider's multi-factor authentication (MFA) policy.
-Use the provider's Authentication Context Class Reference (ACR) identifiers.
-The validated ID token must contain a matching <code>acr</code> or login fails.
-The request also sends <code>acr_values</code> as a hint to the provider.
-Requires <code>id_token_validation = TRUE</code> and an <code>issuer</code>.
-Default <code>character(0)</code> imposes no requirement.</p></dd>
-
-
-<dt id="arg-userinfo-jwt-required-time-claims">userinfo_jwt_required_time_claims<a class="anchor" aria-label="anchor" href="#arg-userinfo-jwt-required-time-claims"></a></dt>
-<dd><p>Optional character vector of
-temporal JWT claims that must be present when the UserInfo response is a
-signed JWT (<code>application/jwt</code>). Allowed values are <code>"exp"</code>, <code>"iat"</code>, and
-<code>"nbf"</code>.</p>
-<p>Default is <code>character(0)</code>, which means these claims are validated only when
-present. Set, for example, <code>userinfo_jwt_required_time_claims = "exp"</code>
-to require an expiry on signed UserInfo JWTs, or pass multiple values to
-require additional temporal claims. For security-sensitive deployments that
-accept signed UserInfo JWTs, prefer requiring at least <code>"exp"</code>.</p></dd>
-
-
-<dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
-<dd><p>If <code>TRUE</code>, ask the provider to confirm the access token is active
-before completing login and module refreshes. Requires <code>introspection_url</code>;
-an unsuccessful check or a response other than <code>active = TRUE</code> stops the
-operation. Default <code>FALSE</code>.</p></dd>
-
-
-<dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>
-<dd><p>Optional character vector of additional
-requirements to enforce on the introspection response when
-<code>introspect = TRUE</code>. Supported values:</p><ul><li><p><code>"sub"</code>: require the introspected <code>sub</code> to match the session subject
-(from a validated ID token <code>sub</code> when available, else from userinfo
-<code>sub</code>).</p></li>
-<li><p><code>"client_id"</code>: require the introspected <code>client_id</code> to match your OAuth
-client id.</p></li>
-<li><p><code>"scope"</code>: validate introspected <code>scope</code> against requested scopes
-(respects the client's <code>scope_validation</code> mode).</p></li>
-<li><p><code>"token_type"</code>: require introspection to return <code>token_type</code>. This is
-useful for sender-constrained deployments such as DPoP, where
-introspection can authoritatively report <code>token_type = "DPoP"</code>.
-Default is <code>character(0)</code>.
-(Note that not all providers may return each of these fields in
-introspection responses.)</p></li>
-</ul></dd>
-
-
-<dt id="arg-state-store">state_store<a class="anchor" aria-label="anchor" href="#arg-state-store"></a></dt>
-<dd><p>Storage for pending logins. The default
-<code>cachem::cache_mem(max_age = 300)</code> is suitable for one R process.
-For multiple app processes, supply a shared <code><a href="custom_cache.html">custom_cache()</a></code> with atomic
-<code>[["take"]]()</code> and use the same <code>state_key</code> on every process.
-Plain <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> is unsafe for shared login state because its
-separate read and delete operations do not prevent simultaneous reuse.
-See <code><a href="custom_cache.html">custom_cache()</a></code> for method and stored-value requirements.</p></dd>
-
-
-<dt id="arg-state-payload-max-age">state_payload_max_age<a class="anchor" aria-label="anchor" href="#arg-state-payload-max-age"></a></dt>
-<dd><p>Maximum age of a pending login's encrypted state, in
-seconds. Default 300. This is checked separately from the state store's
-entry lifetime; both must allow the returning login.</p></dd>
-
-
-<dt id="arg-state-entropy">state_entropy<a class="anchor" aria-label="anchor" href="#arg-state-entropy"></a></dt>
-<dd><p>Length in characters of the random state identifier, from
-22 to 128. Default 64. Most apps should keep the default.</p></dd>
-
-
-<dt id="arg-state-key">state_key<a class="anchor" aria-label="anchor" href="#arg-state-key"></a></dt>
-<dd><p>Secret used to encrypt and protect pending login details.
-A random key is generated when omitted. This is separate from
-<code>client_secret</code> and is also used for public clients.</p>
-<p>For multiple R processes, supply the same key and shared <code>state_store</code>
-on every process. Accepts a character string or raw vector of at least
-32 bytes. Generate it from cryptographically random bytes; do not use
-a memorable password. State uses AES-GCM authenticated encryption.</p></dd>
 
 
 <dt id="arg-client-assertion-private-key">client_assertion_private_key<a class="anchor" aria-label="anchor" href="#arg-client-assertion-private-key"></a></dt>
@@ -446,60 +255,6 @@ whose binding is enforced only by the servers, keep
 <code>mtls_require_observed_cnf = FALSE</code>.</p></dd>
 
 
-<dt id="arg-dpop-private-key">dpop_private_key<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key"></a></dt>
-<dd><p>Private key for tying tokens to this app's requests
-using Demonstrating Proof of Possession (DPoP). Only needed when your
-provider/API supports DPoP. Accepts an
-<code>openssl::key</code> or PEM private-key string, using RSA, EC, or Ed25519.
-<code><a href="oauth_client.html">oauth_client()</a></code> then defaults <code>dpop_require_access_token</code> to <code>TRUE</code>.
-Supported signing algorithms are <code>RS256</code>, <code>RS384</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
-<code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
-outgoing proofs. See <code>dpop_signing_alg</code> and the <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a>.</p></dd>
-
-
-<dt id="arg-dpop-private-key-kid">dpop_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key-kid"></a></dt>
-<dd><p>Optional key identifier (<code>kid</code>) to include in
-the JOSE header of DPoP proofs. Useful when the authorization or resource
-server expects a stable key identifier alongside the embedded public JWK.</p></dd>
-
-
-<dt id="arg-dpop-signing-alg">dpop_signing_alg<a class="anchor" aria-label="anchor" href="#arg-dpop-signing-alg"></a></dt>
-<dd><p>Optional JWT signing algorithm to use for DPoP
-proofs. When omitted, a compatible asymmetric default is selected based on
-the private key type/curve (for example <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or
-<code>ES512</code>, or <code>EdDSA</code> for Ed25519). <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code> are
-not currently supported for outbound DPoP proofs. If an explicit value is
-provided but incompatible with the key, validation fails early with a
-configuration error. When the provider advertises
-<code>dpop_signing_alg_values_supported</code>, both explicit values and inferred
-defaults must be included in that set.</p></dd>
-
-
-<dt id="arg-dpop-require-access-token">dpop_require_access_token<a class="anchor" aria-label="anchor" href="#arg-dpop-require-access-token"></a></dt>
-<dd><p>Logical or <code>NULL</code>. When <code>TRUE</code> and
-<code>dpop_private_key</code> is configured, shinyOAuth requires the authorization
-server to return <code>token_type = "DPoP"</code> for access tokens and fails fast
-otherwise, independently of the access token's representation. Observed
-binding data must match the configured key; requiring its presence is a
-separate policy (<code>dpop_require_observed_cnf</code>). In <code><a href="oauth_client.html">oauth_client()</a></code>, the default
-<code>NULL</code> resolves to <code>TRUE</code> when <code>dpop_private_key</code> is configured and to
-<code>FALSE</code> otherwise. Set <code>FALSE</code> explicitly only when you intentionally want
-to allow Bearer access tokens, such as deployments where DPoP is used only
-to bind refresh tokens.</p></dd>
-
-
-<dt id="arg-dpop-require-observed-cnf">dpop_require_observed_cnf<a class="anchor" aria-label="anchor" href="#arg-dpop-require-observed-cnf"></a></dt>
-<dd><p>Logical. When <code>TRUE</code>, shinyOAuth rejects
-<code>token_type = "DPoP"</code> access tokens unless it can observe <code>cnf[["jkt"]]</code>
-locally, from the token response, introspection, or optional JWT access-token
-inspection. Set <code>options(shinyOAuth.access_token_cnf = "opaque")</code> to disable
-access-token decoding for both DPoP and mTLS; the compatibility default
-<code>"jwt"</code> inspects JWT <code>cnf</code> without treating it as signature validation.
-Use this when high-assurance DPoP deployments must
-fail closed on opaque access tokens that provide no observable binding.
-Default is <code>FALSE</code>.</p></dd>
-
-
 <dt id="arg-request-object-mode">request_object_mode<a class="anchor" aria-label="anchor" href="#arg-request-object-mode"></a></dt>
 <dd><p>Controls how the authorization request is
 transported to the provider.</p><ul><li><p><code>"parameters"</code> (default): send OAuth parameters directly on the browser
@@ -528,6 +283,21 @@ If the provider advertises <code>request_uri_registration_required = TRUE</code>
 caller-managed <code>request_uri</code> publication still depends on the provider
 having that URI or a matching wildcard prefix registered for the client;
 shinyOAuth cannot verify that server-side registration automatically.</p></dd>
+
+
+<dt id="arg-response-mode">response_mode<a class="anchor" aria-label="anchor" href="#arg-response-mode"></a></dt>
+<dd><p>How the provider returns the login result. Leave <code>NULL</code>
+(default) for a normal callback with parameters in the URL; no
+<code>response_mode</code> parameter is then sent. Use <code>"query"</code> to request that
+format explicitly, or <code>"form_post"</code> when your provider needs an HTTP POST.
+POST callbacks require <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
+<p>Signed responses (JWT Secured Authorization Response Mode, JARM)
+use <code>"jwt"</code>, <code>"query.jwt"</code>, or <code>"form_post.jwt"</code>
+and require <code><a href="oauth_module_server.html">oauth_module_server()</a></code>. <code>"jwt"</code> uses the query transport for
+this authorization-code flow. <code>"form_post.jwt"</code> also needs
+<code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. <code><a href="handle_callback.html">handle_callback()</a></code> does not handle JARM.
+Requested modes must be in <code>response_modes_supported</code> when advertised;
+fragment modes are not supported.</p></dd>
 
 
 <dt id="arg-request-object-signing-alg">request_object_signing_alg<a class="anchor" aria-label="anchor" href="#arg-request-object-signing-alg"></a></dt>
@@ -589,6 +359,253 @@ clock skew while still emitting bounded request-object validity windows.
 Leave <code>NULL</code> (the default) to omit <code>nbf</code>. Request-object <code>nbf</code> is reserved
 by shinyOAuth and cannot be supplied through extra authorization
 parameters.</p></dd>
+
+
+<dt id="arg-dpop-private-key">dpop_private_key<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key"></a></dt>
+<dd><p>Private key for tying tokens to this app's requests
+using Demonstrating Proof of Possession (DPoP). Only needed when your
+provider/API supports DPoP. Accepts an
+<code>openssl::key</code> or PEM private-key string, using RSA, EC, or Ed25519.
+<code><a href="oauth_client.html">oauth_client()</a></code> then defaults <code>dpop_require_access_token</code> to <code>TRUE</code>.
+Supported signing algorithms are <code>RS256</code>, <code>RS384</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
+<code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys; RSA-PSS and other RSA signing algorithms are not supported for
+outgoing proofs. See <code>dpop_signing_alg</code> and the <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a>.</p></dd>
+
+
+<dt id="arg-dpop-private-key-kid">dpop_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-dpop-private-key-kid"></a></dt>
+<dd><p>Optional key identifier (<code>kid</code>) to include in
+the JOSE header of DPoP proofs. Useful when the authorization or resource
+server expects a stable key identifier alongside the embedded public JWK.</p></dd>
+
+
+<dt id="arg-dpop-signing-alg">dpop_signing_alg<a class="anchor" aria-label="anchor" href="#arg-dpop-signing-alg"></a></dt>
+<dd><p>Optional JWT signing algorithm to use for DPoP
+proofs. When omitted, a compatible asymmetric default is selected based on
+the private key type/curve (for example <code>RS256</code>, <code>ES256</code>, <code>ES384</code>, or
+<code>ES512</code>, or <code>EdDSA</code> for Ed25519). <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code> are
+not currently supported for outbound DPoP proofs. If an explicit value is
+provided but incompatible with the key, validation fails early with a
+configuration error. When the provider advertises
+<code>dpop_signing_alg_values_supported</code>, both explicit values and inferred
+defaults must be included in that set.</p></dd>
+
+
+<dt id="arg-dpop-require-access-token">dpop_require_access_token<a class="anchor" aria-label="anchor" href="#arg-dpop-require-access-token"></a></dt>
+<dd><p>Logical or <code>NULL</code>. When <code>TRUE</code> and
+<code>dpop_private_key</code> is configured, shinyOAuth requires the authorization
+server to return <code>token_type = "DPoP"</code> for access tokens and fails fast
+otherwise, independently of the access token's representation. Observed
+binding data must match the configured key; requiring its presence is a
+separate policy (<code>dpop_require_observed_cnf</code>). In <code><a href="oauth_client.html">oauth_client()</a></code>, the default
+<code>NULL</code> resolves to <code>TRUE</code> when <code>dpop_private_key</code> is configured and to
+<code>FALSE</code> otherwise. Set <code>FALSE</code> explicitly only when you intentionally want
+to allow Bearer access tokens, such as deployments where DPoP is used only
+to bind refresh tokens.</p></dd>
+
+
+<dt id="arg-redirect-uri">redirect_uri<a class="anchor" aria-label="anchor" href="#arg-redirect-uri"></a></dt>
+<dd><p>The URL where users return after login. It must match the
+callback URL registered with your provider, including scheme, host, port,
+and path. Use HTTPS in production.</p></dd>
+
+
+<dt id="arg-enforce-callback-issuer">enforce_callback_issuer<a class="anchor" aria-label="anchor" href="#arg-enforce-callback-issuer"></a></dt>
+<dd><p>Logical or <code>NULL</code>. When <code>TRUE</code>, enforce that
+authorization responses handled through this client include an RFC 9207
+<code>iss</code> parameter and reject callbacks unless it exactly matches
+<code>provider@issuer</code>. This is recommended when one callback URL can receive
+responses from more than one authorization server. Requires the provider
+to have a configured <code>issuer</code>.</p>
+<p>When <code>NULL</code> (the <code><a href="oauth_client.html">oauth_client()</a></code> helper default), shinyOAuth
+auto-enables this check for providers that advertise
+<code>authorization_response_iss_parameter_supported = TRUE</code> and have a
+configured <code>issuer</code>, such as OIDC discovery providers that expose RFC 9207
+support. Set <code>FALSE</code> to opt out explicitly.</p></dd>
+
+
+<dt id="arg-scopes">scopes<a class="anchor" aria-label="anchor" href="#arg-scopes"></a></dt>
+<dd><p>Character vector of permissions to request. The provider defines
+the available names. For OIDC (<code>issuer</code> set and <code>infer_oidc_from_issuer = TRUE</code>),
+shinyOAuth adds <code>"openid"</code> automatically if absent. The resulting set is
+used in the request and subsequent scope checks.</p></dd>
+
+
+<dt id="arg-resource">resource<a class="anchor" aria-label="anchor" href="#arg-resource"></a></dt>
+<dd><p>Optional RFC 8707 resource indicator(s). Supply a character
+vector of absolute URIs to request audience-restricted tokens for one or
+more protected resources. Each value is sent as a repeated <code>resource</code>
+parameter on the authorization request, initial token exchange, and token
+refresh requests. Default is <code>character(0)</code>.</p></dd>
+
+
+<dt id="arg-claims">claims<a class="anchor" aria-label="anchor" href="#arg-claims"></a></dt>
+<dd><p>Optional request for specific OIDC user information, beyond scopes.
+Default <code>NULL</code> sends no request. Supply a list with <code>userinfo</code> and/or
+<code>id_token</code> members, for example
+<code>list(userinfo = list(email = list(essential = TRUE)))</code>.
+Use <code>claims_validation = "strict"</code> if an unmet request must stop login.</p>
+<p>Lists are JSON-encoded with <code>auto_unbox = TRUE</code>. Use <code>NULL</code> for an
+unconstrained claim, <code>value</code> for one required value, or <code>values</code> for a set.
+Wrap a single-element <code>values</code> vector in <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> to keep it a JSON array,
+for example <code>list(values = I("example-acr"))</code>. A pre-encoded JSON string
+is also accepted. Your provider must support the OIDC claims parameter.</p></dd>
+
+
+<dt id="arg-state-store">state_store<a class="anchor" aria-label="anchor" href="#arg-state-store"></a></dt>
+<dd><p>Storage for pending logins. The default
+<code>cachem::cache_mem(max_age = 300)</code> is suitable for one R process.
+For multiple app processes, supply a shared <code><a href="custom_cache.html">custom_cache()</a></code> with atomic
+<code>[["take"]]()</code> and use the same <code>state_key</code> on every process.
+Plain <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> is unsafe for shared login state because its
+separate read and delete operations do not prevent simultaneous reuse.
+See <code><a href="custom_cache.html">custom_cache()</a></code> for method and stored-value requirements.</p></dd>
+
+
+<dt id="arg-state-payload-max-age">state_payload_max_age<a class="anchor" aria-label="anchor" href="#arg-state-payload-max-age"></a></dt>
+<dd><p>Maximum age of a pending login's encrypted state, in
+seconds. Default 300. This is checked separately from the state store's
+entry lifetime; both must allow the returning login.</p></dd>
+
+
+<dt id="arg-state-entropy">state_entropy<a class="anchor" aria-label="anchor" href="#arg-state-entropy"></a></dt>
+<dd><p>Length in characters of the random state identifier, from
+22 to 128. Default 64. Most apps should keep the default.</p></dd>
+
+
+<dt id="arg-state-key">state_key<a class="anchor" aria-label="anchor" href="#arg-state-key"></a></dt>
+<dd><p>Secret used to encrypt and protect pending login details.
+A random key is generated when omitted. This is separate from
+<code>client_secret</code> and is also used for public clients.</p>
+<p>For multiple R processes, supply the same key and shared <code>state_store</code>
+on every process. Accepts a character string or raw vector of at least
+32 bytes. Generate it from cryptographically random bytes; do not use
+a memorable password. State uses AES-GCM authenticated encryption.</p></dd>
+
+
+<dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>
+<dd><p>Controls how scope discrepancies are handled when
+the authorization server grants fewer scopes than requested. RFC 6749
+Section 3.3 permits servers to issue tokens with reduced scope, and
+Section 5.1 allows token responses to omit <code>scope</code> when it is unchanged
+from the requested scope.</p><ul><li><p><code>"warn"</code> (default): Emits a warning but continues authentication if
+scopes are missing.</p></li>
+<li><p><code>"strict"</code>: Throws an error if any requested scope is missing from the
+granted scopes. Omitted <code>scope</code> is treated as unchanged, not as an
+error.</p></li>
+<li><p><code>"none"</code>: Skips scope validation entirely.</p></li>
+</ul></dd>
+
+
+<dt id="arg-claims-validation">claims_validation<a class="anchor" aria-label="anchor" href="#arg-claims-validation"></a></dt>
+<dd><p>What to do if requested claims are missing or have
+unexpected values: <code>"warn"</code> continues with a warning, <code>"strict"</code> stops
+login, and <code>"none"</code> skips the check. When omitted, <code><a href="oauth_client.html">oauth_client()</a></code> uses
+<code>"warn"</code> if <code>claims</code> includes <code>essential = TRUE</code>, <code>value</code>, or <code>values</code>
+requirements, and <code>"none"</code> otherwise. Checks on <code>claims[["id_token"]]</code> require
+ID token validation (<code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>).</p></dd>
+
+
+<dt id="arg-userinfo-jwt-required-time-claims">userinfo_jwt_required_time_claims<a class="anchor" aria-label="anchor" href="#arg-userinfo-jwt-required-time-claims"></a></dt>
+<dd><p>Optional character vector of
+temporal JWT claims that must be present when the UserInfo response is a
+signed JWT (<code>application/jwt</code>). Allowed values are <code>"exp"</code>, <code>"iat"</code>, and
+<code>"nbf"</code>.</p>
+<p>Default is <code>character(0)</code>, which means these claims are validated only when
+present. Set, for example, <code>userinfo_jwt_required_time_claims = "exp"</code>
+to require an expiry on signed UserInfo JWTs, or pass multiple values to
+require additional temporal claims. For security-sensitive deployments that
+accept signed UserInfo JWTs, prefer requiring at least <code>"exp"</code>.</p></dd>
+
+
+<dt id="arg-required-acr-values">required_acr_values<a class="anchor" aria-label="anchor" href="#arg-required-acr-values"></a></dt>
+<dd><p>Optional character vector of acceptable login
+requirements, such as a provider's multi-factor authentication (MFA) policy.
+Use the provider's Authentication Context Class Reference (ACR) identifiers.
+The validated ID token must contain a matching <code>acr</code> or login fails.
+The request also sends <code>acr_values</code> as a hint to the provider.
+Requires <code>id_token_validation = TRUE</code> and an <code>issuer</code>.
+Default <code>character(0)</code> imposes no requirement.</p></dd>
+
+
+<dt id="arg-introspect">introspect<a class="anchor" aria-label="anchor" href="#arg-introspect"></a></dt>
+<dd><p>If <code>TRUE</code>, ask the provider to confirm the access token is active
+before completing login and module refreshes. Requires <code>introspection_url</code>;
+an unsuccessful check or a response other than <code>active = TRUE</code> stops the
+operation. Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-introspection-checks">introspection_checks<a class="anchor" aria-label="anchor" href="#arg-introspection-checks"></a></dt>
+<dd><p>Optional character vector of additional
+requirements to enforce on the introspection response when
+<code>introspect = TRUE</code>. Supported values:</p><ul><li><p><code>"sub"</code>: require the introspected <code>sub</code> to match the session subject
+(from a validated ID token <code>sub</code> when available, else from userinfo
+<code>sub</code>).</p></li>
+<li><p><code>"client_id"</code>: require the introspected <code>client_id</code> to match your OAuth
+client id.</p></li>
+<li><p><code>"scope"</code>: validate introspected <code>scope</code> against requested scopes
+(respects the client's <code>scope_validation</code> mode).</p></li>
+<li><p><code>"token_type"</code>: require introspection to return <code>token_type</code>. This is
+useful for sender-constrained deployments such as DPoP, where
+introspection can authoritatively report <code>token_type = "DPoP"</code>.
+Default is <code>character(0)</code>.
+(Note that not all providers may return each of these fields in
+introspection responses.)</p></li>
+</ul></dd>
+
+
+<dt id="arg-endpoint-auth">endpoint_auth<a class="anchor" aria-label="anchor" href="#arg-endpoint-auth"></a></dt>
+<dd><p>Named list of authentication overrides for <code>par</code>,
+<code>introspection</code>, and <code>revocation</code>. Token exchange and refresh use the
+top-level client/provider authentication settings. Each entry may supply
+<code>token_auth_style</code>, <code>client_secret</code>, <code>client_assertion_private_key</code>,
+<code>client_assertion_private_key_kid</code>, <code>client_assertion_alg</code>,
+<code>client_assertion_audience</code>, <code>client_assertion_typ</code>, <code>extra_headers</code> (named character vector),
+and the <code>mtls_client_*</code> certificate/key/CA fields. Introspection and
+revocation may also use a separate <code>client_id</code>. Unspecified credentials
+inherit the client's settings. Discovered endpoint methods and signing
+algorithms are checked independently. PAR inherits token authentication.
+Extra token headers apply only to token exchange and refresh; set
+<code>extra_headers</code> explicitly for every other endpoint that needs them.</p></dd>
+
+
+<dt id="arg-authorization-server-mode">authorization_server_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-server-mode"></a></dt>
+<dd><p>Declares whether this client is part of an
+application that can interact with more than one authorization server,
+and which RFC 9700 mix-up defense it uses. One of:</p><ul><li><p><code>"single"</code> (default): the application uses only one authorization
+server, so RFC 9700 does not require a mix-up defense.</p></li>
+<li><p><code>"multi_issuer"</code>: authorization responses identify their issuer. JARM
+response modes satisfy this requirement through their validated <code>iss</code>
+claim. Direct response modes require the provider to advertise
+<code>authorization_response_iss_parameter_supported = TRUE</code>; shinyOAuth then
+requires and validates the RFC 9207 <code>iss</code> response parameter. Missing
+support metadata is treated as absence of this defense.</p></li>
+<li><p><code>"multi_redirect_uri"</code>: each authorization server uses a distinct
+redirect URI. Supply the complete set through
+<code>authorization_server_redirect_uris</code>. This mode is supported by
+<code><a href="oauth_module_server.html">oauth_module_server()</a></code>, which compares the browser-visible canonical
+scheme, authority, and path before parsing callback values.</p></li>
+</ul></dd>
+
+
+<dt id="arg-authorization-server-redirect-uris">authorization_server_redirect_uris<a class="anchor" aria-label="anchor" href="#arg-authorization-server-redirect-uris"></a></dt>
+<dd><p>Complete character vector of
+redirect URIs used by the application for its authorization servers when
+<code>authorization_server_mode = "multi_redirect_uri"</code>. It must contain at
+least two canonically distinct scheme/authority/path routes and include
+this client's <code>redirect_uri</code>. Query and fragment components do not make
+routes distinct.</p></dd>
+
+
+<dt id="arg-dpop-require-observed-cnf">dpop_require_observed_cnf<a class="anchor" aria-label="anchor" href="#arg-dpop-require-observed-cnf"></a></dt>
+<dd><p>Logical. When <code>TRUE</code>, shinyOAuth rejects
+<code>token_type = "DPoP"</code> access tokens unless it can observe <code>cnf[["jkt"]]</code>
+locally, from the token response, introspection, or optional JWT access-token
+inspection. Set <code>options(shinyOAuth.access_token_cnf = "opaque")</code> to disable
+access-token decoding for both DPoP and mTLS; the compatibility default
+<code>"jwt"</code> inspects JWT <code>cnf</code> without treating it as signature validation.
+Use this when high-assurance DPoP deployments must
+fail closed on opaque access tokens that provide no observable binding.
+Default is <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-jarm-signed-response-alg">jarm_signed_response_alg<a class="anchor" aria-label="anchor" href="#arg-jarm-signed-response-alg"></a></dt>
@@ -740,6 +757,74 @@ This parameter is not an argument to <code><a href="oauth_client.html">oauth_cli
 <dd><p>Internal SMART configuration installed by <code><a href="smart_client.html">smart_client()</a></code>.
 Leave the empty default for ordinary clients. This is not an argument to
 <code><a href="oauth_client.html">oauth_client()</a></code>.</p></dd>
+
+
+<dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>
+<dd><p>Compatibility alias for <code>introspection_checks</code>.</p></dd>
+
+
+<dt id="arg-client-private-key">client_private_key<a class="anchor" aria-label="anchor" href="#arg-client-private-key"></a></dt>
+<dd><p>Compatibility alias for <code>client_assertion_private_key</code>.</p></dd>
+
+
+<dt id="arg-client-private-key-kid">client_private_key_kid<a class="anchor" aria-label="anchor" href="#arg-client-private-key-kid"></a></dt>
+<dd><p>Compatibility alias for <code>client_assertion_private_key_kid</code>.</p></dd>
+
+
+<dt id="arg-userinfo-jwt-required-temporal-claims">userinfo_jwt_required_temporal_claims<a class="anchor" aria-label="anchor" href="#arg-userinfo-jwt-required-temporal-claims"></a></dt>
+<dd><p>Compatibility alias for <code>userinfo_jwt_required_time_claims</code>.</p></dd>
+
+
+<dt id="arg-mtls-request-certificate-bound-access-tokens">mtls_request_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-mtls-request-certificate-bound-access-tokens"></a></dt>
+<dd><p>Compatibility alias for <code>mtls_certificate_bound_access_tokens</code>.</p></dd>
+
+
+<dt id="arg-tls-client-cert-file">tls_client_cert_file<a class="anchor" aria-label="anchor" href="#arg-tls-client-cert-file"></a></dt>
+<dd><p>Compatibility alias for <code>mtls_client_cert_file</code>.</p></dd>
+
+
+<dt id="arg-tls-client-key-file">tls_client_key_file<a class="anchor" aria-label="anchor" href="#arg-tls-client-key-file"></a></dt>
+<dd><p>Compatibility alias for <code>mtls_client_key_file</code>.</p></dd>
+
+
+<dt id="arg-tls-client-key-password">tls_client_key_password<a class="anchor" aria-label="anchor" href="#arg-tls-client-key-password"></a></dt>
+<dd><p>Compatibility alias for <code>mtls_client_key_password</code>.</p></dd>
+
+
+<dt id="arg-tls-client-ca-file">tls_client_ca_file<a class="anchor" aria-label="anchor" href="#arg-tls-client-ca-file"></a></dt>
+<dd><p>Compatibility alias for <code>mtls_client_ca_file</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-mode">authorization_request_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-request-mode"></a></dt>
+<dd><p>Compatibility alias for <code>request_object_mode</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-signing-alg">authorization_request_signing_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-signing-alg"></a></dt>
+<dd><p>Compatibility alias for <code>request_object_signing_alg</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-audience">authorization_request_audience<a class="anchor" aria-label="anchor" href="#arg-authorization-request-audience"></a></dt>
+<dd><p>Compatibility alias for <code>request_object_audience</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-encryption-alg">authorization_request_encryption_alg<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-alg"></a></dt>
+<dd><p>Compatibility alias for <code>request_object_encryption_alg</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-encryption-enc">authorization_request_encryption_enc<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-enc"></a></dt>
+<dd><p>Compatibility alias for <code>request_object_encryption_enc</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-encryption-kid">authorization_request_encryption_kid<a class="anchor" aria-label="anchor" href="#arg-authorization-request-encryption-kid"></a></dt>
+<dd><p>Compatibility alias for <code>request_object_encryption_kid</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-ttl">authorization_request_ttl<a class="anchor" aria-label="anchor" href="#arg-authorization-request-ttl"></a></dt>
+<dd><p>Compatibility alias for <code>request_object_ttl</code>.</p></dd>
+
+
+<dt id="arg-authorization-request-nbf-skew">authorization_request_nbf_skew<a class="anchor" aria-label="anchor" href="#arg-authorization-request-nbf-skew"></a></dt>
+<dd><p>Compatibility alias for <code>request_object_nbf_skew</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

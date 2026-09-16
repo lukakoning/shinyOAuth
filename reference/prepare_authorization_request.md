@@ -12,7 +12,7 @@ automatically.
 
 ``` r
 prepare_authorization_request(
-  oauth_client,
+  client,
   browser_token,
   request_uri_publisher = NULL
 )
@@ -20,7 +20,7 @@ prepare_authorization_request(
 
 ## Arguments
 
-- oauth_client:
+- client:
 
   An
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)

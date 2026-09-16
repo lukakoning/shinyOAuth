@@ -12,12 +12,12 @@ making requests.
 ## Usage
 
 ``` r
-check_oauth21(client, draft = "draft-ietf-oauth-v2-1-16", context = list())
+check_oauth21(config, context = list(), draft = "draft-ietf-oauth-v2-1-16")
 ```
 
 ## Arguments
 
-- client:
+- config:
 
   An
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
@@ -25,12 +25,6 @@ check_oauth21(client, draft = "draft-ietf-oauth-v2-1-16", context = list())
   [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md).
   Provider-only assessments are partial and cannot establish missing
   client settings.
-
-- draft:
-
-  Implemented target revision. Currently only
-  `"draft-ietf-oauth-v2-1-16"` is supported (an Internet-Draft, not an
-  RFC).
 
 - context:
 
@@ -42,6 +36,12 @@ check_oauth21(client, draft = "draft-ietf-oauth-v2-1-16", context = list())
   confidential deployment and specific request's correct OIDC nonce use.
   It does not supply observed evidence or excuse missing local
   prerequisites. Prefer S256 PKCE.
+
+- draft:
+
+  Implemented target revision. Currently only
+  `"draft-ietf-oauth-v2-1-16"` is supported (an Internet-Draft, not an
+  RFC).
 
 ## Value
 

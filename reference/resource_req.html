@@ -63,10 +63,11 @@ send in one step, use <code><a href="perform_resource_req.html">perform_resource
 <span>  query <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  follow_redirect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  check_url <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  oauth_client <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  client <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  token_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dpop_nonce <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  resource_hosts <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  resource_hosts <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  oauth_client <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -120,7 +121,7 @@ Set to <code>FALSE</code> only if you have already validated the URL and underst
 the security implications.</p></dd>
 
 
-<dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
+<dt id="arg-client">client<a class="anchor" aria-label="anchor" href="#arg-client"></a></dt>
 <dd><p>Optional <a href="OAuthClient.html">OAuthClient</a>. Required when the effective
 token type is <code>DPoP</code>, because the client carries the configured DPoP proof
 key, and also when using sender-constrained mTLS / certificate-bound
@@ -151,6 +152,10 @@ allowlist adds to the global policy and is enforced even if <code>check_url</cod
 is <code>FALSE</code>. Use exact hostnames for URLs derived from lower-trust input.
 It constrains the initial URL, not redirect destinations or resolved IPs;
 retain <code>follow_redirect = FALSE</code>. <code>NULL</code> adds no resource-specific policy.</p></dd>
+
+
+<dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
+<dd><p>Compatibility alias for <code>client</code>. Supply only one spelling.</p></dd>
 
 </dl></div>
     <div class="section level2">

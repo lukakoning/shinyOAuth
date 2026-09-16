@@ -103,12 +103,12 @@ not evict retirement evidence. Existing unrelated access remains usable.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">oauth_connections</span><span class="op">(</span></span>
 <span>  <span class="va">clients</span>,</span>
 <span>  <span class="va">app_origin</span>,</span>
-<span>  callback_policy <span class="op">=</span> <span class="st">"distinct_routes"</span>,</span>
 <span>  retention <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"shiny"</span>, <span class="st">"browser"</span>, <span class="st">"account"</span><span class="op">)</span>,</span>
+<span>  retention_seconds <span class="op">=</span> <span class="fl">28800</span>,</span>
+<span>  owner_policy <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  store <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  owner <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  keys <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  retention_seconds <span class="op">=</span> <span class="fl">28800</span></span>
+<span>  callback_policy <span class="op">=</span> <span class="st">"distinct_routes"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'OAuthConnections'</span></span>
@@ -132,6 +132,36 @@ HTTPS is required for retained owners, except an explicit browser-owner
 HTTP loopback exception. Session-only development also permits loopback HTTP.</p></dd>
 
 
+<dt id="arg-retention">retention<a class="anchor" aria-label="anchor" href="#arg-retention"></a></dt>
+<dd><p><code>"shiny"</code> (default) discards connections at Shiny session end.
+<code>"browser"</code> restores the browser owner's connections after navigation;
+<code>"account"</code> uses a trusted local application login. Retention does not request
+refresh tokens or extend provider authorization.</p></dd>
+
+
+<dt id="arg-retention-seconds">retention_seconds<a class="anchor" aria-label="anchor" href="#arg-retention-seconds"></a></dt>
+<dd><p>Maximum lifetime of each stored grant, in seconds.
+Positive and finite, no larger than the store's <code>max_age</code>. Refresh never
+resets it. Browser retention is also capped by the owner's absolute expiry.</p></dd>
+
+
+<dt id="arg-owner-policy">owner_policy<a class="anchor" aria-label="anchor" href="#arg-owner-policy"></a></dt>
+<dd><p><code><a href="oauth_browser_owner.html">oauth_browser_owner()</a></code> or <code><a href="oauth_browser_owner.html">oauth_account_owner()</a></code> matching the
+retained mode. Must be <code>NULL</code> for session-only retention.</p></dd>
+
+
+<dt id="arg-store">store<a class="anchor" aria-label="anchor" href="#arg-store"></a></dt>
+<dd><p>A store from <code><a href="oauth_connection_store_memory.html">oauth_connection_store_memory()</a></code>. Required for
+retained modes; session-only mode creates a memory store by default. Only
+the supplied memory store in one R process is supported.</p></dd>
+
+
+<dt id="arg-keys">keys<a class="anchor" aria-label="anchor" href="#arg-keys"></a></dt>
+<dd><p>Named list with <code>credentials</code> and <code>owner</code>, each a deployment-held
+raw vector of 32 bytes. Required for retained modes. Session-only mode creates
+ephemeral keys if omitted. Keep these keys outside credential storage.</p></dd>
+
+
 <dt id="arg-callback-policy">callback_policy<a class="anchor" aria-label="anchor" href="#arg-callback-policy"></a></dt>
 <dd><p><code>"distinct_routes"</code> (default) gives each client its own
 registered callback route. With several clients, configure every client with
@@ -145,36 +175,6 @@ one issuer through a protected pending-state index. Both opt-in policies
 require explicit <code>authorization_server_mode = "multi_issuer"</code> clients, with
 RFC 9207 issuer responses or signed JARM. Encrypted JARM requires
 distinct routes. Routing never substitutes for callback authentication.</p></dd>
-
-
-<dt id="arg-retention">retention<a class="anchor" aria-label="anchor" href="#arg-retention"></a></dt>
-<dd><p><code>"shiny"</code> (default) discards connections at Shiny session end.
-<code>"browser"</code> restores the browser owner's connections after navigation;
-<code>"account"</code> uses a trusted local application login. Retention does not request
-refresh tokens or extend provider authorization.</p></dd>
-
-
-<dt id="arg-store">store<a class="anchor" aria-label="anchor" href="#arg-store"></a></dt>
-<dd><p>A store from <code><a href="oauth_connection_store_memory.html">oauth_connection_store_memory()</a></code>. Required for
-retained modes; session-only mode creates a memory store by default. This
-initial manager supports one R process and rejects external adapter claims.</p></dd>
-
-
-<dt id="arg-owner">owner<a class="anchor" aria-label="anchor" href="#arg-owner"></a></dt>
-<dd><p><code><a href="oauth_browser_owner.html">oauth_browser_owner()</a></code> or <code><a href="oauth_browser_owner.html">oauth_account_owner()</a></code> matching the
-retained mode. Must be <code>NULL</code> for session-only retention.</p></dd>
-
-
-<dt id="arg-keys">keys<a class="anchor" aria-label="anchor" href="#arg-keys"></a></dt>
-<dd><p>Named list with <code>credentials</code> and <code>owner</code>, each a deployment-held
-raw vector of 32 bytes. Required for retained modes. Session-only mode creates
-ephemeral keys if omitted. Keep these keys outside credential storage.</p></dd>
-
-
-<dt id="arg-retention-seconds">retention_seconds<a class="anchor" aria-label="anchor" href="#arg-retention-seconds"></a></dt>
-<dd><p>Maximum lifetime of each stored grant, in seconds.
-Positive and finite, no larger than the store's <code>max_age</code>. Refresh never
-resets it. Browser retention is also capped by the owner's absolute expiry.</p></dd>
 
 
 <dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>

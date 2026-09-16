@@ -362,18 +362,6 @@ is optional and cannot prevent a downgrade to unsigned authorization
 requests ([RFC 9101 section
 10.5](https://www.rfc-editor.org/rfc/rfc9101.html#section-10.5)).
 
-Qualify the production authorization server’s exact version, client
-registration, and policies separately. The pinned Keycloak 26.6.1
-integration fixture accepts signed Request Objects with incorrect
-audience or issuer, expired objects, and repeated objects. Its tests
-record those provider limitations; a passing fixture suite does not
-establish strict server-side JAR enforcement. Verify rejection of
-incorrect signatures, audience/issuer and expired objects against your
-deployment, and test the required replay policy. See [RFC 9101 section
-6](https://www.rfc-editor.org/rfc/rfc9101.html#section-6). The separate
-`integration/conformance` fixture exercises stricter server checks, but
-does not certify a production provider configuration.
-
 ``` r
 
 provider <- oauth_provider(
@@ -430,8 +418,7 @@ documented error response or server audit event for that reason; a
 generic HTTP error is insufficient. A login/consent page, authorization
 code, or `login_required` response does not establish enforcement.
 Repeat this probe in deployment tests alongside a successful signed
-request. The Keycloak compatibility examples in the integration suite do
-not certify server enforcement of all JAR claims.
+request.
 
 Register the signing key with your provider. To encrypt the signed
 request too, configure `request_object_encryption_alg = "RSA-OAEP"` and
@@ -735,7 +722,7 @@ resp <- perform_resource_req(
   auth[["token"]],
   "https://api.example.com/me",
   # Lets shinyOAuth attach the DPoP proof and handle nonce challenges
-  oauth_client = client
+  client = client
 )
 ```
 

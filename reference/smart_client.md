@@ -1,5 +1,7 @@
 # Configure a SMART on FHIR app registration
 
+**\[experimental\]**
+
 Combine a reviewed
 [`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md)
 snapshot with an existing app registration. The result is an
@@ -18,24 +20,24 @@ smart_client(
   redirect_uri,
   scopes,
   required_scopes = scopes,
+  launch = c("standalone", "ehr"),
+  identity = c("none", "openid", "fhirUser"),
+  allow_v1_scopes = FALSE,
+  online_access_policy = c("online_only", "allow_offline"),
   token_auth_style = c("public", "header", "private_key_jwt"),
   client_secret = character(),
   client_assertion_private_key = NULL,
   client_assertion_private_key_kid = NULL,
   client_assertion_alg = "RS384",
-  launch = c("standalone", "ehr"),
-  identity = c("none", "openid", "fhirUser"),
-  allow_v1 = FALSE,
+  authorization_method = "GET",
   response_mode = NULL,
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(),
+  initial_expires_in_fallback = NULL,
+  label = "FHIR server",
   state_store = cachem::cache_mem(max_age = 300),
   state_key = random_urlsafe(128),
-  state_payload_max_age = 300,
-  label = "FHIR server",
-  authorization_method = "GET",
-  initial_expires_in = NULL,
-  online_access_policy = c("online_only", "allow_offline")
+  state_payload_max_age = 300
 )
 ```
 
@@ -61,8 +63,8 @@ smart_client(
   `offline_access` requires `permission-offline` in either launch mode.
   Each resource scope spelling must be advertised through
   `permission-v2` or, for v1 spellings, `permission-v1` with
-  `allow_v1 = TRUE`. A SMART scope comparison supports at most 256
-  distinct scopes on each side and 64 KiB (65,536 bytes) of combined
+  `allow_v1_scopes = TRUE`. A SMART scope comparison supports at most
+  256 distinct scopes on each side and 64 KiB (65,536 bytes) of combined
   scope text. Larger comparisons fail closed, including during token
   acceptance and refresh.
 
@@ -72,6 +74,39 @@ smart_client(
   reduced grants as limited connections. Identity scopes are always
   required when identity is enabled. Unsupported comparisons fail
   closed.
+
+- launch:
+
+  `"standalone"` or `"ehr"`, matching the registered app flow.
+
+- identity:
+
+  `"none"` (default), `"openid"` for a validated OIDC subject, or
+  `"fhirUser"` to also require the user's FHIR reference. `"openid"`
+  does not interpret a `fhirUser` claim or populate
+  `smart_context()[["fhirUser"]]`. A validated `fhirUser` claim may be
+  an absolute URL or a supported resource instance reference relative to
+  this client's FHIR base, such as `"Practitioner/example"` or
+  `"Practitioner/example/_history/2"`. Versioned references retain their
+  version.
+
+- allow_v1_scopes:
+
+  Explicit compatibility flag enabling `.read`, `.write` and `.*`.
+  Requesting these spellings requires `permission-v1`; requesting v2
+  spellings requires `permission-v2`, including when this flag is
+  enabled. Default `FALSE`.
+
+- online_access_policy:
+
+  `"online_only"` (default) or `"allow_offline"`. SMART permits an
+  `online_access` request to negotiate `offline_access`. Opt in to
+  `"allow_offline"` to accept that longer-lived permission in place of
+  required `online_access`. The default rejects this substitution, even
+  when `online_access` is optional. Explicitly requesting
+  `offline_access` also authorizes offline persistence. Granted scopes
+  retain their actual spelling; refresh responses cannot escalate an
+  existing online grant.
 
 - token_auth_style:
 
@@ -100,27 +135,14 @@ smart_client(
   `"RS384"` (default) or `"ES384"`; the key and server metadata must
   support the selected algorithm. Other styles omit assertions.
 
-- launch:
+- authorization_method:
 
-  `"standalone"` or `"ehr"`, matching the registered app flow.
-
-- identity:
-
-  `"none"` (default), `"openid"` for a validated OIDC subject, or
-  `"fhirUser"` to also require the user's FHIR reference. `"openid"`
-  does not interpret a `fhirUser` claim or populate
-  `smart_context()[["fhirUser"]]`. A validated `fhirUser` claim may be
-  an absolute URL or a supported resource instance reference relative to
-  this client's FHIR base, such as `"Practitioner/example"` or
-  `"Practitioner/example/_history/2"`. Versioned references retain their
-  version.
-
-- allow_v1:
-
-  Explicit compatibility flag enabling `.read`, `.write` and `.*`.
-  Requesting these spellings requires `permission-v1`; requesting v2
-  spellings requires `permission-v2`, including when this flag is
-  enabled. Default `FALSE`.
+  `"GET"` (default) or `"POST"` for the outgoing browser request. POST
+  requires the discovered `authorize-post` capability and uses the
+  module's `request_login()` or
+  [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md).
+  POST supports longer browser requests but retains the scope comparison
+  limits described under `scopes`.
 
 - response_mode:
 
@@ -133,25 +155,7 @@ smart_client(
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
   Multiple clients use distinct registered callback routes.
 
-- state_store, state_key, state_payload_max_age:
-
-  See
-  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
-
-- label:
-
-  Display label, default `"FHIR server"`; no credentials or context.
-
-- authorization_method:
-
-  `"GET"` (default) or `"POST"` for the outgoing browser request. POST
-  requires the discovered `authorize-post` capability and uses the
-  module's `request_login()` or
-  [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md).
-  POST supports longer browser requests but retains the scope comparison
-  limits described under `scopes`.
-
-- initial_expires_in:
+- initial_expires_in_fallback:
 
   Optional positive lifetime in seconds, supplied by the authorization
   server out of band for initial access tokens. Used only when an
@@ -160,16 +164,14 @@ smart_client(
   lifetime. This does not apply to refresh responses or change ordinary
   OAuth defaults.
 
-- online_access_policy:
+- label:
 
-  `"online_only"` (default) or `"allow_offline"`. SMART permits an
-  `online_access` request to negotiate `offline_access`. Opt in to
-  `"allow_offline"` to accept that longer-lived permission in place of
-  required `online_access`. The default rejects this substitution, even
-  when `online_access` is optional. Explicitly requesting
-  `offline_access` also authorizes offline persistence. Granted scopes
-  retain their actual spelling; refresh responses cannot escalate an
-  existing online grant.
+  Display label, default `"FHIR server"`; no credentials or context.
+
+- state_store, state_key, state_payload_max_age:
+
+  See
+  [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
 
 ## Value
 
@@ -192,18 +194,17 @@ issuer happens to be present. A patient in context is independent of the
 authenticated user and local owner.
 
 Only direct authorization requests and query/form POST callbacks are
-currently supported. Claims requests (including `auth_time`), JAR, PAR,
-JARM, DPoP, mTLS and remote freshness requirements need separate SMART
-composition work; this constructor provides no overrides for those
-features. EHR clients require a fresh registered launch transaction.
+supported. Claims requests (including `auth_time`), JAR, PAR, JARM,
+DPoP, mTLS and remote freshness requirements are not supported by this
+constructor. EHR clients require a fresh registered launch transaction.
 Configure standalone and EHR registrations as separate clients when both
 are needed. No launch handle is stored in shared provider configuration.
 Local usability policy requires a positive lifetime. An initial response
-may omit `expires_in` only when `initial_expires_in` is configured
-explicitly; refresh responses must include it. The generic assumed
-lifetime is not used. SMART back-channel and resource requests require
-TLS 1.2 or newer. A stronger configured TLS minimum is preserved;
-ordinary clients keep their defaults.
+may omit `expires_in` only when `initial_expires_in_fallback` is
+configured explicitly; refresh responses must include it. The generic
+assumed lifetime is not used. SMART back-channel and resource requests
+require TLS 1.2 or newer. A stronger configured TLS minimum is
+preserved; ordinary clients keep their defaults.
 
 ## References
 

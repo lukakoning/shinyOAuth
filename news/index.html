@@ -64,7 +64,7 @@
 <code><a href="../reference/smart_launch_route.html">smart_launch_route()</a></code> accepts EHR launches for configured clients using browser retention. SMART supports direct authorization with query or form POST callbacks.</li>
 <li>
 <code><a href="../reference/smart_context.html">smart_context()</a></code> reports the current patient, encounter, and validated user reference, with a revision for detecting context changes after refresh. <code><a href="../reference/smart_context.html">smart_patient()</a></code> and <code><a href="../reference/smart_context.html">smart_fhir_user()</a></code> fetch the corresponding FHIR resources only when authorized and within the configured server.</li>
-<li>Required permissions remain enforced for reduced grants and refreshes. Offline access negotiation requires opt-in. Token responses must supply scopes and a positive lifetime; <code>initial_expires_in</code> can provide an explicit fallback for the initial response.</li>
+<li>Required permissions remain enforced for reduced grants and refreshes. Offline access negotiation requires opt-in. Token responses must supply scopes and a positive lifetime; <code>initial_expires_in_fallback</code> can provide an explicit fallback for the initial response.</li>
 </ul></li>
 <li><p><code>OAuthToken</code> exposes additional token response parameters in <code>extra_fields</code> (<a href="https://github.com/lukakoning/shinyOAuth/issues/16" class="external-link">#16</a>). Each successful refresh replaces that list; <code>initial_extra_fields</code> preserves the initial response. Both retain nested values and explicit nulls and are redacted when printed.</p></li>
 <li><p>Added <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> to handle URL-based callbacks before the app UI loads. Wrap the UI with the same <code>id</code> and <code>client</code> used by <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. Both <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> and <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> accept named client registries for apps using multiple OAuth modules or providers.</p></li>
@@ -72,7 +72,16 @@
 <li><p>Browser bindings are isolated by origin, tab, login, and app/module and stay out of URLs and bookmarks. Callbacks enforce the registered path and response transport, preserve escaped paths, and reject oversized input before routing. Shared callback state is encrypted and requires atomic storage. <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> supports trusted-proxy URI resolution. New visitors cannot evict retained connections or browsers with pending authorizations.</p></li>
 <li><p>Added signed and encrypted authorization responses (JARM) through <code>response_mode = "jwt"</code>, <code>"query.jwt"</code>, or <code>"form_post.jwt"</code> with <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. Algorithms can be configured or discovered; <code>jarm_max_lifetime</code> defaults to 600 seconds. Malformed claims and headers are rejected. <code><a href="../reference/handle_callback.html">handle_callback()</a></code> continues to accept only classic callbacks.</p></li>
 <li><p><code>authorization_server_mode</code> supports multiple authorization servers through validated issuer responses or distinct registered callback routes. <code>compare_callback_issuer</code> can check a supplied issuer without requiring older providers to send one; required issuer and JARM checks remain enforced.</p></li>
-<li><p>Client and provider constructor arguments have been reorganized and renamed. Helper constructors retain compatibility aliases; low-level S7 constructors require the new names and should use named arguments. Client assertion keys, mTLS, Request Object, and JARM settings use <code>client_assertion_*</code>, <code>mtls_*</code>, <code>request_object_*</code>, and <code>jarm_*</code> names. See <code><a href="../reference/oauth_client.html">?oauth_client</a></code> and <code><a href="../reference/oauth_provider.html">?oauth_provider</a></code> for the current arguments.</p></li>
+<li>
+<p>Function argument names are more consistent. CRAN 0.5.0 argument names and positions remain supported, as do the existing S7 property names:</p>
+<ul><li>Login, token, userinfo, resource-request, and mTLS registration helpers consistently accept <code>client</code> and <code>token</code>.</li>
+<li>
+<code><a href="../reference/handle_callback.html">handle_callback()</a></code> accepts callback state as <code>state</code>; introspection and revocation helpers select access or refresh tokens with <code>token_kind</code>.</li>
+<li>Provider constructors and discovery use <code>id_token_allowed_algs</code> for ID-token signing algorithms. Clients use <code>introspection_checks</code> for extra introspection requirements.</li>
+<li>Client assertion keys, mTLS, Request Object, and JARM settings use <code>client_assertion_*</code>, <code>mtls_*</code>, <code>request_object_*</code>, and <code>jarm_*</code> names. See <code><a href="../reference/oauth_client.html">?oauth_client</a></code> and <code><a href="../reference/oauth_provider.html">?oauth_provider</a></code> for the current arguments.</li>
+<li>
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> uses <code>refresh_check_interval_ms</code> to make the polling interval’s millisecond unit explicit.</li>
+</ul></li>
 <li>
 <p>Client and provider configuration changes:</p>
 <ul><li>Client credentials no longer default from <code>OAUTH_CLIENT_ID</code> or <code>OAUTH_CLIENT_SECRET</code>; an omitted secret is treated as absent. Public clients must use PKCE. Printed objects redact credentials and sensitive URL components.</li>
@@ -85,7 +94,7 @@
 <li>
 <p>Provider configuration changes:</p>
 <ul><li>
-<code>issuer_thus_oidc = FALSE</code> allows generic OAuth issuer validation without enabling OIDC; the default remains <code>TRUE</code>.</li>
+<code>infer_oidc_from_issuer = FALSE</code> allows generic OAuth issuer validation without enabling OIDC; the default remains <code>TRUE</code>.</li>
 <li>An explicit <code>jwks_uri</code> overrides discovery across signing-key consumers. Missing or disallowed required key locations fail during configuration.</li>
 <li>
 <code>userinfo_allowed_algs</code> configures signed UserInfo algorithms independently from ID-token algorithms, with corresponding discovery support.</li>
@@ -259,7 +268,7 @@
 <ul><li>
 <code><a href="../reference/custom_cache.html">custom_cache()</a></code> gains an optional <code>take</code> parameter for atomic get-and-delete.</li>
 <li>
-<code><a href="../reference/state_store_get_remove.html">state_store_get_remove()</a></code> prefers <code>$take()</code> when available; falls back to <code>$get()</code> + <code>$remove()</code> with a mandatory post-removal absence check (instead of trusting <code>$remove()</code> return values).</li>
+<code>state_store_get_remove()</code> prefers <code>$take()</code> when available; falls back to <code>$get()</code> + <code>$remove()</code> with a mandatory post-removal absence check (instead of trusting <code>$remove()</code> return values).</li>
 <li>Non-<code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> stores without <code>$take()</code> now error by default to prevent TOCTOU replay attacks in shared/multi-worker deployments. To bypass this error, operators must explicitly acknowledge the risk by setting <code>options(shinyOAuth.allow_non_atomic_state_store = TRUE)</code>, which downgrades the error to a warning.</li>
 <li>
 <code>OAuthClient</code> validator now validates <code>$take()</code> signature when present.</li>

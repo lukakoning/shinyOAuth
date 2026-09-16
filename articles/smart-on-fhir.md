@@ -129,7 +129,7 @@ manager <- oauth_connections(
   clients = list(hospital = client),
   app_origin = app_origin,
   retention = "browser",
-  owner = oauth_browser_owner(allow_http_loopback = TRUE),
+  owner_policy = oauth_browser_owner(allow_http_loopback = TRUE),
   store = oauth_connection_store_memory(),
   # Temporary keys for this local demo, created once at app startup.
   # For deployment, load independent 32-byte raw keys from secret storage.
@@ -392,11 +392,11 @@ can obtain additional owners, so these quotas do not replace those
 deployment controls. Use the proxy’s verified client address for rate
 limits and size the owner registry for the admitted traffic.
 
-The current EHR entry implementation requires **top-level browser
-navigation, browser retention with a Lax owner cookie, and one R
-process**. Embedded iframe launch is not supported. A route can allow
-multiple named clients with distinct FHIR bases. Separate registrations
-for the same base need separate entry routes.
+EHR launch requires **top-level browser navigation, browser retention
+with a Lax owner cookie, and one R process**. Embedded iframe launch is
+not supported. A route can allow multiple named clients with distinct
+FHIR bases. Separate registrations for the same base need separate entry
+routes.
 
 ## More than one hospital
 
@@ -414,16 +414,6 @@ are not interchangeable. To support both standalone and EHR entry,
 configure separate clients for those flows.
 
 ## Other registration and refresh options
-
-For SMART asymmetric registrations, code exchange and refresh identify
-the client through the signed assertion and omit form-body `client_id`.
-This follows the [App Launch token parameter
-table](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#obtain-access-token)
-and its [asymmetric worked
-example](https://hl7.org/fhir/smart-app-launch/STU2.2/example-app-launch-asymmetric-auth.html#retrieve-access-token).
-The signature-verification text also describes checking a supplied
-client ID; this package chooses the table’s request shape. Ordinary
-OAuth JWT client authentication retains its existing serialization.
 
 Choose authentication to match the server registration:
 
@@ -467,11 +457,12 @@ access or a refresh token. The manager refreshes when a refresh
 credential is available. SMART refresh responses must include a positive
 `expires_in`. For initial responses, SMART recommends that field but
 permits its omission. If the authorization server supplies the initial
-lifetime out of band, configure `smart_client(initial_expires_in = 300)`
-with that documented value in seconds. It is used only when the initial
-response omits `expires_in`; an explicit value takes precedence. The
-default `NULL` requires an explicit response lifetime, and generic OAuth
-lifetime options do not apply to SMART.
+lifetime out of band, configure
+`smart_client(initial_expires_in_fallback = 300)` with that documented
+value in seconds. It is used only when the initial response omits
+`expires_in`; an explicit value takes precedence. The default `NULL`
+requires an explicit response lifetime, and generic OAuth lifetime
+options do not apply to SMART.
 
 `connection[["refresh"]](scopes = ...)` can narrow the connection’s
 accepted scopes. That local limit is retained and sent on later
@@ -491,22 +482,3 @@ composition with JAR, PAR, JARM, DPoP and mTLS is not currently exposed
 through
 [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md);
 consult its reference for scope.
-
-## Testing with fixtures and the Docker sandbox
-
-The repository has browser integration tests for standalone and EHR
-launch, multiple retained connections, supported registration types,
-refresh, context and outgoing POST. Independent cryptographic
-conformance tests cover client assertions. See the [coverage
-map](https://github.com/lukakoning/shinyOAuth/blob/2200f1bf7d44670a2c7f70a297b4cde787a3cc93/integration/smart/coverage.md)
-for recorded results and runner commands.
-
-The official `smart-on-fhir/smart-dev-sandbox` Docker setup is also
-included. The pinned launcher advertises asymmetric authentication but
-omits required signing-algorithm metadata, so it currently fails strict
-SMART discovery. Passing its diagnostic checks does **not** establish a
-working external SMART authorization flow. Use the [sandbox
-guide](https://github.com/lukakoning/shinyOAuth/blob/2200f1bf7d44670a2c7f70a297b4cde787a3cc93/integration/smart/sandbox.md)
-for setup and the compatibility gate; external app interoperability
-remains an open release checkpoint. Do not bypass metadata validation to
-make this example appear compatible.

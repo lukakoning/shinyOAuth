@@ -61,14 +61,20 @@ The Shiny module fetches and stores this information during login when
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_userinfo</span><span class="op">(</span><span class="va">oauth_client</span>, <span class="va">token</span>, token_type <span class="op">=</span> <span class="cn">NULL</span>, shiny_session <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_userinfo</span><span class="op">(</span></span>
+<span>  <span class="va">client</span>,</span>
+<span>  <span class="va">token</span>,</span>
+<span>  token_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  oauth_client <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
+<dl><dt id="arg-client">client<a class="anchor" aria-label="anchor" href="#arg-client"></a></dt>
 <dd><p><a href="OAuthClient.html">OAuthClient</a> object. The client must have a
 <code>userinfo_url</code> configured in its <a href="OAuthProvider.html">OAuthProvider</a>.</p></dd>
 
@@ -85,6 +91,10 @@ is provided as a raw string. Supported values are <code>Bearer</code> and <code>
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
 <dd><p>Optional captured Shiny session details for audit events.
 Normally supplied by the module; leave <code>NULL</code> when calling directly.</p></dd>
+
+
+<dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
+<dd><p>Compatibility alias for <code>client</code>. Supply only one spelling.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -136,7 +146,7 @@ for configuration.</p>
 <span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="refresh_token.html">refresh_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Requires a revocation endpoint to invalidate the token at the provider.</span></span></span>
-<span class="r-in"><span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="revoke_token.html">revoke_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span>, which <span class="op">=</span> <span class="st">"refresh"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="revoke_token.html">revoke_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span>, token_kind <span class="op">=</span> <span class="st">"refresh"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>

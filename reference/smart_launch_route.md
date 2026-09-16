@@ -1,5 +1,7 @@
 # Register a SMART EHR launch entry route
 
+**\[experimental\]**
+
 Declare which approved SMART clients an EHR launch URL may select. Pass
 the result in `launch_routes` to
 [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md).
@@ -10,7 +12,7 @@ are rejected on this route.
 ## Usage
 
 ``` r
-smart_launch_route(path, clients, max_age = 120)
+smart_launch_route(path, client_names, max_age = 120)
 ```
 
 ## Arguments
@@ -23,7 +25,7 @@ smart_launch_route(path, clients, max_age = 120)
   other launch route. Accepted percent-encoded unreserved characters are
   stored decoded.
 
-- clients:
+- client_names:
 
   Character vector of names from the manager's `clients` list, not OAuth
   `client_id` values. Each must select an EHR-mode
@@ -52,16 +54,15 @@ to the browser owner and client. A clean continuation proves that owner
 before a fresh OAuth state/PKCE transaction can begin. Consumed handles
 cannot be reused to reconnect.
 
-The initial implementation supports top-level GET entry with browser
-retention in one R process. Account/session-only retention and iframe
-deployments are not supported for EHR entry yet. The ordinary standalone
-manager remains usable with its existing retention choices. Up to eight
-unconsumed launch records are retained per browser owner across all of a
-manager's launch routes, with a total limit of 1,000 per manager.
-Further entries are rejected without evicting existing tickets.
-Consuming or expiring a ticket releases its capacity. Raw query size is
-limited to 8 KiB, launch handles to 2 KiB, and the only allowed initial
-parameters are `iss` and `launch`.
+EHR entry supports top-level GET navigation with browser retention in
+one R process. Account/session-only retention and iframe deployments are
+not supported for EHR entry. Standalone launch supports all manager
+retention choices. Up to eight unconsumed launch records are retained
+per browser owner across all of a manager's launch routes, with a total
+limit of 1,000 per manager. Further entries are rejected without
+evicting existing tickets. Consuming or expiring a ticket releases its
+capacity. Raw query size is limited to 8 KiB, launch handles to 2 KiB,
+and the only allowed initial parameters are `iss` and `launch`.
 
 Apply ingress rate limits to both launch entry and ordinary pages that
 create browser owners. The owner quota isolates an existing browser's

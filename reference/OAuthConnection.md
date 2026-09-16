@@ -37,11 +37,10 @@ Call `[["is_usable"]]()`, `[["summary"]]()` and `[["request"]]()` in the
 owning session's reactive context. If the connection cannot be resolved,
 `[["is_usable"]]()` returns `FALSE`; `[["summary"]]()` and
 `[["request"]]()` raise an error. The ID is read-only and cloning is
-disabled. The class generator is internal; the public factories
-establish the session binding required by applications. Managed resource
-and status reads do not count as owner activity. Record user actions
-with the manager's `touch()` method in an input event handler; automatic
-reactive updates must not prolong an idle owner's session.
+disabled. Managed resource and status reads do not count as owner
+activity. Record user actions with the manager's `touch()` method in an
+input event handler; automatic reactive updates must not prolong an idle
+owner's session.
 
 ## See also
 
@@ -89,7 +88,6 @@ Initialize a reference. This constructor is for internal use;
 applications should use
 [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
 or the manager's `connection(id)` method to establish session ownership.
-Calling it again on an initialized reference is an error.
 
 #### Usage
 
@@ -148,10 +146,9 @@ otherwise `FALSE`, including when resolution fails.
 ### `OAuthConnection$refresh()`
 
 Refresh a connection created by
-[`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
-under the manager's exclusive store claim. The manager rechecks the
-owner and current record before installing replacement credentials.
-References created with
+[`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md).
+The manager coordinates refresh and verifies ownership before updating
+credentials. References created with
 [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
 use their existing module's refresh lifecycle and cannot invoke this
 method.
@@ -376,6 +373,8 @@ scopes and transport failures raise errors.
 
 ### `OAuthConnection$smart_context()`
 
+**\[experimental\]**
+
 Read interpreted context for a usable SMART connection in this session.
 
 #### Usage
@@ -390,6 +389,8 @@ The sensitive context list documented in
 ------------------------------------------------------------------------
 
 ### `OAuthConnection$smart_resource()`
+
+**\[experimental\]**
 
 Fetch the contextual Patient or validated fhirUser through the approved
 FHIR base, using current read permissions. Prefer

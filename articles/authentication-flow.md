@@ -61,8 +61,7 @@ token. The browser stores it and acknowledges the request without
 duplicating the token in another input. The server rejects
 client-selected replacements. Starting a second login for the same
 module replaces the first pending binding. Private inputs are excluded
-from URL and server bookmarks, with a bookmark hook enforcing those
-exclusions again at serialization. Applications must not copy
+from URL and server bookmarks. Applications must not copy
 `auth[["browser_token"]]` into their own bookmark values or logs.
 
 Wrap your UI in
@@ -244,9 +243,9 @@ or oversized callback values.
 The default authorization-code budget is 8192 decoded bytes across
 direct, GET/POST bridge, module and JARM processing. Explicit field and
 aggregate limits still apply; oversized values are rejected without
-truncation. Tests cover an encoded 8000-byte request-line envelope, but
-larger codes, state or JARM values can exceed a deployment’s proxy
-limits. Check the whole encoded callback when configuring those limits.
+truncation. Large codes, state or JARM values can exceed a deployment’s
+proxy limits. Check the whole encoded callback when configuring those
+limits.
 
 The state-store entry is consumed once. Missing, expired, or
 already-used entries cannot complete login. A Form Post handle must also

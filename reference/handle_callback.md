@@ -16,18 +16,20 @@ handles these responsibilities for Shiny sessions.
 
 ``` r
 handle_callback(
-  oauth_client,
+  client,
   code,
-  payload,
+  state,
   browser_token,
   shiny_session = NULL,
-  iss = NULL
+  iss = NULL,
+  oauth_client = NULL,
+  payload = NULL
 )
 ```
 
 ## Arguments
 
-- oauth_client:
+- client:
 
   An
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
@@ -38,7 +40,7 @@ handle_callback(
   Authorization code received from the provider on a classic direct
   callback.
 
-- payload:
+- state:
 
   Encrypted state payload returned by the provider on a classic direct
   callback. This should be the same value that was originally sent in
@@ -70,6 +72,14 @@ handle_callback(
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   instead.
 
+- oauth_client:
+
+  Compatibility alias for `client`. Supply only one spelling.
+
+- payload:
+
+  Compatibility alias for `state`. Supply only one spelling.
+
 ## Value
 
 An
@@ -79,11 +89,10 @@ fails, the function raises an error.
 
 ## Details
 
-Pass the returned `code`, the callback's `state` as `payload`, and the
-browser token saved for this login. This helper accepts direct
-code/state callbacks only. For signed responses using JWT Secured
-Authorization Response Mode (JARM; `"jwt"`, `"query.jwt"`, or
-`"form_post.jwt"`), use
+Pass the returned `code`, the callback's `state`, and the browser token
+saved for this login. This helper accepts direct code/state callbacks
+only. For signed responses using JWT Secured Authorization Response Mode
+(JARM; `"jwt"`, `"query.jwt"`, or `"form_post.jwt"`), use
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
 and, for POST responses,
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).

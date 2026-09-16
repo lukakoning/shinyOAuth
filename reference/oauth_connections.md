@@ -33,12 +33,12 @@ access remains usable.
 oauth_connections(
   clients,
   app_origin,
-  callback_policy = "distinct_routes",
   retention = c("shiny", "browser", "account"),
+  retention_seconds = 28800,
+  owner_policy = NULL,
   store = NULL,
-  owner = NULL,
   keys = NULL,
-  retention_seconds = 28800
+  callback_policy = "distinct_routes"
 )
 
 # S3 method for class 'OAuthConnections'
@@ -63,6 +63,41 @@ print(x, ...)
   loopback exception. Session-only development also permits loopback
   HTTP.
 
+- retention:
+
+  `"shiny"` (default) discards connections at Shiny session end.
+  `"browser"` restores the browser owner's connections after navigation;
+  `"account"` uses a trusted local application login. Retention does not
+  request refresh tokens or extend provider authorization.
+
+- retention_seconds:
+
+  Maximum lifetime of each stored grant, in seconds. Positive and
+  finite, no larger than the store's `max_age`. Refresh never resets it.
+  Browser retention is also capped by the owner's absolute expiry.
+
+- owner_policy:
+
+  [`oauth_browser_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+  or
+  [`oauth_account_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+  matching the retained mode. Must be `NULL` for session-only retention.
+
+- store:
+
+  A store from
+  [`oauth_connection_store_memory()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md).
+  Required for retained modes; session-only mode creates a memory store
+  by default. Only the supplied memory store in one R process is
+  supported.
+
+- keys:
+
+  Named list with `credentials` and `owner`, each a deployment-held raw
+  vector of 32 bytes. Required for retained modes. Session-only mode
+  creates ephemeral keys if omitted. Keep these keys outside credential
+  storage.
+
 - callback_policy:
 
   `"distinct_routes"` (default) gives each client its own registered
@@ -78,41 +113,6 @@ print(x, ...)
   `authorization_server_mode = "multi_issuer"` clients, with RFC 9207
   issuer responses or signed JARM. Encrypted JARM requires distinct
   routes. Routing never substitutes for callback authentication.
-
-- retention:
-
-  `"shiny"` (default) discards connections at Shiny session end.
-  `"browser"` restores the browser owner's connections after navigation;
-  `"account"` uses a trusted local application login. Retention does not
-  request refresh tokens or extend provider authorization.
-
-- store:
-
-  A store from
-  [`oauth_connection_store_memory()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md).
-  Required for retained modes; session-only mode creates a memory store
-  by default. This initial manager supports one R process and rejects
-  external adapter claims.
-
-- owner:
-
-  [`oauth_browser_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
-  or
-  [`oauth_account_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
-  matching the retained mode. Must be `NULL` for session-only retention.
-
-- keys:
-
-  Named list with `credentials` and `owner`, each a deployment-held raw
-  vector of 32 bytes. Required for retained modes. Session-only mode
-  creates ephemeral keys if omitted. Keep these keys outside credential
-  storage.
-
-- retention_seconds:
-
-  Maximum lifetime of each stored grant, in seconds. Positive and
-  finite, no larger than the store's `max_age`. Refresh never resets it.
-  Browser retention is also capped by the owner's absolute expiry.
 
 - x:
 

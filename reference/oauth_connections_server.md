@@ -4,7 +4,7 @@ Call once inside `server()` with the manager and ID used by
 [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md).
 The returned methods select stored connections by opaque IDs and recheck
 the local owner for every operation. Tokens are kept on the server and
-are not returned by summaries or test exports.
+are not returned by summaries.
 
 ## Usage
 
@@ -15,7 +15,7 @@ oauth_connections_server(
   async = FALSE,
   refresh_proactively = FALSE,
   refresh_lead_seconds = 60,
-  refresh_check_interval = 10000
+  refresh_check_interval_ms = 10000
 )
 ```
 
@@ -47,7 +47,7 @@ oauth_connections_server(
   Non-negative number of seconds before expiry used for proactive
   refresh. Background checks never extend owner inactivity limits.
 
-- refresh_check_interval:
+- refresh_check_interval_ms:
 
   Positive polling interval in milliseconds, at least 100. Safely
   retryable automatic refresh failures wait at least 30 seconds across
@@ -91,11 +91,10 @@ A server-side list with:
 
 References expire with this Shiny session even when their stored grants
 survive. A new session obtains new references after owner verification.
-The existing module never holds managed tokens, so its refresh observers
-cannot compete with the manager. Refresh uses the store's revision and
-exclusive claim and preserves the original authentication time and
-retention expiry. Reactive connection reads also recheck expiry at
-`refresh_check_interval`, including references used without
+The manager coordinates refresh across its connections. Refresh
+preserves the original authentication time and retention expiry.
+Reactive connection reads also recheck expiry at
+`refresh_check_interval_ms`, including references used without
 `connections()` or `errors()`. These checks notify dependent expressions
 when lifecycle state changes; unchanged polling does not rerun
 application requests or extend owner inactivity limits. Notifications to
@@ -127,11 +126,8 @@ authorization.
 
 Use this API inside its owning session's reactive context. Session setup
 requires a matching HTTP Origin on the Shiny request. Raw HTTP routes
-cannot import credentials or select an owner. This initial manager
-supports one R process. Local browser tests cover two-site retention,
-account login/logout and switching, and independent refresh using
-synthetic providers. Independent external SMART application
-interoperability remains a separate validation gate.
+cannot import credentials or select an owner. The manager supports one R
+process.
 
 ## Examples
 

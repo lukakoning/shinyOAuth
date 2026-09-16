@@ -14,17 +14,18 @@ can manage refresh during a Shiny session with
 
 ``` r
 refresh_token(
-  oauth_client,
+  client,
   token,
   async = FALSE,
   introspect = NULL,
-  shiny_session = NULL
+  shiny_session = NULL,
+  oauth_client = NULL
 )
 ```
 
 ## Arguments
 
-- oauth_client:
+- client:
 
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
   object
@@ -56,6 +57,10 @@ refresh_token(
 
   Optional captured Shiny session details for audit events. Normally
   supplied by the module; leave `NULL` when calling directly.
+
+- oauth_client:
+
+  Compatibility alias for `client`. Supply only one spelling.
 
 ## Value
 
@@ -176,6 +181,6 @@ if (interactive()) {
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.
-  result <- revoke_token(client, token, which = "refresh")
+  result <- revoke_token(client, token, token_kind = "refresh")
 }
 ```

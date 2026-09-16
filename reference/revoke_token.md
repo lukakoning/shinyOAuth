@@ -11,27 +11,30 @@ session at the provider.
 
 ``` r
 revoke_token(
-  oauth_client,
-  oauth_token,
-  which = c("refresh", "access"),
+  client,
+  token,
+  token_kind = c("refresh", "access"),
   async = FALSE,
-  shiny_session = NULL
+  shiny_session = NULL,
+  oauth_client = NULL,
+  oauth_token = NULL,
+  which = NULL
 )
 ```
 
 ## Arguments
 
-- oauth_client:
+- client:
 
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
   object
 
-- oauth_token:
+- token:
 
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   object containing tokens to revoke
 
-- which:
+- token_kind:
 
   Which token to revoke: "refresh" (default) or "access"
 
@@ -46,6 +49,18 @@ revoke_token(
 
   Optional captured Shiny session details for audit events. Normally
   supplied by the module; leave `NULL` when calling directly.
+
+- oauth_client:
+
+  Compatibility alias for `client`. Supply only one spelling.
+
+- oauth_token:
+
+  Compatibility alias for `token`. Supply only one spelling.
+
+- which:
+
+  Compatibility alias for `token_kind`. Supply only one spelling.
 
 ## Value
 
@@ -93,6 +108,6 @@ if (interactive()) {
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.
-  result <- revoke_token(client, token, which = "refresh")
+  result <- revoke_token(client, token, token_kind = "refresh")
 }
 ```

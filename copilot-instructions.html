@@ -104,7 +104,7 @@
 </ul></div>
 <div class="section level2">
 <h2 id="security--state">Security &amp; State<a class="anchor" aria-label="anchor" href="#security--state"></a></h2>
-<ul><li>OAuthClient instances seal state payloads with AES-GCM using <code>client@state_key</code> and single-use cache entries (<code><a href="reference/state_store_get_remove.html">state_store_get_remove()</a></code>); in production, pass the same <code>state_key</code> (typically loaded from an env var such as <code>SHINYOAUTH_STATE_KEY</code>) and a shared cache backend (for example a Redis-backed <code>cachem</code> cache) to <code><a href="reference/oauth_client.html">oauth_client()</a></code> in every worker.</li>
+<ul><li>OAuthClient instances seal state payloads with AES-GCM using <code>client@state_key</code> and single-use cache entries (<code>state_store_get_remove()</code>); in production, pass the same <code>state_key</code> (typically loaded from an env var such as <code>SHINYOAUTH_STATE_KEY</code>) and a shared cache backend (for example a Redis-backed <code>cachem</code> cache) to <code><a href="reference/oauth_client.html">oauth_client()</a></code> in every worker.</li>
 <li>Host validation is centralized in <code><a href="reference/is_ok_host.html">is_ok_host()</a></code> and enforced by OAuthProvider validators; always pipe new endpoints through these helpers and avoid bypassing the checks.</li>
 <li>Provider objects gate PKCE/nonce/id-token policies and <code>token_type</code> enforcement; align new provider helpers with existing defaults in R/providers.R (e.g., <code>allowed_algs</code>, <code>allowed_token_types</code>).</li>
 </ul></div>

@@ -23,13 +23,14 @@ oauth_module_server(
   reauth_after_seconds = NULL,
   refresh_proactively = FALSE,
   refresh_lead_seconds = 60,
-  refresh_check_interval = 10000,
+  refresh_check_interval_ms = 10000,
   revoke_on_session_end = FALSE,
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   request_uri_base_url = NULL,
   browser_cookie_path = NULL,
-  browser_cookie_samesite = c("Strict", "Lax", "None")
+  browser_cookie_samesite = c("Strict", "Lax", "None"),
+  refresh_check_interval = NULL
 )
 ```
 
@@ -92,7 +93,7 @@ oauth_module_server(
   Number of seconds before expiry to attempt proactive refresh (default:
   60)
 
-- refresh_check_interval:
+- refresh_check_interval_ms:
 
   Fallback interval in milliseconds for checking expiry and refresh
   (default 10000). Known expiry times are scheduled directly; this
@@ -164,6 +165,11 @@ oauth_module_server(
   sets the cookie's `Secure` attribute. Keep `"Strict"` unless the
   deployment needs these broader cookie-sending rules.
 
+- refresh_check_interval:
+
+  Compatibility alias for `refresh_check_interval_ms`. Supply only one
+  spelling.
+
 ## Value
 
 A
@@ -232,11 +238,9 @@ The object also supplies:
   binding when missing. The token becomes available after the browser
   reports it back to Shiny. An existing token is left unchanged.
 
-- `auth[["clear_browser_token"]]()`: clears the cookie, local record,
-  and reactive value, for example when resetting browser setup in a
-  custom integration. `request_login()` manages cookie setup
-  automatically, and `logout()` handles cookie rotation when ending a
-  session.
+- `auth[["clear_browser_token"]]()`: clears the browser binding.
+  `request_login()` manages cookie setup automatically, and `logout()`
+  handles cookie rotation when ending a session.
 
 Other fields manage the module internally and are not needed in app
 code.

@@ -76,13 +76,14 @@ identity checks when configured for an OIDC provider.</p>
 <span>  reauth_after_seconds <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  refresh_proactively <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  refresh_lead_seconds <span class="op">=</span> <span class="fl">60</span>,</span>
-<span>  refresh_check_interval <span class="op">=</span> <span class="fl">10000</span>,</span>
+<span>  refresh_check_interval_ms <span class="op">=</span> <span class="fl">10000</span>,</span>
 <span>  revoke_on_session_end <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  tab_title_cleaning <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  tab_title_replacement <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  request_uri_base_url <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  browser_cookie_path <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  browser_cookie_samesite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Strict"</span>, <span class="st">"Lax"</span>, <span class="st">"None"</span><span class="op">)</span></span>
+<span>  browser_cookie_samesite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Strict"</span>, <span class="st">"Lax"</span>, <span class="st">"None"</span><span class="op">)</span>,</span>
+<span>  refresh_check_interval <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -144,7 +145,7 @@ schedules refresh at approximately <code>expires_at - refresh_lead_seconds</code
 proactive refresh (default: 60)</p></dd>
 
 
-<dt id="arg-refresh-check-interval">refresh_check_interval<a class="anchor" aria-label="anchor" href="#arg-refresh-check-interval"></a></dt>
+<dt id="arg-refresh-check-interval-ms">refresh_check_interval_ms<a class="anchor" aria-label="anchor" href="#arg-refresh-check-interval-ms"></a></dt>
 <dd><p>Fallback interval in milliseconds for checking
 expiry and refresh (default 10000). Known expiry times are scheduled
 directly; this interval is used as a safety check or when expiry is unknown
@@ -211,6 +212,10 @@ cross-site cookie use in other contexts; it requires HTTPS and sets the
 cookie's <code>Secure</code> attribute. Keep <code>"Strict"</code> unless the deployment needs
 these broader cookie-sending rules.</p></dd>
 
+
+<dt id="arg-refresh-check-interval">refresh_check_interval<a class="anchor" aria-label="anchor" href="#arg-refresh-check-interval"></a></dt>
+<dd><p>Compatibility alias for <code>refresh_check_interval_ms</code>. Supply only one spelling.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -258,8 +263,7 @@ whether the user is authenticated.</p></li>
 <li><p><code>auth[["set_browser_token"]]()</code>: asks the browser to establish its binding
 when missing. The token becomes available after the browser reports it
 back to Shiny. An existing token is left unchanged.</p></li>
-<li><p><code>auth[["clear_browser_token"]]()</code>: clears the cookie, local record, and reactive value,
-for example when resetting browser setup in a custom integration.
+<li><p><code>auth[["clear_browser_token"]]()</code>: clears the browser binding.
 <code>request_login()</code> manages cookie setup automatically, and <code>logout()</code>
 handles cookie rotation when ending a session.</p></li>
 </ul><p>Other fields manage the module internally and are not needed in app code.</p>

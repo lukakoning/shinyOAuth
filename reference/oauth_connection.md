@@ -12,7 +12,11 @@ implement refresh itself or retain credentials across redirects.
 ## Usage
 
 ``` r
-oauth_connection(client, token, session = shiny::getDefaultReactiveDomain())
+oauth_connection(
+  client,
+  token_reactive,
+  session = shiny::getDefaultReactiveDomain()
+)
 ```
 
 ## Arguments
@@ -26,7 +30,7 @@ oauth_connection(client, token, session = shiny::getDefaultReactiveDomain())
   or
   [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md).
 
-- token:
+- token_reactive:
 
   A Shiny reactive expression returning the current
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)

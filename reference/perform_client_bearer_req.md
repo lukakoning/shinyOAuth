@@ -19,11 +19,12 @@ perform_client_bearer_req(
   query = NULL,
   follow_redirect = FALSE,
   check_url = TRUE,
-  oauth_client = NULL,
+  client = NULL,
   token_type = NULL,
   dpop_nonce = NULL,
   idempotent = NULL,
-  resource_hosts = NULL
+  resource_hosts = NULL,
+  oauth_client = NULL
 )
 ```
 
@@ -91,7 +92,7 @@ perform_client_bearer_req(
   host is accepted. Set to `FALSE` only if you have already validated
   the URL and understand the security implications.
 
-- oauth_client:
+- client:
 
   Optional
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md).
@@ -136,6 +137,10 @@ perform_client_bearer_req(
   for URLs derived from lower-trust input. It constrains the initial
   URL, not redirect destinations or resolved IPs; retain
   `follow_redirect = FALSE`. `NULL` adds no resource-specific policy.
+
+- oauth_client:
+
+  Compatibility alias for `client`. Supply only one spelling.
 
 ## Value
 

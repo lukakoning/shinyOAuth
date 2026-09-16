@@ -17,12 +17,13 @@ oauth_provider_oidc_discover(
   use_nonce = TRUE,
   id_token_validation = TRUE,
   token_auth_style = NULL,
-  allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519",
-    "EdDSA"),
+  id_token_allowed_algs = c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512",
+    "Ed25519", "EdDSA"),
   allowed_token_types = c("Bearer"),
   jwks_host_issuer_match = TRUE,
   issuer_match = c("url", "host", "none"),
-  ...
+  ...,
+  allowed_algs = NULL
 )
 ```
 
@@ -73,7 +74,7 @@ oauth_provider_oidc_discover(
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
   for the supported methods and their credentials.
 
-- allowed_algs:
+- id_token_allowed_algs:
 
   Character vector of allowed ID token signing algorithms. Defaults to a
   broad set of common algorithms, including RSA (RS\*), ECDSA (ES\*),
@@ -122,6 +123,11 @@ oauth_provider_oidc_discover(
   (for example, `pkce_method = "plain"` when a provider explicitly
   advertises only plain PKCE support and you intentionally want to allow
   that downgrade).
+
+- allowed_algs:
+
+  Compatibility alias for `id_token_allowed_algs`. Supply only one
+  spelling.
 
 ## Value
 

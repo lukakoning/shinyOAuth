@@ -121,10 +121,9 @@
 
 - OAuthClient instances seal state payloads with AES-GCM using
   `client@state_key` and single-use cache entries
-  ([`state_store_get_remove()`](https://lukakoning.github.io/shinyOAuth/reference/state_store_get_remove.md));
-  in production, pass the same `state_key` (typically loaded from an env
-  var such as `SHINYOAUTH_STATE_KEY`) and a shared cache backend (for
-  example a Redis-backed `cachem` cache) to
+  (`state_store_get_remove()`); in production, pass the same `state_key`
+  (typically loaded from an env var such as `SHINYOAUTH_STATE_KEY`) and
+  a shared cache backend (for example a Redis-backed `cachem` cache) to
   [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   in every worker.
 - Host validation is centralized in

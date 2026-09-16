@@ -10,12 +10,18 @@ login when `userinfo_required = TRUE`; that result is available as
 ## Usage
 
 ``` r
-get_userinfo(oauth_client, token, token_type = NULL, shiny_session = NULL)
+get_userinfo(
+  client,
+  token,
+  token_type = NULL,
+  shiny_session = NULL,
+  oauth_client = NULL
+)
 ```
 
 ## Arguments
 
-- oauth_client:
+- client:
 
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
   object. The client must have a `userinfo_url` configured in its
@@ -36,6 +42,10 @@ get_userinfo(oauth_client, token, token_type = NULL, shiny_session = NULL)
 
   Optional captured Shiny session details for audit events. Normally
   supplied by the module; leave `NULL` when calling directly.
+
+- oauth_client:
+
+  Compatibility alias for `client`. Supply only one spelling.
 
 ## Value
 
@@ -91,6 +101,6 @@ if (interactive()) {
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.
-  result <- revoke_token(client, token, which = "refresh")
+  result <- revoke_token(client, token, token_kind = "refresh")
 }
 ```

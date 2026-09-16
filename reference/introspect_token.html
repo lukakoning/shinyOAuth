@@ -65,11 +65,14 @@ automatically during login and refresh, set <code>introspect = TRUE</code> on
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">introspect_token</span><span class="op">(</span></span>
-<span>  <span class="va">oauth_client</span>,</span>
-<span>  <span class="va">oauth_token</span>,</span>
-<span>  which <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"access"</span>, <span class="st">"refresh"</span><span class="op">)</span>,</span>
+<span>  <span class="va">client</span>,</span>
+<span>  <span class="va">token</span>,</span>
+<span>  token_kind <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"access"</span>, <span class="st">"refresh"</span><span class="op">)</span>,</span>
 <span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  oauth_client <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  oauth_token <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  which <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -77,15 +80,15 @@ automatically during login and refresh, set <code>introspect = TRUE</code> on
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
+<dl><dt id="arg-client">client<a class="anchor" aria-label="anchor" href="#arg-client"></a></dt>
 <dd><p><a href="OAuthClient.html">OAuthClient</a> object</p></dd>
 
 
-<dt id="arg-oauth-token">oauth_token<a class="anchor" aria-label="anchor" href="#arg-oauth-token"></a></dt>
+<dt id="arg-token">token<a class="anchor" aria-label="anchor" href="#arg-token"></a></dt>
 <dd><p><a href="OAuthToken.html">OAuthToken</a> object to introspect</p></dd>
 
 
-<dt id="arg-which">which<a class="anchor" aria-label="anchor" href="#arg-which"></a></dt>
+<dt id="arg-token-kind">token_kind<a class="anchor" aria-label="anchor" href="#arg-token-kind"></a></dt>
 <dd><p>Which token to introspect: "access" (default) or "refresh".</p></dd>
 
 
@@ -99,6 +102,18 @@ Default <code>FALSE</code> waits and returns the result directly.</p></dd>
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
 <dd><p>Optional captured Shiny session details for audit events.
 Normally supplied by the module; leave <code>NULL</code> when calling directly.</p></dd>
+
+
+<dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
+<dd><p>Compatibility alias for <code>client</code>. Supply only one spelling.</p></dd>
+
+
+<dt id="arg-oauth-token">oauth_token<a class="anchor" aria-label="anchor" href="#arg-oauth-token"></a></dt>
+<dd><p>Compatibility alias for <code>token</code>. Supply only one spelling.</p></dd>
+
+
+<dt id="arg-which">which<a class="anchor" aria-label="anchor" href="#arg-which"></a></dt>
+<dd><p>Compatibility alias for <code>token_kind</code>. Supply only one spelling.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -151,7 +166,7 @@ Requests use the client's configured credentials and <code>token_auth_style</cod
 <span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="refresh_token.html">refresh_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Requires a revocation endpoint to invalidate the token at the provider.</span></span></span>
-<span class="r-in"><span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="revoke_token.html">revoke_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span>, which <span class="op">=</span> <span class="st">"refresh"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="revoke_token.html">revoke_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span>, token_kind <span class="op">=</span> <span class="st">"refresh"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>

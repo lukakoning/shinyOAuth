@@ -68,12 +68,14 @@ for Shiny sessions.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">handle_callback</span><span class="op">(</span></span>
-<span>  <span class="va">oauth_client</span>,</span>
+<span>  <span class="va">client</span>,</span>
 <span>  <span class="va">code</span>,</span>
-<span>  <span class="va">payload</span>,</span>
+<span>  <span class="va">state</span>,</span>
 <span>  <span class="va">browser_token</span>,</span>
 <span>  shiny_session <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  iss <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  iss <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  oauth_client <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  payload <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -81,7 +83,7 @@ for Shiny sessions.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
+<dl><dt id="arg-client">client<a class="anchor" aria-label="anchor" href="#arg-client"></a></dt>
 <dd><p>An <a href="OAuthClient.html">OAuthClient</a> object.</p></dd>
 
 
@@ -90,7 +92,7 @@ for Shiny sessions.</p>
 direct callback.</p></dd>
 
 
-<dt id="arg-payload">payload<a class="anchor" aria-label="anchor" href="#arg-payload"></a></dt>
+<dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
 <dd><p>Encrypted state payload returned by the provider on a classic
 direct callback. This should be the same value that was originally sent in
 <code><a href="prepare_call.html">prepare_call()</a></code>.</p></dd>
@@ -116,6 +118,14 @@ provider issuer before any token exchange occurs.</p>
 Clients configured with <code>authorization_server_mode = "multi_redirect_uri"</code>
 must use <code><a href="oauth_module_server.html">oauth_module_server()</a></code> instead.</p></dd>
 
+
+<dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
+<dd><p>Compatibility alias for <code>client</code>. Supply only one spelling.</p></dd>
+
+
+<dt id="arg-payload">payload<a class="anchor" aria-label="anchor" href="#arg-payload"></a></dt>
+<dd><p>Compatibility alias for <code>state</code>. Supply only one spelling.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -124,7 +134,7 @@ token verification fails, the function raises an error.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Pass the returned <code>code</code>, the callback's <code>state</code> as <code>payload</code>, and the
+    <p>Pass the returned <code>code</code>, the callback's <code>state</code>, and the
 browser token saved for this login. This helper accepts direct code/state
 callbacks only. For signed responses using JWT Secured Authorization
 Response Mode (JARM; <code>"jwt"</code>, <code>"query.jwt"</code>, or

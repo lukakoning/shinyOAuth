@@ -11,20 +11,16 @@ to complete the code flow.
 
 ``` r
 prepare_call(
-  oauth_client,
+  client,
   browser_token,
   request_uri_publisher = NULL,
-  .requested_max_age = NULL,
-  .defer_build = FALSE,
-  .transaction_context = NULL,
-  .smart_launch = NULL,
-  .authorization_request = FALSE
+  oauth_client = NULL
 )
 ```
 
 ## Arguments
 
-- oauth_client:
+- client:
 
   An
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
@@ -42,30 +38,9 @@ prepare_call(
   `oauth_client` arguments and return an absolute HTTPS request-object
   URL that the provider can fetch.
 
-- .requested_max_age:
+- oauth_client:
 
-  Internal normalized OIDC `max_age` override used by the Shiny module
-  for forced reauthentication.
-
-- .defer_build:
-
-  Internal flag returning prepared local state for async authorization
-  work instead of completing the authorization URL.
-
-- .transaction_context:
-
-  Internal bounded manager context. Ordinary callers leave this `NULL`;
-  managed state requires manager-aware consumption.
-
-- .smart_launch:
-
-  Internal per-transaction EHR launch handle supplied by the manager.
-  Bound to the approved target and sealed transaction context.
-
-- .authorization_request:
-
-  Internal flag permitting a structured POST result for the module and
-  [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md).
+  Compatibility alias for `client`. Supply only one spelling.
 
 ## Value
 

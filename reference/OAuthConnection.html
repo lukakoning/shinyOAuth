@@ -82,8 +82,7 @@ a new session obtains a new reference after verifying the local owner.</p>
 <p>Call <code>[["is_usable"]]()</code>, <code>[["summary"]]()</code> and <code>[["request"]]()</code> in the owning session's
 reactive context. If the connection cannot be resolved, <code>[["is_usable"]]()</code> returns
 <code>FALSE</code>; <code>[["summary"]]()</code> and <code>[["request"]]()</code> raise an error. The ID is read-only and
-cloning is disabled. The class generator is internal; the public factories
-establish the session binding required by applications.
+cloning is disabled.
 Managed resource and status reads do not count as owner activity. Record user
 actions with the manager's <code>touch()</code> method in an input event handler; automatic
 reactive updates must not prolong an idle owner's session.</p>
@@ -121,8 +120,7 @@ The ID is never an access token and does not authorize access by itself.</p></dd
 <h3 id="oauthconnection-new-"><code>OAuthConnection$new()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-new-"></a></h3>
 <p>Initialize a reference. This constructor is for internal use;
 applications should use <code><a href="oauth_connection.html">oauth_connection()</a></code> or the manager's
-<code>connection(id)</code> method to establish session ownership.
-Calling it again on an initialized reference is an error.</p><div class="section">
+<code>connection(id)</code> method to establish session ownership.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/OAuthConnection.html">OAuthConnection</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">id</span>, <span class="va">client</span>, <span class="va">resolve</span>, refresh <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
@@ -170,11 +168,10 @@ connection, otherwise <code>FALSE</code>, including when resolution fails.</p>
 
 <p></p><hr><a id="method-OAuthConnection-refresh"></a><div class="section">
 <h3 id="oauthconnection-refresh-"><code>OAuthConnection$refresh()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-refresh-"></a></h3>
-<p>Refresh a connection created by <code><a href="oauth_connections_server.html">oauth_connections_server()</a></code> under the
-manager's exclusive store claim. The manager rechecks the owner and current
-record before installing replacement credentials. References created with
-<code><a href="oauth_connection.html">oauth_connection()</a></code> use their existing module's refresh lifecycle and
-cannot invoke this method.</p><div class="section">
+<p>Refresh a connection created by <code><a href="oauth_connections_server.html">oauth_connections_server()</a></code>. The manager
+coordinates refresh and verifies ownership before updating credentials.
+References created with <code><a href="oauth_connection.html">oauth_connection()</a></code> use their existing module's
+refresh lifecycle and cannot invoke this method.</p><div class="section">
 <h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">refresh</span><span class="op">(</span>scopes <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
@@ -352,6 +349,7 @@ insufficient scopes and transport failures raise errors.</p>
 
 <p></p><hr><a id="method-OAuthConnection-smart_context"></a><div class="section">
 <h3 id="oauthconnection-smart-context-"><code>OAuthConnection$smart_context()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-smart-context-"></a></h3>
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="figures/lifecycle-experimental.svg" alt="[Experimental]"></a></p>
 <p>Read interpreted context for a usable SMART connection in this session.</p><div class="section">
 <h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">smart_context</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
@@ -364,6 +362,7 @@ insufficient scopes and transport failures raise errors.</p>
 
 <p></p><hr><a id="method-OAuthConnection-smart_resource"></a><div class="section">
 <h3 id="oauthconnection-smart-resource-"><code>OAuthConnection$smart_resource()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-smart-resource-"></a></h3>
+<p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="figures/lifecycle-experimental.svg" alt="[Experimental]"></a></p>
 <p>Fetch the contextual Patient or validated fhirUser through the approved
 FHIR base, using current read permissions. Prefer <code><a href="smart_context.html">smart_patient()</a></code> and
 <code><a href="smart_context.html">smart_fhir_user()</a></code> in application code.</p><div class="section">

@@ -78,15 +78,15 @@
 ## SMART on FHIR
 
 - [`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md)
-  : Discover SMART on FHIR server metadata
+  **\[experimental\]** : Discover SMART on FHIR server metadata
 - [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
-  : Configure a SMART on FHIR app registration
+  **\[experimental\]** : Configure a SMART on FHIR app registration
 - [`smart_launch_route()`](https://lukakoning.github.io/shinyOAuth/reference/smart_launch_route.md)
-  : Register a SMART EHR launch entry route
+  **\[experimental\]** : Register a SMART EHR launch entry route
 - [`smart_context()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
   [`smart_patient()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
   [`smart_fhir_user()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
-  : Read a connection's current SMART context
+  **\[experimental\]** : Read a connection's current SMART context
 
 ## Provider-specific client settings
 

@@ -21,10 +21,10 @@ oauth_provider_oidc(
   introspection_path = "/introspect",
   use_nonce = TRUE,
   id_token_validation = TRUE,
-  token_auth_style = "header",
   jwks_host_issuer_match = TRUE,
   allowed_token_types = c("Bearer"),
-  ...
+  ...,
+  token_auth_style = "header"
 )
 ```
 
@@ -63,12 +63,6 @@ oauth_provider_oidc(
   Logical, whether to validate ID tokens automatically for this
   provider. Defaults to TRUE
 
-- token_auth_style:
-
-  Token endpoint client authentication style passed to
-  [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md).
-  Defaults to `"header"`.
-
 - jwks_host_issuer_match:
 
   When TRUE (default), enforce that the JWKS host discovered from the
@@ -87,6 +81,12 @@ oauth_provider_oidc(
 
   Additional arguments passed to
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+
+- token_auth_style:
+
+  Token endpoint client authentication style passed to
+  [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md).
+  Defaults to `"header"`.
 
 ## Value
 

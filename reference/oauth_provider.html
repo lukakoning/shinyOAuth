@@ -65,62 +65,63 @@ for OIDC, <code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_
 <span>  <span class="va">name</span>,</span>
 <span>  <span class="va">auth_url</span>,</span>
 <span>  <span class="va">token_url</span>,</span>
+<span>  userinfo_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  introspection_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  revocation_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  par_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  par_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  authorization_request_front_channel_mode <span class="op">=</span> <span class="st">"compat"</span>,</span>
+<span>  request_object_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  request_object_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  request_object_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  request_object_encryption_jwk <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  signed_request_object_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  request_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  request_uri_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  request_uri_registration_required <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  token_endpoint_auth_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  authorization_response_iss_parameter_supported <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  response_modes_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  mtls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  issuer_thus_oidc <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  issuer_match <span class="op">=</span> <span class="st">"url"</span>,</span>
-<span>  token_auth_style <span class="op">=</span> <span class="st">"header"</span>,</span>
+<span>  use_nonce <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  use_pkce <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  pkce_method <span class="op">=</span> <span class="st">"S256"</span>,</span>
-<span>  use_nonce <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  userinfo_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  userinfo_required <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  userinfo_id_token_match <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  userinfo_signed_jwt_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  userinfo_id_selector <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">userinfo</span><span class="op">)</span> <span class="op">{</span></span>
 <span><span class="va">userinfo</span><span class="op">[[</span><span class="st">"sub"</span><span class="op">]</span><span class="op">]</span></span>
 <span> <span class="op">}</span>,</span>
-<span>  userinfo_id_token_match <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  userinfo_signed_jwt_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  id_token_required <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  id_token_validation <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  id_token_at_hash_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  introspection_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  revocation_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  extra_auth_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extra_token_params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  extra_token_headers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  jwks_uri <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  token_auth_style <span class="op">=</span> <span class="st">"header"</span>,</span>
 <span>  jwks_cache <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  jwks_pins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  jwks_pin_mode <span class="op">=</span> <span class="st">"any"</span>,</span>
 <span>  jwks_host_issuer_match <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  jwks_host_allow_only <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>, <span class="st">"Ed25519"</span>,</span>
-<span>    <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
-<span>  userinfo_allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  id_token_allowed_algs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span>, <span class="st">"RS384"</span>, <span class="st">"RS512"</span>, <span class="st">"ES256"</span>, <span class="st">"ES384"</span>, <span class="st">"ES512"</span>,</span>
+<span>    <span class="st">"Ed25519"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Bearer"</span><span class="op">)</span>,</span>
 <span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span>,</span>
-<span>  par_url <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
-<span>  par_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  signed_request_object_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  request_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  request_uri_parameter_supported <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  request_uri_registration_required <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  request_object_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  request_object_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  request_object_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  request_object_encryption_jwk <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  authorization_request_front_channel_mode <span class="op">=</span> <span class="st">"compat"</span>,</span>
-<span>  authorization_response_iss_parameter_supported <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  response_modes_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  id_token_at_hash_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  infer_oidc_from_issuer <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  jwks_uri <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
+<span>  userinfo_allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  jarm_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  jarm_tolerate_duplicate_top_level_iss <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  token_endpoint_auth_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  mtls_endpoint_aliases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  mtls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  endpoint_auth_metadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  <span class="va">...</span></span>
+<span>  <span class="va">...</span>,</span>
+<span>  allowed_algs <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -141,18 +142,176 @@ only; used in logging and audit events</p></dd>
 <dd><p>URL where R exchanges the returned code for tokens.</p></dd>
 
 
+<dt id="arg-userinfo-url">userinfo_url<a class="anchor" aria-label="anchor" href="#arg-userinfo-url"></a></dt>
+<dd><p>User info endpoint URL (optional)</p></dd>
+
+
+<dt id="arg-introspection-url">introspection_url<a class="anchor" aria-label="anchor" href="#arg-introspection-url"></a></dt>
+<dd><p>Optional URL where the provider can confirm whether a token
+is still active (RFC 7662).</p></dd>
+
+
+<dt id="arg-revocation-url">revocation_url<a class="anchor" aria-label="anchor" href="#arg-revocation-url"></a></dt>
+<dd><p>Optional URL where the app can ask the provider to invalidate
+a token, for example during logout (RFC 7009).</p></dd>
+
+
+<dt id="arg-par-url">par_url<a class="anchor" aria-label="anchor" href="#arg-par-url"></a></dt>
+<dd><p>Optional Pushed Authorization Request (PAR) URL (RFC 9126).
+When set, shinyOAuth first sends the authorization request from server to
+provider and then redirects the browser with the returned <code>request_uri</code>
+handle instead of the full request payload. Use PAR to keep most request
+details out of the browser URL, submit large requests, or meet a provider's
+PAR requirement. The provider must support this endpoint.</p></dd>
+
+
+<dt id="arg-par-required">par_required<a class="anchor" aria-label="anchor" href="#arg-par-required"></a></dt>
+<dd><p>Logical. Whether the provider
+requires authorization requests to be sent via PAR. When <code>TRUE</code>,
+<code>par_url</code> must also be configured.</p></dd>
+
+
+<dt id="arg-authorization-request-front-channel-mode">authorization_request_front_channel_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-request-front-channel-mode"></a></dt>
+<dd><p>Character scalar controlling
+which browser-visible outer parameters shinyOAuth keeps when the actual
+authorization request is carried by JAR or PAR. Use <code>"compat"</code>
+(default) to keep OIDC-compatible parameters with outer
+<code>client_id</code>, <code>response_type</code>, and <code>scope</code> when an issuer is configured.
+Use <code>"minimal"</code> for plain OAuth browser redirects and for PAR
+deployments whose authorization endpoint accepts only <code>client_id</code>
+plus the provider-issued <code>request_uri</code> handle. OpenID Connect
+by-value <code>request</code> and caller-managed <code>request_uri</code> transports reject
+<code>"minimal"</code> because OIDC still requires outer <code>response_type</code> and an
+outer <code>scope</code> containing <code>openid</code>.</p></dd>
+
+
+<dt id="arg-request-object-signing-alg-values-supported">request_object_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-signing-alg-values-supported"></a></dt>
+<dd><p>Optional vector of JWS
+algorithms that the provider advertises for signed Request Objects (RFC
+9101). This is mainly used for early validation when an <a href="OAuthClient.html">OAuthClient</a>
+sends <code>request_object_mode = "request"</code> or
+<code>request_object_mode = "request_uri"</code>.</p></dd>
+
+
+<dt id="arg-request-object-encryption-alg-values-supported">request_object_encryption_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-alg-values-supported"></a></dt>
+<dd><p>Optional vector of JWE
+key-management algorithms that the provider advertises for encrypted
+Request Objects. This metadata is used for early validation when an
+<a href="OAuthClient.html">OAuthClient</a> enables Request Object encryption.</p></dd>
+
+
+<dt id="arg-request-object-encryption-enc-values-supported">request_object_encryption_enc_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-enc-values-supported"></a></dt>
+<dd><p>Optional vector of JWE
+content-encryption algorithms that the provider advertises for encrypted
+Request Objects. This metadata is used for early validation when an
+<a href="OAuthClient.html">OAuthClient</a> enables Request Object encryption.</p></dd>
+
+
+<dt id="arg-request-object-encryption-jwk">request_object_encryption_jwk<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-jwk"></a></dt>
+<dd><p>Optional explicit recipient public key
+used to encrypt Request Objects when discovery-backed JWKS selection is not
+available or when you need to pin one specific encryption key. Accepts an
+OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
+JSON string.</p></dd>
+
+
+<dt id="arg-signed-request-object-required">signed_request_object_required<a class="anchor" aria-label="anchor" href="#arg-signed-request-object-required"></a></dt>
+<dd><p>Logical. Whether the provider requires
+signed Request Objects for authorization requests. When <code>TRUE</code>, clients
+should use <code>request_object_mode = "request"</code> or
+<code>request_object_mode = "request_uri"</code>.
+This setting enforces local construction only; it does not configure the
+authorization server. Register <code>require_signed_request_object = true</code> (or
+the server's equivalent) and verify unsigned requests are rejected before
+relying on downgrade-resistant request integrity.</p></dd>
+
+
+<dt id="arg-request-parameter-supported">request_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-parameter-supported"></a></dt>
+<dd><p>Logical or <code>NA</code>. Whether discovery
+metadata explicitly advertises support for the authorization-request
+<code>request</code> parameter. <code>NA</code> means the provider did not say. Discovery-derived
+providers apply the OpenID Connect default (<code>FALSE</code>) when this metadata is
+omitted.</p></dd>
+
+
+<dt id="arg-request-uri-parameter-supported">request_uri_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-uri-parameter-supported"></a></dt>
+<dd><p>Logical or <code>NA</code>. Whether discovery
+metadata explicitly advertises support for the authorization-request
+<code>request_uri</code> parameter for caller-managed request URIs. <code>NA</code> means the
+provider did not say. Discovery-derived providers apply the OpenID Connect
+default (<code>TRUE</code>) when this metadata is omitted. PAR-issued <code>request_uri</code>
+handles remain valid even when this metadata is <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-request-uri-registration-required">request_uri_registration_required<a class="anchor" aria-label="anchor" href="#arg-request-uri-registration-required"></a></dt>
+<dd><p>Logical or <code>NA</code>. Whether discovery
+metadata says caller-managed <code>request_uri</code> values must be pre-registered.
+<code>NA</code> means the provider did not say. Discovery-derived providers apply the
+OpenID Connect default (<code>FALSE</code>) when this metadata is omitted.
+shinyOAuth can publish caller-managed <code>request_uri</code> values through
+<code><a href="oauth_module_server.html">oauth_module_server()</a></code>. When this is <code>TRUE</code>, make sure the provider has a
+matching public request URI or wildcard prefix registered for the client.
+shinyOAuth stores this metadata for caller awareness, but it cannot verify
+provider-side registration state automatically.</p></dd>
+
+
+<dt id="arg-token-endpoint-auth-signing-alg-values-supported">token_endpoint_auth_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-token-endpoint-auth-signing-alg-values-supported"></a></dt>
+<dd><p>Optional vector of
+JWS algorithms that the provider advertises for JWT-based client
+authentication (<code>client_secret_jwt</code> / <code>private_key_jwt</code>) at the token
+endpoint. This metadata is used for early validation of
+<code>OAuthClient@client_assertion_alg</code> and inferred JWT client-assertion
+defaults.</p></dd>
+
+
+<dt id="arg-dpop-signing-alg-values-supported">dpop_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-dpop-signing-alg-values-supported"></a></dt>
+<dd><p>Optional vector of JWS algorithms
+that the provider advertises for DPoP proof JWTs (RFC 9449). This
+metadata is used for early validation of <code>OAuthClient@dpop_signing_alg</code>
+and inferred outbound DPoP signing defaults.</p></dd>
+
+
+<dt id="arg-authorization-response-iss-parameter-supported">authorization_response_iss_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-authorization-response-iss-parameter-supported"></a></dt>
+<dd><p>Logical. Whether the
+provider advertises RFC 9207 support for returning an <code>iss</code> parameter on
+the authorization response. When <code>TRUE</code>, the <code><a href="oauth_client.html">oauth_client()</a></code> helper can
+auto-enable callback issuer enforcement when the caller leaves
+<code>enforce_callback_issuer</code> unset and the provider also has a configured
+<code>issuer</code>.</p></dd>
+
+
+<dt id="arg-response-modes-supported">response_modes_supported<a class="anchor" aria-label="anchor" href="#arg-response-modes-supported"></a></dt>
+<dd><p>Optional character vector of OAuth/OIDC
+<code>response_mode</code> values advertised by the provider. Discovery-backed
+providers use the discovery metadata value, defaulting to <code>c("query", "fragment")</code> when omitted per OIDC Discovery/RFC 8414. Generic providers
+may leave this empty when capabilities are not known. Provider metadata may
+include response modes that shinyOAuth does not implement; clients still
+fail fast if they request one of those unsupported modes.</p></dd>
+
+
+<dt id="arg-mtls-endpoint-aliases">mtls_endpoint_aliases<a class="anchor" aria-label="anchor" href="#arg-mtls-endpoint-aliases"></a></dt>
+<dd><p>Optional named list of RFC 8705 mTLS endpoint
+aliases. Names should follow the metadata keys such as <code>token_endpoint</code>,
+<code>userinfo_endpoint</code>, <code>introspection_endpoint</code>, <code>revocation_endpoint</code>,
+<code>par_endpoint</code>, or <code>pushed_authorization_request_endpoint</code>, and values
+must be absolute URLs. This is an advanced setting used when a provider
+publishes separate mTLS-specific endpoints.</p></dd>
+
+
+<dt id="arg-mtls-client-certificate-bound-access-tokens">mtls_client_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-mtls-client-certificate-bound-access-tokens"></a></dt>
+<dd><p>Logical. Whether the
+authorization server advertises RFC 8705 capability to issue
+certificate-bound access tokens. This describes server capability; the
+client still has to opt into mTLS separately. When <code>TRUE</code>, token responses
+may include a <code>cnf</code> claim with an <code>x5t#S256</code> thumbprint that downstream
+requests must match with the same certificate.</p></dd>
+
+
 <dt id="arg-issuer">issuer<a class="anchor" aria-label="anchor" href="#arg-issuer"></a></dt>
 <dd><p>Optional authorization-server issuer URL. You need this for
 issuer validation and features such as ID-token validation. shinyOAuth uses
 it to verify issuer claims and locate signing keys (JWKS), typically
 through an OIDC discovery document.</p></dd>
-
-
-<dt id="arg-issuer-thus-oidc">issuer_thus_oidc<a class="anchor" aria-label="anchor" href="#arg-issuer-thus-oidc"></a></dt>
-<dd><p>Whether setting <code>issuer</code> enables OpenID Connect behavior.
-Default <code>TRUE</code>: helpers enable OIDC nonce/ID token defaults and the client
-adds the <code>openid</code> scope. Set <code>FALSE</code> for an OAuth-only server that has an
-issuer identifier but does not implement OIDC.</p></dd>
 
 
 <dt id="arg-issuer-match">issuer_match<a class="anchor" aria-label="anchor" href="#arg-issuer-match"></a></dt>
@@ -167,23 +326,10 @@ that publish tenant-independent metadata with a templated issuer, such as
 some Microsoft aliases.</p></dd>
 
 
-<dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>
-<dd><p>How the client authenticates at the token endpoint.
-One of:</p><ul><li><p>"header": HTTP Basic (client_secret_basic)</p></li>
-<li><p>"body": Form body (client_secret_post)</p></li>
-<li><p>"public": Public-client form body (<code>none</code> in discovery metadata);
-sends <code>client_id</code> but never <code>client_secret</code>, even if one is configured.
-The alias <code>"none"</code> is also accepted.</p></li>
-<li><p>"tls_client_auth": RFC 8705 mutual TLS client authentication using a
-client certificate chained to a trusted CA</p></li>
-<li><p>"self_signed_tls_client_auth": RFC 8705 mutual TLS client
-authentication using a self-signed client certificate registered out of
-band with the provider</p></li>
-<li><p>"client_secret_jwt": JWT client assertion signed with HMAC using client_secret
-(RFC 7523)</p></li>
-<li><p>"private_key_jwt": JWT client assertion signed with an asymmetric key
-(RFC 7523)</p></li>
-</ul></dd>
+<dt id="arg-use-nonce">use_nonce<a class="anchor" aria-label="anchor" href="#arg-use-nonce"></a></dt>
+<dd><p>Whether to tie the ID token to this login using a random nonce.
+Keep enabled for OIDC. The nonce is sent in the request and checked in the
+returned ID token.</p></dd>
 
 
 <dt id="arg-use-pkce">use_pkce<a class="anchor" aria-label="anchor" href="#arg-use-pkce"></a></dt>
@@ -199,32 +345,11 @@ recommended. Use "plain" only if you are working with a provider that does
 not support "S256".</p></dd>
 
 
-<dt id="arg-use-nonce">use_nonce<a class="anchor" aria-label="anchor" href="#arg-use-nonce"></a></dt>
-<dd><p>Whether to tie the ID token to this login using a random nonce.
-Keep enabled for OIDC. The nonce is sent in the request and checked in the
-returned ID token.</p></dd>
-
-
-<dt id="arg-userinfo-url">userinfo_url<a class="anchor" aria-label="anchor" href="#arg-userinfo-url"></a></dt>
-<dd><p>User info endpoint URL (optional)</p></dd>
-
-
 <dt id="arg-userinfo-required">userinfo_required<a class="anchor" aria-label="anchor" href="#arg-userinfo-required"></a></dt>
 <dd><p>Whether to fetch a user profile after token exchange.
 The result is stored in <code>token@userinfo</code>; a failed required fetch stops
 login. In <code>oauth_provider()</code>, this defaults to <code>TRUE</code> when <code>userinfo_url</code>
 is supplied and <code>FALSE</code> otherwise.</p></dd>
-
-
-<dt id="arg-userinfo-id-selector">userinfo_id_selector<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-selector"></a></dt>
-<dd><p>A function that extracts the user ID from the userinfo response.
-Should take a single argument (the userinfo list) and return the user ID
-as a string.</p>
-<p>This is used for helpers that need a provider-specific application user
-identifier, such as audit fields. It does not replace OIDC subject binding:
-when a validated ID token and UserInfo are both available, their actual
-<code>sub</code> claims are always compared. Helper constructors like <code>oauth_provider()</code>
-and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> provide a default selector that extracts <code>sub</code>.</p></dd>
 
 
 <dt id="arg-userinfo-id-token-match">userinfo_id_token_match<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-token-match"></a></dt>
@@ -247,13 +372,24 @@ enable this automatically: provider support does not mean your app's
 registration requests signed userinfo.</p></dd>
 
 
+<dt id="arg-userinfo-id-selector">userinfo_id_selector<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-selector"></a></dt>
+<dd><p>A function that extracts the user ID from the userinfo response.
+Should take a single argument (the userinfo list) and return the user ID
+as a string.</p>
+<p>This is used for helpers that need a provider-specific application user
+identifier, such as audit fields. It does not replace OIDC subject binding:
+when a validated ID token and UserInfo are both available, their actual
+<code>sub</code> claims are always compared. Helper constructors like <code>oauth_provider()</code>
+and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> provide a default selector that extracts <code>sub</code>.</p></dd>
+
+
 <dt id="arg-id-token-required">id_token_required<a class="anchor" aria-label="anchor" href="#arg-id-token-required"></a></dt>
 <dd><p>Whether to require an ID token to be returned
 during token exchange. If no ID token is returned, the token exchange
 will fail. This only makes sense for OpenID Connect providers and may
 require the client's scope to include <code>openid</code>.</p>
 <p>Both the S7 constructor and <code>oauth_provider()</code> enable this when an issuer
-is supplied and <code>issuer_thus_oidc = TRUE</code>. Pure OAuth 2.0 providers keep
+is supplied and <code>infer_oidc_from_issuer = TRUE</code>. Pure OAuth 2.0 providers keep
 this disabled by default.</p></dd>
 
 
@@ -263,26 +399,8 @@ This requires the provider to be a valid OpenID Connect provider with a configur
 <code>issuer</code> and the token response to include an ID token (may require setting
 the client's scope to include <code>openid</code>).</p>
 <p>Both the S7 constructor and <code>oauth_provider()</code> enable this when an issuer
-is provided and <code>issuer_thus_oidc = TRUE</code>. Set an explicit <code>FALSE</code> only
+is provided and <code>infer_oidc_from_issuer = TRUE</code>. Set an explicit <code>FALSE</code> only
 when intentionally opting out of ID token validation.</p></dd>
-
-
-<dt id="arg-id-token-at-hash-required">id_token_at_hash_required<a class="anchor" aria-label="anchor" href="#arg-id-token-at-hash-required"></a></dt>
-<dd><p>Whether to require the <code>at_hash</code> (Access Token hash)
-claim in the ID token. When <code>TRUE</code>, login fails if the ID token does not
-contain an <code>at_hash</code> claim or if the claim does not match the access token.
-When <code>FALSE</code> (default), <code>at_hash</code> is validated only when present.
-Requires <code>id_token_validation = TRUE</code>.</p></dd>
-
-
-<dt id="arg-introspection-url">introspection_url<a class="anchor" aria-label="anchor" href="#arg-introspection-url"></a></dt>
-<dd><p>Optional URL where the provider can confirm whether a token
-is still active (RFC 7662).</p></dd>
-
-
-<dt id="arg-revocation-url">revocation_url<a class="anchor" aria-label="anchor" href="#arg-revocation-url"></a></dt>
-<dd><p>Optional URL where the app can ask the provider to invalidate
-a token, for example during logout (RFC 7009).</p></dd>
 
 
 <dt id="arg-extra-auth-params">extra_auth_params<a class="anchor" aria-label="anchor" href="#arg-extra-auth-params"></a></dt>
@@ -303,10 +421,23 @@ refresh. Configure <code>oauth_client(endpoint_auth = ...)</code> for headers ne
 by PAR, introspection, or revocation.</p></dd>
 
 
-<dt id="arg-jwks-uri">jwks_uri<a class="anchor" aria-label="anchor" href="#arg-jwks-uri"></a></dt>
-<dd><p>Optional URL of the provider's public signing keys (JWKS).
-Normally these are located through OIDC discovery. Set this for manual
-key configuration, including OAuth-only JARM providers.</p></dd>
+<dt id="arg-token-auth-style">token_auth_style<a class="anchor" aria-label="anchor" href="#arg-token-auth-style"></a></dt>
+<dd><p>How the client authenticates at the token endpoint.
+One of:</p><ul><li><p>"header": HTTP Basic (client_secret_basic)</p></li>
+<li><p>"body": Form body (client_secret_post)</p></li>
+<li><p>"public": Public-client form body (<code>none</code> in discovery metadata);
+sends <code>client_id</code> but never <code>client_secret</code>, even if one is configured.
+The alias <code>"none"</code> is also accepted.</p></li>
+<li><p>"tls_client_auth": RFC 8705 mutual TLS client authentication using a
+client certificate chained to a trusted CA</p></li>
+<li><p>"self_signed_tls_client_auth": RFC 8705 mutual TLS client
+authentication using a self-signed client certificate registered out of
+band with the provider</p></li>
+<li><p>"client_secret_jwt": JWT client assertion signed with HMAC using client_secret
+(RFC 7523)</p></li>
+<li><p>"private_key_jwt": JWT client assertion signed with an asymmetric key
+(RFC 7523)</p></li>
+</ul></dd>
 
 
 <dt id="arg-jwks-cache">jwks_cache<a class="anchor" aria-label="anchor" href="#arg-jwks-cache"></a></dt>
@@ -361,7 +492,7 @@ and only the hostname part is used for matching. Takes precedence over
 <code>jwks_host_issuer_match</code>.</p></dd>
 
 
-<dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>
+<dt id="arg-id-token-allowed-algs">id_token_allowed_algs<a class="anchor" aria-label="anchor" href="#arg-id-token-allowed-algs"></a></dt>
 <dd><p>Optional vector of allowed JWT algorithms for ID tokens.
 Use to restrict acceptable <code>alg</code> values on a per-provider basis. Supported
 asymmetric algorithms include <code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>,
@@ -381,15 +512,6 @@ algorithm; legacy <code>EdDSA</code> with an Ed25519 key uses the Ed25519 operat
 Only include <code>HS*</code> if you are certain the <code>client_secret</code> is stored strictly
 server-side and is never shipped to, or derivable by, the browser or other
 untrusted environments.</p></dd>
-
-
-<dt id="arg-userinfo-allowed-algs">userinfo_allowed_algs<a class="anchor" aria-label="anchor" href="#arg-userinfo-allowed-algs"></a></dt>
-<dd><p>Optional signing algorithm allowlist for UserInfo
-JWTs. <code>NULL</code> inherits <code>allowed_algs</code> for manually configured providers.
-Discovery negotiates this independently against UserInfo metadata. Use a
-single algorithm to enforce the client's registered UserInfo signing choice.
-An empty vector rejects all signed UserInfo algorithms.
-Unlabelled RSA keys follow the same binding policy as <code>allowed_algs</code>.</p></dd>
 
 
 <dt id="arg-allowed-token-types">allowed_token_types<a class="anchor" aria-label="anchor" href="#arg-allowed-token-types"></a></dt>
@@ -412,121 +534,34 @@ and state payload <code>issued_at</code> future check. Default 30. Can be global
 overridden via option <code>shinyOAuth.leeway</code>.</p></dd>
 
 
-<dt id="arg-par-url">par_url<a class="anchor" aria-label="anchor" href="#arg-par-url"></a></dt>
-<dd><p>Optional Pushed Authorization Request (PAR) URL (RFC 9126).
-When set, shinyOAuth first sends the authorization request from server to
-provider and then redirects the browser with the returned <code>request_uri</code>
-handle instead of the full request payload. Use PAR to keep most request
-details out of the browser URL, submit large requests, or meet a provider's
-PAR requirement. The provider must support this endpoint.</p></dd>
+<dt id="arg-id-token-at-hash-required">id_token_at_hash_required<a class="anchor" aria-label="anchor" href="#arg-id-token-at-hash-required"></a></dt>
+<dd><p>Whether to require the <code>at_hash</code> (Access Token hash)
+claim in the ID token. When <code>TRUE</code>, login fails if the ID token does not
+contain an <code>at_hash</code> claim or if the claim does not match the access token.
+When <code>FALSE</code> (default), <code>at_hash</code> is validated only when present.
+Requires <code>id_token_validation = TRUE</code>.</p></dd>
 
 
-<dt id="arg-par-required">par_required<a class="anchor" aria-label="anchor" href="#arg-par-required"></a></dt>
-<dd><p>Logical. Whether the provider
-requires authorization requests to be sent via PAR. When <code>TRUE</code>,
-<code>par_url</code> must also be configured.</p></dd>
+<dt id="arg-infer-oidc-from-issuer">infer_oidc_from_issuer<a class="anchor" aria-label="anchor" href="#arg-infer-oidc-from-issuer"></a></dt>
+<dd><p>Whether setting <code>issuer</code> enables OpenID Connect behavior.
+Default <code>TRUE</code>: helpers enable OIDC nonce/ID token defaults and the client
+adds the <code>openid</code> scope. Set <code>FALSE</code> for an OAuth-only server that has an
+issuer identifier but does not implement OIDC.</p></dd>
 
 
-<dt id="arg-signed-request-object-required">signed_request_object_required<a class="anchor" aria-label="anchor" href="#arg-signed-request-object-required"></a></dt>
-<dd><p>Logical. Whether the provider requires
-signed Request Objects for authorization requests. When <code>TRUE</code>, clients
-should use <code>request_object_mode = "request"</code> or
-<code>request_object_mode = "request_uri"</code>.
-This setting enforces local construction only; it does not configure the
-authorization server. Register <code>require_signed_request_object = true</code> (or
-the server's equivalent) and verify unsigned requests are rejected before
-relying on downgrade-resistant request integrity.</p></dd>
+<dt id="arg-jwks-uri">jwks_uri<a class="anchor" aria-label="anchor" href="#arg-jwks-uri"></a></dt>
+<dd><p>Optional URL of the provider's public signing keys (JWKS).
+Normally these are located through OIDC discovery. Set this for manual
+key configuration, including OAuth-only JARM providers.</p></dd>
 
 
-<dt id="arg-request-parameter-supported">request_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-parameter-supported"></a></dt>
-<dd><p>Logical or <code>NA</code>. Whether discovery
-metadata explicitly advertises support for the authorization-request
-<code>request</code> parameter. <code>NA</code> means the provider did not say. Discovery-derived
-providers apply the OpenID Connect default (<code>FALSE</code>) when this metadata is
-omitted.</p></dd>
-
-
-<dt id="arg-request-uri-parameter-supported">request_uri_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-uri-parameter-supported"></a></dt>
-<dd><p>Logical or <code>NA</code>. Whether discovery
-metadata explicitly advertises support for the authorization-request
-<code>request_uri</code> parameter for caller-managed request URIs. <code>NA</code> means the
-provider did not say. Discovery-derived providers apply the OpenID Connect
-default (<code>TRUE</code>) when this metadata is omitted. PAR-issued <code>request_uri</code>
-handles remain valid even when this metadata is <code>FALSE</code>.</p></dd>
-
-
-<dt id="arg-request-uri-registration-required">request_uri_registration_required<a class="anchor" aria-label="anchor" href="#arg-request-uri-registration-required"></a></dt>
-<dd><p>Logical or <code>NA</code>. Whether discovery
-metadata says caller-managed <code>request_uri</code> values must be pre-registered.
-<code>NA</code> means the provider did not say. Discovery-derived providers apply the
-OpenID Connect default (<code>FALSE</code>) when this metadata is omitted.
-shinyOAuth can publish caller-managed <code>request_uri</code> values through
-<code><a href="oauth_module_server.html">oauth_module_server()</a></code>. When this is <code>TRUE</code>, make sure the provider has a
-matching public request URI or wildcard prefix registered for the client.
-shinyOAuth stores this metadata for caller awareness, but it cannot verify
-provider-side registration state automatically.</p></dd>
-
-
-<dt id="arg-request-object-signing-alg-values-supported">request_object_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-signing-alg-values-supported"></a></dt>
-<dd><p>Optional vector of JWS
-algorithms that the provider advertises for signed Request Objects (RFC
-9101). This is mainly used for early validation when an <a href="OAuthClient.html">OAuthClient</a>
-sends <code>request_object_mode = "request"</code> or
-<code>request_object_mode = "request_uri"</code>.</p></dd>
-
-
-<dt id="arg-request-object-encryption-alg-values-supported">request_object_encryption_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-alg-values-supported"></a></dt>
-<dd><p>Optional vector of JWE
-key-management algorithms that the provider advertises for encrypted
-Request Objects. This metadata is used for early validation when an
-<a href="OAuthClient.html">OAuthClient</a> enables Request Object encryption.</p></dd>
-
-
-<dt id="arg-request-object-encryption-enc-values-supported">request_object_encryption_enc_values_supported<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-enc-values-supported"></a></dt>
-<dd><p>Optional vector of JWE
-content-encryption algorithms that the provider advertises for encrypted
-Request Objects. This metadata is used for early validation when an
-<a href="OAuthClient.html">OAuthClient</a> enables Request Object encryption.</p></dd>
-
-
-<dt id="arg-request-object-encryption-jwk">request_object_encryption_jwk<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-jwk"></a></dt>
-<dd><p>Optional explicit recipient public key
-used to encrypt Request Objects when discovery-backed JWKS selection is not
-available or when you need to pin one specific encryption key. Accepts an
-OpenSSL public key, a PEM public-key string, a parsed JWK object, or a JWK
-JSON string.</p></dd>
-
-
-<dt id="arg-authorization-request-front-channel-mode">authorization_request_front_channel_mode<a class="anchor" aria-label="anchor" href="#arg-authorization-request-front-channel-mode"></a></dt>
-<dd><p>Character scalar controlling
-which browser-visible outer parameters shinyOAuth keeps when the actual
-authorization request is carried by JAR or PAR. Use <code>"compat"</code>
-(default) to keep OIDC-compatible parameters with outer
-<code>client_id</code>, <code>response_type</code>, and <code>scope</code> when an issuer is configured.
-Use <code>"minimal"</code> for plain OAuth browser redirects and for PAR
-deployments whose authorization endpoint accepts only <code>client_id</code>
-plus the provider-issued <code>request_uri</code> handle. OpenID Connect
-by-value <code>request</code> and caller-managed <code>request_uri</code> transports reject
-<code>"minimal"</code> because OIDC still requires outer <code>response_type</code> and an
-outer <code>scope</code> containing <code>openid</code>.</p></dd>
-
-
-<dt id="arg-authorization-response-iss-parameter-supported">authorization_response_iss_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-authorization-response-iss-parameter-supported"></a></dt>
-<dd><p>Logical. Whether the
-provider advertises RFC 9207 support for returning an <code>iss</code> parameter on
-the authorization response. When <code>TRUE</code>, the <code><a href="oauth_client.html">oauth_client()</a></code> helper can
-auto-enable callback issuer enforcement when the caller leaves
-<code>enforce_callback_issuer</code> unset and the provider also has a configured
-<code>issuer</code>.</p></dd>
-
-
-<dt id="arg-response-modes-supported">response_modes_supported<a class="anchor" aria-label="anchor" href="#arg-response-modes-supported"></a></dt>
-<dd><p>Optional character vector of OAuth/OIDC
-<code>response_mode</code> values advertised by the provider. Discovery-backed
-providers use the discovery metadata value, defaulting to <code>c("query", "fragment")</code> when omitted per OIDC Discovery/RFC 8414. Generic providers
-may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement; clients still
-fail fast if they request one of those unsupported modes.</p></dd>
+<dt id="arg-userinfo-allowed-algs">userinfo_allowed_algs<a class="anchor" aria-label="anchor" href="#arg-userinfo-allowed-algs"></a></dt>
+<dd><p>Optional signing algorithm allowlist for UserInfo
+JWTs. <code>NULL</code> inherits <code>allowed_algs</code> for manually configured providers.
+Discovery negotiates this independently against UserInfo metadata. Use a
+single algorithm to enforce the client's registered UserInfo signing choice.
+An empty vector rejects all signed UserInfo algorithms.
+Unlabelled RSA keys follow the same binding policy as <code>allowed_algs</code>.</p></dd>
 
 
 <dt id="arg-jarm-signing-alg-values-supported">jarm_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-jarm-signing-alg-values-supported"></a></dt>
@@ -557,40 +592,6 @@ before duplicate-member rejection. Conflicting duplicates and nested
 duplicate <code>iss</code> members still fail closed. Defaults to <code>FALSE</code>.</p></dd>
 
 
-<dt id="arg-token-endpoint-auth-signing-alg-values-supported">token_endpoint_auth_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-token-endpoint-auth-signing-alg-values-supported"></a></dt>
-<dd><p>Optional vector of
-JWS algorithms that the provider advertises for JWT-based client
-authentication (<code>client_secret_jwt</code> / <code>private_key_jwt</code>) at the token
-endpoint. This metadata is used for early validation of
-<code>OAuthClient@client_assertion_alg</code> and inferred JWT client-assertion
-defaults.</p></dd>
-
-
-<dt id="arg-dpop-signing-alg-values-supported">dpop_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-dpop-signing-alg-values-supported"></a></dt>
-<dd><p>Optional vector of JWS algorithms
-that the provider advertises for DPoP proof JWTs (RFC 9449). This
-metadata is used for early validation of <code>OAuthClient@dpop_signing_alg</code>
-and inferred outbound DPoP signing defaults.</p></dd>
-
-
-<dt id="arg-mtls-endpoint-aliases">mtls_endpoint_aliases<a class="anchor" aria-label="anchor" href="#arg-mtls-endpoint-aliases"></a></dt>
-<dd><p>Optional named list of RFC 8705 mTLS endpoint
-aliases. Names should follow the metadata keys such as <code>token_endpoint</code>,
-<code>userinfo_endpoint</code>, <code>introspection_endpoint</code>, <code>revocation_endpoint</code>,
-<code>par_endpoint</code>, or <code>pushed_authorization_request_endpoint</code>, and values
-must be absolute URLs. This is an advanced setting used when a provider
-publishes separate mTLS-specific endpoints.</p></dd>
-
-
-<dt id="arg-mtls-client-certificate-bound-access-tokens">mtls_client_certificate_bound_access_tokens<a class="anchor" aria-label="anchor" href="#arg-mtls-client-certificate-bound-access-tokens"></a></dt>
-<dd><p>Logical. Whether the
-authorization server advertises RFC 8705 capability to issue
-certificate-bound access tokens. This describes server capability; the
-client still has to opt into mTLS separately. When <code>TRUE</code>, token responses
-may include a <code>cnf</code> claim with an <code>x5t#S256</code> thumbprint that downstream
-requests must match with the same certificate.</p></dd>
-
-
 <dt id="arg-endpoint-auth-metadata">endpoint_auth_metadata<a class="anchor" aria-label="anchor" href="#arg-endpoint-auth-metadata"></a></dt>
 <dd><p>Named list of independent <code>introspection</code> and
 <code>revocation</code> authentication metadata. Each entry has <code>methods</code> and
@@ -603,6 +604,10 @@ for omitted revocation methods. Omitted introspection methods have no default.</
 <dd><p>Deprecated renamed arguments accepted temporarily for backward
 compatibility.</p></dd>
 
+
+<dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>
+<dd><p>Compatibility alias for <code>id_token_allowed_algs</code>. Supply only one spelling.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -612,7 +617,7 @@ compatibility.</p></dd>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Supply <code>name</code>, <code>auth_url</code>, and <code>token_url</code> to start. Add <code>userinfo_url</code> to
 fetch profiles. Supplying <code>issuer</code> enables OIDC defaults, including ID token
-validation, unless <code>issuer_thus_oidc = FALSE</code>. Advanced arguments must match
+validation, unless <code>infer_oidc_from_issuer = FALSE</code>. Advanced arguments must match
 your provider's capabilities; see the <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a>.</p>
     </div>
 

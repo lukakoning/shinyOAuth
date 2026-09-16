@@ -62,8 +62,8 @@
   - Required permissions remain enforced for reduced grants and
     refreshes. Offline access negotiation requires opt-in. Token
     responses must supply scopes and a positive lifetime;
-    `initial_expires_in` can provide an explicit fallback for the
-    initial response.
+    `initial_expires_in_fallback` can provide an explicit fallback for
+    the initial response.
 
 - `OAuthToken` exposes additional token response parameters in
   `extra_fields`
@@ -114,16 +114,27 @@
   requiring older providers to send one; required issuer and JARM checks
   remain enforced.
 
-- Client and provider constructor arguments have been reorganized and
-  renamed. Helper constructors retain compatibility aliases; low-level
-  S7 constructors require the new names and should use named arguments.
-  Client assertion keys, mTLS, Request Object, and JARM settings use
-  `client_assertion_*`, `mtls_*`, `request_object_*`, and `jarm_*`
-  names. See
-  [`?oauth_client`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-  and
-  [`?oauth_provider`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  for the current arguments.
+- Function argument names are more consistent. CRAN 0.5.0 argument names
+  and positions remain supported, as do the existing S7 property names:
+
+  - Login, token, userinfo, resource-request, and mTLS registration
+    helpers consistently accept `client` and `token`.
+  - [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+    accepts callback state as `state`; introspection and revocation
+    helpers select access or refresh tokens with `token_kind`.
+  - Provider constructors and discovery use `id_token_allowed_algs` for
+    ID-token signing algorithms. Clients use `introspection_checks` for
+    extra introspection requirements.
+  - Client assertion keys, mTLS, Request Object, and JARM settings use
+    `client_assertion_*`, `mtls_*`, `request_object_*`, and `jarm_*`
+    names. See
+    [`?oauth_client`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+    and
+    [`?oauth_provider`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+    for the current arguments.
+  - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+    uses `refresh_check_interval_ms` to make the polling interval’s
+    millisecond unit explicit.
 
 - Client and provider configuration changes:
 
@@ -143,8 +154,8 @@
 
 - Provider configuration changes:
 
-  - `issuer_thus_oidc = FALSE` allows generic OAuth issuer validation
-    without enabling OIDC; the default remains `TRUE`.
+  - `infer_oidc_from_issuer = FALSE` allows generic OAuth issuer
+    validation without enabling OIDC; the default remains `TRUE`.
   - An explicit `jwks_uri` overrides discovery across signing-key
     consumers. Missing or disallowed required key locations fail during
     configuration.
@@ -746,10 +757,9 @@ CRAN release: 2026-02-14
 
   - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
     gains an optional `take` parameter for atomic get-and-delete.
-  - [`state_store_get_remove()`](https://lukakoning.github.io/shinyOAuth/reference/state_store_get_remove.md)
-    prefers `$take()` when available; falls back to `$get()` +
-    `$remove()` with a mandatory post-removal absence check (instead of
-    trusting `$remove()` return values).
+  - `state_store_get_remove()` prefers `$take()` when available; falls
+    back to `$get()` + `$remove()` with a mandatory post-removal absence
+    check (instead of trusting `$remove()` return values).
   - Non-[`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
     stores without `$take()` now error by default to prevent TOCTOU
     replay attacks in shared/multi-worker deployments. To bypass this
