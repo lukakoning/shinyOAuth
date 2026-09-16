@@ -50,7 +50,7 @@ test_that("scope_validation = 'strict' errors on missing scopes", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -110,7 +110,7 @@ test_that("scope_validation defaults to 'warn' for reduced grants", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -174,7 +174,7 @@ test_that("scope_validation tokenizes space-delimited scope strings", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -243,7 +243,7 @@ test_that("scope_validation does not split comma-bearing scope tokens", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -302,7 +302,7 @@ test_that("scope_validation = 'warn' continues on missing scopes", {
     shinyOAuth:::handle_callback(
       cli,
       code = "ok",
-      payload = enc,
+      state = enc,
       browser_token = tok
     )
   )
@@ -370,7 +370,7 @@ test_that("scope_validation = 'none' skips validation entirely", {
         shinyOAuth:::handle_callback(
           cli,
           code = "ok",
-          payload = enc,
+          state = enc,
           browser_token = tok
         )
       ),
@@ -532,7 +532,7 @@ test_that("scope_validation = 'strict' error message includes hint", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -599,7 +599,7 @@ test_that("scope_validation = 'strict' accepts token response that omits scope",
     shinyOAuth:::handle_callback(
       cli,
       code = "ok",
-      payload = enc,
+      state = enc,
       browser_token = tok
     )
   )
@@ -661,7 +661,7 @@ test_that("scope_validation = 'warn' accepts token response that omits scope", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     )
@@ -729,7 +729,7 @@ test_that("scope_validation = 'none' succeeds when token response omits scope", 
         shinyOAuth:::handle_callback(
           cli,
           code = "ok",
-          payload = enc,
+          state = enc,
           browser_token = tok
         )
       ),
@@ -807,7 +807,7 @@ test_that("scope_validation succeeds when no scopes were requested", {
         shinyOAuth:::handle_callback(
           cli,
           code = "ok",
-          payload = enc,
+          state = enc,
           browser_token = tok
         )
       ),

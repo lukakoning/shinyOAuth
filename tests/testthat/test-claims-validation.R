@@ -715,7 +715,7 @@ test_that("claims_validation = 'strict' errors during handle_callback for missin
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -781,7 +781,7 @@ test_that("claims_validation = 'strict' errors during handle_callback for mismat
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -841,7 +841,7 @@ test_that("claims_validation = 'none' does not error for missing ID token essent
     shinyOAuth:::handle_callback(
       cli,
       code = "ok",
-      payload = enc,
+      state = enc,
       browser_token = tok
     )
   )

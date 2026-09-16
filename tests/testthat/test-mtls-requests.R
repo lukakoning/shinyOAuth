@@ -378,7 +378,7 @@ test_that("requested certificate-bound login can backfill cnf from introspection
       token <- shinyOAuth:::handle_callback(
         client,
         code = "abc",
-        payload = payload,
+        state = payload,
         browser_token = browser_token
       )
 
@@ -1571,7 +1571,7 @@ test_that("handle_callback preserves certificate-bound context for automatic use
       token <- shinyOAuth:::handle_callback(
         client,
         code = "code",
-        payload = enc,
+        state = enc,
         browser_token = browser_token
       )
 

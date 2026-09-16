@@ -66,7 +66,7 @@ testthat::test_that("audit_login_success marks unvalidated ID token subjects as 
     handle_callback(
       cli,
       code = "ok",
-      payload = payload,
+      state = payload,
       browser_token = browser_token
     )
   )

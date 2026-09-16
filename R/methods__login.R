@@ -1174,7 +1174,7 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #' for Shiny sessions.
 #'
 #' @details
-#' Pass the returned `code`, the callback's `state` as `payload`, and the
+#' Pass the returned `code`, the callback's `state`, and the
 #' browser token saved for this login. This helper accepts direct code/state
 #' callbacks only. For signed responses using JWT Secured Authorization
 #' Response Mode (JARM; `"jwt"`, `"query.jwt"`, or
@@ -1184,7 +1184,7 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #' @param client An [OAuthClient] object.
 #' @param code Authorization code received from the provider on a classic
 #'   direct callback.
-#' @param payload Encrypted state payload returned by the provider on a classic
+#' @param state Encrypted state payload returned by the provider on a classic
 #'   direct callback. This should be the same value that was originally sent in
 #'   [prepare_call()].
 #' @param browser_token Browser token present in the user's session. This is
@@ -1208,16 +1208,22 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #' @example inst/examples/call_methods.R
 #'
 #' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
+#' @param payload Compatibility alias for `state`. Supply only one spelling.
 #' @export
 handle_callback <- function(
   client,
   code,
-  payload,
+  state,
   browser_token,
   shiny_session = NULL,
   iss = NULL,
-  oauth_client = NULL
+  oauth_client = NULL,
+  payload = NULL
 ){
+  payload <- resolve_argument_alias(
+    state, payload, missing(state), missing(payload),
+    "state", "payload"
+  )
   oauth_client <- resolve_argument_alias(
     client, oauth_client, missing(client), missing(oauth_client),
     "client", "oauth_client"

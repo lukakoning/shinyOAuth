@@ -60,7 +60,7 @@ test_that("authenticated Apple claims remain normalized through login and policy
     handle_callback(
       client,
       code = "code",
-      payload = parse_query_param(url, "state"),
+      state = parse_query_param(url, "state"),
       browser_token = browser
     )
   }

@@ -41,7 +41,7 @@ test_that("callback query size caps are configurable via options", {
     handle_callback(
       client = client,
       code = "abcd",
-      payload = paste(rep("x", 20), collapse = ""),
+      state = paste(rep("x", 20), collapse = ""),
       browser_token = valid_browser_token()
     ),
     class = "shinyOAuth_state_error"
@@ -62,7 +62,7 @@ test_that("callback browser_token cap is configurable via options", {
     handle_callback(
       client = client,
       code = "abcd",
-      payload = "x",
+      state = "x",
       browser_token = "123456"
     ),
     class = "shinyOAuth_state_error"
@@ -79,7 +79,7 @@ test_that("callback code cap is configurable via options", {
     handle_callback(
       client = client,
       code = "abcd",
-      payload = "x",
+      state = "x",
       browser_token = "123"
     ),
     class = "shinyOAuth_state_error"

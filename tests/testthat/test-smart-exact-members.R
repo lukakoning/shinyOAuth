@@ -273,7 +273,7 @@ test_that("callback lifetime policy cannot be supplied by a near-match extension
       handle_callback(
         client,
         code = "example-code",
-        payload = state,
+        state = state,
         browser_token = browser
       )
     }
@@ -330,7 +330,7 @@ test_that("a signed near-match fhirUser claim fails the complete callback", {
     handle_callback(
       client,
       code = "example-code",
-      payload = parse_query_param(url, "state"),
+      state = parse_query_param(url, "state"),
       browser_token = browser
     ),
     "fhirUser",

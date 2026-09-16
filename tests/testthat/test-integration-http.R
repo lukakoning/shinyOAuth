@@ -53,7 +53,7 @@ test_that("token exchange HTTP error surfaces as shinyOAuth_http_error", {
     shinyOAuth:::handle_callback(
       cli,
       code = "any",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_token_error"
@@ -123,7 +123,7 @@ test_that("userinfo HTTP error surfaces as shinyOAuth_http_error when required",
     shinyOAuth:::handle_callback(
       cli,
       code = "ok",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_http_error"
@@ -196,7 +196,7 @@ test_that("userinfo success populates token userinfo when required", {
     shinyOAuth:::handle_callback(
       cli,
       code = "ok",
-      payload = enc,
+      state = enc,
       browser_token = tok
     )
   )

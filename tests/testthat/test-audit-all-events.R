@@ -74,7 +74,7 @@ testthat::test_that("representative real producers emit required audit events", 
       handle_callback(
         cli,
         code = "c1",
-        payload = enc,
+        state = enc,
         browser_token = bad_btok
       ),
       class = "shinyOAuth_state_error"
@@ -99,7 +99,7 @@ testthat::test_that("representative real producers emit required audit events", 
       },
       .package = "shinyOAuth",
       {
-        handle_callback(cli, code = "ok", payload = enc, browser_token = btok)
+        handle_callback(cli, code = "ok", state = enc, browser_token = btok)
       }
     )
     testthat::expect_s3_class(tok, "S7_object")

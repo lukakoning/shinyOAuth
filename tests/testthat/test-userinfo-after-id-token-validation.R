@@ -79,7 +79,7 @@ test_that("login flow: get_userinfo is called after validate_id_token", {
       shinyOAuth:::handle_callback(
         cli,
         code = "auth-code",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     }
@@ -179,7 +179,7 @@ test_that("handle_callback binds userinfo to a nonce-validated id_token even whe
       shinyOAuth:::handle_callback(
         cli,
         code = "auth-code",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     }
@@ -302,7 +302,7 @@ test_that("login flow: get_userinfo not called when ID token validation fails", 
         shinyOAuth:::handle_callback(
           cli,
           code = "auth-code",
-          payload = enc,
+          state = enc,
           browser_token = tok
         )
       }
@@ -739,7 +739,7 @@ test_that("handle_callback: userinfo/id_token match IS performed after userinfo 
       shinyOAuth:::handle_callback(
         cli,
         code = "auth-code",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     }
@@ -836,7 +836,7 @@ test_that("handle_callback: userinfo/id_token mismatch aborts login", {
         shinyOAuth:::handle_callback(
           cli,
           code = "auth-code",
-          payload = enc,
+          state = enc,
           browser_token = tok
         )
       }

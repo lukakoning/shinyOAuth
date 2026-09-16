@@ -21,7 +21,7 @@ test_that("tampered state payload fails AES-GCM auth during callback", {
     shinyOAuth:::handle_callback(
       cli,
       code = "c",
-      payload = tampered,
+      state = tampered,
       browser_token = tok
     )
   )

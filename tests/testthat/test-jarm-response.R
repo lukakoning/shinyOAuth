@@ -336,7 +336,7 @@ test_that("handle_callback rejects direct code/state callbacks for JARM clients"
       shinyOAuth::handle_callback(
         client = client,
         code = "direct-code",
-        payload = state,
+        state = state,
         browser_token = browser_token
       ),
       class = "shinyOAuth_config_error",

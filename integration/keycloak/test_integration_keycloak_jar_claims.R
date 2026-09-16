@@ -60,7 +60,7 @@ complete_jar_callback <- function(client, login_result, browser_token) {
   shinyOAuth:::handle_callback(
     client = client,
     code = login_result[["code"]],
-    payload = login_result[["state_payload"]],
+    state = login_result[["state_payload"]],
     browser_token = browser_token,
     iss = callback_iss(login_result)
   )

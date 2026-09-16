@@ -71,7 +71,7 @@ test_that("login and refresh reject ineligible introspection before UserInfo", {
             handle_callback(
               cli,
               code = "sample-code",
-              payload = state,
+              state = state,
               browser_token = browser
             )
           } else {

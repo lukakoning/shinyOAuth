@@ -26,7 +26,7 @@ testthat::test_that("successful redirect and callback share one flow trace_id", 
       shinyOAuth::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = btok
       )
     }

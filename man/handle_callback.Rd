@@ -7,11 +7,12 @@
 handle_callback(
   client,
   code,
-  payload,
+  state,
   browser_token,
   shiny_session = NULL,
   iss = NULL,
-  oauth_client = NULL
+  oauth_client = NULL,
+  payload = NULL
 )
 }
 \arguments{
@@ -20,7 +21,7 @@ handle_callback(
 \item{code}{Authorization code received from the provider on a classic
 direct callback.}
 
-\item{payload}{Encrypted state payload returned by the provider on a classic
+\item{state}{Encrypted state payload returned by the provider on a classic
 direct callback. This should be the same value that was originally sent in
 \code{\link[=prepare_call]{prepare_call()}}.}
 
@@ -41,6 +42,8 @@ Clients configured with \code{authorization_server_mode = "multi_redirect_uri"}
 must use \code{\link[=oauth_module_server]{oauth_module_server()}} instead.}
 
 \item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
+
+\item{payload}{Compatibility alias for \code{state}. Supply only one spelling.}
 }
 \value{
 An \link{OAuthToken} object. If callback validation, token exchange, or
@@ -56,7 +59,7 @@ the returned token. \code{\link[=oauth_module_server]{oauth_module_server()}} ha
 for Shiny sessions.
 }
 \details{
-Pass the returned \code{code}, the callback's \code{state} as \code{payload}, and the
+Pass the returned \code{code}, the callback's \code{state}, and the
 browser token saved for this login. This helper accepts direct code/state
 callbacks only. For signed responses using JWT Secured Authorization
 Response Mode (JARM; \code{"jwt"}, \code{"query.jwt"}, or

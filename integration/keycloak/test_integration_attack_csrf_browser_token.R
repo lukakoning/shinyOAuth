@@ -54,7 +54,7 @@ testthat::test_that("Browser token mismatch: tampered cookie value rejected", {
         shinyOAuth:::handle_callback(
           client = client,
           code = res[["code"]],
-          payload = res[["state_payload"]],
+          state = res[["state_payload"]],
           browser_token = attacker_bt,
           iss = callback_iss(res)
         ),
@@ -84,7 +84,7 @@ testthat::test_that("Browser token: NULL browser_token rejected", {
         shinyOAuth:::handle_callback(
           client = client,
           code = res[["code"]],
-          payload = res[["state_payload"]],
+          state = res[["state_payload"]],
           browser_token = NULL,
           iss = callback_iss(res)
         ),
@@ -117,7 +117,7 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
         shinyOAuth:::handle_callback(
           client = client,
           code = res[["code"]],
-          payload = res[["state_payload"]],
+          state = res[["state_payload"]],
           browser_token = short_token,
           iss = callback_iss(res)
         ),
@@ -133,7 +133,7 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
         shinyOAuth:::handle_callback(
           client = client,
           code = res[["code"]],
-          payload = res[["state_payload"]],
+          state = res[["state_payload"]],
           browser_token = bad_chars_token,
           iss = callback_iss(res)
         ),
@@ -167,7 +167,7 @@ testthat::test_that("Browser token: skip_browser_token=TRUE allows __SKIPPED__ s
       result <- shinyOAuth:::handle_callback(
         client = client,
         code = res[["code"]],
-        payload = res[["state_payload"]],
+        state = res[["state_payload"]],
         browser_token = "__SKIPPED__",
         iss = callback_iss(res)
       )

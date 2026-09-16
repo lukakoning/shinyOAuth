@@ -34,7 +34,7 @@ testthat::test_that("handle_callback warns when expires_in is absent (login)", {
       tok <- handle_callback(
         cli,
         code = "auth_code_123",
-        payload = enc,
+        state = enc,
         browser_token = bt
       )
     },
@@ -74,7 +74,7 @@ testthat::test_that("handle_callback does NOT warn when expires_in is present (l
     tok <- handle_callback(
       cli,
       code = "auth_code_456",
-      payload = enc,
+      state = enc,
       browser_token = bt
     )
   })
@@ -306,7 +306,7 @@ testthat::test_that("handle_callback uses default_expires_in option (login)", {
     tok <- handle_callback(
       cli,
       code = "auth_code_opt",
-      payload = enc,
+      state = enc,
       browser_token = bt
     ),
     class = "shinyOAuth_missing_expires_in"

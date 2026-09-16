@@ -272,7 +272,7 @@ test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
     shinyOAuth:::handle_callback(
       cli,
       code = "abc",
-      payload = enc,
+      state = enc,
       browser_token = wrong_tok
     ),
     class = "shinyOAuth_state_error",
@@ -321,7 +321,7 @@ test_that("handle_callback validates browser token, PKCE verifier, and nonce", {
       tok_obj <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc2,
+        state = enc2,
         browser_token = tok
       )
       expect_true(
@@ -345,7 +345,7 @@ test_that("handle_callback rejects oversized authorization code", {
     shinyOAuth:::handle_callback(
       cli,
       code = strrep("a", 8193),
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_state_error",
@@ -368,7 +368,7 @@ test_that("handle_callback rejects oversized payload before hashing/auditing", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = strrep("a", 9000),
+          state = strrep("a", 9000),
           browser_token = valid_browser_token()
         ),
         class = "shinyOAuth_state_error",
@@ -394,7 +394,7 @@ test_that("handle_callback rejects oversized browser_token before hashing/auditi
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = "x",
+          state = "x",
           browser_token = strrep("b", 300)
         ),
         class = "shinyOAuth_state_error",
@@ -421,7 +421,7 @@ test_that("state store is single-use during handle_callback", {
       t1 <- shinyOAuth:::handle_callback(
         cli,
         code = "c1",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
       expect_true(is.character(t1@access_token) && nzchar(t1@access_token))
@@ -433,7 +433,7 @@ test_that("state store is single-use during handle_callback", {
     shinyOAuth:::handle_callback(
       cli,
       code = "c2",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_state_error",
@@ -459,7 +459,7 @@ test_that("handle_callback errors when PKCE verifier missing and when browser to
     shinyOAuth:::handle_callback(
       cli,
       code = "abc",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_state_error",
@@ -475,7 +475,7 @@ test_that("handle_callback errors when PKCE verifier missing and when browser to
     shinyOAuth:::handle_callback(
       cli,
       code = "abc",
-      payload = enc2,
+      state = enc2,
       browser_token = badtok
     ),
     class = "shinyOAuth_state_error",
@@ -529,7 +529,7 @@ test_that("handle_callback fails when nonce is required but missing in state sto
     shinyOAuth:::handle_callback(
       cli,
       code = "abc",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_state_error",
@@ -555,7 +555,7 @@ test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
     shinyOAuth:::handle_callback(
       cli,
       code = "abc",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_pkce_error",
@@ -577,7 +577,7 @@ test_that("handle_callback fails when PKCE verifier is malformed (not NULL)", {
     shinyOAuth:::handle_callback(
       cli,
       code = "abc",
-      payload = enc2,
+      state = enc2,
       browser_token = tok
     ),
     class = "shinyOAuth_pkce_error",
@@ -615,7 +615,7 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_oidc_nonce_error",
@@ -650,7 +650,7 @@ test_that("handle_callback fails when nonce is malformed (not NULL)", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc2,
+          state = enc2,
           browser_token = tok
         ),
         class = "shinyOAuth_oidc_nonce_error",

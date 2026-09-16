@@ -327,7 +327,7 @@ test_that("handle_callback validates scopes against auto-added openid scope in s
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),

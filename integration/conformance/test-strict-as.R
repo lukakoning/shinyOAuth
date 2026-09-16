@@ -273,7 +273,7 @@ run_strict_as <- function(alg) {
         token <- shinyOAuth:::handle_callback(
           configured,
           code = callback[["code"]],
-          payload = callback[["state"]],
+          state = callback[["state"]],
           browser_token = browser,
           iss = callback[["iss"]]
         )

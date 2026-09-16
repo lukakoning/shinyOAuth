@@ -16,7 +16,7 @@ test_that("state from user A cannot be reused by user B (cross-session)", {
     shinyOAuth:::handle_callback(
       cliB,
       code = "any",
-      payload = encA,
+      state = encA,
       browser_token = tokB
     ),
     class = "shinyOAuth_state_error",

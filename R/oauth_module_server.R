@@ -3902,7 +3902,7 @@ oauth_module_server_impl <- function(
                   handle_callback(
                     client = client,
                     code = code,
-                    payload = state,
+                    state = state,
                     browser_token = values[["browser_token"]],
                     iss = iss
                   )

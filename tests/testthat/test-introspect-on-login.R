@@ -36,7 +36,7 @@ test_that("handle_callback with introspect=TRUE fails when introspection unsuppo
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -69,7 +69,7 @@ test_that("handle_callback respects client@introspect setting (no introspect by 
       tok_ok <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
       testthat::expect_s3_class(tok_ok, "shinyOAuth::OAuthToken")
@@ -187,7 +187,7 @@ test_that("handle_callback with introspect=TRUE fails when token is inactive", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -226,7 +226,7 @@ test_that("handle_callback with introspect=TRUE succeeds when token is active", 
       tok_obj <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
       testthat::expect_s3_class(tok_obj, "shinyOAuth::OAuthToken")
@@ -275,7 +275,7 @@ test_that("handle_callback with introspect=TRUE backfills cnf from introspection
       tok_obj <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
 
@@ -329,7 +329,7 @@ test_that("introspect_elements can require sub match from a validated id_token",
       tok_obj <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
       testthat::expect_equal(tok_obj@access_token, "at")
@@ -372,7 +372,7 @@ test_that("introspect_elements can require sub match from a validated id_token",
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc2,
+          state = enc2,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -419,7 +419,7 @@ test_that("introspect_elements sub falls back to userinfo before an unvalidated 
       tok_obj <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
       testthat::expect_equal(tok_obj@userinfo[["sub"]], "u2")
@@ -455,7 +455,7 @@ test_that("introspect_elements sub falls back to userinfo before an unvalidated 
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc2,
+          state = enc2,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -505,7 +505,7 @@ test_that("introspect_elements sub uses userinfo_id_selector for userinfo fallba
       tok_obj <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
       testthat::expect_identical(tok_obj@userinfo[["id"]], 42)
@@ -541,7 +541,7 @@ test_that("introspect_elements sub uses userinfo_id_selector for userinfo fallba
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc2,
+          state = enc2,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -577,7 +577,7 @@ test_that("introspect_elements can require client_id match", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         )
       )
@@ -604,7 +604,7 @@ test_that("introspect_elements can require client_id match", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc2,
+          state = enc2,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -650,7 +650,7 @@ test_that("introspect_elements can require scopes", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         )
       )
@@ -693,7 +693,7 @@ test_that("introspect_elements can require scopes", {
         shinyOAuth:::handle_callback(
           cli_str,
           code = "abc",
-          payload = encs,
+          state = encs,
           browser_token = tok
         ),
         error = function(e) {
@@ -745,7 +745,7 @@ test_that("introspect_elements can require scopes", {
         shinyOAuth:::handle_callback(
           cli_warn,
           code = "abc",
-          payload = encw,
+          state = encw,
           browser_token = tok
         ),
         regexp = "Introspected scopes missing requested entries"
@@ -785,7 +785,7 @@ test_that("introspect_elements can require scopes", {
         shinyOAuth:::handle_callback(
           cli_none,
           code = "abc",
-          payload = encn,
+          state = encn,
           browser_token = tok
         )
       )
@@ -817,7 +817,7 @@ test_that("introspect_elements can require scopes", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc2,
+          state = enc2,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -888,7 +888,7 @@ test_that("introspection scope checks use effective OIDC callback scopes", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -934,7 +934,7 @@ test_that("introspection scope validation does not split comma-bearing tokens", 
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -978,7 +978,7 @@ test_that("introspect_elements errors when required fields are missing", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -1029,7 +1029,7 @@ test_that("handle_callback rejects conflicting introspection cnf values", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -1077,7 +1077,7 @@ test_that("introspect_elements can require token_type for DPoP tokens", {
       tok_ok <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
 
@@ -1118,7 +1118,7 @@ test_that("handle_callback with introspect=TRUE fails on introspection http erro
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -1163,7 +1163,7 @@ test_that("introspect_token emits audit events during login", {
       tok_obj <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     }
@@ -1215,7 +1215,7 @@ test_that("introspect_token emits audit events even when login fails", {
         shinyOAuth:::handle_callback(
           cli,
           code = "abc",
-          payload = enc,
+          state = enc,
           browser_token = tok
         ),
         class = "shinyOAuth_token_error",
@@ -1277,7 +1277,7 @@ test_that("handle_callback forwards shiny_session to introspect_token", {
       tok_obj <- shinyOAuth:::handle_callback(
         cli,
         code = "abc",
-        payload = enc,
+        state = enc,
         browser_token = tok,
         shiny_session = shiny_session
       )

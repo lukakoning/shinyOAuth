@@ -21,7 +21,7 @@ test_that("handle_callback rejects tampered redirect_uri in state payload", {
       shinyOAuth:::handle_callback(
         cli,
         code = "c",
-        payload = tampered,
+        state = tampered,
         browser_token = tok
       )
     ),

@@ -429,7 +429,7 @@ test_that("SMART scope evidence survives the actual callback and refresh paths",
   token <- handle_callback(
     client,
     code = "example-code",
-    payload = state,
+    state = state,
     browser_token = browser
   )
   expect_setequal(

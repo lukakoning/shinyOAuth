@@ -68,7 +68,7 @@ test_that("new login state waits for the current browser cookie acknowledgment",
         handle_callback(
           client,
           code = "x",
-          payload = parse_query_param(result, "state"),
+          state = parse_query_param(result, "state"),
           browser_token = old
         ),
         "Browser token mismatch"

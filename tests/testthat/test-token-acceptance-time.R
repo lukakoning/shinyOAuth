@@ -42,7 +42,7 @@ test_that("transport and verification consume the response lifetime", {
   result <- handle_callback(
     client,
     code = "code",
-    payload = state,
+    state = state,
     browser_token = browser
   )
   expect_equal(result@expires_at, started + lifetime)
@@ -67,7 +67,7 @@ test_that("transport and verification consume the response lifetime", {
     handle_callback(
       client,
       code = "code",
-      payload = state,
+      state = state,
       browser_token = browser
     ),
     "expired before acceptance"

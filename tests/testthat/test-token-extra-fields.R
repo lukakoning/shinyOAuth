@@ -7,7 +7,7 @@ extra_fields_test_callback <- function(client) {
   handle_callback(
     client,
     code = "example-code",
-    payload = payload,
+    state = payload,
     browser_token = browser_token
   )
 }

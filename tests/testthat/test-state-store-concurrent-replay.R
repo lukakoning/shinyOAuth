@@ -118,7 +118,7 @@ test_that("concurrent callbacks consume shared state and exchange the code once"
           token <- shinyOAuth::handle_callback(
             make_client(make_store(dir), url),
             code = "authorization-code",
-            payload = payload,
+            state = payload,
             browser_token = browser_token
           )
           list(success = TRUE, access_token = token@access_token)

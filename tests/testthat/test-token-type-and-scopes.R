@@ -44,7 +44,7 @@ test_that("token_type is enforced when present", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -102,7 +102,7 @@ test_that("missing requested scopes cause error in strict mode", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),

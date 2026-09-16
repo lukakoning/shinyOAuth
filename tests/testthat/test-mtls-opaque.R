@@ -128,7 +128,7 @@ for (style in c("body", "public", "private_key_jwt")) {
         token <- handle_callback(
           client,
           code = "local-code",
-          payload = parse_query_param(url, "state"),
+          state = parse_query_param(url, "state"),
           browser_token = valid_browser_token()
         )
         expect_identical(token@access_token, "opaque-access")
@@ -331,7 +331,7 @@ test_that("opaque login and refresh validate any confirmation returned by intros
           handle_callback(
             client,
             code = "local-code",
-            payload = parse_query_param(url, "state"),
+            state = parse_query_param(url, "state"),
             browser_token = valid_browser_token()
           )
         }
@@ -400,7 +400,7 @@ test_that("mTLS observation policy is validated, defaults to strict, and binds p
     handle_callback(
       client,
       code = "unused",
-      payload = parse_query_param(url, "state"),
+      state = parse_query_param(url, "state"),
       browser_token = valid_browser_token()
     ),
     "policy",

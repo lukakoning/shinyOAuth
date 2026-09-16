@@ -80,6 +80,7 @@ and positional calls:
   polling interval's millisecond unit explicit.
   - Login, token, userinfo, resource-request, and mTLS registration helpers
   consistently accept `client` and `token`.
+  - `handle_callback()` accepts callback state as `state`.
 
 * Client and provider constructor arguments have been reorganized and renamed.
 Helper constructors retain compatibility aliases; low-level S7 constructors

@@ -530,7 +530,7 @@ otel_e2e("prepare_call and callback share shinyOAuth trace_id", {
         shinyOAuth::handle_callback(
           cli,
           code = "test_code",
-          payload = enc,
+          state = enc,
           browser_token = btok
         )
       }
@@ -584,7 +584,7 @@ otel_e2e("handle_callback exports shinyOAuth trace_id once", {
       shinyOAuth::handle_callback(
         cli,
         code = "test_code",
-        payload = enc,
+        state = enc,
         browser_token = btok
       )
     }
@@ -665,7 +665,7 @@ otel_e2e("prepare_call roots itself and callback parents to login span", {
           shinyOAuth::handle_callback(
             cli,
             code = "test_code",
-            payload = enc,
+            state = enc,
             browser_token = btok
           )
         })
@@ -712,7 +712,7 @@ otel_e2e("handle_callback span captures callback flow attributes", {
         shinyOAuth::handle_callback(
           cli,
           code = "test_code",
-          payload = "test_payload",
+          state = "test_payload",
           browser_token = valid_browser_token()
         )
       }

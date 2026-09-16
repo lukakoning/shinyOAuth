@@ -50,7 +50,7 @@ test_that("handle_callback always consumes state store even when attacker suppli
     shinyOAuth::handle_callback(
       client = cli,
       code = "attacker_code",
-      payload = enc,
+      state = enc,
       browser_token = tok,
       decrypted_payload = pre_payload,
       state_store_values = pre_state
@@ -78,7 +78,7 @@ test_that("handle_callback enforces state-store consume on every call (replay bl
       t1 <- shinyOAuth::handle_callback(
         cli,
         code = "c1",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
       expect_true(
@@ -92,7 +92,7 @@ test_that("handle_callback enforces state-store consume on every call (replay bl
     shinyOAuth::handle_callback(
       cli,
       code = "c2",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_state_error",
@@ -120,7 +120,7 @@ test_that("replayed callback does not emit callback validation success", {
     shinyOAuth::handle_callback(
       cli,
       code = "c1",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_state_error",

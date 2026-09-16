@@ -97,7 +97,7 @@ test_that("openid-only SMART callbacks and refresh expose a validated OIDC subje
   token <- handle_callback(
     client,
     code = "example-code",
-    payload = parse_query_param(url, "state"),
+    state = parse_query_param(url, "state"),
     browser_token = browser
   )
   expect_true(token@id_token_validated)

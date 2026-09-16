@@ -113,7 +113,7 @@ test_that("token exchange does not follow redirects", {
     shinyOAuth:::handle_callback(
       cli,
       code = "any",
-      payload = enc,
+      state = enc,
       browser_token = tok
     ),
     class = "shinyOAuth_error"

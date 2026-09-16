@@ -134,7 +134,7 @@ test_that("optional issuer presence still compares before low-level exchange", {
     handle_callback(
       client,
       code = "ok",
-      payload = state,
+      state = state,
       browser_token = browser,
       iss = "https://different.example"
     ),
@@ -296,7 +296,7 @@ test_that("low-level callbacks reject multi-redirect mode", {
     handle_callback(
       client = cli,
       code = "unused",
-      payload = "unused",
+      state = "unused",
       browser_token = valid_browser_token()
     ),
     regexp = "cannot verify the received redirect URI"
@@ -807,7 +807,7 @@ test_that("handle_callback accepts matching callback iss", {
       shinyOAuth::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = browser_token,
         iss = "https://issuer.example.com"
       )
@@ -839,7 +839,7 @@ test_that("handle_callback rejects mismatched callback iss before token exchange
         shinyOAuth::handle_callback(
           cli,
           code = "ok",
-          payload = enc,
+          state = enc,
           browser_token = browser_token,
           iss = "https://evil.example.com"
         ),
@@ -868,7 +868,7 @@ test_that("handle_callback skips mismatched callback iss when opt-out is explici
       shinyOAuth::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = browser_token,
         iss = "https://evil.example.com"
       )
@@ -898,7 +898,7 @@ test_that("handle_callback rejects missing iss in strict mode before token excha
         shinyOAuth::handle_callback(
           cli,
           code = "ok",
-          payload = enc,
+          state = enc,
           browser_token = browser_token
         ),
         class = "shinyOAuth_state_error",

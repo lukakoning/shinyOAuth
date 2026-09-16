@@ -45,7 +45,7 @@ test_that("when allowed_token_types is empty, missing token_type errors", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -86,7 +86,7 @@ test_that("DPoP clients still reject missing token_type on callback", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -144,7 +144,7 @@ test_that("callback rejects missing token_type before DPoP userinfo", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -375,7 +375,7 @@ test_that("when allowed_token_types is non-empty, missing token_type errors", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -432,7 +432,7 @@ test_that("handle_callback validates token_type before fetching userinfo", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),
@@ -490,7 +490,7 @@ test_that("handle_callback rejects non-scalar token_type values", {
       shinyOAuth:::handle_callback(
         cli,
         code = "ok",
-        payload = enc,
+        state = enc,
         browser_token = tok
       )
     ),

@@ -1308,7 +1308,7 @@ test_that("strict opaque DPoP login and refresh require binding from introspecti
             handle_callback(
               cli,
               code = "code",
-              payload = parse_query_param(url, "state"),
+              state = parse_query_param(url, "state"),
               browser_token = browser
             )
           }
@@ -2133,7 +2133,7 @@ test_that("handle_callback enforces strict DPoP token_type after exchange", {
     shinyOAuth:::handle_callback(
       client = cli,
       code = "code-1",
-      payload = payload,
+      state = payload,
       browser_token = browser_token
     ),
     regexp = "Expected token_type = DPoP",

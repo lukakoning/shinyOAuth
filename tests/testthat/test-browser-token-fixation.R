@@ -17,7 +17,7 @@ testthat::test_that("pre-set browser token works only for that session (fixation
     shinyOAuth:::handle_callback(
       cli,
       code = "ok",
-      payload = enc,
+      state = enc,
       browser_token = tok_fixed
     )
   )
@@ -33,7 +33,7 @@ testthat::test_that("pre-set browser token works only for that session (fixation
     shinyOAuth:::handle_callback(
       cli,
       code = "ok2",
-      payload = enc,
+      state = enc,
       browser_token = tok_other
     ),
     class = "shinyOAuth_state_error"
