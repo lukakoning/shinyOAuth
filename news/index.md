@@ -2,240 +2,155 @@
 
 ## shinyOAuth (development version)
 
-- Simplified the unreleased connection API: optional `resource_bases`,
-  `required_scopes` and `label` settings now live on `OAuthClient`.
-  [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
-  returns that same type, and the separate manager accepts
-  `oauth_connections(clients = list(hospital_a = client_a, hospital_b = client_b), ...)`.
-  The convenient R6 object is now `OAuthConnection`, with `client_label`
-  in its summary. Removed the target wrapper and its constructors before
-  release. Connections still resolve live credentials and reuse
-  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md);
-  ownership, resource boundaries and configuration-change checks remain
-  enforced.
+- Added optional connections for apps using one or more OAuth
+  authorizations:
 
-- Added explicit `authorization_method = "POST"` for long browser
-  authorization requests. SMART clients require advertised
-  `authorize-post`; GET remains the default. Shiny submits a form
-  automatically, while custom callers can use
-  [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md).
-  Transaction binding and configured PAR/JAR requirements are preserved.
-  Tests cover the SMART/OAuth browser matrices and independent Python
-  verification of protected POST combinations over TLS.
+  - [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
+    combines a module’s current token with the client’s approved
+    `resource_bases` and `required_scopes`. Its `$request()` method uses
+    refreshed credentials and restricts calls to those APIs; status and
+    selected identity information are available without exposing
+    credentials.
+  - [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md),
+    with
+    [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
+    and
+    [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md),
+    manages separate authorizations, including repeated logins to the
+    same provider. Connections normally end with the Shiny session;
+    optional browser or local-account retention restores them after
+    navigation.
+  - [`oauth_connection_store_memory()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md)
+    stores encrypted credentials in one R process.
+    [`oauth_browser_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+    and
+    [`oauth_account_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+    configure who can restore them and for how long. Retention does not
+    survive R restarts.
+  - Managed `$refresh(scopes = ...)` can reduce permissions while
+    preserving required scopes. Later refreshes retain the reduction;
+    widening requires new authorization. Disconnect removes local access
+    before optional remote revocation. Refresh and revocation account
+    for credentials shared across connections.
+  - `callback_policy = "issuer"` or `"shared_routes"` permits shared
+    callback URLs with issuer validation; distinct routes remain the
+    default and are required for encrypted JARM. Ordinary OAuth modules
+    can share the UI through `additional_clients`.
 
-- Added a 24-scenario SMART browser matrix covering standalone/EHR
-  launch, public/HTTP Basic/RS384 registrations, query/form POST,
-  synchronous/mirai transport, signed identity and retained scope
-  narrowing. A combined coverage runner includes package/browser,
-  conformance, retention and live Docker checks; external SMART
-  interoperability remains separately gated.
+- Added SMART on FHIR STU 2.2 app support:
 
-- SMART public registrations now rely on the advertised `client-public`
-  capability without requiring `none` in the list of confidential
-  authentication methods. Confidential registrations still require their
-  advertised method.
+  - [`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md)
+    reads metadata from an approved FHIR server;
+    [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
+    combines it with an existing public, secret-based, or asymmetric app
+    registration for standalone or EHR launch. It checks server
+    capabilities and permissions, requires S256 PKCE and TLS 1.2 or
+    newer, and enables signed user identity only when requested.
+  - [`smart_launch_route()`](https://lukakoning.github.io/shinyOAuth/reference/smart_launch_route.md)
+    accepts EHR launches for configured clients using browser retention.
+    SMART supports direct authorization with query or form POST
+    callbacks.
+  - [`smart_context()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+    reports the current patient, encounter, and validated user
+    reference, with a revision for detecting context changes after
+    refresh.
+    [`smart_patient()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+    and
+    [`smart_fhir_user()`](https://lukakoning.github.io/shinyOAuth/reference/smart_context.md)
+    fetch the corresponding FHIR resources only when authorized and
+    within the configured server.
+  - Required permissions remain enforced for reduced grants and
+    refreshes. Offline access negotiation requires opt-in. Token
+    responses must supply scopes and a positive lifetime;
+    `initial_expires_in` can provide an explicit fallback for the
+    initial response.
 
-- Managed connections now support `$refresh(scopes = ...)` to request
-  fewer permissions while retaining required scopes. Successful
-  narrowing is remembered in encrypted storage and applied to later
-  refreshes, including after navigation. It does not revoke the
-  authorization server’s original refresh-token grant; widening through
-  the manager requires a new authorization. Existing refresh calls keep
-  their behavior until narrowing is selected. Unit and real-browser
-  tests cover grant checks, rotation, retention and synchronous/mirai
-  transport.
-
-- Added opt-in `callback_policy = "issuer"` and `"shared_routes"` to the
-  connection manager. A protected pending-state index supports multiple
-  clients at one issuer and callback URL while preserving issuer/JARM,
-  state, owner and browser validation. Distinct routes remain the
-  default; ambiguous encrypted JARM still requires them. Browser tests
-  cover same-issuer resource isolation.
-
-- Added
-  [`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md)
-  to read SMART STU 2.2 metadata at the full FHIR base, with explicit
-  endpoint-host policy, conditional SSO/asymmetric checks, S256
-  enforcement, and an opt-in loopback HTTP exception. Returns a plain
-  metadata snapshot; client registration and authorization are separate
-  steps. The Docker sandbox suite now tests the reader against official
-  Launcher v2.
-
-- Added the optional
-  [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
-  manager with matching UI/server wrappers, separate grants per
-  authorization, encrypted process-local retention, browser/account
-  owner validation, coordinated refresh and local disconnect before
-  bounded remote revocation. Managed references support `$refresh()` and
-  resolve the latest stored credentials. The default remains
-  Shiny-session retention. Real-browser query/form_post retention tests
-  cover both synchronous and mirai transport. SMART interoperability
-  remains a separate roadmap gate.
-
-- Added session-bound
-  [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
-  objects using optional client settings. Requests resolve current
-  credentials, enforce exact approved resource bases, retain DPoP/mTLS
-  transport, and reject cross-session access. This initial adapter
-  follows a module’s reactive token and does not persist across
-  redirects.
-
-- Added explicitly selected RS384 signing for client assertions, Request
-  Objects and DPoP proofs, with RSA key compatibility checks. RSA
-  signing still defaults to RS256; inbound algorithm defaults are
-  unchanged.
-
-- `OAuthToken` now exposes additional token endpoint response parameters
-  in `extra_fields`
-  ([\#16](https://github.com/lukakoning/shinyOAuth/issues/16)).
-  `initial_extra_fields` preserves the initial code-exchange parameters
-  across refreshes; `extra_fields` reflects only the latest successful
-  response. Both lists are redacted when tokens are printed.
+- `OAuthToken` exposes additional token response parameters in
+  `extra_fields`
+  ([\#16](https://github.com/lukakoning/shinyOAuth/issues/16)). Each
+  successful refresh replaces that list; `initial_extra_fields`
+  preserves the initial response. Both retain nested values and explicit
+  nulls and are redacted when printed.
 
 - Added
   [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
-  for Shiny apps using URL-based OAuth callbacks. Wrap the app’s
-  existing UI with `oauth_ui(ui, id = "auth", client = client)` so
-  shinyOAuth can handle the provider’s response before the rest of the
-  app loads. The `id` and `client` must match
+  to handle URL-based callbacks before the app UI loads. Wrap the UI
+  with the same `id` and `client` used by
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
   Both
   [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
   and
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-  also accept named client registries for apps with multiple OAuth
-  modules or providers; existing single-client calls remain supported.
+  accept named client registries for apps using multiple OAuth modules
+  or providers.
 
 - Added
   [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md),
-  a read-only assessment of effective client and provider configuration
-  against OAuth 2.1 draft 16 (ruleset `1.1.0`). It distinguishes
-  configuration problems, external prerequisites, and recommendations
-  without making requests or changing configuration; OAuth 2.0 remains
-  supported.
+  a read-only assessment of client and provider configuration against
+  OAuth 2.1 draft 16. It reports configuration problems, external
+  prerequisites, and recommendations without making requests or changing
+  settings, including the effective TLS policy for SMART clients.
 
-- Browser and callback handling is more secure. Browser bindings are
-  isolated by origin, tab, login, and app/module, and excluded from URLs
-  and bookmarks. Callback routes, state, and input limits are validated
-  consistently; authorization codes have an 8192-byte default limit.
-  Shared callback state is encrypted at rest and must be stored
-  atomically.
+- Browser bindings are isolated by origin, tab, login, and app/module
+  and stay out of URLs and bookmarks. Callbacks enforce the registered
+  path and response transport, preserve escaped paths, and reject
+  oversized input before routing. Shared callback state is encrypted and
+  requires atomic storage.
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-  also supports trusted-proxy request URI resolution.
+  supports trusted-proxy URI resolution. New visitors cannot evict
+  retained connections or browsers with pending authorizations.
 
-- Added JWT Secured Authorization Response Mode (JARM) support with
-  `response_mode = "jwt"`, `"query.jwt"`, and `"form_post.jwt"`. Signed
-  and encrypted responses are validated through
-  [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md);
-  [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
-  remains limited to classic direct callbacks. Signing and encryption
-  algorithms can be configured or discovered, and `jarm_max_lifetime`
-  limits response-JWT lifetime (default 600 seconds).
-
-- Added RFC 9700 multi-authorization-server configuration through
-  `authorization_server_mode`. It supports multi-issuer routing with
-  JARM or RFC 9207 issuer identification, and distinct per-server
-  redirect URIs whose browser-visible routes are verified by
+- Added signed and encrypted authorization responses (JARM) through
+  `response_mode = "jwt"`, `"query.jwt"`, or `"form_post.jwt"` with
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-  `compare_callback_issuer` can also compare a supplied callback issuer
-  without requiring older providers to send one; required issuer and
-  JARM validation remain enforced.
+  Algorithms can be configured or discovered; `jarm_max_lifetime`
+  defaults to 600 seconds. Malformed claims and headers are rejected.
+  [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+  continues to accept only classic callbacks.
 
-- [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)/`OAuthClient`
+- `authorization_server_mode` supports multiple authorization servers
+  through validated issuer responses or distinct registered callback
+  routes. `compare_callback_issuer` can check a supplied issuer without
+  requiring older providers to send one; required issuer and JARM checks
+  remain enforced.
+
+- Client and provider constructor arguments have been reorganized and
+  renamed. Helper constructors retain compatibility aliases; low-level
+  S7 constructors require the new names and should use named arguments.
+  Client assertion keys, mTLS, Request Object, and JARM settings use
+  `client_assertion_*`, `mtls_*`, `request_object_*`, and `jarm_*`
+  names. See
+  [`?oauth_client`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   and
-  [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)/`OAuthProvider`
-  arguments have been reorganized and renamed for clarity. The helper
-  constructors retain compatibility aliases, while the S7 classes use
-  only the new names; callers of the low-level S7 constructors should
-  use named arguments:
-
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md):
-    - `client_private_key` -\> `client_assertion_private_key`
-    - `client_private_key_kid` -\> `client_assertion_private_key_kid`
-    - `userinfo_jwt_required_temporal_claims` -\>
-      `userinfo_jwt_required_time_claims`
-    - `mtls_request_certificate_bound_access_tokens` -\>
-      `mtls_certificate_bound_access_tokens`
-    - `tls_client_cert_file` -\> `mtls_client_cert_file`
-    - `tls_client_key_file` -\> `mtls_client_key_file`
-    - `tls_client_key_password` -\> `mtls_client_key_password`
-    - `tls_client_ca_file` -\> `mtls_client_ca_file`
-    - `authorization_request_mode` -\> `request_object_mode`
-    - `authorization_request_signing_alg` -\>
-      `request_object_signing_alg`
-    - `authorization_request_audience` -\> `request_object_audience`
-    - `authorization_request_encryption_alg` -\>
-      `request_object_encryption_alg`
-    - `authorization_request_encryption_enc` -\>
-      `request_object_encryption_enc`
-    - `authorization_request_encryption_kid` -\>
-      `request_object_encryption_kid`
-    - `authorization_request_ttl` -\> `request_object_ttl`
-    - `authorization_request_nbf_skew` -\> `request_object_nbf_skew`
-    - `authorization_signed_response_alg` -\> `jarm_signed_response_alg`
-    - `authorization_encrypted_response_alg` -\>
-      `jarm_encrypted_response_alg`
-    - `authorization_encrypted_response_enc` -\>
-      `jarm_encrypted_response_enc`
-    - `authorization_response_decryption_private_key` -\>
-      `jarm_decryption_private_key`
-    - `authorization_response_decryption_private_key_kid` -\>
-      `jarm_decryption_private_key_kid`
-  - [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-    - `require_pushed_authorization_requests` -\> `par_required`
-    - `require_signed_request_object` -\>
-      `signed_request_object_required`
-    - `require_request_uri_registration` -\>
-      `request_uri_registration_required`
-    - `authorization_signing_alg_values_supported` -\>
-      `jarm_signing_alg_values_supported`
-    - `authorization_encryption_alg_values_supported` -\>
-      `jarm_encryption_alg_values_supported`
-    - `authorization_encryption_enc_values_supported` -\>
-      `jarm_encryption_enc_values_supported`
-    - `tolerate_duplicate_top_level_jarm_iss` -\>
-      `jarm_tolerate_duplicate_top_level_iss`
-    - `tls_client_certificate_bound_access_tokens` -\>
-      `mtls_client_certificate_bound_access_tokens`
+  [`?oauth_provider`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
+  for the current arguments.
 
 - Client and provider configuration changes:
 
-  - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)/`OAuthClient`
-    no longer defaults `client_id` or `client_secret` from
-    `OAUTH_CLIENT_ID`/`OAUTH_CLIENT_SECRET`. An omitted secret is
-    treated as absent, supporting public and `private_key_jwt` clients;
-    printed client and provider objects redact credentials and sensitive
-    URL components.
-  - Public clients must use PKCE.
-  - New `endpoint_auth` settings can override credentials,
-    authentication style, assertion details, mTLS files, and headers
-    separately for PAR, introspection, and revocation. Discovered
-    endpoint authentication methods and signing algorithms are retained
-    in `endpoint_auth_metadata` and negotiated independently; token
-    exchange and refresh retain the top-level settings.
-  - `client_assertion_typ`, including per-endpoint overrides, supports
-    the existing `JWT` default and `client-authentication+jwt`;
-    assertion audiences remain separately configurable.
-  - Low-level `OAuthProvider` and `OAuthClient` constructors now use the
-    same OIDC and DPoP security defaults as their helper constructors
-    and reject malformed security booleans and assurance flags.
+  - Client credentials no longer default from `OAUTH_CLIENT_ID` or
+    `OAUTH_CLIENT_SECRET`; an omitted secret is treated as absent.
+    Public clients must use PKCE. Printed objects redact credentials and
+    sensitive URL components.
+  - `endpoint_auth` configures authentication separately for PAR,
+    introspection, and revocation, including credentials, assertions,
+    mTLS, and headers. Discovered authentication methods and algorithms
+    are negotiated per endpoint.
+  - `client_assertion_typ` supports `JWT` and
+    `client-authentication+jwt`, including per-endpoint overrides.
+  - Low-level S7 constructors use the same OIDC and DPoP security
+    defaults as helper constructors and reject malformed security and
+    assurance settings.
 
-- [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)/`OAuthProvider`
-  changes:
+- Provider configuration changes:
 
-  - `issuer_thus_oidc` defaults to `TRUE` for compatibility. Generic RFC
-    8414 providers can set it to `FALSE` to retain issuer validation
-    without enabling OIDC behavior.
-  - An explicit `jwks_uri` can override discovery for providers that
-    publish signing keys outside discovery or need a pinned runtime
-    location. Discovered values are preserved and reused across
-    ID-token, JARM, Request Object, and signed UserInfo verification.
-  - Signing keys for generic OAuth/JARM issuers are resolved through RFC
-    8414 metadata, and configuration fails early when a required
-    `jwks_uri` is missing, malformed, or disallowed by host policy.
+  - `issuer_thus_oidc = FALSE` allows generic OAuth issuer validation
+    without enabling OIDC; the default remains `TRUE`.
+  - An explicit `jwks_uri` overrides discovery across signing-key
+    consumers. Missing or disallowed required key locations fail during
+    configuration.
   - `userinfo_allowed_algs` configures signed UserInfo algorithms
-    independently from ID-token algorithms. Discovery preserves the
-    corresponding metadata.
+    independently from ID-token algorithms, with corresponding discovery
+    support.
 
 - Provider helper updates:
 
@@ -243,171 +158,136 @@
     [`oauth_provider_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_apple.md)
     and
     [`oauth_client_secret_apple()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client_secret_apple.md)
-    for Apple’s OIDC flow and ES256 client secret, with a complete
-    client example.
-  - `oauth_provider_slack(profile = ...)` now supports explicit
-    `"confidential"` and `"public_pkce"` registration profiles.
-  - [`oauth_provider_spotify()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.md)
-    now identifies accounts by immutable `account_id`. Existing apps
-    must migrate stored `id` mappings and audit digests from an
-    authenticated profile; `allow_legacy_id = TRUE` provides a temporary
-    fallback only when `account_id` is absent.
-  - `oauth_provider_okta(auth_server = NULL)` can target Okta’s org
-    server;
-    [`oauth_provider_auth0()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_auth0.md)
-    preserves Auth0’s trailing-slash issuer; and
+    for Apple sign-in. Validated Apple `email_verified` strings become
+    logical values, including in claim checks and `id_token_claims`.
+  - [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
+    rejects unrecognized tenants instead of silently disabling OIDC. Use
+    a directory GUID or a supported tenant alias; OAuth-only operation
+    requires explicit `id_token_validation = FALSE`.
+  - `oauth_provider_slack(profile = ...)` supports `"confidential"` and
+    `"public_pkce"` registrations.
+  - Spotify uses immutable `account_id`. Migrate stored `id` mappings
+    and audit digests from an authenticated profile;
+    `allow_legacy_id = TRUE` permits a temporary fallback when
+    `account_id` is absent.
+  - Okta’s org server is supported, Auth0’s trailing-slash issuer is
+    preserved, and
     [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
-    respects its `token_auth_style` override.
+    respects its authentication-style override.
 
-- [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-  now:
+- OIDC discovery accepts an issuer or its standard discovery URL,
+  preserves the exact issuer and endpoint paths, and requires an exact
+  issuer match. Required metadata and URL syntax are validated; optional
+  capability arrays may be empty but cannot be null or malformed. HTTPS
+  is required unless `shinyOAuth.allow_insecure_oidc_loopback = TRUE`
+  permits loopback development. Endpoints may use other hosts subject to
+  `shinyOAuth.allowed_hosts`; JWKS retains its separate host policy.
+  Transport failures identify the attempted discovery URL and underlying
+  error.
 
-  - Accepts an issuer base URL or the standard
-    `/.well-known/openid-configuration` URL and reports both the
-    attempted URL and underlying error on transport failure.
-  - Requires the requested and discovered issuer identifiers to match
-    exactly, including trailing slashes, and preserves the advertised
-    issuer for downstream `iss` validation.
-  - Requires HTTPS for issuer, endpoint, JWKS, and mTLS alias URLs.
-    Loopback HTTP requires explicit opt-in with
-    `options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)`.
-  - Allows secure authorization, token, UserInfo, introspection,
-    revocation, and PAR endpoints on hosts other than the issuer.
-    Explicit `shinyOAuth.allowed_hosts` restrictions still apply, and
-    JWKS retains its separate issuer-host policy.
-  - Rejects malformed required Provider Metadata, including missing
-    Authorization Code, subject-type, RS256 signing, or `jwks_uri`
-    support (even when automatic ID-token validation is disabled), and
-    rejects non-array values for optional metadata defined as arrays.
-  - Validates RFC 3986 syntax, rejects fragments and malformed security
-    booleans, and requires registered JOSE identifier spelling. Endpoint
-    URLs preserve consecutive path slashes.
+- JWKS handling rejects malformed keys and inconsistent key usage, while
+  allowing unrelated public extensions. Discovery preserves escaped
+  issuer paths and enforces current host and pinning policies. Caching
+  respects HTTP freshness and no-store directives; rotation works when a
+  provider reuses a key ID. RSA keys require at least 2048 bits and a
+  trusted algorithm choice: unlabelled keys use RS256 unless a single
+  RSA algorithm is configured. Generic OAuth discovery can fall back to
+  OIDC discovery locations.
 
-- JWKS discovery and key handling are stricter. Malformed or insecure
-  keys are rejected while unrelated public JWK extension fields are
-  tolerated. Configured host and pinning policies apply consistently,
-  and signing key rotation is handled even when a provider reuses a key
-  ID. Ed25519 keys and the `EdDSA` and `Ed25519` algorithm identifiers
-  are supported for verification, client assertions, Request Objects,
-  and DPoP; RSA keys must be at least 2048 bits. Generic OAuth discovery
-  can fall back to OIDC well-known locations when needed.
+- Ed25519 keys support both `EdDSA` and `Ed25519` for verification,
+  client assertions, Request Objects, and DPoP. Outbound RSA signing
+  also supports explicitly selected RS384; RS256 remains the default.
 
-- OIDC validation is stricter. UserInfo must match the validated ID
-  token’s `sub`, and standard claim types are checked consistently
-  across ID tokens and UserInfo. Additional ID-token audiences must be
-  explicitly trusted, multi-audience tokens require the correct `azp`,
-  and future `auth_time` values are rejected. Validation errors do not
-  expose claim values.
+- OIDC claim validation consistently checks standard and optional claim
+  types in ID tokens and UserInfo, including refreshed nonces. UserInfo
+  must match the validated ID token’s `sub`; additional audiences
+  require explicit trust and multiple audiences require the correct
+  `azp`. Future authentication times are rejected, and requested claim
+  objects compare independently of member order.
 
-- Authentication lifetime and refresh handling is more predictable.
-  Session reauthentication is not extended by token refresh, and token
-  lifetimes are calculated conservatively; invalid lifetime settings are
+- Authentication deadlines are not extended by refresh. Token lifetimes
+  are calculated conservatively, and long lifetimes and future
+  timestamps avoid integer overflow; invalid lifetime settings are
   rejected. Concurrent refreshes are combined, stale results are
-  ignored, the login ID token remains the continuity baseline, and
-  refresh credentials are retired when a failed attempt may have
-  consumed them.
+  ignored, and the login ID token remains the continuity baseline.
+  Refresh credentials are retired after potentially consuming failures.
+  Ordinary OAuth refreshes explicitly request known retained scopes so
+  earlier reductions are preserved.
 
-- Long token lifetimes, future timestamps, and oversized numeric
-  settings no longer overflow R’s integer range. Shiny module timers
-  safely handle multi-year access tokens and reauthentication periods.
-  PAR expiry metadata preserves large numeric lifetimes, and DPoP
-  timestamps remain valid beyond 2038.
+- DPoP-bound tokens, including opaque tokens, work consistently with
+  UserInfo and resource helpers and cannot be downgraded to Bearer.
+  Proofs preserve the actual request path, and retries use fresh nonces
+  from intermediate responses. The nonce limit defaults to 4096 bytes,
+  configurable with `shinyOAuth.dpop_nonce_max_bytes`; oversized
+  responses report a clear error. Malformed or conflicting token-binding
+  thumbprints are rejected.
 
-- DPoP-bound tokens, including opaque tokens, are handled consistently
-  by UserInfo and resource helpers. They cannot be downgraded to Bearer,
-  and valid nonce challenges are retried safely.
+- Authorization request, JAR, and PAR improvements:
 
-- Authorization request, JAR, and PAR handling has been hardened:
-
-  - Authorization URLs reject conflicting or repeated package-managed
-    parameters while preserving matching fixed query parameters and
-    repeated resource indicators.
-  - Client-hosted JAR `request_uri` values require HTTPS regardless of
-    the general non-HTTPS policy. Request Objects are published through
-    short-lived, one-time handles; apps using this mode must wrap their
-    UI with
+  - `authorization_method = "POST"` supports long browser requests when
+    the provider supports it; SMART requires advertised
+    `authorize-post`. Shiny submits the form automatically.
+    [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md)
+    returns the URL, method, and form fields for custom browser
+    navigation.
+  - Authorization URLs reject conflicting or repeated managed parameters
+    while preserving valid fixed queries and repeated resource
+    indicators. Configure policy such as scopes and `max_age` through
+    client properties or `extra_auth_params`, not the endpoint URL;
+    policy applies across transports.
+  - Hosted Request Objects use HTTPS and one-time handles through
     [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
-  - Request Object encryption accepts public PEM keys, preserves JWK
-    selection metadata, enforces minimum RSA size and key pins, and
-    refreshes JWKS once on a key-selection miss.
-  - PAR POSTs do not use generic transport or transient HTTP retries,
-    avoiding duplicate `request_uri` allocations and Request Object
-    replays. Bounded DPoP nonce replay remains enabled.
+    Encryption accepts public PEM keys and honors key metadata, size,
+    and pins, with one refresh on key-selection failure and hardened
+    decryption checks.
+  - PAR avoids generic retries that could duplicate authorization
+    requests; bounded DPoP nonce retries remain available.
 
-- mTLS handling improvements:
+- mTLS improvements:
 
-  - Added `mtls_require_observed_cnf` (default `TRUE`) to separate local
-    binding confirmation from certificate presentation. For
-    server-enforced opaque tokens, keep
-    `mtls_certificate_bound_access_tokens = TRUE` and set
-    `mtls_require_observed_cnf = FALSE`; observed confirmation must
-    still match.
-  - Client certificate chains must be leaf-first. Registration validates
-    and normalizes explicit subject/SAN identifiers, preserves issuer
-    ordering, accepts trailing-compressed IPv6 SANs, and requires HTTPS
-    registration JWKS URIs.
-  - Unsupported PEM-based mTLS on Windows Schannel now produces a
-    targeted diagnostic instead of failing later in request setup.
+  - `mtls_require_observed_cnf` defaults to `TRUE`. For server-enforced
+    opaque tokens, keep `mtls_certificate_bound_access_tokens = TRUE`
+    and set it to `FALSE`; any observed binding must still match.
+  - Certificate chains must be leaf-first. Registration validates
+    subject/SAN identifiers, issuer ordering, IPv6 SANs, and HTTPS
+    registration key URLs. Certificate rotation no longer causes
+    unbounded cache growth.
+  - Unsupported PEM-based mTLS on Windows Schannel reports a targeted
+    error.
 
-- Token, introspection, and HTTP handling is stricter and more
-  consistent:
-
-  - Token responses and introspection results validate media types,
-    response sizes, activity, and scopes before use. Form encoding is
-    handled consistently, and OAuth parameter overrides replace existing
-    values rather than creating duplicates; unsupported token `scope`
-    overrides are rejected.
-  - Resource helpers reject competing `access_token` query or form
-    values, support call-specific `resource_hosts` allowlists, reject
-    inherited request authentication, caching, and retry policies, and
-    consistently apply redirect and HTTP-method policies. Retries honor
-    bounded `Retry-After` values, including HTTP dates.
-  - `shinyOAuth.tls_min_version` can require TLS 1.2 or 1.3 across
-    package HTTPS requests and async workers; leaving it unset retains
-    the TLS backend defaults.
+- Token, introspection, and HTTP handling validates credentials, media
+  types, response sizes, activity, and scopes before use. Form encoding
+  is consistent, and supported parameter overrides replace existing
+  values. Resource helpers preserve escaped paths when adding queries,
+  reject competing credentials and inherited authentication/cache/retry
+  policies, and support per-call `resource_hosts`. Method-changing curl
+  options and HEAD requests with bodies are rejected to prevent unsafe
+  retries and incorrect DPoP proofs; configure methods with
+  [`httr2::req_method()`](https://httr2.r-lib.org/reference/req_method.html).
+  Retries honor bounded `Retry-After` values. Invalid numeric
+  retry/assertion options use safe defaults, and URL-check flags must be
+  logical. `shinyOAuth.tls_min_version` can require TLS 1.2 or 1.3
+  across package requests and async workers.
 
 - Audit and OpenTelemetry output is safer by default:
 
-  - Native hooks receive `shiny_session$session_token_digest` instead of
-    the raw token; `shinyOAuth.audit_include_raw_session_token = TRUE`
-    opts back in. Configured audit digest keys must be scalar and at
-    least 32 bytes.
-  - Sensitive request, callback, credential, and provider-controlled
-    data is omitted, redacted, or summarized. OpenTelemetry uses an
-    attribute allowlist; span URLs follow the same privacy policy, and
-    request failures are reported consistently. Set
-    `shinyOAuth.otel_include_authorization_details = TRUE` to include
-    authorization details.
-  - Shiny test exports expose credential presence and assurance metadata
-    rather than tokens, callback payloads, or provider-controlled error
-    text.
+  - Conditions, displays, hooks, and exports redact or bound sensitive
+    provider data, URLs, and header parameters. Unknown OAuth errors
+    become `unknown`; diagnostic text is literal.
+  - Native hooks receive `shiny_session$session_token_digest`; raw
+    tokens require `shinyOAuth.audit_include_raw_session_token = TRUE`.
+    Authorization details require
+    `shinyOAuth.otel_include_authorization_details = TRUE`.
+  - Configured audit digest keys require at least 32 bytes; invalid
+    values fail clearly. Callback rejection and connection
+    disconnect/revocation outcomes are reported consistently.
 
-- Documentation, examples, tests, and maintenance:
+- The Cloud Run example uses pinned deployment dependencies. Spotify
+  examples handle remote content safely and fix playback formatting; the
+  dashboard is installed as `examples/spotify-dashboard.R`.
 
-  - Added
-    [`vignette("advanced-security", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.md)
-    and
-    [`vignette("package-options", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/package-options.md).
-    Package overviews now distinguish OIDC authentication from OAuth
-    authorization, and the main guides start with app setup before
-    protocol detail.
-  - The Cloud Run example pins its Rocker image by digest and installs R
-    dependencies from a dated Posit Package Manager snapshot. Spotify
-    examples escape remote metadata, validate remote links and images,
-    handle playback times correctly, and work across all supported R
-    versions; the full dashboard is installed as
-    `examples/spotify-dashboard.R`.
-  - Pull-request pkgdown builds now have read-only permissions and no
-    persisted checkout credentials; GitHub Pages deployment is isolated
-    in its own write-enabled workflow.
-  - Keycloak and async integration tests now enforce their expected
-    endpoints, worker isolation, callback coverage, and zero-skip policy
-    more strictly. Browser CI discovers the complete suite and fails on
-    skipped cookie tests.
-  - `mirai >= 2.5.1` is now required when using mirai. The
-    `future_promise()` fallback uses parallel-safe random-number
-    generation, and internal list-like access consistently uses exact
-    `[[...]]` indexing.
+- Async use requires `mirai >= 2.5.1`; the `future_promise()` fallback
+  uses parallel-safe random-number generation.
 
 ## shinyOAuth 0.5.0
 
