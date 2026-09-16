@@ -823,7 +823,6 @@ oauth_provider_oidc_discover <- function(
 
   value <- disc[[field]]
   valid <- is.list(value) &&
-    length(value) > 0L &&
     is.null(names(value)) &&
     all(vapply(
       value,
@@ -838,13 +837,13 @@ oauth_provider_oidc_discover <- function(
       paste0(
         "Discovery ",
         field,
-        " must be a non-empty JSON array of non-empty strings"
+        " must be a JSON array of non-empty strings"
       ),
       context = stats::setNames(list(value), field)
     )
   }
 
-  unlist(value, use.names = FALSE)
+  as.character(unlist(value, use.names = FALSE))
 }
 
 #' Internal: require a non-empty JSON string array in discovery metadata

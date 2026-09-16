@@ -83,7 +83,13 @@ test_that("OIDC discovery rejects scalar optional multi-valued metadata", {
   for (field in optional_arrays) {
     metadata <- strict_oidc_metadata()
     expect_no_error(shinyOAuth:::.discover_validate_required_metadata(metadata))
-    for (value in list(NULL, list(), "value", list(" "))) {
+    for (value in list(
+      NULL,
+      "value",
+      list(" "),
+      list(1),
+      list(named = "value")
+    )) {
       metadata[field] <- list(value)
       expect_error(
         shinyOAuth:::.discover_validate_required_metadata(metadata),
@@ -98,6 +104,47 @@ test_that("OIDC discovery rejects scalar optional multi-valued metadata", {
       shinyOAuth:::.discover_validate_required_metadata(metadata)
     )
   }
+})
+
+test_that("OIDC discovery accepts empty optional capability arrays", {
+  fields <- c(
+    "acr_values_supported",
+    "claims_supported",
+    "claims_locales_supported",
+    "ui_locales_supported",
+    "display_values_supported",
+    "id_token_encryption_alg_values_supported",
+    "id_token_encryption_enc_values_supported",
+    "userinfo_encryption_alg_values_supported",
+    "userinfo_encryption_enc_values_supported",
+    "request_object_encryption_alg_values_supported",
+    "request_object_encryption_enc_values_supported"
+  )
+  metadata <- strict_oidc_metadata()
+  local_mocked_bindings(.discover_fetch_response = function(req, issuer) {
+    httr2::response(
+      status_code = 200L,
+      headers = list(`content-type` = "application/json"),
+      body = charToRaw(jsonlite::toJSON(metadata, auto_unbox = TRUE))
+    )
+  })
+  for (field in fields) {
+    metadata[[field]] <- list()
+    expect_s7_class(
+      oauth_provider_oidc_discover(metadata[["issuer"]]),
+      OAuthProvider
+    )
+    expect_identical(
+      .discover_validate_optional_string_array(metadata, field),
+      character()
+    )
+  }
+  # An empty JSON object is still the wrong wire type.
+  metadata[["acr_values_supported"]] <- structure(list(), names = character())
+  expect_error(
+    oauth_provider_oidc_discover(metadata[["issuer"]]),
+    "acr_values_supported"
+  )
 })
 
 test_that("OIDC discovery always requires jwks_uri", {

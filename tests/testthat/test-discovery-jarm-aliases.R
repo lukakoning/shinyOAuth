@@ -51,8 +51,13 @@ test_that("registered JARM metadata takes precedence and conflicting aliases fai
     document[[registered]] <- list()
     expect_error(
       oauth_provider_oidc_discover(metadata[["issuer"]]),
-      "must be a non-empty JSON array",
-      class = "shinyOAuth_parse_error"
+      "Conflicting discovery metadata",
+      class = "shinyOAuth_config_error"
+    )
+    document[[legacy]] <- list()
+    expect_length(
+      S7::prop(oauth_provider_oidc_discover(metadata[["issuer"]]), legacy),
+      0L
     )
   }
 })
