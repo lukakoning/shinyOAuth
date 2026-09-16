@@ -38,7 +38,7 @@
   resources only when authorized and within the configured server.
   - Required permissions remain enforced for reduced grants and refreshes.
   Offline access negotiation requires opt-in. Token responses must supply
-  scopes and a positive lifetime; `initial_expires_in` can provide an explicit
+  scopes and a positive lifetime; `initial_expires_in_fallback` can provide an explicit
   fallback for the initial response.
 
 * `OAuthToken` exposes additional token response parameters in `extra_fields`

@@ -3,7 +3,7 @@ narrowing_client <- function(scopes = c("read", "write"), smart = FALSE) {
   client@scope_validation <- "none"
   if (smart) {
     S7::props(client) <- list(
-      scope_policy = list(profile = "smart", version = 1L, allow_v1 = FALSE),
+      scope_policy = list(profile = "smart", version = 1L, allow_v1_scopes = FALSE),
       required_scopes = scopes[[1L]]
     )
   }

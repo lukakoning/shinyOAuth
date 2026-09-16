@@ -427,7 +427,7 @@ connection by itself does not request offline access or a refresh token. The
 manager refreshes when a refresh credential is available. SMART refresh responses
 must include a positive `expires_in`. For initial responses, SMART recommends
 that field but permits its omission. If the authorization server supplies the
-initial lifetime out of band, configure `smart_client(initial_expires_in = 300)`
+initial lifetime out of band, configure `smart_client(initial_expires_in_fallback = 300)`
 with that documented value in seconds. It is used only when the initial response
 omits `expires_in`; an explicit value takes precedence. The default `NULL`
 requires an explicit response lifetime, and generic OAuth lifetime options do

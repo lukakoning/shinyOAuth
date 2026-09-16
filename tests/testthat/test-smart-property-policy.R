@@ -53,7 +53,7 @@ test_that("SMART scope edits retain app launch and advertised capabilities", {
     "https://app.example/callback",
     scopes = "user/Patient.r",
     required_scopes = character(),
-    allow_v1 = TRUE
+    allow_v1_scopes = TRUE
   )
   for (scope in c(
     "system/Patient.r",
@@ -91,7 +91,7 @@ test_that("SMART scope edits retain app launch and advertised capabilities", {
     "https://app.example/callback",
     scopes = "user/Patient.r",
     required_scopes = character(),
-    allow_v1 = TRUE
+    allow_v1_scopes = TRUE
   )
   expect_error(v2@scopes <- "user/Patient.read", "permission-v1")
 })

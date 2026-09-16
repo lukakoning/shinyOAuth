@@ -187,7 +187,7 @@ test_that("SMART scope and identity policies cannot be inferred or weakened", {
     "example",
     "https://app.example/callback",
     scopes = "user/Patient.read",
-    allow_v1 = TRUE
+    allow_v1_scopes = TRUE
   ))
   changed <- none
   expect_error(
@@ -495,7 +495,7 @@ test_that("SMART capabilities match resource scope spellings on the wire", {
           "example",
           "https://app.example/callback",
           scopes = requested,
-          allow_v1 = TRUE
+          allow_v1_scopes = TRUE
         )
       }
       if (all(needed %in% advertised)) {
@@ -573,10 +573,10 @@ test_that("SMART initial lifetimes can be supplied explicitly out of band", {
     )
   }
   for (value in list(NA_real_, Inf, 0, -1, "60", TRUE, numeric(), c(60, 120))) {
-    expect_error(create(initial_expires_in = value), "initial_expires_in")
+    expect_error(create(initial_expires_in_fallback = value), "initial_expires_in_fallback")
   }
-  client <- create(initial_expires_in = 120)
-  expect_error(client@smart[["initial_expires_in"]] <- -1, "initial_expires_in")
+  client <- create(initial_expires_in_fallback = 120)
+  expect_error(client@smart[["initial_expires_in_fallback"]] <- -1, "initial_expires_in_fallback")
   expect_false(identical(
     connection_client_fingerprint(client),
     connection_client_fingerprint(create())

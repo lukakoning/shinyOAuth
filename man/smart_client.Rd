@@ -17,7 +17,7 @@ smart_client(
   client_assertion_alg = "RS384",
   launch = c("standalone", "ehr"),
   identity = c("none", "openid", "fhirUser"),
-  allow_v1 = FALSE,
+  allow_v1_scopes = FALSE,
   response_mode = NULL,
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(),
@@ -26,7 +26,7 @@ smart_client(
   state_payload_max_age = 300,
   label = "FHIR server",
   authorization_method = "GET",
-  initial_expires_in = NULL,
+  initial_expires_in_fallback = NULL,
   online_access_policy = c("online_only", "allow_offline")
 )
 }
@@ -42,7 +42,7 @@ access. Standalone patient scopes require \code{launch/patient}. EHR clients add
 \code{launch}. \code{online_access} requires EHR launch and \code{permission-online};
 \code{offline_access} requires \code{permission-offline} in either launch mode.
 Each resource scope spelling must be advertised through
-\code{permission-v2} or, for v1 spellings, \code{permission-v1} with \code{allow_v1 = TRUE}.
+\code{permission-v2} or, for v1 spellings, \code{permission-v1} with \code{allow_v1_scopes = TRUE}.
 A SMART scope comparison supports at most 256 distinct scopes on each side
 and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons fail
 closed, including during token acceptance and refresh.}
@@ -79,7 +79,7 @@ claim may be an absolute URL or a supported resource instance reference
 relative to this client's FHIR base, such as \code{"Practitioner/example"} or
 \code{"Practitioner/example/_history/2"}. Versioned references retain their version.}
 
-\item{allow_v1}{Explicit compatibility flag enabling \code{.read}, \code{.write} and
+\item{allow_v1_scopes}{Explicit compatibility flag enabling \code{.read}, \code{.write} and
 \verb{.*}. Requesting these spellings requires \code{permission-v1}; requesting v2
 spellings requires \code{permission-v2}, including when this flag is enabled.
 Default \code{FALSE}.}
@@ -100,7 +100,7 @@ and uses the module's \code{request_login()} or \code{\link[=prepare_authorizati
 POST supports longer browser requests but retains the scope comparison
 limits described under \code{scopes}.}
 
-\item{initial_expires_in}{Optional positive lifetime in seconds, supplied by
+\item{initial_expires_in_fallback}{Optional positive lifetime in seconds, supplied by
 the authorization server out of band for initial access tokens. Used only
 when an initial response omits \code{expires_in}; an explicit response value
 takes precedence. Default \code{NULL} requires the response to include a lifetime.
@@ -142,7 +142,7 @@ those features. EHR clients require a fresh registered launch transaction.
 Configure standalone and EHR registrations as separate clients when both are
 needed. No launch handle is stored in shared provider configuration.
 Local usability policy requires a positive lifetime. An initial response may
-omit \code{expires_in} only when \code{initial_expires_in} is configured explicitly;
+omit \code{expires_in} only when \code{initial_expires_in_fallback} is configured explicitly;
 refresh responses must include it. The generic assumed lifetime is not used.
 SMART back-channel and resource requests require TLS 1.2 or newer. A stronger
 configured TLS minimum is preserved; ordinary clients keep their defaults.

@@ -1,14 +1,14 @@
 smart_scope_test_client <- function(
   required = "patient/Patient.r",
   scopes = c(required, "patient/Observation.rs"),
-  allow_v1 = FALSE
+  allow_v1_scopes = FALSE
 ) {
   client <- make_test_client(scopes = scopes)
   S7::props(client) <- list(
     scope_policy = list(
       profile = "smart",
       version = 1L,
-      allow_v1 = allow_v1
+      allow_v1_scopes = allow_v1_scopes
     ),
     required_scopes = required
   )
@@ -78,7 +78,7 @@ test_that("SMART v1 aliases require explicit policy and keep wire spellings", {
       requested,
       granted,
       profile = "smart",
-      allow_v1 = TRUE
+      allow_v1_scopes = TRUE
     )[["status"]],
     "covered"
   )
@@ -87,14 +87,14 @@ test_that("SMART v1 aliases require explicit policy and keep wire spellings", {
       "patient/Patient.cruds",
       "patient/*.*",
       profile = "smart",
-      allow_v1 = TRUE
+      allow_v1_scopes = TRUE
     )[["status"]],
     "covered"
   )
   client <- smart_scope_test_client(
     required = requested,
     scopes = requested,
-    allow_v1 = TRUE
+    allow_v1_scopes = TRUE
   )
   url <- prepare_call(client, browser_token = valid_browser_token())
   expect_setequal(
@@ -332,7 +332,7 @@ test_that("SMART policy binds transactions and connection permissions", {
   changed@scope_policy <- list(
     profile = "smart",
     version = 1L,
-    allow_v1 = TRUE
+    allow_v1_scopes = TRUE
   )
   expect_false(identical(
     state_client_policy_fingerprint(client),

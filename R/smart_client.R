@@ -19,7 +19,7 @@
 #' Configure standalone and EHR registrations as separate clients when both are
 #' needed. No launch handle is stored in shared provider configuration.
 #' Local usability policy requires a positive lifetime. An initial response may
-#' omit `expires_in` only when `initial_expires_in` is configured explicitly;
+#' omit `expires_in` only when `initial_expires_in_fallback` is configured explicitly;
 #' refresh responses must include it. The generic assumed lifetime is not used.
 #' SMART back-channel and resource requests require TLS 1.2 or newer. A stronger
 #' configured TLS minimum is preserved; ordinary clients keep their defaults.
@@ -33,7 +33,7 @@
 #'   `launch`. `online_access` requires EHR launch and `permission-online`;
 #'   `offline_access` requires `permission-offline` in either launch mode.
 #'   Each resource scope spelling must be advertised through
-#'   `permission-v2` or, for v1 spellings, `permission-v1` with `allow_v1 = TRUE`.
+#'   `permission-v2` or, for v1 spellings, `permission-v1` with `allow_v1_scopes = TRUE`.
 #'   A SMART scope comparison supports at most 256 distinct scopes on each side
 #'   and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons fail
 #'   closed, including during token acceptance and refresh.
@@ -62,7 +62,7 @@
 #'   claim may be an absolute URL or a supported resource instance reference
 #'   relative to this client's FHIR base, such as `"Practitioner/example"` or
 #'   `"Practitioner/example/_history/2"`. Versioned references retain their version.
-#' @param allow_v1 Explicit compatibility flag enabling `.read`, `.write` and
+#' @param allow_v1_scopes Explicit compatibility flag enabling `.read`, `.write` and
 #'   `.*`. Requesting these spellings requires `permission-v1`; requesting v2
 #'   spellings requires `permission-v2`, including when this flag is enabled.
 #'   Default `FALSE`.
@@ -77,7 +77,7 @@
 #'   [oauth_client()]. Multiple clients use distinct registered callback routes.
 #' @param state_store,state_key,state_payload_max_age See [oauth_client()].
 #' @param label Display label, default `"FHIR server"`; no credentials or context.
-#' @param initial_expires_in Optional positive lifetime in seconds, supplied by
+#' @param initial_expires_in_fallback Optional positive lifetime in seconds, supplied by
 #'   the authorization server out of band for initial access tokens. Used only
 #'   when an initial response omits `expires_in`; an explicit response value
 #'   takes precedence. Default `NULL` requires the response to include a lifetime.
@@ -119,7 +119,7 @@ smart_client <- function(
   client_assertion_alg = "RS384",
   launch = c("standalone", "ehr"),
   identity = c("none", "openid", "fhirUser"),
-  allow_v1 = FALSE,
+  allow_v1_scopes = FALSE,
   response_mode = NULL,
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(),
@@ -128,14 +128,14 @@ smart_client <- function(
   state_payload_max_age = 300,
   label = "FHIR server",
   authorization_method = "GET",
-  initial_expires_in = NULL,
+  initial_expires_in_fallback = NULL,
   online_access_policy = c("online_only", "allow_offline")
 ) {
   online_access_policy <- match.arg(online_access_policy)
   token_auth_style <- match.arg(token_auth_style)
   launch <- match.arg(launch)
   identity <- match.arg(identity)
-  connection_manager_flag(allow_v1, "allow_v1")
+  connection_manager_flag(allow_v1_scopes, "allow_v1_scopes")
   if (
     !is.list(discovery) ||
       !identical(discovery[["smart_version"]], "2.2.0") ||
@@ -254,7 +254,7 @@ smart_client <- function(
   }
   if (
     !identical(
-      smart_scope_coverage(scopes, scopes, allow_v1)[["status"]],
+      smart_scope_coverage(scopes, scopes, allow_v1_scopes)[["status"]],
       "covered"
     )
   ) {
@@ -372,12 +372,12 @@ smart_client <- function(
   if (identical(authorization_method, "POST")) {
     smart_policy[["authorization_method"]] <- "POST"
   }
-  if (!is.null(initial_expires_in)) {
-    smart_policy[["initial_expires_in"]] <- initial_expires_in
+  if (!is.null(initial_expires_in_fallback)) {
+    smart_policy[["initial_expires_in_fallback"]] <- initial_expires_in_fallback
   }
   smart_policy[["online_access_policy"]] <- online_access_policy
   S7::props(client) <- list(
-    scope_policy = list(profile = "smart", version = 1L, allow_v1 = allow_v1),
+    scope_policy = list(profile = "smart", version = 1L, allow_v1_scopes = allow_v1_scopes),
     smart = smart_policy,
     resource_bases = normalize_resource_bases(c(
       fhir = discovery[["fhir_base"]]
@@ -420,7 +420,7 @@ smart_validate_client <- function(client) {
     !identical(
       sort(setdiff(
         names(policy),
-        c("authorization_method", "initial_expires_in", "online_access_policy")
+        c("authorization_method", "initial_expires_in_fallback", "online_access_policy")
       )),
       sort(c(
         "version",
@@ -453,7 +453,7 @@ smart_validate_client <- function(client) {
   ) {
     return("OAuthClient: invalid SMART online_access_policy")
   }
-  lifetime <- policy[["initial_expires_in"]]
+  lifetime <- policy[["initial_expires_in_fallback"]]
   if (
     !is.null(lifetime) &&
       (!is.numeric(lifetime) ||
@@ -462,7 +462,7 @@ smart_validate_client <- function(client) {
         lifetime <= 0)
   ) {
     return(
-      "OAuthClient: SMART initial_expires_in must be a finite positive number of seconds"
+      "OAuthClient: SMART initial_expires_in_fallback must be a finite positive number of seconds"
     )
   }
   if (
@@ -692,8 +692,8 @@ smart_validate_registration_policy <- function(client) {
   if ("offline_access" %in% scopes) {
     require_capability("permission-offline")
   }
-  allow_v1 <- client@scope_policy[["allow_v1"]]
-  if (smart_scope_coverage(scopes, scopes, allow_v1)[["status"]] != "covered") {
+  allow_v1_scopes <- client@scope_policy[["allow_v1_scopes"]]
+  if (smart_scope_coverage(scopes, scopes, allow_v1_scopes)[["status"]] != "covered") {
     err_config("SMART client contains unsupported scope syntax")
   }
   resource_scopes <- scopes[grepl("^(patient|user)/", scopes)]
@@ -745,9 +745,9 @@ smart_verify_token_response <- function(client, token_set, is_refresh = FALSE) {
   if (
     !isTRUE(is_refresh) &&
       !"expires_in" %in% names(token_set) &&
-      !is.null(client@smart[["initial_expires_in"]])
+      !is.null(client@smart[["initial_expires_in_fallback"]])
   ) {
-    token_set[["expires_in"]] <- client@smart[["initial_expires_in"]]
+    token_set[["expires_in"]] <- client@smart[["initial_expires_in_fallback"]]
   }
   expires <- token_set[["expires_in"]]
   if (

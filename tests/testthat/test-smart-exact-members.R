@@ -262,7 +262,7 @@ test_that("callback lifetime policy cannot be supplied by a near-match extension
       "example",
       "https://app.example/callback",
       scopes = "user/Patient.r",
-      initial_expires_in = lifetime
+      initial_expires_in_fallback = lifetime
     )
     browser <- valid_browser_token()
     state <- parse_query_param(

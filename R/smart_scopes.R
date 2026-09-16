@@ -1,7 +1,7 @@
 # SMART scope semantics are selected explicitly by a client policy. This file
 # never rewrites the scopes sent over the wire or interprets patient identity.
 
-smart_scope_parse <- function(scope, allow_v1 = FALSE) {
+smart_scope_parse <- function(scope, allow_v1_scopes = FALSE) {
   if (!grepl("^(patient|user|system)/", scope)) {
     return(list(kind = "literal", value = scope))
   }
@@ -17,7 +17,7 @@ smart_scope_parse <- function(scope, allow_v1 = FALSE) {
     return(list(kind = "unknown"))
   }
   interactions <- parts[[4L]]
-  if (isTRUE(allow_v1) && interactions %in% c("read", "write", "*")) {
+  if (isTRUE(allow_v1_scopes) && interactions %in% c("read", "write", "*")) {
     interactions <- c(read = "rs", write = "cud", "*" = "cruds")[[interactions]]
   }
   if (!nzchar(interactions) || !grepl("^c?r?u?d?s?$", interactions)) {
@@ -51,7 +51,7 @@ smart_scope_parse <- function(scope, allow_v1 = FALSE) {
   )
 }
 
-smart_scope_coverage <- function(requested, granted, allow_v1 = FALSE) {
+smart_scope_coverage <- function(requested, granted, allow_v1_scopes = FALSE) {
   requested <- normalize_scope_tokens(requested)
   granted <- normalize_scope_tokens(granted)
   if (
@@ -61,10 +61,10 @@ smart_scope_coverage <- function(requested, granted, allow_v1 = FALSE) {
   ) {
     err_token("SMART scope comparison exceeds the supported size limit")
   }
-  grants <- lapply(granted, smart_scope_parse, allow_v1 = allow_v1)
+  grants <- lapply(granted, smart_scope_parse, allow_v1_scopes = allow_v1_scopes)
   missing <- indeterminate <- character()
   for (scope in requested) {
-    need <- smart_scope_parse(scope, allow_v1)
+    need <- smart_scope_parse(scope, allow_v1_scopes)
     if (identical(need[["kind"]], "literal")) {
       if (!scope %in% granted) {
         missing <- c(missing, scope)
@@ -143,7 +143,7 @@ client_scope_coverage <- function(client, requested, granted) {
     granted,
     profile = policy[["profile"]],
     version = policy[["version"]],
-    allow_v1 = policy[["allow_v1"]]
+    allow_v1_scopes = policy[["allow_v1_scopes"]]
   )
 }
 
@@ -157,20 +157,20 @@ validate_client_scope_policy <- function(policy) {
     !is.list(policy) ||
       !identical(
         sort(names(policy)),
-        sort(c("profile", "version", "allow_v1"))
+        sort(c("profile", "version", "allow_v1_scopes"))
       ) ||
       !is_valid_string(policy[["profile"]]) ||
       !policy[["profile"]] %in% c("oauth", "smart") ||
       !identical(policy[["version"]], 1L) ||
-      !is.logical(policy[["allow_v1"]]) ||
-      length(policy[["allow_v1"]]) != 1L ||
-      is.na(policy[["allow_v1"]])
+      !is.logical(policy[["allow_v1_scopes"]]) ||
+      length(policy[["allow_v1_scopes"]]) != 1L ||
+      is.na(policy[["allow_v1_scopes"]])
   ) {
     return("OAuthClient: invalid scope policy")
   }
   if (
     identical(policy[["profile"]], "oauth") &&
-      isTRUE(policy[["allow_v1"]])
+      isTRUE(policy[["allow_v1_scopes"]])
   ) {
     return("OAuthClient: generic scope policy cannot contain SMART settings")
   }
@@ -179,7 +179,7 @@ validate_client_scope_policy <- function(policy) {
 
 smart_verify_scope_grant <- function(client, granted, is_refresh, prior) {
   # Validate even an optional-only grant before a status/request can use it.
-  smart_scope_coverage(character(), granted, client@scope_policy[["allow_v1"]])
+  smart_scope_coverage(character(), granted, client@scope_policy[["allow_v1_scopes"]])
   if (
     client_uses_smart(client) &&
       !identical(client@smart[["online_access_policy"]], "allow_offline") &&

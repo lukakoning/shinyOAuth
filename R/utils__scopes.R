@@ -14,10 +14,10 @@ evaluate_scope_coverage <- function(
   granted,
   profile = "oauth",
   version = 1L,
-  allow_v1 = FALSE
+  allow_v1_scopes = FALSE
 ) {
   if (identical(profile, "smart") && identical(version, 1L)) {
-    return(smart_scope_coverage(requested, granted, allow_v1))
+    return(smart_scope_coverage(requested, granted, allow_v1_scopes))
   }
   if (!identical(profile, "oauth") || !identical(version, 1L)) {
     err_config("Unsupported scope evaluation profile or version")
