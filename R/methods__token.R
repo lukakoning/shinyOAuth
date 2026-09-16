@@ -789,7 +789,7 @@ introspect_token <- function(
 #'   client was configured with `introspect = TRUE`. A per-call `FALSE` cannot
 #'   disable a configured client requirement. When enabled, refresh fails if
 #'   introspection is unsupported, inactive, or missing required
-#'   `introspect_elements`. The raw introspection result is not stored
+#'   `introspection_checks`. The raw introspection result is not stored
 #'   separately, but a successful introspection response may backfill
 #'   `token@cnf`.
 #' @param shiny_session Optional captured Shiny session details for audit events.

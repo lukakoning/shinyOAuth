@@ -127,7 +127,7 @@ The document must advertise the code flow (\code{response_types_supported}
 includes \code{"code"}), non-empty \code{subject_types_supported}, RS256 in
 \code{id_token_signing_alg_values_supported}, and a \code{jwks_uri} even when automatic
 ID token validation is disabled. The permitted ID token algorithms are the
-intersection of \code{allowed_algs} and the advertised algorithms; an empty
+intersection of \code{id_token_allowed_algs} and the advertised algorithms; an empty
 intersection is an error. Discovery keeps PKCE \code{S256} and errors when the
 provider explicitly excludes it, unless you select \code{pkce_method = "plain"}.
 }

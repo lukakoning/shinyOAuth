@@ -46,7 +46,7 @@
 #' includes `"code"`), non-empty `subject_types_supported`, RS256 in
 #' `id_token_signing_alg_values_supported`, and a `jwks_uri` even when automatic
 #' ID token validation is disabled. The permitted ID token algorithms are the
-#' intersection of `allowed_algs` and the advertised algorithms; an empty
+#' intersection of `id_token_allowed_algs` and the advertised algorithms; an empty
 #' intersection is an error. Discovery keeps PKCE `S256` and errors when the
 #' provider explicitly excludes it, unless you select `pkce_method = "plain"`.
 #'

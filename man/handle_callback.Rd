@@ -33,7 +33,7 @@ Normally supplied by the module; leave \code{NULL} when calling directly.}
 
 \item{iss}{Optional RFC 9207 callback issuer (\code{iss}) from the authorization
 response. Pass this when one callback URL can receive responses from more
-than one authorization server. If \code{oauth_client@enforce_callback_issuer}
+than one authorization server. If \code{client@enforce_callback_issuer}
 is \code{TRUE}, this parameter is required and must match the configured
 provider issuer before any token exchange occurs.
 

@@ -46,7 +46,7 @@
 #' @param granted_scopes_verified Logical flag indicating whether the current
 #'   token response explicitly proved `granted_scopes`. `FALSE` means the scope
 #'   set was assumed or carried forward because the provider omitted `scope`.
-#'   For stronger proof, configure `introspect_elements = "scope"`.
+#'   For stronger proof, configure `introspection_checks = "scope"`.
 #' @param id_token_validated Logical flag indicating whether the ID token was
 #'  cryptographically validated (signature verified and standard claims checked)
 #'  during the OAuth flow. Defaults to `FALSE`.

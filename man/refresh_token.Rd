@@ -28,7 +28,7 @@ introspect the new access token when either this argument is \code{TRUE} or the
 client was configured with \code{introspect = TRUE}. A per-call \code{FALSE} cannot
 disable a configured client requirement. When enabled, refresh fails if
 introspection is unsupported, inactive, or missing required
-\code{introspect_elements}. The raw introspection result is not stored
+\code{introspection_checks}. The raw introspection result is not stored
 separately, but a successful introspection response may backfill
 \code{token@cnf}.}
 

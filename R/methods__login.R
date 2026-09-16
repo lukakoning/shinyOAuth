@@ -1198,7 +1198,7 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #'
 #' @param iss Optional RFC 9207 callback issuer (`iss`) from the authorization
 #'   response. Pass this when one callback URL can receive responses from more
-#'   than one authorization server. If `oauth_client@enforce_callback_issuer`
+#'   than one authorization server. If `client@enforce_callback_issuer`
 #'   is `TRUE`, this parameter is required and must match the configured
 #'   provider issuer before any token exchange occurs.
 #'

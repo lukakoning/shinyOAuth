@@ -110,7 +110,7 @@ response with \code{\link[httr2:resp_body_json]{httr2::resp_body_json()}} or ano
 Only send a token to an API you intend to authorize. The package applies its
 URL policy, timeouts, and redirect defaults. It supports Bearer authentication
 and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
-also supply \code{oauth_client} so the request uses the matching key or
+also supply \code{client} so the request uses the matching key or
 certificate.
 }
 \examples{

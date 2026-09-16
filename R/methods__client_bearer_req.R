@@ -16,7 +16,7 @@
 #' Only send a token to an API you intend to authorize. The package applies its
 #' URL policy, timeouts, and redirect defaults. It supports Bearer authentication
 #' and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
-#' also supply `oauth_client` so the request uses the matching key or
+#' also supply `client` so the request uses the matching key or
 #' certificate.
 #'
 #' Managed Authorization credentials cannot be combined with an `access_token`
@@ -196,7 +196,7 @@ client_bearer_req <- function(
 #' Only send a token to an API you intend to authorize. The package applies its
 #' URL policy, timeouts, and redirect defaults. It supports Bearer authentication
 #' and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
-#' also supply `oauth_client` so the request uses the matching key or
+#' also supply `client` so the request uses the matching key or
 #' certificate.
 #'
 #' @inheritParams resource_req

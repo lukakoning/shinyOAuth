@@ -408,11 +408,11 @@ Normally these are located through OIDC discovery. Set this for manual
 key configuration, including OAuth-only JARM providers.}
 
 \item{userinfo_allowed_algs}{Optional signing algorithm allowlist for UserInfo
-JWTs. \code{NULL} inherits \code{allowed_algs} for manually configured providers.
+JWTs. \code{NULL} inherits \code{id_token_allowed_algs} for manually configured providers.
 Discovery negotiates this independently against UserInfo metadata. Use a
 single algorithm to enforce the client's registered UserInfo signing choice.
 An empty vector rejects all signed UserInfo algorithms.
-Unlabelled RSA keys follow the same binding policy as \code{allowed_algs}.}
+Unlabelled RSA keys follow the same binding policy as \code{id_token_allowed_algs}.}
 
 \item{jarm_signing_alg_values_supported}{Optional vector of JWS
 algorithms that the provider advertises for signed JWT Secured
