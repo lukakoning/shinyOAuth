@@ -60,3 +60,40 @@ api_class_argument_alias <- function(class, old, new) {
   properties[[new]] <- api_alias_property(old)
   api_class_constructor(class, constructor, properties)
 }
+
+# Preserve the meaning of every positional argument from CRAN 0.5.0.
+# Renamed properties also remain readable and writable through their old names.
+api_preserve_constructor <- function(class, released, aliases) {
+  constructor <- class@constructor
+  args <- as.list(formals(constructor))
+  preferred <- released
+  renamed <- released %in% names(aliases)
+  preferred[renamed] <- unname(aliases[released[renamed]])
+  stopifnot(all(preferred %in% names(args)))
+  args <- args[c(preferred, setdiff(names(args), preferred))]
+  properties <- class@properties
+  resolutions <- list()
+  for (old in names(aliases)) {
+    new <- aliases[[old]]
+    if (!old %in% names(args)) {
+      args[old] <- list(NULL)
+      resolutions[[old]] <- substitute(
+        NEW <- resolve_argument_alias(
+          NEW, OLD, missing(NEW), missing(OLD), NEW_NAME, OLD_NAME
+        ),
+        list(
+          OLD = as.name(old), NEW = as.name(new),
+          NEW_NAME = new, OLD_NAME = old
+        )
+      )
+    }
+    if (!old %in% names(properties)) {
+      properties[[old]] <- api_alias_property(new)
+    }
+  }
+  formals(constructor) <- as.pairlist(args)
+  body(constructor) <- as.call(c(
+    list(as.name("{")), unname(resolutions), list(body(constructor))
+  ))
+  api_class_constructor(class, constructor, properties)
+}

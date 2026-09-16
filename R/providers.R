@@ -52,10 +52,10 @@ oauth_provider_oidc <- function(
   introspection_path = "/introspect",
   use_nonce = TRUE,
   id_token_validation = TRUE,
-  token_auth_style = "header",
   jwks_host_issuer_match = TRUE,
   allowed_token_types = c("Bearer"),
-  ...
+  ...,
+  token_auth_style = "header"
 ) {
   base_url <- sub("/+$", "", base_url)
 

@@ -86,12 +86,11 @@ and positional calls:
   ID-token signing algorithms. Clients use `introspection_checks` for extra
   introspection requirements. Existing property names remain supported.
 
-* Client and provider constructor arguments have been reorganized and renamed.
-Helper constructors retain compatibility aliases; low-level S7 constructors
-require the new names and should use named arguments. Client assertion keys,
-mTLS, Request Object, and JARM settings use `client_assertion_*`, `mtls_*`,
-`request_object_*`, and `jarm_*` names. See `?oauth_client` and
-`?oauth_provider` for the current arguments.
+* Client and provider constructors use clearer argument names while preserving
+CRAN 0.5.0 positional calls and old named arguments, including S7 constructors
+and properties. Client assertion keys, mTLS, Request Object, and JARM settings
+use `client_assertion_*`, `mtls_*`, `request_object_*`, and `jarm_*` names.
+See `?oauth_client` and `?oauth_provider` for the current arguments.
 
 * Client and provider configuration changes:
   - Client credentials no longer default from `OAUTH_CLIENT_ID` or

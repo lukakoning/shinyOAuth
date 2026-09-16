@@ -514,6 +514,22 @@
 #' @example inst/examples/oauth_client.R
 #'
 #' @param introspect_elements Compatibility alias for `introspection_checks`.
+#' @param client_private_key Compatibility alias for `client_assertion_private_key`.
+#' @param client_private_key_kid Compatibility alias for `client_assertion_private_key_kid`.
+#' @param userinfo_jwt_required_temporal_claims Compatibility alias for `userinfo_jwt_required_time_claims`.
+#' @param mtls_request_certificate_bound_access_tokens Compatibility alias for `mtls_certificate_bound_access_tokens`.
+#' @param tls_client_cert_file Compatibility alias for `mtls_client_cert_file`.
+#' @param tls_client_key_file Compatibility alias for `mtls_client_key_file`.
+#' @param tls_client_key_password Compatibility alias for `mtls_client_key_password`.
+#' @param tls_client_ca_file Compatibility alias for `mtls_client_ca_file`.
+#' @param authorization_request_mode Compatibility alias for `request_object_mode`.
+#' @param authorization_request_signing_alg Compatibility alias for `request_object_signing_alg`.
+#' @param authorization_request_audience Compatibility alias for `request_object_audience`.
+#' @param authorization_request_encryption_alg Compatibility alias for `request_object_encryption_alg`.
+#' @param authorization_request_encryption_enc Compatibility alias for `request_object_encryption_enc`.
+#' @param authorization_request_encryption_kid Compatibility alias for `request_object_encryption_kid`.
+#' @param authorization_request_ttl Compatibility alias for `request_object_ttl`.
+#' @param authorization_request_nbf_skew Compatibility alias for `request_object_nbf_skew`.
 #' @export
 OAuthClient <- S7::new_class(
   "OAuthClient",
@@ -770,6 +786,71 @@ OAuthClient <- S7::new_class(
 OAuthClient <- api_class_argument_alias(
   OAuthClient, "introspect_elements", "introspection_checks"
 )
+OAuthClient <- api_preserve_constructor(
+  OAuthClient,
+  released = c(
+    "provider",
+    "client_id",
+    "client_secret",
+    "client_private_key",
+    "client_private_key_kid",
+    "client_assertion_alg",
+    "client_assertion_audience",
+    "tls_client_cert_file",
+    "tls_client_key_file",
+    "tls_client_key_password",
+    "tls_client_ca_file",
+    "mtls_request_certificate_bound_access_tokens",
+    "authorization_request_mode",
+    "response_mode",
+    "authorization_request_signing_alg",
+    "authorization_request_audience",
+    "authorization_request_encryption_alg",
+    "authorization_request_encryption_enc",
+    "authorization_request_encryption_kid",
+    "authorization_request_ttl",
+    "authorization_request_nbf_skew",
+    "dpop_private_key",
+    "dpop_private_key_kid",
+    "dpop_signing_alg",
+    "dpop_require_access_token",
+    "redirect_uri",
+    "enforce_callback_issuer",
+    "scopes",
+    "resource",
+    "claims",
+    "state_store",
+    "state_payload_max_age",
+    "state_entropy",
+    "state_key",
+    "scope_validation",
+    "claims_validation",
+    "userinfo_jwt_required_temporal_claims",
+    "required_acr_values",
+    "introspect",
+    "introspect_elements"
+  ),
+  aliases = c(
+    client_private_key = "client_assertion_private_key",
+    client_private_key_kid = "client_assertion_private_key_kid",
+    userinfo_jwt_required_temporal_claims = "userinfo_jwt_required_time_claims",
+    mtls_request_certificate_bound_access_tokens = "mtls_certificate_bound_access_tokens",
+    tls_client_cert_file = "mtls_client_cert_file",
+    tls_client_key_file = "mtls_client_key_file",
+    tls_client_key_password = "mtls_client_key_password",
+    tls_client_ca_file = "mtls_client_ca_file",
+    authorization_request_mode = "request_object_mode",
+    authorization_request_signing_alg = "request_object_signing_alg",
+    authorization_request_audience = "request_object_audience",
+    authorization_request_encryption_alg = "request_object_encryption_alg",
+    authorization_request_encryption_enc = "request_object_encryption_enc",
+    authorization_request_encryption_kid = "request_object_encryption_kid",
+    authorization_request_ttl = "request_object_ttl",
+    authorization_request_nbf_skew = "request_object_nbf_skew",
+    introspect_elements = "introspection_checks"
+  )
+)
+
 
 
 # 2 Helper constructor ---------------------------------------------------------
@@ -805,23 +886,10 @@ oauth_client <- function(
   client_id,
   client_secret = character(0),
   redirect_uri,
+  enforce_callback_issuer = NULL,
   scopes = character(0),
-  response_mode = NULL,
   resource = character(0),
   claims = NULL,
-  enforce_callback_issuer = NULL,
-  authorization_server_mode = c(
-    "single",
-    "multi_issuer",
-    "multi_redirect_uri"
-  ),
-  authorization_server_redirect_uris = character(0),
-  scope_validation = c("warn", "strict", "none"),
-  claims_validation = c("none", "warn", "strict"),
-  required_acr_values = character(0),
-  userinfo_jwt_required_time_claims = character(0),
-  introspect = FALSE,
-  introspection_checks = character(0),
   state_store = cachem::cache_mem(max_age = 300),
   state_payload_max_age = 300,
   state_entropy = 64,
@@ -835,12 +903,8 @@ oauth_client <- function(
   mtls_client_key_password = NULL,
   mtls_client_ca_file = NULL,
   mtls_certificate_bound_access_tokens = FALSE,
-  dpop_private_key = NULL,
-  dpop_private_key_kid = NULL,
-  dpop_signing_alg = NULL,
-  dpop_require_access_token = NULL,
-  dpop_require_observed_cnf = FALSE,
   request_object_mode = c("parameters", "request", "request_uri"),
+  response_mode = NULL,
   request_object_signing_alg = NULL,
   request_object_audience = NULL,
   request_object_encryption_alg = NULL,
@@ -848,6 +912,23 @@ oauth_client <- function(
   request_object_encryption_kid = NULL,
   request_object_ttl = 45,
   request_object_nbf_skew = NULL,
+  dpop_private_key = NULL,
+  dpop_private_key_kid = NULL,
+  dpop_signing_alg = NULL,
+  dpop_require_access_token = NULL,
+  scope_validation = c("warn", "strict", "none"),
+  claims_validation = c("none", "warn", "strict"),
+  userinfo_jwt_required_time_claims = character(0),
+  required_acr_values = character(0),
+  introspect = FALSE,
+  introspection_checks = character(0),
+  authorization_server_mode = c(
+    "single",
+    "multi_issuer",
+    "multi_redirect_uri"
+  ),
+  authorization_server_redirect_uris = character(0),
+  dpop_require_observed_cnf = FALSE,
   jarm_signed_response_alg = NULL,
   jarm_encrypted_response_alg = NULL,
   jarm_encrypted_response_enc = NULL,
