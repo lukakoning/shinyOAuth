@@ -26,7 +26,7 @@ lifecycle_setup <- function(
       list(
         registration = registration,
         launch = "standalone",
-        refresh_check_interval = 500
+        refresh_check_interval_ms = 500
       ),
       app_args
     ),

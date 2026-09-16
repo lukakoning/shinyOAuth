@@ -988,7 +988,7 @@ test_that("development bypass assessment follows legacy numeric flag semantics",
 
 test_that("malformed API arguments are programming errors with redacted diagnostics", {
   client <- oauth21_test_client()
-  expect_error(check_oauth21(list(secret = "SENTINEL")), "client must")
+  expect_error(check_oauth21(list(secret = "SENTINEL")), "config must")
   expect_error(
     check_oauth21(client, draft = "draft-ietf-oauth-v2-1-15"),
     "Unsupported draft"

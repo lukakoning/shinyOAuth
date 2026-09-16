@@ -986,7 +986,7 @@ test_that("fixed connection outputs recheck owner, token and retention expiry", 
       args = list(
         id = "health",
         manager = f[["manager"]],
-        refresh_check_interval = 100
+        refresh_check_interval_ms = 100
       ),
       session = manager_test_session(cookie),
       {
@@ -1091,7 +1091,7 @@ test_that("another owner's changes do not invalidate connection readers", {
     args = list(
       id = "health",
       manager = f[["manager"]],
-      refresh_check_interval = 100
+      refresh_check_interval_ms = 100
     ),
     session = manager_test_session(cookie),
     {
@@ -1237,7 +1237,7 @@ for (retention in c("browser", "account")) {
           manager = f[["manager"]],
           refresh_proactively = TRUE,
           refresh_lead_seconds = 2,
-          refresh_check_interval = 100
+          refresh_check_interval_ms = 100
         ),
         session = manager_test_session(cookie),
         {
@@ -1315,7 +1315,7 @@ for (retention in c("browser", "account")) {
         args = list(
           id = "health",
           manager = f[["manager"]],
-          refresh_check_interval = 100
+          refresh_check_interval_ms = 100
         ),
         session = manager_test_session(cookie),
         {

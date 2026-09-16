@@ -20,7 +20,7 @@ test_that("automatic retry cooldown follows shared credentials across records an
     id = "health",
     manager = f[["manager"]],
     refresh_proactively = TRUE,
-    refresh_check_interval = 100
+    refresh_check_interval_ms = 100
   )
   shiny::testServer(
     oauth_connections_server,
