@@ -29,6 +29,8 @@ launch query never establishes this context.
 \code{smart_patient()} and \code{smart_fhir_user()} return an \link[httr2:httr2]{httr2} response.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Return interpreted patient/encounter and validated user references for the
 current accepted token. This is sensitive data; keep it out of general status
 tables and logs. Raw token extensions remain available separately on tokens.

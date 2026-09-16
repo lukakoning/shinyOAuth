@@ -321,10 +321,14 @@ OAuthConnection <- R6::R6Class(
       )
     },
     #' @description
+    #' `r lifecycle::badge("experimental")`
+    #'
     #' Read interpreted context for a usable SMART connection in this session.
     #' @return The sensitive context list documented in [smart_context()].
     smart_context = function() smart_record_context(private[["record"]]()),
     #' @description
+    #' `r lifecycle::badge("experimental")`
+    #'
     #' Fetch the contextual Patient or validated fhirUser through the approved
     #' FHIR base, using current read permissions. Prefer [smart_patient()] and
     #' [smart_fhir_user()] in application code.

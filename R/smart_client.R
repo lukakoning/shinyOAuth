@@ -1,9 +1,13 @@
 #' Configure a SMART on FHIR app registration
 #'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
 #' Combine a reviewed [smart_discover()] snapshot with an existing app
 #' registration. The result is an [OAuthClient] for [oauth_connections()], with
 #' the resource ID `"fhir"`. Discovery does not register the app or grant access.
 #'
+#' @details
 #' This constructor selects SMART 2.2 scope rules, S256 PKCE and the exact FHIR
 #' base as the authorization request's `aud`. Identity is opt-in: `"openid"`
 #' requests and requires `openid`, signed ID-token validation and nonce binding.

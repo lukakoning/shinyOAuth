@@ -1,5 +1,8 @@
 #' Read a connection's current SMART context
 #'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
 #' Return interpreted patient/encounter and validated user references for the
 #' current accepted token. This is sensitive data; keep it out of general status
 #' tables and logs. Raw token extensions remain available separately on tokens.

@@ -324,7 +324,9 @@ insufficient scopes and transport failures raise errors.
 \if{html}{\out{<a id="method-OAuthConnection-smart_context"></a>}}
 \if{latex}{\out{\hypertarget{method-OAuthConnection-smart_context}{}}}
 \subsection{\code{OAuthConnection$smart_context()}}{
-  Read interpreted context for a usable SMART connection in this session.
+  \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
+Read interpreted context for a usable SMART connection in this session.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$smart_context()}
@@ -339,7 +341,9 @@ insufficient scopes and transport failures raise errors.
 \if{html}{\out{<a id="method-OAuthConnection-smart_resource"></a>}}
 \if{latex}{\out{\hypertarget{method-OAuthConnection-smart_resource}{}}}
 \subsection{\code{OAuthConnection$smart_resource()}}{
-  Fetch the contextual Patient or validated fhirUser through the approved
+  \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
+Fetch the contextual Patient or validated fhirUser through the approved
 FHIR base, using current read permissions. Prefer \code{\link[=smart_patient]{smart_patient()}} and
 \code{\link[=smart_fhir_user]{smart_fhir_user()}} in application code.
   \subsection{Usage}{

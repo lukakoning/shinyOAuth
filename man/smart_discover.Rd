@@ -32,6 +32,8 @@ in the result. Invalid input or endpoint policy raises a
 \code{shinyOAuth_http_error}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Read and validate the SMART App Launch STU 2.2 discovery document for a
 configured FHIR server. This returns server metadata for application setup;
 it does not register an app, choose client credentials, or start authorization.

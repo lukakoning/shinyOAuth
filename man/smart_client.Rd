@@ -122,6 +122,8 @@ describes the selected profile. The client contains registration settings,
 never a user's token or launch context. Configure it outside \code{server()}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Combine a reviewed \code{\link[=smart_discover]{smart_discover()}} snapshot with an existing app
 registration. The result is an \link{OAuthClient} for \code{\link[=oauth_connections]{oauth_connections()}}, with
 the resource ID \code{"fhir"}. Discovery does not register the app or grant access.

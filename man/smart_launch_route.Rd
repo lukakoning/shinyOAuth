@@ -26,6 +26,8 @@ bounded by owner expiry; the handoff deadline does not shorten consent time.}
 A plain route configuration list, with no credentials or live state.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Declare which approved SMART clients an EHR launch URL may select. Pass the
 result in \code{launch_routes} to \code{\link[=oauth_connections_ui]{oauth_connections_ui()}}. The route is separate
 from OAuth callbacks: \code{iss} means the FHIR base only here. Both \code{iss} and

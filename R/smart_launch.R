@@ -1,10 +1,14 @@
 #' Register a SMART EHR launch entry route
 #'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
 #' Declare which approved SMART clients an EHR launch URL may select. Pass the
 #' result in `launch_routes` to [oauth_connections_ui()]. The route is separate
 #' from OAuth callbacks: `iss` means the FHIR base only here. Both `iss` and
 #' `launch` are required, and callback parameters are rejected on this route.
 #'
+#' @details
 #' Initial entry is untrusted. It selects an already configured client by exact
 #' FHIR base, performs no discovery, and establishes no healthcare identity.
 #' A short-lived encrypted record binds the opaque launch handle to the browser

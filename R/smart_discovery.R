@@ -1,6 +1,8 @@
 #' Discover SMART on FHIR server metadata
 #'
 #' @description
+#' `r lifecycle::badge("experimental")`
+#'
 #' Read and validate the SMART App Launch STU 2.2 discovery document for a
 #' configured FHIR server. This returns server metadata for application setup;
 #' it does not register an app, choose client credentials, or start authorization.
