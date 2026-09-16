@@ -215,11 +215,21 @@ testthat::test_that("introspect_token rejects malformed JSON shapes", {
     .package = "shinyOAuth"
   )
 
-  top_level_array <- introspect_token(cli, t, token_kind = "access", async = FALSE)
+  top_level_array <- introspect_token(
+    cli,
+    t,
+    token_kind = "access",
+    async = FALSE
+  )
   testthat::expect_true(is.na(top_level_array[["active"]]))
   testthat::expect_identical(top_level_array[["status"]], "invalid_json")
 
-  top_level_scalar <- introspect_token(cli, t, token_kind = "access", async = FALSE)
+  top_level_scalar <- introspect_token(
+    cli,
+    t,
+    token_kind = "access",
+    async = FALSE
+  )
   testthat::expect_true(is.na(top_level_scalar[["active"]]))
   testthat::expect_identical(top_level_scalar[["status"]], "invalid_json")
 
@@ -227,7 +237,12 @@ testthat::test_that("introspect_token rejects malformed JSON shapes", {
   testthat::expect_true(is.na(active_array[["active"]]))
   testthat::expect_identical(active_array[["status"]], "invalid_active")
 
-  active_object <- introspect_token(cli, t, token_kind = "access", async = FALSE)
+  active_object <- introspect_token(
+    cli,
+    t,
+    token_kind = "access",
+    async = FALSE
+  )
   testthat::expect_true(is.na(active_object[["active"]]))
   testthat::expect_identical(active_object[["status"]], "invalid_active")
 

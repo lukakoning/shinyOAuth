@@ -58,10 +58,14 @@ get_userinfo <- function(
   token_type = NULL,
   shiny_session = NULL,
   oauth_client = NULL
-){
+) {
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   # Type checks/helpers --------------------------------------------------------
 

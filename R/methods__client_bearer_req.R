@@ -102,10 +102,14 @@ resource_req <- function(
   dpop_nonce = NULL,
   resource_hosts = NULL,
   oauth_client = NULL
-){
+) {
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   prepare_client_bearer_request(
     token = token,
@@ -148,10 +152,14 @@ client_bearer_req <- function(
   dpop_nonce = NULL,
   resource_hosts = NULL,
   oauth_client = NULL
-){
+) {
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   deprecate_warn_pkg(
     when = "0.4.0.9000",
@@ -231,10 +239,14 @@ perform_resource_req <- function(
   idempotent = NULL,
   resource_hosts = NULL,
   oauth_client = NULL
-){
+) {
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   request_input <- inherits(url, "httr2_request")
   method_override <- if (request_input && missing(method)) NULL else method
@@ -313,10 +325,14 @@ perform_client_bearer_req <- function(
   idempotent = NULL,
   resource_hosts = NULL,
   oauth_client = NULL
-){
+) {
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   deprecate_warn_pkg(
     when = "0.4.0.9000",

@@ -377,7 +377,10 @@ OAuthProvider <- S7::new_class(
     auth_url = S7::class_character,
     token_url = S7::class_character,
     issuer = S7::new_property(S7::class_character, default = NA_character_),
-    infer_oidc_from_issuer = S7::new_property(S7::class_logical, default = TRUE),
+    infer_oidc_from_issuer = S7::new_property(
+      S7::class_logical,
+      default = TRUE
+    ),
     issuer_match = S7::new_property(
       S7::class_character,
       default = "url"
@@ -575,7 +578,9 @@ OAuthProvider <- S7::new_class(
   validator = function(self) oauth_provider_validate(self)
 )
 OAuthProvider <- api_class_argument_alias(
-  OAuthProvider, "allowed_algs", "id_token_allowed_algs"
+  OAuthProvider,
+  "allowed_algs",
+  "id_token_allowed_algs"
 )
 OAuthProvider <- api_preserve_constructor(
   OAuthProvider,
@@ -636,7 +641,6 @@ OAuthProvider <- api_preserve_constructor(
     allowed_algs = "id_token_allowed_algs"
   )
 )
-
 
 
 # 2 Generic provider constructor -----------------------------------------------
@@ -766,8 +770,12 @@ oauth_provider <- function(
   allowed_algs = NULL
 ) {
   allowed_algs <- resolve_argument_alias(
-    id_token_allowed_algs, allowed_algs, missing(id_token_allowed_algs), missing(allowed_algs),
-    "id_token_allowed_algs", "allowed_algs"
+    id_token_allowed_algs,
+    allowed_algs,
+    missing(id_token_allowed_algs),
+    missing(allowed_algs),
+    "id_token_allowed_algs",
+    "allowed_algs"
   )
   compat_args <- resolve_deprecated_constructor_args(
     dots = list(...),

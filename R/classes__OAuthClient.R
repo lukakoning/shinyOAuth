@@ -784,7 +784,9 @@ OAuthClient <- S7::new_class(
   validator = function(self) oauth_client_validate(self)
 )
 OAuthClient <- api_class_argument_alias(
-  OAuthClient, "introspect_elements", "introspection_checks"
+  OAuthClient,
+  "introspect_elements",
+  "introspection_checks"
 )
 OAuthClient <- api_preserve_constructor(
   OAuthClient,
@@ -850,7 +852,6 @@ OAuthClient <- api_preserve_constructor(
     introspect_elements = "introspection_checks"
   )
 )
-
 
 
 # 2 Helper constructor ---------------------------------------------------------
@@ -948,8 +949,12 @@ oauth_client <- function(
   introspect_elements = NULL
 ) {
   introspect_elements <- resolve_argument_alias(
-    introspection_checks, introspect_elements, missing(introspection_checks), missing(introspect_elements),
-    "introspection_checks", "introspect_elements"
+    introspection_checks,
+    introspect_elements,
+    missing(introspection_checks),
+    missing(introspect_elements),
+    "introspection_checks",
+    "introspect_elements"
   )
   compat_args <- resolve_deprecated_constructor_args(
     dots = list(...),

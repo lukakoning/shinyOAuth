@@ -377,7 +377,11 @@ smart_client <- function(
   }
   smart_policy[["online_access_policy"]] <- online_access_policy
   S7::props(client) <- list(
-    scope_policy = list(profile = "smart", version = 1L, allow_v1_scopes = allow_v1_scopes),
+    scope_policy = list(
+      profile = "smart",
+      version = 1L,
+      allow_v1_scopes = allow_v1_scopes
+    ),
     smart = smart_policy,
     resource_bases = normalize_resource_bases(c(
       fhir = discovery[["fhir_base"]]
@@ -420,7 +424,11 @@ smart_validate_client <- function(client) {
     !identical(
       sort(setdiff(
         names(policy),
-        c("authorization_method", "initial_expires_in_fallback", "online_access_policy")
+        c(
+          "authorization_method",
+          "initial_expires_in_fallback",
+          "online_access_policy"
+        )
       )),
       sort(c(
         "version",
@@ -693,7 +701,10 @@ smart_validate_registration_policy <- function(client) {
     require_capability("permission-offline")
   }
   allow_v1_scopes <- client@scope_policy[["allow_v1_scopes"]]
-  if (smart_scope_coverage(scopes, scopes, allow_v1_scopes)[["status"]] != "covered") {
+  if (
+    smart_scope_coverage(scopes, scopes, allow_v1_scopes)[["status"]] !=
+      "covered"
+  ) {
     err_config("SMART client contains unsupported scope syntax")
   }
   resource_scopes <- scopes[grepl("^(patient|user)/", scopes)]

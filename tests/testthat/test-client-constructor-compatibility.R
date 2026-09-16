@@ -2,9 +2,12 @@
 # signature. Renaming a formal is compatible only when its position keeps
 # the same meaning and the released spelling remains accepted.
 test_that("every CRAN positional argument retains its meaning", {
-  baseline <- jsonlite::read_json(test_path("fixtures", "cran-0.5.0-arguments.json"))
+  baseline <- jsonlite::read_json(test_path(
+    "fixtures",
+    "cran-0.5.0-arguments.json"
+  ))
   aliases <- c(
-client_private_key = "client_assertion_private_key",
+    client_private_key = "client_assertion_private_key",
     client_private_key_kid = "client_assertion_private_key_kid",
     userinfo_jwt_required_temporal_claims = "userinfo_jwt_required_time_claims",
     mtls_request_certificate_bound_access_tokens = "mtls_certificate_bound_access_tokens",
@@ -45,19 +48,33 @@ client_private_key = "client_assertion_private_key",
 
 test_that("released helper positions still configure the intended settings", {
   provider <- oauth_provider(
-    "example", "https://auth.example/authorize", "https://auth.example/token",
+    "example",
+    "https://auth.example/authorize",
+    "https://auth.example/token",
     "https://auth.example/userinfo"
   )
   expect_identical(provider@userinfo_url, "https://auth.example/userinfo")
   expect_true(is.na(provider@issuer))
   client <- oauth_client(
-    provider, "registered", "secret", "https://app.example/callback", FALSE, "read"
+    provider,
+    "registered",
+    "secret",
+    "https://app.example/callback",
+    FALSE,
+    "read"
   )
   expect_identical(client@scopes, "read")
   expect_false(client@enforce_callback_issuer)
   oidc <- oauth_provider_oidc(
-    "example", "https://auth.example", "/authorize", "/token",
-    "/userinfo", "/introspect", TRUE, TRUE, FALSE
+    "example",
+    "https://auth.example",
+    "/authorize",
+    "/token",
+    "/userinfo",
+    "/introspect",
+    TRUE,
+    TRUE,
+    FALSE
   )
   expect_false(oidc@jwks_host_issuer_match)
   expect_identical(oidc@token_auth_style, "header")
@@ -107,14 +124,26 @@ test_that("S7 constructors accept released names and properties bidirectionally"
 
 test_that("OAuthClient round-trips every released positional property", {
   provider <- oauth_provider(
-    "example", "https://auth.example/authorize", "https://auth.example/token"
+    "example",
+    "https://auth.example/authorize",
+    "https://auth.example/token"
   )
   named <- oauth_client(
-    provider, "registered", "secret", redirect_uri = "https://app.example/callback",
-    scopes = "read", response_mode = "query"
+    provider,
+    "registered",
+    "secret",
+    redirect_uri = "https://app.example/callback",
+    scopes = "read",
+    response_mode = "query"
   )
-  baseline <- jsonlite::read_json(test_path("fixtures", "cran-0.5.0-arguments.json"))
-  released <- unlist(baseline[["arguments"]][["OAuthClient"]], use.names = FALSE)
+  baseline <- jsonlite::read_json(test_path(
+    "fixtures",
+    "cran-0.5.0-arguments.json"
+  ))
+  released <- unlist(
+    baseline[["arguments"]][["OAuthClient"]],
+    use.names = FALSE
+  )
   values <- lapply(released, function(name) S7::prop(named, name))
   positional <- do.call(OAuthClient, values)
   expect_identical(S7::props(positional), S7::props(named))

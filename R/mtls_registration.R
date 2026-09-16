@@ -60,10 +60,14 @@ oauth_client_mtls_registration <- function(
   tls_client_auth_value = NULL,
   jwks_uri = NULL,
   oauth_client = NULL
-){
+) {
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   S7::check_is_S7(oauth_client, class = OAuthClient)
   tls_client_auth_type <- match.arg(tls_client_auth_type)

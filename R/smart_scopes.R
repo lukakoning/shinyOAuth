@@ -61,7 +61,11 @@ smart_scope_coverage <- function(requested, granted, allow_v1_scopes = FALSE) {
   ) {
     err_token("SMART scope comparison exceeds the supported size limit")
   }
-  grants <- lapply(granted, smart_scope_parse, allow_v1_scopes = allow_v1_scopes)
+  grants <- lapply(
+    granted,
+    smart_scope_parse,
+    allow_v1_scopes = allow_v1_scopes
+  )
   missing <- indeterminate <- character()
   for (scope in requested) {
     need <- smart_scope_parse(scope, allow_v1_scopes)
@@ -179,7 +183,11 @@ validate_client_scope_policy <- function(policy) {
 
 smart_verify_scope_grant <- function(client, granted, is_refresh, prior) {
   # Validate even an optional-only grant before a status/request can use it.
-  smart_scope_coverage(character(), granted, client@scope_policy[["allow_v1_scopes"]])
+  smart_scope_coverage(
+    character(),
+    granted,
+    client@scope_policy[["allow_v1_scopes"]]
+  )
   if (
     client_uses_smart(client) &&
       !identical(client@smart[["online_access_policy"]], "allow_offline") &&

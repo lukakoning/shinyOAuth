@@ -63,7 +63,11 @@ for (base in c("/", "/app/")) {
       additional_clients = list(login = login),
       launch_routes = list(smart_launch_route(paste0(base, "launch"), "fhir"))
     )
-    prepared <- prepare_call_internal(login, valid_browser_token(), .defer_build = TRUE)
+    prepared <- prepare_call_internal(
+      login,
+      valid_browser_token(),
+      .defer_build = TRUE
+    )
     query <- httr2::url_query_build(list(
       code = "synthetic-code",
       state = prepared[["build_args"]][["payload"]]

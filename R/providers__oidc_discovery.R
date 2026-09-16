@@ -148,8 +148,12 @@ oauth_provider_oidc_discover <- function(
   allowed_algs = NULL
 ) {
   allowed_algs <- resolve_argument_alias(
-    id_token_allowed_algs, allowed_algs, missing(id_token_allowed_algs), missing(allowed_algs),
-    "id_token_allowed_algs", "allowed_algs"
+    id_token_allowed_algs,
+    allowed_algs,
+    missing(id_token_allowed_algs),
+    missing(allowed_algs),
+    "id_token_allowed_algs",
+    "allowed_algs"
   )
   issuer_match <- match.arg(issuer_match)
   original_input <- issuer

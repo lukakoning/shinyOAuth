@@ -23,7 +23,12 @@ testthat::test_that("revoke_token handles unsupported and missing tokens", {
     expires_at = as.numeric(Sys.time()) + 60,
     id_token = NA_character_
   )
-  res3 <- revoke_token(cli, t_missing_refresh, token_kind = "refresh", async = FALSE)
+  res3 <- revoke_token(
+    cli,
+    t_missing_refresh,
+    token_kind = "refresh",
+    async = FALSE
+  )
   testthat::expect_true(isTRUE(res3[["supported"]]))
   testthat::expect_true(is.na(res3[["revoked"]]))
   testthat::expect_identical(res3[["status"]], "missing_token")

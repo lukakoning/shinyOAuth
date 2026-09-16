@@ -573,10 +573,16 @@ test_that("SMART initial lifetimes can be supplied explicitly out of band", {
     )
   }
   for (value in list(NA_real_, Inf, 0, -1, "60", TRUE, numeric(), c(60, 120))) {
-    expect_error(create(initial_expires_in_fallback = value), "initial_expires_in_fallback")
+    expect_error(
+      create(initial_expires_in_fallback = value),
+      "initial_expires_in_fallback"
+    )
   }
   client <- create(initial_expires_in_fallback = 120)
-  expect_error(client@smart[["initial_expires_in_fallback"]] <- -1, "initial_expires_in_fallback")
+  expect_error(
+    client@smart[["initial_expires_in_fallback"]] <- -1,
+    "initial_expires_in_fallback"
+  )
   expect_false(identical(
     connection_client_fingerprint(client),
     connection_client_fingerprint(create())

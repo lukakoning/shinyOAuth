@@ -59,16 +59,28 @@ revoke_token <- function(
   which = NULL
 ) {
   which <- resolve_argument_alias(
-    token_kind, which, missing(token_kind), missing(which),
-    "token_kind", "which"
+    token_kind,
+    which,
+    missing(token_kind),
+    missing(which),
+    "token_kind",
+    "which"
   )
   oauth_token <- resolve_argument_alias(
-    token, oauth_token, missing(token), missing(oauth_token),
-    "token", "oauth_token"
+    token,
+    oauth_token,
+    missing(token),
+    missing(oauth_token),
+    "token",
+    "oauth_token"
   )
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(oauth_token, OAuthToken)
@@ -362,16 +374,28 @@ introspect_token <- function(
   which = NULL
 ) {
   which <- resolve_argument_alias(
-    token_kind, which, missing(token_kind), missing(which),
-    "token_kind", "which"
+    token_kind,
+    which,
+    missing(token_kind),
+    missing(which),
+    "token_kind",
+    "which"
   )
   oauth_token <- resolve_argument_alias(
-    token, oauth_token, missing(token), missing(oauth_token),
-    "token", "oauth_token"
+    token,
+    oauth_token,
+    missing(token),
+    missing(oauth_token),
+    "token",
+    "oauth_token"
   )
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   # Type checks
   S7::check_is_S7(oauth_client, OAuthClient)
@@ -814,10 +838,14 @@ refresh_token <- function(
   introspect = NULL,
   shiny_session = NULL,
   oauth_client = NULL
-){
+) {
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   refresh_token_dispatch(oauth_client, token, async, introspect, shiny_session)
 }

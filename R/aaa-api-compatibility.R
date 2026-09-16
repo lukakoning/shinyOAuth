@@ -30,7 +30,11 @@ api_alias_property <- function(target) {
   )
 }
 
-api_class_constructor <- function(class, constructor, properties = class@properties) {
+api_class_constructor <- function(
+  class,
+  constructor,
+  properties = class@properties
+) {
   S7::new_class(
     class@name,
     parent = class@parent,
@@ -50,9 +54,16 @@ api_class_argument_alias <- function(class, old, new) {
   args[old] <- list(NULL)
   formals(constructor) <- as.pairlist(args)
   resolve <- substitute(
-    OLD <- resolve_argument_alias(
-      NEW, OLD, missing(NEW), missing(OLD), NEW_NAME, OLD_NAME
-    ),
+    {
+      OLD <- resolve_argument_alias(
+        NEW,
+        OLD,
+        missing(NEW),
+        missing(OLD),
+        NEW_NAME,
+        OLD_NAME
+      )
+    },
     list(OLD = as.name(old), NEW = as.name(new), NEW_NAME = new, OLD_NAME = old)
   )
   body(constructor) <- as.call(list(as.name("{"), resolve, body(constructor)))
@@ -78,12 +89,21 @@ api_preserve_constructor <- function(class, released, aliases) {
     if (!old %in% names(args)) {
       args[old] <- list(NULL)
       resolutions[[old]] <- substitute(
-        NEW <- resolve_argument_alias(
-          NEW, OLD, missing(NEW), missing(OLD), NEW_NAME, OLD_NAME
-        ),
+        {
+          NEW <- resolve_argument_alias(
+            NEW,
+            OLD,
+            missing(NEW),
+            missing(OLD),
+            NEW_NAME,
+            OLD_NAME
+          )
+        },
         list(
-          OLD = as.name(old), NEW = as.name(new),
-          NEW_NAME = new, OLD_NAME = old
+          OLD = as.name(old),
+          NEW = as.name(new),
+          NEW_NAME = new,
+          OLD_NAME = old
         )
       )
     }
@@ -93,7 +113,9 @@ api_preserve_constructor <- function(class, released, aliases) {
   }
   formals(constructor) <- as.pairlist(args)
   body(constructor) <- as.call(c(
-    list(as.name("{")), unname(resolutions), list(body(constructor))
+    list(as.name("{")),
+    unname(resolutions),
+    list(body(constructor))
   ))
   api_class_constructor(class, constructor, properties)
 }

@@ -230,10 +230,14 @@ oauth_module_server <- function(
   browser_cookie_path = NULL,
   browser_cookie_samesite = c("Strict", "Lax", "None"),
   refresh_check_interval = NULL
-){
+) {
   refresh_check_interval <- resolve_argument_alias(
-    refresh_check_interval_ms, refresh_check_interval, missing(refresh_check_interval_ms), missing(refresh_check_interval),
-    "refresh_check_interval_ms", "refresh_check_interval"
+    refresh_check_interval_ms,
+    refresh_check_interval,
+    missing(refresh_check_interval_ms),
+    missing(refresh_check_interval),
+    "refresh_check_interval_ms",
+    "refresh_check_interval"
   )
   oauth_module_server_impl(
     id = id,

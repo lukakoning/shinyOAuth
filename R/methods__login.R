@@ -46,10 +46,14 @@ prepare_call <- function(
   browser_token,
   request_uri_publisher = NULL,
   oauth_client = NULL
-){
+) {
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   prepare_call_internal(oauth_client, browser_token, request_uri_publisher)
 }
@@ -1219,14 +1223,22 @@ handle_callback <- function(
   iss = NULL,
   oauth_client = NULL,
   payload = NULL
-){
+) {
   payload <- resolve_argument_alias(
-    state, payload, missing(state), missing(payload),
-    "state", "payload"
+    state,
+    payload,
+    missing(state),
+    missing(payload),
+    "state",
+    "payload"
   )
   oauth_client <- resolve_argument_alias(
-    client, oauth_client, missing(client), missing(oauth_client),
-    "client", "oauth_client"
+    client,
+    oauth_client,
+    missing(client),
+    missing(oauth_client),
+    "client",
+    "oauth_client"
   )
   jarm_transport <- resolve_jarm_callback_transport(oauth_client)
   if (!is.null(jarm_transport)) {
