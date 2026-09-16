@@ -3001,10 +3001,13 @@ verify_token_set <- function(
         )
       }
       if (isTRUE(id_token_present) && isTRUE(id_token_validated)) {
-        id_payload <- tryCatch(
-          parse_jwt_payload(token_set[["id_token"]]),
-          error = function(e) NULL
-        )
+        # Keep authenticated provider normalization for claim-value policy.
+        # The fallback supports legacy validators returning only a success flag.
+        id_payload <- if (is.list(id_token_validation_result)) {
+          id_token_validation_result
+        } else {
+          parse_jwt_payload(token_set[["id_token"]])
+        }
         if (!is.null(id_payload)) {
           validate_essential_claims(client, id_payload, "id_token")
         }

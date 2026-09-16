@@ -78,6 +78,9 @@
 #' of whether the ID token's signature was verified.
 #' Check the `id_token_validated` property to determine whether the claims
 #' were cryptographically validated.
+#' For validated Apple ID tokens, exact `"true"`/`"false"` strings in
+#' `email_verified` are returned as logical values, as during validation.
+#' The original signed `id_token` is retained unchanged.
 #'
 #' Additional response parameters retain their parsed names and values,
 #' including nested lists and explicit JSON `null` values (R `NULL`). Use
@@ -154,9 +157,14 @@ OAuthToken <- S7::new_class(
         ) {
           return(list())
         }
-        tryCatch(
+        payload <- tryCatch(
           parse_jwt_payload(raw),
           error = function(e) list()
+        )
+        normalize_authenticated_id_token_claims(
+          payload,
+          issuer = payload[["iss"]],
+          signature_verified = self@id_token_validated
         )
       }
     ),

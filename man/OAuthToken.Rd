@@ -106,6 +106,9 @@ Note: \code{id_token_claims} always decodes the JWT payload regardless
 of whether the ID token's signature was verified.
 Check the \code{id_token_validated} property to determine whether the claims
 were cryptographically validated.
+For validated Apple ID tokens, exact \code{"true"}/\code{"false"} strings in
+\code{email_verified} are returned as logical values, as during validation.
+The original signed \code{id_token} is retained unchanged.
 
 Additional response parameters retain their parsed names and values,
 including nested lists and explicit JSON \code{null} values (R \code{NULL}). Use

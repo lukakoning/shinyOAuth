@@ -359,21 +359,9 @@ validate_id_token <- function(
   if (!is_valid_oidc_sub(payload[["sub"]])) {
     err_id_token("ID token sub claim must be 1 to 255 ASCII characters")
   }
-  # Apple documents Boolean and exact string representations. Normalize only
-  # after signature and issuer verification, without altering the signed JWT.
-  if (
-    !isTRUE(skip_signature) &&
-      identical(issuer, "https://appleid.apple.com") &&
-      identical(payload[["iss"]], "https://appleid.apple.com") &&
-      is.character(payload[["email_verified"]]) &&
-      length(payload[["email_verified"]]) == 1L &&
-      payload[["email_verified"]] %in% c("true", "false")
-  ) {
-    payload[["email_verified"]] <- identical(
-      payload[["email_verified"]],
-      "true"
-    )
-  }
+  payload <- normalize_authenticated_id_token_claims(
+    payload, issuer, signature_verified = !isTRUE(skip_signature)
+  )
   validate_oidc_standard_claim_types(payload, err_id_token, "ID token")
   # OIDC Core 12.2: During refresh, sub MUST match the original ID token's sub
   if (
@@ -589,6 +577,25 @@ validate_id_token <- function(
   attr(payload, "signature_verified") <- !isTRUE(skip_signature)
 
   invisible(payload)
+}
+
+# Apple documents Boolean and exact string representations. Apply the same
+# accommodation during validation and public claim access, only for an
+# authenticated Apple issuer. The compact signed JWT remains unchanged.
+normalize_authenticated_id_token_claims <- function(
+  payload, issuer, signature_verified
+) {
+  if (
+    isTRUE(signature_verified) &&
+      identical(issuer, "https://appleid.apple.com") &&
+      identical(payload[["iss"]], issuer) &&
+      is.character(payload[["email_verified"]]) &&
+      length(payload[["email_verified"]]) == 1L &&
+      payload[["email_verified"]] %in% c("true", "false")
+  ) {
+    payload[["email_verified"]] <- identical(payload[["email_verified"]], "true")
+  }
+  payload
 }
 
 ## 1.2 Numeric claim helpers ---------------------------------------------------
