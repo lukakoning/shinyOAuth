@@ -179,11 +179,15 @@ verified account login, see
 and `retention = "account"`.
 
 Size the owner registry and credential store separately. Both owner
-factories accept `max_entries` (default 1,000) per manager. Browser
-entries include recent visitors who never authorize a service. Account
-entries include logged-out login generations until their
-reauthentication deadline. A full registry rejects new owners while
-preserving existing sessions and retirement records.
+factories accept `max_entries` (default 1,000) per manager. Retained
+browser entries count browsers that successfully authorize a service.
+Recent visitors occupy a separate provisional pool with the same limit;
+its oldest entries may be replaced and expire after at most five
+minutes. A browser remains provisional during its first authorization
+until the connection is accepted. Account entries include logged-out
+login generations until their reauthentication deadline. A full retained
+registry rejects new retained owners while preserving existing retained
+sessions and retirement records.
 `oauth_connection_store_memory(max_entries = ...)` controls a different
 limit: successful authorization transactions occupy capacity for the
 store’s full `max_age`, including after a connection is disconnected.

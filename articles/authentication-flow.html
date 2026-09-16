@@ -176,11 +176,18 @@ returned ID token to tie that token to the login request.</li>
 <p>The module creates and checks these values automatically. OIDC
 provider helpers enable PKCE and nonce by default. Public clients must
 use PKCE, and <code>S256</code> is the default PKCE method.</p>
-<p>Configured authorization endpoint queries are preserved. Matching
-managed singleton values are emitted once; conflicting or repeated
-singleton values are rejected before use. Repeated <code>resource</code>
-indicators remain supported, and parameter names are case sensitive. The
-same composition checks apply to direct, PAR and JAR browser URLs.</p>
+<p>Fixed routing queries on the authorization endpoint are preserved.
+Put protocol policy parameters such as <code>prompt</code> and
+<code>max_age</code> in <code>extra_auth_params</code>, and use the
+client properties for <code>scopes</code>, <code>resource</code>,
+<code>claims</code> and <code>response_mode</code>. These parameters are
+rejected in the endpoint query so they cannot bypass local policy checks
+or be omitted from signed Request Objects or PAR. Matching generated
+singleton values are emitted once; conflicting, repeated or disabled
+protocol fields are rejected before use. Repeated <code>resource</code>
+indicators remain supported through the client property. Parameter names
+are case sensitive. The same composition checks apply to direct, PAR and
+JAR browser URLs.</p>
 <div class="section level4">
 <h4 id="state-storage-and-expiry">State storage and expiry<a class="anchor" aria-label="anchor" href="#state-storage-and-expiry"></a>
 </h4>
