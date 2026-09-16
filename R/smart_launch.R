@@ -120,7 +120,11 @@ smart_launch_routes_validate <- function(
     ) {
       err_config("Use smart_launch_route() to configure EHR entry")
     }
-    canonical <- do.call(smart_launch_route, route)
+    canonical <- smart_launch_route(
+      path = route[["path"]],
+      client_names = route[["clients"]],
+      max_age = route[["max_age"]]
+    )
     if (!identical(route[["path"]], canonical[["path"]])) {
       err_config("Use smart_launch_route() to canonicalize EHR entry paths")
     }
