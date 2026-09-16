@@ -665,7 +665,7 @@ resp <- perform_resource_req(
   auth[["token"]],
   "https://api.example.com/me",
   # Lets shinyOAuth attach the DPoP proof and handle nonce challenges
-  oauth_client = client
+  client = client
 )
 ```
 

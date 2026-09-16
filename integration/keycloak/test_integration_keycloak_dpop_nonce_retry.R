@@ -195,7 +195,7 @@ testthat::test_that("perform_resource_req retries DPoP nonce challenge with fres
   resp <- shinyOAuth::perform_resource_req(
     login[["token"]],
     resource[["url"]],
-    oauth_client = client
+    client = client
   )
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
 

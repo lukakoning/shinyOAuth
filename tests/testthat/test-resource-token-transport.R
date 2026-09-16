@@ -103,7 +103,7 @@ test_that("DPoP requests enforce the same token transport boundary", {
       "managed",
       "https://api.example.com?access_token=other",
       token_type = "DPoP",
-      oauth_client = client
+      client = client
     ),
     "must not combine"
   )

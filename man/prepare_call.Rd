@@ -4,10 +4,15 @@
 \alias{prepare_call}
 \title{Prepare an OAuth 2.0 authorization request and build its URL}
 \usage{
-prepare_call(oauth_client, browser_token, request_uri_publisher = NULL)
+prepare_call(
+  client,
+  browser_token,
+  request_uri_publisher = NULL,
+  oauth_client = NULL
+)
 }
 \arguments{
-\item{oauth_client}{An \link{OAuthClient} object.}
+\item{client}{An \link{OAuthClient} object.}
 
 \item{browser_token}{Browser-bound token used to tie the login attempt to the
 current browser session.}
@@ -17,6 +22,8 @@ current browser session.}
 \code{request_object}, \code{request_handle_id}, \code{expires_at}, and \code{oauth_client}
 arguments and return an absolute HTTPS request-object URL that the
 provider can fetch.}
+
+\item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }
 \value{
 A length-1 string containing the authorization URL to send the user

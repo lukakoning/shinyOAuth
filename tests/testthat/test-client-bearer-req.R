@@ -89,7 +89,7 @@ test_that("resource_req rejects TRACE for DPoP credentials", {
       token = token,
       url = "https://example.com/resource",
       method = "TRACE",
-      oauth_client = make_resource_req_dpop_client()
+      client = make_resource_req_dpop_client()
     ),
     class = "shinyOAuth_input_error",
     regexp = "Authenticated TRACE requests are not allowed",
@@ -667,7 +667,7 @@ test_that("perform_resource_req uses DPoP retry helper for DPoP tokens", {
   resp <- perform_resource_req(
     token = "at-1",
     url = "https://resource.example.com/api",
-    oauth_client = cli,
+    client = cli,
     token_type = "DPoP",
     dpop_nonce = "resource-nonce-1"
   )
@@ -732,7 +732,7 @@ test_that("perform_resource_req accepts prebuilt DPoP httr2 requests", {
   resp <- perform_resource_req(
     token = "at-1",
     url = req,
-    oauth_client = cli,
+    client = cli,
     token_type = "DPoP",
     dpop_nonce = "resource-nonce-1"
   )
@@ -805,7 +805,7 @@ test_that("perform_resource_req preserves original DPoP request body query and o
   resp <- perform_resource_req(
     token = "at-1",
     url = req,
-    oauth_client = cli,
+    client = cli,
     token_type = "DPoP",
     query = list(limit = 5)
   )

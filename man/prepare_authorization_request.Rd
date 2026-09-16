@@ -5,13 +5,13 @@
 \title{Prepare a browser authorization request using GET or POST}
 \usage{
 prepare_authorization_request(
-  oauth_client,
+  client,
   browser_token,
   request_uri_publisher = NULL
 )
 }
 \arguments{
-\item{oauth_client}{An \link{OAuthClient} object.}
+\item{client}{An \link{OAuthClient} object.}
 
 \item{browser_token}{Browser-bound token used to tie the login attempt to the
 current browser session.}

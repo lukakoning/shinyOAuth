@@ -1333,7 +1333,7 @@ test_that("client bearer requests still enforce certificate thumbprint binding",
     shinyOAuth::resource_req(
       token,
       url = "https://example.com/resource",
-      oauth_client = client
+      client = client
     ),
     regexp = "token cnf x5t#S256 thumbprint",
     class = "shinyOAuth_input_error"
@@ -1376,7 +1376,7 @@ test_that("client bearer requests honor cnf in raw JWT access tokens", {
   req <- shinyOAuth::resource_req(
     raw_token,
     url = "https://example.com/resource",
-    oauth_client = client
+    client = client
   )
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
@@ -1713,7 +1713,7 @@ test_that("resource_req rejects certificate-bound tokens when thumbprint mismatc
     shinyOAuth::resource_req(
       token = token,
       url = "https://resource.example.com/api",
-      oauth_client = client
+      client = client
     ),
     regexp = "does not match token cnf x5t#S256"
   )
@@ -1758,7 +1758,7 @@ test_that("resource_req enforces certificate binding from JWT cnf", {
     shinyOAuth::resource_req(
       token = token,
       url = "https://resource.example.com/api",
-      oauth_client = client
+      client = client
     ),
     regexp = "does not match token cnf x5t#S256"
   )

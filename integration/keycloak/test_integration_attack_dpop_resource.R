@@ -61,7 +61,7 @@ expect_dpop_resource_contract <- function(resource, login, client, prov) {
   valid_resp <- shinyOAuth::resource_req(
     login[["token"]],
     resource[["url"]],
-    oauth_client = client
+    client = client
   ) |>
     httr2::req_perform()
   valid_body <- httr2::resp_body_json(valid_resp, simplifyVector = TRUE)
@@ -107,7 +107,7 @@ expect_dpop_resource_contract <- function(resource, login, client, prov) {
     shinyOAuth::resource_req(
       login[["token"]],
       resource[["url"]],
-      oauth_client = attacker_client
+      client = attacker_client
     ),
     class = "shinyOAuth_input_error",
     regexp = "cnf\\.jkt thumbprint"
@@ -116,7 +116,7 @@ expect_dpop_resource_contract <- function(resource, login, client, prov) {
   replay_req <- shinyOAuth::resource_req(
     login[["token"]],
     resource[["url"]],
-    oauth_client = client
+    client = client
   )
   replay_dry <- httr2::req_dry_run(
     replay_req,

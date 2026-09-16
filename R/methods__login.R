@@ -23,7 +23,7 @@
 #' For an explicitly configured POST client, use [prepare_authorization_request()]
 #' instead. This URL-only helper rejects POST before storing a transaction.
 #'
-#' @param oauth_client An [OAuthClient] object.
+#' @param client An [OAuthClient] object.
 #' @param browser_token Browser-bound token used to tie the login attempt to the
 #'   current browser session.
 #' @param request_uri_publisher Optional function used when
@@ -39,12 +39,18 @@
 #'
 #' @example inst/examples/call_methods.R
 #'
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 prepare_call <- function(
-  oauth_client,
+  client,
   browser_token,
-  request_uri_publisher = NULL
-) {
+  request_uri_publisher = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   prepare_call_internal(oauth_client, browser_token, request_uri_publisher)
 }
 
@@ -1175,7 +1181,7 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #' `"form_post.jwt"`), use [oauth_module_server()] and, for POST responses,
 #' [oauth_form_post_ui()]. There is no public JARM resume API.
 #'
-#' @param oauth_client An [OAuthClient] object.
+#' @param client An [OAuthClient] object.
 #' @param code Authorization code received from the provider on a classic
 #'   direct callback.
 #' @param payload Encrypted state payload returned by the provider on a classic
@@ -1201,15 +1207,21 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #'
 #' @example inst/examples/call_methods.R
 #'
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 handle_callback <- function(
-  oauth_client,
+  client,
   code,
   payload,
   browser_token,
   shiny_session = NULL,
-  iss = NULL
-) {
+  iss = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   jarm_transport <- resolve_jarm_callback_transport(oauth_client)
   if (!is.null(jarm_transport)) {
     err_config(c(

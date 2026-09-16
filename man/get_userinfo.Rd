@@ -4,10 +4,16 @@
 \alias{get_userinfo}
 \title{Fetch a user's profile (UserInfo)}
 \usage{
-get_userinfo(oauth_client, token, token_type = NULL, shiny_session = NULL)
+get_userinfo(
+  client,
+  token,
+  token_type = NULL,
+  shiny_session = NULL,
+  oauth_client = NULL
+)
 }
 \arguments{
-\item{oauth_client}{\link{OAuthClient} object. The client must have a
+\item{client}{\link{OAuthClient} object. The client must have a
 \code{userinfo_url} configured in its \link{OAuthProvider}.}
 
 \item{token}{Either an \link{OAuthToken} object or a raw access token string.}
@@ -17,6 +23,8 @@ is provided as a raw string. Supported values are \code{Bearer} and \code{DPoP}.
 
 \item{shiny_session}{Optional captured Shiny session details for audit events.
 Normally supplied by the module; leave \code{NULL} when calling directly.}
+
+\item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }
 \value{
 A list containing the user information returned by the provider.

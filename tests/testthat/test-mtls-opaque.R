@@ -60,7 +60,7 @@ test_that("mTLS opaque-token policy preserves certificate presentation without d
     access_token = "structured.token.value",
     token_type = "Bearer"
   )
-  req <- resource_req(token, "https://example.com/api", oauth_client = client)
+  req <- resource_req(token, "https://example.com/api", client = client)
   expect_identical(req[["options"]][["sslcert"]], client@mtls_client_cert_file)
   expect_identical(token_cnf_from_access_token(token@access_token), list())
   token@cnf <- list(`x5t#S256` = "LmpH6Yik2-D3dSsZpdndcwKkN1PcMYHtR5S6wXbUvDQ")
@@ -191,7 +191,7 @@ for (style in c("body", "public", "private_key_jwt")) {
           req <- resource_req(
             access,
             "https://resource.example.com/api",
-            oauth_client = client
+            client = client
           )
           expect_identical(
             req[["options"]][["sslcert"]],
@@ -255,7 +255,7 @@ test_that("opaque mode permits absent confirmation but still rejects observed in
         cnf = list(`x5t#S256` = "iBCtWB5Z8rw5KLJhcHpxMI9-E56wSCA2bcTVwY2YAiU")
       ),
       "https://resource.example.com/api",
-      oauth_client = client
+      client = client
     ),
     "does not match"
   )
@@ -269,7 +269,7 @@ test_that("opaque mode permits absent confirmation but still rejects observed in
     resource_req(
       "opaque",
       "https://resource.example.com/api",
-      oauth_client = client
+      client = client
     ),
     "required cnf"
   )
@@ -389,7 +389,7 @@ test_that("mTLS observation policy is validated, defaults to strict, and binds p
     resource_req(
       "opaque",
       "https://resource.example.com/api",
-      oauth_client = client
+      client = client
     )[["options"]][["sslcert"]]
   )
   client@mtls_certificate_bound_access_tokens <- TRUE

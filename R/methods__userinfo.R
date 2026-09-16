@@ -38,7 +38,7 @@
 #' [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html)
 #' for configuration.
 #'
-#' @param oauth_client [OAuthClient] object. The client must have a
+#' @param client [OAuthClient] object. The client must have a
 #' `userinfo_url` configured in its [OAuthProvider].
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param token_type Optional override for the access token type when `token`
@@ -50,13 +50,19 @@
 #'
 #' @example inst/examples/token_methods.R
 #'
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 get_userinfo <- function(
-  oauth_client,
+  client,
   token,
   token_type = NULL,
-  shiny_session = NULL
-) {
+  shiny_session = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   # Type checks/helpers --------------------------------------------------------
 
   S7::check_is_S7(oauth_client, OAuthClient)
@@ -103,7 +109,7 @@ get_userinfo <- function(
           token = token,
           url = userinfo_url,
           follow_redirect = NULL,
-          oauth_client = oauth_client,
+          client = oauth_client,
           token_type = effective_token_type
         )
 

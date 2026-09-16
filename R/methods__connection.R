@@ -245,7 +245,7 @@ connection_record_request <- function(
         url,
         method = method,
         query = query,
-        oauth_client = record[["client"]],
+        client = record[["client"]],
         check_url = TRUE,
         follow_redirect = FALSE
       )

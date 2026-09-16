@@ -12,10 +12,11 @@ client_bearer_req(
   query = NULL,
   follow_redirect = FALSE,
   check_url = TRUE,
-  oauth_client = NULL,
+  client = NULL,
   token_type = NULL,
   dpop_nonce = NULL,
-  resource_hosts = NULL
+  resource_hosts = NULL,
+  oauth_client = NULL
 )
 }
 \arguments{
@@ -51,7 +52,7 @@ Without an allowlist this performs HTTPS and URL-syntax validation only
 Set to \code{FALSE} only if you have already validated the URL and understand
 the security implications.}
 
-\item{oauth_client}{Optional \link{OAuthClient}. Required when the effective
+\item{client}{Optional \link{OAuthClient}. Required when the effective
 token type is \code{DPoP}, because the client carries the configured DPoP proof
 key, and also when using sender-constrained mTLS / certificate-bound
 tokens so shinyOAuth can attach the configured client certificate and
@@ -75,6 +76,8 @@ allowlist adds to the global policy and is enforced even if \code{check_url}
 is \code{FALSE}. Use exact hostnames for URLs derived from lower-trust input.
 It constrains the initial URL, not redirect destinations or resolved IPs;
 retain \code{follow_redirect = FALSE}. \code{NULL} adds no resource-specific policy.}
+
+\item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }
 \value{
 Same value as \code{\link[=resource_req]{resource_req()}}.

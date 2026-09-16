@@ -78,6 +78,8 @@ providers to send one; required issuer and JARM checks remain enforced.
 and positional calls:
   - `oauth_module_server()` uses `refresh_check_interval_ms` to make the
   polling interval's millisecond unit explicit.
+  - Login, token, userinfo, resource-request, and mTLS registration helpers
+  consistently accept `client` and `token`.
 
 * Client and provider constructor arguments have been reorganized and renamed.
 Helper constructors retain compatibility aliases; low-level S7 constructors

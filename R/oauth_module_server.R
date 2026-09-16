@@ -3900,7 +3900,7 @@ oauth_module_server_impl <- function(
                   )
                 } else {
                   handle_callback(
-                    oauth_client = client,
+                    client = client,
                     code = code,
                     payload = state,
                     browser_token = values[["browser_token"]],

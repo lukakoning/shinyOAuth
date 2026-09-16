@@ -64,7 +64,7 @@ test_that("ordinary clients can omit connection configuration and use existing h
   request <- resource_req(
     connection_test_token(scopes = "read"),
     "https://api.example/records",
-    oauth_client = client
+    client = client
   )
   expect_identical(
     connection_test_headers(request)[["authorization"]],

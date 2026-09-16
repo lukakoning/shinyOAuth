@@ -5,17 +5,19 @@
 \title{Introspect an OAuth 2.0 token}
 \usage{
 introspect_token(
-  oauth_client,
-  oauth_token,
+  client,
+  token,
   which = c("access", "refresh"),
   async = FALSE,
-  shiny_session = NULL
+  shiny_session = NULL,
+  oauth_client = NULL,
+  oauth_token = NULL
 )
 }
 \arguments{
-\item{oauth_client}{\link{OAuthClient} object}
+\item{client}{\link{OAuthClient} object}
 
-\item{oauth_token}{\link{OAuthToken} object to introspect}
+\item{token}{\link{OAuthToken} object to introspect}
 
 \item{which}{Which token to introspect: "access" (default) or "refresh".}
 
@@ -26,6 +28,10 @@ Default \code{FALSE} waits and returns the result directly.}
 
 \item{shiny_session}{Optional captured Shiny session details for audit events.
 Normally supplied by the module; leave \code{NULL} when calling directly.}
+
+\item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
+
+\item{oauth_token}{Compatibility alias for \code{token}. Supply only one spelling.}
 }
 \value{
 A list with fields:

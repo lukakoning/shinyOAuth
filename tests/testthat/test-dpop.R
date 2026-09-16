@@ -102,7 +102,7 @@ test_that("resource_req builds DPoP authorization and proof headers", {
   req <- resource_req(
     token = tok,
     url = "https://resource.example.com/api",
-    oauth_client = cli
+    client = cli
   )
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
@@ -154,7 +154,7 @@ test_that("resource_req rejects non-ASCII DPoP access tokens", {
       token = "caf\u00e9",
       token_type = "DPoP",
       url = "https://resource.example.com/api",
-      oauth_client = cli
+      client = cli
     ),
     class = "shinyOAuth_input_error",
     regexp = "invalid characters"
@@ -179,7 +179,7 @@ test_that("resource_req rejects DPoP cnf.jkt mismatches", {
     resource_req(
       token = tok,
       url = "https://resource.example.com/api",
-      oauth_client = cli
+      client = cli
     ),
     class = "shinyOAuth_input_error",
     regexp = "cnf\\.jkt thumbprint"
@@ -199,7 +199,7 @@ test_that("resource_req rejects strict DPoP JWTs without cnf.jkt", {
     resource_req(
       token = tok,
       url = "https://resource.example.com/api",
-      oauth_client = cli
+      client = cli
     ),
     class = "shinyOAuth_input_error",
     regexp = "cnf\\.jkt"
@@ -221,7 +221,7 @@ test_that("resource_req keeps raw JWT access tokens on Bearer by default", {
   req <- resource_req(
     token = raw_token,
     url = "https://resource.example.com/api",
-    oauth_client = cli
+    client = cli
   )
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
@@ -248,7 +248,7 @@ test_that("resource_req infers DPoP from explicit OAuthToken cnf.jkt", {
   req <- resource_req(
     token = tok,
     url = "https://resource.example.com/api",
-    oauth_client = cli
+    client = cli
   )
 
   dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
@@ -348,7 +348,7 @@ test_that("resource_req requires a DPoP-capable client for DPoP tokens", {
     resource_req(
       token = tok,
       url = "https://resource.example.com/api",
-      oauth_client = cli_no_dpop
+      client = cli_no_dpop
     ),
     regexp = "dpop_private_key",
     class = "shinyOAuth_input_error"
@@ -413,7 +413,7 @@ test_that("resource_req ignores custom Authorization and DPoP headers", {
     req <- resource_req(
       token = tok,
       url = "https://resource.example.com/api",
-      oauth_client = cli,
+      client = cli,
       headers = list(
         Authorization = "Bearer attacker-token",
         DPoP = "attacker-proof",
@@ -461,7 +461,7 @@ test_that("resource_req signs DPoP proof with method and target URI", {
     url = "https://resource.example.com/api?from=url",
     method = "patch",
     query = list(a = 1),
-    oauth_client = cli
+    client = cli
   )
 
   expect_identical(req[["method"]], "PATCH")
@@ -511,7 +511,7 @@ test_that("DPoP proofs and nonce caches preserve escaped path identity", {
   paths <- c("/a%2Fb", "/a%2fb", "/a%3Ab", "/a%3Bb", "/%7Euser")
   for (path in paths) {
     url <- paste0("https://resource.example", path)
-    req <- resource_req(token, url, oauth_client = client)
+    req <- resource_req(token, url, client = client)
     expect_identical(req[["url"]], url)
     expect_identical(
       decode_dpop_payload(req[["headers"]][["DPoP"]])[["htu"]],
@@ -1117,7 +1117,7 @@ test_that("DPoP token type is independent of access-token representation", {
       resource_req(
         OAuthToken(access_token = raw, token_type = "DPoP"),
         "https://example.com/api",
-        oauth_client = client
+        client = client
       ),
       "httr2_request"
     )
@@ -1229,7 +1229,7 @@ test_that("resource requests enforce observed DPoP binding for both token repres
         resource_req(
           token,
           "https://example.com/api",
-          oauth_client = cli,
+          client = cli,
           token_type = "DPoP"
         ),
         "cnf\\.jkt",
@@ -2131,7 +2131,7 @@ test_that("handle_callback enforces strict DPoP token_type after exchange", {
 
   expect_error(
     shinyOAuth:::handle_callback(
-      oauth_client = cli,
+      client = cli,
       code = "code-1",
       payload = payload,
       browser_token = browser_token

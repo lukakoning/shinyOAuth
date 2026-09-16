@@ -5,16 +5,17 @@
 \title{Handle OAuth 2.0 callback: verify state, swap code for token, verify token}
 \usage{
 handle_callback(
-  oauth_client,
+  client,
   code,
   payload,
   browser_token,
   shiny_session = NULL,
-  iss = NULL
+  iss = NULL,
+  oauth_client = NULL
 )
 }
 \arguments{
-\item{oauth_client}{An \link{OAuthClient} object.}
+\item{client}{An \link{OAuthClient} object.}
 
 \item{code}{Authorization code received from the provider on a classic
 direct callback.}
@@ -38,6 +39,8 @@ provider issuer before any token exchange occurs.
 This low-level API cannot verify which redirect URI received the response.
 Clients configured with \code{authorization_server_mode = "multi_redirect_uri"}
 must use \code{\link[=oauth_module_server]{oauth_module_server()}} instead.}
+
+\item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }
 \value{
 An \link{OAuthToken} object. If callback validation, token exchange, or

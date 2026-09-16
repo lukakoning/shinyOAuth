@@ -30,7 +30,7 @@
 #' `tls_client_certificate_bound_access_tokens = TRUE`. See
 #' the [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html) for when these configurations are useful.
 #'
-#' @param oauth_client [OAuthClient] configured for RFC 8705 mutual TLS client
+#' @param client [OAuthClient] configured for RFC 8705 mutual TLS client
 #'   authentication or for certificate-bound access tokens.
 #' @param tls_client_auth_type For `tls_client_auth`, which RFC 8705
 #'   certificate identifier field to emit. One of `"subject_dn"`, `"san_dns"`,
@@ -46,9 +46,10 @@
 #'   `jwks` object with the configured client certificate chain in `x5c`.
 #'
 #' @return A JSON-ready list of RFC 7591/RFC 8705 client metadata.
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 oauth_client_mtls_registration <- function(
-  oauth_client,
+  client,
   tls_client_auth_type = c(
     "subject_dn",
     "san_dns",
@@ -57,8 +58,13 @@ oauth_client_mtls_registration <- function(
     "san_email"
   ),
   tls_client_auth_value = NULL,
-  jwks_uri = NULL
-) {
+  jwks_uri = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   S7::check_is_S7(oauth_client, class = OAuthClient)
   tls_client_auth_type <- match.arg(tls_client_auth_type)
   requests_certificate_bound_tokens <- client_requests_certificate_bound_tokens(

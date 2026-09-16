@@ -38,7 +38,7 @@ test_that("SMART resource, discovery and signing-key requests select TLS 1.2", {
     resource_req(
       token,
       "https://ehr.example/fhir/R4/Patient/123",
-      oauth_client = smart
+      client = smart
     )[["options"]][["sslversion"]],
     6L
   )

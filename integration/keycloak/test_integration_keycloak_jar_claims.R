@@ -58,7 +58,7 @@ tamper_signed_request_object <- function(auth_url, mutate_claims) {
 
 complete_jar_callback <- function(client, login_result, browser_token) {
   shinyOAuth:::handle_callback(
-    oauth_client = client,
+    client = client,
     code = login_result[["code"]],
     payload = login_result[["state_payload"]],
     browser_token = browser_token,

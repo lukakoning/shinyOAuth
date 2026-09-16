@@ -5,15 +5,16 @@
 \title{Refresh an OAuth 2.0 token}
 \usage{
 refresh_token(
-  oauth_client,
+  client,
   token,
   async = FALSE,
   introspect = NULL,
-  shiny_session = NULL
+  shiny_session = NULL,
+  oauth_client = NULL
 )
 }
 \arguments{
-\item{oauth_client}{\link{OAuthClient} object}
+\item{client}{\link{OAuthClient} object}
 
 \item{token}{\link{OAuthToken} object containing the refresh token}
 
@@ -33,6 +34,8 @@ separately, but a successful introspection response may backfill
 
 \item{shiny_session}{Optional captured Shiny session details for audit events.
 Normally supplied by the module; leave \code{NULL} when calling directly.}
+
+\item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }
 \value{
 An updated \link{OAuthToken} object with refreshed credentials.

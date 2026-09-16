@@ -294,7 +294,7 @@ test_that("low-level callbacks reject multi-redirect mode", {
 
   expect_error(
     handle_callback(
-      oauth_client = cli,
+      client = cli,
       code = "unused",
       payload = "unused",
       browser_token = valid_browser_token()

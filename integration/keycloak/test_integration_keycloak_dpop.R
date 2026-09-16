@@ -257,7 +257,7 @@ testthat::test_that("Keycloak DPoP auth-code flow binds tokens and protects user
     shinyOAuth::resource_req(
       login[["token"]],
       prov@userinfo_url,
-      oauth_client = attacker_client
+      client = attacker_client
     ),
     class = "shinyOAuth_input_error",
     regexp = "cnf\\.jkt thumbprint"

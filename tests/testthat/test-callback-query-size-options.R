@@ -39,7 +39,7 @@ test_that("callback query size caps are configurable via options", {
 
   expect_error(
     handle_callback(
-      oauth_client = client,
+      client = client,
       code = "abcd",
       payload = paste(rep("x", 20), collapse = ""),
       browser_token = valid_browser_token()
@@ -60,7 +60,7 @@ test_that("callback browser_token cap is configurable via options", {
 
   expect_error(
     handle_callback(
-      oauth_client = client,
+      client = client,
       code = "abcd",
       payload = "x",
       browser_token = "123456"
@@ -77,7 +77,7 @@ test_that("callback code cap is configurable via options", {
 
   expect_error(
     handle_callback(
-      oauth_client = client,
+      client = client,
       code = "abcd",
       payload = "x",
       browser_token = "123"

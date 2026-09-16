@@ -186,7 +186,7 @@ test_that("refresh_token does not retry: server rotated token, response lost", {
     .package = "shinyOAuth",
     {
       result <- shinyOAuth::refresh_token(
-        oauth_client = client,
+        client = client,
         token = token
       )
     }

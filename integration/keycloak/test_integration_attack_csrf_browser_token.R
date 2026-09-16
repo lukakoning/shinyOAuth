@@ -52,7 +52,7 @@ testthat::test_that("Browser token mismatch: tampered cookie value rejected", {
       # token should fail the constant_time_compare check.
       testthat::expect_error(
         shinyOAuth:::handle_callback(
-          oauth_client = client,
+          client = client,
           code = res[["code"]],
           payload = res[["state_payload"]],
           browser_token = attacker_bt,
@@ -82,7 +82,7 @@ testthat::test_that("Browser token: NULL browser_token rejected", {
       # (state store entry has __SKIPPED__, NULL != __SKIPPED__)
       testthat::expect_error(
         shinyOAuth:::handle_callback(
-          oauth_client = client,
+          client = client,
           code = res[["code"]],
           payload = res[["state_payload"]],
           browser_token = NULL,
@@ -115,7 +115,7 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
       )
       testthat::expect_error(
         shinyOAuth:::handle_callback(
-          oauth_client = client,
+          client = client,
           code = res[["code"]],
           payload = res[["state_payload"]],
           browser_token = short_token,
@@ -131,7 +131,7 @@ testthat::test_that("Browser token: malformed browser_token rejected", {
       )
       testthat::expect_error(
         shinyOAuth:::handle_callback(
-          oauth_client = client,
+          client = client,
           code = res[["code"]],
           payload = res[["state_payload"]],
           browser_token = bad_chars_token,
@@ -165,7 +165,7 @@ testthat::test_that("Browser token: skip_browser_token=TRUE allows __SKIPPED__ s
       # handle_callback does NOT read the skip option — the sentinel must
       # be passed explicitly, which the module does automatically.
       result <- shinyOAuth:::handle_callback(
-        oauth_client = client,
+        client = client,
         code = res[["code"]],
         payload = res[["state_payload"]],
         browser_token = "__SKIPPED__",

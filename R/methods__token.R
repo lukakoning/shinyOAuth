@@ -23,8 +23,8 @@
 #' response, leaves the revocation result unknown. A successful response means
 #' the provider accepted the request; local logout does not depend on it.
 #'
-#' @param oauth_client [OAuthClient] object
-#' @param oauth_token [OAuthToken] object containing tokens to revoke
+#' @param client [OAuthClient] object
+#' @param token [OAuthToken] object containing tokens to revoke
 #' @param which Which token to revoke: "refresh" (default) or "access"
 #' @param async If `TRUE`, return a promise resolving to the result.
 #'   Configure mirai daemons or a future plan first; mirai takes priority.
@@ -44,14 +44,26 @@
 #'
 #' @example inst/examples/token_methods.R
 #'
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
+#' @param oauth_token Compatibility alias for `token`. Supply only one spelling.
 #' @export
 revoke_token <- function(
-  oauth_client,
-  oauth_token,
+  client,
+  token,
   which = c("refresh", "access"),
   async = FALSE,
-  shiny_session = NULL
+  shiny_session = NULL,
+  oauth_client = NULL,
+  oauth_token = NULL
 ) {
+  oauth_token <- resolve_argument_alias(
+    token, oauth_token, missing(token), missing(oauth_token),
+    "token", "oauth_token"
+  )
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(oauth_token, OAuthToken)
   if (!(is.logical(async) && length(async) == 1 && !is.na(async))) {
@@ -305,8 +317,8 @@ revoke_token <- function(
 #' the asynchronous promise) instead of returning a status result.
 #' Requests use the client's configured credentials and `token_auth_style`.
 #'
-#' @param oauth_client [OAuthClient] object
-#' @param oauth_token [OAuthToken] object to introspect
+#' @param client [OAuthClient] object
+#' @param token [OAuthToken] object to introspect
 #' @param which Which token to introspect: "access" (default) or "refresh".
 #' @param async If `TRUE`, return a promise resolving to the result.
 #'   Configure mirai daemons or a future plan first; mirai takes priority.
@@ -328,15 +340,27 @@ revoke_token <- function(
 #'
 #' @example inst/examples/token_methods.R
 #'
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
+#' @param oauth_token Compatibility alias for `token`. Supply only one spelling.
 #' @export
 
 introspect_token <- function(
-  oauth_client,
-  oauth_token,
+  client,
+  token,
   which = c("access", "refresh"),
   async = FALSE,
-  shiny_session = NULL
+  shiny_session = NULL,
+  oauth_client = NULL,
+  oauth_token = NULL
 ) {
+  oauth_token <- resolve_argument_alias(
+    token, oauth_token, missing(token), missing(oauth_token),
+    "token", "oauth_token"
+  )
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   # Type checks
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(oauth_token, OAuthToken)
@@ -717,7 +741,7 @@ introspect_token <- function(
 #' credential and require a new login. This does not accept unvalidated access
 #' or identity data. The module applies this rule even with indefinite sessions.
 #'
-#' @param oauth_client [OAuthClient] object
+#' @param client [OAuthClient] object
 #' @param token [OAuthToken] object containing the refresh token
 #' @param async If `TRUE`, return a promise resolving to the result.
 #'   Configure mirai daemons or a future plan first; mirai takes priority.
@@ -768,15 +792,21 @@ introspect_token <- function(
 #'
 #' @example inst/examples/token_methods.R
 #'
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 
 refresh_token <- function(
-  oauth_client,
+  client,
   token,
   async = FALSE,
   introspect = NULL,
-  shiny_session = NULL
-) {
+  shiny_session = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   refresh_token_dispatch(oauth_client, token, async, introspect, shiny_session)
 }
 

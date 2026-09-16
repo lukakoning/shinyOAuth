@@ -57,7 +57,7 @@
 #'   is `FALSE`. Use exact hostnames for URLs derived from lower-trust input.
 #'   It constrains the initial URL, not redirect destinations or resolved IPs;
 #'   retain `follow_redirect = FALSE`. `NULL` adds no resource-specific policy.
-#' @param oauth_client Optional [OAuthClient]. Required when the effective
+#' @param client Optional [OAuthClient]. Required when the effective
 #'   token type is `DPoP`, because the client carries the configured DPoP proof
 #'   key, and also when using sender-constrained mTLS / certificate-bound
 #'   tokens so shinyOAuth can attach the configured client certificate and
@@ -87,6 +87,7 @@
 #'
 #' @example inst/examples/client_bearer_req.R
 #'
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 resource_req <- function(
   token,
@@ -96,11 +97,16 @@ resource_req <- function(
   query = NULL,
   follow_redirect = FALSE,
   check_url = TRUE,
-  oauth_client = NULL,
+  client = NULL,
   token_type = NULL,
   dpop_nonce = NULL,
-  resource_hosts = NULL
-) {
+  resource_hosts = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   prepare_client_bearer_request(
     token = token,
     url = url,
@@ -127,6 +133,7 @@ resource_req <- function(
 #'
 #' @inheritParams resource_req
 #' @return Same value as [resource_req()].
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 client_bearer_req <- function(
   token,
@@ -136,11 +143,16 @@ client_bearer_req <- function(
   query = NULL,
   follow_redirect = FALSE,
   check_url = TRUE,
-  oauth_client = NULL,
+  client = NULL,
   token_type = NULL,
   dpop_nonce = NULL,
-  resource_hosts = NULL
-) {
+  resource_hosts = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   deprecate_warn_pkg(
     when = "0.4.0.9000",
     what = "client_bearer_req()",
@@ -158,7 +170,7 @@ client_bearer_req <- function(
     query = query,
     follow_redirect = follow_redirect,
     check_url = check_url,
-    oauth_client = oauth_client,
+    client = oauth_client,
     token_type = token_type,
     dpop_nonce = dpop_nonce,
     resource_hosts = resource_hosts
@@ -203,6 +215,7 @@ client_bearer_req <- function(
 #'
 #' @example inst/examples/client_bearer_req.R
 #'
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 perform_resource_req <- function(
   token,
@@ -212,12 +225,17 @@ perform_resource_req <- function(
   query = NULL,
   follow_redirect = FALSE,
   check_url = TRUE,
-  oauth_client = NULL,
+  client = NULL,
   token_type = NULL,
   dpop_nonce = NULL,
   idempotent = NULL,
-  resource_hosts = NULL
-) {
+  resource_hosts = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   request_input <- inherits(url, "httr2_request")
   method_override <- if (request_input && missing(method)) NULL else method
 
@@ -279,6 +297,7 @@ perform_resource_req <- function(
 #'
 #' @inheritParams perform_resource_req
 #' @return Same value as [perform_resource_req()].
+#' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @export
 perform_client_bearer_req <- function(
   token,
@@ -288,12 +307,17 @@ perform_client_bearer_req <- function(
   query = NULL,
   follow_redirect = FALSE,
   check_url = TRUE,
-  oauth_client = NULL,
+  client = NULL,
   token_type = NULL,
   dpop_nonce = NULL,
   idempotent = NULL,
-  resource_hosts = NULL
-) {
+  resource_hosts = NULL,
+  oauth_client = NULL
+){
+  oauth_client <- resolve_argument_alias(
+    client, oauth_client, missing(client), missing(oauth_client),
+    "client", "oauth_client"
+  )
   deprecate_warn_pkg(
     when = "0.4.0.9000",
     what = "perform_client_bearer_req()",

@@ -5,14 +5,15 @@
 \title{Prepare client-certificate registration settings (mTLS)}
 \usage{
 oauth_client_mtls_registration(
-  oauth_client,
+  client,
   tls_client_auth_type = c("subject_dn", "san_dns", "san_uri", "san_ip", "san_email"),
   tls_client_auth_value = NULL,
-  jwks_uri = NULL
+  jwks_uri = NULL,
+  oauth_client = NULL
 )
 }
 \arguments{
-\item{oauth_client}{\link{OAuthClient} configured for RFC 8705 mutual TLS client
+\item{client}{\link{OAuthClient} configured for RFC 8705 mutual TLS client
 authentication or for certificate-bound access tokens.}
 
 \item{tls_client_auth_type}{For \code{tls_client_auth}, which RFC 8705
@@ -29,6 +30,8 @@ a numeric-looking DNS name is still a DNS SAN, not an IP SAN.}
 \item{jwks_uri}{Optional absolute URL of a JWKS document to publish for
 \code{self_signed_tls_client_auth}. When omitted, the helper returns an inline
 \code{jwks} object with the configured client certificate chain in \code{x5c}.}
+
+\item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }
 \value{
 A JSON-ready list of RFC 7591/RFC 8705 client metadata.

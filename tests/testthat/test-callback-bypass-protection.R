@@ -48,7 +48,7 @@ test_that("handle_callback always consumes state store even when attacker suppli
   # ignores them and tries to decrypt/consume itself — state is already gone
   expect_error(
     shinyOAuth::handle_callback(
-      oauth_client = cli,
+      client = cli,
       code = "attacker_code",
       payload = enc,
       browser_token = tok,

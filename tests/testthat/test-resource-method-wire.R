@@ -72,7 +72,7 @@ test_that("wire methods agree with DPoP and retry policy", {
       perform_resource_req(
         "fixture",
         httr2::req_method(req, "HEAD"),
-        oauth_client = client,
+        client = client,
         token_type = "DPoP"
       ),
       "HEAD resource requests must not include a body"
@@ -94,7 +94,7 @@ test_that("wire methods agree with DPoP and retry policy", {
     response <- perform_resource_req(
       "fixture",
       req,
-      oauth_client = client,
+      client = client,
       token_type = "DPoP"
     )
     expect_identical(httr2::resp_status(response), 500L)

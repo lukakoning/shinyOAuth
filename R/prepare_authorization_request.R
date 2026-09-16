@@ -36,10 +36,11 @@
 #'   data: do not log it or expose it to other browser sessions.
 #' @export
 prepare_authorization_request <- function(
-  oauth_client,
+  client,
   browser_token,
   request_uri_publisher = NULL
 ) {
+  oauth_client <- client
   result <- prepare_call_internal(
     oauth_client,
     browser_token,

@@ -93,7 +93,7 @@ testthat::test_that("strict OIDC validation and mTLS work across the token lifec
   response <- shinyOAuth::perform_resource_req(
     refreshed,
     get_mtls_endpoint_url(client@provider, "userinfo_endpoint"),
-    oauth_client = client
+    client = client
   )
   testthat::expect_identical(
     httr2::resp_body_json(response)[["sub"]],
@@ -620,7 +620,7 @@ testthat::test_that("Keycloak mTLS protected resource helper reaches the userinf
   resp <- shinyOAuth::perform_resource_req(
     token = login[["token"]],
     url = get_mtls_endpoint_url(client@provider, "userinfo_endpoint"),
-    oauth_client = client
+    client = client
   )
   body <- httr2::resp_body_json(resp, simplifyVector = TRUE)
 
