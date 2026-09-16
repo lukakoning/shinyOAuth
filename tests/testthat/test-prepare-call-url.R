@@ -44,7 +44,7 @@ test_that("prepare_call checks generated state against callback and envelope lim
     }
     for (defer in c(FALSE, TRUE)) {
       expect_error(
-        prepare_call(client, browser, .defer_build = defer),
+        prepare_call_internal(client, browser, .defer_build = defer),
         "Generated state exceeds shinyOAuth.callback_max_state_bytes",
         class = "shinyOAuth_config_error"
       )

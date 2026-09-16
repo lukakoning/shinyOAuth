@@ -124,7 +124,7 @@ router_fixture <- function(
 router_prepare <- function(f, id = "a", browser = valid_browser_token()) {
   hooks <- f[["controller"]][["hooks"]](id)
   context <- hooks[["prepare"]]()
-  prepared <- prepare_call(
+  prepared <- prepare_call_internal(
     f[["manager"]][["clients"]][[id]],
     browser,
     .transaction_context = context,

@@ -36,7 +36,7 @@ for (post in c(FALSE, TRUE)) {
           shiny::isolate({
             ctl <- connection_manager_controller(manager, session)
             client <- clients[["a"]]
-            prepared <- prepare_call(
+            prepared <- prepare_call_internal(
               client,
               valid_browser_token(),
               .defer_build = TRUE,

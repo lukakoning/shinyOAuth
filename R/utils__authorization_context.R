@@ -96,7 +96,7 @@ prepare_authorization <- function(
   transaction_context = NULL,
   request_uri_publisher = NULL
 ) {
-  prepared <- prepare_call(
+  prepared <- prepare_call_internal(
     client,
     browser_token,
     .defer_build = TRUE,

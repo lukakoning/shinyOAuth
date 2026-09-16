@@ -270,7 +270,7 @@ test_that("POST browser handler preserves literal fields and validates form mess
 test_that("prepared POST work requires live state and an unexpired PAR reference", {
   client <- make_test_client()
   client@authorization_method <- "POST"
-  prepared <- prepare_call(client, valid_browser_token(), .defer_build = TRUE)
+  prepared <- prepare_call_internal(client, valid_browser_token(), .defer_build = TRUE)
   worker <- prepare_client_for_worker(client)
   result <- build_prepared_authorization(worker, prepared)
   expect_identical(result[["method"]], "POST")

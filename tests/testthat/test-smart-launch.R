@@ -287,7 +287,7 @@ test_that("launch is consumed once and the handle belongs to one state transacti
       expect_error(hooks[["parameters"]](context), "fresh EHR launch")
       client <- f[["manager"]][["clients"]][["hospital"]]
       browser <- valid_browser_token()
-      url <- prepare_call(
+      url <- prepare_call_internal(
         client,
         browser_token = browser,
         .transaction_context = context,
@@ -302,7 +302,7 @@ test_that("launch is consumed once and the handle belongs to one state transacti
         list(aud = client@smart[["fhir_base"]])
       )
       expect_error(
-        prepare_call(
+        prepare_call_internal(
           client,
           browser_token = browser,
           .transaction_context = context,
@@ -375,7 +375,7 @@ for (delay in c(121, 301)) {
         params <- hooks[["parameters"]](context)
         client <- f[["manager"]][["clients"]][["hospital"]]
         browser <- valid_browser_token()
-        url <- prepare_call(
+        url <- prepare_call_internal(
           client,
           browser,
           .transaction_context = context,

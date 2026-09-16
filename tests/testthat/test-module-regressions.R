@@ -14,7 +14,7 @@ testthat::test_that("auto_redirected isn't set when auth URL build fails", {
     expr = {
       # Force prepare_call to throw so .build_auth_url() signals error
       testthat::with_mocked_bindings(
-        prepare_call = function(...) {
+        prepare_call_internal = function(...) {
           stop(structure(
             list(message = "boom"),
             class = c("error", "condition")

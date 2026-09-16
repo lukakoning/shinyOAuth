@@ -63,7 +63,7 @@ for (base in c("/", "/app/")) {
       additional_clients = list(login = login),
       launch_routes = list(smart_launch_route(paste0(base, "launch"), "fhir"))
     )
-    prepared <- prepare_call(login, valid_browser_token(), .defer_build = TRUE)
+    prepared <- prepare_call_internal(login, valid_browser_token(), .defer_build = TRUE)
     query <- httr2::url_query_build(list(
       code = "synthetic-code",
       state = prepared[["build_args"]][["payload"]]
@@ -137,7 +137,7 @@ for (post in c(FALSE, TRUE)) {
         browser <- valid_browser_token()
         for (id in c("login", "health-fhir")) {
           client <- if (id == "login") login else fhir
-          prepared <- prepare_call(
+          prepared <- prepare_call_internal(
             client,
             browser,
             .defer_build = TRUE,
@@ -260,7 +260,7 @@ for (post in c(FALSE, TRUE)) {
           controller <- connection_manager_controller(manager, session)
           for (id in c("login", "health-fhir")) {
             client <- if (id == "login") login else fhir
-            prepared <- prepare_call(
+            prepared <- prepare_call_internal(
               client,
               browser,
               .defer_build = TRUE,

@@ -31,17 +31,6 @@
 #'   `request_object`, `request_handle_id`, `expires_at`, and `oauth_client`
 #'   arguments and return an absolute HTTPS request-object URL that the
 #'   provider can fetch.
-#' @param .requested_max_age Internal normalized OIDC `max_age` override used by
-#'   the Shiny module for forced reauthentication.
-#' @param .defer_build Internal flag returning prepared local state for async
-#'   authorization work instead of completing the authorization URL.
-#' @param .transaction_context Internal bounded manager context. Ordinary callers
-#'   leave this `NULL`; managed state requires manager-aware consumption.
-#' @param .smart_launch Internal per-transaction EHR launch handle supplied by
-#'   the manager. Bound to the approved target and sealed transaction context.
-#' @param .authorization_request Internal flag permitting a structured POST
-#'   result for the module and [prepare_authorization_request()].
-#'
 #' @return A length-1 string containing the authorization URL to send the user
 #'   to. When PAR is used, the returned string also carries
 #'   `shinyOAuth.par_request_uri`, `shinyOAuth.par_expires_in`, and
@@ -52,6 +41,14 @@
 #'
 #' @export
 prepare_call <- function(
+  oauth_client,
+  browser_token,
+  request_uri_publisher = NULL
+) {
+  prepare_call_internal(oauth_client, browser_token, request_uri_publisher)
+}
+
+prepare_call_internal <- function(
   oauth_client,
   browser_token,
   request_uri_publisher = NULL,

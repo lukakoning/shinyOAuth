@@ -4,16 +4,7 @@
 \alias{prepare_call}
 \title{Prepare an OAuth 2.0 authorization request and build its URL}
 \usage{
-prepare_call(
-  oauth_client,
-  browser_token,
-  request_uri_publisher = NULL,
-  .requested_max_age = NULL,
-  .defer_build = FALSE,
-  .transaction_context = NULL,
-  .smart_launch = NULL,
-  .authorization_request = FALSE
-)
+prepare_call(oauth_client, browser_token, request_uri_publisher = NULL)
 }
 \arguments{
 \item{oauth_client}{An \link{OAuthClient} object.}
@@ -26,21 +17,6 @@ current browser session.}
 \code{request_object}, \code{request_handle_id}, \code{expires_at}, and \code{oauth_client}
 arguments and return an absolute HTTPS request-object URL that the
 provider can fetch.}
-
-\item{.requested_max_age}{Internal normalized OIDC \code{max_age} override used by
-the Shiny module for forced reauthentication.}
-
-\item{.defer_build}{Internal flag returning prepared local state for async
-authorization work instead of completing the authorization URL.}
-
-\item{.transaction_context}{Internal bounded manager context. Ordinary callers
-leave this \code{NULL}; managed state requires manager-aware consumption.}
-
-\item{.smart_launch}{Internal per-transaction EHR launch handle supplied by
-the manager. Bound to the approved target and sealed transaction context.}
-
-\item{.authorization_request}{Internal flag permitting a structured POST
-result for the module and \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}.}
 }
 \value{
 A length-1 string containing the authorization URL to send the user

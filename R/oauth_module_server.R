@@ -1600,7 +1600,7 @@ oauth_module_server_impl <- function(
         return(tryCatch(
           {
             if (!is.null(.managed) && is.function(.managed[["prepared"]])) {
-              prepared <- prepare_call(
+              prepared <- prepare_call_internal(
                 client,
                 values[["browser_token"]],
                 .requested_max_age = requested_max_age,
@@ -1616,7 +1616,7 @@ oauth_module_server_impl <- function(
                 publisher
               )
             } else {
-              prepare_call(
+              prepare_call_internal(
                 client,
                 values[["browser_token"]],
                 publisher,
@@ -1651,7 +1651,7 @@ oauth_module_server_impl <- function(
       }
       tryCatch(
         {
-          prepared <- prepare_call(
+          prepared <- prepare_call_internal(
             client,
             browser,
             .requested_max_age = requested_max_age,

@@ -40,7 +40,7 @@ prepare_authorization_request <- function(
   browser_token,
   request_uri_publisher = NULL
 ) {
-  result <- prepare_call(
+  result <- prepare_call_internal(
     oauth_client,
     browser_token,
     request_uri_publisher,
