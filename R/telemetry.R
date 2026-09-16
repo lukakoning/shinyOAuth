@@ -885,7 +885,7 @@ otel_token_response_attributes <- function(
 
   compact_list(c(
     list(
-      oauth.token_type = otel_scalar_attribute(
+      oauth.token_type = otel_token_type_attribute(
         token_set[["token_type"]] %||% NULL
       ),
       oauth.received_id_token = isTRUE(is_valid_string(
@@ -909,6 +909,18 @@ otel_token_response_attributes <- function(
       effective_token_type = effective_token_type
     )
   ))
+}
+
+# Token response attributes can be recorded before validation fails. Export a
+# bounded classification, never an untrusted scheme or provider-supplied detail.
+otel_token_type_attribute <- function(value) {
+  if (is.null(value)) {
+    return(NULL)
+  }
+  if (!is_valid_string(value) || nchar(value, type = "bytes") > 6L) {
+    return("unknown")
+  }
+  switch(tolower(value), bearer = "Bearer", dpop = "DPoP", "unknown")
 }
 
 # 4 Request and session attributes ---------------------------------------------
