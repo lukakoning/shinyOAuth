@@ -129,6 +129,9 @@ fetch_authorization_server_metadata <- function(issuer, tls_minimum = NULL) {
   last_response <- NULL
   last_error_message <- NULL
   for (target in targets) {
+    if (!is_ok_host(target[["url"]])) {
+      err_config("Authorization server metadata host or scheme is not allowed")
+    }
     attempted_urls <- c(attempted_urls, target[["url"]])
 
     resp <- try(

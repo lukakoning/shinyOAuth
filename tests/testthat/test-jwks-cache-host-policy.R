@@ -520,7 +520,7 @@ test_that("fetch_jwks does not reuse cached entry after global host allowlist ti
       )
     ),
     class = "shinyOAuth_config_error",
-    regexp = "allowed host"
+    regexp = "metadata host or scheme is not allowed"
   )
 })
 
