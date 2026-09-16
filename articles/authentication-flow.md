@@ -495,10 +495,10 @@ a successful response with `active = TRUE`. The request runs before the
 UserInfo fetch so it can supply binding data for opaque mTLS or DPoP
 tokens.
 
-`introspect_elements` can require additional fields such as the subject,
-client ID, scopes, or token type; your provider must return the fields
-you need. Checks that use the retrieved user profile are completed after
-the next step, before the session becomes authenticated.
+`introspection_checks` can require additional fields such as the
+subject, client ID, scopes, or token type; your provider must return the
+fields you need. Checks that use the retrieved user profile are
+completed after the next step, before the session becomes authenticated.
 
 ### 12. Fetch user information (optional)
 
@@ -550,9 +550,8 @@ making API requests on the user’s behalf.
 
 Pass the token to
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html)
-for API requests. Also supply `oauth_client = client` when using mTLS or
-DPoP so the helper can apply the certificate or proof required by the
-token.
+for API requests. Also supply `client = client` when using mTLS or DPoP
+so the helper can apply the certificate or proof required by the token.
 
 ### 14. Clean up the callback URL and browser state
 

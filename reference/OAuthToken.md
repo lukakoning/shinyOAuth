@@ -87,7 +87,7 @@ OAuthToken(
   Logical flag indicating whether the current token response explicitly
   proved `granted_scopes`. `FALSE` means the scope set was assumed or
   carried forward because the provider omitted `scope`. For stronger
-  proof, configure `introspect_elements = "scope"`.
+  proof, configure `introspection_checks = "scope"`.
 
 - id_token_validated:
 

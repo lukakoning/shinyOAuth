@@ -535,11 +535,12 @@ userinfo[["sub"]]
 - userinfo_allowed_algs:
 
   Optional signing algorithm allowlist for UserInfo JWTs. `NULL`
-  inherits `allowed_algs` for manually configured providers. Discovery
-  negotiates this independently against UserInfo metadata. Use a single
-  algorithm to enforce the client's registered UserInfo signing choice.
-  An empty vector rejects all signed UserInfo algorithms. Unlabelled RSA
-  keys follow the same binding policy as `allowed_algs`.
+  inherits `id_token_allowed_algs` for manually configured providers.
+  Discovery negotiates this independently against UserInfo metadata. Use
+  a single algorithm to enforce the client's registered UserInfo signing
+  choice. An empty vector rejects all signed UserInfo algorithms.
+  Unlabelled RSA keys follow the same binding policy as
+  `id_token_allowed_algs`.
 
 - jarm_signing_alg_values_supported:
 

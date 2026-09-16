@@ -17,7 +17,7 @@ depend on the provider. Keep access and refresh tokens out of the UI and logs.'>
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -136,7 +136,7 @@ shinyOAuth carries forward the best-known scope set instead of dropping it.</p><
 <dd><p>Logical flag indicating whether the current
 token response explicitly proved <code>granted_scopes</code>. <code>FALSE</code> means the scope
 set was assumed or carried forward because the provider omitted <code>scope</code>.
-For stronger proof, configure <code>introspect_elements = "scope"</code>.</p></dd>
+For stronger proof, configure <code>introspection_checks = "scope"</code>.</p></dd>
 
 
 <dt id="arg-id-token-validated">id_token_validated<a class="anchor" aria-label="anchor" href="#arg-id-token-validated"></a></dt>

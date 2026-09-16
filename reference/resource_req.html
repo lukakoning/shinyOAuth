@@ -11,7 +11,7 @@ send in one step, use perform_resource_req()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -171,7 +171,7 @@ change the request method or base URL after calling
     <p>Only send a token to an API you intend to authorize. The package applies its
 URL policy, timeouts, and redirect defaults. It supports Bearer authentication
 and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
-also supply <code>oauth_client</code> so the request uses the matching key or
+also supply <code>client</code> so the request uses the matching key or
 certificate.</p>
 <p>Managed Authorization credentials cannot be combined with an <code>access_token</code>
 query parameter or form field. Inspection covers URL/query inputs and prebuilt

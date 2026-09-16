@@ -19,7 +19,7 @@ for Shiny sessions."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -111,7 +111,7 @@ Normally supplied by the module; leave <code>NULL</code> when calling directly.<
 <dt id="arg-iss">iss<a class="anchor" aria-label="anchor" href="#arg-iss"></a></dt>
 <dd><p>Optional RFC 9207 callback issuer (<code>iss</code>) from the authorization
 response. Pass this when one callback URL can receive responses from more
-than one authorization server. If <code>oauth_client@enforce_callback_issuer</code>
+than one authorization server. If <code>client@enforce_callback_issuer</code>
 is <code>TRUE</code>, this parameter is required and must match the configured
 provider issuer before any token exchange occurs.</p>
 <p>This low-level API cannot verify which redirect URI received the response.

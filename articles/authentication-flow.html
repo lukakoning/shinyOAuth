@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -582,7 +582,7 @@ still active. It is an optional request, enabled with
 then require a successful response with <code>active = TRUE</code>. The
 request runs before the UserInfo fetch so it can supply binding data for
 opaque mTLS or DPoP tokens.</p>
-<p><code>introspect_elements</code> can require additional fields such
+<p><code>introspection_checks</code> can require additional fields such
 as the subject, client ID, scopes, or token type; your provider must
 return the fields you need. Checks that use the retrieved user profile
 are completed after the next step, before the session becomes
@@ -641,9 +641,9 @@ token-server nonces are kept separately.</p>
 <code>shiny::req(auth[["authenticated"]])</code> before accessing the
 profile or making API requests on the user’s behalf.</p>
 <p>Pass the token to <a href="https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html"><code>perform_resource_req()</code></a>
-for API requests. Also supply <code>oauth_client = client</code> when
-using mTLS or DPoP so the helper can apply the certificate or proof
-required by the token.</p>
+for API requests. Also supply <code>client = client</code> when using
+mTLS or DPoP so the helper can apply the certificate or proof required
+by the token.</p>
 </div>
 <div class="section level3">
 <h3 id="clean-up-the-callback-url-and-browser-state">14. Clean up the callback URL and browser state<a class="anchor" aria-label="anchor" href="#clean-up-the-callback-url-and-browser-state"></a>

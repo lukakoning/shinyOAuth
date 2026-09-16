@@ -13,7 +13,7 @@ Pass the result to oauth_client()."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -200,7 +200,7 @@ match the issuer host; use <code>jwks_host_allow_only</code> for a known differe
 includes <code>"code"</code>), non-empty <code>subject_types_supported</code>, RS256 in
 <code>id_token_signing_alg_values_supported</code>, and a <code>jwks_uri</code> even when automatic
 ID token validation is disabled. The permitted ID token algorithms are the
-intersection of <code>allowed_algs</code> and the advertised algorithms; an empty
+intersection of <code>id_token_allowed_algs</code> and the advertised algorithms; an empty
 intersection is an error. Discovery keeps PKCE <code>S256</code> and errors when the
 provider explicitly excludes it, unless you select <code>pkce_method = "plain"</code>.</p>
     </div>

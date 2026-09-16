@@ -17,7 +17,7 @@ refresh_proactively = TRUE when a refresh token is available."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">shinyOAuth</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -99,7 +99,7 @@ introspect the new access token when either this argument is <code>TRUE</code> o
 client was configured with <code>introspect = TRUE</code>. A per-call <code>FALSE</code> cannot
 disable a configured client requirement. When enabled, refresh fails if
 introspection is unsupported, inactive, or missing required
-<code>introspect_elements</code>. The raw introspection result is not stored
+<code>introspection_checks</code>. The raw introspection result is not stored
 separately, but a successful introspection response may backfill
 <code>token@cnf</code>.</p></dd>
 
