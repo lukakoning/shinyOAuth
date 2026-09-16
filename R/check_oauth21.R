@@ -328,7 +328,9 @@ check_oauth21 <- function(
       section = "1.5"
     )
   }
-  tls <- resolve_tls_policy()
+  tls <- resolve_effective_tls_policy(
+    local_minimum = if (has_client) client_tls_minimum(client) else NULL
+  )
   runtime <- curl::curl_version()
   old_wolf <- grepl("wolfSSL", runtime[["ssl_version"]], ignore.case = TRUE) &&
     utils::compareVersion(runtime[["version"]], "8.10.0") < 0L

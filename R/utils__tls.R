@@ -65,16 +65,20 @@ resolve_tls_policy <- function(
   )
 }
 
-req_apply_tls_policy <- function(req) {
-  if (!inherits(req, "httr2_request")) {
-    return(req)
+# Resolve global and request/client minima identically for transport and reports.
+resolve_effective_tls_policy <- function(
+  local_minimum = NULL,
+  request_options = list()
+) {
+  configured <- resolve_tls_policy()
+  if (!is.null(configured[["problem"]])) {
+    return(configured)
   }
-  minimum <- configured_tls_minimum()
-  local_minimum <- req[["shinyOAuth_tls_minimum"]]
+  minimum <- configured[["minimum"]]
   if (!is.null(local_minimum)) {
     checked <- resolve_tls_policy(minimum = local_minimum)
     if (!is.null(checked[["problem"]])) {
-      err_config(checked[["problem"]])
+      return(checked)
     }
     minimum <- if (
       identical(minimum, "1.3") || identical(local_minimum, "1.3")
@@ -84,8 +88,18 @@ req_apply_tls_policy <- function(req) {
       "1.2"
     }
   }
-  policy <- resolve_tls_policy(
+  resolve_tls_policy(
     minimum = minimum,
+    request_options = request_options
+  )
+}
+
+req_apply_tls_policy <- function(req) {
+  if (!inherits(req, "httr2_request")) {
+    return(req)
+  }
+  policy <- resolve_effective_tls_policy(
+    local_minimum = req[["shinyOAuth_tls_minimum"]],
     request_options = req[["options"]] %||% list()
   )
   if (!is.null(policy[["problem"]])) {
