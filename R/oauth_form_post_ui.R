@@ -114,7 +114,9 @@ oauth_form_post_ui <- function(
     callback_path %||% oauth_form_post_redirect_path(client)
   )
   if (!identical(callback_path, oauth_form_post_redirect_path(client))) {
-    err_input("`callback_path` must match the public path of client@redirect_uri.")
+    err_input(
+      "`callback_path` must match the public path of client@redirect_uri."
+    )
   }
   if (is.null(request_uri_resolver)) {
     request_uri_resolver <- oauth_form_post_request_uri
@@ -346,6 +348,12 @@ oauth_form_post_handle_request <- function(
     with_otel_span(
       "shinyOAuth.form_post",
       {
+        if (!oauth_callback_transport_matches(client, transport)) {
+          err_form_post_http(
+            "OAuth callback used an unexpected response transport.",
+            status = 400L
+          )
+        }
         if (identical(transport, "form_post")) {
           oauth_form_post_validate_content_type(req)
         }

@@ -4513,7 +4513,7 @@ test_that("oauth_module_server rejects bridged form_post JARM callbacks for quer
           expect_identical(post_resp[["status"]], 400L)
           expect_match(
             post_resp[["content"]],
-            "JARM callback transport mismatch",
+            "unexpected response transport",
             fixed = TRUE
           )
           expect_false("Location" %in% names(post_resp[["headers"]]))

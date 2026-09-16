@@ -181,8 +181,7 @@ oauth_ui_impl <- function(
           "OAuth callback route does not match the registered redirect URI."
         ))
       }
-      mode <- resolve_oauth_client_response_mode(client)[["mode"]]
-      if (!mode %in% c("query", "query.jwt")) {
+      if (!oauth_callback_transport_matches(client, "query")) {
         return(oauth_get_setup_error(
           "OAuth callback used an unexpected response transport."
         ))

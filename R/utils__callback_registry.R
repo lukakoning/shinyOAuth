@@ -176,8 +176,7 @@ oauth_registry_http_handler <- function(
       candidates <- candidates[vapply(
         candidates,
         function(client) {
-          resolve_oauth_client_response_mode(client)[["mode"]] %in%
-            c(transport, paste0(transport, ".jwt"))
+          oauth_callback_transport_matches(client, transport)
         },
         logical(1)
       )]
@@ -249,4 +248,12 @@ oauth_registry_http_handler <- function(
       oauth_get_setup_error("OAuth callback could not be routed or validated.")
     }
   )
+}
+
+# Shared by HTTP admission and consumption of sealed bridge payloads.
+oauth_callback_transport_matches <- function(client, transport) {
+  is_valid_string(transport) &&
+    transport %in% c("query", "form_post") &&
+    resolve_oauth_client_response_mode(client)[["mode"]] %in%
+      c(transport, paste0(transport, ".jwt"))
 }

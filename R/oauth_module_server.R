@@ -2473,6 +2473,19 @@ oauth_module_server_impl <- function(
           return(invisible(NULL))
         }
 
+        if (
+          !oauth_callback_transport_matches(
+            client,
+            form_post_payload[["transport"]] %||% "form_post"
+          )
+        ) {
+          .reject_callback_query(
+            "OAuth callback used an unexpected response transport.",
+            reason = "wrong_callback_transport"
+          )
+          return(invisible(NULL))
+        }
+
         if (identical(form_post_payload[["type"]], "response")) {
           normalized_response <- form_post_payload[[
             "normalized_response",
