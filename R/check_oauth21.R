@@ -5,7 +5,7 @@
 #' reports configuration gaps, unresolved external prerequisites, and recommendations
 #' without changing the configuration or making requests.
 #'
-#' @param client An [OAuthClient] or [OAuthProvider]. Provider-only assessments
+#' @param config An [OAuthClient] or [OAuthProvider]. Provider-only assessments
 #'   are partial and cannot establish missing client settings.
 #' @param draft Implemented target revision. Currently only
 #'   `"draft-ietf-oauth-v2-1-16"` is supported (an Internet-Draft, not an RFC).
@@ -73,13 +73,14 @@
 #' assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 #' @export
 check_oauth21 <- function(
-  client,
-  draft = "draft-ietf-oauth-v2-1-16",
-  context = list()
+  config,
+  context = list(),
+  draft = "draft-ietf-oauth-v2-1-16"
 ) {
+  client <- config
   has_client <- S7::S7_inherits(client, OAuthClient)
   if (!has_client && !S7::S7_inherits(client, OAuthProvider)) {
-    stop("client must be an OAuthClient or OAuthProvider", call. = FALSE)
+    stop("config must be an OAuthClient or OAuthProvider", call. = FALSE)
   }
   if (!identical(draft, "draft-ietf-oauth-v2-1-16")) {
     stop("Unsupported draft; use 'draft-ietf-oauth-v2-1-16'", call. = FALSE)

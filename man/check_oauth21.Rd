@@ -4,14 +4,11 @@
 \alias{check_oauth21}
 \title{Assess an OAuth configuration against a pinned OAuth 2.1 draft}
 \usage{
-check_oauth21(client, draft = "draft-ietf-oauth-v2-1-16", context = list())
+check_oauth21(config, context = list(), draft = "draft-ietf-oauth-v2-1-16")
 }
 \arguments{
-\item{client}{An \link{OAuthClient} or \link{OAuthProvider}. Provider-only assessments
+\item{config}{An \link{OAuthClient} or \link{OAuthProvider}. Provider-only assessments
 are partial and cannot establish missing client settings.}
-
-\item{draft}{Implemented target revision. Currently only
-\code{"draft-ietf-oauth-v2-1-16"} is supported (an Internet-Draft, not an RFC).}
 
 \item{context}{Optional named list with \code{operations}, a character vector
 selecting additional \code{"userinfo"}, \code{"introspection"} or \code{"revocation"}
@@ -20,6 +17,9 @@ operations, and \code{nonce_exception}, a scalar logical declaration. Setting
 assurance required by draft section 7.5.1.1 for this confidential deployment
 and specific request's correct OIDC nonce use. It does not supply observed
 evidence or excuse missing local prerequisites. Prefer S256 PKCE.}
+
+\item{draft}{Implemented target revision. Currently only
+\code{"draft-ietf-oauth-v2-1-16"} is supported (an Internet-Draft, not an RFC).}
 }
 \value{
 A \code{shinyOAuth_oauth21_assessment} list with \code{configuration_compliant},
