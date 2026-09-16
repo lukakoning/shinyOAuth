@@ -34,14 +34,6 @@ reference:
   - OAuthToken
   - OAuthConnection
 
-- title: Multiple retained connections
-- contents:
-  - oauth_connections
-  - oauth_connections_ui
-  - oauth_connections_server
-  - oauth_connection_store_memory
-  - oauth_browser_owner
-  
 - title: Provider configuration
 - subtitle: Generic
 - contents:
@@ -54,13 +46,6 @@ reference:
   - -oauth_provider_oidc
   - -oauth_provider_oidc_discover
 
-- title: SMART on FHIR
-- contents:
-  - smart_discover
-  - smart_client
-  - smart_launch_route
-  - smart_context
-  
 - title: Provider-specific client settings
 - contents:
   - oauth_client_mtls_registration
@@ -91,3 +76,18 @@ reference:
   - is_ok_host
   - custom_cache
   - error_on_softened
+
+- title: Multiple retained connections
+- contents:
+  - oauth_connections
+  - oauth_connections_ui
+  - oauth_connections_server
+  - oauth_connection_store_memory
+  - oauth_browser_owner
+
+- title: SMART on FHIR
+- contents:
+  - smart_discover
+  - smart_client
+  - smart_launch_route
+  - smart_context
