@@ -1759,6 +1759,7 @@ handle_callback_internal <- function(
       # Validate token_type immediately after token exchange, before any userinfo
       # call. This prevents sending an inappropriate Bearer token to the provider
       # when a non-Bearer token_type (e.g., DPoP) is returned.
+      token_set <- apply_missing_token_type_policy(oauth_client, token_set)
       verify_token_type_allowlist(oauth_client, token_set)
 
       # Verify token ---------------------------------------------------------------
@@ -2772,6 +2773,7 @@ verify_token_set <- function(
         add = TRUE
       )
 
+      token_set <- apply_missing_token_type_policy(client, token_set)
       verify_token_type_allowlist(client, token_set)
       validate_token_dpop_binding(
         oauth_client = client,
@@ -3225,6 +3227,19 @@ verify_token_type_allowlist <- function(client, token_set) {
   }
 
   invisible(TRUE)
+}
+
+# Explicit compatibility policy for providers that omit the required field.
+# Check membership so an explicit JSON null cannot activate the fallback.
+apply_missing_token_type_policy <- function(client, token_set) {
+  if (
+    !"token_type" %in% names(token_set) &&
+      isTRUE(client@provider@allow_missing_token_type) &&
+      !client_has_dpop(client)
+  ) {
+    token_set[["token_type"]] <- "Bearer"
+  }
+  token_set
 }
 
 #' Parse token_type data from an introspection result

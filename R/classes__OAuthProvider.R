@@ -229,7 +229,7 @@
 #'   untrusted environments.
 #' @param allowed_token_types Character vector of acceptable OAuth token types
 #'   returned by the token endpoint (case-insensitive). Successful token
-#'   responses must always include `token_type`; when `allowed_token_types` is
+#'   responses must include `token_type` by default; when `allowed_token_types` is
 #'   non-empty, its value must also be one of the allowed values or the flow
 #'   fails fast with a `shinyOAuth_token_error`. The [oauth_provider()] helper
 #'   defaults to `c("Bearer")`. When the [OAuthClient] is configured with
@@ -238,6 +238,12 @@
 #'   token types (for example `MAC`) still fail fast rather than being misused.
 #'   Set `allowed_token_types = character()` explicitly only to disable the
 #'   value allowlist while still requiring `token_type` itself.
+#' @param allow_missing_token_type Logical, default `FALSE`. Opt in only for a
+#'   provider known to issue Bearer tokens while omitting `token_type` from its
+#'   token responses, contrary to OAuth 2.0. When `TRUE`, login and refresh assume
+#'   `"Bearer"` only when the field is absent. Explicit null, empty, invalid, or
+#'   unsupported values still fail validation. The fallback never applies to
+#'   clients configured with DPoP; other token and binding checks remain enforced.
 #'
 #' @param leeway Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf` checks
 #'   and state payload `issued_at` future check. Default 30. Can be globally
@@ -481,6 +487,10 @@ OAuthProvider <- S7::new_class(
     allowed_token_types = S7::new_property(
       S7::class_character,
       default = c("Bearer")
+    ),
+    allow_missing_token_type = S7::new_property(
+      S7::class_logical,
+      default = FALSE
     ),
     leeway = S7::new_property(
       S7::class_numeric,
@@ -767,7 +777,8 @@ oauth_provider <- function(
   jarm_tolerate_duplicate_top_level_iss = FALSE,
   endpoint_auth_metadata = list(),
   ...,
-  allowed_algs = NULL
+  allowed_algs = NULL,
+  allow_missing_token_type = FALSE
 ) {
   allowed_algs <- resolve_argument_alias(
     id_token_allowed_algs,
@@ -1112,6 +1123,7 @@ oauth_provider <- function(
     id_token_allowed_algs = allowed_algs,
     userinfo_allowed_algs = userinfo_allowed_algs,
     allowed_token_types = allowed_token_types,
+    allow_missing_token_type = allow_missing_token_type,
     leeway = leeway,
     par_url = par_url,
     par_required = isTRUE(
@@ -2192,6 +2204,10 @@ provider_fingerprint <- function(provider) {
       transform = toupper
     ),
     allowed_token_types = state_policy_string_set(provider@allowed_token_types),
+    allow_missing_token_type = isTRUE(provider_prop(
+      "allow_missing_token_type",
+      FALSE
+    )),
     leeway = provider@leeway,
     mtls_endpoint_aliases = provider@mtls_endpoint_aliases,
     par_url = provider_prop("par_url", NA_character_),

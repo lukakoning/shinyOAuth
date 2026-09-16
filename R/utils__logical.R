@@ -27,6 +27,7 @@ oauth_provider_boolean_fields <- function() {
     "id_token_required",
     "id_token_validation",
     "id_token_at_hash_required",
+    "allow_missing_token_type",
     "jwks_host_issuer_match",
     "par_required",
     "signed_request_object_required",

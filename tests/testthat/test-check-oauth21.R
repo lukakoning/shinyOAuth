@@ -1006,3 +1006,21 @@ test_that("malformed API arguments are programming errors with redacted diagnost
     "single non-NA logical"
   )
 })
+test_that("assessment reports compatibility with missing token types", {
+  client <- oauth21_test_client()
+  client@provider@allow_missing_token_type <- TRUE
+  finding <- oauth21_finding(check_oauth21(client), "tokens.validation")
+  expect_identical(finding[["status"]], "warn")
+  expect_match(finding[["remediation"]], "allow_missing_token_type")
+  expect_identical(
+    oauth21_finding(check_oauth21(client@provider), "tokens.validation")[[
+      "status"
+    ]],
+    "warn"
+  )
+  client@dpop_private_key <- openssl::rsa_keygen()
+  expect_identical(
+    oauth21_finding(check_oauth21(client), "tokens.validation")[["status"]],
+    "pass"
+  )
+})

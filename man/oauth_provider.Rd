@@ -64,7 +64,8 @@ oauth_provider(
   jarm_tolerate_duplicate_top_level_iss = FALSE,
   endpoint_auth_metadata = list(),
   ...,
-  allowed_algs = NULL
+  allowed_algs = NULL,
+  allow_missing_token_type = FALSE
 )
 }
 \arguments{
@@ -376,7 +377,7 @@ untrusted environments.}
 
 \item{allowed_token_types}{Character vector of acceptable OAuth token types
 returned by the token endpoint (case-insensitive). Successful token
-responses must always include \code{token_type}; when \code{allowed_token_types} is
+responses must include \code{token_type} by default; when \code{allowed_token_types} is
 non-empty, its value must also be one of the allowed values or the flow
 fails fast with a \code{shinyOAuth_token_error}. The \code{\link[=oauth_provider]{oauth_provider()}} helper
 defaults to \code{c("Bearer")}. When the \link{OAuthClient} is configured with
@@ -442,6 +443,13 @@ for omitted revocation methods. Omitted introspection methods have no default.}
 compatibility.}
 
 \item{allowed_algs}{Compatibility alias for \code{id_token_allowed_algs}. Supply only one spelling.}
+
+\item{allow_missing_token_type}{Logical, default \code{FALSE}. Opt in only for a
+provider known to issue Bearer tokens while omitting \code{token_type} from its
+token responses, contrary to OAuth 2.0. When \code{TRUE}, login and refresh assume
+\code{"Bearer"} only when the field is absent. Explicit null, empty, invalid, or
+unsupported values still fail validation. The fallback never applies to
+clients configured with DPoP; other token and binding checks remain enforced.}
 }
 \value{
 \link{OAuthProvider} object

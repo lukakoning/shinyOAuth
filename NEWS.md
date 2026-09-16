@@ -108,6 +108,9 @@ positions remain supported, as do the existing S7 property names:
   Missing or disallowed required key locations fail during configuration.
   - `userinfo_allowed_algs` configures signed UserInfo algorithms independently
   from ID-token algorithms, with corresponding discovery support.
+  - `allow_missing_token_type = TRUE` explicitly permits Bearer-only providers
+  that omit the required token type. The default remains strict; the fallback
+  does not apply to DPoP clients or replace invalid values.
 
 * Provider helper updates:
   - Added `oauth_provider_apple()` and `oauth_client_secret_apple()` for Apple

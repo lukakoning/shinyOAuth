@@ -1297,6 +1297,7 @@ refresh_token_impl <- function(
               context = list(phase = "refresh_token")
             )
           }
+          tok <- apply_missing_token_type_policy(oauth_client, tok)
           verify_token_type_allowlist(oauth_client, tok)
 
           token_set <- list(

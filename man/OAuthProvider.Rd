@@ -57,6 +57,7 @@ OAuthProvider(
   infer_oidc_from_issuer = TRUE,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
+  allow_missing_token_type = FALSE,
   jarm_signing_alg_values_supported = character(0),
   jarm_encryption_alg_values_supported = character(0),
   jarm_encryption_enc_values_supported = character(0),
@@ -384,7 +385,7 @@ untrusted environments.}
 
 \item{allowed_token_types}{Character vector of acceptable OAuth token types
 returned by the token endpoint (case-insensitive). Successful token
-responses must always include \code{token_type}; when \code{allowed_token_types} is
+responses must include \code{token_type} by default; when \code{allowed_token_types} is
 non-empty, its value must also be one of the allowed values or the flow
 fails fast with a \code{shinyOAuth_token_error}. The \code{\link[=oauth_provider]{oauth_provider()}} helper
 defaults to \code{c("Bearer")}. When the \link{OAuthClient} is configured with
@@ -413,6 +414,13 @@ Discovery negotiates this independently against UserInfo metadata. Use a
 single algorithm to enforce the client's registered UserInfo signing choice.
 An empty vector rejects all signed UserInfo algorithms.
 Unlabelled RSA keys follow the same binding policy as \code{id_token_allowed_algs}.}
+
+\item{allow_missing_token_type}{Logical, default \code{FALSE}. Opt in only for a
+provider known to issue Bearer tokens while omitting \code{token_type} from its
+token responses, contrary to OAuth 2.0. When \code{TRUE}, login and refresh assume
+\code{"Bearer"} only when the field is absent. Explicit null, empty, invalid, or
+unsupported values still fail validation. The fallback never applies to
+clients configured with DPoP; other token and binding checks remain enforced.}
 
 \item{jarm_signing_alg_values_supported}{Optional vector of JWS
 algorithms that the provider advertises for signed JWT Secured

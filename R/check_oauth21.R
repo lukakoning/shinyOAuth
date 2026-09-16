@@ -669,10 +669,21 @@ check_oauth21 <- function(
     scope = "external",
     evidence = "not_observed"
   )
+  missing_token_type_allowed <- isTRUE(provider@allow_missing_token_type) &&
+    !(has_client && client_has_dpop(client))
   add(
     "tokens.validation",
-    "pass",
-    "The package validates response scope syntax and token type, supports opaque tokens, and distinguishes granted scopes and estimated expiry.",
+    if (missing_token_type_allowed) "warn" else "pass",
+    if (missing_token_type_allowed) {
+      "Compatibility mode accepts token responses without the required token_type and assumes Bearer."
+    } else {
+      "The package validates response scope syntax and token type, supports opaque tokens, and distinguishes granted scopes and estimated expiry."
+    },
+    if (missing_token_type_allowed) {
+      "Disable allow_missing_token_type to require standard token responses."
+    } else {
+      ""
+    },
     section = "3.2.3",
     requirement = "info",
     evidence = "package_contract"
