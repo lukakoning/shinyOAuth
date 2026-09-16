@@ -70,6 +70,10 @@ cannot restore a disconnected grant. Operations are synchronous and do not yield
 or perform network calls. Atomicity applies to this R process only. A separate
 shared backend needs its own verified concurrency contract.
 }
+\examples{
+# Create once, outside server(), then supply to oauth_connections().
+store <- oauth_connection_store_memory(max_age = 8 * 3600, max_entries = 100)
+}
 \seealso{
 \code{\link[=oauth_client]{oauth_client()}}, \code{\link[=oauth_connection]{oauth_connection()}}
 }

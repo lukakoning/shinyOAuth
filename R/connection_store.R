@@ -46,6 +46,9 @@
 #' shared backend needs its own verified concurrency contract.
 #'
 #' @seealso [oauth_client()], [oauth_connection()]
+#' @examples
+#' # Create once, outside server(), then supply to oauth_connections().
+#' store <- oauth_connection_store_memory(max_age = 8 * 3600, max_entries = 100)
 #' @export
 oauth_connection_store_memory <- function(
   max_age = 28800,

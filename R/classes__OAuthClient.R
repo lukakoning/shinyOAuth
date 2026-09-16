@@ -511,6 +511,7 @@
 #'   remaining `exp` window at validation time. Applies only when
 #'   `response_mode` uses JARM.
 #'
+#' @return Calling the constructor creates an `OAuthClient` object.
 #' @example inst/examples/oauth_client.R
 #'
 #' @param introspect_elements Compatibility alias for `introspection_checks`.

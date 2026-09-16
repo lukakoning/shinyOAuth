@@ -458,6 +458,9 @@ for omitted revocation methods. Omitted introspection methods have no default.}
 
 \item{tls_client_certificate_bound_access_tokens}{Compatibility alias for \code{mtls_client_certificate_bound_access_tokens}.}
 }
+\value{
+Calling the constructor creates an \code{OAuthProvider} object.
+}
 \description{
 An \code{OAuthProvider} describes a service such as Google or GitHub: where users
 sign in, where your app requests tokens, and which checks to perform.

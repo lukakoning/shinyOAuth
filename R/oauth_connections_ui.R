@@ -45,6 +45,7 @@
 #' trusted; different ports or paths do not isolate their cookies. The wrapper
 #' adds no owner cookie for session-only or account retention.
 #' @seealso [oauth_browser_owner()], [oauth_ui()]
+#' @example inst/examples/oauth_connections.R
 #' @export
 oauth_connections_ui <- function(
   base_ui,

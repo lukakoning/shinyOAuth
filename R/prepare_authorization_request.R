@@ -34,6 +34,23 @@
 #'   character `name` and `value`. PAR expiry attributes are preserved as
 #'   documented in [prepare_call()]. The result contains transient authorization
 #'   data: do not log it or expose it to other browser sessions.
+#' @examples
+#' provider <- oauth_provider(
+#'   name = "Example service",
+#'   auth_url = "https://example.com/authorize",
+#'   token_url = "https://example.com/token",
+#'   token_auth_style = "public"
+#' )
+#' client <- oauth_client(
+#'   provider = provider,
+#'   client_id = "example-client",
+#'   redirect_uri = "http://127.0.0.1:8100/callback"
+#' )
+#' # In a custom browser flow, bind this secret to the initiating browser and
+#' # supply it again to handle_callback(). Shiny modules manage this for you.
+#' browser_token <- paste(format(openssl::rand_bytes(64)), collapse = "")
+#' request <- prepare_authorization_request(client, browser_token)
+#' request[["method"]]
 #' @export
 prepare_authorization_request <- function(
   client,

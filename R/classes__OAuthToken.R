@@ -91,6 +91,7 @@
 #' No automatic merging, resource fetching, or interpretation is performed.
 #' Both lists can contain sensitive data; keep them out of the UI and logs.
 #'
+#' @return Calling the constructor creates an `OAuthToken` object.
 #' @examples
 #' # Inside reactive server code, after a successful login:
 #' # auth[["token"]]@userinfo

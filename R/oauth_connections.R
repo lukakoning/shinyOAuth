@@ -70,6 +70,7 @@
 #' supports generic OAuth clients and the SMART discovery, scope and launch
 #' policies configured by [smart_client()].
 #' @seealso [oauth_connections_ui()], [oauth_connections_server()]
+#' @example inst/examples/oauth_connections.R
 #' @export
 oauth_connections <- function(
   clients,

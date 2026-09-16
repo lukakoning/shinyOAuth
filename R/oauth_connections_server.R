@@ -70,27 +70,7 @@
 #' Use this API inside its owning session's reactive context. Session setup
 #' requires a matching HTTP Origin on the Shiny request. Raw HTTP routes cannot
 #' import credentials or select an owner. The manager supports one R process.
-#' @examples
-#' \dontrun{
-#' # Outside server(), using clients with resource_bases already configured:
-#' clients <- list(hospital_a = client_a, hospital_b = client_b)
-#' manager <- oauth_connections(
-#'   clients, app_origin = "https://app.example", retention = "browser",
-#'   store = oauth_connection_store_memory(), owner = oauth_browser_owner(),
-#'   keys = deployment_keys
-#' )
-#' ui <- oauth_connections_ui(app_ui, "health", manager)
-#' server <- function(input, output, session) {
-#'   health <- oauth_connections_server("health", manager)
-#'   shiny::observeEvent(input[["connect"]], health[["connect"]](input[["client_name"]]))
-#'   data <- shiny::reactive({
-#'     connection <- health[["connection"]](input[["connection_id"]])
-#'     shiny::req(connection[["is_usable"]]())
-#'     connection[["request"]]("fhir", "Patient/123")
-#'   })
-#' }
-#' shiny::shinyApp(ui, server, uiPattern = ".*")
-#' }
+#' @example inst/examples/oauth_connections.R
 #' @export
 oauth_connections_server <- function(
   id,

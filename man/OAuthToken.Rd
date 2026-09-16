@@ -85,6 +85,9 @@ a connection to read it. Includes sensitive patient and identity references.}
 refreshes to distinguish unchanged grants from strict scope reductions.
 Empty for ordinary OAuth tokens. Set by SMART token processing.}
 }
+\value{
+Calling the constructor creates an \code{OAuthToken} object.
+}
 \description{
 An \code{OAuthToken} holds credentials and user information returned after login.
 The Shiny module supplies it as \code{auth[["token"]]}, and \code{\link[=handle_callback]{handle_callback()}} returns

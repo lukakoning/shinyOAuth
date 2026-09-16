@@ -367,6 +367,7 @@
 #'   may include a `cnf` claim with an `x5t#S256` thumbprint that downstream
 #'   requests must match with the same certificate.
 #'
+#' @return Calling the constructor creates an `OAuthProvider` object.
 #' @example inst/examples/oauth_provider.R
 #'
 #' @param allowed_algs Compatibility alias for `id_token_allowed_algs`.

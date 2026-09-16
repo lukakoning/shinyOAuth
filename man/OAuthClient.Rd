@@ -631,6 +631,9 @@ Leave the empty default for ordinary clients. This is not an argument to
 
 \item{authorization_request_nbf_skew}{Compatibility alias for \code{request_object_nbf_skew}.}
 }
+\value{
+Calling the constructor creates an \code{OAuthClient} object.
+}
 \description{
 An \code{OAuthClient} holds your app's registration with a provider: its client ID,
 credentials, return address, and requested permissions. It also holds the

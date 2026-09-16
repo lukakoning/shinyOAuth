@@ -51,6 +51,20 @@
 #' Size `max_entries` for that entire window, not only simultaneous Shiny sessions.
 #'
 #' @seealso [oauth_connection_store_memory()]
+#' @examples
+#' # Browser connections expire after 15 minutes idle or 8 hours in total.
+#' oauth_browser_owner(idle_timeout = 15 * 60, absolute_timeout = 8 * 3600)
+#'
+#' # Supply your application's trusted local-login validator for account retention.
+#' # It must revalidate the session on each call and return the documented fields.
+#' account_policy <- function(validate_local_session) {
+#'   oauth_account_owner(
+#'     resolver = validate_local_session,
+#'     idle_timeout = 15 * 60,
+#'     absolute_timeout = 8 * 3600,
+#'     reauth_after_seconds = 8 * 3600
+#'   )
+#' }
 #' @export
 oauth_browser_owner <- function(
   idle_timeout = 1800,

@@ -39,6 +39,19 @@
 #' to this response's top-level values. Other locations never add destinations.
 #' Malformed details or multiple entries matching this base are rejected.
 #' @seealso [smart_client()], [OAuthConnection]
+#' @examples
+#' # Call these helpers with an authorized connection in its owning Shiny session.
+#' # Reading the patient requires the corresponding patient or user read scope.
+#' read_current_patient <- function(connection) {
+#'   context <- smart_context(connection)
+#'   if (is.null(context[["patient"]])) return(NULL)
+#'   httr2::resp_body_json(smart_patient(connection))
+#' }
+#'
+#' # The signed-in user can be different from the patient whose chart is open.
+#' read_signed_in_user <- function(connection) {
+#'   httr2::resp_body_json(smart_fhir_user(connection))
+#' }
 #' @export
 smart_context <- function(connection) {
   if (!inherits(connection, "OAuthConnection")) {

@@ -59,3 +59,21 @@ callback size limits also apply. Configure
 your app's Content Security Policy \code{form-action} to allow the authorization
 endpoint. Custom callers must preserve browser binding and callback handling.
 }
+\examples{
+provider <- oauth_provider(
+  name = "Example service",
+  auth_url = "https://example.com/authorize",
+  token_url = "https://example.com/token",
+  token_auth_style = "public"
+)
+client <- oauth_client(
+  provider = provider,
+  client_id = "example-client",
+  redirect_uri = "http://127.0.0.1:8100/callback"
+)
+# In a custom browser flow, bind this secret to the initiating browser and
+# supply it again to handle_callback(). Shiny modules manage this for you.
+browser_token <- paste(format(openssl::rand_bytes(64)), collapse = "")
+request <- prepare_authorization_request(client, browser_token)
+request[["method"]]
+}
