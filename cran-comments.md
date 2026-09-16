@@ -9,12 +9,17 @@
 
 All six GitHub Actions checks: 0 errors | 0 warnings | 0 notes.
 
-Local R CMD check --as-cran: 0 errors | 0 warnings | 1 note:
+Local R CMD check --as-cran: 0 errors | 0 warnings | 0 notes.
 
-  unable to verify current time
+All tests (14,172 assertions), examples, vignette rebuilds, and PDF and HTML
+manuals passed. Following documentation-only changes, the final tarball was
+checked again with --as-cran --no-tests; the R code was unchanged.
 
-This environment note was the only local check issue. All tests, examples,
-vignette rebuilds, and PDF and HTML manuals passed.
+## URL checks
+
+urlchecker found no problems among the final source tarball's 98 distinct
+URLs, using the CRAN URL database for package sources, including rendered
+vignettes.
 
 ## Reverse dependency checks
 
