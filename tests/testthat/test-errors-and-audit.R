@@ -84,6 +84,43 @@ test_that("err_abort/err_pkce attach classes and trace ids", {
   )
 })
 
+test_that("invalid digest keys fail once without recursively auditing the failure", {
+  session <- shiny::MockShinySession[["new"]]()
+  withr::defer(session[["close"]]())
+  events <- list()
+  local_options(
+    shinyOAuth.otel_tracing_enabled = FALSE,
+    shinyOAuth.otel_logging_enabled = FALSE,
+    shinyOAuth.audit_hook = function(event) {
+      events[[length(events) + 1L]] <<- event
+    }
+  )
+  for (key in list("short", charToRaw("short"), 123)) {
+    local_options(shinyOAuth.audit_digest_key = key)
+    failures <- 0L
+    error <- tryCatch(
+      withCallingHandlers(
+        shiny::withReactiveDomain(session, string_digest("synthetic-value")),
+        error = function(e) {
+          failures <<- failures + 1L
+        }
+      ),
+      error = identity
+    )
+    expect_s3_class(error, "shinyOAuth_config_error")
+    expect_match(conditionMessage(error), "audit_digest_key")
+    expect_identical(failures, 1L)
+    expect_length(events, 0L)
+    expect_error(
+      audit_event(
+        "test_invalid_key",
+        shiny_session = list(token = "synthetic-session")
+      ),
+      class = "shinyOAuth_config_error"
+    )
+  }
+})
+
 test_that("err_http includes status and optional body when exposure enabled", {
   # Call err_http with NULL resp and ensure it still works
   expect_error(

@@ -68,6 +68,15 @@ audit_digest_key_env <- new.env(parent = emptyenv())
 #' @keywords internal
 #' @noRd
 get_audit_digest_key <- function() {
+  # Reporting this failure through err_config() would audit the error and
+  # request the same invalid key again while redacting session identifiers.
+  invalid_key <- function(message) {
+    rlang::abort(
+      format_condition_message("Configuration error", message),
+      class = c("shinyOAuth_config_error", "shinyOAuth_error"),
+      context = list()
+    )
+  }
   opt <- getOption("shinyOAuth.audit_digest_key")
 
   # Explicitly disable keying
@@ -83,7 +92,7 @@ get_audit_digest_key <- function() {
           is.na(opt) ||
           nchar(opt, type = "bytes") < 32L
       ) {
-        err_config(c(
+        invalid_key(c(
           "x" = "Invalid `shinyOAuth.audit_digest_key` option",
           "!" = "A configured character key must be one non-missing value of at least 32 bytes.",
           "i" = "Generate the key from at least 32 random bytes, or use FALSE to explicitly disable HMAC keying."
@@ -93,7 +102,7 @@ get_audit_digest_key <- function() {
     }
     if (is.raw(opt)) {
       if (length(opt) < 32L) {
-        err_config(c(
+        invalid_key(c(
           "x" = "Invalid `shinyOAuth.audit_digest_key` option",
           "!" = "A configured raw key must contain at least 32 bytes.",
           "i" = "Generate the key with a cryptographically secure random source."
@@ -101,7 +110,7 @@ get_audit_digest_key <- function() {
       }
       return(opt)
     }
-    err_config(c(
+    invalid_key(c(
       "x" = "Invalid `shinyOAuth.audit_digest_key` option",
       "!" = "The option must be a character scalar of at least 32 bytes, a raw vector of at least 32 bytes, or FALSE.",
       "i" = "Remove the option to use an auto-generated per-process key."
