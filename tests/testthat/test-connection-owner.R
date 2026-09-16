@@ -517,9 +517,16 @@ test_that("owner registries reject transfer to another R process", {
     owner_test_sessions()[["registry"]],
     account_owner_test_sessions()[["registry"]]
   )
+  package_path <- getNamespaceInfo(asNamespace("shinyOAuth"), "path")
+  installed <- file.exists(file.path(package_path, "Meta", "package.rds"))
   errors <- callr::r(
-    function(registries, root) {
-      pkgload::load_all(root, quiet = TRUE)
+    function(registries, path, installed) {
+      if (installed) {
+        loadNamespace("shinyOAuth", lib.loc = dirname(path))
+      } else {
+        pkgload::load_all(path, quiet = TRUE, helpers = FALSE)
+      }
+      registries <- unserialize(registries)
       vapply(
         registries,
         function(registry) {
@@ -534,7 +541,12 @@ test_that("owner registries reject transfer to another R process", {
         character(1)
       )
     },
-    args = list(registries = registries, root = testthat::test_path("../.."))
+    args = list(serialize(registries, NULL), package_path, installed),
+    libpath = if (installed) {
+      c(dirname(package_path), .libPaths())
+    } else {
+      .libPaths()
+    }
   )
   expect_true(all(grepl("process-local", errors, fixed = TRUE)))
 })

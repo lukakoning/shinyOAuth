@@ -24,9 +24,16 @@ test_that("captured sink warnings cannot reject successful async results", {
   )
   # Replay outside testthat's warning handlers so the strict policy really runs.
   replay <- function(wrapped) {
+    package_path <- getNamespaceInfo(asNamespace("shinyOAuth"), "path")
+    installed <- file.exists(file.path(package_path, "Meta", "package.rds"))
     callr::r(
-      function(wrapped, path) {
-        pkgload::load_all(path, quiet = TRUE, helpers = FALSE)
+      function(wrapped, path, installed) {
+        if (installed) {
+          loadNamespace("shinyOAuth", lib.loc = dirname(path))
+        } else {
+          pkgload::load_all(path, quiet = TRUE, helpers = FALSE)
+        }
+        wrapped <- unserialize(wrapped)
         options(warn = 2)
         list(
           value = tryCatch(
@@ -36,7 +43,12 @@ test_that("captured sink warnings cannot reject successful async results", {
           warn = getOption("warn")
         )
       },
-      args = list(wrapped, normalizePath(test_path("../..")))
+      args = list(serialize(wrapped, NULL), package_path, installed),
+      libpath = if (installed) {
+        c(dirname(package_path), .libPaths())
+      } else {
+        .libPaths()
+      }
     )
   }
   result <- replay(wrapped)
