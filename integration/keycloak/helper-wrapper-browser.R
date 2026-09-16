@@ -6,7 +6,7 @@ keycloak_wrapper_attack_app <- function(client, retained) {
       list(account = client),
       origin,
       retention = "browser",
-      owner = shinyOAuth::oauth_browser_owner(allow_http_loopback = TRUE),
+      owner_policy = shinyOAuth::oauth_browser_owner(allow_http_loopback = TRUE),
       store = shinyOAuth::oauth_connection_store_memory(),
       keys = list(
         credentials = openssl::rand_bytes(32),

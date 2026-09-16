@@ -121,7 +121,7 @@ manager <- oauth_connections(
   clients = list(hospital = client),
   app_origin = app_origin,
   retention = "browser",
-  owner = oauth_browser_owner(allow_http_loopback = TRUE),
+  owner_policy = oauth_browser_owner(allow_http_loopback = TRUE),
   store = oauth_connection_store_memory(),
   # Temporary keys for this local demo, created once at app startup.
   # For deployment, load independent 32-byte raw keys from secret storage.

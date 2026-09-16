@@ -64,7 +64,7 @@ retention_fixture_app <- function(
     origin,
     callback_policy = if (shared_issuer) "shared_routes" else "distinct_routes",
     retention = "browser",
-    owner = shinyOAuth::oauth_browser_owner(
+    owner_policy = shinyOAuth::oauth_browser_owner(
       idle_timeout = idle_timeout,
       absolute_timeout = 1200,
       same_site = same_site,

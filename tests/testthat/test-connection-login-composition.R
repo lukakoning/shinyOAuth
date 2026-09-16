@@ -32,7 +32,7 @@ for (base in c("/", "/app/")) {
       list(fhir = fhir),
       "https://app.example",
       retention = "browser",
-      owner = oauth_browser_owner(),
+      owner_policy = oauth_browser_owner(),
       store = oauth_connection_store_memory(),
       keys = list(
         credentials = openssl::rand_bytes(32),
@@ -231,7 +231,7 @@ for (post in c(FALSE, TRUE)) {
         list(fhir = fhir),
         "https://app.example",
         retention = "browser",
-        owner = oauth_browser_owner(),
+        owner_policy = oauth_browser_owner(),
         store = oauth_connection_store_memory(),
         keys = list(
           credentials = openssl::rand_bytes(32),

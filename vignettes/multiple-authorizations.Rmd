@@ -143,7 +143,7 @@ manager <- oauth_connections(
   clients,
   app_origin = app_origin,
   retention = "browser",
-  owner = oauth_browser_owner(allow_http_loopback = TRUE),
+  owner_policy = oauth_browser_owner(allow_http_loopback = TRUE),
   store = oauth_connection_store_memory(),
   keys = keys
 )
@@ -400,7 +400,7 @@ fhir_client <- smart_client(site, "registered-fhir-app", callbacks[[2]],
   authorization_server_mode = "multi_redirect_uri",
   authorization_server_redirect_uris = callbacks)
 manager <- oauth_connections(list(fhir = fhir_client), "https://app.example",
-  retention = "browser", owner = oauth_browser_owner(),
+  retention = "browser", owner_policy = oauth_browser_owner(),
   store = oauth_connection_store_memory(), keys = keys)
 base_ui <- fluidPage(actionButton("sign_in", "Sign in"),
   actionButton("connect_fhir", "Connect FHIR"))

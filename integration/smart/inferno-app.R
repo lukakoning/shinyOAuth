@@ -75,7 +75,7 @@ inferno_browser_app <- function(
     clients,
     origin,
     retention = "browser",
-    owner = shinyOAuth::oauth_browser_owner(),
+    owner_policy = shinyOAuth::oauth_browser_owner(),
     store = shinyOAuth::oauth_connection_store_memory(),
     keys = list(
       credentials = openssl::rand_bytes(32),

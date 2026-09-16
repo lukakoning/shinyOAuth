@@ -8,12 +8,12 @@
 oauth_connections(
   clients,
   app_origin,
-  callback_policy = "distinct_routes",
   retention = c("shiny", "browser", "account"),
+  retention_seconds = 28800,
+  owner_policy = NULL,
   store = NULL,
-  owner = NULL,
   keys = NULL,
-  retention_seconds = 28800
+  callback_policy = "distinct_routes"
 )
 
 \method{print}{OAuthConnections}(x, ...)
@@ -28,6 +28,26 @@ a letter followed by letters, digits, \verb{_} or \code{-}, at most 64 character
 HTTPS is required for retained owners, except an explicit browser-owner
 HTTP loopback exception. Session-only development also permits loopback HTTP.}
 
+\item{retention}{\code{"shiny"} (default) discards connections at Shiny session end.
+\code{"browser"} restores the browser owner's connections after navigation;
+\code{"account"} uses a trusted local application login. Retention does not request
+refresh tokens or extend provider authorization.}
+
+\item{retention_seconds}{Maximum lifetime of each stored grant, in seconds.
+Positive and finite, no larger than the store's \code{max_age}. Refresh never
+resets it. Browser retention is also capped by the owner's absolute expiry.}
+
+\item{owner_policy}{\code{\link[=oauth_browser_owner]{oauth_browser_owner()}} or \code{\link[=oauth_account_owner]{oauth_account_owner()}} matching the
+retained mode. Must be \code{NULL} for session-only retention.}
+
+\item{store}{A store from \code{\link[=oauth_connection_store_memory]{oauth_connection_store_memory()}}. Required for
+retained modes; session-only mode creates a memory store by default. This
+initial manager supports one R process and rejects external adapter claims.}
+
+\item{keys}{Named list with \code{credentials} and \code{owner}, each a deployment-held
+raw vector of 32 bytes. Required for retained modes. Session-only mode creates
+ephemeral keys if omitted. Keep these keys outside credential storage.}
+
 \item{callback_policy}{\code{"distinct_routes"} (default) gives each client its own
 registered callback route. With several clients, configure every client with
 \code{authorization_server_mode = "multi_redirect_uri"} and the complete set of
@@ -40,26 +60,6 @@ one issuer through a protected pending-state index. Both opt-in policies
 require explicit \code{authorization_server_mode = "multi_issuer"} clients, with
 RFC 9207 issuer responses or signed JARM. Encrypted JARM requires
 distinct routes. Routing never substitutes for callback authentication.}
-
-\item{retention}{\code{"shiny"} (default) discards connections at Shiny session end.
-\code{"browser"} restores the browser owner's connections after navigation;
-\code{"account"} uses a trusted local application login. Retention does not request
-refresh tokens or extend provider authorization.}
-
-\item{store}{A store from \code{\link[=oauth_connection_store_memory]{oauth_connection_store_memory()}}. Required for
-retained modes; session-only mode creates a memory store by default. This
-initial manager supports one R process and rejects external adapter claims.}
-
-\item{owner}{\code{\link[=oauth_browser_owner]{oauth_browser_owner()}} or \code{\link[=oauth_account_owner]{oauth_account_owner()}} matching the
-retained mode. Must be \code{NULL} for session-only retention.}
-
-\item{keys}{Named list with \code{credentials} and \code{owner}, each a deployment-held
-raw vector of 32 bytes. Required for retained modes. Session-only mode creates
-ephemeral keys if omitted. Keep these keys outside credential storage.}
-
-\item{retention_seconds}{Maximum lifetime of each stored grant, in seconds.
-Positive and finite, no larger than the store's \code{max_age}. Refresh never
-resets it. Browser retention is also capped by the owner's absolute expiry.}
 
 \item{x}{A connection manager to print.}
 

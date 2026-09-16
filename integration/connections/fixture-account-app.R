@@ -191,7 +191,7 @@ account_fixture_app <- function(
     clients,
     origin,
     retention = "account",
-    owner = shinyOAuth::oauth_account_owner(
+    owner_policy = shinyOAuth::oauth_account_owner(
       function(session) identity(session[["request"]]),
       idle_timeout = 300,
       absolute_timeout = 600,

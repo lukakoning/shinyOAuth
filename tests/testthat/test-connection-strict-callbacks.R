@@ -11,7 +11,7 @@ for (post in c(FALSE, TRUE)) {
           clients,
           "https://app.example",
           retention = "browser",
-          owner = oauth_browser_owner(same_site = "Strict"),
+          owner_policy = oauth_browser_owner(same_site = "Strict"),
           store = oauth_connection_store_memory(),
           keys = list(
             credentials = openssl::rand_bytes(32),

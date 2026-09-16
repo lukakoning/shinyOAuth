@@ -45,7 +45,7 @@
 #' @param store A store from [oauth_connection_store_memory()]. Required for
 #'   retained modes; session-only mode creates a memory store by default. This
 #'   initial manager supports one R process and rejects external adapter claims.
-#' @param owner [oauth_browser_owner()] or [oauth_account_owner()] matching the
+#' @param owner_policy [oauth_browser_owner()] or [oauth_account_owner()] matching the
 #'   retained mode. Must be `NULL` for session-only retention.
 #' @param keys Named list with `credentials` and `owner`, each a deployment-held
 #'   raw vector of 32 bytes. Required for retained modes. Session-only mode creates
@@ -74,13 +74,14 @@
 oauth_connections <- function(
   clients,
   app_origin,
-  callback_policy = "distinct_routes",
   retention = c("shiny", "browser", "account"),
+  retention_seconds = 28800,
+  owner_policy = NULL,
   store = NULL,
-  owner = NULL,
   keys = NULL,
-  retention_seconds = 28800
+  callback_policy = "distinct_routes"
 ) {
+  owner <- owner_policy
   retention <- match.arg(retention)
   if (
     !is_valid_string(callback_policy) ||

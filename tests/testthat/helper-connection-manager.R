@@ -72,7 +72,7 @@ manager_test_fixture <- function(
     "https://app.example",
     retention = retention,
     store = oauth_connection_store_memory(),
-    owner = owner,
+    owner_policy = owner,
     keys = list(
       credentials = openssl::rand_bytes(32L),
       owner = openssl::rand_bytes(32L)

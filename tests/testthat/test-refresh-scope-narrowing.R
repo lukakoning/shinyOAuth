@@ -54,7 +54,7 @@ narrowing_manager <- function() {
     list(a = client),
     "https://app.example",
     retention = "browser",
-    owner = oauth_browser_owner(),
+    owner_policy = oauth_browser_owner(),
     store = oauth_connection_store_memory(),
     keys = list(
       credentials = openssl::rand_bytes(32),
@@ -261,7 +261,7 @@ test_that("automatic SMART refresh retains server reductions across sessions", {
     list(a = client),
     "https://app.example",
     retention = "browser",
-    owner = oauth_browser_owner(),
+    owner_policy = oauth_browser_owner(),
     store = oauth_connection_store_memory(),
     keys = list(
       credentials = openssl::rand_bytes(32),

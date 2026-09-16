@@ -45,7 +45,7 @@ hospital <- smart_client(
 )
 manager <- oauth_connections(
   list(hospital = hospital), app_origin = "https://app.example",
-  retention = "browser", owner = oauth_browser_owner(),
+  retention = "browser", owner_policy = oauth_browser_owner(),
   store = oauth_connection_store_memory(),
   keys = deployment_keys # Protected 32-byte credentials and owner keys.
 )
