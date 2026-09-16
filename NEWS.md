@@ -41,8 +41,8 @@
   scopes and a positive lifetime; `initial_expires_in_fallback` can provide
   an explicit fallback for the initial response.
 
-* `OAuthToken` exposes additional token response parameters in `extra_fields`
-(#16). Each successful refresh replaces that list; `initial_extra_fields`
+* `OAuthToken` exposes additional token response parameters in `extra_fields`.
+Each successful refresh replaces that list; `initial_extra_fields`
 preserves the initial response. Both retain nested values and explicit nulls
 and are redacted when printed.
 
