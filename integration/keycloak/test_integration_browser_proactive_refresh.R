@@ -94,7 +94,7 @@ testthat::test_that("proactive refresh keeps session alive with short-lived toke
       # refresh happens ~3 seconds after obtaining the token)
       refresh_lead_seconds = 2,
       # Check frequently for refresh opportunities
-      refresh_check_interval = 500,
+      refresh_check_interval_ms = 500,
       # Disable auto-redirect so we can observe states
       auto_redirect = FALSE
     )

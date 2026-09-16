@@ -99,7 +99,7 @@
 #'
 #' @param refresh_lead_seconds Number of seconds before expiry to attempt
 #'  proactive refresh (default: 60)
-#' @param refresh_check_interval Fallback interval in milliseconds for checking
+#' @param refresh_check_interval_ms Fallback interval in milliseconds for checking
 #'   expiry and refresh (default 10000). Known expiry times are scheduled
 #'   directly; this interval is used as a safety check or when expiry is unknown
 #'   or infinite.
@@ -209,6 +209,7 @@
 #'
 #' @example inst/examples/oauth_module_server.R
 #'
+#' @param refresh_check_interval Compatibility alias for `refresh_check_interval_ms`. Supply only one spelling.
 #' @export
 #'
 #' @seealso [oauth_ui()], [oauth_client()], [OAuthToken], [oauth_form_post_ui()]
@@ -221,14 +222,19 @@ oauth_module_server <- function(
   reauth_after_seconds = NULL,
   refresh_proactively = FALSE,
   refresh_lead_seconds = 60,
-  refresh_check_interval = 10000,
+  refresh_check_interval_ms = 10000,
   revoke_on_session_end = FALSE,
   tab_title_cleaning = TRUE,
   tab_title_replacement = NULL,
   request_uri_base_url = NULL,
   browser_cookie_path = NULL,
-  browser_cookie_samesite = c("Strict", "Lax", "None")
-) {
+  browser_cookie_samesite = c("Strict", "Lax", "None"),
+  refresh_check_interval = NULL
+){
+  refresh_check_interval <- resolve_argument_alias(
+    refresh_check_interval_ms, refresh_check_interval, missing(refresh_check_interval_ms), missing(refresh_check_interval),
+    "refresh_check_interval_ms", "refresh_check_interval"
+  )
   oauth_module_server_impl(
     id = id,
     client = client,

@@ -57,7 +57,7 @@ smart_ehr_fixture_app <- function(
       "health",
       manager,
       async = async,
-      refresh_check_interval = 500
+      refresh_check_interval_ms = 500
     )
     result <- shiny::reactiveVal("ready")
     connection <- function(site) {

@@ -10,7 +10,7 @@ oauth_connections_server(
   async = FALSE,
   refresh_proactively = FALSE,
   refresh_lead_seconds = 60,
-  refresh_check_interval = 10000
+  refresh_check_interval_ms = 10000
 )
 }
 \arguments{
@@ -27,7 +27,7 @@ available. Otherwise the manager attempts refresh at expiry.}
 \item{refresh_lead_seconds}{Non-negative number of seconds before expiry used
 for proactive refresh. Background checks never extend owner inactivity limits.}
 
-\item{refresh_check_interval}{Positive polling interval in milliseconds, at
+\item{refresh_check_interval_ms}{Positive polling interval in milliseconds, at
 least 100. Safely retryable automatic refresh failures wait at least 30 seconds
 across all connections sharing the same refresh credential and registration;
 an uncertain refresh requires reconnecting.}
@@ -66,7 +66,7 @@ A new session obtains new references after owner verification. The existing
 module never holds managed tokens, so its refresh observers cannot compete with
 the manager. Refresh uses the store's revision and exclusive claim and preserves
 the original authentication time and retention expiry.
-Reactive connection reads also recheck expiry at \code{refresh_check_interval},
+Reactive connection reads also recheck expiry at \code{refresh_check_interval_ms},
 including references used without \code{connections()} or \code{errors()}. These checks
 notify dependent expressions when lifecycle state changes; unchanged polling
 does not rerun application requests or extend owner inactivity limits.

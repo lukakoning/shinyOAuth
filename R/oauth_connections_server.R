@@ -13,7 +13,7 @@
 #'   available. Otherwise the manager attempts refresh at expiry.
 #' @param refresh_lead_seconds Non-negative number of seconds before expiry used
 #'   for proactive refresh. Background checks never extend owner inactivity limits.
-#' @param refresh_check_interval Positive polling interval in milliseconds, at
+#' @param refresh_check_interval_ms Positive polling interval in milliseconds, at
 #'   least 100. Safely retryable automatic refresh failures wait at least 30 seconds
 #'   across all connections sharing the same refresh credential and registration;
 #'   an uncertain refresh requires reconnecting.
@@ -41,7 +41,7 @@
 #' module never holds managed tokens, so its refresh observers cannot compete with
 #' the manager. Refresh uses the store's revision and exclusive claim and preserves
 #' the original authentication time and retention expiry.
-#' Reactive connection reads also recheck expiry at `refresh_check_interval`,
+#' Reactive connection reads also recheck expiry at `refresh_check_interval_ms`,
 #' including references used without `connections()` or `errors()`. These checks
 #' notify dependent expressions when lifecycle state changes; unchanged polling
 #' does not rerun application requests or extend owner inactivity limits.
@@ -102,7 +102,7 @@ oauth_connections_server <- function(
   async = FALSE,
   refresh_proactively = FALSE,
   refresh_lead_seconds = 60,
-  refresh_check_interval = 10000
+  refresh_check_interval_ms = 10000
 ) {
   connection_manager_bind(manager, id)
   if (!isTRUE(manager[["state"]][["ui_bound"]])) {
@@ -115,10 +115,10 @@ oauth_connections_server <- function(
       length(refresh_lead_seconds) != 1L ||
       !is.finite(refresh_lead_seconds) ||
       refresh_lead_seconds < 0 ||
-      !is.numeric(refresh_check_interval) ||
-      length(refresh_check_interval) != 1L ||
-      !is.finite(refresh_check_interval) ||
-      refresh_check_interval < 100
+      !is.numeric(refresh_check_interval_ms) ||
+      length(refresh_check_interval_ms) != 1L ||
+      !is.finite(refresh_check_interval_ms) ||
+      refresh_check_interval_ms < 100
   ) {
     err_config("Invalid connection refresh timing")
   }
@@ -201,7 +201,7 @@ oauth_connections_server <- function(
     })
     shiny::observe({
       controller[["changed"]]()
-      shiny::invalidateLater(refresh_check_interval, session)
+      shiny::invalidateLater(refresh_check_interval_ms, session)
       rows <- tryCatch(controller[["records"]](), error = function(...) NULL)
       # Only lifecycle transitions invalidate reference consumers on a poll.
       # Explicit store changes notify this owner's consumers through changed().

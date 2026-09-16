@@ -74,6 +74,11 @@ validated issuer responses or distinct registered callback routes.
 `compare_callback_issuer` can check a supplied issuer without requiring older
 providers to send one; required issuer and JARM checks remain enforced.
 
+* Public helpers accept clearer argument names while retaining old names
+and positional calls:
+  - `oauth_module_server()` uses `refresh_check_interval_ms` to make the
+  polling interval's millisecond unit explicit.
+
 * Client and provider constructor arguments have been reorganized and renamed.
 Helper constructors retain compatibility aliases; low-level S7 constructors
 require the new names and should use named arguments. Client assertion keys,

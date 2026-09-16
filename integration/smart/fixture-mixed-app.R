@@ -110,7 +110,7 @@ smart_mixed_app <- function(
         async = async,
         refresh_proactively = TRUE,
         refresh_lead_seconds = 2,
-        refresh_check_interval = 250
+        refresh_check_interval_ms = 250
       )
     } else {
       NULL
