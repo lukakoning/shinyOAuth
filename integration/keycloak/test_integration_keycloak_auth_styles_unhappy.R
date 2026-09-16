@@ -147,7 +147,7 @@ testthat::test_that("client_secret_jwt: wrong client_secret is rejected (http_ e
   res <- shinyOAuth::introspect_token(
     client,
     tok,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   raw_failure <- perform_raw_introspection_request(client, token_value)
@@ -179,7 +179,7 @@ testthat::test_that("client_secret_jwt: mismatched alg is rejected by server", {
   res <- shinyOAuth::introspect_token(
     client,
     tok,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   raw_failure <- perform_raw_introspection_request(client, token_value)
@@ -212,7 +212,7 @@ testthat::test_that("private_key_jwt: wrong private key is rejected (http_ error
   res <- shinyOAuth::introspect_token(
     client,
     tok,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   raw_failure <- perform_raw_introspection_request(client, token_value)

@@ -25,7 +25,7 @@
 #'
 #' @param client [OAuthClient] object
 #' @param token [OAuthToken] object containing tokens to revoke
-#' @param which Which token to revoke: "refresh" (default) or "access"
+#' @param token_kind Which token to revoke: "refresh" (default) or "access"
 #' @param async If `TRUE`, return a promise resolving to the result.
 #'   Configure mirai daemons or a future plan first; mirai takes priority.
 #'   Use a non-sequential future plan to move work outside the main R process.
@@ -46,16 +46,22 @@
 #'
 #' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @param oauth_token Compatibility alias for `token`. Supply only one spelling.
+#' @param which Compatibility alias for `token_kind`. Supply only one spelling.
 #' @export
 revoke_token <- function(
   client,
   token,
-  which = c("refresh", "access"),
+  token_kind = c("refresh", "access"),
   async = FALSE,
   shiny_session = NULL,
   oauth_client = NULL,
-  oauth_token = NULL
+  oauth_token = NULL,
+  which = NULL
 ) {
+  which <- resolve_argument_alias(
+    token_kind, which, missing(token_kind), missing(which),
+    "token_kind", "which"
+  )
   oauth_token <- resolve_argument_alias(
     token, oauth_token, missing(token), missing(oauth_token),
     "token", "oauth_token"
@@ -70,7 +76,7 @@ revoke_token <- function(
     err_input("`async` must be a single non-NA logical.")
   }
 
-  which <- match.arg(which)
+  which <- match.arg(which, c("refresh", "access"))
   auth_client <- endpoint_auth_client(oauth_client, "revocation")
   async_attr <- isTRUE(tryCatch(
     shiny_session[["is_async"]],
@@ -319,7 +325,7 @@ revoke_token <- function(
 #'
 #' @param client [OAuthClient] object
 #' @param token [OAuthToken] object to introspect
-#' @param which Which token to introspect: "access" (default) or "refresh".
+#' @param token_kind Which token to introspect: "access" (default) or "refresh".
 #' @param async If `TRUE`, return a promise resolving to the result.
 #'   Configure mirai daemons or a future plan first; mirai takes priority.
 #'   Use a non-sequential future plan to move work outside the main R process.
@@ -342,17 +348,23 @@ revoke_token <- function(
 #'
 #' @param oauth_client Compatibility alias for `client`. Supply only one spelling.
 #' @param oauth_token Compatibility alias for `token`. Supply only one spelling.
+#' @param which Compatibility alias for `token_kind`. Supply only one spelling.
 #' @export
 
 introspect_token <- function(
   client,
   token,
-  which = c("access", "refresh"),
+  token_kind = c("access", "refresh"),
   async = FALSE,
   shiny_session = NULL,
   oauth_client = NULL,
-  oauth_token = NULL
+  oauth_token = NULL,
+  which = NULL
 ) {
+  which <- resolve_argument_alias(
+    token_kind, which, missing(token_kind), missing(which),
+    "token_kind", "which"
+  )
   oauth_token <- resolve_argument_alias(
     token, oauth_token, missing(token), missing(oauth_token),
     "token", "oauth_token"
@@ -368,7 +380,7 @@ introspect_token <- function(
     err_input("`async` must be a single non-NA logical.")
   }
 
-  which <- match.arg(which)
+  which <- match.arg(which, c("access", "refresh"))
   auth_client <- endpoint_auth_client(oauth_client, "introspection")
   async_attr <- isTRUE(tryCatch(
     shiny_session[["is_async"]],

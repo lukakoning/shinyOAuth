@@ -377,7 +377,7 @@ expect_par_outer_params_do_not_override <- function(client, expected_resource) {
       intros <- shinyOAuth::introspect_token(
         client,
         values[["token"]],
-        which = "access"
+        token_kind = "access"
       )
       token_aud <- normalize_claim_values(
         decode_compact_jwt_payload(values[["token"]]@access_token)[["aud"]] %||%

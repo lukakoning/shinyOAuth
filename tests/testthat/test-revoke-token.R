@@ -9,7 +9,7 @@ testthat::test_that("revoke_token handles unsupported and missing tokens", {
     expires_at = as.numeric(Sys.time()) + 60,
     id_token = NA_character_
   )
-  res <- revoke_token(cli, t, which = "access", async = FALSE)
+  res <- revoke_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_type(res, "list")
   testthat::expect_false(isTRUE(res[["supported"]]))
   testthat::expect_true(is.na(res[["revoked"]]))
@@ -23,7 +23,7 @@ testthat::test_that("revoke_token handles unsupported and missing tokens", {
     expires_at = as.numeric(Sys.time()) + 60,
     id_token = NA_character_
   )
-  res3 <- revoke_token(cli, t_missing_refresh, which = "refresh", async = FALSE)
+  res3 <- revoke_token(cli, t_missing_refresh, token_kind = "refresh", async = FALSE)
   testthat::expect_true(isTRUE(res3[["supported"]]))
   testthat::expect_true(is.na(res3[["revoked"]]))
   testthat::expect_identical(res3[["status"]], "missing_token")
@@ -51,7 +51,7 @@ testthat::test_that("revoke_token returns ok on 2xx and status on http error", {
     },
     .package = "shinyOAuth"
   )
-  res_err <- revoke_token(cli, t, which = "refresh", async = FALSE)
+  res_err <- revoke_token(cli, t, token_kind = "refresh", async = FALSE)
   testthat::expect_true(isTRUE(res_err[["supported"]]))
   testthat::expect_true(is.na(res_err[["revoked"]]))
   testthat::expect_identical(res_err[["status"]], "http_400")
@@ -68,7 +68,7 @@ testthat::test_that("revoke_token returns ok on 2xx and status on http error", {
     },
     .package = "shinyOAuth"
   )
-  res_ok <- revoke_token(cli, t, which = "access", async = FALSE)
+  res_ok <- revoke_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(isTRUE(res_ok[["supported"]]))
   testthat::expect_true(isTRUE(res_ok[["revoked"]]))
   testthat::expect_identical(res_ok[["status"]], "ok")
@@ -105,7 +105,7 @@ testthat::test_that("revoke_token async returns a resolved promise", {
   mirai::daemons(sync = TRUE)
   withr::defer(mirai::daemons(0))
 
-  p <- revoke_token(cli, t, which = "access", async = TRUE)
+  p <- revoke_token(cli, t, token_kind = "access", async = TRUE)
   # mirai objects implement as.promise() so convert explicitly
   p <- promises::as.promise(p)
   testthat::expect_s3_class(p, "promise")

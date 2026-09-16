@@ -42,7 +42,7 @@ test_that("SMART extension URLs never become credential destinations", {
     refresh_token = "example-refresh"
   )
   requests <- list()
-  result <- revoke_token(client, token, which = "refresh", async = FALSE)
+  result <- revoke_token(client, token, token_kind = "refresh", async = FALSE)
   expect_identical(result[["status"]], "revocation_unsupported")
   expect_false(result[["supported"]])
   expect_length(requests, 0L)
@@ -71,7 +71,7 @@ test_that("SMART extension URLs never become credential destinations", {
     client_secret = "example-client-secret"
   )
   requests <- list()
-  expect_true(revoke_token(client, token, which = "refresh", async = FALSE)[[
+  expect_true(revoke_token(client, token, token_kind = "refresh", async = FALSE)[[
     "revoked"
   ]])
   expect_length(requests, 1L)

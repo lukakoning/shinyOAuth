@@ -47,8 +47,8 @@ testthat::test_that("revoke and introspect apply extra_token_headers with identi
     .package = "shinyOAuth"
   )
 
-  revoke_token(cli, tok, which = "access", async = FALSE)
-  introspect_token(cli, tok, which = "access", async = FALSE)
+  revoke_token(cli, tok, token_kind = "access", async = FALSE)
+  introspect_token(cli, tok, token_kind = "access", async = FALSE)
 
   testthat::expect_false(is.null(captured_revoke_req))
   testthat::expect_false(is.null(captured_introspect_req))
@@ -123,8 +123,8 @@ testthat::test_that("reserved Authorization header in extra_token_headers is rej
   )
 
   # Both should succeed without errors when the header is unblocked
-  res_rev <- revoke_token(cli, tok, which = "access", async = FALSE)
-  res_int <- introspect_token(cli, tok, which = "access", async = FALSE)
+  res_rev <- revoke_token(cli, tok, token_kind = "access", async = FALSE)
+  res_int <- introspect_token(cli, tok, token_kind = "access", async = FALSE)
 
   testthat::expect_true(revoke_called)
   testthat::expect_true(introspect_called)
@@ -176,8 +176,8 @@ testthat::test_that("extra_token_headers with special characters are preserved",
     .package = "shinyOAuth"
   )
 
-  revoke_token(cli, tok, which = "access", async = FALSE)
-  introspect_token(cli, tok, which = "access", async = FALSE)
+  revoke_token(cli, tok, token_kind = "access", async = FALSE)
+  introspect_token(cli, tok, token_kind = "access", async = FALSE)
 
   # Verify headers pass through as-is for both operations
   testthat::expect_identical(
@@ -234,10 +234,10 @@ testthat::test_that("extra_token_headers include Content-Type without breaking b
   )
 
   # These should not error — the form body builder should take precedence
-  res_rev <- revoke_token(cli, tok, which = "access", async = FALSE)
+  res_rev <- revoke_token(cli, tok, token_kind = "access", async = FALSE)
   testthat::expect_identical(res_rev[["status"]], "ok")
 
-  res_intr <- introspect_token(cli, tok, which = "access", async = FALSE)
+  res_intr <- introspect_token(cli, tok, token_kind = "access", async = FALSE)
   testthat::expect_identical(res_intr[["status"]], "ok")
 })
 
@@ -277,8 +277,8 @@ testthat::test_that("revoke and introspect both apply add_req_defaults", {
     .package = "shinyOAuth"
   )
 
-  revoke_token(cli, tok, which = "access", async = FALSE)
-  introspect_token(cli, tok, which = "access", async = FALSE)
+  revoke_token(cli, tok, token_kind = "access", async = FALSE)
+  introspect_token(cli, tok, token_kind = "access", async = FALSE)
 
   testthat::expect_false(is.null(captured_revoke_req))
   testthat::expect_false(is.null(captured_introspect_req))

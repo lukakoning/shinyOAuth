@@ -403,7 +403,7 @@ connection_manager_revoke <- function(manager, client, token, deadline) {
       with_async_options(
         settings,
         {
-          response <- revoke_token(client, token, which = which)
+          response <- revoke_token(client, token, token_kind = which)
           if (isTRUE(response[["revoked"]])) {
             connection_credential_retire(manager, keys[which])
             "accepted"

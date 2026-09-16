@@ -31,7 +31,7 @@ testthat::test_that("explicit endpoint headers are sent on revoke requests", {
     .package = "shinyOAuth"
   )
 
-  res <- revoke_token(cli, tok, which = "access", async = FALSE)
+  res <- revoke_token(cli, tok, token_kind = "access", async = FALSE)
   testthat::expect_identical(res[["status"]], "ok")
   testthat::expect_true(isTRUE(res[["revoked"]]))
 
@@ -75,7 +75,7 @@ testthat::test_that("explicit endpoint headers are sent on introspect requests",
     .package = "shinyOAuth"
   )
 
-  res <- introspect_token(cli, tok, which = "access", async = FALSE)
+  res <- introspect_token(cli, tok, token_kind = "access", async = FALSE)
   testthat::expect_identical(res[["status"]], "ok")
   testthat::expect_true(isTRUE(res[["active"]]))
 
@@ -112,9 +112,9 @@ testthat::test_that("revoke and introspect work without extra_token_headers", {
   )
 
   # Both should succeed without errors when no extra headers are set
-  res_revoke <- revoke_token(cli, tok, which = "access", async = FALSE)
+  res_revoke <- revoke_token(cli, tok, token_kind = "access", async = FALSE)
   testthat::expect_identical(res_revoke[["status"]], "ok")
 
-  res_intro <- introspect_token(cli, tok, which = "access", async = FALSE)
+  res_intro <- introspect_token(cli, tok, token_kind = "access", async = FALSE)
   testthat::expect_identical(res_intro[["status"]], "ok")
 })

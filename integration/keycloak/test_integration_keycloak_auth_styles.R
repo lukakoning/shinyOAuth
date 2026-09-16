@@ -180,7 +180,7 @@ for (case in cases) {
       res <- shinyOAuth::introspect_token(
         client,
         tok,
-        which = "access",
+        token_kind = "access",
         async = FALSE
       )
 

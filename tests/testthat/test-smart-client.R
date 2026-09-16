@@ -377,7 +377,7 @@ test_that("SMART token authentication constraints leave other endpoints independ
   expect_no_error(revoke_token(
     client,
     OAuthToken(access_token = "example-access"),
-    which = "access"
+    token_kind = "access"
   ))
   expect_identical(seen[["options"]][["sslversion"]], 6L)
   expect_identical(

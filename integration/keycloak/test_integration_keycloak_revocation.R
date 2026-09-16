@@ -71,7 +71,7 @@ testthat::test_that("revoke_token invalidates access token (integration)", {
   tok <- shinyOAuth::OAuthToken(access_token = at)
 
   # 1) Introspect: token should be active
-  intros_before <- shinyOAuth::introspect_token(client, tok, which = "access")
+  intros_before <- shinyOAuth::introspect_token(client, tok, token_kind = "access")
   testthat::expect_true(isTRUE(intros_before[["supported"]]))
   testthat::expect_true(
     isTRUE(intros_before[["active"]]),
@@ -79,7 +79,7 @@ testthat::test_that("revoke_token invalidates access token (integration)", {
   )
 
   # 2) Revoke the access token
-  rev_result <- shinyOAuth::revoke_token(client, tok, which = "access")
+  rev_result <- shinyOAuth::revoke_token(client, tok, token_kind = "access")
   testthat::expect_true(isTRUE(rev_result[["supported"]]))
   testthat::expect_true(
     isTRUE(rev_result[["revoked"]]),
@@ -88,7 +88,7 @@ testthat::test_that("revoke_token invalidates access token (integration)", {
   testthat::expect_identical(rev_result[["status"]], "ok")
 
   # 3) Introspect again: token should no longer be active
-  intros_after <- shinyOAuth::introspect_token(client, tok, which = "access")
+  intros_after <- shinyOAuth::introspect_token(client, tok, token_kind = "access")
   testthat::expect_true(isTRUE(intros_after[["supported"]]))
   testthat::expect_false(
     isTRUE(intros_after[["active"]]),
@@ -138,13 +138,13 @@ testthat::test_that("revoke_token works with different auth styles (integration)
   intros_before <- shinyOAuth::introspect_token(
     client_body,
     tok,
-    which = "access"
+    token_kind = "access"
   )
   testthat::expect_true(isTRUE(intros_before[["active"]]))
 
   # Revoke with body auth style
 
-  rev_result <- shinyOAuth::revoke_token(client_body, tok, which = "access")
+  rev_result <- shinyOAuth::revoke_token(client_body, tok, token_kind = "access")
   testthat::expect_true(isTRUE(rev_result[["revoked"]]))
   testthat::expect_identical(rev_result[["status"]], "ok")
 
@@ -152,7 +152,7 @@ testthat::test_that("revoke_token works with different auth styles (integration)
   intros_after <- shinyOAuth::introspect_token(
     client_body,
     tok,
-    which = "access"
+    token_kind = "access"
   )
   testthat::expect_false(isTRUE(intros_after[["active"]]))
 })

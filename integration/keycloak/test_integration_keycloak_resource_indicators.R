@@ -214,7 +214,7 @@ testthat::test_that("Keycloak code flow accepts RFC 8707 resource indicators", {
   intros <- shinyOAuth::introspect_token(
     client,
     result[["token"]],
-    which = "access"
+    token_kind = "access"
   )
   testthat::expect_true(isTRUE(intros[["supported"]]))
   testthat::expect_true(isTRUE(intros[["active"]]))
@@ -253,7 +253,7 @@ testthat::test_that("audience-mapped Keycloak token is usable at an authenticate
   intros <- shinyOAuth::introspect_token(
     client,
     result[["token"]],
-    which = "access"
+    token_kind = "access"
   )
   aud <- access_token_audience(result[["token"]])
   intros_aud <- normalize_resource_audience(intros[["raw"]][["aud"]] %||% NULL)

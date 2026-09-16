@@ -137,7 +137,7 @@ testthat::test_that("revoking a Keycloak refresh token blocks future refresh", {
   rev_result <- shinyOAuth::revoke_token(
     client,
     login[["token"]],
-    which = "refresh"
+    token_kind = "refresh"
   )
   testthat::expect_true(isTRUE(rev_result[["supported"]]))
   testthat::expect_true(isTRUE(rev_result[["revoked"]]))

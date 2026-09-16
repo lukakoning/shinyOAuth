@@ -149,7 +149,7 @@ testthat::test_that("Keycloak introspection validates sub client_id and scope", 
   intros <- shinyOAuth::introspect_token(
     client,
     result[["token"]],
-    which = "access"
+    token_kind = "access"
   )
   raw <- intros[["raw"]] %||% list()
   intro_scopes <- strsplit(raw[["scope"]] %||% "", "\\s+")[[1]]
@@ -174,7 +174,7 @@ testthat::test_that("introspection client_id mix-up is rejected for a live token
   intros <- shinyOAuth::introspect_token(
     client,
     result[["token"]],
-    which = "access"
+    token_kind = "access"
   )
   testthat::expect_true(isTRUE(intros[["active"]]))
 

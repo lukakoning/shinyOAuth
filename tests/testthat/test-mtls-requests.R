@@ -1176,7 +1176,7 @@ test_that("revoke uses token cnf to choose mTLS alias without local thumbprint v
   revoked <- shinyOAuth::revoke_token(
     client,
     token,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
 
@@ -1243,7 +1243,7 @@ test_that("introspect uses token cnf to choose mTLS alias without local thumbpri
   inspected <- shinyOAuth::introspect_token(
     client,
     token,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
 
@@ -1836,13 +1836,13 @@ test_that("certificate-bound introspection and revocation use mTLS aliases witho
   introspection <- shinyOAuth::introspect_token(
     client,
     token,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   revocation <- shinyOAuth::revoke_token(
     client,
     token,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
 

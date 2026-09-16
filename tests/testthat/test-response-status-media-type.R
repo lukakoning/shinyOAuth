@@ -6,7 +6,7 @@ test_that("revocation requires 200 and never claims another status revoked a tok
     local_mocked_bindings(req_with_retry = function(...) {
       httr2::response(status = status, body = raw())
     })
-    result <- revoke_token(client, token, which = "access")
+    result <- revoke_token(client, token, token_kind = "access")
     if (status == 200L) {
       expect_true(result[["revoked"]])
     } else {
@@ -33,7 +33,7 @@ test_that("UserInfo and introspection reject JSON under unrelated media types", 
       body = charToRaw('{"active":true,"sub":"test"}')
     )
     local_mocked_bindings(req_with_retry = function(...) response)
-    result <- introspect_token(client, token, which = "access")
+    result <- introspect_token(client, token, token_kind = "access")
     expect_true(is.na(result[["active"]]))
     expect_identical(result[["status"]], "invalid_json")
     expect_error(get_userinfo(client, "opaque"))

@@ -9,7 +9,7 @@ testthat::test_that("introspect_token handles unsupported and missing tokens", {
     expires_at = as.numeric(Sys.time()) + 60,
     id_token = NA_character_
   )
-  res <- introspect_token(cli, t, which = "access", async = FALSE)
+  res <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_type(res, "list")
   testthat::expect_false(isTRUE(res[["supported"]]))
   testthat::expect_true(is.na(res[["active"]]))
@@ -26,7 +26,7 @@ testthat::test_that("introspect_token handles unsupported and missing tokens", {
   res3 <- introspect_token(
     cli,
     t_missing_refresh,
-    which = "refresh",
+    token_kind = "refresh",
     async = FALSE
   )
   testthat::expect_true(isTRUE(res3[["supported"]]))
@@ -56,7 +56,7 @@ testthat::test_that("introspect_token requires Boolean active values", {
     },
     .package = "shinyOAuth"
   )
-  res_err <- introspect_token(cli, t, which = "access", async = FALSE)
+  res_err <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(isTRUE(res_err[["supported"]]))
   testthat::expect_true(is.na(res_err[["active"]]))
   testthat::expect_match(res_err[["status"]], "^http_404$")
@@ -87,31 +87,31 @@ testthat::test_that("introspect_token requires Boolean active values", {
     .package = "shinyOAuth"
   )
   # true
-  r1 <- introspect_token(cli, t, which = "access", async = FALSE)
+  r1 <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(isTRUE(r1[["active"]]))
   # false
-  r2 <- introspect_token(cli, t, which = "access", async = FALSE)
+  r2 <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_false(isTRUE(r2[["active"]]))
   # Non-Boolean values fail closed.
-  r3 <- introspect_token(cli, t, which = "access", async = FALSE)
+  r3 <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(r3[["active"]]))
   testthat::expect_identical(r3[["status"]], "invalid_active")
-  r4 <- introspect_token(cli, t, which = "access", async = FALSE)
+  r4 <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(r4[["active"]]))
   testthat::expect_identical(r4[["status"]], "invalid_active")
-  r5 <- introspect_token(cli, t, which = "access", async = FALSE)
+  r5 <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(r5[["active"]]))
   testthat::expect_identical(r5[["status"]], "invalid_active")
-  r6 <- introspect_token(cli, t, which = "access", async = FALSE)
+  r6 <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(r6[["active"]]))
   testthat::expect_identical(r6[["status"]], "invalid_active")
   # missing field -> NA
-  r7 <- introspect_token(cli, t, which = "access", async = FALSE)
+  r7 <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(r7[["active"]]))
   testthat::expect_identical(r7[["status"]], "missing_active")
 
   # invalid JSON -> NA + descriptive status
-  r8 <- introspect_token(cli, t, which = "access", async = FALSE)
+  r8 <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(r8[["active"]]))
   testthat::expect_identical(r8[["status"]], "invalid_json")
 })
@@ -178,7 +178,7 @@ testthat::test_that("introspect_token treats duplicate active members as invalid
     .package = "shinyOAuth"
   )
 
-  res <- introspect_token(cli, t, which = "access", async = FALSE)
+  res <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(res[["active"]]))
   testthat::expect_identical(res[["status"]], "invalid_json")
 })
@@ -215,26 +215,26 @@ testthat::test_that("introspect_token rejects malformed JSON shapes", {
     .package = "shinyOAuth"
   )
 
-  top_level_array <- introspect_token(cli, t, which = "access", async = FALSE)
+  top_level_array <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(top_level_array[["active"]]))
   testthat::expect_identical(top_level_array[["status"]], "invalid_json")
 
-  top_level_scalar <- introspect_token(cli, t, which = "access", async = FALSE)
+  top_level_scalar <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(top_level_scalar[["active"]]))
   testthat::expect_identical(top_level_scalar[["status"]], "invalid_json")
 
-  active_array <- introspect_token(cli, t, which = "access", async = FALSE)
+  active_array <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(active_array[["active"]]))
   testthat::expect_identical(active_array[["status"]], "invalid_active")
 
-  active_object <- introspect_token(cli, t, which = "access", async = FALSE)
+  active_object <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(is.na(active_object[["active"]]))
   testthat::expect_identical(active_object[["status"]], "invalid_active")
 
   active_multi_string <- introspect_token(
     cli,
     t,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   testthat::expect_true(is.na(active_multi_string[["active"]]))
@@ -272,7 +272,7 @@ testthat::test_that("introspect_token async returns a resolved promise", {
   mirai::daemons(sync = TRUE)
   withr::defer(mirai::daemons(0))
 
-  p <- introspect_token(cli, t, which = "access", async = TRUE)
+  p <- introspect_token(cli, t, token_kind = "access", async = TRUE)
   # mirai objects implement as.promise() so convert explicitly
   p <- promises::as.promise(p)
   testthat::expect_s3_class(p, "promise")

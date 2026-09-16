@@ -1712,7 +1712,7 @@ otel_e2e("revoke_token sync emits revoke + HTTP child span", {
         shinyOAuth::revoke_token(
           cli,
           tok,
-          which = "access",
+          token_kind = "access",
           async = FALSE
         )
       }
@@ -1776,7 +1776,7 @@ otel_e2e("introspect_token HTTP span marked error on 500", {
         shinyOAuth::introspect_token(
           cli,
           tok,
-          which = "access",
+          token_kind = "access",
           async = FALSE
         )
       }

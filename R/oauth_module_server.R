@@ -697,7 +697,7 @@ oauth_module_server_impl <- function(
         revoke_token(
           client,
           tok,
-          which = "refresh",
+          token_kind = "refresh",
           async = use_async_revocation,
           shiny_session = shiny_session
         ),
@@ -707,7 +707,7 @@ oauth_module_server_impl <- function(
         revoke_token(
           client,
           tok,
-          which = "access",
+          token_kind = "access",
           async = use_async_revocation,
           shiny_session = shiny_session
         ),
@@ -940,7 +940,7 @@ oauth_module_server_impl <- function(
                 try(revoke_token(
                   client,
                   tok,
-                  which = "refresh",
+                  token_kind = "refresh",
                   async = use_async_revocation,
                   shiny_session = if (isTRUE(use_async_revocation)) {
                     captured_session_end_async_context
@@ -951,7 +951,7 @@ oauth_module_server_impl <- function(
                 try(revoke_token(
                   client,
                   tok,
-                  which = "access",
+                  token_kind = "access",
                   async = use_async_revocation,
                   shiny_session = if (isTRUE(use_async_revocation)) {
                     captured_session_end_async_context
@@ -1860,7 +1860,7 @@ oauth_module_server_impl <- function(
               try(revoke_token(
                 client,
                 tok,
-                which = "refresh",
+                token_kind = "refresh",
                 async = use_async_revocation,
                 shiny_session = if (isTRUE(use_async_revocation)) {
                   logout_async_shiny_session
@@ -1871,7 +1871,7 @@ oauth_module_server_impl <- function(
               try(revoke_token(
                 client,
                 tok,
-                which = "access",
+                token_kind = "access",
                 async = use_async_revocation,
                 shiny_session = if (isTRUE(use_async_revocation)) {
                   logout_async_shiny_session

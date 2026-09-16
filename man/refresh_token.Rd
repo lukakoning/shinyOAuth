@@ -141,6 +141,6 @@ if (interactive()) {
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.
-  result <- revoke_token(client, token, which = "refresh")
+  result <- revoke_token(client, token, token_kind = "refresh")
 }
 }

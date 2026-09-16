@@ -7,11 +7,12 @@
 introspect_token(
   client,
   token,
-  which = c("access", "refresh"),
+  token_kind = c("access", "refresh"),
   async = FALSE,
   shiny_session = NULL,
   oauth_client = NULL,
-  oauth_token = NULL
+  oauth_token = NULL,
+  which = NULL
 )
 }
 \arguments{
@@ -19,7 +20,7 @@ introspect_token(
 
 \item{token}{\link{OAuthToken} object to introspect}
 
-\item{which}{Which token to introspect: "access" (default) or "refresh".}
+\item{token_kind}{Which token to introspect: "access" (default) or "refresh".}
 
 \item{async}{If \code{TRUE}, return a promise resolving to the result.
 Configure mirai daemons or a future plan first; mirai takes priority.
@@ -32,6 +33,8 @@ Normally supplied by the module; leave \code{NULL} when calling directly.}
 \item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 
 \item{oauth_token}{Compatibility alias for \code{token}. Supply only one spelling.}
+
+\item{which}{Compatibility alias for \code{token_kind}. Supply only one spelling.}
 }
 \value{
 A list with fields:
@@ -91,6 +94,6 @@ if (interactive()) {
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.
-  result <- revoke_token(client, token, which = "refresh")
+  result <- revoke_token(client, token, token_kind = "refresh")
 }
 }

@@ -59,7 +59,7 @@ testthat::test_that("Keycloak discovery and introspection (integration)", {
   intros <- shinyOAuth::introspect_token(
     client,
     tok,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
 

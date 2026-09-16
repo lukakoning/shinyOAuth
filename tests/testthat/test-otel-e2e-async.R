@@ -1869,7 +1869,7 @@ otel_async_daemon("revoke_token async exports correlated spans from a real daemo
       shinyOAuth::revoke_token(
         cli,
         tok,
-        which = "access",
+        token_kind = "access",
         async = TRUE
       )
     ),
@@ -1962,7 +1962,7 @@ otel_async_daemon("introspect_token async exports correlated spans from a real d
       shinyOAuth::introspect_token(
         cli,
         tok,
-        which = "access",
+        token_kind = "access",
         async = TRUE
       )
     ),

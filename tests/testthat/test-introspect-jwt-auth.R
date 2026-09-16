@@ -31,7 +31,7 @@ testthat::test_that("introspect_token uses JWT client assertion for client_secre
     .package = "shinyOAuth"
   )
 
-  res <- introspect_token(cli, t, which = "access", async = FALSE)
+  res <- introspect_token(cli, t, token_kind = "access", async = FALSE)
   testthat::expect_true(isTRUE(res[["supported"]]))
   testthat::expect_true(isTRUE(res[["active"]]))
   testthat::expect_true(called)
@@ -72,7 +72,7 @@ testthat::test_that("introspect_token uses JWT client assertion for private_key_
     .package = "shinyOAuth"
   )
 
-  res <- introspect_token(cli, t, which = "refresh", async = FALSE)
+  res <- introspect_token(cli, t, token_kind = "refresh", async = FALSE)
   testthat::expect_true(isTRUE(res[["supported"]]))
   testthat::expect_true(isTRUE(res[["active"]]))
   testthat::expect_true(called)

@@ -304,7 +304,7 @@ run_strict_as <- function(alg) {
           shinyOAuth::revoke_token(
             configured,
             refreshed,
-            which = "access",
+            token_kind = "access",
             async = FALSE
           )[["revoked"]]
         )

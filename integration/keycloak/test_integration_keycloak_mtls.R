@@ -102,7 +102,7 @@ testthat::test_that("strict OIDC validation and mTLS work across the token lifec
   revoked <- shinyOAuth::revoke_token(
     client,
     refreshed,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   testthat::expect_true(revoked[["revoked"]])
@@ -847,7 +847,7 @@ testthat::test_that("Keycloak mTLS AS endpoints ignore local cnf mismatches on r
   introspection <- shinyOAuth::introspect_token(
     client,
     tampered_access_token,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   testthat::expect_true(isTRUE(introspection[["supported"]]))
@@ -857,7 +857,7 @@ testthat::test_that("Keycloak mTLS AS endpoints ignore local cnf mismatches on r
   revocation <- shinyOAuth::revoke_token(
     client,
     tampered_access_token,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   testthat::expect_true(isTRUE(revocation[["supported"]]))
@@ -967,7 +967,7 @@ testthat::test_that("Keycloak mTLS client-credentials flow issues certificate-bo
   introspection <- shinyOAuth::introspect_token(
     client,
     tok,
-    which = "access",
+    token_kind = "access",
     async = FALSE
   )
   testthat::expect_identical(introspection[["supported"]], TRUE)

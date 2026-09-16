@@ -430,7 +430,7 @@ test_that("client_assertion_audience overrides aud for introspection/revocation 
       )
     }
   )
-  res_revoke <- revoke_token(cli, tok, which = "access", async = FALSE)
+  res_revoke <- revoke_token(cli, tok, token_kind = "access", async = FALSE)
   expect_true(isTRUE(res_revoke[["supported"]]))
   expect_true(isTRUE(res_revoke[["revoked"]]))
   pl_revoke <- shinyOAuth:::parse_jwt_payload(
@@ -457,7 +457,7 @@ test_that("client_assertion_audience overrides aud for introspection/revocation 
       )
     }
   )
-  res_intro <- introspect_token(cli, tok, which = "access", async = FALSE)
+  res_intro <- introspect_token(cli, tok, token_kind = "access", async = FALSE)
   expect_true(isTRUE(res_intro[["supported"]]))
   expect_true(isTRUE(res_intro[["active"]]))
   pl_intro <- shinyOAuth:::parse_jwt_payload(
@@ -588,8 +588,8 @@ test_that("revocation and introspection retries rebuild JWT client assertions", 
     .package = "base"
   )
 
-  revoke_res <- revoke_token(cli, tok, which = "access", async = FALSE)
-  intro_res <- introspect_token(cli, tok, which = "access", async = FALSE)
+  revoke_res <- revoke_token(cli, tok, token_kind = "access", async = FALSE)
+  intro_res <- introspect_token(cli, tok, token_kind = "access", async = FALSE)
 
   expect_true(isTRUE(revoke_res[["revoked"]]))
   expect_true(isTRUE(intro_res[["active"]]))

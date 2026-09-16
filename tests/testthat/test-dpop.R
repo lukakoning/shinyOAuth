@@ -2440,8 +2440,8 @@ test_that("revoke_token and introspect_token skip DPoP proofs while get_userinfo
     userinfo = list()
   )
 
-  revoke_res <- revoke_token(cli, tok, which = "access")
-  intro_res <- introspect_token(cli, tok, which = "access")
+  revoke_res <- revoke_token(cli, tok, token_kind = "access")
+  intro_res <- introspect_token(cli, tok, token_kind = "access")
   userinfo <- get_userinfo(cli, token = "at-1", token_type = "DPoP")
 
   expect_true(isTRUE(revoke_res[["supported"]]))
