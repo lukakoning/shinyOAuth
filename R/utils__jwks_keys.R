@@ -693,7 +693,7 @@ validate_jwks <- function(
       if (
         is.null(operations) ||
           anyNA(operations) ||
-          any(!nzchar(operations)) ||
+          !all(nzchar(operations)) ||
           anyDuplicated(operations)
       ) {
         err_parse("JWK key_ops must contain unique operation strings")

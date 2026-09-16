@@ -360,7 +360,9 @@ validate_id_token <- function(
     err_id_token("ID token sub claim must be 1 to 255 ASCII characters")
   }
   payload <- normalize_authenticated_id_token_claims(
-    payload, issuer, signature_verified = !isTRUE(skip_signature)
+    payload,
+    issuer,
+    signature_verified = !isTRUE(skip_signature)
   )
   validate_oidc_standard_claim_types(payload, err_id_token, "ID token")
   # OIDC Core 12.2: During refresh, sub MUST match the original ID token's sub
@@ -583,7 +585,9 @@ validate_id_token <- function(
 # accommodation during validation and public claim access, only for an
 # authenticated Apple issuer. The compact signed JWT remains unchanged.
 normalize_authenticated_id_token_claims <- function(
-  payload, issuer, signature_verified
+  payload,
+  issuer,
+  signature_verified
 ) {
   if (
     isTRUE(signature_verified) &&
@@ -593,7 +597,10 @@ normalize_authenticated_id_token_claims <- function(
       length(payload[["email_verified"]]) == 1L &&
       payload[["email_verified"]] %in% c("true", "false")
   ) {
-    payload[["email_verified"]] <- identical(payload[["email_verified"]], "true")
+    payload[["email_verified"]] <- identical(
+      payload[["email_verified"]],
+      "true"
+    )
   }
   payload
 }

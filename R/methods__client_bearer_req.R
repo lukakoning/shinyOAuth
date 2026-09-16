@@ -826,8 +826,16 @@ validate_resource_request_policies <- function(req) {
   # curl applies these independently of req$method, sometimes after httr2's
   # method preparation. Even FALSE values can change the transmitted method.
   method_options <- c(
-    "customrequest", "nobody", "httpget", "post", "upload", "put",
-    "postfields", "copypostfields", "httppost", "mimepost"
+    "customrequest",
+    "nobody",
+    "httpget",
+    "post",
+    "upload",
+    "put",
+    "postfields",
+    "copypostfields",
+    "httppost",
+    "mimepost"
   )
   if (any(names(req[["options"]]) %in% method_options)) {
     err_input(

@@ -2,9 +2,16 @@ test_that("method-changing curl options are rejected before credentials", {
   base <- httr2::request("https://example.com/mutate") |>
     httr2::req_body_json(list(action = "create"))
   options <- list(
-    customrequest = "TRACE", nobody = FALSE, httpget = TRUE,
-    post = FALSE, upload = TRUE, put = TRUE, postfields = "action=create",
-    copypostfields = "action=create", httppost = list(), mimepost = list()
+    customrequest = "TRACE",
+    nobody = FALSE,
+    httpget = TRUE,
+    post = FALSE,
+    upload = TRUE,
+    put = TRUE,
+    postfields = "action=create",
+    copypostfields = "action=create",
+    httppost = list(),
+    mimepost = list()
   )
   for (name in names(options)) {
     req <- base
@@ -62,8 +69,12 @@ test_that("wire methods agree with DPoP and retry policy", {
     httr2::req_body_raw(base, "create")
   )) {
     expect_error(
-      perform_resource_req("fixture", httr2::req_method(req, "HEAD"),
-                           oauth_client = client, token_type = "DPoP"),
+      perform_resource_req(
+        "fixture",
+        httr2::req_method(req, "HEAD"),
+        oauth_client = client,
+        token_type = "DPoP"
+      ),
       "HEAD resource requests must not include a body"
     )
   }
@@ -72,14 +83,19 @@ test_that("wire methods agree with DPoP and retry policy", {
     req <- if (identical(method, "POST")) {
       httr2::req_body_json(base, list(action = "create"))
     } else {
-      if (identical(method, "HEAD")) httr2::req_method(base, method) else {
+      if (identical(method, "HEAD")) {
+        httr2::req_method(base, method)
+      } else {
         httr2::req_body_json(base, list(action = "create")) |>
           httr2::req_method(method)
       }
     }
     req <- httr2::req_headers(req, `X-Case` = method)
     response <- perform_resource_req(
-      "fixture", req, oauth_client = client, token_type = "DPoP"
+      "fixture",
+      req,
+      oauth_client = client,
+      token_type = "DPoP"
     )
     expect_identical(httr2::resp_status(response), 500L)
   }
@@ -89,7 +105,10 @@ test_that("wire methods agree with DPoP and retry policy", {
   evidence <- lapply(evidence, function(x) lapply(x, unlist, use.names = FALSE))
   labels <- vapply(evidence, function(x) x[["label"]], character(1))
   for (method in c("GET", "HEAD", "POST", "PATCH", "PUT", "DELETE")) {
-    expect_equal(sum(labels == method), if (method %in% c("POST", "PATCH")) 1 else 2)
+    expect_equal(
+      sum(labels == method),
+      if (method %in% c("POST", "PATCH")) 1 else 2
+    )
   }
   expect_length(evidence, 10L)
   for (entry in evidence) {

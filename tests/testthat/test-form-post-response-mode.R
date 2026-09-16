@@ -245,7 +245,10 @@ test_that("oauth_form_post_ui validates request_uri_resolver", {
 
 test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@redirect_uri <- paste0(cli@redirect_uri, "/mounted/app/callback?return_to=dashboard")
+  cli@redirect_uri <- paste0(
+    cli@redirect_uri,
+    "/mounted/app/callback?return_to=dashboard"
+  )
   ui <- oauth_form_post_ui(
     shiny::fluidPage(),
     id = "auth",
@@ -292,7 +295,11 @@ test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
   exchanges <- 0L
   local_mocked_bindings(swap_code_for_token_set = function(...) {
     exchanges <<- exchanges + 1L
-    list(access_token = "synthetic-access", token_type = "Bearer", expires_in = 3600)
+    list(
+      access_token = "synthetic-access",
+      token_type = "Bearer",
+      expires_in = 3600
+    )
   })
   shiny::testServer(
     oauth_module_server,
@@ -300,8 +307,10 @@ test_that("oauth_form_post_ui uses relative redirects for mounted callbacks", {
     {
       session[["setInputs"]](shinyOAuth_sid = valid_browser_token())
       session[["flushReact"]]()
-      values[[".process_query"]](resp[["headers"]][["Location"]],
-                                  current_uri = cli@redirect_uri)
+      values[[".process_query"]](
+        resp[["headers"]][["Location"]],
+        current_uri = cli@redirect_uri
+      )
       session[["flushReact"]]()
       expect_true(values[["authenticated"]])
       expect_null(values[["error"]])
@@ -358,13 +367,24 @@ test_that("oauth_form_post_ui strips compact response params from bridge redirec
 test_that("oauth_form_post_ui rejects contradictory public callback paths early", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   expect_error(
-    oauth_form_post_ui(shiny::fluidPage(), "auth", cli, callback_path = "/callback"),
-    "callback_path.*must match", class = "shinyOAuth_input_error"
+    oauth_form_post_ui(
+      shiny::fluidPage(),
+      "auth",
+      cli,
+      callback_path = "/callback"
+    ),
+    "callback_path.*must match",
+    class = "shinyOAuth_input_error"
   )
   cli@redirect_uri <- paste0(cli@redirect_uri, "/cb%2Fpart")
   expect_no_error(oauth_form_post_ui(shiny::fluidPage(), "auth", cli))
   expect_error(
-    oauth_form_post_ui(shiny::fluidPage(), "auth", cli, callback_path = "/cb/part"),
+    oauth_form_post_ui(
+      shiny::fluidPage(),
+      "auth",
+      cli,
+      callback_path = "/cb/part"
+    ),
     "callback_path.*must match"
   )
 })
