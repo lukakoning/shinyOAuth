@@ -28,7 +28,9 @@ it as the base request, still applies token authentication and request
 defaults, and then layers any explicit \code{method}, \code{headers}, \code{query}, and
 \code{follow_redirect} overrides on top.
 Inherited httr2 authentication, caching, and retry policies, and curl
-authentication options are rejected. Authenticated response caching is
+authentication or method-changing options are rejected. Use
+\code{\link[httr2:req_method]{httr2::req_method()}} and httr2 body helpers to configure the request.
+Authenticated response caching is
 unsupported. shinyOAuth owns retries; configure them with \code{idempotent}
 and the \verb{shinyOAuth.retry_*} options.}
 

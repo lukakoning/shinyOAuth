@@ -186,7 +186,9 @@ client_bearer_req <- function(
 #'   defaults, and then layers any explicit `method`, `headers`, `query`, and
 #'   `follow_redirect` overrides on top.
 #'   Inherited httr2 authentication, caching, and retry policies, and curl
-#'   authentication options are rejected. Authenticated response caching is
+#'   authentication or method-changing options are rejected. Use
+#'   [httr2::req_method()] and httr2 body helpers to configure the request.
+#'   Authenticated response caching is
 #'   unsupported. shinyOAuth owns retries; configure them with `idempotent`
 #'   and the `shinyOAuth.retry_*` options.
 #' @param idempotent Whether ordinary network/HTTP failures may be
@@ -236,10 +238,7 @@ perform_resource_req <- function(
   token_info <- prepared[["token_info"]]
 
   if (is.null(idempotent)) {
-    request_method <- tryCatch(
-      toupper(as.character(req[["method"]] %||% method)[[1]]),
-      error = function(...) "GET"
-    )
+    request_method <- req[["method"]]
     idempotent <- request_method %in%
       c(
         "GET",
@@ -359,6 +358,9 @@ prepare_client_bearer_request <- function(
   dpop_nonce = NULL,
   resource_hosts = NULL
 ) {
+  if (inherits(req, "httr2_request")) {
+    validate_resource_request_policies(req)
+  }
   request_method <- resolve_client_bearer_method(method = method, req = req)
   validate_client_bearer_method(method = request_method)
 
@@ -411,9 +413,9 @@ prepare_client_bearer_request <- function(
 
 #' Resolve the effective method of an httr2 request
 #'
-#' Mirrors httr2's request preparation rules so body-bearing requests without
-#' an explicit method are treated as POST before authentication and retry
-#' policy are applied.
+#' After rejecting low-level method-changing options, body-bearing requests
+#' without an explicit method are POST. The result is set explicitly on the
+#' request before authentication and retry policy are applied.
 #'
 #' @param method Optional explicit HTTP method override.
 #' @param req Optional httr2 request object.
@@ -431,11 +433,6 @@ resolve_client_bearer_method <- function(method = NULL, req = NULL) {
   request_method <- tryCatch(req[["method"]], error = function(...) NULL)
   if (is_valid_string(request_method)) {
     return(toupper(as.character(request_method)))
-  }
-
-  options <- tryCatch(req[["options"]], error = function(...) NULL)
-  if (is.list(options) && "nobody" %in% names(options)) {
-    return("HEAD")
   }
 
   body <- tryCatch(req[["body"]], error = function(...) NULL)
@@ -818,6 +815,17 @@ validate_resource_request_policies <- function(req) {
   if (any(names(req[["options"]]) %in% auth_options)) {
     err_input(
       "Prebuilt resource requests must not configure curl authentication"
+    )
+  }
+  # curl applies these independently of req$method, sometimes after httr2's
+  # method preparation. Even FALSE values can change the transmitted method.
+  method_options <- c(
+    "customrequest", "nobody", "httpget", "post", "upload", "put",
+    "postfields", "copypostfields", "httppost", "mimepost"
+  )
+  if (any(names(req[["options"]]) %in% method_options)) {
+    err_input(
+      "Prebuilt resource requests must not configure method-changing curl options; use httr2::req_method() and httr2 body helpers"
     )
   }
   invisible(TRUE)
