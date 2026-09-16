@@ -768,7 +768,7 @@ test_that("generic issuer keeps request-object front channels minimal", {
   provider <- make_jar_test_provider(
     authorization_request_front_channel_mode = "minimal"
   )
-  provider@issuer_thus_oidc <- FALSE
+  provider@infer_oidc_from_issuer <- FALSE
   request_cli <- make_jar_test_client(
     provider = provider,
     scopes = "profile"

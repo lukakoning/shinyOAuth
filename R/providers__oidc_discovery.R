@@ -401,7 +401,7 @@ oauth_provider_oidc_discover <- function(
     mtls_endpoint_aliases = mtls_endpoint_aliases,
     mtls_client_certificate_bound_access_tokens = tls_client_certificate_bound_access_tokens,
     issuer = iss,
-    issuer_thus_oidc = TRUE,
+    infer_oidc_from_issuer = TRUE,
     issuer_match = issuer_match,
     use_nonce = use_nonce,
     id_token_validation = id_token_validation,
@@ -418,8 +418,8 @@ oauth_provider_oidc_discover <- function(
   if (length(duplicate_dot_names) > 0) {
     provider_args[duplicate_dot_names] <- NULL
   }
-  provider_args[["issuer_thus_oidc"]] <- TRUE
-  dots[["issuer_thus_oidc"]] <- NULL
+  provider_args[["infer_oidc_from_issuer"]] <- TRUE
+  dots[["infer_oidc_from_issuer"]] <- NULL
 
   do.call(oauth_provider, c(provider_args, dots))
 }

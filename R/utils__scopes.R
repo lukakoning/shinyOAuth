@@ -242,11 +242,11 @@ provider_uses_oidc <- function(provider) {
   }
 
   issuer <- tryCatch(provider@issuer, error = function(...) NA_character_)
-  issuer_thus_oidc <- tryCatch(
-    isTRUE(provider@issuer_thus_oidc),
+  infer_oidc_from_issuer <- tryCatch(
+    isTRUE(provider@infer_oidc_from_issuer),
     error = function(...) TRUE
   )
-  is_valid_string(issuer) && issuer_thus_oidc
+  is_valid_string(issuer) && infer_oidc_from_issuer
 }
 
 #' Ensure openid scope for OIDC providers

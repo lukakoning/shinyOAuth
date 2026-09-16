@@ -46,7 +46,7 @@
 #'   and path. Use HTTPS in production.
 #'
 #' @param scopes Character vector of permissions to request. The provider defines
-#'   the available names. For OIDC (`issuer` set and `issuer_thus_oidc = TRUE`),
+#'   the available names. For OIDC (`issuer` set and `infer_oidc_from_issuer = TRUE`),
 #'   shinyOAuth adds `"openid"` automatically if absent. The resulting set is
 #'   used in the request and subsequent scope checks.
 #'

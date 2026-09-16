@@ -2,7 +2,7 @@ make_typed_assertion_client <- function(style = "client_secret_jwt", ...) {
   provider <- oauth_provider(
     name = "typed",
     issuer = "https://issuer.example",
-    issuer_thus_oidc = FALSE,
+    infer_oidc_from_issuer = FALSE,
     auth_url = "https://issuer.example/auth",
     token_url = "https://issuer.example/token",
     par_url = "https://issuer.example/par",

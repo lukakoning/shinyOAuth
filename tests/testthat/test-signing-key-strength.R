@@ -5,7 +5,7 @@ test_that("RSA signing keys are rejected below 2048 bits at construction", {
     provider <- oauth_provider(
       name = "strength",
       issuer = "https://example.com",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       auth_url = "https://example.com/auth",
       token_url = "https://example.com/token",
       id_token_validation = FALSE,

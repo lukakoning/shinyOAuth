@@ -87,7 +87,7 @@ test_that("issuer-driven OIDC can be disabled for generic OAuth metadata", {
     auth_url = "https://as.example/authorize",
     token_url = "https://as.example/token",
     issuer = "https://as.example",
-    issuer_thus_oidc = FALSE,
+    infer_oidc_from_issuer = FALSE,
     token_auth_style = "body"
   )
   client <- oauth_client(
@@ -98,7 +98,7 @@ test_that("issuer-driven OIDC can be disabled for generic OAuth metadata", {
     scopes = "read"
   )
 
-  expect_false(prov@issuer_thus_oidc)
+  expect_false(prov@infer_oidc_from_issuer)
   expect_false(prov@use_nonce)
   expect_false(prov@id_token_required)
   expect_false(prov@id_token_validation)
@@ -113,20 +113,20 @@ test_that("issuer enables OIDC by default", {
     issuer = "https://oidc.example"
   )
 
-  expect_true(prov@issuer_thus_oidc)
+  expect_true(prov@infer_oidc_from_issuer)
   expect_true(prov@use_nonce)
   expect_true(prov@id_token_required)
   expect_true(prov@id_token_validation)
 })
 
-test_that("issuer_thus_oidc must be a scalar non-NA logical", {
+test_that("infer_oidc_from_issuer must be a scalar non-NA logical", {
   expect_error(
     oauth_provider(
       name = "invalid-oidc-flag",
       auth_url = "https://example.com/authorize",
       token_url = "https://example.com/token",
       issuer = "https://example.com",
-      issuer_thus_oidc = NA
+      infer_oidc_from_issuer = NA
     ),
     class = "shinyOAuth_input_error"
   )
@@ -138,7 +138,7 @@ test_that("OIDC constructors preserve issuer-driven OIDC", {
     base_url = "https://oidc.example"
   )
 
-  expect_true(prov@issuer_thus_oidc)
+  expect_true(prov@infer_oidc_from_issuer)
   expect_true(prov@use_nonce)
   expect_true(prov@id_token_required)
   expect_true(prov@id_token_validation)

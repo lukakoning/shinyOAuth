@@ -34,7 +34,7 @@
 #'   issuer validation and features such as ID-token validation. shinyOAuth uses
 #'   it to verify issuer claims and locate signing keys (JWKS), typically
 #'   through an OIDC discovery document.
-#' @param issuer_thus_oidc Whether setting `issuer` enables OpenID Connect behavior.
+#' @param infer_oidc_from_issuer Whether setting `issuer` enables OpenID Connect behavior.
 #'   Default `TRUE`: helpers enable OIDC nonce/ID token defaults and the client
 #'   adds the `openid` scope. Set `FALSE` for an OAuth-only server that has an
 #'   issuer identifier but does not implement OIDC.
@@ -120,7 +120,7 @@
 #' require the client's scope to include `openid`.
 #'
 #' Both the S7 constructor and [oauth_provider()] enable this when an issuer
-#' is supplied and `issuer_thus_oidc = TRUE`. Pure OAuth 2.0 providers keep
+#' is supplied and `infer_oidc_from_issuer = TRUE`. Pure OAuth 2.0 providers keep
 #' this disabled by default.
 #'
 #' @param id_token_validation Whether to perform ID token validation after token exchange.
@@ -129,7 +129,7 @@
 #' the client's scope to include `openid`).
 #'
 #' Both the S7 constructor and [oauth_provider()] enable this when an issuer
-#' is provided and `issuer_thus_oidc = TRUE`. Set an explicit `FALSE` only
+#' is provided and `infer_oidc_from_issuer = TRUE`. Set an explicit `FALSE` only
 #' when intentionally opting out of ID token validation.
 #'
 #' @param id_token_at_hash_required Whether to require the `at_hash` (Access Token hash)
@@ -372,7 +372,7 @@ OAuthProvider <- S7::new_class(
     auth_url = S7::class_character,
     token_url = S7::class_character,
     issuer = S7::new_property(S7::class_character, default = NA_character_),
-    issuer_thus_oidc = S7::new_property(S7::class_logical, default = TRUE),
+    infer_oidc_from_issuer = S7::new_property(S7::class_logical, default = TRUE),
     issuer_match = S7::new_property(
       S7::class_character,
       default = "url"
@@ -385,7 +385,7 @@ OAuthProvider <- S7::new_class(
     pkce_method = S7::new_property(S7::class_character, default = "S256"),
     use_nonce = S7::new_property(
       S7::class_logical,
-      default = quote(is_valid_string(issuer) && isTRUE(issuer_thus_oidc))
+      default = quote(is_valid_string(issuer) && isTRUE(infer_oidc_from_issuer))
     ),
     userinfo_url = S7::new_property(
       S7::class_character,
@@ -406,11 +406,11 @@ OAuthProvider <- S7::new_class(
     ),
     id_token_required = S7::new_property(
       S7::class_logical,
-      default = quote(is_valid_string(issuer) && isTRUE(issuer_thus_oidc))
+      default = quote(is_valid_string(issuer) && isTRUE(infer_oidc_from_issuer))
     ),
     id_token_validation = S7::new_property(
       S7::class_logical,
-      default = quote(is_valid_string(issuer) && isTRUE(issuer_thus_oidc))
+      default = quote(is_valid_string(issuer) && isTRUE(infer_oidc_from_issuer))
     ),
     id_token_at_hash_required = S7::new_property(
       S7::class_logical,
@@ -613,7 +613,7 @@ normalize_optional_provider_boolean <- function(value, field) {
 #' @details
 #' Supply `name`, `auth_url`, and `token_url` to start. Add `userinfo_url` to
 #' fetch profiles. Supplying `issuer` enables OIDC defaults, including ID token
-#' validation, unless `issuer_thus_oidc = FALSE`. Advanced arguments must match
+#' validation, unless `infer_oidc_from_issuer = FALSE`. Advanced arguments must match
 #' your provider's capabilities; see the [advanced security vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html).
 #'
 #' @inheritParams OAuthProvider
@@ -630,7 +630,7 @@ oauth_provider <- function(
   auth_url,
   token_url,
   issuer = NA_character_,
-  issuer_thus_oidc = TRUE,
+  infer_oidc_from_issuer = TRUE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -924,15 +924,15 @@ oauth_provider <- function(
   }
 
   if (
-    !(is.logical(issuer_thus_oidc) &&
-      length(issuer_thus_oidc) == 1L &&
-      !is.na(issuer_thus_oidc))
+    !(is.logical(infer_oidc_from_issuer) &&
+      length(infer_oidc_from_issuer) == 1L &&
+      !is.na(infer_oidc_from_issuer))
   ) {
-    err_input("`issuer_thus_oidc` must be a single non-NA logical.")
+    err_input("`infer_oidc_from_issuer` must be a single non-NA logical.")
   }
 
   has_issuer <- is_valid_string(issuer)
-  uses_oidc <- has_issuer && isTRUE(issuer_thus_oidc)
+  uses_oidc <- has_issuer && isTRUE(infer_oidc_from_issuer)
   if (is.null(use_nonce)) {
     use_nonce <- uses_oidc
   }
@@ -1001,7 +1001,7 @@ oauth_provider <- function(
     auth_url = auth_url,
     token_url = token_url,
     issuer = issuer,
-    issuer_thus_oidc = issuer_thus_oidc,
+    infer_oidc_from_issuer = infer_oidc_from_issuer,
     issuer_match = issuer_match,
     token_auth_style = token_auth_style,
     use_pkce = use_pkce,
@@ -1141,11 +1141,11 @@ oauth_provider_validate <- function(self) {
     return("OAuthProvider: issuer_match must be 'url', 'host', or 'none'")
   }
   if (
-    length(self@issuer_thus_oidc) != 1L ||
-      is.na(self@issuer_thus_oidc)
+    length(self@infer_oidc_from_issuer) != 1L ||
+      is.na(self@infer_oidc_from_issuer)
   ) {
     return(
-      "OAuthProvider: issuer_thus_oidc must be a single non-NA logical"
+      "OAuthProvider: infer_oidc_from_issuer must be a single non-NA logical"
     )
   }
 
@@ -2052,13 +2052,13 @@ provider_fingerprint <- function(provider) {
   provider_prop <- function(name, default = NULL) {
     tryCatch(S7::prop(provider, name), error = function(...) default)
   }
-  issuer_thus_oidc <- tryCatch(
-    isTRUE(provider@issuer_thus_oidc),
+  infer_oidc_from_issuer <- tryCatch(
+    isTRUE(provider@infer_oidc_from_issuer),
     error = function(...) TRUE
   )
   components <- list(
     issuer = provider@issuer,
-    issuer_thus_oidc = issuer_thus_oidc,
+    infer_oidc_from_issuer = infer_oidc_from_issuer,
     oidc_max_age = provider_auth_max_age(provider) %||% NA_real_,
     auth_url = provider@auth_url,
     token_url = provider@token_url,

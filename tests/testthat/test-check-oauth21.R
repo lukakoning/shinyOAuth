@@ -122,7 +122,7 @@ test_that("JWT audience is mandatory while legacy typing remains an advisory", {
     list(
       token_auth_style = "client_secret_jwt",
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE
+      infer_oidc_from_issuer = FALSE
     ),
     client_secret = strrep("s", 32)
   )
@@ -161,7 +161,7 @@ test_that("endpoint scope and effective overrides agree with actual requests", {
     list(
       token_auth_style = "client_secret_jwt",
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       par_url = "https://issuer.example/par",
       revocation_url = "https://issuer.example/revoke",
       introspection_url = "https://issuer.example/introspect"
@@ -365,7 +365,7 @@ test_that("issuer participation respects single-server opt-out and advertised su
   client <- oauth21_test_client(
     list(
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       authorization_response_iss_parameter_supported = TRUE
     ),
     enforce_callback_issuer = FALSE
@@ -444,7 +444,7 @@ test_that("assessment recommendations preserve valid legacy configurations and i
       list(
         token_auth_style = style,
         issuer = "https://issuer.example",
-        issuer_thus_oidc = FALSE
+        infer_oidc_from_issuer = FALSE
       ),
       client_secret = strrep("s", 32),
       client_assertion_audience = "https://issuer.example"
@@ -582,7 +582,7 @@ test_that("assessment has no protocol, random, cache, object or option side effe
     list(
       token_auth_style = "client_secret_jwt",
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       auth_url = "https://issuer.example/auth?tenant=URL-SENTINEL"
     ),
     client_secret = "SECRET-SENTINEL-01234567890123456789",
@@ -648,7 +648,7 @@ test_that("JARM and validated OIDC policies are assessed when selected", {
   client <- oauth21_test_client(
     list(
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       jwks_uri = "https://issuer.example/jwks",
       jarm_signing_alg_values_supported = "RS256"
     ),
@@ -689,7 +689,7 @@ test_that("HMAC-only JARM needs no JWKS but independent key operations still do"
   client <- oauth21_test_client(
     list(
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       jarm_signing_alg_values_supported = c("HS256", "RS256")
     ),
     client_secret = strrep("s", 32),
@@ -761,7 +761,7 @@ test_that("encrypted Request Objects assess the actual recipient key source with
   withr::local_options(shinyOAuth.tls_min_version = "1.2")
   key <- openssl::rsa_keygen()
   client <- oauth21_test_client(
-    list(issuer = "https://issuer.example", issuer_thus_oidc = FALSE),
+    list(issuer = "https://issuer.example", infer_oidc_from_issuer = FALSE),
     request_object_mode = "request",
     client_assertion_private_key = key,
     client_assertion_alg = "RS256",
@@ -800,7 +800,7 @@ test_that("private-key assessment does not probe signatures or require optional 
   client <- oauth21_test_client(
     list(
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       token_auth_style = "private_key_jwt"
     ),
     client_assertion_private_key = openssl::ec_keygen(),
@@ -832,7 +832,7 @@ test_that("assessment canonicalizes local HMAC algorithm names for every endpoin
   client <- oauth21_test_client(
     list(
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       token_auth_style = "client_secret_jwt",
       token_endpoint_auth_signing_alg_values_supported = "HS256",
       introspection_url = "https://issuer.example/introspect",
@@ -873,7 +873,7 @@ test_that("assessment checks private-key endpoint overrides without signing", {
   client <- oauth21_test_client(
     list(
       issuer = "https://issuer.example",
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       introspection_url = "https://issuer.example/introspect"
     ),
     introspect = TRUE,

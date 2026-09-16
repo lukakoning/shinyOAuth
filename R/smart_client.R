@@ -315,7 +315,7 @@ smart_client <- function(
     auth_url = metadata[["authorization_endpoint"]],
     token_url = metadata[["token_endpoint"]],
     issuer = metadata[["issuer"]] %||% NA_character_,
-    issuer_thus_oidc = oidc,
+    infer_oidc_from_issuer = oidc,
     issuer_match = "url",
     token_auth_style = token_auth_style,
     use_pkce = TRUE,

@@ -37,7 +37,7 @@ router_fixture <- function(
     provider <- oauth_provider(
       name = id,
       issuer = issuer,
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       auth_url = paste0(issuer, "/authorize"),
       token_url = paste0(issuer, "/token"),
       par_url = if (par) paste0(issuer, "/par") else NA_character_,

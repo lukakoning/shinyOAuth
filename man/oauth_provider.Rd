@@ -9,7 +9,7 @@ oauth_provider(
   auth_url,
   token_url,
   issuer = NA_character_,
-  issuer_thus_oidc = TRUE,
+  infer_oidc_from_issuer = TRUE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
@@ -79,7 +79,7 @@ issuer validation and features such as ID-token validation. shinyOAuth uses
 it to verify issuer claims and locate signing keys (JWKS), typically
 through an OIDC discovery document.}
 
-\item{issuer_thus_oidc}{Whether setting \code{issuer} enables OpenID Connect behavior.
+\item{infer_oidc_from_issuer}{Whether setting \code{issuer} enables OpenID Connect behavior.
 Default \code{TRUE}: helpers enable OIDC nonce/ID token defaults and the client
 adds the \code{openid} scope. Set \code{FALSE} for an OAuth-only server that has an
 issuer identifier but does not implement OIDC.}
@@ -169,7 +169,7 @@ will fail. This only makes sense for OpenID Connect providers and may
 require the client's scope to include \code{openid}.
 
 Both the S7 constructor and \code{\link[=oauth_provider]{oauth_provider()}} enable this when an issuer
-is supplied and \code{issuer_thus_oidc = TRUE}. Pure OAuth 2.0 providers keep
+is supplied and \code{infer_oidc_from_issuer = TRUE}. Pure OAuth 2.0 providers keep
 this disabled by default.}
 
 \item{id_token_validation}{Whether to perform ID token validation after token exchange.
@@ -178,7 +178,7 @@ This requires the provider to be a valid OpenID Connect provider with a configur
 the client's scope to include \code{openid}).
 
 Both the S7 constructor and \code{\link[=oauth_provider]{oauth_provider()}} enable this when an issuer
-is provided and \code{issuer_thus_oidc = TRUE}. Set an explicit \code{FALSE} only
+is provided and \code{infer_oidc_from_issuer = TRUE}. Set an explicit \code{FALSE} only
 when intentionally opting out of ID token validation.}
 
 \item{id_token_at_hash_required}{Whether to require the \code{at_hash} (Access Token hash)
@@ -453,7 +453,7 @@ for OIDC, \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discove
 \details{
 Supply \code{name}, \code{auth_url}, and \code{token_url} to start. Add \code{userinfo_url} to
 fetch profiles. Supplying \code{issuer} enables OIDC defaults, including ID token
-validation, unless \code{issuer_thus_oidc = FALSE}. Advanced arguments must match
+validation, unless \code{infer_oidc_from_issuer = FALSE}. Advanced arguments must match
 your provider's capabilities; see the \href{https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html}{advanced security vignette}.
 }
 \examples{

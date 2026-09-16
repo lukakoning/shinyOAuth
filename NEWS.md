@@ -94,7 +94,7 @@ mTLS, Request Object, and JARM settings use `client_assertion_*`, `mtls_*`,
   helper constructors and reject malformed security and assurance settings.
 
 * Provider configuration changes:
-  - `issuer_thus_oidc = FALSE` allows generic OAuth issuer validation without
+  - `infer_oidc_from_issuer = FALSE` allows generic OAuth issuer validation without
   enabling OIDC; the default remains `TRUE`.
   - An explicit `jwks_uri` overrides discovery across signing-key consumers.
   Missing or disallowed required key locations fail during configuration.

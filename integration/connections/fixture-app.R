@@ -24,7 +24,7 @@ retention_fixture_app <- function(
       auth_url = paste0(base, "/authorize"),
       token_url = paste0(base, "/token"),
       revocation_url = paste0(base, "/revoke"),
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       token_auth_style = "public",
       use_nonce = FALSE
     )

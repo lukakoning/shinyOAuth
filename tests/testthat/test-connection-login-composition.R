@@ -9,7 +9,7 @@ for (base in c("/", "/app/")) {
       oauth_provider(
         name = "Login",
         issuer = "https://login.example",
-        issuer_thus_oidc = FALSE,
+        infer_oidc_from_issuer = FALSE,
         auth_url = "https://login.example/authorize",
         token_url = "https://login.example/token",
         token_auth_style = "public"
@@ -207,7 +207,7 @@ for (post in c(FALSE, TRUE)) {
         oauth_provider(
           name = "Login",
           issuer = "https://login.example",
-          issuer_thus_oidc = FALSE,
+          infer_oidc_from_issuer = FALSE,
           auth_url = "https://login.example/authorize",
           token_url = "https://login.example/token",
           token_auth_style = "public"

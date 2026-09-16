@@ -11,7 +11,7 @@ make_mixup_route_client <- function(
     auth_url = paste0(issuer, "/authorize"),
     token_url = paste0(issuer, "/token"),
     issuer = issuer,
-    issuer_thus_oidc = FALSE,
+    infer_oidc_from_issuer = FALSE,
     authorization_response_iss_parameter_supported = FALSE,
     id_token_validation = FALSE,
     id_token_required = FALSE,

@@ -17,9 +17,9 @@ test_that("raw provider defaults preserve issuer-derived security policies", {
       expect_identical(S7::prop(raw, field), S7::prop(helper, field))
     }
   }
-  args[["issuer_thus_oidc"]] <- FALSE
+  args[["infer_oidc_from_issuer"]] <- FALSE
   expect_false(do.call(OAuthProvider, args)@id_token_required)
-  args[["issuer_thus_oidc"]] <- TRUE
+  args[["infer_oidc_from_issuer"]] <- TRUE
   args[["use_nonce"]] <- FALSE
   expect_false(do.call(OAuthProvider, args)@use_nonce)
 })

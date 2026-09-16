@@ -14,7 +14,7 @@ registry_test_clients <- function(
     provider <- oauth_provider(
       name = paste0("provider", i),
       issuer = issuer,
-      issuer_thus_oidc = FALSE,
+      infer_oidc_from_issuer = FALSE,
       auth_url = paste0(issuer, "/authorize"),
       token_url = paste0(issuer, "/token"),
       token_auth_style = "public",

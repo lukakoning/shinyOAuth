@@ -18,7 +18,7 @@ is_scalar_logical <- function(value) {
 #' @noRd
 oauth_provider_boolean_fields <- function() {
   c(
-    "issuer_thus_oidc",
+    "infer_oidc_from_issuer",
     "use_pkce",
     "use_nonce",
     "userinfo_required",

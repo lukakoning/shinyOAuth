@@ -183,7 +183,7 @@ test_that("get_userinfo allows missing sub when issuer-driven OIDC is off", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
   cli@provider@issuer <- "https://example.com"
-  cli@provider@issuer_thus_oidc <- FALSE
+  cli@provider@infer_oidc_from_issuer <- FALSE
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {

@@ -85,7 +85,7 @@ callback URL registered with your provider, including scheme, host, port,
 and path. Use HTTPS in production.}
 
 \item{scopes}{Character vector of permissions to request. The provider defines
-the available names. For OIDC (\code{issuer} set and \code{issuer_thus_oidc = TRUE}),
+the available names. For OIDC (\code{issuer} set and \code{infer_oidc_from_issuer = TRUE}),
 shinyOAuth adds \code{"openid"} automatically if absent. The resulting set is
 used in the request and subsequent scope checks.}
 

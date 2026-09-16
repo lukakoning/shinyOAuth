@@ -9,19 +9,19 @@ OAuthProvider(
   auth_url = character(0),
   token_url = character(0),
   issuer = NA_character_,
-  issuer_thus_oidc = TRUE,
+  infer_oidc_from_issuer = TRUE,
   issuer_match = "url",
   token_auth_style = "header",
   use_pkce = TRUE,
   pkce_method = "S256",
-  use_nonce = is_valid_string(issuer) && isTRUE(issuer_thus_oidc),
+  use_nonce = is_valid_string(issuer) && isTRUE(infer_oidc_from_issuer),
   userinfo_url = NA_character_,
   userinfo_required = FALSE,
   userinfo_id_selector = function(userinfo) userinfo[["sub"]],
   userinfo_id_token_match = FALSE,
   userinfo_signed_jwt_required = FALSE,
-  id_token_required = is_valid_string(issuer) && isTRUE(issuer_thus_oidc),
-  id_token_validation = is_valid_string(issuer) && isTRUE(issuer_thus_oidc),
+  id_token_required = is_valid_string(issuer) && isTRUE(infer_oidc_from_issuer),
+  id_token_validation = is_valid_string(issuer) && isTRUE(infer_oidc_from_issuer),
   id_token_at_hash_required = FALSE,
   introspection_url = NA_character_,
   revocation_url = NA_character_,
@@ -77,7 +77,7 @@ issuer validation and features such as ID-token validation. shinyOAuth uses
 it to verify issuer claims and locate signing keys (JWKS), typically
 through an OIDC discovery document.}
 
-\item{issuer_thus_oidc}{Whether setting \code{issuer} enables OpenID Connect behavior.
+\item{infer_oidc_from_issuer}{Whether setting \code{issuer} enables OpenID Connect behavior.
 Default \code{TRUE}: helpers enable OIDC nonce/ID token defaults and the client
 adds the \code{openid} scope. Set \code{FALSE} for an OAuth-only server that has an
 issuer identifier but does not implement OIDC.}
@@ -167,7 +167,7 @@ will fail. This only makes sense for OpenID Connect providers and may
 require the client's scope to include \code{openid}.
 
 Both the S7 constructor and \code{\link[=oauth_provider]{oauth_provider()}} enable this when an issuer
-is supplied and \code{issuer_thus_oidc = TRUE}. Pure OAuth 2.0 providers keep
+is supplied and \code{infer_oidc_from_issuer = TRUE}. Pure OAuth 2.0 providers keep
 this disabled by default.}
 
 \item{id_token_validation}{Whether to perform ID token validation after token exchange.
@@ -176,7 +176,7 @@ This requires the provider to be a valid OpenID Connect provider with a configur
 the client's scope to include \code{openid}).
 
 Both the S7 constructor and \code{\link[=oauth_provider]{oauth_provider()}} enable this when an issuer
-is provided and \code{issuer_thus_oidc = TRUE}. Set an explicit \code{FALSE} only
+is provided and \code{infer_oidc_from_issuer = TRUE}. Set an explicit \code{FALSE} only
 when intentionally opting out of ID token validation.}
 
 \item{id_token_at_hash_required}{Whether to require the \code{at_hash} (Access Token hash)
