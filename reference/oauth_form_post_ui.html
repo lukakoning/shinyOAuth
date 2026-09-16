@@ -93,7 +93,9 @@ the <code>id</code> argument passed to the server module.</p></dd>
 
 <dt id="arg-callback-path">callback_path<a class="anchor" aria-label="anchor" href="#arg-callback-path"></a></dt>
 <dd><p>Optional URL path to accept POST callbacks on. Defaults
-to the path component of <code>client@redirect_uri</code>.</p></dd>
+to the path component of <code>client@redirect_uri</code> and must match it when supplied.
+This is the public callback path; use <code>request_uri_resolver</code> to map a trusted
+proxy's backend path to the registered public URI.</p></dd>
 
 
 <dt id="arg-request-uri-resolver">request_uri_resolver<a class="anchor" aria-label="anchor" href="#arg-request-uri-resolver"></a></dt>

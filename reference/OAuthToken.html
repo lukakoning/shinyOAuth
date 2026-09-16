@@ -190,7 +190,10 @@ cannot be decoded.</p>
 <p>Note: <code>id_token_claims</code> always decodes the JWT payload regardless
 of whether the ID token's signature was verified.
 Check the <code>id_token_validated</code> property to determine whether the claims
-were cryptographically validated.</p>
+were cryptographically validated.
+For validated Apple ID tokens, exact <code>"true"</code>/<code>"false"</code> strings in
+<code>email_verified</code> are returned as logical values, as during validation.
+The original signed <code>id_token</code> is retained unchanged.</p>
 <p>Additional response parameters retain their parsed names and values,
 including nested lists and explicit JSON <code>null</code> values (R <code>NULL</code>). Use
 <code>"custom_field" %in% names(token@extra_fields)</code> to distinguish an absent field

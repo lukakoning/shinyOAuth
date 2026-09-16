@@ -145,7 +145,10 @@ present or if the token cannot be decoded.
 Note: `id_token_claims` always decodes the JWT payload regardless of
 whether the ID token's signature was verified. Check the
 `id_token_validated` property to determine whether the claims were
-cryptographically validated.
+cryptographically validated. For validated Apple ID tokens, exact
+`"true"`/`"false"` strings in `email_verified` are returned as logical
+values, as during validation. The original signed `id_token` is retained
+unchanged.
 
 Additional response parameters retain their parsed names and values,
 including nested lists and explicit JSON `null` values (R `NULL`). Use

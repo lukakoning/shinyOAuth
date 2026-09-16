@@ -44,7 +44,9 @@ oauth_form_post_ui(
 - callback_path:
 
   Optional URL path to accept POST callbacks on. Defaults to the path
-  component of `client@redirect_uri`.
+  component of `client@redirect_uri` and must match it when supplied.
+  This is the public callback path; use `request_uri_resolver` to map a
+  trusted proxy's backend path to the registered public URI.
 
 - request_uri_resolver:
 
