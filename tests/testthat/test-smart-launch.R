@@ -399,7 +399,11 @@ for (delay in c(121, 301)) {
         } else {
           expect_false(hooks[["validate"]](context))
           expect_error(callback(), class = "shinyOAuth_state_error")
-          expect_length(ctl[["records"]](), 0L)
+          expect_error(ctl[["records"]](), "owner is unavailable")
+          expect_length(
+            f[["manager"]][["store"]][["list"]](context[["owner"]]),
+            0L
+          )
         }
       }
     )

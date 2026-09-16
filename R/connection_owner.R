@@ -19,10 +19,12 @@
 #'   localhost or a loopback address. Default `FALSE` requires HTTPS. The exception
 #'   cannot provide a Secure, host-prefixed owner cookie.
 #' @param max_entries Maximum owner-registry entries per manager, a positive
-#'   whole number. Browser mode counts recently visiting browsers, including
-#'   visitors that never authorize a service. Account mode counts authentication
-#'   generations, including retired generations until their local reauthentication
-#'   deadline. This limit is independent of the connection store's `max_entries`.
+#'   whole number. Browser mode counts browsers that authorize a service. A
+#'   separate provisional visitor pool has the same limit; its oldest entries
+#'   may be replaced and expire after at most five minutes. Account mode counts
+#'   authentication generations, including retired generations until their local
+#'   reauthentication deadline. This limit is independent of the connection
+#'   store's `max_entries`.
 #' @return An `OAuthOwnerPolicy` configuration object. Browser policies use an
 #'   opaque server-issued cookie and server-side owner registry. Account policies
 #'   use the trusted local-session resolver described below.
@@ -40,8 +42,8 @@
 #' cleanup after logout. An external provider login cannot
 #' establish a local owner or implicitly link browser connections to an account.
 #'
-#' A full owner registry rejects new owners without evicting live sessions or
-#' retirement records. Browser session end does not release ownership; logout or
+#' A full owner registry rejects new retained owners without evicting live
+#' sessions or retirement records. Browser session end does not release ownership; logout or
 #' idle/absolute expiry does. Account logout retains its retired generation until
 #' `authenticated_at + reauth_after_seconds` so it cannot be enrolled again.
 #' Size `max_entries` for that entire window, not only simultaneous Shiny sessions.
@@ -314,6 +316,8 @@ connection_browser_sessions <- function(
     }
     if (
       at >= record[["expires_at"]] ||
+        (!isTRUE(record[["retained"]]) &&
+          at >= record[["provisional_until"]]) ||
         at >= record[["last_seen"]] + policy[["idle_timeout"]]
     ) {
       expire(id)
@@ -369,19 +373,58 @@ connection_browser_sessions <- function(
     cookies[[record[["cookie_digest"]]]] <- record[["id"]]
     list(cookie = cookie, owner = snapshot(record))
   }
-  create <- function() {
-    at <- now()
+  prune <- function() {
     for (id in ls(owners, all.names = TRUE)) {
       current(id)
     }
-    if (length(owners) >= max_entries) {
+  }
+  retained_count <- function() {
+    sum(vapply(
+      as.list(owners),
+      function(x) isTRUE(x[["retained"]]),
+      logical(1)
+    ))
+  }
+  retain <- function(owner) {
+    if (is.null(validate(owner))) {
+      err_token("Owner session is unavailable")
+    }
+    record <- current(owner[["id"]])
+    if (!isTRUE(record[["retained"]])) {
+      prune()
+      if (retained_count() >= max_entries) {
+        err_token("Owner session capacity reached")
+      }
+      record[["retained"]] <- TRUE
+      record[["last_seen"]] <- now()
+      owners[[owner[["id"]]]] <- record
+    }
+    snapshot(record)
+  }
+  create <- function(provisional = FALSE) {
+    at <- now()
+    prune()
+    if (!provisional && retained_count() >= max_entries) {
       err_token("Owner session capacity reached")
+    }
+    if (provisional) {
+      visitors <- Filter(function(x) !isTRUE(x[["retained"]]), as.list(owners))
+      if (length(visitors) >= max_entries) {
+        oldest <- which.min(vapply(
+          visitors,
+          function(x) x[["created_at"]],
+          numeric(1)
+        ))
+        expire(names(visitors)[[oldest]])
+      }
     }
     issue(list(
       id = random_urlsafe(32L),
       generation = random_urlsafe(32L),
       created_at = at,
       last_seen = at,
+      retained = !provisional,
+      provisional_until = at + min(300, policy[["absolute_timeout"]]),
       expires_at = at + policy[["absolute_timeout"]]
     ))
   }
@@ -407,6 +450,7 @@ connection_browser_sessions <- function(
     cookie_name = cookie_name,
     origin = origin,
     create = create,
+    retain = retain,
     resolve = resolve,
     validate = validate,
     rotate = rotate,

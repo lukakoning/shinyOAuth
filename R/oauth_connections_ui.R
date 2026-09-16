@@ -251,7 +251,7 @@ oauth_connections_ui <- function(
             isTRUE(response[["status"]] == 200L) &&
             grepl("^text/html", response[["content_type"]], ignore.case = TRUE)
         ) {
-          created <- owners[["create"]]()
+          created <- owners[["create"]](provisional = TRUE)
           # Preserve independent Set-Cookie headers from a request-dependent UI.
           response[["headers"]] <- c(
             response[["headers"]],

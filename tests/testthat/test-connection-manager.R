@@ -277,7 +277,6 @@ test_that("browser UI establishes and clears cookies only at the ordinary HTTP b
 test_that("browser owner capacity is configurable independently of the store", {
   f <- manager_test_fixture(owner = oauth_browser_owner(max_entries = 1L))
   cookie <- manager_test_cookie(f)
-  expect_identical(f[["ui"]](manager_test_request())[["status"]], 400L)
   shiny::testServer(
     oauth_connections_server,
     args = list(id = "health", manager = f[["manager"]]),
@@ -285,6 +284,10 @@ test_that("browser owner capacity is configurable independently of the store", {
     {
       id <- manager_test_accept(controller)
       health <- session[["getReturned"]]()
+      expect_identical(health[["connection"]](id)[["is_usable"]](), TRUE)
+      for (i in seq_len(5L)) {
+        expect_equal(f[["ui"]](manager_test_request())[["status"]], 200L)
+      }
       expect_identical(health[["connection"]](id)[["is_usable"]](), TRUE)
       health[["logout"]](revoke = FALSE, reload = FALSE)
     }

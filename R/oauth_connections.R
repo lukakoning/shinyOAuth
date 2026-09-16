@@ -678,6 +678,9 @@ connection_manager_controller <- function(manager, session) {
     }
     # The store mutation does not yield. Cancel the ticket before attempting the
     # commit so a failed/uncertain backend result cannot be blindly imported again.
+    if (manager[["retention"]] == "browser") {
+      state[["owners"]][["retain"]](owner)
+    }
     cancel(context)
     record <- store[["create"]](
       owner[["id"]],

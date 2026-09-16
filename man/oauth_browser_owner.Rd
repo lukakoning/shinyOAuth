@@ -42,10 +42,12 @@ localhost or a loopback address. Default \code{FALSE} requires HTTPS. The except
 cannot provide a Secure, host-prefixed owner cookie.}
 
 \item{max_entries}{Maximum owner-registry entries per manager, a positive
-whole number. Browser mode counts recently visiting browsers, including
-visitors that never authorize a service. Account mode counts authentication
-generations, including retired generations until their local reauthentication
-deadline. This limit is independent of the connection store's \code{max_entries}.}
+whole number. Browser mode counts browsers that authorize a service. A
+separate provisional visitor pool has the same limit; its oldest entries
+may be replaced and expire after at most five minutes. Account mode counts
+authentication generations, including retired generations until their local
+reauthentication deadline. This limit is independent of the connection
+store's \code{max_entries}.}
 
 \item{resolver}{Trusted application function accepting the current Shiny
 session. On every call it must validate the application's local login and
@@ -89,8 +91,8 @@ commit, with no grace period for pending authorization, and handles credential
 cleanup after logout. An external provider login cannot
 establish a local owner or implicitly link browser connections to an account.
 
-A full owner registry rejects new owners without evicting live sessions or
-retirement records. Browser session end does not release ownership; logout or
+A full owner registry rejects new retained owners without evicting live
+sessions or retirement records. Browser session end does not release ownership; logout or
 idle/absolute expiry does. Account logout retains its retired generation until
 \code{authenticated_at + reauth_after_seconds} so it cannot be enrolled again.
 Size \code{max_entries} for that entire window, not only simultaneous Shiny sessions.

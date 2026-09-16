@@ -297,7 +297,7 @@ smart_launch_http <- function(req, uri, manager, routes, app_base, handler) {
           "Referrer-Policy" = "no-referrer"
         )
         if (is.null(owner)) {
-          created <- owners[["create"]]()
+          created <- owners[["create"]](provisional = TRUE)
           owner <- owners[["resolve"]](created[["cookie"]])
           headers[["Set-Cookie"]] <- connection_owner_cookie_header(
             owners[["cookie_name"]],
