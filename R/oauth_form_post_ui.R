@@ -62,7 +62,9 @@
 #' [OAuthClient] object used by [oauth_module_server()].
 #' @param callback_path
 #' Optional URL path to accept POST callbacks on. Defaults
-#' to the path component of `client@redirect_uri`.
+#' to the path component of `client@redirect_uri` and must match it when supplied.
+#' This is the public callback path; use `request_uri_resolver` to map a trusted
+#' proxy's backend path to the registered public URI.
 #' @param request_uri_resolver
 #' Optional function accepting the Rook `req` environment and returning the
 #' trusted, public absolute request URI without relying on query parameters.
@@ -111,6 +113,9 @@ oauth_form_post_ui <- function(
   callback_path <- normalize_oauth_form_post_callback_path(
     callback_path %||% oauth_form_post_redirect_path(client)
   )
+  if (!identical(callback_path, oauth_form_post_redirect_path(client))) {
+    err_input("`callback_path` must match the public path of client@redirect_uri.")
+  }
   if (is.null(request_uri_resolver)) {
     request_uri_resolver <- oauth_form_post_request_uri
   } else if (!is.function(request_uri_resolver)) {
@@ -214,9 +219,8 @@ oauth_form_post_id_param <- "shinyOAuth_form_post_id"
 # 2 Request handling ------------------------------------------------------------
 
 oauth_form_post_redirect_path <- function(client) {
-  parsed <- httr2::url_parse(client@redirect_uri)
   normalize_oauth_form_post_callback_path(
-    parsed[["path"]] %||% "/"
+    url_raw_path(client@redirect_uri)
   )
 }
 
@@ -323,9 +327,8 @@ oauth_form_post_request_matches <- function(
   if (is.null(actual) || is.null(expected)) {
     return(FALSE)
   }
-  expected[["path"]] <- callback_path
-
-  identical(actual, expected) &&
+  identical(expected[["path"]], callback_path) &&
+    identical(actual, expected) &&
     oauth_callback_fixed_query_matches(
       req[["QUERY_STRING"]] %||% "",
       oauth_callback_uri_query(redirect_uri)

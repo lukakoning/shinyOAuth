@@ -22,7 +22,9 @@ the \code{id} argument passed to the server module.}
 \item{client}{\link{OAuthClient} object used by \code{\link[=oauth_module_server]{oauth_module_server()}}.}
 
 \item{callback_path}{Optional URL path to accept POST callbacks on. Defaults
-to the path component of \code{client@redirect_uri}.}
+to the path component of \code{client@redirect_uri} and must match it when supplied.
+This is the public callback path; use \code{request_uri_resolver} to map a trusted
+proxy's backend path to the registered public URI.}
 
 \item{request_uri_resolver}{Optional function accepting the Rook \code{req} environment and returning the
 trusted, public absolute request URI without relying on query parameters.
