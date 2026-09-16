@@ -6,6 +6,7 @@ articles:
   navbar: ~
   contents:
   - usage
+  - provider-setup
   - multiple-authorizations
   - smart-on-fhir
   - example-spotify

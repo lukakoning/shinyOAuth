@@ -1,3 +1,13 @@
+# shinyOAuth (development version)
+
+* Added provider helpers for ORCID (production and sandbox), GitLab (hosted
+  and self-managed), Amazon Cognito, Globus Auth, Hugging Face, SURFconext
+  (production and test), and authentik. The provider setup vignette covers
+  client registration, scopes, and a reusable Shiny example.
+* The Globus preset supports OIDC login with RS512 signatures. Additional
+  resource-server tokens remain available through `OAuthToken@extra_fields`;
+  automatic management of Globus multi-resource grants is not included.
+
 # shinyOAuth 0.6.0
 
 * Added optional connections for apps using one or more OAuth authorizations:
