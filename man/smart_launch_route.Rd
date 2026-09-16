@@ -4,7 +4,7 @@
 \alias{smart_launch_route}
 \title{Register a SMART EHR launch entry route}
 \usage{
-smart_launch_route(path, clients, max_age = 120)
+smart_launch_route(path, client_names, max_age = 120)
 }
 \arguments{
 \item{path}{Absolute application path, such as \code{"/smart/launch"}. Register
@@ -12,7 +12,7 @@ smart_launch_route(path, clients, max_age = 120)
 \code{app_base_path} and distinct from every callback and other launch route.
 Accepted percent-encoded unreserved characters are stored decoded.}
 
-\item{clients}{Character vector of names from the manager's \code{clients} list,
+\item{client_names}{Character vector of names from the manager's \code{clients} list,
 not OAuth \code{client_id} values. Each must select an EHR-mode \code{\link[=smart_client]{smart_client()}}.
 A route cannot contain two registrations for the
 same exact FHIR base; give those registrations separate launch routes.}

@@ -15,7 +15,7 @@
 #'   `paste0(manager[["app_origin"]], path)` with the EHR. It must be inside the UI's
 #'   `app_base_path` and distinct from every callback and other launch route.
 #'   Accepted percent-encoded unreserved characters are stored decoded.
-#' @param clients Character vector of names from the manager's `clients` list,
+#' @param client_names Character vector of names from the manager's `clients` list,
 #'   not OAuth `client_id` values. Each must select an EHR-mode [smart_client()].
 #'   A route cannot contain two registrations for the
 #'   same exact FHIR base; give those registrations separate launch routes.
@@ -58,18 +58,18 @@
 #'   launch_routes = list(smart_launch_route("/smart/launch", "hospital")))
 #' }
 #' @export
-smart_launch_route <- function(path, clients, max_age = 120) {
+smart_launch_route <- function(path, client_names, max_age = 120) {
   if (
     !is_valid_string(path) ||
       !startsWith(path, "/") ||
       nchar(path, type = "bytes") > 8192L ||
       grepl("[?#[:space:][:cntrl:]]", path) ||
-      !is.character(clients) ||
-      !length(clients) ||
-      length(clients) > 64L ||
-      anyNA(clients) ||
-      anyDuplicated(clients) ||
-      !all(grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", clients)) ||
+      !is.character(client_names) ||
+      !length(client_names) ||
+      length(client_names) > 64L ||
+      anyNA(client_names) ||
+      anyDuplicated(client_names) ||
+      !all(grepl("^[A-Za-z][A-Za-z0-9_-]{0,63}$", client_names)) ||
       !is.numeric(max_age) ||
       length(max_age) != 1L ||
       !is.finite(max_age) ||
@@ -82,7 +82,7 @@ smart_launch_route <- function(path, clients, max_age = 120) {
   # incorrectly make route configuration depend on the global host allowlist.
   # Actual app/callback/FHIR URLs are validated separately by the manager.
   path <- resource_binding_path(path)
-  list(path = path, clients = clients, max_age = max_age)
+  list(path = path, clients = client_names, max_age = max_age)
 }
 
 smart_launch_parameter <- "shinyOAuth_smart_launch"
