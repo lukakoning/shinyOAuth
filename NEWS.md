@@ -38,8 +38,8 @@
   resources only when authorized and within the configured server.
   - Required permissions remain enforced for reduced grants and refreshes.
   Offline access negotiation requires opt-in. Token responses must supply
-  scopes and a positive lifetime; `initial_expires_in_fallback` can provide an explicit
-  fallback for the initial response.
+  scopes and a positive lifetime; `initial_expires_in_fallback` can provide
+  an explicit fallback for the initial response.
 
 * `OAuthToken` exposes additional token response parameters in `extra_fields`
 (#16). Each successful refresh replaces that list; `initial_extra_fields`
@@ -74,23 +74,20 @@ validated issuer responses or distinct registered callback routes.
 `compare_callback_issuer` can check a supplied issuer without requiring older
 providers to send one; required issuer and JARM checks remain enforced.
 
-* Public helpers accept clearer argument names while retaining old names
-and positional calls:
-  - `oauth_module_server()` uses `refresh_check_interval_ms` to make the
-  polling interval's millisecond unit explicit.
+* Function argument names are more consistent. CRAN 0.5.0 argument names and
+positions remain supported, as do the existing S7 property names:
   - Login, token, userinfo, resource-request, and mTLS registration helpers
   consistently accept `client` and `token`.
   - `handle_callback()` accepts callback state as `state`; introspection and
   revocation helpers select access or refresh tokens with `token_kind`.
   - Provider constructors and discovery use `id_token_allowed_algs` for
   ID-token signing algorithms. Clients use `introspection_checks` for extra
-  introspection requirements. Existing property names remain supported.
-
-* Client and provider constructors use clearer argument names while preserving
-CRAN 0.5.0 positional calls and old named arguments, including S7 constructors
-and properties. Client assertion keys, mTLS, Request Object, and JARM settings
-use `client_assertion_*`, `mtls_*`, `request_object_*`, and `jarm_*` names.
-See `?oauth_client` and `?oauth_provider` for the current arguments.
+  introspection requirements.
+  - Client assertion keys, mTLS, Request Object, and JARM settings use
+  `client_assertion_*`, `mtls_*`, `request_object_*`, and `jarm_*` names.
+  See `?oauth_client` and `?oauth_provider` for the current arguments.
+  - `oauth_module_server()` uses `refresh_check_interval_ms` to make the
+  polling interval's millisecond unit explicit.
 
 * Client and provider configuration changes:
   - Client credentials no longer default from `OAUTH_CLIENT_ID` or
@@ -105,8 +102,8 @@ See `?oauth_client` and `?oauth_provider` for the current arguments.
   helper constructors and reject malformed security and assurance settings.
 
 * Provider configuration changes:
-  - `infer_oidc_from_issuer = FALSE` allows generic OAuth issuer validation without
-  enabling OIDC; the default remains `TRUE`.
+  - `infer_oidc_from_issuer = FALSE` allows generic OAuth issuer validation
+  without enabling OIDC; the default remains `TRUE`.
   - An explicit `jwks_uri` overrides discovery across signing-key consumers.
   Missing or disallowed required key locations fail during configuration.
   - `userinfo_allowed_algs` configures signed UserInfo algorithms independently
