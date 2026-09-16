@@ -830,6 +830,10 @@ OAuthClient(
 
   Compatibility alias for `request_object_nbf_skew`.
 
+## Value
+
+Calling the constructor creates an `OAuthClient` object.
+
 ## Details
 
 Configure the app registration with `provider`, `client_id`,

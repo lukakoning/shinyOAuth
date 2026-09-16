@@ -133,6 +133,10 @@ OAuthToken(
   distinguish unchanged grants from strict scope reductions. Empty for
   ordinary OAuth tokens. Set by SMART token processing.
 
+## Value
+
+Calling the constructor creates an `OAuthToken` object.
+
 ## Details
 
 The `id_token_claims` property is a read-only computed property that

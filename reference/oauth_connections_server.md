@@ -132,24 +132,44 @@ process.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-# Outside server(), using clients with resource_bases already configured:
-clients <- list(hospital_a = client_a, hospital_b = client_b)
-manager <- oauth_connections(
-  clients, app_origin = "https://app.example", retention = "browser",
-  store = oauth_connection_store_memory(), owner = oauth_browser_owner(),
-  keys = deployment_keys
+# Replace this example provider and client ID with your registered application.
+provider <- oauth_provider(
+  name = "Example service",
+  auth_url = "https://example.com/authorize",
+  token_url = "https://example.com/token",
+  token_auth_style = "public"
 )
-ui <- oauth_connections_ui(app_ui, "health", manager)
+client <- oauth_client(
+  provider = provider,
+  client_id = "example-client",
+  redirect_uri = "http://127.0.0.1:8100/callback/service",
+  resource_bases = c(api = "https://api.example.com")
+)
+
+# Create the manager once, outside server(). Default retention is one Shiny session.
+manager <- oauth_connections(
+  clients = list(service = client),
+  app_origin = "http://127.0.0.1:8100"
+)
+ui <- oauth_connections_ui(
+  shiny::fluidPage(
+    shiny::actionButton("connect", "Connect to service"),
+    shiny::verbatimTextOutput("connections")
+  ),
+  id = "auth",
+  manager = manager
+)
 server <- function(input, output, session) {
-  health <- oauth_connections_server("health", manager)
-  shiny::observeEvent(input[["connect"]], health[["connect"]](input[["client_name"]]))
-  data <- shiny::reactive({
-    connection <- health[["connection"]](input[["connection_id"]])
-    shiny::req(connection[["is_usable"]]())
-    connection[["request"]]("fhir", "Patient/123")
-  })
+  auth <- oauth_connections_server("auth", manager)
+  shiny::observeEvent(input[["connect"]], auth[["connect"]]("service"))
+  output[["connections"]] <- shiny::renderPrint(auth[["connections"]]())
 }
-shiny::shinyApp(ui, server, uiPattern = ".*")
-} # }
+
+# Construct the app without launching it or contacting the provider.
+app <- shiny::shinyApp(
+  ui,
+  server,
+  uiPattern = ".*",
+  options = list(port = 8100)
+)
 ```

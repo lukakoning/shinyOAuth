@@ -141,3 +141,41 @@ proof that an arbitrary user ID is authenticated.
 ## See also
 
 [`oauth_connection_store_memory()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection_store_memory.md)
+
+## Examples
+
+``` r
+# Browser connections expire after 15 minutes idle or 8 hours in total.
+oauth_browser_owner(idle_timeout = 15 * 60, absolute_timeout = 8 * 3600)
+#> $mode
+#> [1] "browser"
+#> 
+#> $idle_timeout
+#> [1] 900
+#> 
+#> $absolute_timeout
+#> [1] 28800
+#> 
+#> $same_site
+#> [1] "Lax"
+#> 
+#> $allow_http_loopback
+#> [1] FALSE
+#> 
+#> $max_entries
+#> [1] 1000
+#> 
+#> attr(,"class")
+#> [1] "OAuthOwnerPolicy"
+
+# Supply your application's trusted local-login validator for account retention.
+# It must revalidate the session on each call and return the documented fields.
+account_policy <- function(validate_local_session) {
+  oauth_account_owner(
+    resolver = validate_local_session,
+    idle_timeout = 15 * 60,
+    absolute_timeout = 8 * 3600,
+    reauth_after_seconds = 8 * 3600
+  )
+}
+```

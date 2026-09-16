@@ -72,3 +72,20 @@ are rejected.
 
 [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md),
 [OAuthConnection](https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.md)
+
+## Examples
+
+``` r
+# Call these helpers with an authorized connection in its owning Shiny session.
+# Reading the patient requires the corresponding patient or user read scope.
+read_current_patient <- function(connection) {
+  context <- smart_context(connection)
+  if (is.null(context[["patient"]])) return(NULL)
+  httr2::resp_body_json(smart_patient(connection))
+}
+
+# The signed-in user can be different from the patient whose chart is open.
+read_signed_in_user <- function(connection) {
+  httr2::resp_body_json(smart_fhir_user(connection))
+}
+```

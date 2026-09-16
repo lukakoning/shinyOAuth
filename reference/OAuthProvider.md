@@ -618,6 +618,10 @@ OAuthProvider(
 
   Compatibility alias for `mtls_client_certificate_bound_access_tokens`.
 
+## Value
+
+Calling the constructor creates an `OAuthProvider` object.
+
 ## Details
 
 Endpoint URLs identify the provider's authorization, token, and profile

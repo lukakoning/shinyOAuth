@@ -142,6 +142,50 @@ adds no owner cookie for session-only or account retention.</p>
     <div class="dont-index"><p><code><a href="oauth_browser_owner.html">oauth_browser_owner()</a></code>, <code><a href="oauth_ui.html">oauth_ui()</a></code></p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Replace this example provider and client ID with your registered application.</span></span></span>
+<span class="r-in"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  name <span class="op">=</span> <span class="st">"Example service"</span>,</span></span>
+<span class="r-in"><span>  auth_url <span class="op">=</span> <span class="st">"https://example.com/authorize"</span>,</span></span>
+<span class="r-in"><span>  token_url <span class="op">=</span> <span class="st">"https://example.com/token"</span>,</span></span>
+<span class="r-in"><span>  token_auth_style <span class="op">=</span> <span class="st">"public"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client.html">oauth_client</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  provider <span class="op">=</span> <span class="va">provider</span>,</span></span>
+<span class="r-in"><span>  client_id <span class="op">=</span> <span class="st">"example-client"</span>,</span></span>
+<span class="r-in"><span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100/callback/service"</span>,</span></span>
+<span class="r-in"><span>  resource_bases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>api <span class="op">=</span> <span class="st">"https://api.example.com"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Create the manager once, outside server(). Default retention is one Shiny session.</span></span></span>
+<span class="r-in"><span><span class="va">manager</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_connections.html">oauth_connections</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  clients <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>service <span class="op">=</span> <span class="va">client</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  app_origin <span class="op">=</span> <span class="st">"http://127.0.0.1:8100"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">oauth_connections_ui</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"connect"</span>, <span class="st">"Connect to service"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/textOutput.html" class="external-link">verbatimTextOutput</a></span><span class="op">(</span><span class="st">"connections"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span>,</span></span>
+<span class="r-in"><span>  id <span class="op">=</span> <span class="st">"auth"</span>,</span></span>
+<span class="r-in"><span>  manager <span class="op">=</span> <span class="va">manager</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_connections_server.html">oauth_connections_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">manager</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"connect"</span><span class="op">]</span><span class="op">]</span>, <span class="va">auth</span><span class="op">[[</span><span class="st">"connect"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="st">"service"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">output</span><span class="op">[[</span><span class="st">"connections"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderPrint</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"connections"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Construct the app without launching it or contacting the provider.</span></span></span>
+<span class="r-in"><span><span class="va">app</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">ui</span>,</span></span>
+<span class="r-in"><span>  <span class="va">server</span>,</span></span>
+<span class="r-in"><span>  uiPattern <span class="op">=</span> <span class="st">".*"</span>,</span></span>
+<span class="r-in"><span>  options <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>port <span class="op">=</span> <span class="fl">8100</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

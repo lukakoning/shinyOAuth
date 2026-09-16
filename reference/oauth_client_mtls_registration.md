@@ -76,3 +76,25 @@ example, `public` becomes `none`) and sets
 security
 vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html)
 for when these configurations are useful.
+
+## Examples
+
+``` r
+if (FALSE) { # file.exists(Sys.getenv("OAUTH_MTLS_CERT_FILE")) && file.exists(Sys.getenv("OAUTH_MTLS_KEY_FILE"))
+# Set these environment variables to your existing certificate and key files.
+provider <- oauth_provider(
+  name = "Example service",
+  auth_url = "https://example.com/authorize",
+  token_url = "https://example.com/token",
+  token_auth_style = "tls_client_auth"
+)
+client <- oauth_client(
+  provider = provider,
+  client_id = "example-client",
+  redirect_uri = "http://127.0.0.1:8100/callback",
+  mtls_client_cert_file = Sys.getenv("OAUTH_MTLS_CERT_FILE"),
+  mtls_client_key_file = Sys.getenv("OAUTH_MTLS_KEY_FILE")
+)
+oauth_client_mtls_registration(client)
+}
+```

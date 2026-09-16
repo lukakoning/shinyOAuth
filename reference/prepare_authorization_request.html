@@ -118,6 +118,27 @@ your app's Content Security Policy <code>form-action</code> to allow the authori
 endpoint. Custom callers must preserve browser binding and callback handling.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  name <span class="op">=</span> <span class="st">"Example service"</span>,</span></span>
+<span class="r-in"><span>  auth_url <span class="op">=</span> <span class="st">"https://example.com/authorize"</span>,</span></span>
+<span class="r-in"><span>  token_url <span class="op">=</span> <span class="st">"https://example.com/token"</span>,</span></span>
+<span class="r-in"><span>  token_auth_style <span class="op">=</span> <span class="st">"public"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="oauth_client.html">oauth_client</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  provider <span class="op">=</span> <span class="va">provider</span>,</span></span>
+<span class="r-in"><span>  client_id <span class="op">=</span> <span class="st">"example-client"</span>,</span></span>
+<span class="r-in"><span>  redirect_uri <span class="op">=</span> <span class="st">"http://127.0.0.1:8100/callback"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># In a custom browser flow, bind this secret to the initiating browser and</span></span></span>
+<span class="r-in"><span><span class="co"># supply it again to handle_callback(). Shiny modules manage this for you.</span></span></span>
+<span class="r-in"><span><span class="va">browser_token</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">64</span><span class="op">)</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">request</span> <span class="op">&lt;-</span> <span class="fu">prepare_authorization_request</span><span class="op">(</span><span class="va">client</span>, <span class="va">browser_token</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">request</span><span class="op">[[</span><span class="st">"method"</span><span class="op">]</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "GET"</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

@@ -183,6 +183,43 @@ is not proof that an arbitrary user ID is authenticated.</p>
     <div class="dont-index"><p><code><a href="oauth_connection_store_memory.html">oauth_connection_store_memory()</a></code></p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Browser connections expire after 15 minutes idle or 8 hours in total.</span></span></span>
+<span class="r-in"><span><span class="fu">oauth_browser_owner</span><span class="op">(</span>idle_timeout <span class="op">=</span> <span class="fl">15</span> <span class="op">*</span> <span class="fl">60</span>, absolute_timeout <span class="op">=</span> <span class="fl">8</span> <span class="op">*</span> <span class="fl">3600</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $mode</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "browser"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $idle_timeout</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 900</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $absolute_timeout</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 28800</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $same_site</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "Lax"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $allow_http_loopback</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $max_entries</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"class")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "OAuthOwnerPolicy"</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Supply your application's trusted local-login validator for account retention.</span></span></span>
+<span class="r-in"><span><span class="co"># It must revalidate the session on each call and return the documented fields.</span></span></span>
+<span class="r-in"><span><span class="va">account_policy</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">validate_local_session</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu">oauth_account_owner</span><span class="op">(</span></span></span>
+<span class="r-in"><span>    resolver <span class="op">=</span> <span class="va">validate_local_session</span>,</span></span>
+<span class="r-in"><span>    idle_timeout <span class="op">=</span> <span class="fl">15</span> <span class="op">*</span> <span class="fl">60</span>,</span></span>
+<span class="r-in"><span>    absolute_timeout <span class="op">=</span> <span class="fl">8</span> <span class="op">*</span> <span class="fl">3600</span>,</span></span>
+<span class="r-in"><span>    reauth_after_seconds <span class="op">=</span> <span class="fl">8</span> <span class="op">*</span> <span class="fl">3600</span></span></span>
+<span class="r-in"><span>  <span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
