@@ -55,6 +55,7 @@ sanitize_event_diagnostics <- function(event) {
     "metadata_error",
     "transport_error",
     "oauth_error_description",
+    "oauth_error_detail",
     "error_description",
     "body",
     "body_snippet",
@@ -62,7 +63,19 @@ sanitize_event_diagnostics <- function(event) {
   )
   for (i in seq_along(event)) {
     field <- names(event)[i] %||% ""
-    if (identical(field, "jwt_alg")) {
+    if (identical(field, "oauth_error")) {
+      value <- event[[i]]
+      code <- oauth_error_code(value)
+      if (identical(code, "unknown") && !identical(value, code)) {
+        event[["oauth_error_digest"]] <- string_digest(value)
+        event[["oauth_error_detail"]] <- if (allow_expose_error_body()) {
+          sanitize_diagnostic_text(value)
+        } else {
+          NULL
+        }
+      }
+      event[i] <- list(code)
+    } else if (identical(field, "jwt_alg")) {
       # This field comes from an unverified JOSE header, not a trusted enum.
       known <- c(
         "none",
@@ -134,6 +147,45 @@ is_oauth_error_text <- function(value) {
     length(value) == 1L &&
     !is.na(value) &&
     isTRUE(grepl("^[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]*$", value, perl = TRUE))
+}
+
+# Protocol syntax permits arbitrary extension values, so only recognized
+# codes are safe dimensions for conditions, hooks and telemetry.
+oauth_error_code <- function(value) {
+  if (!is_valid_string(value) || !is_oauth_error_text(value)) {
+    return(NULL)
+  }
+  known <- c(
+    "invalid_request",
+    "invalid_client",
+    "invalid_grant",
+    "unauthorized_client",
+    "unsupported_grant_type",
+    "invalid_scope",
+    "access_denied",
+    "unsupported_response_type",
+    "server_error",
+    "temporarily_unavailable",
+    "interaction_required",
+    "login_required",
+    "account_selection_required",
+    "consent_required",
+    "invalid_request_uri",
+    "invalid_request_object",
+    "request_not_supported",
+    "request_uri_not_supported",
+    "registration_not_supported",
+    "invalid_token",
+    "insufficient_scope",
+    "unsupported_token_type",
+    "invalid_target",
+    "use_dpop_nonce",
+    "invalid_dpop_proof",
+    "authorization_pending",
+    "slow_down",
+    "expired_token"
+  )
+  if (value %in% known) value else "unknown"
 }
 
 # Keep received protocol values out of ordinary conditions. Explicit exposure

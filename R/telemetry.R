@@ -1886,6 +1886,8 @@ otel_is_allowed_event_field <- function(name) {
       "nonce_present",
       "ns_prefix",
       "oauth_error",
+      "oauth_error_digest",
+      "oauth_error_detail",
       "oauth_error_description",
       "oauth_error_uri",
       "par_used",

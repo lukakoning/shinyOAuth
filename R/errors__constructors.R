@@ -603,6 +603,8 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   # and extract RFC 6749 §5.2 structured error fields when present
   body_digest <- NULL
   oauth_error <- NULL
+  oauth_error_digest <- NULL
+  oauth_error_detail <- NULL
   oauth_error_description <- NULL
   oauth_error_uri <- NULL
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
@@ -619,7 +621,13 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
           is_valid_string(parsed[["error"]]) &&
             is_oauth_error_text(parsed[["error"]])
         ) {
-          oauth_error <- sanitize_diagnostic_text(parsed[["error"]])
+          oauth_error <- oauth_error_code(parsed[["error"]])
+          if (identical(oauth_error, "unknown")) {
+            oauth_error_digest <- string_digest(parsed[["error"]])
+            if (expose) {
+              oauth_error_detail <- sanitize_diagnostic_text(parsed[["error"]])
+            }
+          }
         }
         if (expose && is_oauth_error_text(parsed[["error_description"]])) {
           oauth_error_description <- sanitize_diagnostic_text(parsed[[
@@ -648,6 +656,8 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
       url = url,
       body_digest = body_digest,
       oauth_error = oauth_error,
+      oauth_error_digest = oauth_error_digest,
+      oauth_error_detail = oauth_error_detail,
       oauth_error_description = event_oauth_error_description,
       oauth_error_uri = oauth_error_uri
     ),
@@ -666,7 +676,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   }
   # RFC 6749 §5.2: surface structured error fields from token endpoint
   oauth_error_msg <- if (!is.null(oauth_error)) {
-    reason <- oauth_error
+    reason <- oauth_error_detail %||% oauth_error
     if (!is.null(oauth_error_description)) {
       reason <- paste0(reason, ": ", oauth_error_description)
     }
@@ -734,6 +744,8 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
     url = url,
     body_digest = body_digest,
     oauth_error = oauth_error,
+    oauth_error_digest = oauth_error_digest,
+    oauth_error_detail = oauth_error_detail,
     oauth_error_description = oauth_error_description,
     oauth_error_uri = oauth_error_uri,
     context = context
