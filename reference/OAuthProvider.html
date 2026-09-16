@@ -117,6 +117,7 @@ endpoint and validation settings.</p>
 <span>  infer_oidc_from_issuer <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  jwks_uri <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  userinfo_allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  allow_missing_token_type <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  jarm_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  jarm_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -530,7 +531,7 @@ untrusted environments.</p></dd>
 <dt id="arg-allowed-token-types">allowed_token_types<a class="anchor" aria-label="anchor" href="#arg-allowed-token-types"></a></dt>
 <dd><p>Character vector of acceptable OAuth token types
 returned by the token endpoint (case-insensitive). Successful token
-responses must always include <code>token_type</code>; when <code>allowed_token_types</code> is
+responses must include <code>token_type</code> by default; when <code>allowed_token_types</code> is
 non-empty, its value must also be one of the allowed values or the flow
 fails fast with a <code>shinyOAuth_token_error</code>. The <code><a href="oauth_provider.html">oauth_provider()</a></code> helper
 defaults to <code>c("Bearer")</code>. When the <a href="OAuthClient.html">OAuthClient</a> is configured with
@@ -567,6 +568,15 @@ Discovery negotiates this independently against UserInfo metadata. Use a
 single algorithm to enforce the client's registered UserInfo signing choice.
 An empty vector rejects all signed UserInfo algorithms.
 Unlabelled RSA keys follow the same binding policy as <code>id_token_allowed_algs</code>.</p></dd>
+
+
+<dt id="arg-allow-missing-token-type">allow_missing_token_type<a class="anchor" aria-label="anchor" href="#arg-allow-missing-token-type"></a></dt>
+<dd><p>Logical, default <code>FALSE</code>. Opt in only for a
+provider known to issue Bearer tokens while omitting <code>token_type</code> from its
+token responses, contrary to OAuth 2.0. When <code>TRUE</code>, login and refresh assume
+<code>"Bearer"</code> only when the field is absent. Explicit null, empty, invalid, or
+unsupported values still fail validation. The fallback never applies to
+clients configured with DPoP; other token and binding checks remain enforced.</p></dd>
 
 
 <dt id="arg-jarm-signing-alg-values-supported">jarm_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-jarm-signing-alg-values-supported"></a></dt>

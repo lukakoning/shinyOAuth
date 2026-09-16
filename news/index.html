@@ -98,6 +98,8 @@
 <li>An explicit <code>jwks_uri</code> overrides discovery across signing-key consumers. Missing or disallowed required key locations fail during configuration.</li>
 <li>
 <code>userinfo_allowed_algs</code> configures signed UserInfo algorithms independently from ID-token algorithms, with corresponding discovery support.</li>
+<li>
+<code>allow_missing_token_type = TRUE</code> explicitly permits Bearer-only providers that omit the required token type. The default remains strict; the fallback does not apply to DPoP clients or replace invalid values.</li>
 </ul></li>
 <li>
 <p>Provider helper updates:</p>

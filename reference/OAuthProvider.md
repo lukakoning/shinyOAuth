@@ -67,6 +67,7 @@ OAuthProvider(
   infer_oidc_from_issuer = TRUE,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
+  allow_missing_token_type = FALSE,
   jarm_signing_alg_values_supported = character(0),
   jarm_encryption_alg_values_supported = character(0),
   jarm_encryption_enc_values_supported = character(0),
@@ -511,8 +512,8 @@ OAuthProvider(
 - allowed_token_types:
 
   Character vector of acceptable OAuth token types returned by the token
-  endpoint (case-insensitive). Successful token responses must always
-  include `token_type`; when `allowed_token_types` is non-empty, its
+  endpoint (case-insensitive). Successful token responses must include
+  `token_type` by default; when `allowed_token_types` is non-empty, its
   value must also be one of the allowed values or the flow fails fast
   with a `shinyOAuth_token_error`. The
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
@@ -553,6 +554,16 @@ OAuthProvider(
   choice. An empty vector rejects all signed UserInfo algorithms.
   Unlabelled RSA keys follow the same binding policy as
   `id_token_allowed_algs`.
+
+- allow_missing_token_type:
+
+  Logical, default `FALSE`. Opt in only for a provider known to issue
+  Bearer tokens while omitting `token_type` from its token responses,
+  contrary to OAuth 2.0. When `TRUE`, login and refresh assume
+  `"Bearer"` only when the field is absent. Explicit null, empty,
+  invalid, or unsupported values still fail validation. The fallback
+  never applies to clients configured with DPoP; other token and binding
+  checks remain enforced.
 
 - jarm_signing_alg_values_supported:
 

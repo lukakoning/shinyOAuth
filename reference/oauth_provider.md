@@ -72,7 +72,8 @@ userinfo[["sub"]]
   jarm_tolerate_duplicate_top_level_iss = FALSE,
   endpoint_auth_metadata = list(),
   ...,
-  allowed_algs = NULL
+  allowed_algs = NULL,
+  allow_missing_token_type = FALSE
 )
 ```
 
@@ -492,8 +493,8 @@ userinfo[["sub"]]
 - allowed_token_types:
 
   Character vector of acceptable OAuth token types returned by the token
-  endpoint (case-insensitive). Successful token responses must always
-  include `token_type`; when `allowed_token_types` is non-empty, its
+  endpoint (case-insensitive). Successful token responses must include
+  `token_type` by default; when `allowed_token_types` is non-empty, its
   value must also be one of the allowed values or the flow fails fast
   with a `shinyOAuth_token_error`. The `oauth_provider()` helper
   defaults to `c("Bearer")`. When the
@@ -584,6 +585,16 @@ userinfo[["sub"]]
 
   Compatibility alias for `id_token_allowed_algs`. Supply only one
   spelling.
+
+- allow_missing_token_type:
+
+  Logical, default `FALSE`. Opt in only for a provider known to issue
+  Bearer tokens while omitting `token_type` from its token responses,
+  contrary to OAuth 2.0. When `TRUE`, login and refresh assume
+  `"Bearer"` only when the field is absent. Explicit null, empty,
+  invalid, or unsupported values still fail validation. The fallback
+  never applies to clients configured with DPoP; other token and binding
+  checks remain enforced.
 
 ## Value
 
