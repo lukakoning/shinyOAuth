@@ -2,6 +2,10 @@
 
 ## shinyOAuth (development version)
 
+- [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
+  now accepts an explicit empty scope grant when no scopes were
+  requested, including login and refresh introspection checks.
+
 - Fix to accept an empty `scope` response when requesting no scopes,
   preventing token exchange parse errors. Empty grants remain explicit
   during refresh and never inherit prior scopes.

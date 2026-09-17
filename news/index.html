@@ -44,7 +44,8 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li>Fix to accept an empty <code>scope</code> response when requesting no scopes, preventing token exchange parse errors. Empty grants remain explicit during refresh and never inherit prior scopes.</li>
+<ul><li><p><code><a href="../reference/introspect_token.html">introspect_token()</a></code> now accepts an explicit empty scope grant when no scopes were requested, including login and refresh introspection checks.</p></li>
+<li><p>Fix to accept an empty <code>scope</code> response when requesting no scopes, preventing token exchange parse errors. Empty grants remain explicit during refresh and never inherit prior scopes.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="shinyoauth-060">shinyOAuth 0.6.0<a class="anchor" aria-label="anchor" href="#shinyoauth-060"></a></h2><p class="text-muted">CRAN release: 2026-09-17</p>
