@@ -2237,7 +2237,8 @@ enforce_token_introspection_policy <- function(
       validate_response_scope(
         intro_scope_raw,
         err_token,
-        allow_empty = client_uses_smart_scopes(oauth_client)
+        allow_empty = client_uses_smart_scopes(oauth_client) ||
+          length(requested_scopes) == 0L
       )
     }
     if (client_uses_smart_scopes(oauth_client)) {
