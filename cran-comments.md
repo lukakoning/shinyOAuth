@@ -1,3 +1,10 @@
+## Resubmission
+
+* Fixed the DESCRIPTION spell-check NOTE by replacing "integrations" with "providers".
+* Reduced test time by running a smaller subset of tests on CRAN.
+
+The checks below describe the original 0.6.0 submission.
+
 ## Test environments
 
 * Local Windows 11, R 4.5.1, using a source tarball outside the checkout.

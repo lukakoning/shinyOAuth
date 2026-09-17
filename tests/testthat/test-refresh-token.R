@@ -586,6 +586,7 @@ testthat::test_that("refresh_token succeeds with id_token_validation=TRUE when r
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -647,6 +648,7 @@ testthat::test_that("refresh_token rejects new id_token with mismatched sub (OID
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -748,6 +750,7 @@ testthat::test_that("refresh_token accepts new id_token with matching sub (OIDC 
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -845,6 +848,7 @@ testthat::test_that("refresh_token rejects new id_token when original id_token i
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -919,6 +923,7 @@ testthat::test_that("refresh_token rejects new id_token when original id_token i
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -992,6 +997,7 @@ testthat::test_that("refresh_token preserves original id_token when refresh omit
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1067,6 +1073,7 @@ testthat::test_that("refresh_token fails when original id_token is unparseable b
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1147,6 +1154,7 @@ testthat::test_that("refresh with id_token_required=TRUE succeeds when response 
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1204,6 +1212,7 @@ testthat::test_that("refresh_token validates new id_token claims (issuer, aud, e
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1296,6 +1305,7 @@ testthat::test_that("refresh_token validates new id_token audience", {
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1388,6 +1398,7 @@ testthat::test_that("refresh_token rejects expired new id_token", {
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1485,6 +1496,7 @@ testthat::test_that("refresh_token validates userinfo_id_token_match when both p
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1594,6 +1606,7 @@ testthat::test_that("refresh_token errors when userinfo_id_token_match lacks an 
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1661,6 +1674,7 @@ testthat::test_that("refresh_token rejects refreshed userinfo that mismatches pr
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1745,6 +1759,7 @@ testthat::test_that("refresh_token still binds refreshed userinfo to a preserved
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1833,6 +1848,7 @@ testthat::test_that("refresh_token succeeds when userinfo and id_token subjects 
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
@@ -1949,6 +1965,7 @@ testthat::test_that("refresh_token updates userinfo when it matches the preserve
     client_id = "abc",
     client_secret = "",
     redirect_uri = "http://localhost:8100",
+    scopes = "openid",
     state_store = cachem::cache_mem(max_age = 600),
     state_key = paste0(
       "0123456789abcdefghijklmnopqrstuvwxyz",
