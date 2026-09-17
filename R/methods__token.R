@@ -1235,7 +1235,11 @@ refresh_token_impl <- function(
 
           tok <- parse_token_response(
             resp,
-            allow_empty_scope = client_uses_smart_scopes(oauth_client)
+            allow_empty_scope = client_uses_smart_scopes(oauth_client) ||
+              length(
+                requested_scopes %||% effective_client_scopes(oauth_client)
+              ) ==
+                0L
           )
           extra_fields <- token_response_extra_fields(tok)
           outcome[["value"]] <- if (

@@ -35,8 +35,8 @@ evaluate_scope_coverage <- function(
 ## 1.1 Normalize and validate scopes -------------------------------------------
 
 # Validate wire values before the permissive local-input normalizer sees them.
-# An omitted scope is handled by callers; only SMART accepts an explicit empty
-# grant (SMART 2.2 scopes-and-launch-context, wildcard grant examples).
+# An omitted scope is handled by callers. SMART and flows requesting no scopes
+# can accept an explicit empty grant, including GitHub public-profile login.
 validate_response_scope <- function(
   scope,
   signal_error = err_parse,
@@ -204,7 +204,11 @@ resolve_granted_scope_state <- function(
     err_token("SMART token responses must include an explicit scope string")
   }
   if (!scope_is_omitted) {
-    validate_response_scope(token_scope, err_token, allow_empty = smart)
+    validate_response_scope(
+      token_scope,
+      err_token,
+      allow_empty = smart || length(requested_scopes) == 0L
+    )
   }
   scope_is_empty <- !scope_is_omitted &&
     length(token_scope) == 1L &&

@@ -2577,7 +2577,8 @@ swap_code_for_token_set <- function(
 
       token_set <- parse_token_response(
         resp,
-        allow_empty_scope = client_uses_smart_scopes(client)
+        allow_empty_scope = client_uses_smart_scopes(client) ||
+          length(effective_client_scopes(client)) == 0L
       )
 
       # Some providers return expires_in as a character string (e.g., form-encoded
@@ -2823,7 +2824,7 @@ verify_token_set <- function(
       # omitted scope as unchanged from the request rather than as an error.
       # Skip explicit scope reconciliation when provider omits scope. Per RFC
       # 6749 Sections 5.1 and 6, omission means unchanged from the requested
-      # scope. Explicit empty scope values are rejected by the wire validator.
+      # scope. Explicit empty grants never inherit the requested or prior scopes.
       if (client_uses_smart_scopes(client)) {
         smart_verify_scope_grant(
           client,
