@@ -7,8 +7,8 @@ various supporting functions and a 'shiny' module. Features include
 cross-site request forgery (CSRF) protection, state encryption, 'Proof
 Key for Code Exchange' (PKCE) handling, validation of OIDC identity
 tokens (nonces, signatures, claims), automatic user info retrieval for
-OIDC and supported provider-specific 'OAuth' integrations, asynchronous
-flows, and hooks for audit logging.
+OIDC and supported 'OAuth' providers, asynchronous flows, and hooks for
+audit logging.
 
 ## See also
 
