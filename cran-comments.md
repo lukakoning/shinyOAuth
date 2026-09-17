@@ -1,3 +1,18 @@
+## Resubmission
+
+* Replaced "integrations" with "providers" in DESCRIPTION to avoid the
+  incoming spell-check NOTE.
+* Reduced CRAN test work to 46 representative regression-test files selected
+  in tests/testthat.R. The extended suite runs when NOT_CRAN=true, which is
+  explicitly set in the local runner and all existing GitHub Actions check
+  jobs. No tests have been removed. A separate Ubuntu CI job checks the CRAN
+  subset with NOT_CRAN=false.
+* An installed-package run of the selected suite on Ubuntu 24.04 with R 4.3.3
+  completed in 75.3 seconds: 2,594 expectations passed, no failures or warnings,
+  and one existing timing test was skipped on CRAN.
+
+The checks below describe the original 0.6.0 submission.
+
 ## Test environments
 
 * Local Windows 11, R 4.5.1, using a source tarball outside the checkout.

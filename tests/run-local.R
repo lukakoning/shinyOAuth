@@ -4,6 +4,8 @@
 if (.Platform[["OS.type"]] == "windows") {
   Sys.setenv(CURL_SSL_BACKEND = "openssl")
 }
+# Match the full suite used by CI, including skip_on_cran() tests.
+Sys.setenv(NOT_CRAN = "true")
 args <- commandArgs(trailingOnly = TRUE)
 # Worker processes load an installed namespace, whereas test_local() loads the
 # checkout in the parent. Always give both processes this checkout's build.

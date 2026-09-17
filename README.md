@@ -159,6 +159,37 @@ For a checklist of security considerations and best practices for production use
 ### For developers: tests & integration tests
 
 The package has a standard 'testthat' test suite under `tests/testthat/`.
+Run the full local suite from the repository root with:
+
+```sh
+Rscript --vanilla tests/run-local.R
+```
+
+This installs the checkout for worker processes and sets `NOT_CRAN=true`.
+`devtools::test()` and `testthat::test_local()` also discover all test files;
+existing browser and optional-dependency requirements still apply. Run the
+browser suite with `Rscript tests/run-browser-tests.R` when Chrome is available.
+
+During `R CMD check`, `tests/testthat.R` selects a smaller regression suite
+unless `NOT_CRAN=true`. It retains checks for constructors, state and PKCE,
+callbacks, token and signature validation, resource restrictions, retained
+credentials, SMART permissions, and redaction. Larger test matrices and
+end-to-end tests remain in the full suite. All existing GitHub Actions check
+jobs run the full suite, and an additional Ubuntu job checks the CRAN subset.
+When adding package features, keep representative fast tests in the
+`cran_tests` list in `tests/testthat.R`.
+
+For a source tarball, select either mode explicitly:
+
+```sh
+NOT_CRAN=true R CMD check --as-cran shinyOAuth_0.6.0.tar.gz
+NOT_CRAN=false R CMD check --as-cran shinyOAuth_0.6.0.tar.gz
+```
+
+In R (including on Windows), set `Sys.setenv(NOT_CRAN = "true")` or
+`Sys.setenv(NOT_CRAN = "false")` before running the check. Leave this variable
+unset on CRAN; the reduced suite is the default for `R CMD check`.
+
 An additional set of integration tests against a local Keycloak instance (in Docker/Podman) is provided under `integration/keycloak/`.
 These integration tests also include browser-driven end-to-end tests using 'shinytest2' and 'chromote'.
 Finally, minimal demo app deployments are provided under `integration/gcp/` for Google Cloud Run and `integration/posit/` for Posit Connect Cloud.
