@@ -2,7 +2,7 @@
 
 0 errors | 0 warnings | 1 note
 
-Days since last update: 0
+Days since last update: 1
 
 ## About 'Days since last update'
 
