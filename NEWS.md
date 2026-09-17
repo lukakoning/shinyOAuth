@@ -1,4 +1,4 @@
-# shinyOAuth (development version)
+# shinyOAuth 0.6.1
 
 * Fix to accept an empty `scope` response when requesting no scopes,
 preventing token exchange parse errors. Empty grants remain explicit 
