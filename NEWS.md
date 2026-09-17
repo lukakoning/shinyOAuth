@@ -1,3 +1,5 @@
+# shinyOAuth (development version)
+
 # shinyOAuth 0.6.0
 
 * Added optional connections for apps using one or more OAuth authorizations:
