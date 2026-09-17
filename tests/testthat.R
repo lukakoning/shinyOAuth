@@ -19,7 +19,7 @@ if (file.exists(helper_otel)) {
   source(helper_otel, local = TRUE)
 }
 
-# CRAN runs a representative, in-process regression suite. The full suite also
+# CRAN runs a representative regression suite with small fixtures. The full suite
 # covers larger adversarial matrices, subprocesses, browser flows and telemetry.
 # Keep the selection here so devtools::test()/testthat::test_local() continue to
 # discover every test file. CI and tests/run-local.R explicitly set NOT_CRAN=true.
@@ -52,6 +52,7 @@ cran_tests <- c(
   "missing-token-type",
   "token-extra-fields",
   "missing-expires-in",
+  "refresh-token",
   "refresh-single-flight",
   "client-bearer-req-url-validation",
   "resource-binding",
@@ -66,7 +67,8 @@ cran_tests <- c(
   "jwt-jwe-roundtrip",
   # Retained credentials, SMART permissions and Shiny module wiring.
   "connection-credentials",
-  "connection-router",
+  "connection-store",
+  "connection-strict-callbacks",
   "smart-client",
   "smart-scopes",
   "smart-exact-members",
