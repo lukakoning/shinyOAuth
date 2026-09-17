@@ -89,7 +89,11 @@ if (identical(Sys.getenv("NOT_CRAN"), "true")) {
     !anyDuplicated(cran_tests),
     all(file.exists(file.path("testthat", paste0("test-", cran_tests, ".R"))))
   )
-  message("Running CRAN regression suite (", length(cran_tests), " test files).")
+  message(
+    "Running CRAN regression suite (",
+    length(cran_tests),
+    " test files)."
+  )
   cran_filter <- paste0("^(", paste(cran_tests, collapse = "|"), ")$")
   test_check("shinyOAuth", filter = cran_filter)
 }

@@ -6,7 +6,7 @@
 \alias{shinyOAuth-package}
 \title{shinyOAuth: OIDC Authentication and OAuth Authorization for 'shiny' Applications}
 \description{
-Provides a simple, configurable framework for 'OpenID Connect' (OIDC) authentication and 'OAuth 2.0' authorization in 'shiny' applications using 'S7' classes. Defines providers, clients, and tokens, as well as various supporting functions and a 'shiny' module. Features include cross-site request forgery (CSRF) protection, state encryption, 'Proof Key for Code Exchange' (PKCE) handling, validation of OIDC identity tokens (nonces, signatures, claims), automatic user info retrieval for OIDC and supported provider-specific 'OAuth' integrations, asynchronous flows, and hooks for audit logging.
+Provides a simple, configurable framework for 'OpenID Connect' (OIDC) authentication and 'OAuth 2.0' authorization in 'shiny' applications using 'S7' classes. Defines providers, clients, and tokens, as well as various supporting functions and a 'shiny' module. Features include cross-site request forgery (CSRF) protection, state encryption, 'Proof Key for Code Exchange' (PKCE) handling, validation of OIDC identity tokens (nonces, signatures, claims), automatic user info retrieval for OIDC and supported 'OAuth' providers, asynchronous flows, and hooks for audit logging.
 }
 \seealso{
 Useful links:
