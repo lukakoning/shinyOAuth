@@ -1,19 +1,7 @@
 ## Resubmission
 
-* Replaced "integrations" with "providers" in DESCRIPTION to avoid the
-  incoming spell-check NOTE.
-* Reduced CRAN test work to 48 representative regression-test files selected
-  in tests/testthat.R. The extended suite runs when NOT_CRAN=true, which is
-  explicitly set in the local runner and all existing GitHub Actions check
-  jobs. No tests have been removed. A separate Ubuntu CI job checks the CRAN
-  subset with NOT_CRAN=false.
-* The selected suite completed in 52.4 seconds on Ubuntu 24.04 with R 4.3.3:
-  2,553 expectations passed, no failures or warnings, and one existing timing
-  test was skipped on CRAN. OIDC refresh fixtures now explicitly request
-  openid, so their warnings do not depend on which tests ran earlier.
-* A source-tarball R CMD check --as-cran --no-manual --timings passed with
-  0 errors, 0 warnings, and 0 notes, including examples and vignette rebuilds.
-  CRAN incoming and system-clock checks were disabled in this local check.
+* Fixed the DESCRIPTION spell-check NOTE by replacing "integrations" with "providers".
+* Reduced test time by running a smaller subset of tests on CRAN.
 
 The checks below describe the original 0.6.0 submission.
 
