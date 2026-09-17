@@ -2,6 +2,8 @@
 
 ## shinyOAuth 0.6.0
 
+CRAN release: 2026-09-17
+
 - Added optional connections for apps using one or more OAuth
   authorizations:
 

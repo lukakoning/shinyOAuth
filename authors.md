@@ -7,7 +7,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/lukakoning/shinyOAuth/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/lukakoning/shinyOAuth/blob/v0.6.0/DESCRIPTION)
 
 Koning L (2026). *shinyOAuth: OIDC Authentication and OAuth
 Authorization for 'shiny' Applications*. R package version 0.6.0,
