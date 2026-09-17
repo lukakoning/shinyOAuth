@@ -1,9 +1,5 @@
 # shinyOAuth 0.6.0
 
-* Reduced CRAN check time by running a representative regression suite during
-`R CMD check` unless `NOT_CRAN=true`. The full suite remains available locally
-and in GitHub Actions, which also checks the CRAN subset separately.
-
 * Added optional connections for apps using one or more OAuth authorizations:
   - `oauth_connection()` combines a module's current token with the client's
   approved `resource_bases` and `required_scopes`. Its `$request()` method
