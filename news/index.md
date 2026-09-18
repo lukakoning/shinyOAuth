@@ -2,6 +2,8 @@
 
 ## shinyOAuth 0.6.1
 
+CRAN release: 2026-09-18
+
 - Fix to accept an empty `scope` response when requesting no scopes,
   preventing token exchange parse errors. Empty grants remain explicit
   during refresh and never inherit prior scopes.
