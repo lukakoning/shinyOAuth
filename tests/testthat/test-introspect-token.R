@@ -1,3 +1,59 @@
+test_that("no-scope introspection preserves an explicit empty grant through refresh", {
+  provider <- make_test_provider()
+  provider@introspection_url <- "https://example.com/introspect"
+  client <- oauth_client(
+    provider = provider,
+    client_id = "fixture",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(),
+    introspect = TRUE,
+    introspection_checks = "scope"
+  )
+  body <- '{"active":true,"scope":""}'
+  local_mocked_bindings(
+    req_perform = function(req, ...) {
+      httr2::response(
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw(
+          if (identical(req[["url"]], provider@introspection_url)) {
+            body
+          } else {
+            '{"access_token":"new","token_type":"Bearer","scope":"","expires_in":3600}'
+          }
+        )
+      )
+    },
+    .package = "httr2"
+  )
+  token <- OAuthToken(access_token = "old", refresh_token = "refresh")
+  result <- introspect_token(client, token)
+  expect_identical(result[["active"]], TRUE)
+  expect_identical(result[["raw"]][["scope"]], "")
+  token@granted_scopes <- "prior"
+  checked <- enforce_token_introspection_policy(client, token, result)
+  expect_identical(checked@granted_scopes, character())
+  expect_identical(checked@granted_scopes_verified, TRUE)
+  refreshed <- refresh_token(client, checked)
+  expect_identical(refreshed@access_token, "new")
+  expect_identical(refreshed@granted_scopes, character())
+  expect_identical(refreshed@granted_scopes_verified, TRUE)
+
+  for (scope in list(NULL, list(), c("read", "write"), " ", "read\twrite")) {
+    body <- jsonlite::toJSON(
+      list(active = TRUE, scope = scope),
+      auto_unbox = TRUE
+    )
+    expect_identical(
+      introspect_token(client, token)[["status"]],
+      "invalid_json"
+    )
+  }
+  body <- '{"active":true,"scope":""}'
+  client@scopes <- "read"
+  expect_identical(introspect_token(client, token)[["status"]], "invalid_json")
+})
+
 testthat::test_that("introspect_token handles unsupported and missing tokens", {
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
 

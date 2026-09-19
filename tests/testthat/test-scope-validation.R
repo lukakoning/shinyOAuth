@@ -1,5 +1,66 @@
 # Test scope_validation modes: "warn", "strict", "none"
 
+test_that("GitHub login accepts an explicit empty grant when no scopes were requested", {
+  client <- oauth_client(
+    provider = oauth_provider_github(),
+    client_id = "scope-test",
+    client_secret = "secret",
+    redirect_uri = "http://localhost:8100",
+    scopes = character(),
+    scope_validation = "strict"
+  )
+  response <- NULL
+  local_mocked_bindings(
+    req_perform = function(req, ...) {
+      if (identical(req[["url"]], "https://api.github.com/user")) {
+        return(httr2::response(
+          status = 200,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw('{"id":123,"login":"fixture-user"}')
+        ))
+      }
+      response
+    },
+    .package = "httr2"
+  )
+  for (type in c("application/json", "application/x-www-form-urlencoded")) {
+    response <- httr2::response(
+      status = 200,
+      headers = list("content-type" = type),
+      body = charToRaw(
+        if (type == "application/json") {
+          '{"access_token":"fixture","token_type":"bearer","scope":"","expires_in":3600}'
+        } else {
+          "access_token=fixture&token_type=bearer&scope=&expires_in=3600"
+        }
+      )
+    )
+    token_set <- swap_code_for_token_set(client, "code", "verifier")
+    expect_identical(token_set[["scope"]], "")
+    for (refresh in c(FALSE, TRUE)) {
+      verified <- verify_token_set(
+        client,
+        token_set,
+        nonce = NULL,
+        is_refresh = refresh,
+        prior_granted_scopes = "read:user"
+      )
+      expect_identical(verified[["granted_scopes"]], character())
+      expect_identical(verified[["granted_scopes_verified"]], TRUE)
+    }
+    token <- OAuthToken(
+      access_token = "old",
+      refresh_token = "refresh",
+      granted_scopes = character(),
+      granted_scopes_verified = TRUE
+    )
+    refreshed <- refresh_token(client, token, introspect = FALSE)
+    expect_identical(refreshed@access_token, "fixture")
+    expect_identical(refreshed@granted_scopes, character())
+    expect_identical(refreshed@granted_scopes_verified, TRUE)
+  }
+})
+
 test_that("scope_validation = 'strict' errors on missing scopes", {
   prov <- oauth_provider(
     name = "fake",

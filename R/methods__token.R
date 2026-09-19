@@ -655,7 +655,8 @@ introspect_token <- function(
             if ("scope" %in% names(value)) {
               validate_response_scope(
                 value[["scope"]],
-                allow_empty = client_uses_smart_scopes(oauth_client)
+                allow_empty = client_uses_smart_scopes(oauth_client) ||
+                  length(effective_client_scopes(oauth_client)) == 0L
               )
             }
             value
@@ -1235,7 +1236,11 @@ refresh_token_impl <- function(
 
           tok <- parse_token_response(
             resp,
-            allow_empty_scope = client_uses_smart_scopes(oauth_client)
+            allow_empty_scope = client_uses_smart_scopes(oauth_client) ||
+              length(
+                requested_scopes %||% effective_client_scopes(oauth_client)
+              ) ==
+                0L
           )
           extra_fields <- token_response_extra_fields(tok)
           outcome[["value"]] <- if (
@@ -1424,7 +1429,8 @@ refresh_token_impl <- function(
               validate_response_scope(
                 intro_res[["raw"]][["scope"]],
                 err_token,
-                allow_empty = client_uses_smart_scopes(oauth_client)
+                allow_empty = client_uses_smart_scopes(oauth_client) ||
+                  length(scope_request[["scopes"]]) == 0L
               )
               validate_refresh_scope_grant(
                 oauth_client,

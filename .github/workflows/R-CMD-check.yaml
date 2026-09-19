@@ -13,7 +13,7 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }}, ${{ matrix.config.testthat || 'current testthat' }})
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }}, ${{ matrix.config.testthat || 'current testthat' }}, ${{ matrix.config.cran && 'CRAN tests' || 'full tests' }})
 
     strategy:
       fail-fast: false
@@ -23,6 +23,8 @@ jobs:
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
+          # Also exercise the smaller test suite used by CRAN.
+          - {os: ubuntu-latest,   r: 'release', cran: true}
           - {os: ubuntu-latest,   r: 'oldrel-1'}
           # testthat 3.2.2 uses R internals removed in R 4.6, and
           # shinytest2 >= 0.5.0 requires testthat >= 3.3.1. Keep this
@@ -32,8 +34,8 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      # Run tests guarded by skip_on_cran() — security / timing / webfakes tests
-      NOT_CRAN: true
+      # Keep the full suite on every existing job; add a CRAN-mode check.
+      NOT_CRAN: ${{ matrix.config.cran && 'false' || 'true' }}
       # Browser tests run in the Chrome-provisioned integration workflow.
       SHINYOAUTH_BROWSER_TESTS: false
       # Suppress NOTE about Chrome temp files left by chromote/shinytest2 tests
