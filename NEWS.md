@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Made direct-browser deployment guidance more prominent. The Shiny module
+now uses Posit Connect / Connect Cloud environment markers to print a specific
+reminder once per R process to open the direct app URL outside the dashboard's
+embedded preview.
+
 * Added provider helpers for ORCID (production and sandbox), GitLab (hosted
 and self-managed), Amazon Cognito, Globus Auth, Hugging Face, SURFconext
 (production and test), and authentik.

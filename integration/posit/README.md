@@ -11,12 +11,18 @@ repository available to the deployment. For local setup first, see
 
 ## Use the app's direct address
 
-OAuth login needs the app to open directly in a browser tab. Use the sharing
-URL from the content's **Settings > URL** page, such as
+**Test login outside the Connect Cloud dashboard's embedded app preview:**
+OAuth redirects may fail there. Copy the sharing URL from the content's
+**Settings > URL** page, such as
 `https://<content-id>.share.connect.posit.cloud`, or a configured custom URL.
 See [Connect Cloud URL settings](https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url).
 The administrative content page at `connect.posit.cloud/.../content/...` is
-not your app's callback address.
+not your app's callback address. Paste the sharing URL into a new browser tab
+or window and start login there.
+
+In these examples, the direct app URL is also the registered `redirect_uri`.
+Apps with a dedicated callback path must register that full callback URL while
+using the app's entry URL to start login.
 
 ## Configure and deploy
 

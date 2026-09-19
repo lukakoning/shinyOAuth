@@ -44,7 +44,13 @@
 #' @section Browser setup:
 #' Open the app at its registered return address in a regular browser with
 #' cookies, session storage, and Web Crypto enabled. Embedded IDE viewers may
-#' prevent login. The binding token stays in origin- and tab-scoped session storage; the
+#' prevent login. On Posit Connect or Connect Cloud, open the direct app URL in
+#' a new browser tab rather than using the dashboard's embedded preview. In
+#' Connect Cloud, copy the sharing URL from **Settings > URL**. Register the
+#' exact public callback URL with your provider, including any callback path.
+#' The module emits a reminder once per R process when Posit's deployment
+#' environment markers are present; it does not detect whether a page is embedded.
+#' The binding token stays in origin- and tab-scoped session storage; the
 #' cookie contains an independent marker, which must match the stored record.
 #' The temporary browser cookie follows the state store's `max_age`, with a
 #' 300-second fallback when that lifetime is unavailable. The separate
@@ -452,17 +458,7 @@ oauth_module_server_impl <- function(
     }
   }
 
-  if (!.is_test()) {
-    warn_pkg(
-      "Open your Shiny app in a regular browser",
-      c(
-        "!" = "`oauth_module_server()` was called; view your app in a standard web browser (e.g., Chrome, Firefox, Safari)",
-        "i" = "Viewers in RStudio/Positron/etc. cannot perform necessary redirects for OAuth 2.0 flows"
-      ),
-      .frequency = "once",
-      .frequency_id = "oauth_module_server_remind_browser"
-    )
-  }
+  warn_about_browser_deployment()
 
   warn_about_missing_js_dependency()
   if (is.null(.managed)) {
