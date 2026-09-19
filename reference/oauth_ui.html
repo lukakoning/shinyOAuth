@@ -104,7 +104,8 @@ ID, mutually exclusive with <code>id</code> and <code>client</code>.</p></dd>
 <code>ui &lt;- oauth_ui(ui, id = "auth", client = client)</code>, using the same module
 ID and client as the server. Pass the result to <code><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shiny::shinyApp()</a></code>. UI functions
 are supported too, including functions accepting the Shiny request.
-This wrapper includes <code><a href="use_shinyOAuth.html">use_shinyOAuth()</a></code> setup.
+This is the recommended setup for ordinary query-callback apps. It includes
+<code><a href="use_shinyOAuth.html">use_shinyOAuth()</a></code> setup; do not add a separate call inside the wrapped UI.
 With <code>client</code>, it also serves client-hosted Request Objects at the app root
 using independent, single-use handles. Shared-worker apps need a shared
 <code>client@state_store</code> with atomic <code>take()</code>; a memory store supports one process.</p>
@@ -145,15 +146,13 @@ requests. You can also set the same HTTP header at your web server.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu">oauth_ui</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">h2</a></span><span class="op">(</span><span class="st">"My app"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>    <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">h2</a></span><span class="op">(</span><span class="st">"My app"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/htmlOutput.html" class="external-link">uiOutput</a></span><span class="op">(</span><span class="st">"login"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># After creating your OAuth client, enable the callback bridge:</span></span></span>
-<span class="r-in"><span><span class="co"># ui &lt;- oauth_ui(ui, id = "auth", client = client)</span></span></span>
+<span class="r-in"><span><span class="co"># After creating your OAuth client, wrap the UI once with callback handling:</span></span></span>
+<span class="r-in"><span><span class="co"># ui &lt;- oauth_ui(base_ui, id = "auth", client = client)</span></span></span>
 <span class="r-in"><span><span class="co"># Use this UI with your app's server function:</span></span></span>
 <span class="r-in"><span><span class="co"># shiny::shinyApp(ui = ui, server = server)</span></span></span>
 </code></pre></div>

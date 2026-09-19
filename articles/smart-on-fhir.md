@@ -56,6 +56,15 @@ provider permits loopback HTTP, and set `SMART_CLIENT_ID` and
 registered URLs for deployment, and omit both `allow_http_loopback`
 exceptions shown below.
 
+> **Posit Connect / Connect Cloud:** Open the standalone app’s direct
+> URL in a new browser tab or window. The dashboard’s embedded preview
+> can prevent OAuth redirects. On Connect Cloud, copy the sharing URL
+> from **Settings \> URL**. Keep `/callback/fhir` in the registered
+> `redirect_uri` for this example, but open the app’s entry URL to start
+> login. For EHR launch, start from the EHR using top-level browser
+> navigation and the required launch parameters. See [deployment
+> instructions](https://lukakoning.github.io/shinyOAuth/articles/usage.html#posit-connect-and-connect-cloud).
+
 This package validates a SMART App Launch STU 2.2 profile, including
 advertised launch, authentication and scope capabilities. Discovery does
 not register your app or guarantee that the server will grant its
@@ -154,7 +163,6 @@ explains ownership, expiry and deployment constraints.
 ``` r
 
 base_ui <- fluidPage(
-  use_shinyOAuth(),
   h2("FHIR patient example"),
   actionButton("connect", "Connect hospital"),
   selectInput("connection_id", "Saved authorization", choices = character()),

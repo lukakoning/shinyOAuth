@@ -122,6 +122,17 @@ development if your provider permits loopback HTTP, and set
 your R environment. Use HTTPS and matching registered URLs for
 deployment, and omit both <code>allow_http_loopback</code> exceptions
 shown below.</p>
+<blockquote>
+<p><strong>Posit Connect / Connect Cloud:</strong> Open the standalone
+app’s direct URL in a new browser tab or window. The dashboard’s
+embedded preview can prevent OAuth redirects. On Connect Cloud, copy the
+sharing URL from <strong>Settings &gt; URL</strong>. Keep
+<code>/callback/fhir</code> in the registered <code>redirect_uri</code>
+for this example, but open the app’s entry URL to start login. For EHR
+launch, start from the EHR using top-level browser navigation and the
+required launch parameters. See <a href="usage.html#posit-connect-and-connect-cloud">deployment
+instructions</a>.</p>
+</blockquote>
 <p>This package validates a SMART App Launch STU 2.2 profile, including
 advertised launch, authentication and scope capabilities. Discovery does
 not register your app or guarantee that the server will grant its
@@ -233,7 +244,6 @@ vignette</a> explains ownership, expiry and deployment constraints.</p>
 </h3>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/use_shinyOAuth.html">use_shinyOAuth</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rstudio.github.io/htmltools/reference/builder.html" class="external-link">h2</a></span><span class="op">(</span><span class="st">"FHIR patient example"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"connect"</span>, <span class="st">"Connect hospital"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/selectInput.html" class="external-link">selectInput</a></span><span class="op">(</span><span class="st">"connection_id"</span>, <span class="st">"Saved authorization"</span>, choices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>,</span>

@@ -79,6 +79,15 @@ OpenID Connect (OIDC) authentication. <code><a href="../reference/oauth_module_s
 manages redirects, callback validation, token exchange, and session
 state. <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> supplies the browser setup required by
 the module.</p>
+<p>For ordinary apps, use
+<code>oauth_ui(ui, id = "auth", client = client)</code> with the same
+module ID and client as the server. Use
+<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> for POST callbacks, or
+<code><a href="../reference/oauth_connections_ui.html">oauth_connections_ui()</a></code> with a connection manager. These
+wrappers include the browser dependency; you do not need a separate
+<code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> call. That lower-level helper is for
+custom integrations providing equivalent callback handling and response
+headers.</p>
 <p>This vignette covers provider and client configuration, manual login
 buttons, authenticated API calls, token refresh, and deployment. The
 examples use a GitHub OAuth App. Install shinyOAuth with
@@ -111,6 +120,12 @@ Git.</p>
 <code>http://127.0.0.1:8100</code> in a regular browser. Use the
 registered address; switching between <code>localhost</code> and
 <code>127.0.0.1</code> can interrupt login.</p>
+<blockquote>
+<p><strong>Deploying to Posit Connect or Connect Cloud?</strong> Test
+login at the direct app URL in a new browser tab or window. The
+dashboard’s embedded preview can prevent OAuth redirects. See <a href="#posit-connect-and-connect-cloud">Posit deployment
+instructions</a>.</p>
+</blockquote>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
@@ -670,9 +685,37 @@ validity at the provider.</p>
 <p>Replace the local callback URL with the app’s public HTTPS URL, and
 register that same URL with the provider. Open the app directly in a
 browser tab. An app embedded in another page may not be able to complete
-login. On Posit Connect Cloud, use the app’s direct URL as described in
-its <a href="https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url" class="external-link">URL
-settings guide</a>.</p>
+login.</p>
+<div class="section level3">
+<h3 id="posit-connect-and-connect-cloud">Posit Connect and Connect Cloud<a class="anchor" aria-label="anchor" href="#posit-connect-and-connect-cloud"></a>
+</h3>
+<p><strong>Test OAuth login in a new browser tab or window, outside the
+dashboard’s embedded app preview.</strong></p>
+<ol style="list-style-type: decimal">
+<li>On Connect Cloud, copy the app’s sharing URL from <strong>Settings
+&gt; URL</strong>, such as
+<code>https://&lt;content-id&gt;.share.connect.posit.cloud</code>, or
+your configured custom URL. See the <a href="https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url" class="external-link">URL
+settings guide</a>. On Posit Connect, use the app’s direct content
+URL.</li>
+<li>Paste that URL into a new browser tab or window and start login
+there. The administrative page at
+<code>connect.posit.cloud/.../content/...</code> is not the direct app
+URL or an OAuth callback URL.</li>
+<li>Set <code>redirect_uri</code> to the exact public callback URL
+registered with your provider. In the minimal example this is the app
+URL. With a dedicated route such as <code>/callback</code>, retain that
+callback path in the registration, but open the app’s entry URL to start
+login.</li>
+</ol>
+<p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> prints a console/log warning once
+per R process when <code>POSIT_PRODUCT</code> is <code>CONNECT</code> or
+<code>CONNECT_CLOUD</code>, or the legacy <code>RSTUDIO_PRODUCT</code>
+is <code>CONNECT</code>. This is a hosting reminder, not detection of an
+embedded browser; it also appears when you open the app correctly. If
+these markers are absent, the module retains its general browser
+reminder.</p>
+</div>
 <div class="section level3">
 <h3 id="multiple-r-processes">Multiple R processes<a class="anchor" aria-label="anchor" href="#multiple-r-processes"></a>
 </h3>

@@ -2,6 +2,19 @@
 
 ## shinyOAuth (development version)
 
+- Updated the missing browser-setup warning and UI documentation to
+  recommend
+  [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+  with the module ID and client, or the appropriate form-post or
+  connection-manager wrapper. These wrappers include
+  [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+  setup.
+
+- Made direct-browser deployment guidance more prominent. The Shiny
+  module now uses Posit Connect / Connect Cloud environment markers to
+  print a specific reminder once per R process to open the direct app
+  URL outside the dashboard’s embedded preview.
+
 - Added provider helpers for ORCID (production and sandbox), GitLab
   (hosted and self-managed), Amazon Cognito, Globus Auth, Hugging Face,
   SURFconext (production and test), and authentik.

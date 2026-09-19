@@ -10,6 +10,17 @@ state.
 [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
 supplies the browser setup required by the module.
 
+For ordinary apps, use `oauth_ui(ui, id = "auth", client = client)` with
+the same module ID and client as the server. Use
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+for POST callbacks, or
+[`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
+with a connection manager. These wrappers include the browser
+dependency; you do not need a separate
+[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+call. That lower-level helper is for custom integrations providing
+equivalent callback handling and response headers.
+
 This vignette covers provider and client configuration, manual login
 buttons, authenticated API calls, token refresh, and deployment. The
 examples use a GitHub OAuth App. Install shinyOAuth with
@@ -42,6 +53,11 @@ Save the following code as `app.R` and run it. Open
 `http://127.0.0.1:8100` in a regular browser. Use the registered
 address; switching between `localhost` and `127.0.0.1` can interrupt
 login.
+
+> **Deploying to Posit Connect or Connect Cloud?** Test login at the
+> direct app URL in a new browser tab or window. The dashboard’s
+> embedded preview can prevent OAuth redirects. See [Posit deployment
+> instructions](#posit-connect-and-connect-cloud).
 
 ``` r
 
@@ -624,9 +640,33 @@ does not extend the token’s validity at the provider.
 Replace the local callback URL with the app’s public HTTPS URL, and
 register that same URL with the provider. Open the app directly in a
 browser tab. An app embedded in another page may not be able to complete
-login. On Posit Connect Cloud, use the app’s direct URL as described in
-its [URL settings
-guide](https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url).
+login.
+
+### Posit Connect and Connect Cloud
+
+**Test OAuth login in a new browser tab or window, outside the
+dashboard’s embedded app preview.**
+
+1.  On Connect Cloud, copy the app’s sharing URL from **Settings \>
+    URL**, such as `https://<content-id>.share.connect.posit.cloud`, or
+    your configured custom URL. See the [URL settings
+    guide](https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url).
+    On Posit Connect, use the app’s direct content URL.
+2.  Paste that URL into a new browser tab or window and start login
+    there. The administrative page at
+    `connect.posit.cloud/.../content/...` is not the direct app URL or
+    an OAuth callback URL.
+3.  Set `redirect_uri` to the exact public callback URL registered with
+    your provider. In the minimal example this is the app URL. With a
+    dedicated route such as `/callback`, retain that callback path in
+    the registration, but open the app’s entry URL to start login.
+
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+prints a console/log warning once per R process when `POSIT_PRODUCT` is
+`CONNECT` or `CONNECT_CLOUD`, or the legacy `RSTUDIO_PRODUCT` is
+`CONNECT`. This is a hosting reminder, not detection of an embedded
+browser; it also appears when you open the app correctly. If these
+markers are absent, the module retains its general browser reminder.
 
 ### Multiple R processes
 

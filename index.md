@@ -157,6 +157,13 @@ runApp(
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
+> **Deploying to Posit Connect or Connect Cloud?** Open the direct app
+> URL in a new browser tab or window to test login. The dashboard’s
+> embedded preview can prevent OAuth redirects. On Connect Cloud, copy
+> the sharing URL from **Settings \> URL**. Register the exact public
+> callback URL with your provider. See [deployment
+> instructions](https://lukakoning.github.io/shinyOAuth/articles/usage.html#posit-connect-and-connect-cloud).
+
 ### Logging/auditing
 
 The package provides hooks for logging/auditing crucial events (e.g.,

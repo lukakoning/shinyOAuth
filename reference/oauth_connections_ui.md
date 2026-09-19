@@ -4,7 +4,12 @@ Wrap the application's UI with the same manager and module ID used by
 [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md).
 Browser retention establishes its HttpOnly owner cookie on an ordinary
 page request before Shiny starts. OAuth callbacks use the existing
-validated callback bridge and clean continuation.
+validated callback bridge and clean continuation. This wrapper also
+includes the browser dependency and response headers; do not add a
+separate
+[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+call or nest
+[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
 
 ## Usage
 

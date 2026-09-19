@@ -6,7 +6,13 @@ return, and gives your app reactive login status and user information.
 Create `client` with
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
 outside `server()`, and wrap your complete UI with
-[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
+`oauth_ui(ui, id = "auth", client = client)`, using the same module ID
+and client. Use
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+for POST callbacks. These wrappers include the browser dependency; no
+separate
+[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+call is needed.
 
 This uses the OAuth 2.0 Authorization Code flow, with OpenID Connect
 (OIDC) identity checks when configured for an OIDC provider.
@@ -283,25 +289,31 @@ reference](https://lukakoning.github.io/shinyOAuth/articles/package-options.html
 
 Open the app at its registered return address in a regular browser with
 cookies, session storage, and Web Crypto enabled. Embedded IDE viewers
-may prevent login. The binding token stays in origin- and tab-scoped
-session storage; the cookie contains an independent marker, which must
-match the stored record. The temporary browser cookie follows the state
-store's `max_age`, with a 300-second fallback when that lifetime is
-unavailable. The separate `state_payload_max_age` client setting limits
-the age of the login request. Each new login uses a fresh
-server-selected browser binding and its own marker cookie. Application
-callback routes and module namespaces identify the storage record.
-Separate tabs can complete logins independently; complete a login in the
-tab that started it. Starting another login in the same tab and module
-replaces that tab's pending binding. Pending logins must be restarted
-after upgrading from versions that used local storage. Private
-browser-binding inputs are excluded from Shiny bookmarks. Do not copy
-`auth[["browser_token"]]` into custom bookmark values, URLs, or logs.
-Treat the entire hostname as a trust boundary: cookies are shared across
-ports, even with `__Host-`, `Secure`, or `HttpOnly`. Use a dedicated
-hostname when other services are not trusted. The origin-scoped check
-prevents cookie adoption across ports, but co-hosted services can still
-disrupt cookies.
+may prevent login. On Posit Connect or Connect Cloud, open the direct
+app URL in a new browser tab rather than using the dashboard's embedded
+preview. In Connect Cloud, copy the sharing URL from **Settings \>
+URL**. Register the exact public callback URL with your provider,
+including any callback path. The module emits a reminder once per R
+process when Posit's deployment environment markers are present; it does
+not detect whether a page is embedded. The binding token stays in
+origin- and tab-scoped session storage; the cookie contains an
+independent marker, which must match the stored record. The temporary
+browser cookie follows the state store's `max_age`, with a 300-second
+fallback when that lifetime is unavailable. The separate
+`state_payload_max_age` client setting limits the age of the login
+request. Each new login uses a fresh server-selected browser binding and
+its own marker cookie. Application callback routes and module namespaces
+identify the storage record. Separate tabs can complete logins
+independently; complete a login in the tab that started it. Starting
+another login in the same tab and module replaces that tab's pending
+binding. Pending logins must be restarted after upgrading from versions
+that used local storage. Private browser-binding inputs are excluded
+from Shiny bookmarks. Do not copy `auth[["browser_token"]]` into custom
+bookmark values, URLs, or logs. Treat the entire hostname as a trust
+boundary: cookies are shared across ports, even with `__Host-`,
+`Secure`, or `HttpOnly`. Use a dedicated hostname when other services
+are not trusted. The origin-scoped check prevents cookie adoption across
+ports, but co-hosted services can still disrupt cookies.
 
 ## See also
 
