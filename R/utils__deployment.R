@@ -48,7 +48,12 @@ warn_about_browser_deployment <- function() {
       "Open your Shiny app in a regular browser",
       c(
         "!" = "`oauth_module_server()` was called; view your app in a standard web browser (e.g., Chrome, Firefox, Safari)",
-        "i" = "Viewers in RStudio/Positron/etc. cannot perform necessary redirects for OAuth 2.0 flows"
+        "i" = "Viewers in RStudio/Positron/etc. cannot perform necessary redirects for OAuth 2.0 flows",
+        "i" = paste0(
+          "Embedded views (e.g., a Shiny app displayed within another web ",
+          "page) may also be unable to perform the redirects required for ",
+          "OAuth 2.0 login"
+        )
       ),
       .frequency = "once",
       .frequency_id = "oauth_module_server_remind_browser"
