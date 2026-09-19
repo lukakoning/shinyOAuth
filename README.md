@@ -41,9 +41,6 @@ using asynchronous execution, and more. The package is highly configurable and w
 - Provider helpers: you can configure your own OAuth 2.0/OIDC providers,
   but the package also includes an `oauth_provider_oidc_discover()` function for quick OIDC setup, and
   contains built-in configurations for popular providers (e.g., GitHub, Google, Microsoft, Keycloak, Auth0).
-  Research and institutional presets include ORCID, GitLab, Amazon Cognito,
-  Globus Auth, Hugging Face, SURFconext, and authentik; see the
-  [provider setup guide](https://lukakoning.github.io/shinyOAuth/articles/provider-setup.html).
 
 - Security best practices: AES-GCM–sealed state payloads (AEAD), server-side state validation coupled with
   origin-scoped browser binding, HTTPS enforcement, PKCE (S256), ID token signature/claims validation (including nonce),
