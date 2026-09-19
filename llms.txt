@@ -241,20 +241,34 @@ Posit Connect Cloud.
   : Create an Apple OAuthProvider
 - [`oauth_provider_auth0()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_auth0.md)
   : Create an Auth0 OAuthProvider (via OIDC discovery)
+- [`oauth_provider_authentik()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_authentik.md)
+  : Create an authentik OAuthProvider (via OIDC discovery)
+- [`oauth_provider_cognito()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_cognito.md)
+  : Create an Amazon Cognito OAuthProvider (via OIDC discovery)
 - [`oauth_provider_github()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.md)
   : Create a GitHub OAuthProvider
+- [`oauth_provider_gitlab()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_gitlab.md)
+  : Create a GitLab OAuthProvider (via OIDC discovery)
+- [`oauth_provider_globus()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_globus.md)
+  : Create a Globus Auth OAuthProvider
 - [`oauth_provider_google()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_google.md)
   : Create a Google OAuthProvider
+- [`oauth_provider_huggingface()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_huggingface.md)
+  : Create a Hugging Face OAuthProvider (via OIDC discovery)
 - [`oauth_provider_keycloak()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_keycloak.md)
   : Create a Keycloak OAuthProvider (via OIDC discovery)
 - [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
   : Create a Microsoft (Entra ID) OAuthProvider
 - [`oauth_provider_okta()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.md)
   : Create an Okta OAuthProvider (via OIDC discovery)
+- [`oauth_provider_orcid()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_orcid.md)
+  : Create an ORCID OAuthProvider (via OIDC discovery)
 - [`oauth_provider_slack()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_slack.md)
   : Create a Slack OAuthProvider (via OIDC discovery)
 - [`oauth_provider_spotify()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.md)
   : Create a Spotify OAuthProvider
+- [`oauth_provider_surfconext()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_surfconext.md)
+  : Create a SURFconext OAuthProvider (via OIDC discovery)
 
 ## Provider-specific client settings
 
