@@ -187,7 +187,10 @@ test_that("validate_id_token rejects auth_time exceeding max_age + leeway", {
 
 test_that("validate_id_token accepts auth_time at exact boundary (max_age + leeway)", {
   client <- mk_client()
-  now <- floor(as.numeric(Sys.time()))
+  # Keep token creation and validation on the same second, even on slow runners.
+  fixed_now <- as.POSIXct(1800000000, origin = "1970-01-01", tz = "UTC")
+  local_mocked_bindings(Sys.time = function() fixed_now, .package = "base")
+  now <- as.numeric(fixed_now)
 
   # auth_time exactly max_age + leeway ago => elapsed == max_age + leeway => NOT exceeded
   jwt <- build_jwt(
@@ -212,7 +215,9 @@ test_that("validate_id_token accepts auth_time at exact boundary (max_age + leew
 
 test_that("validate_id_token rejects auth_time one second past boundary", {
   client <- mk_client()
-  now <- floor(as.numeric(Sys.time()))
+  fixed_now <- as.POSIXct(1800000000, origin = "1970-01-01", tz = "UTC")
+  local_mocked_bindings(Sys.time = function() fixed_now, .package = "base")
+  now <- as.numeric(fixed_now)
 
   # auth_time 306 seconds ago, max_age 300, leeway 5 => 306 > 305 => reject
   jwt <- build_jwt(
