@@ -60,4 +60,4 @@ Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://github.com/lukakoning/shinyOAuth, https://lukakoning.github.io/shinyOAuth/
 BugReports: https://github.com/lukakoning/shinyOAuth/issues
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0
