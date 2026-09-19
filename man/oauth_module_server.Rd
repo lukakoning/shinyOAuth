@@ -181,7 +181,10 @@ Call \code{oauth_module_server()} inside your Shiny \code{server()} function to 
 login for each user. It sends users to the provider, checks their return,
 and gives your app reactive login status and user information.
 Create \code{client} with \code{\link[=oauth_client]{oauth_client()}} outside \code{server()}, and wrap your
-complete UI with \code{\link[=oauth_ui]{oauth_ui()}}.
+complete UI with \code{oauth_ui(ui, id = "auth", client = client)}, using the
+same module ID and client. Use \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} for POST callbacks.
+These wrappers include the browser dependency; no separate
+\code{\link[=use_shinyOAuth]{use_shinyOAuth()}} call is needed.
 
 This uses the OAuth 2.0 Authorization Code flow, with OpenID Connect (OIDC)
 identity checks when configured for an OIDC provider.

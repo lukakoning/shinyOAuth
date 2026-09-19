@@ -52,6 +52,8 @@ Wrap the application's UI with the same manager and module ID used by
 \code{\link[=oauth_connections_server]{oauth_connections_server()}}. Browser retention establishes its HttpOnly
 owner cookie on an ordinary page request before Shiny starts. OAuth callbacks
 use the existing validated callback bridge and clean continuation.
+This wrapper also includes the browser dependency and response headers;
+do not add a separate \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} call or nest \code{\link[=oauth_ui]{oauth_ui()}}.
 }
 \details{
 Raw GET and form POST callbacks never create or rotate an owner. A POST may

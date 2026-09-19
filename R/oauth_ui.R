@@ -11,7 +11,8 @@
 #' `ui <- oauth_ui(ui, id = "auth", client = client)`, using the same module
 #' ID and client as the server. Pass the result to [shiny::shinyApp()]. UI functions
 #' are supported too, including functions accepting the Shiny request.
-#' This wrapper includes [use_shinyOAuth()] setup.
+#' This is the recommended setup for ordinary query-callback apps. It includes
+#' [use_shinyOAuth()] setup; do not add a separate call inside the wrapped UI.
 #' With `client`, it also serves client-hosted Request Objects at the app root
 #' using independent, single-use handles. Shared-worker apps need a shared
 #' `client@state_store` with atomic `take()`; a memory store supports one process.
@@ -63,15 +64,13 @@
 #' @seealso [oauth_module_server()], [oauth_form_post_ui()], [use_shinyOAuth()]
 #' @export
 #' @examples
-#' ui <- oauth_ui(
-#'   shiny::fluidPage(
-#'     shiny::h2("My app"),
-#'     shiny::uiOutput("login")
-#'   )
+#' base_ui <- shiny::fluidPage(
+#'   shiny::h2("My app"),
+#'   shiny::uiOutput("login")
 #' )
 #'
-#' # After creating your OAuth client, enable the callback bridge:
-#' # ui <- oauth_ui(ui, id = "auth", client = client)
+#' # After creating your OAuth client, wrap the UI once with callback handling:
+#' # ui <- oauth_ui(base_ui, id = "auth", client = client)
 #' # Use this UI with your app's server function:
 #' # shiny::shinyApp(ui = ui, server = server)
 oauth_ui <- function(

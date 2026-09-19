@@ -14,7 +14,10 @@
 #' login for each user. It sends users to the provider, checks their return,
 #' and gives your app reactive login status and user information.
 #' Create `client` with [oauth_client()] outside `server()`, and wrap your
-#' complete UI with [oauth_ui()].
+#' complete UI with `oauth_ui(ui, id = "auth", client = client)`, using the
+#' same module ID and client. Use [oauth_form_post_ui()] for POST callbacks.
+#' These wrappers include the browser dependency; no separate
+#' [use_shinyOAuth()] call is needed.
 #'
 #' This uses the OAuth 2.0 Authorization Code flow, with OpenID Connect (OIDC)
 #' identity checks when configured for an OIDC provider.

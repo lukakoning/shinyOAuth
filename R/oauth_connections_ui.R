@@ -4,6 +4,8 @@
 #' [oauth_connections_server()]. Browser retention establishes its HttpOnly
 #' owner cookie on an ordinary page request before Shiny starts. OAuth callbacks
 #' use the existing validated callback bridge and clean continuation.
+#' This wrapper also includes the browser dependency and response headers;
+#' do not add a separate [use_shinyOAuth()] call or nest [oauth_ui()].
 #'
 #' @param base_ui A Shiny UI object or request-dependent UI function.
 #' @param id Module ID shared with [oauth_connections_server()].

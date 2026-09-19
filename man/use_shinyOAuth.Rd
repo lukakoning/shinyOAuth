@@ -17,6 +17,12 @@ this protection from the start of page loading.}
 A \code{tagList} that loads the browser code once.
 }
 \description{
+For ordinary apps, prefer \code{oauth_ui(ui, id = "auth", client = client)};
+it includes this dependency, callback handling, and response headers. Use
+\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} for POST callbacks or \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} with
+a connection manager. No separate \code{use_shinyOAuth()} call is needed with
+these wrappers.
+
 Add shinyOAuth's JavaScript to a page so \code{\link[=oauth_module_server]{oauth_module_server()}} can redirect
 the browser and manage its temporary login cookie. Use this inside an
 existing \code{fluidPage()} or \code{tagList()} when you integrate the browser
@@ -29,7 +35,8 @@ your web server or another UI wrapper.
 sent as referrers when page resources load. When using \code{\link[=use_shinyOAuth]{use_shinyOAuth()}}
 directly, set that header in your HTTP response configuration for protection
 from the start of page loading; the optional meta tag takes effect later.
-\code{\link[=oauth_ui]{oauth_ui()}} and \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} already include this dependency.
+\code{\link[=oauth_ui]{oauth_ui()}}, \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, and \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} already
+include this dependency.
 The dependency alone does not provide a callback bridge. Do not load
 application or third-party scripts on raw OAuth callback pages; use
 \code{oauth_ui(ui, id, client)} or a dedicated equivalent endpoint to redirect to
@@ -37,6 +44,9 @@ a clean URL before rendering the app. Callback responses must also send
 \code{Cache-Control: no-store} and \code{Pragma: no-cache}.
 }
 \examples{
+# Low-level browser setup for a custom HTTP integration.
+# Supply equivalent callback handling and response headers separately.
+# For ordinary apps, use oauth_ui(ui, id = "auth", client = client).
 ui <- shiny::fluidPage(
   use_shinyOAuth()
   # ...
@@ -44,5 +54,6 @@ ui <- shiny::fluidPage(
 
 }
 \seealso{
+\code{\link[=oauth_ui]{oauth_ui()}}, \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, \code{\link[=oauth_connections_ui]{oauth_connections_ui()}},
 \code{\link[=oauth_module_server]{oauth_module_server()}}
 }

@@ -14,6 +14,13 @@ shinyOAuth provides a Shiny module for OAuth 2.0 authorization and OpenID Connec
 validation, token exchange, and session state. `oauth_ui()` supplies the browser
 setup required by the module.
 
+For ordinary apps, use `oauth_ui(ui, id = "auth", client = client)` with the
+same module ID and client as the server. Use `oauth_form_post_ui()` for POST
+callbacks, or `oauth_connections_ui()` with a connection manager. These wrappers
+include the browser dependency; you do not need a separate `use_shinyOAuth()`
+call. That lower-level helper is for custom integrations providing equivalent
+callback handling and response headers.
+
 This vignette covers provider and client configuration, manual login buttons,
 authenticated API calls, token refresh, and deployment. The examples use a
 GitHub OAuth App. Install shinyOAuth with `install.packages("shinyOAuth")`.
