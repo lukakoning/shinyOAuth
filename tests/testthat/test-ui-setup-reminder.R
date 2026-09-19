@@ -13,7 +13,11 @@ test_that("missing UI setup recommends complete wrappers", {
   expect_match(text, 'oauth_ui(ui, id = "auth", client = client)', fixed = TRUE)
   expect_match(text, "oauth_form_post_ui()", fixed = TRUE)
   expect_match(text, "oauth_connections_ui()", fixed = TRUE)
-  expect_match(text, "no separate `use_shinyOAuth()` call is needed", fixed = TRUE)
+  expect_match(
+    text,
+    "no separate `use_shinyOAuth()` call is needed",
+    fixed = TRUE
+  )
 })
 
 test_that("ordinary and form-post wrappers satisfy the browser setup reminder", {
@@ -26,7 +30,9 @@ test_that("ordinary and form-post wrappers satisfy the browser setup reminder", 
   )
   withr::local_options(rlib_warning_verbosity = "verbose")
   request <- list(
-    REQUEST_METHOD = "GET", PATH_INFO = "/", QUERY_STRING = ""
+    REQUEST_METHOD = "GET",
+    PATH_INFO = "/",
+    QUERY_STRING = ""
   )
 
   for (wrap in list(

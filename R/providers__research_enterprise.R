@@ -280,7 +280,10 @@ oauth_provider_authentik <- function(
     err_input("application_slug must contain only letters, digits, '_' or '-'")
   }
   issuer <- paste0(
-    rtrim_slash(base_url), "/application/o/", application_slug, "/"
+    rtrim_slash(base_url),
+    "/application/o/",
+    application_slug,
+    "/"
   )
   oauth_provider_oidc_discover(
     issuer = issuer,
