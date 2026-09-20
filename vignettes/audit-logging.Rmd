@@ -305,6 +305,9 @@ Reasons are `disconnect`, `disconnect_all`, `logout`, or `session_end`.
 Identifiers use the configured audit digest policy; credentials and raw identities
 are excluded. Remote outcomes describe the revocation attempt, not proof that the
 authorization server previously recognized a token.
+For token targets, `remote_access_outcome` covers all acquired access tokens.
+An incomplete result takes precedence over acceptance: `failed`, `not_attempted`,
+`unsupported`, `accepted`, then `missing` (no credential to revoke).
 
 #### Event: `audit_connections_disconnected`
 

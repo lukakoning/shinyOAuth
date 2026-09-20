@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Disconnect results and audit events include secondary access-token revocation
+outcomes. Failed, unsupported, or skipped cleanup takes precedence over acceptance.
+
 * Microsoft token targets retain working sibling credentials after an
 `invalid_resource` rejection. Invalid grants and interaction requirements
 continue to require a new authorization.

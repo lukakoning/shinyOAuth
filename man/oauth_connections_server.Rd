@@ -51,6 +51,8 @@ require a fresh EHR launch instead.
 Call from an input event handler; returns \code{TRUE} invisibly.
 \item \code{disconnect(connection_id, revoke = TRUE)}: remove local usability first,
 then return separate \code{local} and \code{remote} revocation results.
+\code{remote$access} aggregates the primary and acquired target tokens, with
+precedence \code{failed}, \code{not_attempted}, \code{unsupported}, \code{accepted}, \code{missing}.
 \item \code{disconnect_all(revoke = TRUE)}: cancel pending authorizations and disconnect
 this owner's stored connections; return a list of results.
 \item \code{logout(revoke = TRUE, reload = TRUE)}: invalidate the local owner/session

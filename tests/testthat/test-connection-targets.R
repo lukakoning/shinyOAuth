@@ -1082,6 +1082,106 @@ test_that("target cleanup revokes child access tokens and one shared refresh cre
   }
 })
 
+test_that("disconnect reports incomplete child revocation in results and audit events", {
+  revoke <- connection_manager_revoke
+  for (action in c("disconnect", "disconnect_all")) {
+    for (outcome in c("accepted", "failed", "unsupported", "not_attempted")) {
+      events <- list()
+      attempted <- character()
+      local_options(
+        shinyOAuth.audit_hook = function(event) {
+          events[[length(events) + 1L]] <<- event
+        },
+        shinyOAuth.otel_tracing_enabled = FALSE
+      )
+      local_mocked_bindings(
+        refresh_token_dispatch = function(client, token, target_request, ...) {
+          target_test_token(
+            target_request[["scopes"]],
+            "contacts-child",
+            "rotated"
+          )
+        },
+        connection_manager_revoke = function(
+          manager,
+          client,
+          token,
+          deadline,
+          kinds = c("refresh", "access")
+        ) {
+          if (identical(kinds, "access") && outcome == "not_attempted") {
+            deadline <- 0
+          }
+          revoke(manager, client, token, deadline, kinds)
+        },
+        revoke_token = function(client, token, token_kind, ...) {
+          value <- if (token_kind == "access") {
+            token@access_token
+          } else {
+            token@refresh_token
+          }
+          attempted <<- c(attempted, value)
+          if (identical(value, "contacts-child")) {
+            return(list(
+              supported = outcome != "unsupported",
+              revoked = outcome == "accepted"
+            ))
+          }
+          list(supported = TRUE, revoked = TRUE)
+        }
+      )
+      f <- target_test_manager()
+      shiny::testServer(
+        oauth_connections_server,
+        args = list(id = "auth", manager = f[["manager"]]),
+        session = manager_test_session(manager_test_cookie(f)),
+        {
+          auth <- session[["getReturned"]]()
+          current <- connection(manager_test_accept(
+            controller,
+            token = target_test_token()
+          ))
+          current[["access_token"]](target = "contacts")
+          events <<- list()
+          result <- if (action == "disconnect") {
+            auth[["disconnect"]](current[["id"]])
+          } else {
+            auth[["disconnect_all"]]()[[1L]]
+          }
+          expect_identical(result[["local"]], "disconnected")
+          expect_identical(result[["remote"]][["refresh"]], "accepted")
+          expect_identical(result[["remote"]][["access"]], outcome)
+          removed <- Filter(
+            function(event) event[["type"]] == "audit_connection_disconnected",
+            events
+          )
+          expect_length(removed, 1L)
+          expect_identical(removed[[1L]][["remote_access_outcome"]], outcome)
+          expect_identical(
+            removed[[1L]][["remote_refresh_outcome"]],
+            "accepted"
+          )
+          expect_identical(current[["is_usable"]](), FALSE)
+          expect_setequal(
+            attempted,
+            c(
+              "rotated",
+              "calendar-initial",
+              if (outcome != "not_attempted") "contacts-child"
+            )
+          )
+          encoded <- jsonlite::toJSON(events, auto_unbox = TRUE)
+          expect_false(any(vapply(
+            c("rotated", "calendar-initial", "contacts-child"),
+            function(secret) grepl(secret, encoded, fixed = TRUE),
+            logical(1)
+          )))
+        }
+      )
+    }
+  }
+})
+
 test_that("retiring a child access alias removes only that target", {
   f <- target_test_manager()
   cookie <- manager_test_cookie(f)

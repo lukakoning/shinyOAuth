@@ -34,6 +34,8 @@
 #'     Call from an input event handler; returns `TRUE` invisibly.
 #'   * `disconnect(connection_id, revoke = TRUE)`: remove local usability first,
 #'     then return separate `local` and `remote` revocation results.
+#'     `remote$access` aggregates the primary and acquired target tokens, with
+#'     precedence `failed`, `not_attempted`, `unsupported`, `accepted`, `missing`.
 #'   * `disconnect_all(revoke = TRUE)`: cancel pending authorizations and disconnect
 #'     this owner's stored connections; return a list of results.
 #'   * `logout(revoke = TRUE, reload = TRUE)`: invalidate the local owner/session

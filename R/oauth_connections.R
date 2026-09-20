@@ -433,6 +433,13 @@ connection_manager_revoke <- function(
   stats::setNames(result, c("refresh", "access"))
 }
 
+# Missing credentials need no remote cleanup. All other incomplete outcomes
+# take precedence over acceptance, including an exhausted batch deadline.
+connection_revocation_outcome <- function(outcomes) {
+  severity <- c("failed", "not_attempted", "unsupported", "accepted", "missing")
+  severity[severity %in% outcomes][[1L]]
+}
+
 connection_manager_controller <- function(manager, session) {
   connection_manager_check(manager)
   root <- connection_session_root(session)
@@ -1293,13 +1300,17 @@ connection_manager_controller <- function(manager, session) {
           deadline
         )
         for (entry in opened[["targets"]][["tokens"]]) {
-          connection_manager_revoke(
+          target_remote <- connection_manager_revoke(
             manager,
             client_for(record[["client"]], check = FALSE),
             entry,
             deadline,
             kinds = "access"
           )
+          remote[["access"]] <- connection_revocation_outcome(c(
+            remote[["access"]],
+            target_remote[["access"]]
+          ))
         }
       }
       list(local = "disconnected", remote = remote)
