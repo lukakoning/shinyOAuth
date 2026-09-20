@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Token-target scope declarations accept equivalent vectors and space-delimited
+strings consistently during login, refresh, required-scope checks, and restoration.
+
 * `auth$reauthorize()` starts normal login for token-target clients before their
 first authorization and after logout, retaining the configured API consent request.
 

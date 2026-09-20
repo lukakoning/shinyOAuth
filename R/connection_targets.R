@@ -25,7 +25,8 @@ token_target_scopes_allowed <- function(
   ceiling = NULL
 ) {
   declaration <- client@token_targets[[target]]
-  ceiling <- ceiling %||% declaration[["scopes"]]
+  scopes <- normalize_scope_tokens(scopes)
+  ceiling <- normalize_scope_tokens(ceiling %||% declaration[["scopes"]])
   if (
     !all(
       intersect(scopes, token_target_oidc_scopes) %in%
@@ -181,10 +182,10 @@ token_target_limits <- function(client) {
 }
 
 token_target_required_scopes <- function(client, target) {
-  union(
+  normalize_scope_tokens(c(
     client@required_scopes,
     client@token_targets[[target]][["required_scopes"]] %||% character()
-  )
+  ))
 }
 
 validate_token_target_limits <- function(client, limits) {
@@ -202,6 +203,7 @@ validate_token_target_limits <- function(client, limits) {
     ) {
       err_config("Invalid token target scope limits")
     }
+    limits[[target]] <- scopes
   }
   limits
 }
@@ -366,9 +368,13 @@ token_target_select <- function(record, target = NULL) {
   if (!identical(target, client@default_token_target)) {
     record[["token"]] <- record[["targets"]][["tokens"]][[target]]
   }
-  record[["target_scopes"]] <- record[["targets"]][["limits"]][[target]] %||%
-    client@token_targets[[target]][["scopes"]]
-  requested <- client@token_targets[[target]][["scopes"]]
+  record[["target_scopes"]] <- normalize_scope_tokens(
+    record[["targets"]][["limits"]][[target]] %||%
+      client@token_targets[[target]][["scopes"]]
+  )
+  requested <- normalize_scope_tokens(client@token_targets[[target]][[
+    "scopes"
+  ]])
   if (
     identical(client@provider@token_target_mode, "microsoft") &&
       any(endsWith(requested, "/.default"))
@@ -451,7 +457,7 @@ token_target_bundle_decode <- function(client, encoded) {
   ) {
     err_token("Invalid stored token targets")
   }
-  validate_token_target_limits(client, bundle[["limits"]])
+  bundle[["limits"]] <- validate_token_target_limits(client, bundle[["limits"]])
   bundle[["tokens"]] <- lapply(bundle[["tokens"]], function(fields) {
     if (
       !is.list(fields) || !identical(names(fields), connection_token_fields)
@@ -471,10 +477,7 @@ token_target_bundle_decode <- function(client, encoded) {
       list(
         target = target,
         scopes = bundle[["limits"]][[target]],
-        required_scopes = client@token_targets[[target]][[
-          "required_scopes"
-        ]] %||%
-          character()
+        required_scopes = token_target_required_scopes(client, target)
       )
     )
   }
@@ -484,7 +487,7 @@ token_target_bundle_decode <- function(client, encoded) {
 token_target_authorization_scopes <- function(client, limits) {
   union(
     intersect(effective_client_scopes(client), token_target_oidc_scopes),
-    unique(unlist(limits, use.names = FALSE))
+    normalize_scope_tokens(unlist(limits, use.names = FALSE))
   )
 }
 
@@ -530,7 +533,9 @@ token_target_authorization_parameters <- function(client, scopes) {
       # One static-consent request covers the application's registered APIs.
       # Code redemption still uses the sealed primary target and its local limit.
       preferred <- intersect(
-        client@token_targets[[client@default_token_target]][["scopes"]],
+        normalize_scope_tokens(client@token_targets[[
+          client@default_token_target
+        ]][["scopes"]]),
         static
       )
       selected <- if (length(preferred)) preferred[[1L]] else static[[1L]]

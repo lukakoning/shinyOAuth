@@ -359,10 +359,7 @@ connection_credentials_open <- function(
           list(
             target = target,
             scopes = targets[["limits"]][[target]],
-            required_scopes = client@token_targets[[target]][[
-              "required_scopes"
-            ]] %||%
-              character()
+            required_scopes = token_target_required_scopes(client, target)
           )
         )
       }

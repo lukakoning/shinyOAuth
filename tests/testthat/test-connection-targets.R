@@ -271,6 +271,156 @@ test_that("Microsoft resource rejections preserve sibling credentials only in Mi
   }
 })
 
+test_that("scope declaration forms agree through exchange, acquisition and restoration", {
+  for (mode in c("rfc8707", "microsoft")) {
+    for (scope_string in c(FALSE, TRUE)) {
+      for (required_string in c(FALSE, TRUE)) {
+        template <- target_test_client(mode)
+        scopes <- list(
+          calendar = if (mode == "microsoft") {
+            paste0("https://calendar.example/", c("read", "write"))
+          } else {
+            c("calendar.read", "calendar.write")
+          },
+          contacts = if (mode == "microsoft") {
+            paste0("https://contacts.example/", c("read", "write"))
+          } else {
+            c("contacts.read", "contacts.write")
+          }
+        )
+        declarations <- template@token_targets
+        for (target in names(declarations)) {
+          declarations[[target]][["scopes"]] <- if (scope_string) {
+            paste(scopes[[target]], collapse = " ")
+          } else {
+            scopes[[target]]
+          }
+          declarations[[target]][["required_scopes"]] <- if (required_string) {
+            paste(scopes[[target]], collapse = " ")
+          } else {
+            scopes[[target]]
+          }
+        }
+        client <- oauth_client(
+          template@provider,
+          "app",
+          client_secret = "",
+          redirect_uri = template@redirect_uri,
+          scopes = unlist(scopes, use.names = FALSE),
+          resource_bases = template@resource_bases,
+          token_targets = declarations,
+          default_token_target = "calendar"
+        )
+        requests <- list()
+        omit_required <- FALSE
+        local_mocked_bindings(req_with_retry = function(req, ...) {
+          body <- lapply(req[["body"]][["data"]], function(value) {
+            utils::URLdecode(as.character(value))
+          })
+          requests[[length(requests) + 1L]] <<- body
+          scope <- if (omit_required) {
+            scopes[["contacts"]][[1L]]
+          } else {
+            body[["scope"]]
+          }
+          httr2::response(
+            req[["url"]],
+            status = 200L,
+            headers = list("content-type" = "application/json"),
+            body = charToRaw(jsonlite::toJSON(
+              list(
+                access_token = paste0("access-", length(requests)),
+                refresh_token = paste0("refresh-", length(requests)),
+                token_type = "Bearer",
+                expires_in = 3600,
+                scope = scope
+              ),
+              auto_unbox = TRUE
+            ))
+          )
+        })
+        browser <- valid_browser_token()
+        url <- prepare_call(client, browser)
+        token <- handle_callback(
+          client,
+          code = "code",
+          state = parse_query_param(url, "state"),
+          browser_token = browser
+        )
+        expect_setequal(token@granted_scopes, scopes[["calendar"]])
+        bundle <- token_target_bundle(client, token)
+        request <- token_target_request(client, "contacts", bundle[["limits"]])
+        fresh <- refresh_token_dispatch(client, token, target_request = request)
+        expect_setequal(fresh@granted_scopes, scopes[["contacts"]])
+        committed <- token_target_commit(client, token, bundle, fresh, request)
+        key <- openssl::rand_bytes(32L)
+        sealed <- connection_credentials_seal(
+          committed[["token"]],
+          "synthetic-owner-id",
+          "synthetic-connection-id",
+          client,
+          key,
+          as.numeric(Sys.time()),
+          targets = committed[["targets"]]
+        )
+        restored <- connection_credentials_open(
+          sealed,
+          "synthetic-owner-id",
+          "synthetic-connection-id",
+          client,
+          key
+        )
+        expect_identical(restored[["token"]]@access_token, token@access_token)
+        expect_identical(
+          restored[["targets"]][["tokens"]][["contacts"]]@access_token,
+          fresh@access_token
+        )
+        record <- token_target_select(
+          c(list(client = client), restored),
+          "contacts"
+        )
+        expect_setequal(
+          record[["target_requested_scopes"]],
+          scopes[["contacts"]]
+        )
+        expect_setequal(
+          record[["target_required_scopes"]],
+          scopes[["contacts"]]
+        )
+        expect_identical(
+          requests[[1L]][["scope"]],
+          paste(scopes[["calendar"]], collapse = " ")
+        )
+        expect_identical(
+          requests[[2L]][["scope"]],
+          paste(scopes[["contacts"]], collapse = " ")
+        )
+        for (bad in list(
+          scopes[["contacts"]][[1L]],
+          scopes[["calendar"]],
+          c(scopes[["contacts"]], "admin")
+        )) {
+          error <- tryCatch(
+            token_target_request(client, "contacts", scopes = bad),
+            error = identity
+          )
+          expect_s3_class(error, "shinyOAuth_access_error")
+        }
+        omit_required <- TRUE
+        error <- tryCatch(
+          refresh_token_dispatch(
+            client,
+            restored[["token"]],
+            target_request = request
+          ),
+          error = identity
+        )
+        expect_s3_class(error, "shinyOAuth_token_error")
+      }
+    }
+  }
+})
+
 test_that("target configuration requires deliberate provider and default choices", {
   client <- target_test_client()
   changes <- list(
