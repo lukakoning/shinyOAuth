@@ -1,5 +1,22 @@
 # shinyOAuth (development version)
 
+* `OAuthConnection$access_token()` returns a current server-side bearer token for
+external SDKs and database drivers, with bounded refresh, scope checks and typed
+recovery errors. `$has_scopes()` checks optional permissions without refreshing.
+Both methods follow authorization changes without rerunning consumers merely
+because token bytes rotated. Factory-created connections can omit HTTP bases.
+
+* `oauth_connections_server()` adds `reauthorize(connection_id)`, preserving the
+selected connection's scope limit without upstream revocation. Replacement
+summaries identify the old connection through `replaces_connection_id`.
+
+* `oauth_module_server()` adds `connection()` and `reauthorize()`. Its connections
+support coordinated `$refresh(scopes = ...)` and `$access_token()`; references
+survive refresh and become permanently invalid after logout or replacement.
+
+* `oauth_provider_microsoft()` accepts `userinfo_required = FALSE` for apps that
+do not need Microsoft Graph UserInfo, while retaining configured OIDC validation.
+
 * Updated the missing browser-setup warning and UI documentation to recommend
 `oauth_ui()` with the module ID and client, or the appropriate form-post or
 connection-manager wrapper. These wrappers include `use_shinyOAuth()` setup.

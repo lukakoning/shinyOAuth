@@ -808,6 +808,23 @@ payload_verify_client_binding <- function(client, payload) {
 
   expected_scopes <- as_scope_tokens(effective_client_scopes(client))
   payload_scopes <- as_scope_tokens(payload[["scopes"]] %||% NULL)
+  if (!is.null(payload[["configured_scopes"]])) {
+    if (
+      !setequal(
+        expected_scopes,
+        as_scope_tokens(payload[["configured_scopes"]])
+      )
+    ) {
+      err_invalid_state("Invalid payload: configured scopes do not match")
+    }
+    tryCatch(
+      authorization_scope_limit(client, payload_scopes),
+      error = function(...) {
+        err_invalid_state("Invalid payload: authorization scope limit")
+      }
+    )
+    expected_scopes <- payload_scopes
+  }
 
   # Normalize by unique + sort so we can produce clear differences
   exp_norm <- sort(unique(expected_scopes))

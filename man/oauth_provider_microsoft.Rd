@@ -7,7 +7,8 @@
 oauth_provider_microsoft(
   name = "microsoft",
   tenant = c("common", "organizations", "consumers"),
-  id_token_validation = NULL
+  id_token_validation = NULL,
+  userinfo_required = TRUE
 )
 }
 \arguments{
@@ -22,6 +23,10 @@ Microsoft alias tenants (\code{common}, \code{organizations}, \code{consumers}).
 \code{common} and \code{organizations} use Microsoft's tenant-independent issuer and
 signing-key validation rules; \code{consumers} uses the stable consumer tenant
 issuer}
+
+\item{userinfo_required}{Retrieve profile information from Microsoft Graph.
+Set FALSE for an API token with a different audience. ID-token validation
+and nonce checks remain enabled according to \code{id_token_validation}.}
 }
 \value{
 \link{OAuthProvider} object configured for Microsoft identity platform
@@ -41,10 +46,13 @@ ID token validation is enabled for these tenant choices. For a directory ID,
 the issuer must match that directory. \code{"common"} and \code{"organizations"} use
 Microsoft's tenant-independent issuer template and signing-key issuer rules.
 \code{"consumers"} uses the consumer tenant issuer. The helper restricts ID token
-algorithms to RS256 and fetches userinfo from Microsoft Graph.
+algorithms to RS256 and fetches UserInfo from Microsoft Graph by default.
+Set \code{userinfo_required = FALSE} when using an API token that cannot call Graph;
+validated ID-token claims remain available through \code{connection$identity()}.
 
 Setting \code{id_token_validation = FALSE} disables ID token and nonce checks and
-leaves OAuth plus profile retrieval. Keep the default for OIDC sign-in.
+leaves OAuth plus any configured profile retrieval. Keep the default for OIDC
+sign-in.
 Tenant domains and other unrecognized tenant identifiers require this
 explicit opt-out; otherwise use the directory GUID to retain OIDC validation.
 }

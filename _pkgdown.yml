@@ -6,6 +6,7 @@ articles:
   navbar: ~
   contents:
   - usage
+  - external-integrations
   - multiple-authorizations
   - smart-on-fhir
   - example-spotify

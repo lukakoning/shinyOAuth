@@ -199,10 +199,13 @@ oauth_provider_google <- function(name = "google") {
 #' the issuer must match that directory. `"common"` and `"organizations"` use
 #' Microsoft's tenant-independent issuer template and signing-key issuer rules.
 #' `"consumers"` uses the consumer tenant issuer. The helper restricts ID token
-#' algorithms to RS256 and fetches userinfo from Microsoft Graph.
+#' algorithms to RS256 and fetches UserInfo from Microsoft Graph by default.
+#' Set `userinfo_required = FALSE` when using an API token that cannot call Graph;
+#' validated ID-token claims remain available through `connection$identity()`.
 #'
 #' Setting `id_token_validation = FALSE` disables ID token and nonce checks and
-#' leaves OAuth plus profile retrieval. Keep the default for OIDC sign-in.
+#' leaves OAuth plus any configured profile retrieval. Keep the default for OIDC
+#' sign-in.
 #' Tenant domains and other unrecognized tenant identifiers require this
 #' explicit opt-out; otherwise use the directory GUID to retain OIDC validation.
 #'
@@ -215,6 +218,9 @@ oauth_provider_google <- function(name = "google") {
 #'   `common` and `organizations` use Microsoft's tenant-independent issuer and
 #'   signing-key validation rules; `consumers` uses the stable consumer tenant
 #'   issuer
+#' @param userinfo_required Retrieve profile information from Microsoft Graph.
+#'   Set FALSE for an API token with a different audience. ID-token validation
+#'   and nonce checks remain enabled according to `id_token_validation`.
 #'
 #' @return [OAuthProvider] object configured for Microsoft identity platform
 #'
@@ -224,7 +230,8 @@ oauth_provider_google <- function(name = "google") {
 oauth_provider_microsoft <- function(
   name = "microsoft",
   tenant = c("common", "organizations", "consumers"),
-  id_token_validation = NULL
+  id_token_validation = NULL,
+  userinfo_required = TRUE
 ) {
   tenant <- tenant[1]
   if (!is_valid_string(tenant)) {
@@ -302,8 +309,9 @@ oauth_provider_microsoft <- function(
 
     id_token_allowed_algs = c("RS256"),
 
-    userinfo_required = TRUE,
-    userinfo_id_token_match = isTRUE(id_token_validation),
+    userinfo_required = userinfo_required,
+    userinfo_id_token_match = isTRUE(id_token_validation) &&
+      isTRUE(userinfo_required),
     userinfo_id_selector = function(userinfo) {
       userinfo[["sub"]]
     },

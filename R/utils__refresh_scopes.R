@@ -1,5 +1,33 @@
 # Explicit managed refresh requests use the target's existing scope evaluator.
 # The request is bounded plain data so the same policy can run in async workers.
+authorization_scope_limit <- function(client, scopes) {
+  validate_scopes(scopes)
+  scopes <- normalize_scope_tokens(scopes)
+  required <- client@required_scopes
+  if (
+    provider_uses_oidc(client@provider) &&
+      isTRUE(client@provider@userinfo_required)
+  ) {
+    required <- union(required, "openid")
+  }
+  if (
+    !length(scopes) ||
+      length(scopes) > 128L ||
+      sum(nchar(scopes, type = "bytes")) > 8192L ||
+      !connection_scope_covered(
+        client,
+        scopes,
+        effective_client_scopes(client)
+      ) ||
+      !connection_scope_covered(client, required, scopes)
+  ) {
+    err_input(
+      "Reauthorization scopes must retain required permissions within the client configuration"
+    )
+  }
+  scopes
+}
+
 refresh_scope_request <- function(
   client,
   token,

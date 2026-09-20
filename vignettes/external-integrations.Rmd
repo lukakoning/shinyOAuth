@@ -1,0 +1,226 @@
+---
+title: "External SDKs and database drivers"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{External SDKs and database drivers}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+Obtain a connection from the module and ask it for a token immediately before
+calling a library that manages its own HTTP or database transport:
+
+```{r, eval = FALSE}
+connection <- shiny::req(auth$connection())
+token <- connection$access_token(required_scopes = "records.read")
+existing_sdk_read_records(access_token = token)
+```
+
+The connection checks the owning Shiny session, authorization, scopes and
+remaining lifetime. If needed, it performs one coordinated refresh and checks
+the committed result again. It does not start login or retry the SDK operation.
+Configure the client for the API's token audience and scopes; a valid token
+string alone does not prove access to a particular resource.
+
+## A single-authorization app
+
+This complete app skeleton uses `httr2` as the external library. Replace the
+example endpoints, scopes and registered callback URL with your provider's
+values, and set `OAUTH_CLIENT_ID` and `OAUTH_CLIENT_SECRET` in the environment.
+The token and authenticated connection stay inside `server()`.
+
+```{r, eval = FALSE}
+library(shiny)
+library(shinyOAuth)
+
+provider <- oauth_provider(
+  name = "records",
+  auth_url = "https://login.example/authorize",
+  token_url = "https://login.example/token",
+  userinfo_required = FALSE
+)
+client <- oauth_client(
+  provider,
+  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
+  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
+  redirect_uri = "https://app.example/callback",
+  scopes = c("records.read", "records.write"),
+  required_scopes = "records.read"
+)
+
+ui <- oauth_ui(fluidPage(
+  actionButton("login", "Sign in"),
+  actionButton("again", "Sign in again"),
+  actionButton("logout", "Sign out"),
+  actionButton("load", "Load records"),
+  textOutput("permissions"),
+  verbatimTextOutput("records")
+), id = "auth", client = client)
+
+server <- function(input, output, session) {
+  auth <- oauth_module_server(
+    "auth", client, auto_redirect = FALSE, refresh_proactively = TRUE
+  )
+  observeEvent(input$login, {
+    auth$request_login()
+    invisible(NULL)
+  })
+  observeEvent(input$again, {
+    auth$reauthorize()
+    invisible(NULL)
+  })
+  observeEvent(input$logout, auth$logout())
+
+  output$permissions <- renderText({
+    connection <- req(auth$connection())
+    if (connection$has_scopes("records.write")) "Editing available" else "Read only"
+  })
+
+  records <- eventReactive(input$load, {
+    connection <- req(auth$connection())
+    data <- tryCatch({
+      response <- httr2::request("https://api.example/records") |>
+        httr2::req_auth_bearer_token(
+          connection$access_token(required_scopes = "records.read")
+        ) |>
+        httr2::req_perform()
+      httr2::resp_body_json(response)
+    }, shinyOAuth_access_error = function(error) {
+      showNotification("Authorization unavailable. Try again or sign in again.")
+      req(FALSE)
+    })
+    list(authorization = connection$id, data = data)
+  })
+
+  output$records <- renderPrint({
+    connection <- req(auth$connection())
+    result <- records()
+    req(identical(result$authorization, connection$id))
+    req(connection$has_scopes("records.read"))
+    result$data
+  })
+}
+
+shinyApp(ui, server)
+```
+
+The output guard matters: `eventReactive()` retains its previous result until
+the next click. Checking the current authorization ID and permissions prevents
+that result from remaining visible after logout or a different login. Use the
+same guard for cached or background results. Clear application caches when no
+longer needed, and include the authorization ID in any session-local cache key.
+Never share user data through a global cache keyed only by a query string.
+
+`auth$connection()` returns `NULL` before login and after the authorization is
+cleared. During one authorization it returns the same object and ID across
+refresh. Old references remain invalid after replacement, even if the same
+provider account signs in again. Token rotation alone does not rerun consumers
+of the factory, `$access_token()` or `$has_scopes()`; explicit status reads such
+as `$summary()` have finer reactive dependencies.
+
+The single module's existing expiry and session-age policies still apply.
+Proactive refresh helps keep a live authorization ready. With
+`indefinite_session = TRUE`, the module retains expired tokens, so the accessor
+can refresh them on demand; that option also disables automatic maximum-age
+clearing. Neither option makes an expired token usable without refresh.
+
+## SDK callbacks and databases
+
+If an SDK accepts a token callback, create its client once per authorization:
+
+```{r, eval = FALSE}
+sdk <- reactive({
+  connection <- req(auth$connection())
+  example_sdk_client(
+    token = function() connection$access_token(required_scopes = "records.read")
+  )
+})
+```
+
+Here `example_sdk_client()` represents your SDK's constructor. The callback
+captures the authorization-bound connection, not a token snapshot or a lookup
+that silently follows future logins. Call it in the owning session's reactive
+context. It cannot be serialized to a worker or invoked from another session.
+
+For a driver that accepts only a string, retrieve it immediately before opening
+or updating the driver connection and follow that driver's cleanup rules. A
+copied token does not refresh itself. Do not put tokens, SDK clients or database
+connections in global app state, logs, URLs or browser outputs. Token-only
+connections do not need `resource_bases`; shinyOAuth's `$request()` still rejects
+every undeclared destination.
+
+Run inserts and other writes from explicit input events. Check operation scopes
+at submission, acquire a current token, and handle the API's own access checks.
+`$has_scopes()` only checks the recorded grant; it does not prove a database role,
+row permission or continued provider authorization. shinyOAuth never replays a
+business request after refresh or reauthorization.
+
+## Refresh, async work and recovery
+
+`$access_token(min_valid_for = 60)` requires a known lifetime longer than the
+requested buffer, including your allowance for clock skew. `force_refresh = TRUE`
+bypasses the token cache but retains refresh coordination and retry pacing.
+A replacement that is still too short-lived fails without another refresh loop.
+`$refresh(scopes = ...)` can narrow the grant while keeping required permissions;
+later refreshes retain that accepted limit. `required_scopes` on `$access_token()`
+only checks permissions and does not request different scopes.
+
+```{r, eval = FALSE}
+# Configure mirai daemons or a non-sequential future plan before starting Shiny.
+# Inside the owning Shiny session:
+connection <- req(auth$connection())
+pending <- connection$access_token(required_scopes = "records.read", async = TRUE)
+promises::then(pending, function(token) {
+  # Recheck before starting work after an asynchronous boundary.
+  current <- req(auth$connection())
+  req(identical(current$id, connection$id))
+  existing_sdk_read_records(access_token = token)
+})
+```
+
+The async accessor always returns a promise, including cached results. This
+only makes credential acquisition asynchronous; the SDK operation needs its
+own async transport if it would block Shiny. Concurrent async acquisitions join
+the same owned refresh. A synchronous call never waits on that work or returns
+a promise. Validate ownership again before displaying later SDK results.
+
+Authentication failures inherit `shinyOAuth_access_error` and expose
+`error$context$reason`:
+
+| Reason | Meaning |
+| --- | --- |
+| `authorization_unavailable` | The reference, authorization or owning session ended. |
+| `insufficient_scope` | The recorded grant does not cover the operation. |
+| `refresh_pending` | A synchronous caller cannot join an async refresh. |
+| `refresh_unavailable` | Refresh failed or retry pacing prevents another attempt. |
+| `interaction_required` | A new authorization is needed. |
+| `lifetime_unavailable` | The refreshed token still lacks the requested lifetime. |
+| `unsupported_token_binding` | A bearer string cannot supply the token's binding. |
+
+Use the reason to present your own recovery message; argument and configuration
+errors remain separate. DPoP and certificate-bound tokens need their configured
+transport, such as `$request()`, instead of token export.
+
+`auth$reauthorize()` invalidates the old local authorization immediately and
+starts replacement with its retained scope limit. It does not revoke the
+upstream grant, force a password/account chooser, or restore the old reference
+if the user cancels. Existing `request_login()` and `logout()` retain their
+behavior. No token accessor redirects the user automatically.
+
+## Several authorizations and optional UserInfo
+
+With `oauth_connections_server()`, obtain the same connection interface through
+`auth$connection(connection_id)`. `auth$reauthorize(connection_id)` replaces that
+authorization. Find the replacement in `auth$connections()` by its
+`replaces_connection_id`, then select its new ID. Unrelated grants remain usable;
+existing protections for shared refresh credentials still apply. Credential
+acquisition does not extend owner inactivity limits. Call `auth$touch()` from
+explicit user events where appropriate. See `vignette("multiple-authorizations")`.
+
+For Microsoft API tokens that cannot call Graph UserInfo, use
+`oauth_provider_microsoft(tenant = "organizations", userinfo_required = FALSE)`.
+This skips profile retrieval while preserving the preset's OIDC validation.
+Request the appropriate OIDC scopes and use `connection$identity()` for selected
+validated ID-token claims. Generic `oauth_provider()` and OIDC configuration
+already support optional UserInfo. These interfaces do not select token targets
+or add provider-specific query and database behavior.

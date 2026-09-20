@@ -58,6 +58,7 @@ oauth_connection <- function(
   session = shiny::getDefaultReactiveDomain()
 ) {
   S7::check_is_S7(client, OAuthClient)
+  normalize_resource_bases(client@resource_bases)
   connection_client_fingerprint(client)
   if (!shiny::is.reactive(token_reactive)) {
     err_input("token_reactive must be a Shiny reactive expression")
@@ -109,7 +110,7 @@ connection_session_root <- function(session) {
 }
 
 connection_record_summary <- function(record, id) {
-  list(
+  result <- list(
     connection_id = id,
     client_label = record[["client"]]@label,
     status = connection_record_status(record),
@@ -118,8 +119,12 @@ connection_record_summary <- function(record, id) {
     } else {
       record[["token"]]@expires_at
     },
-    resource_ids = names(record[["client"]]@resource_bases)
+    resource_ids = names(record[["client"]]@resource_bases) %||% character()
   )
+  if (!is.null(record[["replaces_connection_id"]])) {
+    result[["replaces_connection_id"]] <- record[["replaces_connection_id"]]
+  }
+  result
 }
 
 connection_record_status <- function(record) {

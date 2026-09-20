@@ -70,10 +70,9 @@ test_that("ordinary clients can omit connection configuration and use existing h
     connection_test_headers(request)[["authorization"]],
     "Bearer synthetic-access"
   )
-  expect_error(
-    oauth_connections(list(api = client), "https://app.example"),
-    "resource_bases"
-  )
+  client@redirect_uri <- "https://app.example/callback"
+  manager <- oauth_connections(list(api = client), "https://app.example")
+  expect_identical(manager[["clients"]][["api"]]@resource_bases, character())
   expect_error(
     oauth_connections(list(client), "https://app.example"),
     "named list"

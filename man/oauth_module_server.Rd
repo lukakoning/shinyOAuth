@@ -144,6 +144,18 @@ refresh, or logout.
 
 The object also supplies:
 \itemize{
+\item \code{auth$connection()}: the current \link{OAuthConnection}, or \code{NULL} before login
+or after the module clears the authorization. The reference and its \verb{$id}
+survive refresh; logout, reauthorization and session closure invalidate it.
+Use \code{connection <- shiny::req(auth$connection())} inside reactive code,
+then \code{connection$access_token()} for a server-side SDK or database driver.
+Accessor-triggered refresh works without \code{refresh_proactively = TRUE};
+the module's configured expiry/session-clearing policy still applies.
+\item \code{auth$reauthorize()}: invalidate the current local authorization and begin
+replacement with its retained scope limit, without upstream revocation.
+Failed/cancelled replacement does not revive old references. With no prior
+grant, this starts ordinary login. It does not force account selection or
+a password prompt; configured maximum authentication age still applies.
 \item \code{auth[["request_login"]]()}: start login. Waits for browser setup when needed
 and does nothing if the session is already authenticated. Uses a browser
 form when the client selects \code{authorization_method = "POST"}; the app's

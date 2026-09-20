@@ -222,6 +222,7 @@ oauth_connections <- function(
   state[["credential_records"]] <- new.env(parent = emptyenv())
   state[["credential_retirements"]] <- new.env(parent = emptyenv())
   state[["credential_flights"]] <- new.env(parent = emptyenv())
+  state[["authorization_metadata"]] <- new.env(parent = emptyenv())
   manager <- new.env(parent = emptyenv())
   for (name in c(
     "clients",
@@ -535,6 +536,7 @@ connection_manager_controller <- function(manager, session) {
     }
   }
   launch_queue <- new.env(parent = emptyenv())
+  reauthorization_queue <- new.env(parent = emptyenv())
   resume_launch <- function(id) {
     verified <- guard(touch = TRUE)
     if (!is_valid_string(id) || !grepl("^[A-Za-z0-9_-]{32}$", id)) {
@@ -584,6 +586,12 @@ connection_manager_controller <- function(manager, session) {
         as.numeric(Sys.time()) + client@state_payload_max_age
       )
     )
+    replacement <- reauthorization_queue[[client_name]]
+    if (!is.null(replacement)) {
+      context[["requested_scopes"]] <- replacement[["scopes"]]
+      context[["replaces_connection_id"]] <- replacement[["id"]]
+      rm(list = client_name, envir = reauthorization_queue)
+    }
     launch_entry <- NULL
     if (identical(client@smart[["launch"]], "ehr")) {
       launch_entry <- launch_queue[[client_name]]
@@ -658,6 +666,16 @@ connection_manager_controller <- function(manager, session) {
       err_token("Managed authorization owner is unavailable")
     }
     client <- client_for(context[["client"]])
+    if (!is.null(context[["requested_scopes"]])) {
+      validate_refresh_scope_grant(
+        client,
+        token@granted_scopes,
+        list(
+          scopes = context[["requested_scopes"]],
+          required_scopes = client@required_scopes
+        )
+      )
+    }
     connection_credential_prune(manager)
     if (
       connection_credential_unusable(
@@ -676,7 +694,8 @@ connection_manager_controller <- function(manager, session) {
       id,
       client,
       manager[["keys"]][["credentials"]],
-      authenticated_at
+      authenticated_at,
+      refresh_scope_narrowed = !is.null(context[["requested_scopes"]])
     )
     if (!validate(context)) {
       err_token("Managed authorization owner is unavailable")
@@ -704,6 +723,11 @@ connection_manager_controller <- function(manager, session) {
       err_token("Connection credentials could not be committed")
     }
     connection_credential_track(manager, record, token)
+    state[["authorization_metadata"]][[id]] <- list(
+      scopes = token@granted_scopes,
+      expires_at = record[["expires_at"]],
+      replaces_connection_id = context[["replaces_connection_id"]]
+    )
     signal()
     invisible(TRUE)
   }
@@ -715,6 +739,9 @@ connection_manager_controller <- function(manager, session) {
       status = record[["status"]],
       stored = record
     )
+    result[["replaces_connection_id"]] <- state[[
+      "authorization_metadata"
+    ]][[record[["id"]]]][["replaces_connection_id"]]
     if (!identical(record[["status"]], "active")) {
       return(result)
     }
@@ -753,6 +780,14 @@ connection_manager_controller <- function(manager, session) {
   }
   read <- function(id, touch = FALSE) {
     guard(touch)
+    for (key in ls(state[["authorization_metadata"]], all.names = TRUE)) {
+      if (
+        state[["authorization_metadata"]][[key]][["expires_at"]] <=
+          as.numeric(Sys.time())
+      ) {
+        rm(list = key, envir = state[["authorization_metadata"]])
+      }
+    }
     connection_credential_prune(manager)
     record <- store[["read"]](owner[["id"]], id)
     if (is.null(record)) {
@@ -889,6 +924,7 @@ connection_manager_controller <- function(manager, session) {
       err_token("Connection refresh is already in progress or unavailable")
     }
     flight <- new.env(parent = emptyenv())
+    flight[["connection_id"]] <- id
     flight[["expires_at"]] <- claim[["operation_expires_at"]]
     flights[[credential]] <- flight
     release <- function() {
@@ -981,6 +1017,10 @@ connection_manager_controller <- function(manager, session) {
             err_token("Connection refresh could not be committed")
           }
           connection_credential_track(manager, installed, token)
+          metadata <- state[["authorization_metadata"]][[id]] %||% list()
+          metadata[["scopes"]] <- token@granted_scopes
+          metadata[["expires_at"]] <- installed[["expires_at"]]
+          state[["authorization_metadata"]][[id]] <- metadata
           committed <- TRUE
           signal()
           TRUE
@@ -1013,6 +1053,23 @@ connection_manager_controller <- function(manager, session) {
       succeed(result)
     }
   }
+  acquire <- function(id, async = FALSE) {
+    record <- read(id)
+    if (identical(record[["status"]], "refreshing")) {
+      for (key in ls(state[["credential_flights"]], all.names = TRUE)) {
+        flight <- state[["credential_flights"]][[key]]
+        if (
+          identical(flight[["connection_id"]], id) &&
+            isTRUE(async) &&
+            inherits(flight[["promise"]], "promise")
+        ) {
+          return(flight[["promise"]])
+        }
+      }
+      connection_access_error("refresh_pending")
+    }
+    refresh(id, async = async, touch = FALSE)
+  }
   cleanup_records <- function(
     previous,
     revoke,
@@ -1044,6 +1101,15 @@ connection_manager_controller <- function(manager, session) {
     lapply(previous, function(record) {
       remote <- "not_requested"
       if (!is.null(record)) {
+        if (
+          exists(
+            record[["id"]],
+            state[["authorization_metadata"]],
+            inherits = FALSE
+          )
+        ) {
+          rm(list = record[["id"]], envir = state[["authorization_metadata"]])
+        }
         on.exit(
           audit_event(
             "connection_disconnected",
@@ -1110,12 +1176,39 @@ connection_manager_controller <- function(manager, session) {
       }
     }
     rm(list = ls(launch_queue, all.names = TRUE), envir = launch_queue)
+    rm(
+      list = ls(reauthorization_queue, all.names = TRUE),
+      envir = reauthorization_queue
+    )
     for (id in ls(state[["pending"]], all.names = TRUE)) {
       pending <- state[["pending"]][[id]]
       if (identical(pending[["initiating_owner"]], owner[["id"]])) {
         connection_router_cancel(manager, id)
       }
     }
+  }
+  reauthorize <- function(id) {
+    record <- read(id, touch = TRUE)
+    client_name <- record[["stored"]][["client"]]
+    if (identical(record[["client"]]@smart[["launch"]], "ehr")) {
+      err_config("Start a fresh EHR launch to reconnect this authorization")
+    }
+    scopes <- if (!is.null(record[["token"]])) {
+      record[["token"]]@granted_scopes
+    } else {
+      state[["authorization_metadata"]][[id]][["scopes"]]
+    }
+    if (
+      length(effective_client_scopes(record[["client"]])) && !length(scopes)
+    ) {
+      connection_access_error("interaction_required")
+    }
+    if (length(scopes)) {
+      scopes <- authorization_scope_limit(record[["client"]], scopes)
+    }
+    disconnect(id, revoke = FALSE)
+    reauthorization_queue[[client_name]] <- list(id = id, scopes = scopes)
+    client_name
   }
   disconnect_all <- function(revoke = TRUE) {
     connection_manager_flag(revoke, "revoke")
@@ -1147,6 +1240,10 @@ connection_manager_controller <- function(manager, session) {
     active <<- FALSE
     on.exit(subscription[["release"]](), add = TRUE)
     rm(list = ls(launch_queue, all.names = TRUE), envir = launch_queue)
+    rm(
+      list = ls(reauthorization_queue, all.names = TRUE),
+      envir = reauthorization_queue
+    )
     if (manager[["retention"]] == "shiny") {
       mark_cleanup(FALSE)
       previous <- store[["disconnect_owner"]](owner[["id"]])
@@ -1172,8 +1269,13 @@ connection_manager_controller <- function(manager, session) {
         NULL
       },
       parameters = function(context) {
+        parameters <- if (length(context[["requested_scopes"]])) {
+          list(requested_scopes = context[["requested_scopes"]])
+        } else {
+          list()
+        }
         if (!identical(client_for(client_name)@smart[["launch"]], "ehr")) {
-          return(list())
+          return(parameters)
         }
         if (!validate(context)) {
           err_token("SMART launch owner is unavailable")
@@ -1190,7 +1292,7 @@ connection_manager_controller <- function(manager, session) {
         )
         pending[["launch_entry"]] <- NULL
         state[["pending"]][[context[["transaction"]]]] <- pending
-        list(launch = launch[["launch"]])
+        c(parameters, list(launch = launch[["launch"]]))
       },
       validate = function(context) {
         is.list(context) &&
@@ -1219,6 +1321,8 @@ connection_manager_controller <- function(manager, session) {
     hooks = hooks,
     resume_launch = resume_launch,
     refresh = refresh,
+    acquire = acquire,
+    reauthorize = reauthorize,
     disconnect = disconnect,
     disconnect_all = disconnect_all,
     logout = logout,

@@ -33,7 +33,11 @@ connection_credential_key <- function(key) {
 connection_client_fingerprint <- function(client) {
   S7::check_is_S7(client, OAuthClient)
   S7::validate(client)
-  bases <- normalize_resource_bases(client@resource_bases)
+  bases <- if (length(client@resource_bases)) {
+    normalize_resource_bases(client@resource_bases)
+  } else {
+    character()
+  }
   # Re-read key/certificate references and material validation policy every time.
   # Managers and connections keep their own baseline; configuration has no cache.
   state_policy_digest(list(

@@ -22,7 +22,14 @@
 #'     EHR-only clients report `fresh_ehr_launch_required` and return `FALSE`;
 #'     use their registered [smart_launch_route()] to start authorization.
 #'   * `connections()`: reactive list of redacted connection summaries.
-#'   * `connection(connection_id)`: an [OAuthConnection] for requests and refresh.
+#'   * `connection(connection_id)`: an [OAuthConnection] for requests, refresh,
+#'     scope checks and server-side `$access_token()` retrieval for external SDKs.
+#'   * `reauthorize(connection_id)`: end this local authorization and start its
+#'     replacement with the retained scope limit, without upstream revocation.
+#'     The replacement summary includes `replaces_connection_id`. Failed/cancelled
+#'     replacement leaves the old reference invalid. Unrelated authorizations
+#'     remain usable; shared-credential protections still apply. EHR-only clients
+#'     require a fresh EHR launch instead.
 #'   * `touch()`: record explicit user activity after checking the current owner.
 #'     Call from an input event handler; returns `TRUE` invisibly.
 #'   * `disconnect(connection_id, revoke = TRUE)`: remove local usability first,
@@ -45,6 +52,9 @@
 #' notify dependent expressions when lifecycle state changes; unchanged polling
 #' does not rerun application requests or extend owner inactivity limits.
 #' Notifications to application code reflect only this owner's record changes.
+#' The connection factory, `$access_token()` and `$has_scopes()` avoid rerunning
+#' consumers on unchanged token rotations. Acquisition never extends owner idle
+#' limits or replays application requests. See `vignette("external-integrations")`.
 #' Resource requests and status reads never reset owner inactivity, including when
 #' reactive expressions rerun after automatic refresh. Call `touch()` from a user
 #' input event handler to count an application action as activity. Do not call it
@@ -112,6 +122,8 @@ oauth_connections_server <- function(
     })
     names(modules) <- names(manager[["clients"]])
     lifecycle <- shiny::reactiveVal(NULL)
+    authorization <- shiny::reactiveVal(NULL)
+    references <- new.env(parent = emptyenv())
     launch_error <- shiny::reactiveVal(NULL)
     shiny::observeEvent(
       input[["smart_launch"]],
@@ -130,8 +142,12 @@ oauth_connections_server <- function(
       ignoreInit = FALSE
     )
     connection <- function(connection_id) {
-      record <- controller[["read"]](connection_id)
-      OAuthConnection[["new"]](
+      authorization()
+      record <- shiny::isolate(controller[["read"]](connection_id))
+      if (!is.null(references[[connection_id]])) {
+        return(references[[connection_id]])
+      }
+      reference <- OAuthConnection[["new"]](
         connection_id,
         record[["client"]],
         resolve = function() {
@@ -141,8 +157,13 @@ oauth_connections_server <- function(
         },
         refresh = function(scopes = NULL) {
           controller[["refresh"]](connection_id, async = async, scopes = scopes)
+        },
+        acquire = function(async = FALSE) {
+          controller[["acquire"]](connection_id, async = async)
         }
       )
+      references[[connection_id]] <- reference
+      reference
     }
     connections <- shiny::reactive({
       controller[["changed"]]()
@@ -179,6 +200,15 @@ oauth_connections_server <- function(
       controller[["changed"]]()
       shiny::invalidateLater(refresh_check_interval_ms, session)
       rows <- tryCatch(controller[["records"]](), error = function(...) NULL)
+      authorization(list(
+        available = !is.null(rows),
+        records = lapply(rows, function(record) {
+          list(
+            id = record[["stored"]][["id"]],
+            available = record[["status"]] %in% c("active", "refreshing")
+          )
+        })
+      ))
       # Only lifecycle transitions invalidate reference consumers on a poll.
       # Explicit store changes notify this owner's consumers through changed().
       lifecycle(list(
@@ -234,6 +264,10 @@ oauth_connections_server <- function(
       },
       connections = connections,
       connection = connection,
+      reauthorize = function(connection_id) {
+        client_name <- controller[["reauthorize"]](connection_id)
+        modules[[client_name]][[".reauthorize"]]()
+      },
       touch = function() {
         controller[["guard"]](touch = TRUE)
         invisible(TRUE)

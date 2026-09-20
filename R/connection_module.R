@@ -1,0 +1,356 @@
+module_connection_factory <- function(
+  client,
+  values,
+  session,
+  operations,
+  epoch,
+  refresh,
+  async,
+  indefinite_session,
+  reauth_after_seconds
+) {
+  root <- connection_session_root(session)
+  present <- shiny::reactiveVal(shiny::isolate(!is.null(values[["token"]])))
+  shiny::observe(
+    {
+      present(!is.null(values[["token"]]))
+    },
+    priority = 100
+  )
+  reference <- NULL
+  reference_epoch <- NULL
+  function() {
+    epoch()
+    present()
+    if (
+      !isTRUE(operations[["session_active"]]) ||
+        isTRUE(root[["isClosed"]]()) ||
+        !identical(
+          root,
+          connection_session_root(shiny::getDefaultReactiveDomain())
+        )
+    ) {
+      connection_access_error("authorization_unavailable")
+    }
+    if (is.null(shiny::isolate(values[["token"]]))) {
+      return(NULL)
+    }
+    generation <- operations[["epoch"]]
+    if (!is.null(reference) && identical(reference_epoch, generation)) {
+      return(reference)
+    }
+    id <- random_urlsafe(32L)
+    resolve <- function() {
+      epoch()
+      if (
+        !isTRUE(operations[["session_active"]]) ||
+          !identical(operations[["epoch"]], generation) ||
+          isTRUE(root[["isClosed"]]()) ||
+          !identical(
+            root,
+            connection_session_root(shiny::getDefaultReactiveDomain())
+          )
+      ) {
+        connection_access_error("authorization_unavailable")
+      }
+      started <- values[["auth_started_at"]]
+      if (
+        !indefinite_session &&
+          !is.null(reauth_after_seconds) &&
+          length(started) == 1L &&
+          is.finite(started) &&
+          as.numeric(Sys.time()) >= started + reauth_after_seconds
+      ) {
+        connection_access_error("interaction_required")
+      }
+      list(
+        client = client,
+        token = values[["token"]],
+        status = if (isTRUE(values[["refresh_in_progress"]])) {
+          "refreshing"
+        } else {
+          "active"
+        }
+      )
+    }
+    new_reference <- OAuthConnection[["new"]](
+      id,
+      client,
+      resolve,
+      refresh = function(scopes = NULL) {
+        record <- resolve()
+        if (!is.null(scopes)) {
+          refresh_scope_request(client, record[["token"]], scopes)
+        }
+        redact <- function(error) {
+          if (inherits(error, "shinyOAuth_access_error")) {
+            stop(error)
+          }
+          connection_access_error("refresh_unavailable")
+        }
+        result <- tryCatch(
+          refresh(async = async, scopes = scopes),
+          error = redact
+        )
+        if (inherits(result, "promise")) {
+          promises::catch(result, redact)
+        } else {
+          result
+        }
+      },
+      acquire = function(async = FALSE) {
+        resolve()
+        refresh(async = async, respect_pacing = TRUE)
+      }
+    )
+    reference_epoch <<- generation
+    reference <<- new_reference
+    new_reference
+  }
+}
+
+# The proactive observer and connection methods share this owner/commit path.
+# HTTP executes once; only the originating Shiny session can install its result.
+module_refresh_controller <- function(
+  client,
+  values,
+  operations,
+  hooks,
+  indefinite_session,
+  auto_redirect,
+  refresh_lead_seconds
+) {
+  pending <- NULL
+  narrowed <- FALSE
+  narrowed_epoch <- NULL
+  refresh <- function(
+    async = FALSE,
+    scopes = NULL,
+    automatic = FALSE,
+    respect_pacing = automatic
+  ) {
+    token <- values[["token"]]
+    if (isTRUE(values[["refresh_in_progress"]])) {
+      if (isTRUE(async) && is.null(scopes) && inherits(pending, "promise")) {
+        return(pending)
+      }
+      connection_access_error("refresh_pending")
+    }
+    if (!isTRUE(operations[["session_active"]]) || is.null(token)) {
+      connection_access_error("authorization_unavailable")
+    }
+    if (!is.null(operations[["active_login_id"]])) {
+      connection_access_error("interaction_required")
+    }
+    if (!is_valid_string(token@refresh_token)) {
+      connection_access_error("interaction_required")
+    }
+    if (
+      respect_pacing &&
+        as.numeric(Sys.time()) < values[["refresh_next_attempt_at"]]
+    ) {
+      return(invisible(FALSE))
+    }
+    if (!identical(narrowed_epoch, operations[["epoch"]])) {
+      narrowed <<- !is.null(operations[["reauth_scopes"]])
+    }
+    if (is.null(scopes) && narrowed) {
+      scopes <- token@granted_scopes
+    }
+    scope_request <- if (!is.null(scopes)) {
+      refresh_scope_request(client, token, scopes)
+    } else {
+      NULL
+    }
+    pending <<- NULL
+    operation <- hooks[["begin"]]("refresh", source_token = token)
+    operations[["last_authorized_scopes"]] <- token@granted_scopes
+    values[["refresh_last_attempt_at"]] <- as.numeric(Sys.time())
+    captured <- if (async) {
+      capture_shiny_session_context(is_async = TRUE)
+    } else {
+      NULL
+    }
+    fail <- function(error) {
+      if (!isTRUE(hooks[["can_apply"]](operation, "refresh"))) {
+        hooks[["finish"]](operation, "refresh")
+        connection_access_error("authorization_unavailable")
+      }
+      values[["refresh_failure_count"]] <- values[["refresh_failure_count"]] +
+        1L
+      values[["refresh_next_attempt_at"]] <- as.numeric(Sys.time()) +
+        proactive_refresh_failure_delay(
+          values[["refresh_failure_count"]],
+          refresh_condition_retry_after(error)
+        )
+      if (!refresh_credential_retryable(error)) {
+        retained <- values[["token"]]
+        retained@refresh_token <- NA_character_
+        operations[["retired_refresh_snapshot"]] <- retained
+        values[["token"]] <- retained
+      }
+      if (!indefinite_session) {
+        values[["token"]] <- NULL
+      }
+      values[["token_stale"]] <- indefinite_session
+      phase <- if (async) "async_token_refresh" else "sync_token_refresh"
+      hooks[["set_error"]]("token_refresh_error", error, phase = phase)
+      hooks[["finish"]](operation, "refresh")
+      try(
+        audit_event(
+          if (indefinite_session) {
+            "refresh_failed_but_kept_session"
+          } else {
+            "session_cleared"
+          },
+          context = list(
+            provider = client@provider@name,
+            issuer = client@provider@issuer,
+            client_id_digest = string_digest(client@client_id),
+            reason = if (async) {
+              "refresh_failed_async"
+            } else {
+              "refresh_failed_sync"
+            },
+            kept_token = indefinite_session,
+            error_class = paste(class(error), collapse = ", ")
+          ),
+          shiny_session = captured
+        ),
+        silent = TRUE
+      )
+      if (
+        automatic &&
+          !indefinite_session &&
+          auto_redirect &&
+          !isTRUE(values[["reauth_triggered"]])
+      ) {
+        values[["reauth_triggered"]] <- TRUE
+        try(values[["request_login"]]())
+      }
+      stop(error)
+    }
+    succeed <- function(raw) {
+      fresh <- tryCatch(replay_async_conditions(raw), error = fail)
+      if (!isTRUE(hooks[["can_apply"]](operation, "refresh"))) {
+        hooks[["finish"]](operation, "refresh")
+        hooks[["discard"]](
+          fresh,
+          shiny_session = captured,
+          operation_epoch = operation[["epoch"]]
+        )
+        connection_access_error("authorization_unavailable")
+      }
+      tryCatch(
+        {
+          validate_refresh_delivery(fresh, token)
+          validate_refresh_scope_grant(
+            client,
+            fresh@granted_scopes,
+            scope_request
+          )
+        },
+        error = fail
+      )
+      values[["token"]] <- fresh
+      operations[["last_authorized_scopes"]] <- fresh@granted_scopes
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
+      values[["token_stale"]] <- FALSE
+      values[["reauth_triggered"]] <- FALSE
+      values[["refresh_failure_count"]] <- 0L
+      now <- as.numeric(Sys.time())
+      values[["refresh_last_success_at"]] <- now
+      values[["refresh_success_generation"]] <- values[[
+        "refresh_success_generation"
+      ]] +
+        1L
+      values[["refresh_next_attempt_at"]] <- now +
+        proactive_refresh_success_delay(fresh, now, refresh_lead_seconds)
+      narrowed <<- !is.null(scope_request)
+      narrowed_epoch <<- operation[["epoch"]]
+      hooks[["finish"]](operation, "refresh")
+      TRUE
+    }
+    result <- tryCatch(
+      {
+        if (is.null(scope_request)) {
+          refresh_token(
+            client,
+            token,
+            async = async,
+            introspect = isTRUE(client@introspect),
+            shiny_session = captured
+          )
+        } else {
+          refresh_token_dispatch(
+            client,
+            token,
+            async = async,
+            introspect = isTRUE(client@introspect),
+            shiny_session = captured,
+            scope_request = scope_request
+          )
+        }
+      },
+      error = fail
+    )
+    if (async) {
+      pending <<- promises::then(result, succeed, fail)
+      return(pending)
+    }
+    succeed(result)
+  }
+  refresh
+}
+
+module_proactive_refresh <- function(
+  values,
+  session,
+  refresh,
+  operations,
+  async,
+  lead,
+  interval
+) {
+  shiny::observe({
+    token <- values[["token"]]
+    wake <- interval
+    if (
+      !is.null(token) &&
+        is_valid_string(token@refresh_token) &&
+        is.finite(token@expires_at)
+    ) {
+      now <- as.numeric(Sys.time())
+      remaining <- token@expires_at - now - lead
+      if (remaining > 0) {
+        wake <- shiny_timer_delay_ms(
+          remaining,
+          buffer_seconds = stats::runif(1, 0, 1)
+        )
+      } else {
+        next_attempt <- values[["refresh_next_attempt_at"]]
+        wake <- if (next_attempt > now) {
+          shiny_timer_delay_ms(next_attempt - now)
+        } else {
+          250L
+        }
+        if (
+          !isTRUE(values[["refresh_in_progress"]]) &&
+            is.null(operations[["active_login_id"]]) &&
+            next_attempt <= now
+        ) {
+          result <- tryCatch(
+            refresh(async = async, automatic = TRUE),
+            error = function(...) NULL
+          )
+          if (inherits(result, "promise")) {
+            promises::catch(result, function(...) NULL)
+          }
+        }
+      }
+    }
+    shiny::invalidateLater(wake, session)
+  })
+}

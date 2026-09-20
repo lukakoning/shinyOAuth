@@ -66,7 +66,8 @@ prepare_call_internal <- function(
   .defer_build = FALSE,
   .transaction_context = NULL,
   .smart_launch = NULL,
-  .authorization_request = FALSE
+  .authorization_request = FALSE,
+  .requested_scopes = NULL
 ) {
   # Verify input  --------------------------------------------------------------
 
@@ -100,6 +101,15 @@ prepare_call_internal <- function(
 
   flow_trace_id <- gen_trace_id()
   effective_scopes <- effective_client_scopes(oauth_client)
+  configured_scopes <- NULL
+  if (!is.null(.requested_scopes)) {
+    .requested_scopes <- authorization_scope_limit(
+      oauth_client,
+      .requested_scopes
+    )
+    configured_scopes <- effective_scopes
+    effective_scopes <- .requested_scopes
+  }
   requested_max_age <- provider_auth_max_age(oauth_client@provider)
   if (!is.null(.requested_max_age)) {
     max_age_info <- inspect_auth_max_age(list(max_age = .requested_max_age))
@@ -187,6 +197,7 @@ prepare_call_internal <- function(
           client_id = oauth_client@client_id,
           redirect_uri = oauth_client@redirect_uri,
           scopes = effective_scopes,
+          configured_scopes = configured_scopes,
           max_age = requested_max_age,
           provider = oauth_client@provider |> provider_fingerprint(),
           client_policy = state_client_policy_fingerprint(oauth_client),
@@ -1975,6 +1986,16 @@ handle_callback_internal <- function(
 
       # Audit: login success with redacted identifiers
       token <- smart_update_token_context(oauth_client, token)
+      if (!is.null(payload[["configured_scopes"]])) {
+        validate_refresh_scope_grant(
+          oauth_client,
+          token@granted_scopes,
+          list(
+            scopes = payload[["scopes"]],
+            required_scopes = oauth_client@required_scopes
+          )
+        )
+      }
       validate_token_acceptance_deadline(token)
       try(
         {
