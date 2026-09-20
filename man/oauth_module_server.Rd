@@ -125,6 +125,10 @@ its main fields are:
 \item \code{auth[["authenticated"]]}: \code{TRUE} when a token is present and the configured
 checks have passed, otherwise \code{FALSE}. With \code{indefinite_session = TRUE},
 the flag stays true while a token is kept, including after refresh errors.
+With token targets, it tracks the retained authorization across individual
+token expiry and recoverable target failures. Connection methods check the
+selected token's lifetime and permissions before use; the configured
+authentication-age limit still applies to the whole authorization.
 \item \code{auth[["token"]]}: an \link{OAuthToken}, or \code{NULL} before login or after clearing
 the session. Read properties with \code{@}, for example \code{auth[["token"]]@userinfo}.
 Additional token response parameters are available in

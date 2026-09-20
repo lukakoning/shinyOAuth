@@ -166,6 +166,10 @@
 #'   - `auth[["authenticated"]]`: `TRUE` when a token is present and the configured
 #'     checks have passed, otherwise `FALSE`. With `indefinite_session = TRUE`,
 #'     the flag stays true while a token is kept, including after refresh errors.
+#'     With token targets, it tracks the retained authorization across individual
+#'     token expiry and recoverable target failures. Connection methods check the
+#'     selected token's lifetime and permissions before use; the configured
+#'     authentication-age limit still applies to the whole authorization.
 #'   - `auth[["token"]]`: an [OAuthToken], or `NULL` before login or after clearing
 #'     the session. Read properties with `@`, for example `auth[["token"]]@userinfo`.
 #'     Additional token response parameters are available in
@@ -1394,8 +1398,9 @@ oauth_module_server_impl <- function(
       }
 
       # Expiry-aware check that tolerates Inf or NA. Ignored when
-      # indefinite_session = TRUE
-      if (!isTRUE(indefinite_session)) {
+      # indefinite_session = TRUE. Target authorizations retain their session;
+      # each connection operation checks the selected token's own expiry.
+      if (!isTRUE(indefinite_session) && !token_targets_configured(client)) {
         exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
         if (is.finite(exp) && !is.na(exp)) {
           if (now >= exp) {
@@ -1438,7 +1443,7 @@ oauth_module_server_impl <- function(
         next_boundary <- Inf
 
         # Check token expiry boundary
-        if (!is.null(tok)) {
+        if (!is.null(tok) && !token_targets_configured(client)) {
           exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
           if (is.finite(exp) && !is.na(exp) && exp > now) {
             next_boundary <- min(next_boundary, exp - now)
@@ -4351,7 +4356,8 @@ oauth_module_server_impl <- function(
       ),
       indefinite_session = indefinite_session,
       auto_redirect = auto_redirect,
-      refresh_lead_seconds = refresh_lead_seconds
+      refresh_lead_seconds = refresh_lead_seconds,
+      reauth_after_seconds = reauth_after_seconds
     )
     if (is.null(.managed)) {
       values[["connection"]] <- module_connection_factory(

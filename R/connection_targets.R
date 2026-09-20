@@ -180,6 +180,13 @@ token_target_limits <- function(client) {
   })
 }
 
+token_target_required_scopes <- function(client, target) {
+  union(
+    client@required_scopes,
+    client@token_targets[[target]][["required_scopes"]] %||% character()
+  )
+}
+
 validate_token_target_limits <- function(client, limits) {
   if (
     !is.list(limits) || !identical(names(limits), names(client@token_targets))
@@ -227,8 +234,7 @@ token_target_request <- function(
   if (!length(ceiling)) {
     connection_access_error("insufficient_scope")
   }
-  required <- client@token_targets[[target]][["required_scopes"]] %||%
-    character()
+  required <- token_target_required_scopes(client, target)
   if (!token_target_scopes_allowed(client, target, required, ceiling)) {
     connection_access_error("insufficient_scope")
   }
@@ -315,7 +321,9 @@ validate_token_target_grant <- function(client, granted, request) {
       granted,
       setdiff(request[["scopes"]], token_target_oidc_scopes)
     ) ||
-      !all(request[["required_scopes"]] %in% granted)
+      !all(
+        union(client@required_scopes, request[["required_scopes"]]) %in% granted
+      )
   ) {
     err_token(
       "Token response does not satisfy the selected target's scope limit"
@@ -372,10 +380,10 @@ token_target_select <- function(record, target = NULL) {
     }
   }
   record[["target_requested_scopes"]] <- requested
-  record[["target_required_scopes"]] <- client@token_targets[[target]][[
-    "required_scopes"
-  ]] %||%
-    character()
+  record[["target_required_scopes"]] <- token_target_required_scopes(
+    client,
+    target
+  )
   record
 }
 

@@ -182,8 +182,13 @@ oauth_connections_server <- function(
             target = target
           )
         },
-        acquire = function(async = FALSE, target = NULL) {
-          controller[["acquire"]](connection_id, async = async, target = target)
+        acquire = function(async = FALSE, target = NULL, wait_only = FALSE) {
+          controller[["acquire"]](
+            connection_id,
+            async = async,
+            target = target,
+            wait_only = wait_only
+          )
         }
       )
       references[[connection_id]] <- reference

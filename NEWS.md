@@ -1,5 +1,18 @@
 # shinyOAuth (development version)
 
+* Target acquisitions enforce client-level required scopes as well as each
+target's requirements, including when restoring encrypted credentials.
+
+* `OAuthConnection$access_token(async = TRUE)` waits for an overlapping queued
+target refresh before delivering a committed token, without another acquisition.
+
+* `oauth_connections_server()` preserves target scope vectors when accepting
+reauthorization callbacks restored from their authenticated transaction context.
+
+* `oauth_module_server()` keeps target authorizations authenticated across
+individual token expiry and recoverable target failures. Queued acquisitions
+and late refresh results enforce the authentication-age limit immediately.
+
 * `oauth_client()` supports opt-in named `token_targets` with an explicit
 `default_token_target`. Both Shiny module factories expose target selection on
 `$access_token()`, `$has_scopes()`, `$refresh()` and `$request()`, plus redacted

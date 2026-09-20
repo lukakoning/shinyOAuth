@@ -579,6 +579,11 @@ test_that("optional target rejection preserves siblings but uncertain rotation e
         )
         expect_s3_class(error, "shinyOAuth_access_error")
         expect_identical(current[["access_token"]](), "calendar-initial")
+        if (!managed) {
+          session[["flushReact"]]()
+          expect_identical(values[["authenticated"]], TRUE)
+          expect_null(values[["error"]])
+        }
         expect_identical(
           current[["targets"]]()[["contacts"]][["status"]],
           "not_acquired"
@@ -892,6 +897,7 @@ test_that("cached target rotations do not rerun consumers and primary expiry kee
       values[["token"]] <- expired
       session[["flushReact"]]()
       expect_identical(values[["connection"]](), current)
+      expect_identical(values[["authenticated"]], TRUE)
       expect_identical(
         current[["access_token"]](target = "contacts"),
         "contacts-new"
@@ -1071,4 +1077,396 @@ test_that("target acquisition crosses a real async worker with its declared poli
   expect_identical(result@access_token, "worker-contacts")
   expect_identical(result@granted_scopes, "contacts.read")
   expect_identical(result@refresh_token, "worker-rotated")
+})
+
+test_that("target grants and restored credentials retain client-required scopes", {
+  client <- target_test_client()
+  S7::props(client) <- list(
+    scopes = c(client@scopes, "email"),
+    required_scopes = "email"
+  )
+  request <- token_target_request(client, "contacts")
+  expect_identical(request[["required_scopes"]], "email")
+  error <- tryCatch(
+    token_target_bundle(client, target_test_token()),
+    error = identity
+  )
+  expect_s3_class(error, "shinyOAuth_token_error")
+
+  primary <- target_test_token(c("calendar.read", "calendar.write", "email"))
+  bundle <- token_target_bundle(client, primary)
+  bundle[["tokens"]][["contacts"]] <- target_test_token(
+    "contacts.read",
+    "missing-required-scope",
+    NA_character_
+  )
+  owner <- random_urlsafe(32)
+  id <- random_urlsafe(32)
+  key <- openssl::rand_bytes(32)
+  sealed <- connection_credentials_seal(
+    primary,
+    owner,
+    id,
+    client,
+    key,
+    as.numeric(Sys.time()),
+    targets = bundle
+  )
+  error <- tryCatch(
+    connection_credentials_open(sealed, owner, id, client, key),
+    error = identity
+  )
+  expect_s3_class(error, "shinyOAuth_token_error")
+  selected <- token_target_select(
+    list(client = client, token = primary, targets = bundle, status = "active"),
+    "contacts"
+  )
+  expect_identical(connection_record_status(selected), "insufficient_scope")
+})
+
+test_that("queued targets and late refresh delivery respect authentication age before observers run", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  calls <- 0L
+  complete <- NULL
+  revoked <- character()
+  local_mocked_bindings(
+    refresh_token_dispatch = function(...) {
+      calls <<- calls + 1L
+      promises::promise(function(resolve, reject) complete <<- resolve)
+    },
+    revoke_token = function(client, token, token_kind, ...) {
+      revoked <<- c(revoked, token@access_token)
+      invisible(NULL)
+    }
+  )
+  shiny::testServer(
+    oauth_module_server,
+    args = list(
+      id = "auth",
+      client = target_test_client(),
+      auto_redirect = FALSE,
+      reauth_after_seconds = 60
+    ),
+    {
+      operation <- .begin_auth_operation("login", NULL, new_epoch = TRUE)
+      .accept_login_token(target_test_token(), NULL)
+      .finish_auth_operation(operation, "login")
+      current <- values[["connection"]]()
+      results <- list()
+      promises::then(
+        current[["access_token"]](target = "contacts", async = TRUE),
+        function(value) results[["first"]] <<- value,
+        function(error) results[["first"]] <<- error
+      )
+      promises::then(
+        current[["access_token"]](force_refresh = TRUE, async = TRUE),
+        function(value) results[["queued"]] <<- value,
+        function(error) results[["queued"]] <<- error
+      )
+      values[["auth_started_at"]] <- as.numeric(Sys.time()) - 61
+      complete(target_test_token(
+        "contacts.read",
+        "late-contacts",
+        "late-refresh"
+      ))
+      for (i in seq_len(20)) {
+        later::run_now(0.01)
+      }
+      expect_identical(calls, 1L)
+      expect_null(values[["targets"]][["tokens"]][["contacts"]])
+      expect_s3_class(results[["first"]], "shinyOAuth_access_error")
+      expect_s3_class(results[["queued"]], "shinyOAuth_access_error")
+      expect_identical("late-contacts" %in% revoked, TRUE)
+    }
+  )
+})
+
+test_that("managed target replacement survives the callback JSON round trip", {
+  f <- target_test_manager()
+  client <- f[["manager"]][["clients"]][["a"]]
+  shiny::testServer(
+    oauth_connections_server,
+    args = list(id = "auth", manager = f[["manager"]]),
+    session = manager_test_session(manager_test_cookie(f)),
+    {
+      id <- manager_test_accept(controller, token = target_test_token())
+      controller[["reauthorize"]](id)
+      hooks <- controller[["hooks"]]("a")
+      context <- hooks[["prepare"]]()
+      browser <- valid_browser_token()
+      prepared <- prepare_call_internal(
+        client,
+        browser,
+        .defer_build = TRUE,
+        .transaction_context = context,
+        .requested_scopes = context[["requested_scopes"]],
+        .target_limits = context[["target_limits"]]
+      )
+      restored <- oauth_module_managed_context(
+        hooks,
+        client,
+        prepared[["build_args"]][["payload"]],
+        browser
+      )
+      expect_type(restored[["data"]][["target_limits"]][["calendar"]], "list")
+      hooks[["accept"]](
+        target_test_token(refresh = "replacement-refresh"),
+        restored[["data"]],
+        as.numeric(Sys.time())
+      )
+      replacement <- connection()
+      expect_identical(replacement[["access_token"]](), "calendar-initial")
+      expect_identical(
+        replacement[["summary"]]()[["replaces_connection_id"]],
+        id
+      )
+    }
+  )
+})
+
+test_that("secondary acquisitions validate signed OIDC identity continuity", {
+  client <- target_test_client()
+  provider <- client@provider
+  S7::props(provider) <- list(
+    issuer = "https://issuer.example",
+    id_token_validation = TRUE
+  )
+  S7::props(client) <- list(
+    provider = provider,
+    scopes = c(client@scopes, "openid")
+  )
+  key <- openssl::rsa_keygen()
+  other_key <- openssl::rsa_keygen()
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
+  local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)))
+  now <- floor(as.numeric(Sys.time()))
+  claims <- list(
+    iss = provider@issuer,
+    aud = client@client_id,
+    sub = "alice",
+    iat = now,
+    exp = now + 3600,
+    nonce = "original-nonce",
+    auth_time = now - 30
+  )
+  sign <- function(claims, signing_key = key) {
+    input <- paste(
+      base64url_encode(charToRaw('{"alg":"RS256"}')),
+      base64url_encode(charToRaw(jsonlite::toJSON(claims, auto_unbox = TRUE))),
+      sep = "."
+    )
+    paste(
+      input,
+      base64url_encode(openssl::signature_create(
+        charToRaw(input),
+        openssl::sha256,
+        signing_key
+      )),
+      sep = "."
+    )
+  }
+  original <- sign(claims)
+  primary <- target_test_token(c("calendar.read", "calendar.write", "openid"))
+  S7::props(primary) <- list(
+    id_token = original,
+    original_id_token = original,
+    id_token_validated = TRUE
+  )
+  request <- token_target_request(client, "contacts")
+  source <- token_target_refresh_source(
+    list(
+      client = client,
+      token = primary,
+      targets = token_target_bundle(client, primary)
+    ),
+    request
+  )
+  response_id <- original
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    httr2::response(
+      url = req[["url"]],
+      status = 200L,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw(jsonlite::toJSON(
+        list(
+          access_token = "contacts-signed",
+          refresh_token = "signed-rotation",
+          token_type = "Bearer",
+          expires_in = 3600,
+          scope = "contacts.read openid",
+          id_token = response_id
+        ),
+        auto_unbox = TRUE
+      ))
+    )
+  })
+  fresh <- refresh_token_dispatch(client, source, target_request = request)
+  expect_identical(fresh@id_token_validated, TRUE)
+  expect_identical(fresh@original_id_token, original)
+  expect_identical(fresh@id_token_claims[["sub"]], "alice")
+  for (change in list(
+    list(sub = "bob"),
+    list(iss = "https://other.example"),
+    list(aud = "other-app"),
+    list(nonce = "other-nonce"),
+    list(auth_time = now - 10)
+  )) {
+    response_id <- sign(utils::modifyList(claims, change))
+    error <- tryCatch(
+      refresh_token_dispatch(client, source, target_request = request),
+      error = identity
+    )
+    expect_s3_class(error, "shinyOAuth_id_token_error")
+  }
+  response_id <- sign(claims, other_key)
+  error <- tryCatch(
+    refresh_token_dispatch(client, source, target_request = request),
+    error = identity
+  )
+  expect_s3_class(error, "shinyOAuth_id_token_error")
+})
+
+test_that("target authorization parameters survive signed requests and PAR", {
+  client <- target_test_client()
+  provider <- client@provider
+  provider@par_url <- "https://issuer.example/par"
+  S7::props(client) <- list(
+    provider = provider,
+    client_secret = strrep("s", 32),
+    request_object_mode = "request",
+    request_object_audience = "https://issuer.example"
+  )
+  sent <- NULL
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    sent <<- req
+    httr2::response(
+      url = req[["url"]],
+      status = 201L,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw(
+        '{"request_uri":"urn:example:par:targets","expires_in":60}'
+      )
+    )
+  })
+  browser <- valid_browser_token()
+  url <- prepare_call(client, browser)
+  expect_identical(
+    parse_query_param(url, "request_uri", decode = TRUE),
+    "urn:example:par:targets"
+  )
+  jwt <- utils::URLdecode(as.character(sent[["body"]][["data"]][["request"]]))
+  claims <- parse_jwt_payload(jwt)
+  expect_setequal(
+    unlist(claims[["resource"]]),
+    c("https://calendar.example/", "https://contacts.example/")
+  )
+  expect_setequal(normalize_scope_tokens(claims[["scope"]]), client@scopes)
+  payload <- state_payload_decrypt_validate(client, claims[["state"]])
+  expect_setequal(unlist(payload[["scopes"]]), client@scopes)
+})
+
+test_that("interleaved target consumers await current ownership without another acquisition", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  for (managed in c(FALSE, TRUE)) {
+    for (outcome in c(
+      "success",
+      "not_consumed",
+      "possibly_consumed",
+      "logout"
+    )) {
+      calls <- 0L
+      completions <- list()
+      local_mocked_bindings(
+        refresh_token_dispatch = function(...) {
+          calls <<- calls + 1L
+          i <- calls
+          promises::promise(function(resolve, reject) {
+            completions[[i]] <<- list(resolve = resolve, reject = reject)
+          })
+        },
+        revoke_token = function(...) invisible(NULL)
+      )
+      f <- target_test_manager()
+      shiny::testServer(
+        if (managed) oauth_connections_server else oauth_module_server,
+        args = if (managed) {
+          list(id = "auth", manager = f[["manager"]])
+        } else {
+          list(
+            id = "auth",
+            client = target_test_client(),
+            auto_redirect = FALSE
+          )
+        },
+        session = manager_test_session(
+          if (managed) manager_test_cookie(f) else NULL
+        ),
+        {
+          current <- if (managed) {
+            connection(manager_test_accept(
+              controller,
+              token = target_test_token()
+            ))
+          } else {
+            operation <- .begin_auth_operation("login", NULL, new_epoch = TRUE)
+            .accept_login_token(target_test_token(), NULL)
+            .finish_auth_operation(operation, "login")
+            values[["connection"]]()
+          }
+          results <- list()
+          for (which in c("first", "other", "same")) {
+            local({
+              label <- which
+              promises::then(
+                current[["access_token"]](
+                  target = if (label == "other") "calendar" else "contacts",
+                  force_refresh = label == "other",
+                  async = TRUE
+                ),
+                function(value) results[[label]] <<- value,
+                function(error) results[[label]] <<- error
+              )
+            })
+          }
+          completions[[1L]][["resolve"]](target_test_token(
+            "contacts.read",
+            "contacts-new",
+            "refresh-1"
+          ))
+          poll_for_async(function() calls == 2L, session)
+          expect_null(results[["same"]])
+          if (outcome == "logout") {
+            if (managed) controller[["logout"]](FALSE) else values[["logout"]]()
+          }
+          if (outcome %in% c("success", "logout")) {
+            completions[[2L]][["resolve"]](target_test_token(
+              access = "calendar-new",
+              refresh = "refresh-2"
+            ))
+          } else {
+            completions[[2L]][["reject"]](refresh_outcome_error(
+              simpleError("synthetic failure"),
+              outcome
+            ))
+          }
+          poll_for_async(function() length(results) == 3L, session)
+          expect_identical(calls, 2L)
+          expect_identical(results[["first"]], "contacts-new")
+          if (outcome %in% c("success", "not_consumed")) {
+            expect_identical(results[["same"]], "contacts-new")
+          } else {
+            expect_s3_class(results[["same"]], "shinyOAuth_access_error")
+          }
+          if (outcome == "success") {
+            expect_identical(results[["other"]], "calendar-new")
+          } else {
+            expect_s3_class(results[["other"]], "shinyOAuth_access_error")
+          }
+        }
+      )
+    }
+  }
 })

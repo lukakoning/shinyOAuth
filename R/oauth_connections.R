@@ -675,6 +675,9 @@ connection_manager_controller <- function(manager, session) {
     if (!validate(context)) {
       err_token("Managed authorization owner is unavailable")
     }
+    # Callback JSON preserves values but turns scope vectors into lists. The
+    # exact context was verified above; recover its original server-side types.
+    context <- state[["pending"]][[context[["transaction"]]]][["context"]]
     client <- client_for(context[["client"]])
     if (
       !token_targets_configured(client) &&
@@ -1166,7 +1169,8 @@ connection_manager_controller <- function(manager, session) {
     async = FALSE,
     target = NULL,
     scopes = NULL,
-    touch = FALSE
+    touch = FALSE,
+    wait_only = FALSE
   ) {
     record <- read(id)
     target <- token_target_name(record[["client"]], target)
@@ -1179,8 +1183,9 @@ connection_manager_controller <- function(manager, session) {
             inherits(flight[["promise"]], "promise")
         ) {
           if (
-            identical(target, flight[["target"]]) &&
-              (is.null(scopes) || identical(scopes, flight[["scopes"]]))
+            wait_only ||
+              (identical(target, flight[["target"]]) &&
+                (is.null(scopes) || identical(scopes, flight[["scopes"]])))
           ) {
             return(flight[["promise"]])
           }
@@ -1197,6 +1202,9 @@ connection_manager_controller <- function(manager, session) {
         }
       }
       connection_access_error("refresh_pending")
+    }
+    if (wait_only) {
+      return(promises::promise_resolve(TRUE))
     }
     refresh(id, async = async, touch = touch, scopes = scopes, target = target)
   }

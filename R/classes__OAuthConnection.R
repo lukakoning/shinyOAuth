@@ -195,8 +195,12 @@ OAuthConnection <- R6::R6Class(
       target <- token_target_name(private[[".client"]], target)
       acquire <- private[[".acquire"]]
       if (!is.null(target) && is.function(acquire)) {
-        acquire <- function(async) {
-          private[[".acquire"]](async = async, target = target)
+        acquire <- function(async, wait_only = FALSE) {
+          private[[".acquire"]](
+            async = async,
+            target = target,
+            wait_only = wait_only
+          )
         }
       }
       connection_export_token(
@@ -465,8 +469,12 @@ OAuthConnection <- R6::R6Class(
       if (refresh) {
         acquire <- private[[".acquire"]]
         if (!is.null(target) && is.function(acquire)) {
-          acquire <- function(async) {
-            private[[".acquire"]](async = async, target = target)
+          acquire <- function(async, wait_only = FALSE) {
+            private[[".acquire"]](
+              async = async,
+              target = target,
+              wait_only = wait_only
+            )
           }
         }
         record <- connection_export_token(

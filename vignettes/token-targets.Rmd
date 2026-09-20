@@ -127,7 +127,11 @@ bytes still follow the manager's conservative alias-invalidation rules.
 
 The single module keeps a target authorization available for acquisition when
 one access token expires. Its session and configured authorization-age limits
-still apply. A successful token rotation preserves the connection ID; logout,
+still apply. Its `authenticated` flag tracks that retained authorization;
+connection methods check the selected token's lifetime and permissions before
+use. Recoverable target failures are returned to the caller without changing
+the module's authentication or starting a new login. A successful token rotation
+preserves the connection ID; logout,
 replacement and session end invalidate old references and late completions.
 Targets are stored inside the manager's existing encrypted credential envelope.
 

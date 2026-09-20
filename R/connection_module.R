@@ -1,3 +1,16 @@
+module_authorization_expired <- function(
+  values,
+  indefinite_session,
+  reauth_after_seconds
+) {
+  started <- values[["auth_started_at"]]
+  !indefinite_session &&
+    !is.null(reauth_after_seconds) &&
+    length(started) == 1L &&
+    is.finite(started) &&
+    as.numeric(Sys.time()) >= started + reauth_after_seconds
+}
+
 module_connection_factory <- function(
   client,
   values,
@@ -53,13 +66,12 @@ module_connection_factory <- function(
       ) {
         connection_access_error("authorization_unavailable")
       }
-      started <- values[["auth_started_at"]]
       if (
-        !indefinite_session &&
-          !is.null(reauth_after_seconds) &&
-          length(started) == 1L &&
-          is.finite(started) &&
-          as.numeric(Sys.time()) >= started + reauth_after_seconds
+        module_authorization_expired(
+          values,
+          indefinite_session,
+          reauth_after_seconds
+        )
       ) {
         connection_access_error("interaction_required")
       }
@@ -99,9 +111,14 @@ module_connection_factory <- function(
           result
         }
       },
-      acquire = function(async = FALSE, target = NULL) {
+      acquire = function(async = FALSE, target = NULL, wait_only = FALSE) {
         resolve()
-        refresh(async = async, respect_pacing = TRUE, target = target)
+        refresh(
+          async = async,
+          respect_pacing = TRUE,
+          target = target,
+          wait_only = wait_only
+        )
       }
     )
     reference_epoch <<- generation
@@ -119,7 +136,8 @@ module_refresh_controller <- function(
   hooks,
   indefinite_session,
   auto_redirect,
-  refresh_lead_seconds
+  refresh_lead_seconds,
+  reauth_after_seconds = NULL
 ) {
   pending <- NULL
   pending_target <- NULL
@@ -131,9 +149,19 @@ module_refresh_controller <- function(
     scopes = NULL,
     automatic = FALSE,
     respect_pacing = automatic,
-    target = NULL
+    target = NULL,
+    wait_only = FALSE
   ) {
     target <- token_target_name(client, target)
+    if (
+      module_authorization_expired(
+        values,
+        indefinite_session,
+        reauth_after_seconds
+      )
+    ) {
+      connection_access_error("interaction_required")
+    }
     generation <- operations[["epoch"]]
     primary <- values[["token"]]
     bundle <- values[["targets"]]
@@ -141,8 +169,9 @@ module_refresh_controller <- function(
     if (isTRUE(values[["refresh_in_progress"]])) {
       if (isTRUE(async) && inherits(pending, "promise")) {
         if (
-          identical(target, pending_target) &&
-            (is.null(scopes) || identical(scopes, pending_scopes))
+          wait_only ||
+            (identical(target, pending_target) &&
+              (is.null(scopes) || identical(scopes, pending_scopes)))
         ) {
           return(pending)
         }
@@ -160,6 +189,9 @@ module_refresh_controller <- function(
     }
     if (!isTRUE(operations[["session_active"]]) || is.null(token)) {
       connection_access_error("authorization_unavailable")
+    }
+    if (wait_only) {
+      return(promises::promise_resolve(TRUE))
     }
     if (!is.null(operations[["active_login_id"]])) {
       connection_access_error("interaction_required")
@@ -241,13 +273,15 @@ module_refresh_controller <- function(
           "refresh_next_attempt_at"
         ]]
       }
-      values[["token_stale"]] <- indefinite_session
-      phase <- if (async) "async_token_refresh" else "sync_token_refresh"
-      hooks[["set_error"]]("token_refresh_error", error, phase = phase)
+      if (!keep_targets) {
+        values[["token_stale"]] <- indefinite_session
+        phase <- if (async) "async_token_refresh" else "sync_token_refresh"
+        hooks[["set_error"]]("token_refresh_error", error, phase = phase)
+      }
       hooks[["finish"]](operation, "refresh")
       try(
         audit_event(
-          if (indefinite_session) {
+          if (indefinite_session || keep_targets) {
             "refresh_failed_but_kept_session"
           } else {
             "session_cleared"
@@ -261,7 +295,7 @@ module_refresh_controller <- function(
             } else {
               "refresh_failed_sync"
             },
-            kept_token = indefinite_session,
+            kept_token = indefinite_session || keep_targets,
             error_class = paste(class(error), collapse = ", ")
           ),
           shiny_session = captured
@@ -270,6 +304,7 @@ module_refresh_controller <- function(
       )
       if (
         automatic &&
+          !keep_targets &&
           !indefinite_session &&
           auto_redirect &&
           !isTRUE(values[["reauth_triggered"]])
@@ -281,14 +316,21 @@ module_refresh_controller <- function(
     }
     succeed <- function(raw) {
       fresh <- tryCatch(replay_async_conditions(raw), error = fail)
-      if (!isTRUE(hooks[["can_apply"]](operation, "refresh"))) {
+      expired <- module_authorization_expired(
+        values,
+        indefinite_session,
+        reauth_after_seconds
+      )
+      if (!isTRUE(hooks[["can_apply"]](operation, "refresh")) || expired) {
         hooks[["finish"]](operation, "refresh")
         hooks[["discard"]](
           fresh,
           shiny_session = captured,
           operation_epoch = operation[["epoch"]]
         )
-        connection_access_error("authorization_unavailable")
+        connection_access_error(
+          if (expired) "interaction_required" else "authorization_unavailable"
+        )
       }
       tryCatch(
         {

@@ -202,6 +202,15 @@ connection_export_token <- function(
   deliver <- function(...) {
     record <- read()
     if (!check(record)) {
+      if (async && identical(record[["status"]], "refreshing")) {
+        # A queued target may have claimed the credential before every consumer
+        # of the previous operation ran. Await that claim without acquiring again.
+        pending <- tryCatch(
+          shiny::isolate(acquire(async = TRUE, wait_only = TRUE)),
+          error = failed
+        )
+        return(promises::then(pending, deliver, deliver))
+      }
       connection_access_error("lifetime_unavailable")
     }
     if (export_bearer) record[["token"]]@access_token else record
