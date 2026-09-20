@@ -2,6 +2,9 @@ connection_access_error <- function(reason) {
   message <- switch(
     reason,
     authorization_unavailable = "The authorization is no longer available; obtain a current connection.",
+    unknown_target = "The token target is not declared on this client.",
+    unsupported_target = "This client does not support token target selection.",
+    selection_required = "Several authorizations are available; select a connection ID.",
     insufficient_scope = "The authorization does not cover this operation.",
     refresh_pending = "Credential refresh is in progress; await it asynchronously or retry later.",
     refresh_unavailable = "Credentials cannot be refreshed now; retry later or authorize again.",
@@ -46,7 +49,21 @@ connection_integration_signal <- function(resolve) {
     token <- record[["token"]]
     available <- !is.null(token) &&
       (is.null(record[["status"]]) || identical(record[["status"]], "active"))
-    if (available) {
+    if (available && token_targets_configured(record[["client"]])) {
+      evidence <- function(token) {
+        if (is.null(token)) {
+          NULL
+        } else {
+          list(
+            scopes = sort(token@granted_scopes),
+            verified = token@granted_scopes_verified
+          )
+        }
+      }
+      tokens <- record[["targets"]][["tokens"]]
+      tokens[[record[["client"]]@default_token_target]] <- token
+      list(targets = lapply(tokens[sort(names(tokens))], evidence))
+    } else if (available) {
       list(
         scopes = sort(token@granted_scopes),
         verified = token@granted_scopes_verified
@@ -82,7 +99,7 @@ connection_record_has_scopes <- function(record, scopes, previous = NULL) {
     return(FALSE)
   }
   !is.null(evidence) &&
-    connection_scope_covered(client, scopes, effective_client_scopes(client)) &&
+    connection_record_configured_scopes(record, scopes) &&
     connection_scope_covered(
       client,
       scopes,
@@ -97,7 +114,8 @@ connection_export_token <- function(
   required_scopes,
   min_valid_for,
   force_refresh,
-  async
+  async,
+  export_bearer = TRUE
 ) {
   required_scopes <- connection_scope_arguments(required_scopes)
   connection_manager_flag(force_refresh, "force_refresh")
@@ -128,13 +146,7 @@ connection_export_token <- function(
   }
   check <- function(record) {
     client <- record[["client"]]
-    if (
-      !connection_scope_covered(
-        client,
-        required_scopes,
-        effective_client_scopes(client)
-      )
-    ) {
+    if (!connection_record_configured_scopes(record, required_scopes)) {
       err_input(
         "Operation scopes must be included in the client's requested scopes"
       )
@@ -149,22 +161,37 @@ connection_export_token <- function(
     if (identical(status, "refreshing")) {
       return(FALSE)
     }
+    if (
+      !is.null(record[["target"]]) &&
+        !token_target_scopes_allowed(
+          client,
+          record[["target"]],
+          required_scopes,
+          record[["target_scopes"]]
+        )
+    ) {
+      connection_access_error("insufficient_scope")
+    }
     token <- record[["token"]]
+    if (is.null(token) && !is.null(record[["target"]])) {
+      return(FALSE)
+    }
     if (is.null(token)) {
       connection_access_error("authorization_unavailable")
     }
     if (
-      !identical(tolower(token@token_type), "bearer") ||
-        length(token@cnf) ||
-        isTRUE(client@mtls_certificate_bound_access_tokens) ||
-        isTRUE(client@dpop_require_access_token)
+      export_bearer &&
+        (!identical(tolower(token@token_type), "bearer") ||
+          length(token@cnf) ||
+          isTRUE(client@mtls_certificate_bound_access_tokens) ||
+          isTRUE(client@dpop_require_access_token))
     ) {
       connection_access_error("unsupported_token_binding")
     }
     if (
       !connection_record_has_scopes(
         record,
-        union(client@required_scopes, required_scopes)
+        union(connection_record_required_scopes(record), required_scopes)
       )
     ) {
       connection_access_error("insufficient_scope")
@@ -177,7 +204,7 @@ connection_export_token <- function(
     if (!check(record)) {
       connection_access_error("lifetime_unavailable")
     }
-    record[["token"]]@access_token
+    if (export_bearer) record[["token"]]@access_token else record
   }
   failed <- function(error) {
     if (inherits(error, "shinyOAuth_access_error")) {
@@ -191,11 +218,15 @@ connection_export_token <- function(
     record <- read()
     fresh <- check(record)
     if (fresh && !force_refresh) {
-      return(record[["token"]]@access_token)
+      return(if (export_bearer) record[["token"]]@access_token else record)
     }
     if (identical(record[["status"]], "refreshing")) {
       if (!async) connection_access_error("refresh_pending")
-    } else if (!is_valid_string(record[["token"]]@refresh_token)) {
+    } else if (
+      !is_valid_string(
+        record[["refresh_token"]] %||% record[["token"]]@refresh_token
+      )
+    ) {
       connection_access_error("interaction_required")
     }
     result <- tryCatch(shiny::isolate(acquire(async = async)), error = failed)

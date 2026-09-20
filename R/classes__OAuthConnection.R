@@ -76,11 +76,11 @@ OAuthConnection <- R6::R6Class(
     .refresh = NULL,
     .acquire = NULL,
     .integration_changed = NULL,
-    integration_record = function() {
+    integration_record = function(target = NULL) {
       if (is.function(private[[".integration_changed"]])) {
         private[[".integration_changed"]]()
       }
-      shiny::isolate(private[["record"]]())
+      token_target_select(shiny::isolate(private[["record"]]()), target)
     },
     record = function() {
       record <- tryCatch(private[[".resolve"]](), error = function(error) {
@@ -168,6 +168,9 @@ OAuthConnection <- R6::R6Class(
     #' @param async Return a promise, including for a cached token. Authentication
     #'   failures reject the promise. FALSE always returns a string or errors;
     #'   it never waits on an in-flight asynchronous refresh.
+    #' @param target Optional declared token-target name. `NULL` uses the client's
+    #'   default. A missing cached target is acquired with the shared refresh
+    #'   credential; scope checks use that target's evidence and retained limit.
     #' @return A bearer-token string, or a promise resolving to one. Acquisition
     #'   failures inherit `shinyOAuth_access_error` and expose a stable reason in
     #'   `condition$context$reason`. Argument/configuration errors can be synchronous.
@@ -176,8 +179,9 @@ OAuthConnection <- R6::R6Class(
     #' Reasons are `authorization_unavailable` (ended or foreign session/reference),
     #' `insufficient_scope`, `refresh_pending` (a synchronous caller cannot join
     #' async work), `refresh_unavailable` (including retry pacing),
-    #' `interaction_required` (no usable refresh credential), `lifetime_unavailable`
-    #' and `unsupported_token_binding`. No reason initiates browser navigation.
+    #' `interaction_required` (no usable refresh credential), `lifetime_unavailable`,
+    #' `unsupported_token_binding`, `unknown_target` and `unsupported_target`.
+    #' No reason initiates browser navigation.
     #' A cached async result is still a promise. Pending async callers join the
     #' same owned refresh and recheck the committed result before returning it.
     #' Acquisition does not count as managed owner activity.
@@ -185,11 +189,19 @@ OAuthConnection <- R6::R6Class(
       required_scopes = character(),
       min_valid_for = 60,
       force_refresh = FALSE,
-      async = FALSE
+      async = FALSE,
+      target = NULL
     ) {
+      target <- token_target_name(private[[".client"]], target)
+      acquire <- private[[".acquire"]]
+      if (!is.null(target) && is.function(acquire)) {
+        acquire <- function(async) {
+          private[[".acquire"]](async = async, target = target)
+        }
+      }
       connection_export_token(
-        private[["integration_record"]],
-        private[[".acquire"]],
+        function() private[["integration_record"]](target),
+        acquire,
         required_scopes,
         min_valid_for,
         force_refresh,
@@ -201,17 +213,23 @@ OAuthConnection <- R6::R6Class(
     #' unexpired access token. This is suitable for optional-feature UI; the
     #' actual operation must still check scopes and remote resource permissions.
     #' @param scopes Character vector of operation scopes to check.
+    #' @param target Optional declared token-target name; defaults to the client's
+    #'   primary target. An unacquired target returns FALSE, without acquisition.
     #' @return TRUE when the current authorization covers the configured scopes,
     #'   otherwise FALSE. Malformed arguments raise input errors.
-    has_scopes = function(scopes) {
+    has_scopes = function(scopes, target = NULL) {
+      target <- token_target_name(private[[".client"]], target)
       scopes <- connection_scope_arguments(scopes)
       tryCatch(
         {
-          record <- private[["integration_record"]]()
+          record <- private[["integration_record"]](target)
           previous <- if (is.function(private[[".integration_changed"]])) {
             private[[".integration_changed"]]()
           } else {
             NULL
+          }
+          if (!is.null(target)) {
+            previous <- previous[["targets"]][[target]]
           }
           connection_record_has_scopes(record, scopes, previous)
         },
@@ -227,7 +245,9 @@ OAuthConnection <- R6::R6Class(
     #'   connection, otherwise `FALSE`, including when resolution fails.
     is_usable = function() {
       tryCatch(
-        connection_record_status(private[["record"]]()) %in%
+        connection_record_status(token_target_select(private[[
+          "record"
+        ]]())) %in%
           c("active", "limited"),
         error = function(...) FALSE
       )
@@ -241,6 +261,9 @@ OAuthConnection <- R6::R6Class(
     #'   permissions for this connection, or `NULL` (default). Scopes must be
     #'   covered by the current grant and client configuration, and retain the
     #'   client's required scopes. SMART clients use semantic coverage.
+    #' @param target Optional declared token-target name. With targets, narrowing
+    #'   applies only to the selected entry and persists across target switching
+    #'   and reauthorization. Other targets keep their own retained scope limits.
     #' @details
     #' After explicit narrowing succeeds, subsequent refreshes (including
     #' automatic refreshes and refreshes in another retained Shiny session)
@@ -256,10 +279,14 @@ OAuthConnection <- R6::R6Class(
     #' needed by the provider's profile endpoint in the client's `required_scopes`.
     #' @return `TRUE` after a successful commit, or a promise resolving to `TRUE`
     #'   when the module uses async transport. Failure raises a redacted error.
-    refresh = function(scopes = NULL) {
+    refresh = function(scopes = NULL, target = NULL) {
+      target <- token_target_name(private[[".client"]], target)
       private[["record"]]()
       if (!is.function(private[[".refresh"]])) {
         err_config("This connection uses oauth_module_server() for refresh")
+      }
+      if (!is.null(target)) {
+        return(private[[".refresh"]](scopes = scopes, target = target))
       }
       if (is.null(scopes)) {
         private[[".refresh"]]()
@@ -301,7 +328,10 @@ OAuthConnection <- R6::R6Class(
     #' coverage for both connection and operation permissions.
     #' See [OAuthToken] for the distinction from verified scope evidence.
     summary = function() {
-      connection_record_summary(private[["record"]](), private[[".id"]])
+      connection_record_summary(
+        token_target_select(private[["record"]]()),
+        private[[".id"]]
+      )
     },
     #' @description
     #' Read explicitly selected OIDC identity fields from the current usable
@@ -328,11 +358,17 @@ OAuthConnection <- R6::R6Class(
     identity = function(claims = c("iss", "sub"), userinfo = character()) {
       record <- private[["record"]]()
       token <- record[["token"]]
+      available <- if (token_targets_configured(record[["client"]])) {
+        identical(record[["status"]], "active") && !is.null(token)
+      } else {
+        connection_record_status(record) %in% c("active", "limited")
+      }
       if (
-        !connection_record_status(record) %in% c("active", "limited") ||
+        !available ||
           !provider_uses_oidc(record[["client"]]@provider) ||
           !isTRUE(token@id_token_validated) ||
-          !"openid" %in% token@granted_scopes
+          (!token_targets_configured(record[["client"]]) &&
+            !"openid" %in% token@granted_scopes)
       ) {
         err_token("Connection has no usable validated OIDC identity")
       }
@@ -394,6 +430,15 @@ OAuthConnection <- R6::R6Class(
     #'   [httr2::req_body_json()], [httr2::req_body_form()], [httr2::req_body_raw()]
     #'   and [httr2::req_headers()]. Set the HTTP method with `method` above.
     #'   URL, transport policies, authentication and Host headers cannot be changed.
+    #' @param refresh Opt in to coordinated token acquisition before sending the
+    #'   request. Default FALSE preserves existing behavior. This synchronous
+    #'   operation never waits on async refresh and never refreshes/replays after
+    #'   an API failure. Generic HTTP retries are disabled for this opt-in call;
+    #'   bound transport and DPoP nonce-challenge handling remain in force.
+    #' @param target Optional declared token-target name. Target clients require
+    #'   an explicit association through that declaration's `resource_ids`.
+    #' @param min_valid_for Minimum remaining lifetime when `refresh = TRUE`,
+    #'   in seconds. Has the same meaning as on `$access_token()`.
     #' @return An [httr2] response object. Invalid resources, unusable connections,
     #'   insufficient scopes and transport failures raise errors.
     #' @details
@@ -408,10 +453,35 @@ OAuthConnection <- R6::R6Class(
       query = NULL,
       method = "GET",
       required_scopes = character(),
-      configure = NULL
+      configure = NULL,
+      refresh = FALSE,
+      target = NULL,
+      min_valid_for = 60
     ) {
+      connection_manager_flag(refresh, "refresh")
+      target <- token_target_name(private[[".client"]], target)
+      token_target_check_destination(private[[".client"]], target, resource_id)
+      record <- token_target_select(private[["record"]](), target)
+      if (refresh) {
+        acquire <- private[[".acquire"]]
+        if (!is.null(target) && is.function(acquire)) {
+          acquire <- function(async) {
+            private[[".acquire"]](async = async, target = target)
+          }
+        }
+        record <- connection_export_token(
+          function() private[["integration_record"]](target),
+          acquire,
+          required_scopes,
+          min_valid_for,
+          FALSE,
+          FALSE,
+          export_bearer = FALSE
+        )
+      }
+      record[["single_attempt"]] <- refresh
       connection_record_request(
-        private[["record"]](),
+        record,
         resource_id,
         path,
         query,
@@ -426,6 +496,38 @@ OAuthConnection <- R6::R6Class(
     #' Read interpreted context for a usable SMART connection in this session.
     #' @return The sensitive context list documented in [smart_context()].
     smart_context = function() smart_record_context(private[["record"]]()),
+    #' @description Inspect declared targets without exposing credentials.
+    #' @return A named list of target status and granted scopes. A target with no
+    #'   response yet has status `not_acquired`; this is not proof of denied consent.
+    targets = function() {
+      record <- private[["record"]]()
+      lapply(
+        stats::setNames(
+          names(private[[".client"]]@token_targets),
+          names(private[[".client"]]@token_targets)
+        ),
+        function(target) {
+          selected <- token_target_select(record, target)
+          token <- selected[["token"]]
+          list(
+            status = if (
+              is.null(token) && identical(selected[["status"]], "active")
+            ) {
+              "not_acquired"
+            } else {
+              connection_record_status(selected)
+            },
+            granted_scopes = if (is.null(token)) {
+              character()
+            } else {
+              token@granted_scopes
+            },
+            scopes_verified = !is.null(token) &&
+              isTRUE(token@granted_scopes_verified)
+          )
+        }
+      )
+    },
     #' @description
     #' `r lifecycle::badge("experimental")`
     #'

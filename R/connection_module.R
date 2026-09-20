@@ -66,6 +66,7 @@ module_connection_factory <- function(
       list(
         client = client,
         token = values[["token"]],
+        targets = values[["targets"]],
         status = if (isTRUE(values[["refresh_in_progress"]])) {
           "refreshing"
         } else {
@@ -77,9 +78,9 @@ module_connection_factory <- function(
       id,
       client,
       resolve,
-      refresh = function(scopes = NULL) {
+      refresh = function(scopes = NULL, target = NULL) {
         record <- resolve()
-        if (!is.null(scopes)) {
+        if (!is.null(scopes) && !token_targets_configured(client)) {
           refresh_scope_request(client, record[["token"]], scopes)
         }
         redact <- function(error) {
@@ -89,7 +90,7 @@ module_connection_factory <- function(
           connection_access_error("refresh_unavailable")
         }
         result <- tryCatch(
-          refresh(async = async, scopes = scopes),
+          refresh(async = async, scopes = scopes, target = target),
           error = redact
         )
         if (inherits(result, "promise")) {
@@ -98,9 +99,9 @@ module_connection_factory <- function(
           result
         }
       },
-      acquire = function(async = FALSE) {
+      acquire = function(async = FALSE, target = NULL) {
         resolve()
-        refresh(async = async, respect_pacing = TRUE)
+        refresh(async = async, respect_pacing = TRUE, target = target)
       }
     )
     reference_epoch <<- generation
@@ -121,18 +122,39 @@ module_refresh_controller <- function(
   refresh_lead_seconds
 ) {
   pending <- NULL
+  pending_target <- NULL
+  pending_scopes <- NULL
   narrowed <- FALSE
   narrowed_epoch <- NULL
   refresh <- function(
     async = FALSE,
     scopes = NULL,
     automatic = FALSE,
-    respect_pacing = automatic
+    respect_pacing = automatic,
+    target = NULL
   ) {
-    token <- values[["token"]]
+    target <- token_target_name(client, target)
+    generation <- operations[["epoch"]]
+    primary <- values[["token"]]
+    bundle <- values[["targets"]]
+    token <- primary
     if (isTRUE(values[["refresh_in_progress"]])) {
-      if (isTRUE(async) && is.null(scopes) && inherits(pending, "promise")) {
-        return(pending)
+      if (isTRUE(async) && inherits(pending, "promise")) {
+        if (
+          identical(target, pending_target) &&
+            (is.null(scopes) || identical(scopes, pending_scopes))
+        ) {
+          return(pending)
+        }
+        if (!is.null(target)) {
+          resume <- function(...) {
+            if (!identical(operations[["epoch"]], generation)) {
+              connection_access_error("authorization_unavailable")
+            }
+            refresh(async, scopes, automatic, respect_pacing, target)
+          }
+          return(promises::then(pending, resume, resume))
+        }
       }
       connection_access_error("refresh_pending")
     }
@@ -145,26 +167,46 @@ module_refresh_controller <- function(
     if (!is_valid_string(token@refresh_token)) {
       connection_access_error("interaction_required")
     }
+    next_attempt <- if (is.null(target)) {
+      values[["refresh_next_attempt_at"]]
+    } else {
+      operations[["target_next_attempt"]][[target]] %||% 0
+    }
     if (
       respect_pacing &&
-        as.numeric(Sys.time()) < values[["refresh_next_attempt_at"]]
+        as.numeric(Sys.time()) < next_attempt
     ) {
       return(invisible(FALSE))
     }
     if (!identical(narrowed_epoch, operations[["epoch"]])) {
       narrowed <<- !is.null(operations[["reauth_scopes"]])
     }
-    if (is.null(scopes) && narrowed) {
+    if (is.null(target) && is.null(scopes) && narrowed) {
       scopes <- token@granted_scopes
     }
-    scope_request <- if (!is.null(scopes)) {
+    target_request <- if (!is.null(target)) {
+      token_target_request(client, target, bundle[["limits"]], scopes)
+    } else {
+      NULL
+    }
+    if (!is.null(target_request)) {
+      token <- token_target_refresh_source(
+        list(client = client, token = primary, targets = bundle),
+        target_request
+      )
+    }
+    scope_request <- if (is.null(target) && !is.null(scopes)) {
       refresh_scope_request(client, token, scopes)
     } else {
       NULL
     }
     pending <<- NULL
-    operation <- hooks[["begin"]]("refresh", source_token = token)
-    operations[["last_authorized_scopes"]] <- token@granted_scopes
+    pending_target <<- target
+    pending_scopes <<- scopes
+    operation <- hooks[["begin"]]("refresh", source_token = primary)
+    if (is.null(target)) {
+      operations[["last_authorized_scopes"]] <- token@granted_scopes
+    }
     values[["refresh_last_attempt_at"]] <- as.numeric(Sys.time())
     captured <- if (async) {
       capture_shiny_session_context(is_async = TRUE)
@@ -189,8 +231,15 @@ module_refresh_controller <- function(
         operations[["retired_refresh_snapshot"]] <- retained
         values[["token"]] <- retained
       }
-      if (!indefinite_session) {
+      keep_targets <- !is.null(target) && refresh_credential_retryable(error)
+      if (!indefinite_session && !keep_targets) {
         values[["token"]] <- NULL
+        values[["targets"]] <- NULL
+      }
+      if (!is.null(target)) {
+        operations[["target_next_attempt"]][[target]] <- values[[
+          "refresh_next_attempt_at"
+        ]]
       }
       values[["token_stale"]] <- indefinite_session
       phase <- if (async) "async_token_refresh" else "sync_token_refresh"
@@ -249,11 +298,35 @@ module_refresh_controller <- function(
             fresh@granted_scopes,
             scope_request
           )
+          validate_token_target_grant(
+            client,
+            fresh@granted_scopes,
+            target_request
+          )
         },
         error = fail
       )
-      values[["token"]] <- fresh
-      operations[["last_authorized_scopes"]] <- fresh@granted_scopes
+      if (!is.null(target_request)) {
+        committed <- token_target_commit(
+          client,
+          primary,
+          bundle,
+          fresh,
+          target_request
+        )
+        values[["targets"]] <- committed[["targets"]]
+        values[["token"]] <- committed[["token"]]
+        operations[["target_limits"]] <- committed[["targets"]][["limits"]]
+        operations[[
+          "last_authorized_scopes"
+        ]] <- token_target_authorization_scopes(
+          client,
+          operations[["target_limits"]]
+        )
+      } else {
+        values[["token"]] <- fresh
+        operations[["last_authorized_scopes"]] <- fresh@granted_scopes
+      }
       values[["error"]] <- NULL
       values[["error_description"]] <- NULL
       values[["error_uri"]] <- NULL
@@ -268,6 +341,9 @@ module_refresh_controller <- function(
         1L
       values[["refresh_next_attempt_at"]] <- now +
         proactive_refresh_success_delay(fresh, now, refresh_lead_seconds)
+      if (!is.null(target)) {
+        operations[["target_next_attempt"]][[target]] <- now + 30
+      }
       narrowed <<- !is.null(scope_request)
       narrowed_epoch <<- operation[["epoch"]]
       hooks[["finish"]](operation, "refresh")
@@ -275,7 +351,16 @@ module_refresh_controller <- function(
     }
     result <- tryCatch(
       {
-        if (is.null(scope_request)) {
+        if (!is.null(target_request)) {
+          refresh_token_dispatch(
+            client,
+            token,
+            async = async,
+            introspect = isTRUE(client@introspect),
+            shiny_session = captured,
+            target_request = target_request
+          )
+        } else if (is.null(scope_request)) {
           refresh_token(
             client,
             token,

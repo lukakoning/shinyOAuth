@@ -65,7 +65,8 @@ oauth_provider(
   endpoint_auth_metadata = list(),
   ...,
   allowed_algs = NULL,
-  allow_missing_token_type = FALSE
+  allow_missing_token_type = FALSE,
+  token_target_mode = "none"
 )
 }
 \arguments{
@@ -450,6 +451,14 @@ token responses, contrary to OAuth 2.0. When \code{TRUE}, login and refresh assu
 \code{"Bearer"} only when the field is absent. Explicit null, empty, invalid, or
 unsupported values still fail validation. The fallback never applies to
 clients configured with DPoP; other token and binding checks remain enforced.}
+
+\item{token_target_mode}{Explicit acquisition protocol for clients declaring
+\code{token_targets}: \code{"none"} (default), \code{"rfc8707"}, or \code{"microsoft"}.
+Discovery never infers support. The Microsoft preset selects \code{"microsoft"}.
+This has no acquisition effect on clients without target declarations.
+RFC 8707 sends declared resource indicators; Microsoft uses qualified API
+scopes, requires explicit scope evidence and handles static \code{.default}
+consent in its provider policy. See \code{vignette("token-targets")}.}
 }
 \value{
 \link{OAuthProvider} object

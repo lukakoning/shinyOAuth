@@ -633,6 +633,8 @@ oauth_module_server_impl <- function(
     authorization_epoch <- shiny::reactiveVal(0)
 
     .advance_auth_epoch <- function() {
+      values[["targets"]] <- NULL
+      auth_operations[["target_next_attempt"]] <- list()
       auth_operations[["epoch"]] <- auth_operations[["epoch"]] + 1
       auth_operations[["active_login_id"]] <- NULL
       auth_operations[["active_refresh_id"]] <- NULL
@@ -761,8 +763,27 @@ oauth_module_server_impl <- function(
     .accept_login_token <- function(tok, context) {
       if (is.null(.managed)) {
         validate_token_acceptance_deadline(tok)
+        values[["targets"]] <- token_target_bundle(
+          client,
+          tok,
+          if (!is.null(auth_operations[["reauth_scopes"]])) {
+            auth_operations[["target_limits"]]
+          } else {
+            NULL
+          }
+        )
+        auth_operations[["target_limits"]] <- values[["targets"]][["limits"]]
         values[["token"]] <- tok
-        auth_operations[["last_authorized_scopes"]] <- tok@granted_scopes
+        auth_operations[["last_authorized_scopes"]] <- if (
+          token_targets_configured(client)
+        ) {
+          token_target_authorization_scopes(
+            client,
+            auth_operations[["target_limits"]]
+          )
+        } else {
+          tok@granted_scopes
+        }
         values[["auth_started_at"]] <- .interactive_auth_started_at(tok)
       } else {
         tryCatch(
@@ -909,8 +930,10 @@ oauth_module_server_impl <- function(
       is_async = TRUE
     )
 
+    ended_targets <- NULL
     # Always log session end, regardless of revoke_on_session_end setting
     session[["onSessionEnded"]](function() {
+      ended_targets <<- shiny::isolate(values[["targets"]][["tokens"]])
       auth_operations[["session_active"]] <- FALSE
       .advance_auth_epoch()
 
@@ -941,6 +964,22 @@ oauth_module_server_impl <- function(
       session[["onSessionEnded"]](function() {
         # Capture token at session end; may be NULL if never authenticated
         tok <- shiny::isolate(values[["token"]])
+        for (entry in ended_targets) {
+          try(
+            revoke_token(
+              client,
+              entry,
+              token_kind = "access",
+              async = isTRUE(async),
+              shiny_session = if (isTRUE(async)) {
+                captured_session_end_async_context
+              } else {
+                captured_session_end_context
+              }
+            ),
+            silent = TRUE
+          )
+        }
         if (!is.null(tok)) {
           with_trace_id(
             NULL,
@@ -1612,6 +1651,12 @@ oauth_module_server_impl <- function(
         return(NA_character_)
       }
       managed_launch <- managed_parameters[["launch"]]
+      target_limits <- managed_parameters[["target_limits"]] %||%
+        if (!is.null(auth_operations[["reauth_scopes"]])) {
+          auth_operations[["target_limits"]]
+        } else {
+          NULL
+        }
       requested_scopes <- managed_parameters[["requested_scopes"]] %||%
         auth_operations[["reauth_scopes"]]
       register_prepared <- function(prepared) {
@@ -1641,7 +1686,8 @@ oauth_module_server_impl <- function(
                 .defer_build = TRUE,
                 .transaction_context = managed_context,
                 .smart_launch = managed_launch,
-                .requested_scopes = requested_scopes
+                .requested_scopes = requested_scopes,
+                .target_limits = target_limits
               )
               register_prepared(prepared)
               finish_prepared_authorization(
@@ -1659,7 +1705,8 @@ oauth_module_server_impl <- function(
                 .transaction_context = managed_context,
                 .smart_launch = managed_launch,
                 .authorization_request = .authorization_request,
-                .requested_scopes = requested_scopes
+                .requested_scopes = requested_scopes,
+                .target_limits = target_limits
               )
             }
           },
@@ -1694,7 +1741,8 @@ oauth_module_server_impl <- function(
             .defer_build = TRUE,
             .transaction_context = managed_context,
             .smart_launch = managed_launch,
-            .requested_scopes = requested_scopes
+            .requested_scopes = requested_scopes,
+            .target_limits = target_limits
           )
           register_prepared(prepared)
           worker <- prepare_client_for_worker(client)
@@ -1875,7 +1923,12 @@ oauth_module_server_impl <- function(
       }
       current <- values[["token"]]
       started <- values[["auth_started_at"]]
-      retained_scopes <- if (!is.null(current)) {
+      retained_scopes <- if (token_targets_configured(client)) {
+        token_target_authorization_scopes(
+          client,
+          auth_operations[["target_limits"]]
+        )
+      } else if (!is.null(current)) {
         current@granted_scopes
       } else {
         auth_operations[["reauth_scopes"]] %||%
@@ -1889,7 +1942,9 @@ oauth_module_server_impl <- function(
         connection_access_error("interaction_required")
       }
       auth_operations[["reauth_scopes"]] <- scopes %||%
-        if (
+        if (token_targets_configured(client)) {
+          retained_scopes
+        } else if (
           !is.null(current) &&
             length(current@granted_scopes)
         ) {
@@ -1936,6 +1991,7 @@ oauth_module_server_impl <- function(
     values[["logout"]] <- function(reason = "manual_logout") {
       auth_operations[["reauth_scopes"]] <- NULL
       auth_operations[["last_authorized_scopes"]] <- NULL
+      auth_operations[["target_limits"]] <- NULL
       logout_shiny_session <- capture_shiny_session_context(is_async = FALSE)
       logout_async_shiny_session <- if (isTRUE(async)) {
         capture_shiny_session_context(is_async = TRUE)
@@ -1950,7 +2006,20 @@ oauth_module_server_impl <- function(
             # Best-effort: revoke provider tokens asynchronously if supported.
             # Fire-and-forget so logout returns immediately.
             tok <- values[["token"]]
+            secondary <- values[["targets"]][["tokens"]]
             .advance_auth_epoch()
+            for (entry in secondary) {
+              try(
+                revoke_token(
+                  client,
+                  entry,
+                  token_kind = "access",
+                  async = isTRUE(async),
+                  shiny_session = logout_async_shiny_session
+                ),
+                silent = TRUE
+              )
+            }
             auth_operations[["force_oidc_reauth"]] <- FALSE
             if (!is.null(tok)) {
               # Async revocation follows module async setting
@@ -4384,6 +4453,12 @@ oauth_module_server_impl <- function(
           }
         }
 
+        # Target entries expire separately; the shared authorization remains
+        # available for on-demand acquisition until its owner lifetime ends.
+        if (token_targets_configured(client)) {
+          shiny::invalidateLater(wake_ms, session)
+          return()
+        }
         # Standard expiry check; ignored when indefinite_session
         if (!isTRUE(indefinite_session)) {
           exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)

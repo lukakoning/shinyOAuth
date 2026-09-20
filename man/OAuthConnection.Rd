@@ -93,6 +93,7 @@ The ID is never an access token and does not authorize access by itself.}
     \item \href{#method-OAuthConnection-identity}{\code{OAuthConnection$identity()}}
     \item \href{#method-OAuthConnection-request}{\code{OAuthConnection$request()}}
     \item \href{#method-OAuthConnection-smart_context}{\code{OAuthConnection$smart_context()}}
+    \item \href{#method-OAuthConnection-targets}{\code{OAuthConnection$targets()}}
     \item \href{#method-OAuthConnection-smart_resource}{\code{OAuthConnection$smart_resource()}}
     \item \href{#method-OAuthConnection-print}{\code{OAuthConnection$print()}}
   }
@@ -145,7 +146,8 @@ Keep the returned secret on the server and out of logs.
   required_scopes = character(),
   min_valid_for = 60,
   force_refresh = FALSE,
-  async = FALSE
+  async = FALSE,
+  target = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -162,6 +164,9 @@ Existing refresh coordination and retry delays still apply.}
       \item{\code{async}}{Return a promise, including for a cached token. Authentication
 failures reject the promise. FALSE always returns a string or errors;
 it never waits on an in-flight asynchronous refresh.}
+      \item{\code{target}}{Optional declared token-target name. \code{NULL} uses the client's
+default. A missing cached target is acquired with the shared refresh
+credential; scope checks use that target's evidence and retained limit.}
     }
     \if{html}{\out{</div>}}
   }
@@ -169,8 +174,9 @@ it never waits on an in-flight asynchronous refresh.}
     Reasons are \code{authorization_unavailable} (ended or foreign session/reference),
 \code{insufficient_scope}, \code{refresh_pending} (a synchronous caller cannot join
 async work), \code{refresh_unavailable} (including retry pacing),
-\code{interaction_required} (no usable refresh credential), \code{lifetime_unavailable}
-and \code{unsupported_token_binding}. No reason initiates browser navigation.
+\code{interaction_required} (no usable refresh credential), \code{lifetime_unavailable},
+\code{unsupported_token_binding}, \code{unknown_target} and \code{unsupported_target}.
+No reason initiates browser navigation.
 A cached async result is still a promise. Pending async callers join the
 same owned refresh and recheck the committed result before returning it.
 Acquisition does not count as managed owner activity.
@@ -192,13 +198,15 @@ unexpired access token. This is suitable for optional-feature UI; the
 actual operation must still check scopes and remote resource permissions.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{OAuthConnection$has_scopes(scopes)}
+    \preformatted{OAuthConnection$has_scopes(scopes, target = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{scopes}}{Character vector of operation scopes to check.}
+      \item{\code{target}}{Optional declared token-target name; defaults to the client's
+primary target. An unacquired target returns FALSE, without acquisition.}
     }
     \if{html}{\out{</div>}}
   }
@@ -237,7 +245,7 @@ References created with \code{\link[=oauth_connection]{oauth_connection()}} use 
 refresh lifecycle and cannot invoke this method.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{OAuthConnection$refresh(scopes = NULL)}
+    \preformatted{OAuthConnection$refresh(scopes = NULL, target = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -247,6 +255,9 @@ refresh lifecycle and cannot invoke this method.
 permissions for this connection, or \code{NULL} (default). Scopes must be
 covered by the current grant and client configuration, and retain the
 client's required scopes. SMART clients use semantic coverage.}
+      \item{\code{target}}{Optional declared token-target name. With targets, narrowing
+applies only to the selected entry and persists across target switching
+and reauthorization. Other targets keep their own retained scope limits.}
     }
     \if{html}{\out{</div>}}
   }
@@ -376,7 +387,10 @@ must cover any scopes required for this operation.
   query = NULL,
   method = "GET",
   required_scopes = character(),
-  configure = NULL
+  configure = NULL,
+  refresh = FALSE,
+  target = NULL,
+  min_valid_for = 60
 )}
     \if{html}{\out{</div>}}
   }
@@ -401,6 +415,15 @@ and returning it with only body and application headers changed. Use
 \code{\link[httr2:req_body_json]{httr2::req_body_json()}}, \code{\link[httr2:req_body_form]{httr2::req_body_form()}}, \code{\link[httr2:req_body_raw]{httr2::req_body_raw()}}
 and \code{\link[httr2:req_headers]{httr2::req_headers()}}. Set the HTTP method with \code{method} above.
 URL, transport policies, authentication and Host headers cannot be changed.}
+      \item{\code{refresh}}{Opt in to coordinated token acquisition before sending the
+request. Default FALSE preserves existing behavior. This synchronous
+operation never waits on async refresh and never refreshes/replays after
+an API failure. Generic HTTP retries are disabled for this opt-in call;
+bound transport and DPoP nonce-challenge handling remain in force.}
+      \item{\code{target}}{Optional declared token-target name. Target clients require
+an explicit association through that declaration's \code{resource_ids}.}
+      \item{\code{min_valid_for}}{Minimum remaining lifetime when \code{refresh = TRUE},
+in seconds. Has the same meaning as on \verb{$access_token()}.}
     }
     \if{html}{\out{</div>}}
   }
@@ -431,6 +454,22 @@ Read interpreted context for a usable SMART connection in this session.
   }
   \subsection{Returns}{
     The sensitive context list documented in \code{\link[=smart_context]{smart_context()}}.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-OAuthConnection-targets"></a>}}
+\if{latex}{\out{\hypertarget{method-OAuthConnection-targets}{}}}
+\subsection{\code{OAuthConnection$targets()}}{
+  Inspect declared targets without exposing credentials.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{OAuthConnection$targets()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A named list of target status and granted scopes. A target with no
+response yet has status \code{not_acquired}; this is not proof of denied consent.
   }
 }
 

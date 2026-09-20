@@ -129,6 +129,11 @@ connection_record_summary <- function(record, id) {
 
 connection_record_status <- function(record) {
   if (
+    is.null(record[["target"]]) && token_targets_configured(record[["client"]])
+  ) {
+    record <- token_target_select(record)
+  }
+  if (
     !is.null(record[["status"]]) && !identical(record[["status"]], "active")
   ) {
     return(record[["status"]])
@@ -153,7 +158,7 @@ connection_record_status <- function(record) {
   if (
     client_scope_coverage(
       record[["client"]],
-      record[["client"]]@required_scopes,
+      connection_record_required_scopes(record),
       token@granted_scopes
     )[["status"]] !=
       "covered"
@@ -163,7 +168,8 @@ connection_record_status <- function(record) {
   if (
     client_scope_coverage(
       record[["client"]],
-      effective_client_scopes(record[["client"]]),
+      record[["target_requested_scopes"]] %||%
+        effective_client_scopes(record[["client"]]),
       token@granted_scopes
     )[["status"]] !=
       "covered"
@@ -197,14 +203,7 @@ connection_record_request <- function(
   }
   validate_scopes(required_scopes)
   required_scopes <- normalize_scope_tokens(required_scopes)
-  if (
-    client_scope_coverage(
-      record[["client"]],
-      required_scopes,
-      effective_client_scopes(record[["client"]])
-    )[["status"]] !=
-      "covered"
-  ) {
+  if (!connection_record_configured_scopes(record, required_scopes)) {
     err_input(
       "Operation scopes must be included in the client's requested scopes"
     )
@@ -252,7 +251,8 @@ connection_record_request <- function(
         query = query,
         client = record[["client"]],
         check_url = TRUE,
-        follow_redirect = FALSE
+        follow_redirect = FALSE,
+        idempotent = if (isTRUE(record[["single_attempt"]])) FALSE else NULL
       )
     },
     error = function(e) {

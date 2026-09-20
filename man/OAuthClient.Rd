@@ -46,6 +46,8 @@ OAuthClient(
   introspect = FALSE,
   introspection_checks = character(0),
   endpoint_auth = list(),
+  token_targets = list(),
+  default_token_target = character(0),
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(0),
   dpop_require_observed_cnf = FALSE,
@@ -441,6 +443,22 @@ inherit the client's settings. Discovered endpoint methods and signing
 algorithms are checked independently. PAR inherits token authentication.
 Extra token headers apply only to token exchange and refresh; set
 \code{extra_headers} explicitly for every other endpoint that needs them.}
+
+\item{token_targets}{Optional named list of API token declarations. Each
+entry has \code{resource} (an absolute URI) and \code{scopes} (API scopes also present
+in the client's \code{scopes}). Optional \code{required_scopes} apply only to this
+target; optional \code{resource_ids} explicitly associate approved HTTP
+\code{resource_bases} with this target. Requires a provider with a supported
+\code{token_target_mode}, \code{userinfo_required = FALSE}, and no \code{resource} or
+SMART configuration. Client-level \code{required_scopes} can contain OIDC
+scopes only. Targets share one local authorization and refresh credential,
+while their access tokens and retained permission limits remain separate.
+See \code{vignette("token-targets")} for provider rules and examples.}
+
+\item{default_token_target}{Name of the initial code-redemption target and
+the default for connection methods. Required with multiple targets;
+\code{\link[=oauth_client]{oauth_client()}} selects the sole target automatically. A method's \code{target}
+argument overrides only that call, never the configured default.}
 
 \item{authorization_server_mode}{Declares whether this client is part of an
 application that can interact with more than one authorization server,

@@ -54,6 +54,7 @@ OAuthProvider(
     "Ed25519", "EdDSA"),
   allowed_token_types = "Bearer",
   leeway = getOption("shinyOAuth.leeway", 30),
+  token_target_mode = "none",
   infer_oidc_from_issuer = TRUE,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
@@ -398,6 +399,14 @@ value allowlist while still requiring \code{token_type} itself.}
 \item{leeway}{Clock skew leeway (seconds) applied to ID token \code{exp}/\code{iat}/\code{nbf} checks
 and state payload \code{issued_at} future check. Default 30. Can be globally
 overridden via option \code{shinyOAuth.leeway}.}
+
+\item{token_target_mode}{Explicit acquisition protocol for clients declaring
+\code{token_targets}: \code{"none"} (default), \code{"rfc8707"}, or \code{"microsoft"}.
+Discovery never infers support. The Microsoft preset selects \code{"microsoft"}.
+This has no acquisition effect on clients without target declarations.
+RFC 8707 sends declared resource indicators; Microsoft uses qualified API
+scopes, requires explicit scope evidence and handles static \code{.default}
+consent in its provider policy. See \code{vignette("token-targets")}.}
 
 \item{infer_oidc_from_issuer}{Whether setting \code{issuer} enables OpenID Connect behavior.
 Default \code{TRUE}: helpers enable OIDC nonce/ID token defaults and the client

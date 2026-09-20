@@ -217,10 +217,62 @@ existing protections for shared refresh credentials still apply. Credential
 acquisition does not extend owner inactivity limits. Call `auth$touch()` from
 explicit user events where appropriate. See `vignette("multiple-authorizations")`.
 
+If selection is unnecessary, `auth$connection()` returns the sole retained
+authorization, or NULL when none remain. With several it raises
+`shinyOAuth_access_error` with reason `selection_required`. Expired and uncertain
+authorizations still count; the factory does not guess which account you intend.
+
 For Microsoft API tokens that cannot call Graph UserInfo, use
 `oauth_provider_microsoft(tenant = "organizations", userinfo_required = FALSE)`.
 This skips profile retrieval while preserving the preset's OIDC validation.
 Request the appropriate OIDC scopes and use `connection$identity()` for selected
 validated ID-token claims. Generic `oauth_provider()` and OIDC configuration
-already support optional UserInfo. These interfaces do not select token targets
-or add provider-specific query and database behavior.
+already support optional UserInfo. For one authorization with several API tokens,
+see `vignette("token-targets")`. Query and database behavior belongs to the
+consuming library.
+
+## Background tasks and result ownership
+
+Read Shiny reactives and acquire the credential before invoking an
+`ExtendedTask`. Its function runs outside the reactive graph. Pass plain inputs
+and a short-lived bearer token to the worker, never the connection reference,
+module state or refresh credential. This follows Shiny's
+[ExtendedTask contract](https://shiny.posit.co/r/articles/improve/nonblocking/).
+
+```{r, eval=FALSE}
+# Configure future::plan(future::multisession) before starting the app.
+# Inside server(), with auth already created:
+load_records <- shiny::ExtendedTask$new(function(token, authorization_id) {
+  promises::future_promise({
+    list(
+      authorization_id = authorization_id,
+      data = existing_sdk_read_records(access_token = token)
+    )
+  })
+})
+
+shiny::observeEvent(input$load, {
+  shiny::req(load_records$status() != "running")
+  connection <- shiny::req(auth$connection())
+  token <- connection$access_token("records.read", min_valid_for = 120)
+  load_records$invoke(token, connection$id)
+})
+
+output$records <- shiny::renderTable({
+  connection <- shiny::req(auth$connection())
+  result <- load_records$result()
+  shiny::req(identical(result$authorization_id, connection$id))
+  result$data
+})
+```
+
+Choose a lifetime buffer that covers worker startup, any queue delay and the
+operation. Do not queue these token snapshots behind long tasks; reacquire near
+dispatch if your scheduler delays work. A copied bearer token cannot refresh
+itself. A background failure does not automatically resubmit the operation.
+
+The reactive ownership check clears displayed data on logout or replacement
+and rejects a late result from an old authorization. Keep this check even when
+the task was started by an input event. Do not use `cancelOutput = TRUE` here,
+because it retains previously displayed data. For a manager with several
+authorizations, apply the same check to the explicitly selected connection ID.

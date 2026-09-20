@@ -1,0 +1,200 @@
+---
+title: "Several API tokens from one authorization"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Several API tokens from one authorization}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(shinyOAuth)
+```
+
+A token target names the resource and API scopes for one access token. Several
+targets can share a user's local authorization and refresh credential while
+keeping separate access-token responses. This differs from several independent
+authorizations, which continue to use `oauth_connections_server()` and separate
+connection IDs.
+
+The provider must explicitly support the acquisition protocol. A declaration is
+a request limit, not evidence of consent. The server can refuse a target or omit
+the refresh credential needed to acquire it. No target method starts sign-in,
+switches accounts or tenants, or implements token exchange/OBO.
+
+## Declare calendar and contacts targets
+
+```{r, eval=FALSE}
+# Use this mode only after confirming RFC 8707 support with your provider.
+provider <- oauth_provider(
+  "workplace", "https://login.example/authorize", "https://login.example/token",
+  token_target_mode = "rfc8707",
+  token_auth_style = "body",
+  userinfo_required = FALSE
+)
+client <- oauth_client(
+  provider,
+  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
+  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
+  redirect_uri = "https://app.example/callback",
+  scopes = c("calendar.read", "calendar.write", "contacts.read"),
+  token_targets = list(
+    calendar = list(
+      resource = "https://calendar.example/",
+      scopes = c("calendar.read", "calendar.write"),
+      required_scopes = "calendar.read",
+      resource_ids = "calendar_api"
+    ),
+    contacts = list(
+      resource = "https://contacts.example/",
+      scopes = "contacts.read",
+      resource_ids = "contacts_api"
+    )
+  ),
+  default_token_target = "calendar",
+  resource_bases = c(
+    calendar_api = "https://calendar.example/v1",
+    contacts_api = "https://contacts.example/v1"
+  )
+)
+```
+
+Several targets require an explicit default before sign-in. It determines code
+redemption and later default accessors. With one target, `oauth_client()` selects
+it automatically. Resource indicators and HTTP destinations are different
+concepts: `resource_ids` explicitly authorizes a target's use at a named
+`resource_bases` destination. Equal names never create an implicit association.
+Omit HTTP bases and associations if the application only exports bearer tokens
+to another library.
+
+RFC 8707 authorization requests carry all declared resources and the client's
+scopes. Code redemption and refresh carry one selected resource and its scopes.
+The server determines which permissions apply to each resource; scopes in RFC
+8707 are not independently paired with individual resources in the authorization
+request. See [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html).
+
+## Use the same connection interface in either module
+
+```{r, eval=FALSE}
+server <- function(input, output, session) {
+  auth <- oauth_module_server("auth", client)
+  # Alternatively: auth <- oauth_connections_server("auth", manager)
+  # and select auth$connection(connection_id), or auth$connection() when unique.
+
+  contacts <- shiny::reactive({
+    connection <- shiny::req(auth$connection())
+    token <- connection$access_token("contacts.read", target = "contacts")
+    existing_contacts_sdk(access_token = token)$list_contacts()
+  })
+
+  output$can_edit_calendar <- shiny::renderText({
+    connection <- shiny::req(auth$connection())
+    connection$has_scopes("calendar.write", target = "calendar")
+  })
+
+  shiny::observeEvent(input$save_event, {
+    connection <- shiny::req(auth$connection())
+    connection$request(
+      "calendar_api", "events", method = "POST",
+      required_scopes = "calendar.write", target = "calendar", refresh = TRUE,
+      configure = function(req) httr2::req_body_json(req, list(title = input$title))
+    )
+  })
+}
+```
+
+The first contacts access can acquire its token even though `$has_scopes()` was
+FALSE before that target had evidence. `$targets()` returns target names,
+acquisition status and granted scope evidence, never credentials. Operation
+`required_scopes` checks do not change the acquisition request. An explicitly
+partial response remains that target's ceiling on later refreshes.
+
+`connection$refresh(scopes = "calendar.read", target = "calendar")` deliberately
+narrows calendar permissions. Acquiring contacts does not restore calendar
+write access. Module `reauthorize()` retains all target ceilings and replaces
+the connection ID; the manager takes an ID for this operation. To request a new
+authorization with the original configuration after deliberate narrowing, use
+the normal new-login flow rather than reauthorization of the restricted grant.
+
+The cache and refresh credential belong to one authorization. Async accessors
+for the same operation share work; different target acquisitions queue and read
+the most recently committed refresh credential. A synchronous caller reports
+`refresh_pending` while async work owns the credential. Safe target rejections
+leave other entries usable. An ambiguous shared refresh outcome can invalidate
+the whole authorization. Independent authorizations with equal refresh-token
+bytes still follow the manager's conservative alias-invalidation rules.
+
+The single module keeps a target authorization available for acquisition when
+one access token expires. Its session and configured authorization-age limits
+still apply. A successful token rotation preserves the connection ID; logout,
+replacement and session end invalidate old references and late completions.
+Targets are stored inside the manager's existing encrypted credential envelope.
+
+`$request(refresh = TRUE)` is synchronous. It acquires before sending and
+disables generic HTTP retries for that call. It never refreshes or replays an
+application request after a resource error. DPoP nonce challenges retain the
+existing bound-transport handling. Export through `$access_token()` remains
+bearer-only; use `$request()` for DPoP/mTLS tokens. Writes belong in input-event
+handlers and require another user action after an error.
+
+## Microsoft configuration
+
+```{r, eval=FALSE}
+provider <- oauth_provider_microsoft(
+  tenant = Sys.getenv("MICROSOFT_TENANT_ID"),
+  userinfo_required = FALSE
+)
+client <- oauth_client(
+  provider, Sys.getenv("OAUTH_CLIENT_ID"), Sys.getenv("OAUTH_CLIENT_SECRET"),
+  redirect_uri = "https://app.example/callback",
+  scopes = c(
+    "openid", "offline_access",
+    "https://graph.microsoft.com/Calendars.Read",
+    "api://your-contacts-api/Contacts.Read"
+  ),
+  token_targets = list(
+    calendar = list(
+      resource = "https://graph.microsoft.com",
+      scopes = "https://graph.microsoft.com/Calendars.Read"
+    ),
+    contacts = list(
+      resource = "api://your-contacts-api",
+      scopes = "api://your-contacts-api/Contacts.Read"
+    )
+  ),
+  default_token_target = "calendar"
+)
+```
+
+The preset enables Microsoft's scope-based acquisition mode. Authorization
+requests include the declared consent scopes; token requests select one API's
+qualified scopes plus the configured OIDC scopes, without an RFC 8707 `resource`
+parameter. Disabling UserInfo avoids calling Graph with another API's token and
+preserves ID-token validation. Resource identifiers are exact: where an
+identifier ends in `/`, appending `/.default` produces a double slash.
+See the [Microsoft code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow).
+
+For static consent, declare `resource/.default` as the target's sole API scope,
+also in client `scopes`. Do not mix static and explicit API scope declarations.
+Microsoft static consent concerns the application's registered permissions for
+all APIs; shinyOAuth sends one static scope at authorization and selects the
+desired resource at token redemption. During reauthorization, the sealed target
+limits still constrain token acquisition even if static consent remains needed
+for an unacquired target.
+
+`.default` is never treated as proof of individual permissions. Microsoft target
+responses must include `scope`; returned short permission names are qualified
+only within the selected Microsoft resource. Subsequent requests retain the
+actual response permissions, and explicit narrowing cannot switch back to
+`.default`. See [Microsoft scopes and static consent](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc)
+and [refresh credentials](https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens).
+
+These modes are covered by local HTTP contract tests, including rotation and
+scope selection. Those tests do not establish compatibility with every RFC 8707
+deployment or replace validation of your Microsoft registration and consent.
+Discovery alone does not enable targets. SMART target switching, provider
+plugins, distributed stores and incremental consent are outside this interface.
+
+For SDK callbacks, event-bound result ownership and background tasks, see
+`vignette("external-integrations")`.

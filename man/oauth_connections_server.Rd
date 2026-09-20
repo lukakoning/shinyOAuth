@@ -39,7 +39,7 @@ A server-side list with:
 EHR-only clients report \code{fresh_ehr_launch_required} and return \code{FALSE};
 use their registered \code{\link[=smart_launch_route]{smart_launch_route()}} to start authorization.
 \item \code{connections()}: reactive list of redacted connection summaries.
-\item \code{connection(connection_id)}: an \link{OAuthConnection} for requests, refresh,
+\item \code{connection(connection_id = NULL)}: an \link{OAuthConnection} for requests, refresh,
 scope checks and server-side \verb{$access_token()} retrieval for external SDKs.
 \item \code{reauthorize(connection_id)}: end this local authorization and start its
 replacement with the retained scope limit, without upstream revocation.
@@ -77,6 +77,11 @@ including references used without \code{connections()} or \code{errors()}. These
 notify dependent expressions when lifecycle state changes; unchanged polling
 does not rerun application requests or extend owner inactivity limits.
 Notifications to application code reflect only this owner's record changes.
+Without an ID, \code{connection()} returns NULL when no authorization remains,
+selects the sole retained authorization, or raises \code{shinyOAuth_access_error}
+with reason \code{selection_required} when several remain. Expired, limited and
+uncertain authorizations count toward ambiguity; disconnected rows do not.
+
 The connection factory, \verb{$access_token()} and \verb{$has_scopes()} avoid rerunning
 consumers on unchanged token rotations. Acquisition never extends owner idle
 limits or replays application requests. See \code{vignette("external-integrations")}.

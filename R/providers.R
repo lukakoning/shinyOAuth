@@ -288,6 +288,7 @@ oauth_provider_microsoft <- function(
 
   oauth_provider(
     name = name,
+    token_target_mode = "microsoft",
 
     auth_url = auth_url,
     token_url = token_url,

@@ -14,11 +14,15 @@ authorization_scope_limit <- function(client, scopes) {
     !length(scopes) ||
       length(scopes) > 128L ||
       sum(nchar(scopes, type = "bytes")) > 8192L ||
-      !connection_scope_covered(
-        client,
-        scopes,
-        effective_client_scopes(client)
-      ) ||
+      !(if (token_targets_configured(client)) {
+        token_target_authorization_allowed(client, scopes)
+      } else {
+        connection_scope_covered(
+          client,
+          scopes,
+          effective_client_scopes(client)
+        )
+      }) ||
       !connection_scope_covered(client, required, scopes)
   ) {
     err_input(

@@ -7,6 +7,7 @@ articles:
   contents:
   - usage
   - external-integrations
+  - token-targets
   - multiple-authorizations
   - smart-on-fhir
   - example-spotify

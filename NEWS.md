@@ -1,5 +1,21 @@
 # shinyOAuth (development version)
 
+* `oauth_client()` supports opt-in named `token_targets` with an explicit
+`default_token_target`. Both Shiny module factories expose target selection on
+`$access_token()`, `$has_scopes()`, `$refresh()` and `$request()`, plus redacted
+`$targets()` inspection. Each authorization coordinates its shared refresh
+credential and retains separate tokens and scope limits across refresh and
+reauthorization. Providers explicitly enable RFC 8707 or Microsoft acquisition.
+
+* `OAuthConnection$request(refresh = TRUE)` acquires a current token before
+sending the application request, preserves bound transport and does not refresh
+or replay the request after an API failure. Target selection requires an explicit
+association with the requested resource base.
+
+* `oauth_connections_server()` allows `connection()` without an ID when exactly
+one retained authorization remains, returns NULL for none, and reports a typed
+selection error for several.
+
 * `OAuthConnection$access_token()` returns a current server-side bearer token for
 external SDKs and database drivers, with bounded refresh, scope checks and typed
 recovery errors. `$has_scopes()` checks optional permissions without refreshing.

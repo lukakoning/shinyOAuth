@@ -67,7 +67,8 @@ prepare_call_internal <- function(
   .transaction_context = NULL,
   .smart_launch = NULL,
   .authorization_request = FALSE,
-  .requested_scopes = NULL
+  .requested_scopes = NULL,
+  .target_limits = NULL
 ) {
   # Verify input  --------------------------------------------------------------
 
@@ -100,6 +101,9 @@ prepare_call_internal <- function(
   validate_browser_token(browser_token)
 
   flow_trace_id <- gen_trace_id()
+  if (!is.null(.target_limits)) {
+    .target_limits <- validate_token_target_limits(oauth_client, .target_limits)
+  }
   effective_scopes <- effective_client_scopes(oauth_client)
   configured_scopes <- NULL
   if (!is.null(.requested_scopes)) {
@@ -198,6 +202,11 @@ prepare_call_internal <- function(
           redirect_uri = oauth_client@redirect_uri,
           scopes = effective_scopes,
           configured_scopes = configured_scopes,
+          target_limits = if (is.null(.target_limits)) {
+            NULL
+          } else {
+            connection_data_encode(.target_limits)
+          },
           max_age = requested_max_age,
           provider = oauth_client@provider |> provider_fingerprint(),
           client_policy = state_client_policy_fingerprint(oauth_client),
@@ -455,9 +464,21 @@ build_authorization_params <- function(
 
   scopes <- as_scope_tokens(scopes %||% NULL)
   if (length(scopes) > 0) {
-    params[["scope"]] <- paste(scopes, collapse = " ")
+    params[["scope"]] <- paste(
+      token_target_authorization_parameters(oauth_client, scopes),
+      collapse = " "
+    )
   }
-  if (length(oauth_client@resource) > 0) {
+  if (
+    token_targets_configured(oauth_client) &&
+      identical(oauth_client@provider@token_target_mode, "rfc8707")
+  ) {
+    params[["resource"]] <- unique(vapply(
+      oauth_client@token_targets,
+      function(item) item[["resource"]],
+      ""
+    ))
+  } else if (length(oauth_client@resource) > 0) {
     params[["resource"]] <- oauth_client@resource
   }
 
@@ -1697,17 +1718,32 @@ handle_callback_internal <- function(
         }
       )
 
+      target_request <- token_target_request(
+        oauth_client,
+        limits = if (is.null(payload[["target_limits"]])) {
+          NULL
+        } else {
+          connection_data_decode(payload[["target_limits"]])
+        }
+      )
       # Perform token exchange
       token_request_started_at <- as.numeric(Sys.time())
       token_set <- tryCatch(
         {
-          ts <- call_with_optional_shiny_session(
-            swap_code_for_token_set,
+          exchange_args <- list(
             client = oauth_client,
             code = code,
             code_verifier = code_verifier,
             shiny_session = shiny_session
           )
+          if (!is.null(target_request)) {
+            exchange_args[["target_request"]] <- target_request
+          }
+          ts <- do.call(
+            call_with_optional_shiny_session,
+            c(list(swap_code_for_token_set), exchange_args)
+          )
+          ts <- token_target_response(oauth_client, ts, target_request)
           try(
             audit_event(
               "token_exchange",
@@ -1836,7 +1872,13 @@ handle_callback_internal <- function(
         nonce = nonce,
         is_refresh = FALSE,
         requested_max_age = payload_requested_max_age(payload),
-        requested_scopes = payload[["scopes"]] %||% NULL,
+        requested_scopes = token_target_verification_scopes(
+          oauth_client,
+          target_request,
+          token_set
+        ) %||%
+          payload[["scopes"]] %||%
+          NULL,
         shiny_session = shiny_session,
         defer_certificate_binding = defer_certificate_binding,
         introspection_pending = isTRUE(introspect)
@@ -1896,7 +1938,12 @@ handle_callback_internal <- function(
           oauth_client = oauth_client,
           token = token,
           introspection_result = intro_res,
-          requested_scopes = payload[["scopes"]] %||%
+          requested_scopes = token_target_verification_scopes(
+            oauth_client,
+            target_request,
+            token_set
+          ) %||%
+            payload[["scopes"]] %||%
             effective_client_scopes(oauth_client),
           phase = "exchange_code",
           token_response_cnf = token_set[["cnf"]],
@@ -1986,7 +2033,12 @@ handle_callback_internal <- function(
 
       # Audit: login success with redacted identifiers
       token <- smart_update_token_context(oauth_client, token)
-      if (!is.null(payload[["configured_scopes"]])) {
+      validate_token_target_grant(
+        oauth_client,
+        token@granted_scopes,
+        target_request
+      )
+      if (is.null(target_request) && !is.null(payload[["configured_scopes"]])) {
         validate_refresh_scope_grant(
           oauth_client,
           token@granted_scopes,
@@ -2496,7 +2548,8 @@ swap_code_for_token_set <- function(
   client,
   code,
   code_verifier,
-  shiny_session = NULL
+  shiny_session = NULL,
+  target_request = NULL
 ) {
   S7::check_is_S7(client, class = OAuthClient)
 
@@ -2508,6 +2561,14 @@ swap_code_for_token_set <- function(
         code = code,
         redirect_uri = client@redirect_uri,
         code_verifier = code_verifier
+      )
+      target_request <- validate_token_target_request(
+        client,
+        target_request %||% token_target_request(client)
+      )
+      params <- utils::modifyList(
+        params,
+        token_target_parameters(client, target_request)
       )
       if (length(client@resource) > 0) {
         params[["resource"]] <- client@resource

@@ -26,6 +26,14 @@
 #' @param name Provider name (e.g., "github", "google"). Cosmetic
 #' only; used in logging and audit events
 #'
+#' @param token_target_mode Explicit acquisition protocol for clients declaring
+#'   `token_targets`: `"none"` (default), `"rfc8707"`, or `"microsoft"`.
+#'   Discovery never infers support. The Microsoft preset selects `"microsoft"`.
+#'   This has no acquisition effect on clients without target declarations.
+#'   RFC 8707 sends declared resource indicators; Microsoft uses qualified API
+#'   scopes, requires explicit scope evidence and handles static `.default`
+#'   consent in its provider policy. See `vignette("token-targets")`.
+#'
 #' @param auth_url URL of the provider's login and permission page.
 #'
 #' @param token_url URL where R exchanges the returned code for tokens.
@@ -381,6 +389,7 @@ OAuthProvider <- S7::new_class(
   package = "shinyOAuth",
   properties = list(
     name = S7::class_character,
+    token_target_mode = S7::new_property(S7::class_character, default = "none"),
     auth_url = S7::class_character,
     token_url = S7::class_character,
     issuer = S7::new_property(S7::class_character, default = NA_character_),
@@ -779,7 +788,8 @@ oauth_provider <- function(
   endpoint_auth_metadata = list(),
   ...,
   allowed_algs = NULL,
-  allow_missing_token_type = FALSE
+  allow_missing_token_type = FALSE,
+  token_target_mode = "none"
 ) {
   allowed_algs <- resolve_argument_alias(
     id_token_allowed_algs,
@@ -1093,6 +1103,7 @@ oauth_provider <- function(
 
   OAuthProvider(
     name = name,
+    token_target_mode = token_target_mode,
     auth_url = auth_url,
     token_url = token_url,
     issuer = issuer,
@@ -1173,6 +1184,14 @@ oauth_provider <- function(
 #' @keywords internal
 #' @noRd
 oauth_provider_validate <- function(self) {
+  if (
+    !is_valid_string(self@token_target_mode) ||
+      !self@token_target_mode %in% c("none", "rfc8707", "microsoft")
+  ) {
+    return(
+      "OAuthProvider: token_target_mode must be none, rfc8707, or microsoft"
+    )
+  }
   for (field in oauth_provider_boolean_fields()) {
     if (!is_scalar_logical(S7::prop(self, field))) {
       return(paste0(
@@ -2287,5 +2306,9 @@ provider_fingerprint <- function(provider) {
     )
   )
 
+  target_mode <- provider_prop("token_target_mode", "none")
+  if (!identical(target_mode, "none")) {
+    components[["token_target_mode"]] <- target_mode
+  }
   state_policy_digest(components)
 }

@@ -673,6 +673,10 @@ state_client_policy_fingerprint <- function(client) {
   if (client_uses_smart(client)) {
     components[["smart"]] <- client@smart
   }
+  if (token_targets_configured(client)) {
+    components[["token_targets"]] <- client@token_targets
+    components[["default_token_target"]] <- client@default_token_target
+  }
   if (length(client@resource_bases)) {
     bases <- normalize_resource_bases(client@resource_bases)
     components[["resource_bases"]] <- as.list(bases[sort(names(bases))])
@@ -808,6 +812,23 @@ payload_verify_client_binding <- function(client, payload) {
 
   expected_scopes <- as_scope_tokens(effective_client_scopes(client))
   payload_scopes <- as_scope_tokens(payload[["scopes"]] %||% NULL)
+  if (!is.null(payload[["target_limits"]])) {
+    limits <- tryCatch(
+      validate_token_target_limits(
+        client,
+        connection_data_decode(payload[["target_limits"]])
+      ),
+      error = function(...) err_invalid_state("Invalid target scope limits")
+    )
+    if (
+      !setequal(
+        payload_scopes,
+        token_target_authorization_scopes(client, limits)
+      )
+    ) {
+      err_invalid_state("Target limits do not match the authorization scopes")
+    }
+  }
   if (!is.null(payload[["configured_scopes"]])) {
     if (
       !setequal(

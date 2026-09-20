@@ -64,7 +64,14 @@ oauth_client(
   required_scopes = character(),
   label = default_client_label(provider),
   ...,
-  introspect_elements = NULL
+  introspect_elements = NULL,
+  token_targets = list(),
+  default_token_target = if (length(token_targets) == 1L) {
+     names(token_targets)
+ }
+    else {
+     character()
+ }
 )
 }
 \arguments{
@@ -574,6 +581,22 @@ patient context.}
 compatibility.}
 
 \item{introspect_elements}{Compatibility alias for \code{introspection_checks}. Supply only one spelling.}
+
+\item{token_targets}{Optional named list of API token declarations. Each
+entry has \code{resource} (an absolute URI) and \code{scopes} (API scopes also present
+in the client's \code{scopes}). Optional \code{required_scopes} apply only to this
+target; optional \code{resource_ids} explicitly associate approved HTTP
+\code{resource_bases} with this target. Requires a provider with a supported
+\code{token_target_mode}, \code{userinfo_required = FALSE}, and no \code{resource} or
+SMART configuration. Client-level \code{required_scopes} can contain OIDC
+scopes only. Targets share one local authorization and refresh credential,
+while their access tokens and retained permission limits remain separate.
+See \code{vignette("token-targets")} for provider rules and examples.}
+
+\item{default_token_target}{Name of the initial code-redemption target and
+the default for connection methods. Required with multiple targets;
+\code{\link[=oauth_client]{oauth_client()}} selects the sole target automatically. A method's \code{target}
+argument overrides only that call, never the configured default.}
 }
 \value{
 \link{OAuthClient} object

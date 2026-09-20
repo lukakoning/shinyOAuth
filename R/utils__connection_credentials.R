@@ -249,7 +249,8 @@ connection_credentials_seal <- function(
   client,
   key,
   authenticated_at,
-  refresh_scope_narrowed = FALSE
+  refresh_scope_narrowed = FALSE,
+  targets = token_target_bundle(client, token)
 ) {
   S7::check_is_S7(token, OAuthToken)
   connection_manager_flag(refresh_scope_narrowed, "refresh_scope_narrowed")
@@ -274,6 +275,9 @@ connection_credentials_seal <- function(
   # the authorization server reduced the refresh token's original grant.
   if (refresh_scope_narrowed) {
     payload[["refresh_scope_narrowed"]] <- TRUE
+  }
+  if (!is.null(targets)) {
+    payload[["targets"]] <- token_target_bundle_encode(targets)
   }
   json <- jsonlite::toJSON(
     payload,
@@ -315,6 +319,8 @@ connection_credentials_open <- function(
           ct = 1024^2
         )
       )
+      targets <- token_target_bundle_decode(client, payload[["targets"]])
+      payload[["targets"]] <- NULL
       if (
         !(identical(
           names(payload),
@@ -344,8 +350,25 @@ connection_credentials_open <- function(
       ) {
         err_token("Invalid stored connection credential schema")
       }
+      token <- do.call(OAuthToken, fields)
+      if (!is.null(targets)) {
+        target <- client@default_token_target
+        validate_token_target_grant(
+          client,
+          token@granted_scopes,
+          list(
+            target = target,
+            scopes = targets[["limits"]][[target]],
+            required_scopes = client@token_targets[[target]][[
+              "required_scopes"
+            ]] %||%
+              character()
+          )
+        )
+      }
       list(
-        token = do.call(OAuthToken, fields),
+        token = token,
+        targets = targets,
         authenticated_at = payload[["authenticated_at"]],
         refresh_scope_narrowed = isTRUE(payload[["refresh_scope_narrowed"]])
       )

@@ -22,7 +22,7 @@
 #'     EHR-only clients report `fresh_ehr_launch_required` and return `FALSE`;
 #'     use their registered [smart_launch_route()] to start authorization.
 #'   * `connections()`: reactive list of redacted connection summaries.
-#'   * `connection(connection_id)`: an [OAuthConnection] for requests, refresh,
+#'   * `connection(connection_id = NULL)`: an [OAuthConnection] for requests, refresh,
 #'     scope checks and server-side `$access_token()` retrieval for external SDKs.
 #'   * `reauthorize(connection_id)`: end this local authorization and start its
 #'     replacement with the retained scope limit, without upstream revocation.
@@ -52,6 +52,11 @@
 #' notify dependent expressions when lifecycle state changes; unchanged polling
 #' does not rerun application requests or extend owner inactivity limits.
 #' Notifications to application code reflect only this owner's record changes.
+#' Without an ID, `connection()` returns NULL when no authorization remains,
+#' selects the sole retained authorization, or raises `shinyOAuth_access_error`
+#' with reason `selection_required` when several remain. Expired, limited and
+#' uncertain authorizations count toward ambiguity; disconnected rows do not.
+#'
 #' The connection factory, `$access_token()` and `$has_scopes()` avoid rerunning
 #' consumers on unchanged token rotations. Acquisition never extends owner idle
 #' limits or replays application requests. See `vignette("external-integrations")`.
@@ -141,8 +146,22 @@ oauth_connections_server <- function(
       },
       ignoreInit = FALSE
     )
-    connection <- function(connection_id) {
+    connection <- function(connection_id = NULL) {
       authorization()
+      if (is.null(connection_id)) {
+        rows <- shiny::isolate(controller[["records"]]())
+        rows <- Filter(
+          function(record) !identical(record[["status"]], "disconnected"),
+          rows
+        )
+        if (!length(rows)) {
+          return(NULL)
+        }
+        if (length(rows) != 1L) {
+          connection_access_error("selection_required")
+        }
+        connection_id <- rows[[1L]][["stored"]][["id"]]
+      }
       record <- shiny::isolate(controller[["read"]](connection_id))
       if (!is.null(references[[connection_id]])) {
         return(references[[connection_id]])
@@ -155,11 +174,16 @@ oauth_connections_server <- function(
           lifecycle()
           controller[["read"]](connection_id)
         },
-        refresh = function(scopes = NULL) {
-          controller[["refresh"]](connection_id, async = async, scopes = scopes)
+        refresh = function(scopes = NULL, target = NULL) {
+          controller[["refresh"]](
+            connection_id,
+            async = async,
+            scopes = scopes,
+            target = target
+          )
         },
-        acquire = function(async = FALSE) {
-          controller[["acquire"]](connection_id, async = async)
+        acquire = function(async = FALSE, target = NULL) {
+          controller[["acquire"]](connection_id, async = async, target = target)
         }
       )
       references[[connection_id]] <- reference
