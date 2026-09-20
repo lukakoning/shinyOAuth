@@ -87,6 +87,101 @@ target_test_manager <- function(client = target_test_client()) {
   )
 }
 
+test_that("Microsoft resource rejections preserve sibling credentials only in Microsoft mode", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  for (mode in c("microsoft", "rfc8707")) {
+    for (managed in c(FALSE, TRUE)) {
+      for (code in c(
+        "invalid_resource",
+        "invalid_grant",
+        "interaction_required"
+      )) {
+        client <- target_test_client(mode)
+        response_state <- new.env(parent = emptyenv())
+        response_state[["reject"]] <- TRUE
+        requests <- list()
+        local_mocked_bindings(
+          req_with_retry = function(req, ...) {
+            body <- req[["body"]][["data"]]
+            requests[[length(requests) + 1L]] <<- body
+            result <- if (response_state[["reject"]]) {
+              list(error = code)
+            } else {
+              list(
+                access_token = "calendar-refreshed",
+                token_type = "Bearer",
+                expires_in = 3600,
+                scope = utils::URLdecode(as.character(body[["scope"]]))
+              )
+            }
+            httr2::response(
+              url = req[["url"]],
+              status = if (response_state[["reject"]]) 400L else 200L,
+              headers = list("content-type" = "application/json"),
+              body = charToRaw(jsonlite::toJSON(result, auto_unbox = TRUE))
+            )
+          },
+          revoke_token = function(...) invisible(NULL)
+        )
+        f <- target_test_manager(client)
+        shiny::testServer(
+          if (managed) oauth_connections_server else oauth_module_server,
+          args = if (managed) {
+            list(id = "auth", manager = f[["manager"]])
+          } else {
+            list(id = "auth", client = client, auto_redirect = FALSE)
+          },
+          session = manager_test_session(
+            if (managed) manager_test_cookie(f) else NULL
+          ),
+          {
+            token <- target_test_token(client@token_targets[["calendar"]][[
+              "scopes"
+            ]])
+            current <- if (managed) {
+              connection(manager_test_accept(controller, token = token))
+            } else {
+              operation <- .begin_auth_operation(
+                "login",
+                NULL,
+                new_epoch = TRUE
+              )
+              .accept_login_token(token, NULL)
+              .finish_auth_operation(operation, "login")
+              values[["connection"]]()
+            }
+            failure <- tryCatch(
+              current[["access_token"]](target = "contacts"),
+              error = identity
+            )
+            expect_s3_class(failure, "shinyOAuth_access_error")
+            expect_length(requests, 1L)
+            if (mode == "microsoft" && code == "invalid_resource") {
+              expect_identical(current[["access_token"]](), "calendar-initial")
+              response_state[["reject"]] <- FALSE
+              expect_identical(
+                current[["access_token"]](force_refresh = TRUE),
+                "calendar-refreshed"
+              )
+              expect_identical(
+                utils::URLdecode(as.character(requests[[2L]][[
+                  "refresh_token"
+                ]])),
+                "refresh-0"
+              )
+            } else {
+              expect_identical(current[["is_usable"]](), FALSE)
+              failure <- tryCatch(current[["access_token"]](), error = identity)
+              expect_s3_class(failure, "shinyOAuth_access_error")
+              expect_length(requests, 1L)
+            }
+          }
+        )
+      }
+    }
+  }
+})
+
 test_that("target configuration requires deliberate provider and default choices", {
   client <- target_test_client()
   changes <- list(

@@ -1251,18 +1251,24 @@ refresh_token_impl <- function(
                 if (identical(e[["oauth_error"]], "invalid_grant")) {
                   outcome[["value"]] <- "rejected"
                 } else if (
-                  isTRUE(
-                    e[["oauth_error"]] %in%
-                      c(
-                        "invalid_request",
-                        "invalid_client",
-                        "unauthorized_client",
-                        "unsupported_grant_type",
-                        "invalid_scope",
-                        "invalid_target",
-                        "temporarily_unavailable"
-                      )
-                  )
+                  (!is.null(target_request) &&
+                    identical(
+                      oauth_client@provider@token_target_mode,
+                      "microsoft"
+                    ) &&
+                    identical(e[["oauth_error"]], "invalid_resource")) ||
+                    isTRUE(
+                      e[["oauth_error"]] %in%
+                        c(
+                          "invalid_request",
+                          "invalid_client",
+                          "unauthorized_client",
+                          "unsupported_grant_type",
+                          "invalid_scope",
+                          "invalid_target",
+                          "temporarily_unavailable"
+                        )
+                    )
                 ) {
                   outcome[["value"]] <- "not_consumed"
                 }

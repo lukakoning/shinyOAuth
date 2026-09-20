@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Microsoft token targets retain working sibling credentials after an
+`invalid_resource` rejection. Invalid grants and interaction requirements
+continue to require a new authorization.
+
 * Target acquisitions enforce client-level required scopes as well as each
 target's requirements, including when restoring encrypted credentials.
 
