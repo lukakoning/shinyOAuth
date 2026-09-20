@@ -87,6 +87,95 @@ target_test_manager <- function(client = target_test_client()) {
   )
 }
 
+test_that("target reauthorization starts ordinary login without prior grant history", {
+  local_options(shinyOAuth.skip_browser_token = FALSE)
+  redirects <- list()
+  local_mocked_bindings(
+    revoke_token = function(...) invisible(NULL),
+    send_oauth_module_redirect = function(session, url) {
+      redirects[[length(redirects) + 1L]] <<- url
+    }
+  )
+  for (oidc in c(FALSE, TRUE)) {
+    for (after_logout in c(FALSE, TRUE)) {
+      redirects <- list()
+      client <- target_test_client()
+      if (oidc) {
+        provider <- client@provider
+        S7::props(provider) <- list(
+          issuer = "https://issuer.example",
+          id_token_validation = TRUE
+        )
+        S7::props(client) <- list(
+          provider = provider,
+          scopes = c(client@scopes, "openid", "profile")
+        )
+      }
+      shiny::testServer(
+        oauth_module_server,
+        args = list(id = "auth", client = client, auto_redirect = FALSE),
+        {
+          session[["flushReact"]]()
+          if (after_logout) {
+            operation <- .begin_auth_operation("login", NULL, new_epoch = TRUE)
+            .accept_login_token(
+              target_test_token(c("calendar.read", if (oidc) "openid")),
+              NULL
+            )
+            .finish_auth_operation(operation, "login")
+            previous <- values[["connection"]]()
+            values[["logout"]]()
+            expect_identical(previous[["is_usable"]](), FALSE)
+          }
+          values[["reauthorize"]]()
+          expect_identical(values[["pending_login"]], TRUE)
+          expect_null(auth_operations[["reauth_scopes"]])
+          session[["setInputs"]](
+            shinyOAuth_sid = browser_ack[["token"]],
+            shinyOAuth_cookie_ack = list(requestId = browser_ack[["id"]])
+          )
+          poll_for_async(function() length(redirects) > 0L, session)
+          url <- redirects[[1L]]
+          expect_setequal(
+            normalize_scope_tokens(parse_query_param(
+              url,
+              "scope",
+              decode = TRUE
+            )),
+            effective_client_scopes(client)
+          )
+          payload <- state_payload_decrypt_validate(
+            client,
+            parse_query_param(url, "state")
+          )
+          expect_setequal(
+            unlist(payload[["scopes"]]),
+            effective_client_scopes(client)
+          )
+        }
+      )
+    }
+  }
+})
+
+test_that("target reauthorization does not expand explicitly empty target limits", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  client <- target_test_client()
+  shiny::testServer(
+    oauth_module_server,
+    args = list(id = "auth", client = client, auto_redirect = FALSE),
+    {
+      auth_operations[["target_limits"]] <- list(
+        calendar = character(),
+        contacts = character()
+      )
+      error <- tryCatch(values[["reauthorize"]](), error = identity)
+      expect_identical(error[["context"]][["reason"]], "interaction_required")
+      expect_identical(values[["pending_login"]], FALSE)
+    }
+  )
+})
+
 test_that("Microsoft resource rejections preserve sibling credentials only in Microsoft mode", {
   local_options(shinyOAuth.skip_browser_token = TRUE)
   for (mode in c("microsoft", "rfc8707")) {

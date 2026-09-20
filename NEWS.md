@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* `auth$reauthorize()` starts normal login for token-target clients before their
+first authorization and after logout, retaining the configured API consent request.
+
 * Disconnect results and audit events include secondary access-token revocation
 outcomes. Failed, unsupported, or skipped cleanup takes precedence over acceptance.
 
