@@ -767,17 +767,17 @@ oauth_module_server_impl <- function(
       min(auth_time, now)
     }
 
-    .accept_login_token <- function(tok, context) {
+    .accept_login_token <- function(
+      tok,
+      context,
+      target_limits = NULL
+    ) {
       if (is.null(.managed)) {
         validate_token_acceptance_deadline(tok)
         values[["targets"]] <- token_target_bundle(
           client,
           tok,
-          if (!is.null(auth_operations[["reauth_scopes"]])) {
-            auth_operations[["target_limits"]]
-          } else {
-            NULL
-          }
+          target_limits
         )
         auth_operations[["target_limits"]] <- values[["targets"]][["limits"]]
         values[["token"]] <- tok
@@ -3677,6 +3677,32 @@ oauth_module_server_impl <- function(
             ]])
             managed_context[["cleanup"]] <- managed_cleanup
           }
+          # A browser redirect creates a fresh Shiny session. Keep the sealed
+          # target policy with this callback, rather than relying on the session
+          # that started reauthorization. Install it only after callback/token
+          # validation succeeds and this operation still owns the authorization.
+          callback_target_limits <- NULL
+          if (is.null(.managed) && token_targets_configured(client)) {
+            target_payload <- if (is.null(decrypted_payload)) {
+              state_payload_decrypt_validate(
+                client,
+                state,
+                audit_success = FALSE
+              )
+            } else {
+              state_payload_revalidate(
+                client,
+                decrypted_payload,
+                audit_success = FALSE
+              )
+            }
+            if (!is.null(target_payload[["target_limits"]])) {
+              callback_target_limits <- validate_token_target_limits(
+                client,
+                connection_data_decode(target_payload[["target_limits"]])
+              )
+            }
+          }
           with_trace_id(
             callback_hint[["trace_id"]] %||% NULL,
             {
@@ -4113,7 +4139,11 @@ oauth_module_server_impl <- function(
                       }
                       return(invisible(NULL))
                     }
-                    .accept_login_token(tok, managed_context)
+                    .accept_login_token(
+                      tok,
+                      managed_context,
+                      callback_target_limits
+                    )
                     values[["error"]] <- NULL
                     values[["error_description"]] <- NULL
                     values[["error_uri"]] <- NULL
@@ -4197,7 +4227,11 @@ oauth_module_server_impl <- function(
                   )
                   return(invisible(NULL))
                 }
-                .accept_login_token(res, managed_context)
+                .accept_login_token(
+                  res,
+                  managed_context,
+                  callback_target_limits
+                )
                 values[["error"]] <- NULL
                 values[["error_description"]] <- NULL
                 values[["error_uri"]] <- NULL

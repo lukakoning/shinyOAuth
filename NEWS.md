@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Single-module reauthorization restores authenticated target scope limits after
+browser redirects, including limits on secondary targets in synchronous and
+asynchronous callbacks.
+
 * Token targets enforce the authorization-wide limit of 128 distinct scopes and
 8192 scope bytes at configuration and acquisition, including `.default` expansion,
 so accepted scope sets can be reused for reauthorization.

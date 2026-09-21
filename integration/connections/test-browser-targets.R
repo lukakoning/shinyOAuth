@@ -1,6 +1,101 @@
 for (async in c(FALSE, TRUE)) {
   for (response_mode in c("query", "form_post")) {
     testthat::test_that(
+      paste(
+        "single-module secondary restrictions survive redirects",
+        response_mode,
+        async
+      ),
+      {
+        f <- retention_browser_setup(
+          async,
+          response_mode,
+          provider_factory = function(site, callback) {
+            target_fixture_provider(site, sub("/callback/[ab]$", "/", callback))
+          },
+          app_script = "integration/connections/fixture-target-app.R",
+          app_function = "target_fixture_app",
+          app_args = list(single = TRUE)
+        )
+        browser <- f[["browser"]]
+        sign_in <- function(button, previous = NULL) {
+          retention_browser_click(browser, button)
+          retention_browser_wait(
+            browser,
+            function() {
+              identical(
+                retention_browser_value(
+                  browser,
+                  "document.querySelector('#provider')?.textContent"
+                ),
+                "Site a"
+              )
+            },
+            "single-module consent page"
+          )
+          retention_browser_click(browser, "approve")
+          retention_browser_wait(
+            browser,
+            function() {
+              snapshot <- retention_browser_snapshot(browser)
+              rows <- snapshot[["connections"]]
+              if (
+                length(rows) == 1L &&
+                  !identical(rows[[1L]][["connection_id"]], previous)
+              ) {
+                snapshot
+              } else {
+                NULL
+              }
+            },
+            "single-module callback"
+          )
+        }
+        first <- sign_in("connect")
+        retention_browser_action(
+          browser,
+          "narrow_contacts",
+          if (async) "refreshed" else "TRUE"
+        )
+        replacement <- sign_in(
+          "reauthorize",
+          first[["connections"]][[1L]][["connection_id"]]
+        )
+        testthat::expect_true(replacement[["can_write"]])
+        testthat::expect_identical(
+          replacement[["targets"]][["contacts"]][["status"]],
+          "not_acquired"
+        )
+        # Check the local ceiling before acquisition; a provider rejection alone
+        # must not mask a widened request in a newly created Shiny session.
+        before <- httr2::resp_body_json(httr2::req_perform(httr2::request(f[[
+          "providers"
+        ]][["a"]][["url"]]("/metrics"))))
+        retention_browser_action(browser, "contacts_write", "unavailable")
+        after <- httr2::resp_body_json(httr2::req_perform(httr2::request(f[[
+          "providers"
+        ]][["a"]][["url"]]("/metrics"))))
+        testthat::expect_identical(after[["refreshes"]], before[["refreshes"]])
+        testthat::expect_identical(
+          after[["token_scopes"]],
+          before[["token_scopes"]]
+        )
+        retention_browser_action(browser, "contacts", "contacts")
+        testthat::expect_identical(
+          retention_browser_snapshot(browser)[["targets"]][["contacts"]][[
+            "granted_scopes"
+          ]],
+          "contacts.read"
+        )
+        retention_browser_action(browser, "contacts_write", "unavailable")
+      }
+    )
+  }
+}
+
+for (async in c(FALSE, TRUE)) {
+  for (response_mode in c("query", "form_post")) {
+    testthat::test_that(
       paste("target replacement and recovery", response_mode, async),
       {
         f <- retention_browser_setup(

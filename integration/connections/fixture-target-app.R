@@ -2,7 +2,8 @@ target_fixture_app <- function(
   origin,
   providers,
   async = FALSE,
-  response_mode = "query"
+  response_mode = "query",
+  single = FALSE
 ) {
   if (async) {
     mirai::daemons(2L)
@@ -22,9 +23,14 @@ target_fixture_app <- function(
     provider,
     "a",
     client_secret = "",
-    redirect_uri = paste0(origin, "/callback/a"),
+    redirect_uri = paste0(origin, if (single) "/" else "/callback/a"),
     response_mode = response_mode,
-    scopes = c("calendar.read", "calendar.write", "contacts.read"),
+    scopes = c(
+      "calendar.read",
+      "calendar.write",
+      "contacts.read",
+      if (single) "contacts.write"
+    ),
     token_targets = list(
       calendar = list(
         resource = "urn:calendar",
@@ -33,7 +39,7 @@ target_fixture_app <- function(
       ),
       contacts = list(
         resource = "urn:contacts",
-        scopes = "contacts.read",
+        scopes = c("contacts.read", if (single) "contacts.write"),
         resource_ids = "contacts"
       )
     ),
@@ -54,29 +60,58 @@ target_fixture_app <- function(
       owner = openssl::rand_bytes(32)
     )
   )
-  ui <- shinyOAuth::oauth_connections_ui(
-    shiny::fluidPage(
-      shinyOAuth::use_shinyOAuth(),
-      lapply(
-        c(
-          "connect",
-          "reauthorize",
-          "narrow",
-          "contacts",
-          "pending",
-          "wrong_target",
-          "logout"
-        ),
-        function(id) shiny::actionButton(id, id)
+  page <- shiny::fluidPage(
+    lapply(
+      c(
+        "connect",
+        "reauthorize",
+        "narrow",
+        "narrow_contacts",
+        "contacts",
+        "contacts_write",
+        "pending",
+        "wrong_target",
+        "logout"
       ),
-      shiny::verbatimTextOutput("snapshot"),
-      shiny::verbatimTextOutput("result")
+      function(id) shiny::actionButton(id, id)
     ),
-    "auth",
-    manager
+    shiny::verbatimTextOutput("snapshot"),
+    shiny::verbatimTextOutput("result")
   )
+  ui <- if (single) {
+    if (identical(response_mode, "form_post")) {
+      shinyOAuth::oauth_form_post_ui(page, "auth", client)
+    } else {
+      shinyOAuth::oauth_ui(page, "auth", client)
+    }
+  } else {
+    shinyOAuth::oauth_connections_ui(page, "auth", manager)
+  }
   server <- function(input, output, session) {
-    auth <- shinyOAuth::oauth_connections_server("auth", manager, async = async)
+    auth <- if (single) {
+      module <- shinyOAuth::oauth_module_server(
+        "auth",
+        client,
+        async = async,
+        auto_redirect = FALSE
+      )
+      list(
+        connect = function(...) module[["request_login"]](),
+        reauthorize = function(...) module[["reauthorize"]](),
+        logout = function() module[["logout"]](),
+        connection = function() module[["connection"]](),
+        connections = shiny::reactive({
+          current <- module[["connection"]]()
+          if (is.null(current)) list() else list(current[["summary"]]())
+        }),
+        errors = shiny::reactive(Filter(
+          Negate(is.null),
+          list(auth = module[["error"]])
+        ))
+      )
+    } else {
+      shinyOAuth::oauth_connections_server("auth", manager, async = async)
+    }
     result <- shiny::reactiveVal("ready")
     revision <- shiny::reactiveVal(0L)
     complete <- function(value) {
@@ -110,6 +145,25 @@ target_fixture_app <- function(
       input[["narrow"]],
       perform(function() {
         auth[["connection"]]()[["refresh"]](scopes = "calendar.read")
+      })
+    )
+    shiny::observeEvent(
+      input[["narrow_contacts"]],
+      perform(function() {
+        auth[["connection"]]()[["refresh"]](
+          scopes = "contacts.read",
+          target = "contacts"
+        )
+      })
+    )
+    shiny::observeEvent(
+      input[["contacts_write"]],
+      perform(function() {
+        auth[["connection"]]()[["access_token"]](
+          "contacts.write",
+          target = "contacts"
+        )
+        TRUE
       })
     )
     shiny::observeEvent(

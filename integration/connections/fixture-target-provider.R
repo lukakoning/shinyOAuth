@@ -9,7 +9,8 @@ target_fixture_provider <- function(site, callback) {
     exchanges = 0L,
     refreshes = 0L,
     requests = 0L,
-    authorization_scopes = list()
+    authorization_scopes = list(),
+    token_scopes = list()
   )
   random <- function() {
     unclass(as.character(openssl::sha256(openssl::rand_bytes(32))))
@@ -18,7 +19,7 @@ target_fixture_provider <- function(site, callback) {
     switch(
       target,
       calendar = c("calendar.read", "calendar.write"),
-      contacts = "contacts.read",
+      contacts = c("contacts.read", "contacts.write"),
       character()
     )
   }
@@ -118,6 +119,10 @@ target_fixture_provider <- function(site, callback) {
   })
   app[["post"]]("/token", function(req, res) {
     body <- req[["form"]]
+    state[["metrics"]][["token_scopes"]] <- c(
+      state[["metrics"]][["token_scopes"]],
+      list(body[["scope"]])
+    )
     target <- sub("urn:", "", body[["resource"]], fixed = TRUE)
     scopes <- strsplit(body[["scope"]], " ", fixed = TRUE)[[1L]]
     reject <- function() {
