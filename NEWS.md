@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Successful reauthorization consumes its request scope override in the original
+Shiny session. Later ordinary login uses the configured scopes, while explicit
+replacement and retries after rejection retain the previous permission limit.
+
 * The complete external-integration example routes its non-root OAuth callback
 through the protected UI handler.
 

@@ -819,6 +819,10 @@ oauth_module_server_impl <- function(
         values[["token"]] <- NULL
         values[["auth_started_at"]] <- NULL
       }
+      # The replacement request has completed. Keep its accepted permission
+      # history above, but do not apply this request override to ordinary login
+      # after a later authentication-age or access-token expiry.
+      auth_operations[["reauth_scopes"]] <- NULL
       invisible(NULL)
     }
 

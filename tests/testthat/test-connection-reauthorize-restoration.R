@@ -1,3 +1,105 @@
+test_that("same-session replacements do not restrict later ordinary login", {
+  local_options(shinyOAuth.skip_browser_token = FALSE)
+  for (targeted in c(FALSE, TRUE)) {
+    for (async in c(FALSE, TRUE)) {
+      client <- make_test_client(use_nonce = FALSE, scopes = c("read", "write"))
+      if (targeted) {
+        provider <- client@provider
+        provider@token_target_mode <- "rfc8707"
+        S7::props(client) <- list(
+          provider = provider,
+          token_targets = list(
+            api = list(resource = "urn:api", scopes = c("read", "write"))
+          ),
+          default_token_target = "api"
+        )
+      }
+      response_scope <- "read write"
+      local_mocked_bindings(
+        revoke_token = function(...) invisible(NULL),
+        async_dispatch = function(expr, args, ...) {
+          promises::promise_resolve(eval(
+            expr,
+            list2env(args, parent = globalenv())
+          ))
+        },
+        swap_code_for_token_set = function(...) {
+          list(
+            access_token = "replacement",
+            refresh_token = "replacement-refresh",
+            token_type = "Bearer",
+            expires_in = 3600,
+            scope = response_scope
+          )
+        }
+      )
+      shiny::testServer(
+        oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          reauth_after_seconds = 60,
+          async = async
+        ),
+        {
+          session[["flushReact"]]()
+          token <- manager_test_token()
+          token@granted_scopes <- "read"
+          .accept_login_token(token, NULL)
+          previous <- values[["connection"]]()
+          values[["reauthorize"]]()
+          callback <- function() {
+            values[["browser_token"]] <- valid_browser_token()
+            url <- .build_auth_url()
+            expect_identical(
+              parse_query_param(url, "scope", decode = TRUE),
+              "read"
+            )
+            values[[".process_query"]](paste0(
+              "?code=replacement&state=",
+              parse_query_param(url, "state")
+            ))
+            poll_for_async(
+              function() is.null(auth_operations[["active_login_id"]]),
+              session
+            )
+          }
+          # A rejected response must not discard the restriction on retry.
+          callback()
+          expect_null(values[["token"]])
+          expect_false(previous[["is_usable"]]())
+          response_scope <<- "read"
+          callback()
+          expect_null(values[["error"]])
+          expect_identical(values[["token"]]@access_token, "replacement")
+          expect_false(values[["connection"]]()[["has_scopes"]]("write"))
+          # Another explicit replacement still uses the retained grant, even
+          # after the preceding request override has been consumed.
+          values[["reauthorize"]]()
+          callback()
+          expect_null(values[["error"]])
+          expect_false(values[["connection"]]()[["has_scopes"]]("write"))
+          values[["auth_started_at"]] <- as.numeric(Sys.time()) - 120
+          session[["flushReact"]]()
+          expect_null(values[["token"]])
+          values[["request_login"]]()
+          values[["browser_token"]] <- valid_browser_token()
+          url <- .build_auth_url()
+          expect_setequal(
+            normalize_scope_tokens(parse_query_param(
+              url,
+              "scope",
+              decode = TRUE
+            )),
+            c("read", "write")
+          )
+        }
+      )
+    }
+  }
+})
+
 test_that("fresh ordinary callbacks retain restrictions through later refreshes", {
   local_options(shinyOAuth.skip_browser_token = FALSE)
   for (async in c(FALSE, TRUE)) {
