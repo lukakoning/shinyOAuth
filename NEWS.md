@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Token targets enforce the authorization-wide limit of 128 distinct scopes and
+8192 scope bytes at configuration and acquisition, including `.default` expansion,
+so accepted scope sets can be reused for reauthorization.
+
 * Token-target scope declarations accept equivalent vectors and space-delimited
 strings consistently during login, refresh, required-scope checks, and restoration.
 

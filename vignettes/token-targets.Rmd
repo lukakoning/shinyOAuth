@@ -68,6 +68,15 @@ concepts: `resource_ids` explicitly authorizes a target's use at a named
 Omit HTTP bases and associations if the application only exports bearer tokens
 to another library.
 
+Configure at most 16 targets. The complete authorization has a shared limit of
+128 distinct scope tokens and 8192 scope bytes, excluding separating spaces.
+OIDC scopes count toward these limits. Configuration, acquired permissions
+(including Microsoft `.default` expansion), restoration and reauthorization
+enforce the same aggregate limits. Reduce the declared permissions or use
+separate authorizations when the combined set would exceed them.
+The independent callback and encrypted-state size limits still apply; a large
+declaration can require larger state limits even when its scope count fits.
+
 RFC 8707 authorization requests carry all declared resources and the client's
 scopes. Code redemption and refresh carry one selected resource and its scopes.
 The server determines which permissions apply to each resource; scopes in RFC

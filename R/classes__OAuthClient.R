@@ -59,6 +59,10 @@
 #'   SMART configuration. Client-level `required_scopes` can contain OIDC
 #'   scopes only. Targets share one local authorization and refresh credential,
 #'   while their access tokens and retained permission limits remain separate.
+#'   At most 16 targets are supported. The complete authorization, including
+#'   OIDC scopes and actual permissions returned for Microsoft `.default`, is
+#'   limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
+#'   Scope declarations may be vectors or space-delimited strings.
 #'   See `vignette("token-targets")` for provider rules and examples.
 #' @param default_token_target Name of the initial code-redemption target and
 #'   the default for connection methods. Required with multiple targets;

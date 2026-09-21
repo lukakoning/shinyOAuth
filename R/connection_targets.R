@@ -95,6 +95,11 @@ validate_token_targets <- function(client) {
       "With token targets, put API required_scopes inside each target declaration"
     )
   }
+  if (!authorization_scopes_bounded(effective_client_scopes(client))) {
+    err_config(
+      "Token target authorizations allow at most 128 distinct scopes and 8192 scope bytes in total"
+    )
+  }
   if (identical(client@provider@token_target_mode, "microsoft")) {
     api_scopes <- setdiff(client@scopes, token_target_oidc_scopes)
     static <- endsWith(api_scopes, "/.default")
@@ -172,6 +177,19 @@ validate_token_targets <- function(client) {
       }
     }
   }
+  required <- lapply(names(targets), function(target) {
+    token_target_required_scopes(client, target)
+  })
+  if (
+    !authorization_scopes_bounded(token_target_authorization_scopes(
+      client,
+      required
+    ))
+  ) {
+    err_config(
+      "Token target requirements exceed 128 distinct scopes or 8192 scope bytes in total"
+    )
+  }
   invisible(NULL)
 }
 
@@ -204,6 +222,16 @@ validate_token_target_limits <- function(client, limits) {
       err_config("Invalid token target scope limits")
     }
     limits[[target]] <- scopes
+  }
+  if (
+    !authorization_scopes_bounded(token_target_authorization_scopes(
+      client,
+      limits
+    ))
+  ) {
+    err_token(
+      "Token target scope limits exceed 128 distinct scopes or 8192 scope bytes in total"
+    )
   }
   limits
 }
@@ -317,12 +345,13 @@ validate_token_target_grant <- function(client, granted, request) {
     return(invisible(NULL))
   }
   if (
-    !token_target_scopes_allowed(
-      client,
-      request[["target"]],
-      granted,
-      setdiff(request[["scopes"]], token_target_oidc_scopes)
-    ) ||
+    !authorization_scopes_bounded(granted) ||
+      !token_target_scopes_allowed(
+        client,
+        request[["target"]],
+        granted,
+        setdiff(request[["scopes"]], token_target_oidc_scopes)
+      ) ||
       !all(
         union(client@required_scopes, request[["required_scopes"]]) %in% granted
       )
@@ -350,6 +379,7 @@ token_target_bundle <- function(client, token, limits = NULL) {
     token@granted_scopes,
     token_target_oidc_scopes
   )
+  limits <- validate_token_target_limits(client, limits)
   list(tokens = list(), limits = limits)
 }
 
@@ -400,6 +430,7 @@ token_target_commit <- function(client, primary, bundle, fresh, request) {
     fresh@granted_scopes,
     token_target_oidc_scopes
   )
+  bundle[["limits"]] <- validate_token_target_limits(client, bundle[["limits"]])
   refresh <- fresh@refresh_token
   if (identical(target, client@default_token_target)) {
     primary <- fresh

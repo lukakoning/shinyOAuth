@@ -421,6 +421,190 @@ test_that("scope declaration forms agree through exchange, acquisition and resto
   }
 })
 
+test_that("aggregate scope limits agree at configuration and reauthorization boundaries", {
+  # Exercise the scope budget independently of the configurable state envelope.
+  local_options(
+    shinyOAuth.callback_max_state_bytes = 65536,
+    shinyOAuth.state_max_token_chars = 65536,
+    shinyOAuth.state_max_wrapper_bytes = 65536,
+    shinyOAuth.state_max_ct_b64_chars = 65536,
+    shinyOAuth.state_max_ct_bytes = 65536
+  )
+  make_client <- function(first, second, oidc = character()) {
+    template <- target_test_client()
+    oauth_client(
+      template@provider,
+      "app",
+      client_secret = "",
+      redirect_uri = template@redirect_uri,
+      scopes = c(first, second, oidc),
+      token_targets = list(
+        calendar = list(resource = "urn:calendar", scopes = first),
+        contacts = list(resource = "urn:contacts", scopes = second)
+      ),
+      default_token_target = "calendar"
+    )
+  }
+  cases <- list(
+    list(
+      first = paste0("calendar.", seq_len(64L)),
+      second = paste0("contacts.", seq_len(64L))
+    ),
+    list(first = strrep("a", 4096L), second = strrep("b", 4096L))
+  )
+  for (case in cases) {
+    client <- do.call(make_client, case)
+    scopes <- token_target_authorization_scopes(
+      client,
+      token_target_limits(client)
+    )
+    expect_setequal(authorization_scope_limit(client, scopes), client@scopes)
+    browser <- valid_browser_token()
+    prepared <- prepare_call_internal(
+      client,
+      browser,
+      .requested_scopes = scopes,
+      .target_limits = token_target_limits(client),
+      .defer_build = TRUE
+    )
+    payload <- state_payload_decrypt_validate(
+      client,
+      prepared[["build_args"]][["payload"]]
+    )
+    expect_setequal(unlist(payload[["scopes"]]), scopes)
+    expect_error(
+      make_client(case[["first"]], c(case[["second"]], "extra")),
+      "128 distinct scopes.*8192"
+    )
+    expect_error(
+      make_client(case[["first"]], case[["second"]], "openid"),
+      "128 distinct scopes.*8192"
+    )
+  }
+  expect_error(
+    make_client(paste0("calendar.", 1:65), paste0("contacts.", 1:65)),
+    "128 distinct scopes"
+  )
+  # Shared scope names consume the aggregate budget only once.
+  common <- paste0("permission.", seq_len(128L))
+  expect_length(
+    authorization_scope_limit(make_client(common, common), common),
+    128L
+  )
+})
+
+test_that("Microsoft static consent expansion respects the shared aggregate budget", {
+  client <- target_test_client("microsoft")
+  declarations <- client@token_targets
+  for (target in names(declarations)) {
+    declarations[[target]][["scopes"]] <- paste0(
+      declarations[[target]][["resource"]],
+      "/.default"
+    )
+  }
+  S7::props(client) <- list(
+    scopes = vapply(declarations, `[[`, "", "scopes"),
+    token_targets = declarations
+  )
+  calendar <- paste0("https://calendar.example/permission", seq_len(64L))
+  contacts <- paste0("https://contacts.example/permission", seq_len(64L))
+  primary <- target_test_token(calendar)
+  bundle <- token_target_bundle(client, primary)
+  request <- token_target_request(client, "contacts", bundle[["limits"]])
+  updated <- token_target_commit(
+    client,
+    primary,
+    bundle,
+    target_test_token(contacts),
+    request
+  )
+  scopes <- token_target_authorization_scopes(
+    client,
+    updated[["targets"]][["limits"]]
+  )
+  expect_length(authorization_scope_limit(client, scopes), 128L)
+  for (bad in list(
+    c(contacts, "https://contacts.example/extra"),
+    paste0("https://contacts.example/", strrep("x", 8192L))
+  )) {
+    expect_error(
+      token_target_commit(
+        client,
+        primary,
+        bundle,
+        target_test_token(bad),
+        request
+      ),
+      "scope limit"
+    )
+  }
+  expect_error(
+    token_target_bundle(
+      client,
+      target_test_token(paste0(
+        "https://calendar.example/permission",
+        seq_len(129L)
+      ))
+    ),
+    "scope limit"
+  )
+  for (managed in c(FALSE, TRUE)) {
+    local_options(shinyOAuth.skip_browser_token = TRUE)
+    local_mocked_bindings(
+      refresh_token_dispatch = function(...) {
+        target_test_token(
+          c(contacts, "https://contacts.example/extra"),
+          "oversized",
+          "rotated"
+        )
+      },
+      revoke_token = function(...) invisible(NULL)
+    )
+    f <- target_test_manager(client)
+    shiny::testServer(
+      if (managed) oauth_connections_server else oauth_module_server,
+      args = if (managed) {
+        list(id = "auth", manager = f[["manager"]])
+      } else {
+        list(id = "auth", client = client, auto_redirect = FALSE)
+      },
+      session = manager_test_session(
+        if (managed) manager_test_cookie(f) else NULL
+      ),
+      {
+        current <- if (managed) {
+          connection(manager_test_accept(controller, token = primary))
+        } else {
+          operation <- .begin_auth_operation("login", NULL, new_epoch = TRUE)
+          .accept_login_token(primary, NULL)
+          .finish_auth_operation(operation, "login")
+          values[["connection"]]()
+        }
+        error <- tryCatch(
+          current[["access_token"]](target = "contacts"),
+          error = identity
+        )
+        expect_s3_class(error, "shinyOAuth_access_error")
+        expect_identical(current[["is_usable"]](), FALSE)
+        error <- tryCatch(current[["access_token"]](), error = identity)
+        expect_s3_class(error, "shinyOAuth_access_error")
+      }
+    )
+  }
+  requirements <- declarations
+  requirements[["calendar"]][["required_scopes"]] <- calendar
+  requirements[["contacts"]][["required_scopes"]] <- c(
+    contacts,
+    "https://contacts.example/extra"
+  )
+  expect_error(
+    {
+      client@token_targets <- requirements
+    },
+    "requirements exceed 128"
+  )
+})
+
 test_that("target configuration requires deliberate provider and default choices", {
   client <- target_test_client()
   changes <- list(

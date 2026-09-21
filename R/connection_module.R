@@ -349,12 +349,9 @@ module_refresh_controller <- function(
         error = fail
       )
       if (!is.null(target_request)) {
-        committed <- token_target_commit(
-          client,
-          primary,
-          bundle,
-          fresh,
-          target_request
+        committed <- tryCatch(
+          token_target_commit(client, primary, bundle, fresh, target_request),
+          error = fail
         )
         values[["targets"]] <- committed[["targets"]]
         values[["token"]] <- committed[["token"]]

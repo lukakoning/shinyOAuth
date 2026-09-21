@@ -1,5 +1,10 @@
 # Explicit managed refresh requests use the target's existing scope evaluator.
 # The request is bounded plain data so the same policy can run in async workers.
+authorization_scopes_bounded <- function(scopes) {
+  scopes <- normalize_scope_tokens(scopes)
+  length(scopes) <= 128L && sum(nchar(scopes, type = "bytes")) <= 8192L
+}
+
 authorization_scope_limit <- function(client, scopes) {
   validate_scopes(scopes)
   scopes <- normalize_scope_tokens(scopes)
@@ -12,8 +17,7 @@ authorization_scope_limit <- function(client, scopes) {
   }
   if (
     !length(scopes) ||
-      length(scopes) > 128L ||
-      sum(nchar(scopes, type = "bytes")) > 8192L ||
+      !authorization_scopes_bounded(scopes) ||
       !(if (token_targets_configured(client)) {
         token_target_authorization_allowed(client, scopes)
       } else {
