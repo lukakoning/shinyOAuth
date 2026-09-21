@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Single-module target logout and session-end cleanup clear local credentials
+before remote revocation. Cleanup shares a ten-second deadline, caps each request
+at two seconds with one attempt, and uses one batch when dispatched asynchronously.
+
 * Target permission limits retain OIDC scopes as well as API scopes. Refresh,
 restoration, and reauthorization no longer restore optional OIDC permissions
 removed by a partial response or explicit narrowing.

@@ -152,6 +152,13 @@ preserves the connection ID; logout,
 replacement and session end invalidate old references and late completions.
 Targets are stored inside the manager's existing encrypted credential envelope.
 
+Single-module logout and configured session-end revocation remove local access
+before contacting the provider. Remote target cleanup is best effort, with a
+shared ten-second deadline and a two-second timeout per request without retries.
+The shared refresh credential is attempted first. With `async = TRUE`, one
+worker handles the batch; time spent waiting for a worker also counts toward
+the deadline. Targets remaining after the deadline are not attempted.
+
 `$request(refresh = TRUE)` is synchronous. It acquires before sending and
 disables generic HTTP retries for that call. It never refreshes or replays an
 application request after a resource error. DPoP nonce challenges retain the

@@ -938,9 +938,11 @@ oauth_module_server_impl <- function(
     )
 
     ended_targets <- NULL
+    ended_token <- NULL
     # Always log session end, regardless of revoke_on_session_end setting
     session[["onSessionEnded"]](function() {
       ended_targets <<- shiny::isolate(values[["targets"]][["tokens"]])
+      ended_token <<- shiny::isolate(values[["token"]])
       auth_operations[["session_active"]] <- FALSE
       .advance_auth_epoch()
 
@@ -949,6 +951,7 @@ oauth_module_server_impl <- function(
         isTRUE(shiny::isolate(values[["authenticated"]])),
         error = function(...) FALSE
       )
+      values[["token"]] <- NULL
 
       # Audit: session ended (always emitted)
       try(
@@ -970,23 +973,7 @@ oauth_module_server_impl <- function(
     if (isTRUE(revoke_on_session_end)) {
       session[["onSessionEnded"]](function() {
         # Capture token at session end; may be NULL if never authenticated
-        tok <- shiny::isolate(values[["token"]])
-        for (entry in ended_targets) {
-          try(
-            revoke_token(
-              client,
-              entry,
-              token_kind = "access",
-              async = isTRUE(async),
-              shiny_session = if (isTRUE(async)) {
-                captured_session_end_async_context
-              } else {
-                captured_session_end_context
-              }
-            ),
-            silent = TRUE
-          )
-        }
+        tok <- ended_token
         if (!is.null(tok)) {
           with_trace_id(
             NULL,
@@ -1008,28 +995,45 @@ oauth_module_server_impl <- function(
                 )
                 # Best-effort revocation: async only when module async = TRUE
                 use_async_revocation <- isTRUE(async)
-                try(revoke_token(
-                  client,
-                  tok,
-                  token_kind = "refresh",
-                  async = use_async_revocation,
-                  shiny_session = if (isTRUE(use_async_revocation)) {
-                    captured_session_end_async_context
-                  } else {
-                    captured_session_end_context
-                  }
-                ))
-                try(revoke_token(
-                  client,
-                  tok,
-                  token_kind = "access",
-                  async = use_async_revocation,
-                  shiny_session = if (isTRUE(use_async_revocation)) {
-                    captured_session_end_async_context
-                  } else {
-                    captured_session_end_context
-                  }
-                ))
+                if (token_targets_configured(client)) {
+                  try(
+                    module_revoke_targets(
+                      client,
+                      tok,
+                      ended_targets,
+                      async = use_async_revocation,
+                      shiny_session = if (use_async_revocation) {
+                        captured_session_end_async_context
+                      } else {
+                        captured_session_end_context
+                      }
+                    ),
+                    silent = TRUE
+                  )
+                } else {
+                  try(revoke_token(
+                    client,
+                    tok,
+                    token_kind = "refresh",
+                    async = use_async_revocation,
+                    shiny_session = if (isTRUE(use_async_revocation)) {
+                      captured_session_end_async_context
+                    } else {
+                      captured_session_end_context
+                    }
+                  ))
+                  try(revoke_token(
+                    client,
+                    tok,
+                    token_kind = "access",
+                    async = use_async_revocation,
+                    shiny_session = if (isTRUE(use_async_revocation)) {
+                      captured_session_end_async_context
+                    } else {
+                      captured_session_end_context
+                    }
+                  ))
+                }
               },
               attributes = otel_client_attributes(
                 client = client,
@@ -2014,49 +2018,61 @@ oauth_module_server_impl <- function(
         with_otel_span(
           "shinyOAuth.logout",
           {
-            # Best-effort: revoke provider tokens asynchronously if supported.
-            # Fire-and-forget so logout returns immediately.
+            # Invalidate local access before attempting provider cleanup.
             tok <- values[["token"]]
             secondary <- values[["targets"]][["tokens"]]
             .advance_auth_epoch()
-            for (entry in secondary) {
-              try(
-                revoke_token(
-                  client,
-                  entry,
-                  token_kind = "access",
-                  async = isTRUE(async),
-                  shiny_session = logout_async_shiny_session
-                ),
-                silent = TRUE
-              )
-            }
             auth_operations[["force_oidc_reauth"]] <- FALSE
+            values[["token"]] <- NULL
+            values[["error"]] <- "logged_out"
+            values[["error_description"]] <- NULL
+            values[["error_uri"]] <- NULL
+            values[["token_stale"]] <- FALSE
+            .clear_browser_token()
+            # A later manual login still needs a fresh browser binding.
+            .set_browser_token()
             if (!is.null(tok)) {
               # Async revocation follows module async setting
               use_async_revocation <- isTRUE(async)
-              try(revoke_token(
-                client,
-                tok,
-                token_kind = "refresh",
-                async = use_async_revocation,
-                shiny_session = if (isTRUE(use_async_revocation)) {
-                  logout_async_shiny_session
-                } else {
-                  NULL
-                }
-              ))
-              try(revoke_token(
-                client,
-                tok,
-                token_kind = "access",
-                async = use_async_revocation,
-                shiny_session = if (isTRUE(use_async_revocation)) {
-                  logout_async_shiny_session
-                } else {
-                  NULL
-                }
-              ))
+              if (token_targets_configured(client)) {
+                try(
+                  module_revoke_targets(
+                    client,
+                    tok,
+                    secondary,
+                    async = use_async_revocation,
+                    shiny_session = if (use_async_revocation) {
+                      logout_async_shiny_session
+                    } else {
+                      logout_shiny_session
+                    }
+                  ),
+                  silent = TRUE
+                )
+              } else {
+                try(revoke_token(
+                  client,
+                  tok,
+                  token_kind = "refresh",
+                  async = use_async_revocation,
+                  shiny_session = if (isTRUE(use_async_revocation)) {
+                    logout_async_shiny_session
+                  } else {
+                    NULL
+                  }
+                ))
+                try(revoke_token(
+                  client,
+                  tok,
+                  token_kind = "access",
+                  async = use_async_revocation,
+                  shiny_session = if (isTRUE(use_async_revocation)) {
+                    logout_async_shiny_session
+                  } else {
+                    NULL
+                  }
+                ))
+              }
             }
 
             # Clear token and browser cookie, emit audit trail
@@ -2072,16 +2088,6 @@ oauth_module_server_impl <- function(
                 shiny_session = logout_shiny_session
               )
             )
-            values[["token"]] <- NULL
-            values[["error"]] <- "logged_out"
-            values[["error_description"]] <- NULL
-            values[["error_uri"]] <- NULL
-            values[["token_stale"]] <- FALSE
-            .clear_browser_token()
-            # Proactively re-issue a fresh browser token so that a subsequent
-            # manual login can redirect immediately without a preparatory click.
-            # This maintains session binding without authenticating the user.
-            .set_browser_token()
           },
           attributes = otel_client_attributes(
             client = client,
