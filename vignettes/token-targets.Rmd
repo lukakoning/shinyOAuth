@@ -135,6 +135,13 @@ must remain present. Optional scopes such as `email`, `profile`, and
 requests the union of the retained target limits; an OIDC scope still retained
 by another target can therefore remain in that authorization request.
 
+OIDC reauthorization always requests `openid` for the new validated login,
+including code redemption for the default target. This mandatory protocol scope
+is restored in that new target's request limit even if the previous access-token
+response omitted it or a refresh removed it. Removed API permissions and optional
+OIDC scopes (`profile`, `email`, `address`, `phone`, `offline_access`) remain
+excluded. Secondary targets keep their retained limits.
+
 `connection$refresh(scopes = "calendar.read", target = "calendar")` deliberately
 narrows calendar permissions. Acquiring contacts does not restore calendar
 write access. Module `reauthorize()` retains all target ceilings and replaces

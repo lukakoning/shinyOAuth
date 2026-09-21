@@ -211,9 +211,10 @@ validate_token_targets <- function(client) {
     token_target_required_scopes(client, target)
   })
   if (
-    !authorization_scopes_bounded(token_target_authorization_scopes(
-      client,
-      required
+    !authorization_scopes_bounded(ensure_openid_scope(
+      token_target_authorization_scopes(client, required),
+      client@provider,
+      warn = FALSE
     ))
   ) {
     err_config(
@@ -242,6 +243,21 @@ token_target_required_scopes <- function(client, target) {
   ))
 }
 
+token_target_reauthorization_limits <- function(client, limits) {
+  if (is.null(limits)) {
+    return(NULL)
+  }
+  limits <- validate_token_target_limits(client, limits)
+  primary <- client@default_token_target
+  if (length(limits[[primary]]) && provider_uses_oidc(client@provider)) {
+    # Reauthorization starts a new validated login. Include its mandatory
+    # protocol scope in code redemption without restoring optional permissions
+    # or changing the retained scope limits of secondary targets.
+    limits[[primary]] <- union(limits[[primary]], "openid")
+  }
+  validate_token_target_limits(client, limits)
+}
+
 validate_token_target_limits <- function(client, limits) {
   if (
     !is.list(limits) || !identical(names(limits), names(client@token_targets))
@@ -260,9 +276,10 @@ validate_token_target_limits <- function(client, limits) {
     limits[[target]] <- scopes
   }
   if (
-    !authorization_scopes_bounded(token_target_authorization_scopes(
-      client,
-      limits
+    !authorization_scopes_bounded(ensure_openid_scope(
+      token_target_authorization_scopes(client, limits),
+      client@provider,
+      warn = FALSE
     ))
   ) {
     err_token(
@@ -379,7 +396,11 @@ validate_token_target_grant <- function(client, granted, request) {
     return(invisible(NULL))
   }
   if (
-    !authorization_scopes_bounded(granted) ||
+    !authorization_scopes_bounded(ensure_openid_scope(
+      granted,
+      client@provider,
+      warn = FALSE
+    )) ||
       !token_target_scopes_allowed(
         client,
         request[["target"]],

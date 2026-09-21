@@ -8,6 +8,12 @@ authorization_scopes_bounded <- function(scopes) {
 authorization_scope_limit <- function(client, scopes) {
   validate_scopes(scopes)
   scopes <- normalize_scope_tokens(scopes)
+  if (!length(scopes)) {
+    err_input("Reauthorization requires a non-empty retained permission limit")
+  }
+  # A new OIDC login always needs openid, independently of the previous access
+  # token's scope evidence. Optional identity and API permissions stay narrowed.
+  scopes <- ensure_openid_scope(scopes, client@provider, warn = FALSE)
   required <- client@required_scopes
   if (
     provider_uses_oidc(client@provider) &&

@@ -1353,6 +1353,7 @@ connection_manager_controller <- function(manager, session) {
     }
     limits <- record[["targets"]][["limits"]] %||%
       state[["authorization_metadata"]][[id]][["target_limits"]]
+    limits <- token_target_reauthorization_limits(record[["client"]], limits)
     scopes <- if (token_targets_configured(record[["client"]])) {
       token_target_authorization_scopes(record[["client"]], limits)
     } else if (!is.null(record[["token"]])) {

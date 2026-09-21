@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OIDC reauthorization retains the mandatory `openid` scope for authorization
+and default-target code redemption, including after API-only token responses.
+Removed API and optional OIDC permissions remain excluded.
+
 * Single-module reauthorization restores ordinary OAuth permission limits in
 fresh callback sessions and rejects broader token or introspection responses on
 subsequent refreshes.

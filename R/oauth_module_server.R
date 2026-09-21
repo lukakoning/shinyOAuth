@@ -1938,6 +1938,10 @@ oauth_module_server_impl <- function(
       }
       current <- values[["token"]]
       started <- values[["auth_started_at"]]
+      auth_operations[["target_limits"]] <- token_target_reauthorization_limits(
+        client,
+        auth_operations[["target_limits"]]
+      )
       retained_scopes <- if (
         token_targets_configured(client) &&
           !is.null(auth_operations[["target_limits"]])

@@ -102,7 +102,10 @@ prepare_call_internal <- function(
 
   flow_trace_id <- gen_trace_id()
   if (!is.null(.target_limits)) {
-    .target_limits <- validate_token_target_limits(oauth_client, .target_limits)
+    .target_limits <- token_target_reauthorization_limits(
+      oauth_client,
+      .target_limits
+    )
   }
   effective_scopes <- effective_client_scopes(oauth_client)
   configured_scopes <- NULL
