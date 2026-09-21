@@ -37,6 +37,32 @@ expect_example_callback_bridge <- function(app, client, req) {
   expect_match(page[["content"]], "shinyOAuth.js", fixed = TRUE)
 }
 
+test_that("the external integrations vignette serves its registered callback", {
+  file <- test_path("../../vignettes/external-integrations.Rmd")
+  skip_if_not(file.exists(file))
+  lines <- readLines(file, warn = FALSE)
+  ends <- which(lines == "```")
+  chunks <- lapply(which(grepl("^```\\{r", lines)), function(start) {
+    end <- ends[ends > start][[1L]]
+    lines[seq.int(start + 1L, end - 1L)]
+  })
+  examples <- Filter(function(code) any(grepl("^shinyApp\\(", code)), chunks)
+  expect_length(examples, 1L)
+  withr::local_envvar(c(
+    OAUTH_CLIENT_ID = "example-client",
+    OAUTH_CLIENT_SECRET = "example-secret"
+  ))
+  env <- new.env(parent = globalenv())
+  app <- eval(parse(text = examples[[1L]]), env)
+  client <- env[["client"]]
+  redirect <- httr2::url_parse(client@redirect_uri)
+  path <- paste0("/", sub("^/", "", redirect[["path"]]))
+  request <- example_callback_request(client, path)
+  request[["rook.url_scheme"]] <- redirect[["scheme"]]
+  request[["HTTP_HOST"]] <- redirect[["hostname"]]
+  expect_example_callback_bridge(app, client, request)
+})
+
 test_that("deployment apps bridge callbacks behind their configured public origin", {
   root <- test_path("../..")
   skip_if_not(dir.exists(file.path(root, "integration")))

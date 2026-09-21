@@ -101,8 +101,11 @@ server <- function(input, output, session) {
   })
 }
 
-shinyApp(ui, server)
+shinyApp(ui, server, uiPattern = ".*")
 ```
+
+`uiPattern = ".*"` lets Shiny route the registered `/callback` path through
+`oauth_ui()` as well as serving the application root.
 
 The output guard matters: `eventReactive()` retains its previous result until
 the next click. Checking the current authorization ID and permissions prevents

@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* The complete external-integration example routes its non-root OAuth callback
+through the protected UI handler.
+
 * Single-module target acquisition uses lifetime-aware success pacing, allowing
 short-lived tokens to refresh proactively and on demand without a fixed
 thirty-second period of unavailability.
