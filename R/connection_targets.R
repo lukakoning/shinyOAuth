@@ -26,16 +26,23 @@ token_target_scopes_allowed <- function(
 ) {
   declaration <- client@token_targets[[target]]
   scopes <- normalize_scope_tokens(scopes)
-  ceiling <- normalize_scope_tokens(ceiling %||% declaration[["scopes"]])
+  ceiling <- normalize_scope_tokens(
+    ceiling %||%
+      union(
+        declaration[["scopes"]],
+        intersect(effective_client_scopes(client), token_target_oidc_scopes)
+      )
+  )
   if (
     !all(
       intersect(scopes, token_target_oidc_scopes) %in%
-        effective_client_scopes(client)
+        intersect(effective_client_scopes(client), ceiling)
     )
   ) {
     return(FALSE)
   }
   scopes <- setdiff(scopes, token_target_oidc_scopes)
+  ceiling <- setdiff(ceiling, token_target_oidc_scopes)
   if (
     identical(client@provider@token_target_mode, "microsoft") &&
       identical(
@@ -206,7 +213,10 @@ validate_token_targets <- function(client) {
 
 token_target_limits <- function(client) {
   lapply(client@token_targets, function(item) {
-    normalize_scope_tokens(item[["scopes"]])
+    union(
+      normalize_scope_tokens(item[["scopes"]]),
+      intersect(effective_client_scopes(client), token_target_oidc_scopes)
+    )
   })
 }
 
@@ -270,7 +280,7 @@ token_target_request <- function(
     ) {
       connection_access_error("insufficient_scope")
     }
-    ceiling <- setdiff(scopes, token_target_oidc_scopes)
+    ceiling <- scopes
   }
   if (!length(ceiling)) {
     connection_access_error("insufficient_scope")
@@ -281,10 +291,7 @@ token_target_request <- function(
   }
   list(
     target = target,
-    scopes = union(
-      ceiling,
-      intersect(effective_client_scopes(client), token_target_oidc_scopes)
-    ),
+    scopes = ceiling,
     required_scopes = required
   )
 }
@@ -361,7 +368,7 @@ validate_token_target_grant <- function(client, granted, request) {
         client,
         request[["target"]],
         granted,
-        setdiff(request[["scopes"]], token_target_oidc_scopes)
+        request[["scopes"]]
       ) ||
       !all(
         union(client@required_scopes, request[["required_scopes"]]) %in% granted
@@ -386,10 +393,7 @@ token_target_bundle <- function(client, token, limits = NULL) {
   )
   request <- token_target_request(client, limits = limits)
   validate_token_target_grant(client, token@granted_scopes, request)
-  limits[[client@default_token_target]] <- setdiff(
-    token@granted_scopes,
-    token_target_oidc_scopes
-  )
+  limits[[client@default_token_target]] <- token@granted_scopes
   limits <- validate_token_target_limits(client, limits)
   list(tokens = list(), limits = limits)
 }
@@ -437,10 +441,7 @@ token_target_select <- function(record, target = NULL) {
 token_target_commit <- function(client, primary, bundle, fresh, request) {
   validate_token_target_grant(client, fresh@granted_scopes, request)
   target <- request[["target"]]
-  bundle[["limits"]][[target]] <- setdiff(
-    fresh@granted_scopes,
-    token_target_oidc_scopes
-  )
+  bundle[["limits"]][[target]] <- fresh@granted_scopes
   bundle[["limits"]] <- validate_token_target_limits(client, bundle[["limits"]])
   refresh <- fresh@refresh_token
   if (identical(target, client@default_token_target)) {
@@ -527,10 +528,7 @@ token_target_bundle_decode <- function(client, encoded) {
 }
 
 token_target_authorization_scopes <- function(client, limits) {
-  union(
-    intersect(effective_client_scopes(client), token_target_oidc_scopes),
-    normalize_scope_tokens(unlist(limits, use.names = FALSE))
-  )
+  normalize_scope_tokens(unlist(limits, use.names = FALSE))
 }
 
 token_target_authorization_allowed <- function(client, scopes) {

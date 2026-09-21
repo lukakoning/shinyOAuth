@@ -119,6 +119,14 @@ acquisition status and granted scope evidence, never credentials. Operation
 `required_scopes` checks do not change the acquisition request. An explicitly
 partial response remains that target's ceiling on later refreshes.
 
+Each ceiling includes the OIDC scopes granted to that target. Explicit refresh
+narrowing uses exactly the supplied scopes, so retain any OIDC permissions still
+needed, for example `scopes = c("calendar.read", "openid")`. Required scopes
+must remain present. Optional scopes such as `email`, `profile`, and
+`offline_access` are not added back on refresh or restoration. Reauthorization
+requests the union of the retained target limits; an OIDC scope still retained
+by another target can therefore remain in that authorization request.
+
 `connection$refresh(scopes = "calendar.read", target = "calendar")` deliberately
 narrows calendar permissions. Acquiring contacts does not restore calendar
 write access. Module `reauthorize()` retains all target ceilings and replaces
@@ -182,7 +190,8 @@ client <- oauth_client(
 
 The preset enables Microsoft's scope-based acquisition mode. Authorization
 requests include the declared consent scopes; token requests select one API's
-qualified scopes plus the configured OIDC scopes, without an RFC 8707 `resource`
+qualified scopes plus its retained OIDC scopes (initially the configured OIDC
+scopes), without an RFC 8707 `resource`
 parameter. Disabling UserInfo avoids calling Graph with another API's token and
 preserves ID-token validation. Resource identifiers are exact: where an
 identifier ends in `/`, appending `/.default` produces a double slash.

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Target permission limits retain OIDC scopes as well as API scopes. Refresh,
+restoration, and reauthorization no longer restore optional OIDC permissions
+removed by a partial response or explicit narrowing.
+
 * Single-module reauthorization restores authenticated target scope limits after
 browser redirects, including limits on secondary targets in synchronous and
 asynchronous callbacks.

@@ -1297,7 +1297,7 @@ test_that("Microsoft static scopes use evidence and cannot restore a narrowed ta
   )
   expect_setequal(
     retained[["scopes"]],
-    c("https://calendar.example/read", "openid", "offline_access")
+    "https://calendar.example/read"
   )
   error <- tryCatch(
     token_target_request(

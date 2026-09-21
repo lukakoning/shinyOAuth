@@ -867,10 +867,7 @@ refresh_token_dispatch <- function(
   S7::check_is_S7(token, OAuthToken)
   if (token_targets_configured(oauth_client) && is.null(target_request)) {
     limits <- token_target_limits(oauth_client)
-    limits[[oauth_client@default_token_target]] <- setdiff(
-      token@granted_scopes,
-      token_target_oidc_scopes
-    )
+    limits[[oauth_client@default_token_target]] <- token@granted_scopes
     target_request <- token_target_request(
       oauth_client,
       limits = limits,
