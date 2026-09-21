@@ -1,3 +1,76 @@
+test_that("authentication-age expiry starts a fresh grant while explicit replacement retains narrowing", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  local_mocked_bindings(
+    refresh_token_dispatch = function(
+      client,
+      token,
+      scope_request = NULL,
+      target_request = NULL,
+      ...
+    ) {
+      token@granted_scopes <- (target_request %||% scope_request)[["scopes"]]
+      token
+    },
+    revoke_token = function(...) invisible(NULL)
+  )
+  for (targeted in c(FALSE, TRUE)) {
+    for (replacement in c("age", "explicit")) {
+      client <- make_test_client(use_nonce = FALSE, scopes = c("read", "write"))
+      if (targeted) {
+        provider <- client@provider
+        provider@token_target_mode <- "rfc8707"
+        S7::props(client) <- list(
+          provider = provider,
+          token_targets = list(
+            api = list(
+              resource = "urn:example:api",
+              scopes = c("read", "write")
+            )
+          ),
+          default_token_target = "api"
+        )
+      }
+      shiny::testServer(
+        oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          reauth_after_seconds = 60
+        ),
+        {
+          session[["flushReact"]]()
+          operation <- .begin_auth_operation("login", NULL, new_epoch = TRUE)
+          .accept_login_token(manager_test_token(), NULL)
+          .finish_auth_operation(operation, "login")
+          previous <- values[["connection"]]()
+          previous[["refresh"]](scopes = "read")
+          expect_identical(previous[["has_scopes"]]("write"), FALSE)
+          if (replacement == "age") {
+            values[["auth_started_at"]] <- as.numeric(Sys.time()) - 120
+            session[["flushReact"]]()
+            values[["request_login"]]()
+          } else {
+            values[["reauthorize"]]()
+          }
+          expect_null(values[["token"]])
+          expect_identical(previous[["is_usable"]](), FALSE)
+          values[["browser_token"]] <- "__SKIPPED__"
+          url <- values[["build_auth_url"]]()
+          expect_setequal(
+            normalize_scope_tokens(parse_query_param(
+              url,
+              "scope",
+              decode = TRUE
+            )),
+            if (replacement == "age") c("read", "write") else "read"
+          )
+        }
+      )
+    }
+  }
+})
+
 test_that("single-module reauthorization preserves its accepted scope limit", {
   local_options(shinyOAuth.skip_browser_token = FALSE)
   redirects <- list()

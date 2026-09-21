@@ -124,6 +124,15 @@ Proactive refresh helps keep a live authorization ready. With
 can refresh them on demand; that option also disables automatic maximum-age
 clearing. Neither option makes an expired token usable without refresh.
 
+Automatic authentication-age expiry ends the local authorization. A subsequent
+ordinary login requests the original configured scopes again. For example, after
+`connection$refresh(scopes = "records.read")` narrows a `records.read records.write`
+grant, ordinary login can request both permissions again. This also applies to
+token targets. Explicit `auth$reauthorize()` preserves the retained narrower
+limits. Configure only permissions the application should request at every fresh
+login; local narrowing does not change the client configuration or revoke the
+provider's underlying consent.
+
 ## SDK callbacks and databases
 
 If an SDK accepts a token callback, create its client once per authorization:

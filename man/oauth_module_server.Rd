@@ -53,6 +53,9 @@ reset the timer. For OIDC providers, reauthentication requests send
 is used as the next authentication start. OAuth-only providers have no
 standard way to require active user authentication, so for them this is a
 hard local session lifetime followed by an ordinary authorization request.
+That new authorization requests the configured scopes again, including
+permissions removed by local refresh narrowing. Explicit \code{auth$reauthorize()}
+instead carries forward the previous authorization's retained scope limits.
 By default this is \code{NULL} (no forced reauthentication).}
 
 \item{refresh_proactively}{If \code{TRUE}, obtain a replacement access token before
