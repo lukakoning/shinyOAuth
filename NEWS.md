@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Single-module reauthorization restores ordinary OAuth permission limits in
+fresh callback sessions and rejects broader token or introspection responses on
+subsequent refreshes.
+
 * RFC 8707 targets recognize the standard OIDC `phone` and `address` scopes,
 including client-level requirements. Microsoft scope qualification continues
 to use its separate supported OIDC scope set.

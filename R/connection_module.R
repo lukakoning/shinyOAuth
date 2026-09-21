@@ -211,7 +211,7 @@ module_refresh_controller <- function(
       return(invisible(FALSE))
     }
     if (!identical(narrowed_epoch, operations[["epoch"]])) {
-      narrowed <<- !is.null(operations[["reauth_scopes"]])
+      narrowed <<- isTRUE(operations[["refresh_scope_narrowed"]])
     }
     if (is.null(target) && is.null(scopes) && narrowed) {
       scopes <- token@granted_scopes

@@ -4395,7 +4395,10 @@ test_that("deferred JARM resume ignores partial matches in pending callback payl
     ),
     expr = {
       state_browser_token <- valid_browser_token()
-      enc_state <- "state-payload"
+      enc_state <- parse_query_param(
+        prepare_call(cli, browser_token = state_browser_token),
+        "state"
+      )
 
       values[["pending_callback"]] <- list(
         type_hint = "error",

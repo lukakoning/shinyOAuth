@@ -641,6 +641,7 @@ oauth_module_server_impl <- function(
 
     .advance_auth_epoch <- function() {
       values[["targets"]] <- NULL
+      auth_operations[["refresh_scope_narrowed"]] <- FALSE
       auth_operations[["target_next_attempt"]] <- list()
       auth_operations[["epoch"]] <- auth_operations[["epoch"]] + 1
       auth_operations[["active_login_id"]] <- NULL
@@ -770,7 +771,8 @@ oauth_module_server_impl <- function(
     .accept_login_token <- function(
       tok,
       context,
-      target_limits = NULL
+      target_limits = NULL,
+      refresh_scope_narrowed = !is.null(auth_operations[["reauth_scopes"]])
     ) {
       if (is.null(.managed)) {
         validate_token_acceptance_deadline(tok)
@@ -780,6 +782,7 @@ oauth_module_server_impl <- function(
           target_limits
         )
         auth_operations[["target_limits"]] <- values[["targets"]][["limits"]]
+        auth_operations[["refresh_scope_narrowed"]] <- refresh_scope_narrowed
         values[["token"]] <- tok
         auth_operations[["last_authorized_scopes"]] <- if (
           token_targets_configured(client)
@@ -3684,12 +3687,13 @@ oauth_module_server_impl <- function(
             managed_context[["cleanup"]] <- managed_cleanup
           }
           # A browser redirect creates a fresh Shiny session. Keep the sealed
-          # target policy with this callback, rather than relying on the session
+          # permission policy with this callback, rather than relying on the session
           # that started reauthorization. Install it only after callback/token
           # validation succeeds and this operation still owns the authorization.
           callback_target_limits <- NULL
-          if (is.null(.managed) && token_targets_configured(client)) {
-            target_payload <- if (is.null(decrypted_payload)) {
+          callback_scope_narrowed <- FALSE
+          if (is.null(.managed)) {
+            policy_payload <- if (is.null(decrypted_payload)) {
               state_payload_decrypt_validate(
                 client,
                 state,
@@ -3702,10 +3706,13 @@ oauth_module_server_impl <- function(
                 audit_success = FALSE
               )
             }
-            if (!is.null(target_payload[["target_limits"]])) {
+            callback_scope_narrowed <- !is.null(policy_payload[[
+              "configured_scopes"
+            ]])
+            if (!is.null(policy_payload[["target_limits"]])) {
               callback_target_limits <- validate_token_target_limits(
                 client,
-                connection_data_decode(target_payload[["target_limits"]])
+                connection_data_decode(policy_payload[["target_limits"]])
               )
             }
           }
@@ -4148,7 +4155,8 @@ oauth_module_server_impl <- function(
                     .accept_login_token(
                       tok,
                       managed_context,
-                      callback_target_limits
+                      callback_target_limits,
+                      callback_scope_narrowed
                     )
                     values[["error"]] <- NULL
                     values[["error_description"]] <- NULL
@@ -4236,7 +4244,8 @@ oauth_module_server_impl <- function(
                 .accept_login_token(
                   res,
                   managed_context,
-                  callback_target_limits
+                  callback_target_limits,
+                  callback_scope_narrowed
                 )
                 values[["error"]] <- NULL
                 values[["error_description"]] <- NULL
