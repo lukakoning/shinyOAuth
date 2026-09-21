@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Legacy `oauth_connection()` wrappers support validated target identity and
+report secondary targets as `not_acquired` while their authorization is present.
+
 * Target authorizations mark an expired primary token as `token_stale`, including
 after a secondary target refresh, while keeping the authorization available.
 

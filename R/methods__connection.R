@@ -97,7 +97,12 @@ oauth_connection <- function(
     ) {
       err_token("Connection is unavailable")
     }
-    list(client = client, token = binding[["source"]]())
+    token <- binding[["source"]]()
+    list(
+      client = client,
+      token = token,
+      status = if (is.null(token)) "disconnected" else "active"
+    )
   }
   OAuthConnection[["new"]](random_urlsafe(32), client, resolver)
 }

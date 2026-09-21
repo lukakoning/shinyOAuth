@@ -125,6 +125,105 @@ test_that("identity selects validated claims and bound UserInfo without raw cred
   )
 })
 
+test_that("legacy target identity and status follow authorization and session lifetime", {
+  f <- connection_identity_fixture()
+  client <- f[["client"]]
+  provider <- client@provider
+  provider@token_target_mode <- "rfc8707"
+  S7::props(client) <- list(
+    provider = provider,
+    scopes = c(client@scopes, "contacts"),
+    required_scopes = "openid",
+    token_targets = list(
+      primary = list(
+        resource = "urn:api",
+        scopes = "read",
+        required_scopes = "read",
+        resource_ids = "api"
+      ),
+      secondary = list(resource = "urn:contacts", scopes = "contacts")
+    ),
+    default_token_target = "primary"
+  )
+  reference <- NULL
+  shiny::testServer(
+    function(input, output, session) {
+      source <- shiny::reactiveVal(f[["token"]])
+      connection <- oauth_connection(client, shiny::reactive(source()))
+    },
+    {
+      reference <<- connection
+      expect_true(connection[["is_usable"]]())
+      expect_identical(
+        connection[["identity"]]()[["id_token_claims"]][["sub"]],
+        "synthetic-subject"
+      )
+      expect_identical(
+        connection[["targets"]]()[["primary"]][["status"]],
+        "active"
+      )
+      expect_identical(
+        connection[["targets"]]()[["secondary"]][["status"]],
+        "not_acquired"
+      )
+      expect_identical(
+        connection[["targets"]]()[["secondary"]][["granted_scopes"]],
+        character()
+      )
+      other <- shiny::MockShinySession[["new"]]()
+      shiny::withReactiveDomain(
+        other,
+        shiny::isolate({
+          expect_error(connection[["identity"]](), "unavailable")
+          expect_error(connection[["targets"]](), "unavailable")
+        })
+      )
+      other[["close"]]()
+
+      # Target identity is the validated authorization snapshot, independent of
+      # the current API token's expiry or inclusion of the protocol scope.
+      updated <- f[["token"]]
+      updated@granted_scopes <- "read"
+      updated@expires_at <- as.numeric(Sys.time()) - 1
+      source(updated)
+      expect_false(connection[["is_usable"]]())
+      expect_identical(
+        connection[["targets"]]()[["primary"]][["status"]],
+        "expired"
+      )
+      expect_identical(
+        connection[["identity"]](userinfo = "name")[["userinfo"]][["name"]],
+        "Synthetic Name"
+      )
+      updated@userinfo[["sub"]] <- "another-subject"
+      source(updated)
+      expect_error(connection[["identity"]](userinfo = "name"), "not bound")
+      updated@id_token_validated <- FALSE
+      source(updated)
+      expect_error(connection[["identity"]](), "validated OIDC")
+
+      source(NULL)
+      expect_false(connection[["is_usable"]]())
+      expect_error(connection[["identity"]](), "validated OIDC")
+      expect_identical(
+        connection[["targets"]]()[["primary"]][["status"]],
+        "disconnected"
+      )
+      expect_identical(
+        connection[["targets"]]()[["secondary"]][["status"]],
+        "disconnected"
+      )
+      source(f[["token"]])
+      expect_identical(
+        connection[["identity"]]()[["id_token_claims"]][["sub"]],
+        "synthetic-subject"
+      )
+    }
+  )
+  expect_error(reference[["identity"]](), "unavailable")
+  expect_error(reference[["targets"]](), "unavailable")
+})
+
 test_that("managed identity references require the current owning session", {
   f <- connection_identity_fixture()
   manager <- oauth_connections(
