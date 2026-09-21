@@ -234,7 +234,7 @@ consuming library.
 ## Background tasks and result ownership
 
 Read Shiny reactives and acquire the credential before invoking an
-`ExtendedTask`. Its function runs outside the reactive graph. Pass plain inputs
+`ExtendedTask` (requires Shiny 1.8.1 or newer). Its function runs outside the reactive graph. Pass plain inputs
 and a short-lived bearer token to the worker, never the connection reference,
 module state or refresh credential. This follows Shiny's
 [ExtendedTask contract](https://shiny.posit.co/r/articles/improve/nonblocking/).
@@ -260,6 +260,7 @@ shiny::observeEvent(input$load, {
 
 output$records <- shiny::renderTable({
   connection <- shiny::req(auth$connection())
+  shiny::req(connection$has_scopes("records.read"))
   result <- load_records$result()
   shiny::req(identical(result$authorization_id, connection$id))
   result$data
@@ -271,8 +272,10 @@ operation. Do not queue these token snapshots behind long tasks; reacquire near
 dispatch if your scheduler delays work. A copied bearer token cannot refresh
 itself. A background failure does not automatically resubmit the operation.
 
-The reactive ownership check clears displayed data on logout or replacement
-and rejects a late result from an old authorization. Keep this check even when
+The reactive ownership and permission checks clear displayed data on logout,
+replacement, or removal of `records.read`, and reject a late result after any
+of those changes. Scope narrowing keeps the authorization ID, so check both.
+Keep these checks even when
 the task was started by an input event. Do not use `cancelOutput = TRUE` here,
 because it retains previously displayed data. For a manager with several
 authorizations, apply the same check to the explicitly selected connection ID.
