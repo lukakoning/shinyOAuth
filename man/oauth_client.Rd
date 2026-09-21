@@ -588,7 +588,9 @@ in the client's \code{scopes}). Optional \code{required_scopes} apply only to th
 target; optional \code{resource_ids} explicitly associate approved HTTP
 \code{resource_bases} with this target. Requires a provider with a supported
 \code{token_target_mode}, \code{userinfo_required = FALSE}, and no \code{resource} or
-SMART configuration. Client-level \code{required_scopes} can contain OIDC
+SMART configuration. Provider \code{extra_auth_params} and \code{extra_token_params}
+must not contain \code{resource}; declare resources only in \code{token_targets}.
+Client-level \code{required_scopes} can contain OIDC
 scopes only. Targets share one local authorization and refresh credential,
 while their access tokens and retained permission limits remain separate.
 At most 16 targets are supported. The complete authorization, including

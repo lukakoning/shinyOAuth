@@ -56,7 +56,9 @@
 #'   target; optional `resource_ids` explicitly associate approved HTTP
 #'   `resource_bases` with this target. Requires a provider with a supported
 #'   `token_target_mode`, `userinfo_required = FALSE`, and no `resource` or
-#'   SMART configuration. Client-level `required_scopes` can contain OIDC
+#'   SMART configuration. Provider `extra_auth_params` and `extra_token_params`
+#'   must not contain `resource`; declare resources only in `token_targets`.
+#'   Client-level `required_scopes` can contain OIDC
 #'   scopes only. Targets share one local authorization and refresh credential,
 #'   while their access tokens and retained permission limits remain separate.
 #'   At most 16 targets are supported. The complete authorization, including

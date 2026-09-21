@@ -75,6 +75,17 @@ validate_token_targets <- function(client) {
       "The provider must explicitly enable a supported token_target_mode"
     )
   }
+  for (field in c("extra_auth_params", "extra_token_params")) {
+    if (
+      "resource" %in% tolower(trimws(names(S7::prop(client@provider, field))))
+    ) {
+      err_config(paste0(
+        "resource in provider ",
+        field,
+        " conflicts with token_targets; declare resources only in token_targets"
+      ))
+    }
+  }
   if (
     !is_valid_string(client@default_token_target) ||
       !client@default_token_target %in% names(targets)
