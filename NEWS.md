@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Identity documentation distinguishes retained target identity snapshots from
+current access-token validity, permissions, and fresh user authentication.
+
 * Legacy `oauth_connection()` wrappers support validated target identity and
 report secondary targets as `not_acquired` while their authorization is present.
 

@@ -127,6 +127,13 @@ acquisition status and granted scope evidence, never credentials. Operation
 `required_scopes` checks do not change the acquisition request. An explicitly
 partial response remains that target's ceiling on later refreshes.
 
+`connection$identity()` returns selected fields from the last validated OIDC
+identity while the authorization remains available in the owning session. It
+can still succeed after the primary access token expires or its current scopes
+no longer include `openid`. This snapshot does not establish fresh user
+authentication or current API access. Use `has_scopes()` and `access_token()` or
+`request()` to check the selected target's permissions and token lifetime.
+
 Each ceiling includes the OIDC scopes granted to that target. Explicit refresh
 narrowing uses exactly the supplied scopes, so retain any OIDC permissions still
 needed, for example `scopes = c("calendar.read", "openid")`. Required scopes

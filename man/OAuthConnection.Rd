@@ -335,8 +335,8 @@ identifies the locally ended connection passed to \code{reauthorize()}.
 \if{html}{\out{<a id="method-OAuthConnection-identity"></a>}}
 \if{latex}{\out{\hypertarget{method-OAuthConnection-identity}{}}}
 \subsection{\code{OAuthConnection$identity()}}{
-  Read explicitly selected OIDC identity fields from the current usable
-connection. Requires \code{openid} and a cryptographically validated ID token.
+  Read explicitly selected fields from the authorization's cryptographically
+validated OIDC identity.
 This method never returns raw tokens or fetches profile data.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
@@ -360,6 +360,14 @@ sensitive identity data: select only what the application needs and keep
 it out of logs and generic status displays. \verb{[["summary"]]()} and printing
 continue to omit identity. Ordinary OAuth connections without validated
 OIDC identity cannot use this accessor.
+
+Ordinary connections require a usable access token with \code{openid} currently
+granted. Target connections retain their validated identity while the
+authorization remains available in the owning session, even when the
+primary access token expires or its current scopes no longer include
+\code{openid}. Identity availability does not establish permission to call an
+API; use \verb{$has_scopes()} and \verb{$access_token()} or \verb{$request()} to check the
+selected target's current permissions and token lifetime.
 
 These are the last validated identity/profile snapshots; an OAuth refresh
 can retain earlier ID-token claims and does not establish fresh user

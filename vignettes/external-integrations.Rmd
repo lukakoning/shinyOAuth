@@ -240,8 +240,11 @@ This skips profile retrieval while preserving the preset's OIDC validation.
 Request the appropriate OIDC scopes and use `connection$identity()` for selected
 validated ID-token claims. Generic `oauth_provider()` and OIDC configuration
 already support optional UserInfo. For one authorization with several API tokens,
-see `vignette("token-targets")`. Query and database behavior belongs to the
-consuming library.
+see `vignette("token-targets")`. With targets, `identity()` retains the last
+validated identity independently of access-token expiry or current `openid`
+scope; it does not prove fresh authentication or API access. Ordinary connections
+require a usable access token with `openid` currently granted. Query and database
+behavior belongs to the consuming library.
 
 ## Background tasks and result ownership
 
