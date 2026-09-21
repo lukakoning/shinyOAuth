@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Single-module target acquisition uses lifetime-aware success pacing, allowing
+short-lived tokens to refresh proactively and on demand without a fixed
+thirty-second period of unavailability.
+
 * Identity documentation distinguishes retained target identity snapshots from
 current access-token validity, permissions, and fresh user authentication.
 

@@ -386,7 +386,11 @@ module_refresh_controller <- function(
       values[["refresh_next_attempt_at"]] <- now +
         proactive_refresh_success_delay(fresh, now, refresh_lead_seconds)
       if (!is.null(target)) {
-        operations[["target_next_attempt"]][[target]] <- now + 30
+        # Use the same lifetime-aware pacing as the proactive observer so a
+        # short-lived target can be renewed before its replacement expires.
+        operations[["target_next_attempt"]][[target]] <- values[[
+          "refresh_next_attempt_at"
+        ]]
       }
       narrowed <<- !is.null(scope_request)
       narrowed_epoch <<- operation[["epoch"]]
