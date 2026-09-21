@@ -83,6 +83,14 @@ The server determines which permissions apply to each resource; scopes in RFC
 8707 are not independently paired with individual resources in the authorization
 request. See [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html).
 
+Declare OIDC scopes at client level, outside the targets' API scope lists.
+RFC 8707 mode recognizes `openid`, `profile`, `email`, `address`, `phone`, and
+`offline_access`; these can also be client-level `required_scopes`.
+See [OpenID Connect scope values](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims).
+Microsoft mode keeps its provider-specific set: `openid`, `profile`, `email`,
+and `offline_access`. It does not treat bare `phone` or `address` as Microsoft
+OIDC scopes.
+
 ## Use the same connection interface in either module
 
 ```{r, eval=FALSE}

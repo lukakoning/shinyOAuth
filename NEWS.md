@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* RFC 8707 targets recognize the standard OIDC `phone` and `address` scopes,
+including client-level requirements. Microsoft scope qualification continues
+to use its separate supported OIDC scope set.
+
 * Single-module target logout and session-end cleanup clear local credentials
 before remote revocation. Cleanup shares a ten-second deadline, caps each request
 at two seconds with one attempt, and uses one batch when dispatched asynchronously.

@@ -1,4 +1,11 @@
-token_target_oidc_scopes <- c("openid", "profile", "email", "offline_access")
+token_target_oidc_scopes <- function(client) {
+  common <- c("openid", "profile", "email", "offline_access")
+  if (identical(client@provider@token_target_mode, "microsoft")) {
+    common
+  } else {
+    c(common, "address", "phone")
+  }
+}
 
 token_targets_configured <- function(client) length(client@token_targets) > 0L
 
@@ -30,19 +37,22 @@ token_target_scopes_allowed <- function(
     ceiling %||%
       union(
         declaration[["scopes"]],
-        intersect(effective_client_scopes(client), token_target_oidc_scopes)
+        intersect(
+          effective_client_scopes(client),
+          token_target_oidc_scopes(client)
+        )
       )
   )
   if (
     !all(
-      intersect(scopes, token_target_oidc_scopes) %in%
+      intersect(scopes, token_target_oidc_scopes(client)) %in%
         intersect(effective_client_scopes(client), ceiling)
     )
   ) {
     return(FALSE)
   }
-  scopes <- setdiff(scopes, token_target_oidc_scopes)
-  ceiling <- setdiff(ceiling, token_target_oidc_scopes)
+  scopes <- setdiff(scopes, token_target_oidc_scopes(client))
+  ceiling <- setdiff(ceiling, token_target_oidc_scopes(client))
   if (
     identical(client@provider@token_target_mode, "microsoft") &&
       identical(
@@ -108,7 +118,9 @@ validate_token_targets <- function(client) {
       "Token targets require resource to be unset, a non-SMART client, and userinfo_required = FALSE"
     )
   }
-  if (length(setdiff(client@required_scopes, token_target_oidc_scopes))) {
+  if (
+    length(setdiff(client@required_scopes, token_target_oidc_scopes(client)))
+  ) {
     err_config(
       "With token targets, put API required_scopes inside each target declaration"
     )
@@ -119,7 +131,7 @@ validate_token_targets <- function(client) {
     )
   }
   if (identical(client@provider@token_target_mode, "microsoft")) {
-    api_scopes <- setdiff(client@scopes, token_target_oidc_scopes)
+    api_scopes <- setdiff(client@scopes, token_target_oidc_scopes(client))
     static <- endsWith(api_scopes, "/.default")
     if (any(static) && !all(static)) {
       err_config(
@@ -159,7 +171,7 @@ validate_token_targets <- function(client) {
       !length(scopes) ||
         length(scopes) > 128L ||
         sum(nchar(scopes, type = "bytes")) > 8192L ||
-        any(scopes %in% token_target_oidc_scopes) ||
+        any(scopes %in% token_target_oidc_scopes(client)) ||
         !all(scopes %in% client@scopes)
     ) {
       err_config(
@@ -215,7 +227,10 @@ token_target_limits <- function(client) {
   lapply(client@token_targets, function(item) {
     union(
       normalize_scope_tokens(item[["scopes"]]),
-      intersect(effective_client_scopes(client), token_target_oidc_scopes)
+      intersect(
+        effective_client_scopes(client),
+        token_target_oidc_scopes(client)
+      )
     )
   })
 }
@@ -351,7 +366,8 @@ token_target_response <- function(client, response, request) {
     prefix <- token_target_prefix(client@token_targets[[request[["target"]]]][[
       "resource"
     ]])
-    bare <- !scopes %in% token_target_oidc_scopes & !grepl("[:/]", scopes)
+    bare <- !scopes %in% token_target_oidc_scopes(client) &
+      !grepl("[:/]", scopes)
     scopes[bare] <- paste0(prefix, scopes[bare])
     response[["scope"]] <- paste(scopes, collapse = " ")
   }
@@ -532,10 +548,10 @@ token_target_authorization_scopes <- function(client, limits) {
 }
 
 token_target_authorization_allowed <- function(client, scopes) {
-  oidc <- intersect(scopes, token_target_oidc_scopes)
+  oidc <- intersect(scopes, token_target_oidc_scopes(client))
   all(oidc %in% effective_client_scopes(client)) &&
     all(vapply(
-      setdiff(scopes, token_target_oidc_scopes),
+      setdiff(scopes, token_target_oidc_scopes(client)),
       function(scope) {
         any(vapply(
           names(client@token_targets),
@@ -579,7 +595,10 @@ token_target_authorization_parameters <- function(client, scopes) {
         static
       )
       selected <- if (length(preferred)) preferred[[1L]] else static[[1L]]
-      return(union(intersect(scopes, token_target_oidc_scopes), selected))
+      return(union(
+        intersect(scopes, token_target_oidc_scopes(client)),
+        selected
+      ))
     }
   }
   scopes
