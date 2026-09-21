@@ -369,7 +369,12 @@ module_refresh_controller <- function(
       values[["error"]] <- NULL
       values[["error_description"]] <- NULL
       values[["error_uri"]] <- NULL
-      values[["token_stale"]] <- FALSE
+      # A successful secondary acquisition does not renew the primary token
+      # exposed through the module's compatibility interface.
+      primary_expiry <- values[["token"]]@expires_at
+      values[["token_stale"]] <- !is.null(target) &&
+        is.finite(primary_expiry) &&
+        primary_expiry <= as.numeric(Sys.time())
       values[["reauth_triggered"]] <- FALSE
       values[["refresh_failure_count"]] <- 0L
       now <- as.numeric(Sys.time())

@@ -144,9 +144,11 @@ include sensitive provider information.
 URLs on provider or explicitly allowed hosts are surfaced. Treat it as
 untrusted navigation input. \code{NULL} means the provider omitted the URL or
 supplied a value that did not pass validation.
-\item \code{auth[["token_stale"]]}: \code{TRUE} when an indefinite session keeps an expired
-token or one whose refresh failed. Resets after successful login,
-refresh, or logout.
+\item \code{auth[["token_stale"]]}: \code{TRUE} when a target authorization retains an
+expired primary token, or an indefinite session keeps an expired token
+or one whose refresh failed. Resets after successful login, primary-token
+refresh, or logout. Refreshing a secondary target does not renew the
+primary token.
 }
 
 The object also supplies:

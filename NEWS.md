@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Target authorizations mark an expired primary token as `token_stale`, including
+after a secondary target refresh, while keeping the authorization available.
+
 * OIDC reauthorization retains the mandatory `openid` scope for authorization
 and default-target code redemption, including after API-only token responses.
 Removed API and optional OIDC permissions remain excluded.
