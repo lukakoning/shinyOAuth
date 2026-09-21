@@ -183,6 +183,7 @@ promises::then(pending, function(token) {
   # Recheck before starting work after an asynchronous boundary.
   current <- req(auth$connection())
   req(identical(current$id, connection$id))
+  req(current$has_scopes("records.read"))
   existing_sdk_read_records(access_token = token)
 })
 ```
@@ -192,6 +193,8 @@ only makes credential acquisition asynchronous; the SDK operation needs its
 own async transport if it would block Shiny. Concurrent async acquisitions join
 the same owned refresh. A synchronous call never waits on that work or returns
 a promise. Validate ownership again before displaying later SDK results.
+Scope narrowing keeps the connection ID, so also recheck the operation's
+permissions before starting SDK work after an asynchronous boundary.
 
 Authentication failures inherit `shinyOAuth_access_error` and expose
 `error$context$reason`:
