@@ -8,6 +8,7 @@ Rscript integration/connections/run-tests.R
 Rscript integration/connections/run-tests.R --post
 Rscript integration/connections/run-shared-router.R
 Rscript integration/connections/run-scope-narrowing.R
+Rscript integration/connections/run-targets.R
 Rscript integration/connections/run-account.R
 ```
 
@@ -33,6 +34,12 @@ The [P7a refresh-scope gate](refresh-scopes.md) narrows one connection from read
 and write to read, then verifies the limit survives a new Shiny session and
 later refresh. Another connection retains its original permissions. It runs
 the same four transport combinations and checks actual resource access.
+
+The target gate checks initial redemption and secondary acquisition, destination
+isolation, scope-preserving replacement, cancellation, replacement during pending
+worker acquisition, and fresh login after logout. It runs query/form POST callbacks
+with synchronous transport and mirai workers against a synthetic RFC 8707 provider.
+It does not establish interoperability with Microsoft Entra.
 
 The matrix covers `query` and `form_post`, each with synchronous transport and
 actual mirai workers. It verifies:
