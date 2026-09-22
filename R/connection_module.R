@@ -204,6 +204,13 @@ module_refresh_controller <- function(
     } else {
       operations[["target_next_attempt"]][[target]] %||% 0
     }
+    # A server-directed delay applies to the shared refresh credential, including
+    # sibling targets and explicit refreshes. Cached access tokens remain usable.
+    if (
+      as.numeric(Sys.time()) < (operations[["refresh_retry_after_at"]] %||% 0)
+    ) {
+      connection_access_error("refresh_unavailable")
+    }
     if (
       respect_pacing &&
         as.numeric(Sys.time()) < next_attempt
@@ -252,10 +259,18 @@ module_refresh_controller <- function(
       }
       values[["refresh_failure_count"]] <- values[["refresh_failure_count"]] +
         1L
-      values[["refresh_next_attempt_at"]] <- as.numeric(Sys.time()) +
+      now <- as.numeric(Sys.time())
+      retry_after <- refresh_condition_retry_after(error)
+      if (is.finite(retry_after)) {
+        operations[["refresh_retry_after_at"]] <- max(
+          operations[["refresh_retry_after_at"]] %||% 0,
+          now + retry_after
+        )
+      }
+      values[["refresh_next_attempt_at"]] <- now +
         proactive_refresh_failure_delay(
           values[["refresh_failure_count"]],
-          refresh_condition_retry_after(error)
+          retry_after
         )
       if (!refresh_credential_retryable(error)) {
         retained <- values[["token"]]

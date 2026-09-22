@@ -645,6 +645,7 @@ oauth_module_server_impl <- function(
       values[["targets"]] <- NULL
       auth_operations[["refresh_scope_narrowed"]] <- FALSE
       auth_operations[["target_next_attempt"]] <- list()
+      auth_operations[["refresh_retry_after_at"]] <- 0
       auth_operations[["epoch"]] <- auth_operations[["epoch"]] + 1
       auth_operations[["active_login_id"]] <- NULL
       auth_operations[["active_refresh_id"]] <- NULL

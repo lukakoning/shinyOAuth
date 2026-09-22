@@ -951,6 +951,10 @@ connection_manager_controller <- function(manager, session) {
       return(promises::then(outstanding[["promise"]], resume, resume))
     }
     pacing_key <- paste0(credential, if (!is.null(target)) paste0(":", target))
+    retry_after_key <- paste0("retry-after:", credential)
+    if (as.numeric(Sys.time()) < (next_refresh[[retry_after_key]] %||% 0)) {
+      connection_access_error("refresh_unavailable")
+    }
     # Automatic retries share the physical credential's cooldown across owners,
     # records and sessions, including calls resumed after an in-flight failure.
     if (
@@ -1026,6 +1030,15 @@ connection_manager_controller <- function(manager, session) {
     signal()
     fail <- function(error) {
       next_refresh[[pacing_key]] <- as.numeric(Sys.time()) + 30
+      retry_after <- refresh_condition_retry_after(error)
+      if (is.finite(retry_after)) {
+        # Share provider backpressure across target names, retained records and
+        # owners using this credential. Explicit refresh cannot bypass it.
+        next_refresh[[retry_after_key]] <- max(
+          next_refresh[[retry_after_key]] %||% 0,
+          as.numeric(Sys.time()) + retry_after
+        )
+      }
       outcome <- error[["refresh_credential_outcome"]] %||% "possibly_consumed"
       if (!outcome %in% c("not_consumed", "possibly_consumed", "consumed")) {
         outcome <- "possibly_consumed"

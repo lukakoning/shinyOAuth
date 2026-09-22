@@ -173,6 +173,10 @@ business request after refresh or reauthorization.
 requested buffer, including your allowance for clock skew. `force_refresh = TRUE`
 bypasses the token cache but retains refresh coordination and retry pacing.
 A replacement that is still too short-lived fails without another refresh loop.
+Provider `Retry-After` delays are capped at one hour and apply to acquisition and
+explicit `$refresh()` calls, including targets or managed records sharing the
+refresh credential. A cached token that still meets the operation's requirements
+remains usable during that delay.
 `$refresh(scopes = ...)` can narrow the grant while keeping required permissions;
 later refreshes retain that accepted limit. `required_scopes` on `$access_token()`
 only checks permissions and does not request different scopes.

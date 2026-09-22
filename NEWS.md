@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Refresh failures preserve a sanitized `Retry-After` delay across asynchronous
+workers without retaining HTTP responses or headers. Both connection factories
+honor the bounded delay for explicit refresh and acquisition, including sibling
+targets and managed records sharing the refresh credential. Cached valid access
+tokens remain usable.
+
 * Successful reauthorization consumes its request scope override in the original
 Shiny session. Later ordinary login uses the configured scopes, while explicit
 replacement and retries after rejection retain the previous permission limit.
