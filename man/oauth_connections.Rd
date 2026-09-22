@@ -20,7 +20,8 @@ oauth_connections(
 }
 \arguments{
 \item{clients}{Non-empty named list of \link{OAuthClient} objects, at most 64.
-Each client must configure non-empty \code{resource_bases}. Names select local
+\code{resource_bases} is required only for connection \verb{$request()} calls; clients
+used solely to supply tokens to an SDK can omit it. Names select local
 configurations (for example \code{hospital_a}), independently of OAuth \code{client_id}:
 a letter followed by letters, digits, \verb{_} or \code{-}, at most 64 characters.}
 

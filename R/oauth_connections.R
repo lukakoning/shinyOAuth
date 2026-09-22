@@ -20,7 +20,8 @@
 #' not evict retirement evidence. Existing unrelated access remains usable.
 #'
 #' @param clients Non-empty named list of [OAuthClient] objects, at most 64.
-#'   Each client must configure non-empty `resource_bases`. Names select local
+#'   `resource_bases` is required only for connection `$request()` calls; clients
+#'   used solely to supply tokens to an SDK can omit it. Names select local
 #'   configurations (for example `hospital_a`), independently of OAuth `client_id`:
 #'   a letter followed by letters, digits, `_` or `-`, at most 64 characters.
 #' @param app_origin Public application origin, including a non-default port.
