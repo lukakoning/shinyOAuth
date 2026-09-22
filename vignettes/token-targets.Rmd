@@ -137,8 +137,13 @@ authentication or current API access. Use `has_scopes()` and `access_token()` or
 Each ceiling includes the OIDC scopes granted to that target. Explicit refresh
 narrowing uses exactly the supplied scopes, so retain any OIDC permissions still
 needed, for example `scopes = c("calendar.read", "openid")`. Required scopes
-must remain present. Optional scopes such as `email`, `profile`, and
-`offline_access` are not added back on refresh or restoration. Reauthorization
+must remain present. Optional identity scopes such as `email` and `profile`
+are not added back on refresh or restoration. Requested `offline_access` is
+retained separately from access-token permission evidence: providers can omit
+it from token scopes while issuing a refresh token. This preserves refresh
+capability on reauthorization without reporting `offline_access` as a granted
+access-token permission. Explicitly removing it from a refresh request removes
+it from that target's retained limit as well. Reauthorization
 requests the union of the retained target limits; an OIDC scope still retained
 by another target can therefore remain in that authorization request.
 

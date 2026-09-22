@@ -133,6 +133,66 @@ test_that("required OIDC scopes cannot be removed and ungranted optional scopes 
   bundle <- token_target_bundle(client, initial)
   expect_setequal(
     token_target_request(client, limits = bundle[["limits"]])[["scopes"]],
-    c("read", "email")
+    c("read", "email", "offline_access")
+  )
+})
+
+test_that("refresh consent survives explicit scope evidence without inventing permissions", {
+  client <- oidc_target_client()
+  client@scope_validation <- "strict"
+  granted <- setdiff(client@scopes, "offline_access")
+  local_mocked_bindings(req_with_retry = function(req, ...) {
+    httr2::response(
+      req[["url"]],
+      status = 200L,
+      headers = list("content-type" = "application/json"),
+      body = charToRaw(jsonlite::toJSON(
+        list(
+          access_token = "access",
+          refresh_token = "refresh",
+          token_type = "Bearer",
+          expires_in = 3600,
+          scope = paste(granted, collapse = " ")
+        ),
+        auto_unbox = TRUE
+      ))
+    )
+  })
+  browser <- valid_browser_token()
+  url <- prepare_call(client, browser)
+  token <- handle_callback(
+    client,
+    "code",
+    parse_query_param(url, "state"),
+    browser
+  )
+  expect_setequal(token@granted_scopes, granted)
+  bundle <- token_target_bundle(client, token)
+  expect_true("offline_access" %in% bundle[["limits"]][["api"]])
+  request <- token_target_request(client, limits = bundle[["limits"]])
+  fresh <- refresh_token_dispatch(client, token, target_request = request)
+  committed <- token_target_commit(client, token, bundle, fresh, request)
+  restored <- token_target_bundle_decode(
+    client,
+    token_target_bundle_encode(committed[["targets"]])
+  )
+  expect_true("offline_access" %in% restored[["limits"]][["api"]])
+  expect_false("offline_access" %in% fresh@granted_scopes)
+
+  request <- token_target_request(
+    client,
+    limits = restored[["limits"]],
+    scopes = granted
+  )
+  fresh <- refresh_token_dispatch(client, fresh, target_request = request)
+  narrowed <- token_target_commit(client, token, restored, fresh, request)
+  expect_false("offline_access" %in% narrowed[["targets"]][["limits"]][["api"]])
+  expect_error(
+    token_target_request(
+      client,
+      limits = narrowed[["targets"]][["limits"]],
+      scopes = client@scopes
+    ),
+    class = "shinyOAuth_access_error"
   )
 })

@@ -418,6 +418,17 @@ validate_token_target_grant <- function(client, granted, request) {
   invisible(NULL)
 }
 
+# Keep refresh consent separate from access-token permission evidence. Providers
+# such as Microsoft omit offline_access from access-token scopes even when they
+# issue a refresh token. Carry only an already requested capability forward;
+# an explicit request that removes it must never regain it from configuration.
+token_target_retained_scopes <- function(token, request) {
+  union(
+    token@granted_scopes,
+    intersect(request[["scopes"]], "offline_access")
+  )
+}
+
 # A bundle contains secondary token responses and per-target permission ceilings.
 # The primary response remains the compatibility token and owns the current RT.
 token_target_bundle <- function(client, token, limits = NULL) {
@@ -430,7 +441,10 @@ token_target_bundle <- function(client, token, limits = NULL) {
   )
   request <- token_target_request(client, limits = limits)
   validate_token_target_grant(client, token@granted_scopes, request)
-  limits[[client@default_token_target]] <- token@granted_scopes
+  limits[[client@default_token_target]] <- token_target_retained_scopes(
+    token,
+    request
+  )
   limits <- validate_token_target_limits(client, limits)
   list(tokens = list(), limits = limits)
 }
@@ -478,7 +492,7 @@ token_target_select <- function(record, target = NULL) {
 token_target_commit <- function(client, primary, bundle, fresh, request) {
   validate_token_target_grant(client, fresh@granted_scopes, request)
   target <- request[["target"]]
-  bundle[["limits"]][[target]] <- fresh@granted_scopes
+  bundle[["limits"]][[target]] <- token_target_retained_scopes(fresh, request)
   bundle[["limits"]] <- validate_token_target_limits(client, bundle[["limits"]])
   refresh <- fresh@refresh_token
   if (identical(target, client@default_token_target)) {
@@ -591,6 +605,11 @@ token_target_verification_scopes <- function(client, request, response) {
     return(NULL)
   }
   scopes <- request[["scopes"]]
+  if (!is.null(response[["scope"]])) {
+    # offline_access requests refresh consent, not an access-token permission.
+    # Its omission must not trip strict access-token scope reconciliation.
+    scopes <- setdiff(scopes, "offline_access")
+  }
   if (
     identical(client@provider@token_target_mode, "microsoft") &&
       any(endsWith(scopes, "/.default"))

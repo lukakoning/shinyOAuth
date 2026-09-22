@@ -93,11 +93,19 @@ oidc_reauthorization_fixture <- function(mode, multiple) {
     }
     response <- list(
       access_token = paste0(target, "-access"),
-      refresh_token = "rotated-refresh",
+      refresh_token = if (
+        !identical(body[["grant_type"]], "authorization_code") ||
+          "offline_access" %in% requested
+      ) {
+        paste0("rotated-refresh-", length(state[["requests"]]))
+      },
       token_type = "Bearer",
       expires_in = 3600,
       scope = paste(
-        c(scope(target, "read"), if (state[["include_openid"]]) "openid"),
+        c(
+          scope(target, "read"),
+          if (state[["include_openid"]] && "openid" %in% requested) "openid"
+        ),
         collapse = " "
       )
     )
@@ -111,7 +119,10 @@ oidc_reauthorization_fixture <- function(mode, multiple) {
       req[["url"]],
       status = 200L,
       headers = list("content-type" = "application/json"),
-      body = charToRaw(jsonlite::toJSON(response, auto_unbox = TRUE))
+      body = charToRaw(jsonlite::toJSON(
+        Filter(Negate(is.null), response),
+        auto_unbox = TRUE
+      ))
     )
   }
   list(
@@ -162,6 +173,7 @@ test_that("OIDC target replacement authenticates after API-only scope responses"
             )))
             expect_null(values[["error"]])
             expect_true(values[["token"]]@id_token_validated)
+            expect_true(is_valid_string(values[["token"]]@refresh_token))
             current <- values[["connection"]]()
             if (multiple) {
               suppressWarnings(current[["access_token"]](target = "secondary"))
@@ -179,7 +191,7 @@ test_that("OIDC target replacement authenticates after API-only scope responses"
             replacement_url <<- .build_auth_url()
           }
         )
-        expected <- c(f[["scope"]]("primary", "read"), "openid")
+        expected <- c(f[["scope"]]("primary", "read"), "openid", "offline_access")
         expect_setequal(
           normalize_scope_tokens(parse_query_param(
             replacement_url,
@@ -220,6 +232,8 @@ test_that("OIDC target replacement authenticates after API-only scope responses"
             })
             expect_null(values[["error"]])
             expect_true(values[["token"]]@id_token_validated)
+            expect_true(is_valid_string(values[["token"]]@refresh_token))
+            expect_false("offline_access" %in% values[["token"]]@granted_scopes)
             expect_identical(
               values[["connection"]]()[["identity"]]()[["id_token_claims"]][[
                 "sub"
@@ -237,9 +251,15 @@ test_that("OIDC target replacement authenticates after API-only scope responses"
               "write"
             )))
             if (multiple) {
-              expect_identical(
+              expect_setequal(
                 auth_operations[["target_limits"]][["secondary"]],
-                f[["scope"]]("secondary", "read")
+                c(f[["scope"]]("secondary", "read"), "offline_access")
+              )
+              expect_identical(
+                suppressWarnings(values[["connection"]]()[["access_token"]](
+                  target = "secondary"
+                )),
+                "secondary-access"
               )
             }
           }
@@ -297,11 +317,11 @@ test_that("managed OIDC replacement seals matching login and target scope limits
         session[["getReturned"]]()[["reauthorize"]](id)
         hooks <- controller[["hooks"]]("a")
         context <- hooks[["prepare"]]()
-        expected <- c(f[["scope"]]("primary", "read"), "openid")
+        expected <- c(f[["scope"]]("primary", "read"), "openid", "offline_access")
         expect_setequal(context[["target_limits"]][["primary"]], expected)
-        expect_identical(
+        expect_setequal(
           context[["target_limits"]][["secondary"]],
-          f[["scope"]]("secondary", "read")
+          c(f[["scope"]]("secondary", "read"), "offline_access")
         )
         url <- prepare_call_internal(
           client,
@@ -335,6 +355,11 @@ test_that("managed OIDC replacement seals matching login and target scope limits
           as.numeric(Sys.time())
         )
         expect_true(replacement@id_token_validated)
+        expect_true(is_valid_string(replacement@refresh_token))
+        expect_identical(
+          suppressWarnings(connection()[["access_token"]](target = "secondary")),
+          "secondary-access"
+        )
         expect_false(connection()[["has_scopes"]](f[["scope"]](
           "primary",
           "write"

@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Token targets retain requested `offline_access` independently of access-token
+scope evidence, preserving refresh capability after reauthorization when a
+provider omits it from token scopes. Explicit removal remains permanent for
+that target. OIDC replacement tests now require realistic refresh-token issuance
+and reacquire secondary targets after replacement.
+
 * Refresh failures preserve a sanitized `Retry-After` delay across asynchronous
 workers without retaining HTTP responses or headers. Both connection factories
 honor the bounded delay for explicit refresh and acquisition, including sibling
