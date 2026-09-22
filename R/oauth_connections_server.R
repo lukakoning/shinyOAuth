@@ -116,7 +116,11 @@ oauth_connections_server <- function(
     err_config("Invalid connection refresh timing")
   }
   shiny::moduleServer(id, function(input, output, session) {
-    controller <- connection_manager_controller(manager, session)
+    controller <- connection_manager_controller(
+      manager,
+      session,
+      refresh_lead_seconds
+    )
     modules <- lapply(names(manager[["clients"]]), function(client_name) {
       oauth_module_server_impl(
         client_name,

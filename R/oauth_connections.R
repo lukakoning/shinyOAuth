@@ -440,7 +440,11 @@ connection_revocation_outcome <- function(outcomes) {
   severity[severity %in% outcomes][[1L]]
 }
 
-connection_manager_controller <- function(manager, session) {
+connection_manager_controller <- function(
+  manager,
+  session,
+  refresh_lead_seconds = 60
+) {
   connection_manager_check(manager)
   root <- connection_session_root(session)
   if (
@@ -1145,6 +1149,42 @@ connection_manager_controller <- function(manager, session) {
           metadata[["target_limits"]] <- targets[["limits"]]
           metadata[["expires_at"]] <- installed[["expires_at"]]
           state[["authorization_metadata"]][[id]] <- metadata
+          if (!is.null(target)) {
+            # Pace successful target refreshes by the selected token's lifetime.
+            # Keep every target's bound when the shared credential rotates.
+            now <- as.numeric(Sys.time())
+            next_attempt <- now +
+              proactive_refresh_success_delay(
+                fresh,
+                now,
+                refresh_lead_seconds
+              )
+            next_refresh[[pacing_key]] <- next_attempt
+            current_credential <- connection_credential_keys(
+              manager,
+              record[["client"]],
+              token
+            )[["refresh"]]
+            if (
+              !is.null(current_credential) &&
+                !identical(current_credential, credential)
+            ) {
+              keys <- ls(next_refresh, all.names = TRUE)
+              keys <- keys[
+                startsWith(keys, paste0(credential, ":"))
+              ]
+              for (key in keys) {
+                current_key <- paste0(
+                  current_credential,
+                  substring(key, nchar(credential) + 1L)
+                )
+                next_refresh[[current_key]] <- max(
+                  next_refresh[[current_key]] %||% 0,
+                  next_refresh[[key]]
+                )
+              }
+            }
+          }
           committed <- TRUE
           signal()
           TRUE

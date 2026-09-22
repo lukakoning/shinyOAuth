@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Managed token targets pace successful refreshes using the selected token's
+lifetime, allowing short-lived tokens to renew before expiry or a requested
+lifetime buffer. Stable and rotating refresh credentials retain this pacing;
+failure cooldowns and provider `Retry-After` remain enforced.
+
 * Microsoft targets accept previously consented API scopes within the selected
 resource while retaining separate local operation limits and honest token
 evidence. Additional scopes do not expand connection permissions, including
