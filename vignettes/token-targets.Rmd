@@ -154,8 +154,8 @@ response omitted it or a refresh removed it. Removed API permissions and optiona
 OIDC scopes (`profile`, `email`, `address`, `phone`, `offline_access`) remain
 excluded. Secondary targets keep their retained limits.
 
-`connection$refresh(scopes = "calendar.read", target = "calendar")` deliberately
-narrows calendar permissions. Acquiring contacts does not restore calendar
+For RFC 8707, `connection$refresh(scopes = "calendar.read", target = "calendar")`
+deliberately narrows calendar permissions. Acquiring contacts does not restore calendar
 write access. Module `reauthorize()` retains all target ceilings and replaces
 the connection ID; the manager takes an ID for this operation. To request a new
 authorization with the original configuration after deliberate narrowing, use
@@ -243,10 +243,25 @@ for an unacquired target.
 
 `.default` is never treated as proof of individual permissions. Microsoft target
 responses must include `scope`; returned short permission names are qualified
-only within the selected Microsoft resource. Subsequent requests retain the
-actual response permissions, and explicit narrowing cannot switch back to
-`.default`. See [Microsoft scopes and static consent](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc)
+only within the selected Microsoft resource. Token evidence records the actual
+returned permissions. Local operation limits retain only permissions within the
+previous limit (expanding `.default` to its initial granted permissions), so a
+later response cannot restore a locally removed operation. See [Microsoft scopes and static consent](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc)
 and [refresh credentials](https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens).
+
+Entra can return all previously consented API permissions for the resource,
+even when the request asks for fewer. Such responses are accepted without
+enlarging the local operation limit. `$has_scopes()`, `$request()` and operation
+requirements on `$access_token()` still enforce that limit, including during
+refresh and after restoration. `$targets()` reports actual granted scopes, which
+can therefore exceed the permissions available through these checks.
+
+An exported bearer token still carries its full provider-issued permissions;
+shinyOAuth cannot restrict what an external SDK does with it. Explicit Microsoft
+API narrowing through `$refresh(scopes = ...)` fails before sending credentials,
+with reason `unsupported_scope_narrowing`. The existing authorization stays
+usable. Use a separate app registration or change provider consent when you need
+a token with fewer API permissions. See [Microsoft consent lifetime](https://learn.microsoft.com/en-us/entra/msal/javascript/browser/resources-and-scopes#consent-lifetime).
 
 These modes are covered by local HTTP contract tests, including rotation and
 scope selection. Those tests do not establish compatibility with every RFC 8707

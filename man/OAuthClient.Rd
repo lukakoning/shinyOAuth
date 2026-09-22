@@ -450,11 +450,16 @@ in the client's \code{scopes}). Optional \code{required_scopes} apply only to th
 target; optional \code{resource_ids} explicitly associate approved HTTP
 \code{resource_bases} with this target. Requires a provider with a supported
 \code{token_target_mode}, \code{userinfo_required = FALSE}, and no \code{resource} or
-SMART configuration. Client-level \code{required_scopes} can contain OIDC
+SMART configuration. Provider \code{extra_auth_params} and \code{extra_token_params}
+must not contain \code{resource}; declare resources only in \code{token_targets}.
+Client-level \code{required_scopes} can contain OIDC
 scopes only. Targets share one local authorization and refresh credential,
 while their access tokens and retained permission limits remain separate.
+Microsoft limits constrain local operation checks, while the actual token
+can include previously consented scopes for the selected resource. Explicit
+API scope narrowing is unsupported for Microsoft targets.
 At most 16 targets are supported. The complete authorization, including
-OIDC scopes and actual permissions returned for Microsoft \code{.default}, is
+OIDC scopes and actual permissions returned by Microsoft, is
 limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
 Scope declarations may be vectors or space-delimited strings.
 See \code{vignette("token-targets")} for provider rules and examples.}

@@ -160,11 +160,20 @@ connection_record_status <- function(record) {
   if (expires <= as.numeric(Sys.time())) {
     return("expired")
   }
+  granted <- token@granted_scopes
+  if (!is.null(record[["target"]])) {
+    granted <- token_target_operation_scopes(
+      record[["client"]],
+      record[["target"]],
+      granted,
+      record[["target_scopes"]]
+    )
+  }
   if (
     client_scope_coverage(
       record[["client"]],
       connection_record_required_scopes(record),
-      token@granted_scopes
+      granted
     )[["status"]] !=
       "covered"
   ) {
@@ -175,7 +184,7 @@ connection_record_status <- function(record) {
       record[["client"]],
       record[["target_requested_scopes"]] %||%
         effective_client_scopes(record[["client"]]),
-      token@granted_scopes
+      granted
     )[["status"]] !=
       "covered"
   ) {
@@ -214,12 +223,13 @@ connection_record_request <- function(
     )
   }
   if (
-    client_scope_coverage(
-      record[["client"]],
-      required_scopes,
-      record[["token"]]@granted_scopes
-    )[["status"]] !=
-      "covered"
+    !connection_record_scope_limit_allows(record, required_scopes) ||
+      client_scope_coverage(
+        record[["client"]],
+        required_scopes,
+        record[["token"]]@granted_scopes
+      )[["status"]] !=
+        "covered"
   ) {
     err_token("Current grant does not cover this operation")
   }

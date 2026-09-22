@@ -972,7 +972,7 @@ connection_manager_controller <- function(manager, session) {
       scopes <- record[["token"]]@granted_scopes
     }
     target_request <- if (!is.null(target)) {
-      token_target_request(
+      token_target_refresh_request(
         record[["client"]],
         target,
         record[["targets"]][["limits"]],

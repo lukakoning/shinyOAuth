@@ -1,5 +1,12 @@
 # shinyOAuth (development version)
 
+* Microsoft targets accept previously consented API scopes within the selected
+resource while retaining separate local operation limits and honest token
+evidence. Additional scopes do not expand connection permissions, including
+during refresh or after encrypted restoration. Explicit API narrowing now fails
+before using refresh credentials because Entra cannot promise a narrower token.
+Exported Microsoft tokens can carry the provider's full consented permissions.
+
 * Token targets retain requested `offline_access` independently of access-token
 scope evidence, preserving refresh capability after reauthorization when a
 provider omits it from token scopes. Explicit removal remains permanent for

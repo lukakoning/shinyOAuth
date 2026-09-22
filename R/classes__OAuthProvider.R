@@ -32,7 +32,9 @@
 #'   This has no acquisition effect on clients without target declarations.
 #'   RFC 8707 sends declared resource indicators; Microsoft uses qualified API
 #'   scopes, requires explicit scope evidence and handles static `.default`
-#'   consent in its provider policy. See `vignette("token-targets")`.
+#'   consent in its provider policy. Microsoft responses may include previously
+#'   consented scopes for the selected resource; local operation limits remain
+#'   separate from that full grant. See `vignette("token-targets")`.
 #'
 #' @param auth_url URL of the provider's login and permission page.
 #'

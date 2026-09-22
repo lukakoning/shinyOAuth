@@ -180,6 +180,10 @@ No reason initiates browser navigation.
 A cached async result is still a promise. Pending async callers join the
 same owned refresh and recheck the committed result before returning it.
 Acquisition does not count as managed owner activity.
+Microsoft tokens can contain previously consented permissions beyond the
+configured operation scopes. This method returns the actual bearer token;
+it cannot reduce those permissions for an SDK. Connection permission checks
+still enforce the configured and retained local limits.
   }
   \subsection{Returns}{
     A bearer-token string, or a promise resolving to one. Acquisition
@@ -271,6 +275,11 @@ connections explicitly request their retained granted scopes when known,
 including when no explicit narrowing was selected. SMART omits request
 scope while its permissions equal the original launch grant.
 Providers may reject requested scopes; there is no retry without them.
+Microsoft target API scopes cannot be explicitly narrowed: Entra may
+return all previously consented resource permissions. Such requests fail
+before HTTP with access-error reason \code{unsupported_scope_narrowing}, leaving
+the current authorization usable. Use a separate registration or change
+provider consent when a token with fewer API permissions is required.
 OIDC clients that require UserInfo must retain \code{openid}; narrowing that
 removes it is rejected before exchange. Include any additional scopes
 needed by the provider's profile endpoint in the client's \code{required_scopes}.
@@ -309,7 +318,8 @@ are absent from the grant.
 \item \code{active}: all requested scopes are covered.
 }
 
-Scope checks use the token's current \code{granted_scopes}, which may be
+Scope checks enforce retained target limits and use the token's current
+\code{granted_scopes}, which may be
 assumed or carried forward when an ordinary OAuth provider omits scope
 information. SMART clients require explicit evidence and use semantic
 coverage for both connection and operation permissions.

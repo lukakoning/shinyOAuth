@@ -406,7 +406,9 @@ Discovery never infers support. The Microsoft preset selects \code{"microsoft"}.
 This has no acquisition effect on clients without target declarations.
 RFC 8707 sends declared resource indicators; Microsoft uses qualified API
 scopes, requires explicit scope evidence and handles static \code{.default}
-consent in its provider policy. See \code{vignette("token-targets")}.}
+consent in its provider policy. Microsoft responses may include previously
+consented scopes for the selected resource; local operation limits remain
+separate from that full grant. See \code{vignette("token-targets")}.}
 
 \item{infer_oidc_from_issuer}{Whether setting \code{issuer} enables OpenID Connect behavior.
 Default \code{TRUE}: helpers enable OIDC nonce/ID token defaults and the client

@@ -154,6 +154,7 @@ test_that("legacy target identity and status follow authorization and session li
     {
       reference <<- connection
       expect_true(connection[["is_usable"]]())
+      expect_true(connection[["has_scopes"]](c("openid", "read")))
       expect_identical(
         connection[["identity"]]()[["id_token_claims"]][["sub"]],
         "synthetic-subject"

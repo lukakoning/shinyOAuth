@@ -11,6 +11,7 @@ connection_access_error <- function(reason) {
     interaction_required = "A new authorization is required.",
     lifetime_unavailable = "The access token does not meet the requested remaining lifetime.",
     unsupported_token_binding = "Exporting this token requires its sender-bound transport; use request() instead.",
+    unsupported_scope_narrowing = "Microsoft tokens include previously consented API permissions and cannot be narrowed by a refresh scope request.",
     "Access-token acquisition failed."
   )
   err_abort(
@@ -50,19 +51,26 @@ connection_integration_signal <- function(resolve) {
     available <- !is.null(token) &&
       (is.null(record[["status"]]) || identical(record[["status"]], "active"))
     if (available && token_targets_configured(record[["client"]])) {
-      evidence <- function(token) {
+      evidence <- function(target) {
+        token <- tokens[[target]]
         if (is.null(token)) {
           NULL
         } else {
           list(
-            scopes = sort(token@granted_scopes),
+            scopes = sort(token_target_operation_scopes(
+              record[["client"]],
+              target,
+              token@granted_scopes,
+              record[["targets"]][["limits"]][[target]]
+            )),
             verified = token@granted_scopes_verified
           )
         }
       }
       tokens <- record[["targets"]][["tokens"]]
       tokens[[record[["client"]]@default_token_target]] <- token
-      list(targets = lapply(tokens[sort(names(tokens))], evidence))
+      targets <- sort(names(tokens))
+      list(targets = stats::setNames(lapply(targets, evidence), targets))
     } else if (available) {
       list(
         scopes = sort(token@granted_scopes),
@@ -100,6 +108,7 @@ connection_record_has_scopes <- function(record, scopes, previous = NULL) {
   }
   !is.null(evidence) &&
     connection_record_configured_scopes(record, scopes) &&
+    connection_record_scope_limit_allows(record, scopes) &&
     connection_scope_covered(
       client,
       scopes,

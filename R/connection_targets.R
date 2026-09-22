@@ -328,6 +328,34 @@ token_target_request <- function(
   )
 }
 
+# Microsoft returns the resource's existing consented permissions. Reject an
+# explicit API reduction before consuming the shared refresh credential; a
+# refresh scope parameter cannot promise a narrower Microsoft access token.
+token_target_refresh_request <- function(
+  client,
+  target,
+  limits,
+  scopes = NULL
+) {
+  request <- token_target_request(client, target, limits, scopes)
+  if (
+    !is.null(scopes) &&
+      identical(client@provider@token_target_mode, "microsoft")
+  ) {
+    previous <- (limits %||% token_target_limits(client))[[request[["target"]]]]
+    oidc <- token_target_oidc_scopes(client)
+    if (
+      !setequal(
+        setdiff(normalize_scope_tokens(previous), oidc),
+        setdiff(request[["scopes"]], oidc)
+      )
+    ) {
+      connection_access_error("unsupported_scope_narrowing")
+    }
+  }
+  request
+}
+
 validate_token_target_request <- function(client, request) {
   if (is.null(request)) {
     return(NULL)
@@ -401,7 +429,7 @@ validate_token_target_grant <- function(client, granted, request) {
       client@provider,
       warn = FALSE
     )) ||
-      !token_target_scopes_allowed(
+      !token_target_grant_scopes_allowed(
         client,
         request[["target"]],
         granted,
@@ -418,13 +446,45 @@ validate_token_target_grant <- function(client, granted, request) {
   invisible(NULL)
 }
 
+# Keep full Microsoft grant evidence, including previously consented API scopes,
+# but accept it only within the selected resource. This does not expand the
+# application's retained operation limit.
+token_target_grant_scopes_allowed <- function(
+  client,
+  target,
+  granted,
+  ceiling
+) {
+  if (!identical(client@provider@token_target_mode, "microsoft")) {
+    return(token_target_scopes_allowed(client, target, granted, ceiling))
+  }
+  oidc <- token_target_oidc_scopes(client)
+  api <- setdiff(granted, oidc)
+  prefix <- token_target_prefix(client@token_targets[[target]][["resource"]])
+  all(startsWith(api, prefix)) &&
+    all(nchar(api) > nchar(prefix)) &&
+    !any(endsWith(api, "/.default")) &&
+    token_target_scopes_allowed(
+      client,
+      target,
+      intersect(granted, oidc),
+      ceiling
+    )
+}
+
 # Keep refresh consent separate from access-token permission evidence. Providers
 # such as Microsoft omit offline_access from access-token scopes even when they
 # issue a refresh token. Carry only an already requested capability forward;
 # an explicit request that removes it must never regain it from configuration.
-token_target_retained_scopes <- function(token, request) {
-  union(
+token_target_retained_scopes <- function(client, token, request) {
+  granted <- token_target_operation_scopes(
+    client,
+    request[["target"]],
     token@granted_scopes,
+    request[["scopes"]]
+  )
+  union(
+    granted,
     intersect(request[["scopes"]], "offline_access")
   )
 }
@@ -442,11 +502,14 @@ token_target_bundle <- function(client, token, limits = NULL) {
   request <- token_target_request(client, limits = limits)
   validate_token_target_grant(client, token@granted_scopes, request)
   limits[[client@default_token_target]] <- token_target_retained_scopes(
+    client,
     token,
     request
   )
   limits <- validate_token_target_limits(client, limits)
-  list(tokens = list(), limits = limits)
+  bundle <- list(tokens = list(), limits = limits)
+  validate_token_target_bundle_budget(client, token, bundle)
+  bundle
 }
 
 token_target_select <- function(record, target = NULL) {
@@ -466,7 +529,7 @@ token_target_select <- function(record, target = NULL) {
   }
   record[["target_scopes"]] <- normalize_scope_tokens(
     record[["targets"]][["limits"]][[target]] %||%
-      client@token_targets[[target]][["scopes"]]
+      token_target_limits(client)[[target]]
   )
   requested <- normalize_scope_tokens(client@token_targets[[target]][[
     "scopes"
@@ -478,7 +541,12 @@ token_target_select <- function(record, target = NULL) {
     requested <- if (is.null(record[["token"]])) {
       character()
     } else {
-      record[["token"]]@granted_scopes
+      token_target_operation_scopes(
+        client,
+        target,
+        record[["token"]]@granted_scopes,
+        record[["target_scopes"]]
+      )
     }
   }
   record[["target_requested_scopes"]] <- requested
@@ -492,7 +560,11 @@ token_target_select <- function(record, target = NULL) {
 token_target_commit <- function(client, primary, bundle, fresh, request) {
   validate_token_target_grant(client, fresh@granted_scopes, request)
   target <- request[["target"]]
-  bundle[["limits"]][[target]] <- token_target_retained_scopes(fresh, request)
+  bundle[["limits"]][[target]] <- token_target_retained_scopes(
+    client,
+    fresh,
+    request
+  )
   bundle[["limits"]] <- validate_token_target_limits(client, bundle[["limits"]])
   refresh <- fresh@refresh_token
   if (identical(target, client@default_token_target)) {
@@ -502,7 +574,31 @@ token_target_commit <- function(client, primary, bundle, fresh, request) {
     bundle[["tokens"]][[target]] <- fresh
     primary@refresh_token <- refresh
   }
+  validate_token_target_bundle_budget(client, primary, bundle)
   list(token = primary, targets = bundle)
+}
+
+validate_token_target_bundle_budget <- function(client, primary, bundle) {
+  scopes <- c(
+    token_target_authorization_scopes(client, bundle[["limits"]]),
+    if (!is.null(primary)) primary@granted_scopes,
+    unlist(
+      lapply(bundle[["tokens"]], function(token) token@granted_scopes),
+      use.names = FALSE
+    )
+  )
+  if (
+    !authorization_scopes_bounded(ensure_openid_scope(
+      scopes,
+      client@provider,
+      warn = FALSE
+    ))
+  ) {
+    err_token(
+      "Token target grants exceed 128 distinct scopes or 8192 scope bytes in total"
+    )
+  }
+  invisible(NULL)
 }
 
 token_target_refresh_source <- function(record, request) {
@@ -575,6 +671,7 @@ token_target_bundle_decode <- function(client, encoded) {
       )
     )
   }
+  validate_token_target_bundle_budget(client, NULL, bundle)
   bundle
 }
 
@@ -661,6 +758,31 @@ connection_record_configured_scopes <- function(record, scopes) {
 
 connection_record_required_scopes <- function(record) {
   record[["target_required_scopes"]] %||% record[["client"]]@required_scopes
+}
+
+token_target_operation_scopes <- function(
+  client,
+  target,
+  granted,
+  ceiling = NULL
+) {
+  granted[vapply(
+    granted,
+    function(scope) {
+      token_target_scopes_allowed(client, target, scope, ceiling)
+    },
+    logical(1)
+  )]
+}
+
+connection_record_scope_limit_allows <- function(record, scopes) {
+  is.null(record[["target"]]) ||
+    token_target_scopes_allowed(
+      record[["client"]],
+      record[["target"]],
+      scopes,
+      record[["target_scopes"]]
+    )
 }
 
 token_target_check_destination <- function(client, target, resource_id) {

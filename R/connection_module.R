@@ -224,7 +224,7 @@ module_refresh_controller <- function(
       scopes <- token@granted_scopes
     }
     target_request <- if (!is.null(target)) {
-      token_target_request(client, target, bundle[["limits"]], scopes)
+      token_target_refresh_request(client, target, bundle[["limits"]], scopes)
     } else {
       NULL
     }
