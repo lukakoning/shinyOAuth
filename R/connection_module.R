@@ -90,6 +90,11 @@ module_connection_factory <- function(
       id,
       client,
       resolve,
+      is_current = function() {
+        epoch()
+        isTRUE(operations[["session_active"]]) &&
+          identical(operations[["epoch"]], generation)
+      },
       refresh = function(scopes = NULL, target = NULL) {
         record <- resolve()
         if (!is.null(scopes) && !token_targets_configured(client)) {

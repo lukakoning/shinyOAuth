@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Ended managed connections are removed from the session's reference cache.
+Permission observers stop when a managed reference ends or a single-module
+authorization is replaced, preventing repeated login/disconnect cycles from
+accumulating background work. Legacy token reactives still follow later logins.
+
 * Single-module target refreshes keep independent success and failure pacing.
 Acquiring a secondary token no longer delays proactive primary renewal or clears
 its backoff; provider `Retry-After` still applies to the shared credential.

@@ -107,7 +107,14 @@ applications should use a module's \code{connection()} method or the legacy
 \code{\link[=oauth_connection]{oauth_connection()}} wrapper to establish session ownership.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{OAuthConnection$new(id, client, resolve, refresh = NULL, acquire = NULL)}
+    \preformatted{OAuthConnection$new(
+  id,
+  client,
+  resolve,
+  refresh = NULL,
+  acquire = NULL,
+  is_current = NULL
+)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -123,6 +130,8 @@ It must raise an error when the owning session is unavailable.}
 coordinated refresh. Legacy wrappers leave this \code{NULL}.}
       \item{\code{acquire}}{Internal coordinated credential refresh for external use,
 accepting \code{async} and returning TRUE or a promise resolving to TRUE.}
+      \item{\code{is_current}}{Optional internal reactive predicate. FALSE permanently
+ends permission notifications for this authorization reference.}
     }
     \if{html}{\out{</div>}}
   }
