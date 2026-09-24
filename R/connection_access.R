@@ -41,8 +41,17 @@ connection_scope_covered <- function(
 
 # These notifications describe authorization and permission changes, never
 # access-token bytes or expiry. A refresh claim temporarily hides stored tokens.
-connection_integration_signal <- function(resolve) {
+connection_integration_signal <- function(resolve, is_current = NULL) {
+  observer <- NULL
+  ended <- FALSE
   snapshot <- function(previous = NULL) {
+    if (!is.null(is_current) && !isTRUE(is_current())) {
+      ended <<- TRUE
+      if (!is.null(observer)) {
+        observer[["destroy"]]()
+      }
+      return(NULL)
+    }
     record <- tryCatch(resolve(), error = function(...) NULL)
     if (identical(record[["status"]], "refreshing")) {
       return(previous)
@@ -81,12 +90,14 @@ connection_integration_signal <- function(resolve) {
     }
   }
   state <- shiny::reactiveVal(shiny::isolate(snapshot()))
-  shiny::observe(
-    {
-      state(snapshot(shiny::isolate(state())))
-    },
-    priority = 100
-  )
+  if (!ended) {
+    observer <- shiny::observe(
+      {
+        state(snapshot(shiny::isolate(state())))
+      },
+      priority = 100
+    )
+  }
   state
 }
 

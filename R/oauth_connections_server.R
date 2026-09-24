@@ -170,11 +170,15 @@ oauth_connections_server <- function(
       }
       record <- shiny::isolate(controller[["read"]](connection_id))
       if (!is.null(references[[connection_id]])) {
-        return(references[[connection_id]])
+        return(references[[connection_id]][["reference"]])
       }
+      current <- shiny::reactiveVal(
+        !identical(record[["status"]], "disconnected")
+      )
       reference <- OAuthConnection[["new"]](
         connection_id,
         record[["client"]],
+        is_current = current,
         resolve = function() {
           controller[["changed"]]()
           lifecycle()
@@ -197,7 +201,12 @@ oauth_connections_server <- function(
           )
         }
       )
-      references[[connection_id]] <- reference
+      if (shiny::isolate(current())) {
+        references[[connection_id]] <- list(
+          reference = reference,
+          current = current
+        )
+      }
       reference
     }
     connections <- shiny::reactive({
@@ -235,6 +244,20 @@ oauth_connections_server <- function(
       controller[["changed"]]()
       shiny::invalidateLater(refresh_check_interval_ms, session)
       rows <- tryCatch(controller[["records"]](), error = function(...) NULL)
+      if (!is.null(rows)) {
+        retained <- vapply(
+          Filter(
+            function(record) !identical(record[["status"]], "disconnected"),
+            rows
+          ),
+          function(record) record[["stored"]][["id"]],
+          character(1)
+        )
+        for (id in setdiff(ls(references, all.names = TRUE), retained)) {
+          references[[id]][["current"]](FALSE)
+          rm(list = id, envir = references)
+        }
+      }
       authorization(list(
         available = !is.null(rows),
         records = lapply(rows, function(record) {

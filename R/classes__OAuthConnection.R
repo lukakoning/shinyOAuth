@@ -135,7 +135,16 @@ OAuthConnection <- R6::R6Class(
     #' @return A new `OAuthConnection` instance.
     #' @param acquire Internal coordinated credential refresh for external use,
     #'   accepting `async` and returning TRUE or a promise resolving to TRUE.
-    initialize = function(id, client, resolve, refresh = NULL, acquire = NULL) {
+    #' @param is_current Optional internal reactive predicate. FALSE permanently
+    #'   ends permission notifications for this authorization reference.
+    initialize = function(
+      id,
+      client,
+      resolve,
+      refresh = NULL,
+      acquire = NULL,
+      is_current = NULL
+    ) {
       if (!is.null(private[[".id"]])) {
         err_input("Connection references are read-only")
       }
@@ -147,7 +156,8 @@ OAuthConnection <- R6::R6Class(
       private[[".acquire"]] <- acquire
       if (!is.null(shiny::getDefaultReactiveDomain())) {
         private[[".integration_changed"]] <- connection_integration_signal(
-          function() private[["record"]]()
+          function() private[["record"]](),
+          is_current
         )
       }
       invisible(self)
