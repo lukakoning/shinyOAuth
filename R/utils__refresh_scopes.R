@@ -14,6 +14,16 @@ authorization_scope_limit <- function(client, scopes) {
   # A new OIDC login always needs openid, independently of the previous access
   # token's scope evidence. Optional identity and API permissions stay narrowed.
   scopes <- ensure_openid_scope(scopes, client@provider, warn = FALSE)
+  # Standalone patient access needs a new patient selection on each login.
+  # Launch context need not appear in the previous access token's scope claim.
+  if (
+    client_uses_smart(client) &&
+      identical(client@smart[["launch"]], "standalone") &&
+      any(startsWith(scopes, "patient/")) &&
+      "launch/patient" %in% client@scopes
+  ) {
+    scopes <- union(scopes, "launch/patient")
+  }
   required <- client@required_scopes
   if (
     provider_uses_oidc(client@provider) &&

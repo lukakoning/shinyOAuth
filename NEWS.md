@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Standalone SMART reauthorization requests `launch/patient` when retained patient
+permissions require a new patient selection, even when the previous token omitted
+the launch scope. Removed API permissions stay removed.
+
 * Token target resources use the shared absolute URI validator, rejecting
 malformed escapes, control characters, and invalid URI syntax at configuration
 time while retaining the existing size limit.
