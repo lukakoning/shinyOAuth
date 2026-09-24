@@ -775,7 +775,9 @@ oauth_module_server_impl <- function(
       tok,
       context,
       target_limits = NULL,
-      refresh_scope_narrowed = !is.null(auth_operations[["reauth_scopes"]])
+      refresh_scope_narrowed = !is.null(auth_operations[["reauth_scopes"]]),
+      requested_scopes = auth_operations[["reauth_scopes"]] %||%
+        effective_client_scopes(client)
     ) {
       if (is.null(.managed)) {
         validate_token_acceptance_deadline(tok)
@@ -795,7 +797,7 @@ oauth_module_server_impl <- function(
             auth_operations[["target_limits"]]
           )
         } else {
-          tok@granted_scopes
+          authorization_retained_scopes(client, tok, requested_scopes)
         }
         values[["auth_started_at"]] <- .interactive_auth_started_at(tok)
       } else {
@@ -1958,7 +1960,12 @@ oauth_module_server_impl <- function(
           auth_operations[["target_limits"]]
         )
       } else if (!is.null(current)) {
-        current@granted_scopes
+        authorization_retained_scopes(
+          client,
+          current,
+          auth_operations[["last_authorized_scopes"]] %||%
+            current@granted_scopes
+        )
       } else {
         auth_operations[["reauth_scopes"]] %||%
           auth_operations[["last_authorized_scopes"]]
@@ -1977,9 +1984,7 @@ oauth_module_server_impl <- function(
           !is.null(current) &&
             length(current@granted_scopes)
         ) {
-          refresh_scope_request(client, current, current@granted_scopes)[[
-            "scopes"
-          ]]
+          authorization_scope_limit(client, retained_scopes)
         } else {
           auth_operations[["reauth_scopes"]] %||%
             auth_operations[["last_authorized_scopes"]]
@@ -3703,6 +3708,7 @@ oauth_module_server_impl <- function(
           # validation succeeds and this operation still owns the authorization.
           callback_target_limits <- NULL
           callback_scope_narrowed <- FALSE
+          callback_requested_scopes <- NULL
           if (is.null(.managed)) {
             policy_payload <- if (is.null(decrypted_payload)) {
               state_payload_decrypt_validate(
@@ -3720,6 +3726,7 @@ oauth_module_server_impl <- function(
             callback_scope_narrowed <- !is.null(policy_payload[[
               "configured_scopes"
             ]])
+            callback_requested_scopes <- policy_payload[["scopes"]]
             if (!is.null(policy_payload[["target_limits"]])) {
               callback_target_limits <- validate_token_target_limits(
                 client,
@@ -4167,7 +4174,8 @@ oauth_module_server_impl <- function(
                       tok,
                       managed_context,
                       callback_target_limits,
-                      callback_scope_narrowed
+                      callback_scope_narrowed,
+                      callback_requested_scopes
                     )
                     values[["error"]] <- NULL
                     values[["error_description"]] <- NULL
@@ -4256,7 +4264,8 @@ oauth_module_server_impl <- function(
                   res,
                   managed_context,
                   callback_target_limits,
-                  callback_scope_narrowed
+                  callback_scope_narrowed,
+                  callback_requested_scopes
                 )
                 values[["error"]] <- NULL
                 values[["error_description"]] <- NULL

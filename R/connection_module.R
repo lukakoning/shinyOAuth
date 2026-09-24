@@ -220,6 +220,7 @@ module_refresh_controller <- function(
     if (!identical(narrowed_epoch, operations[["epoch"]])) {
       narrowed <<- isTRUE(operations[["refresh_scope_narrowed"]])
     }
+    explicit_scopes <- scopes
     if (is.null(target) && is.null(scopes) && narrowed) {
       scopes <- token@granted_scopes
     }
@@ -244,8 +245,14 @@ module_refresh_controller <- function(
     pending_scopes <<- scopes
     operation <- hooks[["begin"]]("refresh", source_token = primary)
     if (is.null(target)) {
-      operations[["last_authorized_scopes"]] <- token@granted_scopes
+      operations[["last_authorized_scopes"]] <- authorization_retained_scopes(
+        client,
+        token,
+        operations[["last_authorized_scopes"]] %||% token@granted_scopes
+      )
     }
+    retained_scopes <- explicit_scopes %||%
+      operations[["last_authorized_scopes"]]
     values[["refresh_last_attempt_at"]] <- as.numeric(Sys.time())
     captured <- if (async) {
       capture_shiny_session_context(is_async = TRUE)
@@ -379,7 +386,11 @@ module_refresh_controller <- function(
         )
       } else {
         values[["token"]] <- fresh
-        operations[["last_authorized_scopes"]] <- fresh@granted_scopes
+        operations[["last_authorized_scopes"]] <- authorization_retained_scopes(
+          client,
+          fresh,
+          retained_scopes
+        )
       }
       values[["error"]] <- NULL
       values[["error_description"]] <- NULL

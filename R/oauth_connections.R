@@ -717,6 +717,15 @@ connection_manager_controller <- function(
     }
     id <- random_urlsafe(32L)
     targets <- token_target_bundle(client, token, context[["target_limits"]])
+    authorization_scopes <- if (is.null(targets)) {
+      authorization_retained_scopes(
+        client,
+        token,
+        context[["requested_scopes"]] %||% effective_client_scopes(client)
+      )
+    } else {
+      NULL
+    }
     sealed <- connection_credentials_seal(
       token,
       owner[["id"]],
@@ -725,7 +734,8 @@ connection_manager_controller <- function(
       manager[["keys"]][["credentials"]],
       authenticated_at,
       refresh_scope_narrowed = !is.null(context[["requested_scopes"]]),
-      targets = targets
+      targets = targets,
+      authorization_scopes = authorization_scopes
     )
     if (!validate(context)) {
       err_token("Managed authorization owner is unavailable")
@@ -754,7 +764,7 @@ connection_manager_controller <- function(
     }
     connection_credential_track(manager, record, token, targets)
     state[["authorization_metadata"]][[id]] <- list(
-      scopes = token@granted_scopes,
+      scopes = authorization_scopes %||% token@granted_scopes,
       target_limits = targets[["limits"]],
       expires_at = record[["expires_at"]],
       replaces_connection_id = context[["replaces_connection_id"]]
@@ -821,8 +831,17 @@ connection_manager_controller <- function(
       )
       result[["token"]] <- value[["token"]]
       result[["targets"]] <- value[["targets"]]
+      result[["authorization_scopes"]] <- value[["authorization_scopes"]]
       result[["authenticated_at"]] <- value[["authenticated_at"]]
       result[["refresh_scope_narrowed"]] <- value[["refresh_scope_narrowed"]]
+      # Reconstruct replacement policy from authenticated storage before a
+      # refresh can make the credential unavailable (including after restart).
+      metadata <- state[["authorization_metadata"]][[record[["id"]]]] %||%
+        list()
+      metadata[["scopes"]] <- value[["authorization_scopes"]]
+      metadata[["target_limits"]] <- value[["targets"]][["limits"]]
+      metadata[["expires_at"]] <- record[["expires_at"]]
+      state[["authorization_metadata"]][[record[["id"]]]] <- metadata
     }
     result
   }
@@ -969,6 +988,7 @@ connection_manager_controller <- function(
     }
     # Validate before taking the refresh claim or sending any credentials.
     # After explicit narrowing, automatic calls retain the accepted grant.
+    explicit_scopes <- scopes
     if (
       is.null(target) &&
         is.null(scopes) &&
@@ -1107,6 +1127,15 @@ connection_manager_controller <- function(
             token <- updated[["token"]]
             targets <- updated[["targets"]]
           }
+          authorization_scopes <- if (is.null(targets)) {
+            authorization_retained_scopes(
+              record[["client"]],
+              token,
+              explicit_scopes %||% record[["authorization_scopes"]]
+            )
+          } else {
+            NULL
+          }
           sealed <- connection_credentials_seal(
             token,
             owner[["id"]],
@@ -1115,7 +1144,8 @@ connection_manager_controller <- function(
             manager[["keys"]][["credentials"]],
             record[["authenticated_at"]],
             refresh_scope_narrowed = !is.null(scope_request),
-            targets = targets
+            targets = targets,
+            authorization_scopes = authorization_scopes
           )
           if (is.null(verify_owner(require_session = FALSE))) {
             err_token("Connection owner is unavailable")
@@ -1146,7 +1176,7 @@ connection_manager_controller <- function(
           }
           connection_credential_track(manager, installed, token, targets)
           metadata <- state[["authorization_metadata"]][[id]] %||% list()
-          metadata[["scopes"]] <- token@granted_scopes
+          metadata[["scopes"]] <- authorization_scopes %||% token@granted_scopes
           metadata[["target_limits"]] <- targets[["limits"]]
           metadata[["expires_at"]] <- installed[["expires_at"]]
           state[["authorization_metadata"]][[id]] <- metadata
@@ -1411,7 +1441,7 @@ connection_manager_controller <- function(
     scopes <- if (token_targets_configured(record[["client"]])) {
       token_target_authorization_scopes(record[["client"]], limits)
     } else if (!is.null(record[["token"]])) {
-      record[["token"]]@granted_scopes
+      record[["authorization_scopes"]]
     } else {
       state[["authorization_metadata"]][[id]][["scopes"]]
     }

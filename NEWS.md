@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Ordinary OIDC reauthorization retains requested `offline_access` consent even
+when access-token scope evidence omits it. This policy survives refresh, managed
+storage, and callback sessions; explicitly removing that scope keeps it removed.
+
 * Standalone SMART reauthorization requests `launch/patient` when retained patient
 permissions require a new patient selection, even when the previous token omitted
 the launch scope. Removed API permissions stay removed.

@@ -5,6 +5,14 @@ authorization_scopes_bounded <- function(scopes) {
   length(scopes) <= 128L && sum(nchar(scopes, type = "bytes")) <= 8192L
 }
 
+# Consent to issue a refresh token is an authorization request property. OIDC
+# providers need not repeat offline_access in the access token's scope evidence.
+# Pass the previous policy on automatic refresh, or the explicit scope request
+# when narrowing, so a deliberately removed consent is never restored.
+authorization_retained_scopes <- function(client, token, requested) {
+  union(token@granted_scopes, intersect(requested, "offline_access"))
+}
+
 authorization_scope_limit <- function(client, scopes) {
   validate_scopes(scopes)
   scopes <- normalize_scope_tokens(scopes)
