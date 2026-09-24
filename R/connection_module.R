@@ -144,6 +144,18 @@ module_refresh_controller <- function(
   pending_scopes <- NULL
   narrowed <- FALSE
   narrowed_epoch <- NULL
+  set_pacing <- function(target, next_attempt, failure_count) {
+    if (!is.null(target)) {
+      operations[["target_next_attempt"]][[target]] <- next_attempt
+      operations[["target_failure_count"]][[target]] <- failure_count
+    }
+    # The proactive observer renews the primary token. A sibling acquisition
+    # must neither postpone that renewal nor erase the primary's backoff.
+    if (is.null(target) || identical(target, client@default_token_target)) {
+      values[["refresh_next_attempt_at"]] <- next_attempt
+      values[["refresh_failure_count"]] <- failure_count
+    }
+  }
   refresh <- function(
     async = FALSE,
     scopes = NULL,
@@ -277,8 +289,12 @@ module_refresh_controller <- function(
         hooks[["finish"]](operation, "refresh")
         connection_access_error("authorization_unavailable")
       }
-      values[["refresh_failure_count"]] <- values[["refresh_failure_count"]] +
-        1L
+      failure_count <- 1L +
+        if (is.null(target)) {
+          values[["refresh_failure_count"]]
+        } else {
+          operations[["target_failure_count"]][[target]] %||% 0L
+        }
       now <- as.numeric(Sys.time())
       retry_after <- refresh_condition_retry_after(error)
       if (is.finite(retry_after)) {
@@ -287,11 +303,11 @@ module_refresh_controller <- function(
           now + retry_after
         )
       }
-      values[["refresh_next_attempt_at"]] <- now +
-        proactive_refresh_failure_delay(
-          values[["refresh_failure_count"]],
-          retry_after
-        )
+      set_pacing(
+        target,
+        now + proactive_refresh_failure_delay(failure_count, retry_after),
+        failure_count
+      )
       if (!refresh_credential_retryable(error)) {
         retained <- values[["token"]]
         retained@refresh_token <- NA_character_
@@ -302,11 +318,6 @@ module_refresh_controller <- function(
       if (!indefinite_session && !keep_targets) {
         values[["token"]] <- NULL
         values[["targets"]] <- NULL
-      }
-      if (!is.null(target)) {
-        operations[["target_next_attempt"]][[target]] <- values[[
-          "refresh_next_attempt_at"
-        ]]
       }
       if (!keep_targets) {
         values[["token_stale"]] <- indefinite_session
@@ -421,22 +432,17 @@ module_refresh_controller <- function(
         is.finite(primary_expiry) &&
         primary_expiry <= as.numeric(Sys.time())
       values[["reauth_triggered"]] <- FALSE
-      values[["refresh_failure_count"]] <- 0L
       now <- as.numeric(Sys.time())
       values[["refresh_last_success_at"]] <- now
       values[["refresh_success_generation"]] <- values[[
         "refresh_success_generation"
       ]] +
         1L
-      values[["refresh_next_attempt_at"]] <- now +
-        proactive_refresh_success_delay(fresh, now, refresh_lead_seconds)
-      if (!is.null(target)) {
-        # Use the same lifetime-aware pacing as the proactive observer so a
-        # short-lived target can be renewed before its replacement expires.
-        operations[["target_next_attempt"]][[target]] <- values[[
-          "refresh_next_attempt_at"
-        ]]
-      }
+      set_pacing(
+        target,
+        now + proactive_refresh_success_delay(fresh, now, refresh_lead_seconds),
+        0L
+      )
       narrowed <<- !is.null(scope_request)
       narrowed_epoch <<- operation[["epoch"]]
       hooks[["finish"]](operation, "refresh")
@@ -508,7 +514,10 @@ module_proactive_refresh <- function(
           buffer_seconds = stats::runif(1, 0, 1)
         )
       } else {
-        next_attempt <- values[["refresh_next_attempt_at"]]
+        next_attempt <- max(
+          values[["refresh_next_attempt_at"]],
+          operations[["refresh_retry_after_at"]] %||% 0
+        )
         wake <- if (next_attempt > now) {
           shiny_timer_delay_ms(next_attempt - now)
         } else {

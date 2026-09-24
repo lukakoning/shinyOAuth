@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Single-module target refreshes keep independent success and failure pacing.
+Acquiring a secondary token no longer delays proactive primary renewal or clears
+its backoff; provider `Retry-After` still applies to the shared credential.
+
 * Target scope introspection treats `offline_access` as refresh consent even
 when the token endpoint omits scope. Valid rotating refreshes remain usable;
 strict checks still reject missing API permissions and grants outside the target.
