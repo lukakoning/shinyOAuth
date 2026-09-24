@@ -48,7 +48,9 @@ test_that("broader Microsoft refresh cannot escape the factory permission limit"
   resource_calls <- 0L
   local_mocked_bindings(
     revoke_token = function(...) invisible(NULL),
-    perform_resource_req = function(...) resource_calls <<- resource_calls + 1L,
+    perform_resource_req = function(...) {
+      resource_calls <<- resource_calls + 1L
+    },
     req_with_retry = function(req, ...) {
       httr2::response(
         req[["url"]],
