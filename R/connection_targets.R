@@ -158,8 +158,7 @@ validate_token_targets <- function(client) {
     resource <- item[["resource"]]
     if (
       !is_valid_string(resource) ||
-        !grepl("^[A-Za-z][A-Za-z0-9+.-]*:", resource) ||
-        grepl("[#[:space:]]", resource) ||
+        !is.null(resource_indicator_problem(resource)) ||
         nchar(resource, type = "bytes") > 2048L
     ) {
       err_config(

@@ -42,3 +42,42 @@ test_that("Microsoft static consent selects the exact declared resource", {
     OAuthClient
   )
 })
+
+test_that("target resources use the shared absolute URI validation", {
+  make_client <- function(resource, mode, scope = NULL) {
+    provider <- make_test_provider()
+    provider@token_target_mode <- mode
+    scope <- scope %||% if (identical(mode, "microsoft")) {
+      paste0(resource, "/read")
+    } else {
+      "read"
+    }
+    oauth_client(
+      provider, "app", client_secret = "",
+      redirect_uri = "https://app.example/callback",
+      scopes = scope,
+      token_targets = list(api = list(resource = resource, scopes = scope))
+    )
+  }
+  for (mode in c("rfc8707", "microsoft")) {
+    for (resource in c(
+      "https://api.example/%Q0", "urn:bad%", "https://api.example/a\\b",
+      "urn:[abc", "urn:api\001", "urn:api\177", "https://[::1",
+      "https://api.example/#part", "urn:with space", "relative/path",
+      paste0("urn:", strrep("x", 2045L))
+    )) {
+      expect_error(
+        make_client(resource, mode, "api://example/read"),
+        "absolute URI", info = resource
+      )
+    }
+    for (resource in c(
+      "https://api.example/v1?tenant=abc", "https://[::1]/api",
+      "urn:example:api", "api://application-id", "custom:api%20name",
+      paste0("urn:", strrep("x", 2044L))
+    )) {
+      client <- make_client(resource, mode)
+      expect_identical(client@token_targets[["api"]][["resource"]], resource)
+    }
+  }
+})

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Token target resources use the shared absolute URI validator, rejecting
+malformed escapes, control characters, and invalid URI syntax at configuration
+time while retaining the existing size limit.
+
 * Microsoft `.default` declarations must name their target's exact resource,
 preventing a nested resource URI from selecting a different API's token.
 
