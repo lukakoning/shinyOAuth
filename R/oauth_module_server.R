@@ -789,6 +789,12 @@ oauth_module_server_impl <- function(
         auth_operations[["target_limits"]] <- values[["targets"]][["limits"]]
         auth_operations[["refresh_scope_narrowed"]] <- refresh_scope_narrowed
         values[["token"]] <- tok
+        auth_operations[[
+          "last_authorized_extra_scopes"
+        ]] <- authorization_extra_scopes(
+          client,
+          tok
+        )
         auth_operations[["last_authorized_scopes"]] <- if (
           token_targets_configured(client)
         ) {
@@ -826,6 +832,7 @@ oauth_module_server_impl <- function(
       # history above, but do not apply this request override to ordinary login
       # after a later authentication-age or access-token expiry.
       auth_operations[["reauth_scopes"]] <- NULL
+      auth_operations[["reauth_extra_scopes"]] <- NULL
       invisible(NULL)
     }
 
@@ -1683,6 +1690,10 @@ oauth_module_server_impl <- function(
         }
       requested_scopes <- managed_parameters[["requested_scopes"]] %||%
         auth_operations[["reauth_scopes"]]
+      accepted_extra_scopes <- managed_parameters[[
+        "accepted_extra_scopes"
+      ]] %||%
+        auth_operations[["reauth_extra_scopes"]]
       register_prepared <- function(prepared) {
         if (!is.null(.managed) && is.function(.managed[["prepared"]])) {
           .managed[["prepared"]](prepared, managed_context)
@@ -1711,7 +1722,8 @@ oauth_module_server_impl <- function(
                 .transaction_context = managed_context,
                 .smart_launch = managed_launch,
                 .requested_scopes = requested_scopes,
-                .target_limits = target_limits
+                .target_limits = target_limits,
+                .accepted_extra_scopes = accepted_extra_scopes
               )
               register_prepared(prepared)
               finish_prepared_authorization(
@@ -1730,7 +1742,8 @@ oauth_module_server_impl <- function(
                 .smart_launch = managed_launch,
                 .authorization_request = .authorization_request,
                 .requested_scopes = requested_scopes,
-                .target_limits = target_limits
+                .target_limits = target_limits,
+                .accepted_extra_scopes = accepted_extra_scopes
               )
             }
           },
@@ -1766,7 +1779,8 @@ oauth_module_server_impl <- function(
             .transaction_context = managed_context,
             .smart_launch = managed_launch,
             .requested_scopes = requested_scopes,
-            .target_limits = target_limits
+            .target_limits = target_limits,
+            .accepted_extra_scopes = accepted_extra_scopes
           )
           register_prepared(prepared)
           worker <- prepare_client_for_worker(client)
@@ -1992,6 +2006,18 @@ oauth_module_server_impl <- function(
       if (!length(auth_operations[["reauth_scopes"]])) {
         auth_operations[["reauth_scopes"]] <- NULL
       }
+      auth_operations[[
+        "reauth_extra_scopes"
+      ]] <- authorization_extra_scope_limit(
+        client,
+        if (!is.null(current)) {
+          authorization_extra_scopes(client, current)
+        } else {
+          auth_operations[["reauth_extra_scopes"]] %||%
+            auth_operations[["last_authorized_extra_scopes"]]
+        },
+        auth_operations[["reauth_scopes"]]
+      )
       auth_operations[["no_revoke_before_epoch"]] <- auth_operations[["epoch"]]
       .advance_auth_epoch()
       values[["token"]] <- NULL
@@ -2024,7 +2050,9 @@ oauth_module_server_impl <- function(
     #   token, and emits logout side effects.
     values[["logout"]] <- function(reason = "manual_logout") {
       auth_operations[["reauth_scopes"]] <- NULL
+      auth_operations[["reauth_extra_scopes"]] <- NULL
       auth_operations[["last_authorized_scopes"]] <- NULL
+      auth_operations[["last_authorized_extra_scopes"]] <- NULL
       auth_operations[["target_limits"]] <- NULL
       logout_shiny_session <- capture_shiny_session_context(is_async = FALSE)
       logout_async_shiny_session <- if (isTRUE(async)) {

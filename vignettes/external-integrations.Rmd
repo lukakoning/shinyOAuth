@@ -142,6 +142,16 @@ issuing a refresh token. Explicit refresh scopes replace this consent policy too
 omit `offline_access` to keep it out of later reauthorization requests. Automatic
 refresh does not remove retained consent simply because a token omits it.
 
+Ordinary OAuth providers may report additional scopes from earlier consent.
+Reauthorization requests only retained configured permissions and seals any
+previously accepted extra scope evidence into the replacement transaction.
+Those same extras may remain in the returned token; they do not become available
+through the connection's operation scope checks. A replacement or its automatic
+refresh cannot add new extras or restore configured permissions omitted from the
+retained limit. Explicit refresh narrowing still requires the returned token to
+fit the supplied scope request. Exported raw bearer tokens can carry the provider's
+broader permissions; local checks do not reduce their authority at the API.
+
 ## SDK callbacks and databases
 
 If an SDK accepts a token callback, create its client once per authorization:

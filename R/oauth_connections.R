@@ -610,6 +610,7 @@ connection_manager_controller <- function(
     replacement <- reauthorization_queue[[client_name]]
     if (!is.null(replacement)) {
       context[["requested_scopes"]] <- replacement[["scopes"]]
+      context[["accepted_extra_scopes"]] <- replacement[["extra_scopes"]]
       context[["target_limits"]] <- replacement[["target_limits"]]
       context[["replaces_connection_id"]] <- replacement[["id"]]
       rm(list = client_name, envir = reauthorization_queue)
@@ -700,7 +701,8 @@ connection_manager_controller <- function(
         token@granted_scopes,
         list(
           scopes = context[["requested_scopes"]],
-          required_scopes = client@required_scopes
+          required_scopes = client@required_scopes,
+          accepted_extra_scopes = context[["accepted_extra_scopes"]]
         )
       )
     }
@@ -765,6 +767,7 @@ connection_manager_controller <- function(
     connection_credential_track(manager, record, token, targets)
     state[["authorization_metadata"]][[id]] <- list(
       scopes = authorization_scopes %||% token@granted_scopes,
+      extra_scopes = authorization_extra_scopes(client, token),
       target_limits = targets[["limits"]],
       expires_at = record[["expires_at"]],
       replaces_connection_id = context[["replaces_connection_id"]]
@@ -839,6 +842,10 @@ connection_manager_controller <- function(
       metadata <- state[["authorization_metadata"]][[record[["id"]]]] %||%
         list()
       metadata[["scopes"]] <- value[["authorization_scopes"]]
+      metadata[["extra_scopes"]] <- authorization_extra_scopes(
+        client,
+        value[["token"]]
+      )
       metadata[["target_limits"]] <- value[["targets"]][["limits"]]
       metadata[["expires_at"]] <- record[["expires_at"]]
       state[["authorization_metadata"]][[record[["id"]]]] <- metadata
@@ -989,12 +996,17 @@ connection_manager_controller <- function(
     # Validate before taking the refresh claim or sending any credentials.
     # After explicit narrowing, automatic calls retain the accepted grant.
     explicit_scopes <- scopes
+    accepted_extra_scopes <- NULL
     if (
       is.null(target) &&
         is.null(scopes) &&
         isTRUE(record[["refresh_scope_narrowed"]])
     ) {
-      scopes <- record[["token"]]@granted_scopes
+      accepted_extra_scopes <- authorization_extra_scopes(
+        record[["client"]],
+        record[["token"]]
+      )
+      scopes <- setdiff(record[["token"]]@granted_scopes, accepted_extra_scopes)
     }
     target_request <- if (!is.null(target)) {
       token_target_refresh_request(
@@ -1016,7 +1028,8 @@ connection_manager_controller <- function(
         record[["client"]],
         record[["token"]],
         scopes,
-        record[["client"]]@required_scopes
+        record[["client"]]@required_scopes,
+        accepted_extra_scopes
       )
     } else {
       NULL
@@ -1177,6 +1190,10 @@ connection_manager_controller <- function(
           connection_credential_track(manager, installed, token, targets)
           metadata <- state[["authorization_metadata"]][[id]] %||% list()
           metadata[["scopes"]] <- authorization_scopes %||% token@granted_scopes
+          metadata[["extra_scopes"]] <- authorization_extra_scopes(
+            record[["client"]],
+            token
+          )
           metadata[["target_limits"]] <- targets[["limits"]]
           metadata[["expires_at"]] <- installed[["expires_at"]]
           state[["authorization_metadata"]][[id]] <- metadata
@@ -1453,10 +1470,20 @@ connection_manager_controller <- function(
     if (length(scopes)) {
       scopes <- authorization_scope_limit(record[["client"]], scopes)
     }
+    extra_scopes <- authorization_extra_scope_limit(
+      record[["client"]],
+      if (!is.null(record[["token"]])) {
+        authorization_extra_scopes(record[["client"]], record[["token"]])
+      } else {
+        state[["authorization_metadata"]][[id]][["extra_scopes"]]
+      },
+      scopes
+    )
     disconnect(id, revoke = FALSE)
     reauthorization_queue[[client_name]] <- list(
       id = id,
       scopes = scopes,
+      extra_scopes = extra_scopes,
       target_limits = limits
     )
     client_name
@@ -1526,6 +1553,9 @@ connection_manager_controller <- function(
           list()
         }
         parameters[["target_limits"]] <- context[["target_limits"]]
+        parameters[["accepted_extra_scopes"]] <- context[[
+          "accepted_extra_scopes"
+        ]]
         if (!identical(client_for(client_name)@smart[["launch"]], "ehr")) {
           return(parameters)
         }

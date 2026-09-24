@@ -221,8 +221,10 @@ module_refresh_controller <- function(
       narrowed <<- isTRUE(operations[["refresh_scope_narrowed"]])
     }
     explicit_scopes <- scopes
+    accepted_extra_scopes <- NULL
     if (is.null(target) && is.null(scopes) && narrowed) {
-      scopes <- token@granted_scopes
+      accepted_extra_scopes <- authorization_extra_scopes(client, token)
+      scopes <- setdiff(token@granted_scopes, accepted_extra_scopes)
     }
     target_request <- if (!is.null(target)) {
       token_target_refresh_request(client, target, bundle[["limits"]], scopes)
@@ -236,7 +238,12 @@ module_refresh_controller <- function(
       )
     }
     scope_request <- if (is.null(target) && !is.null(scopes)) {
-      refresh_scope_request(client, token, scopes)
+      refresh_scope_request(
+        client,
+        token,
+        scopes,
+        accepted_extra_scopes = accepted_extra_scopes
+      )
     } else {
       NULL
     }
@@ -249,6 +256,12 @@ module_refresh_controller <- function(
         client,
         token,
         operations[["last_authorized_scopes"]] %||% token@granted_scopes
+      )
+      operations[[
+        "last_authorized_extra_scopes"
+      ]] <- authorization_extra_scopes(
+        client,
+        token
       )
     }
     retained_scopes <- explicit_scopes %||%
@@ -390,6 +403,12 @@ module_refresh_controller <- function(
           client,
           fresh,
           retained_scopes
+        )
+        operations[[
+          "last_authorized_extra_scopes"
+        ]] <- authorization_extra_scopes(
+          client,
+          fresh
         )
       }
       values[["error"]] <- NULL

@@ -10,7 +10,37 @@ authorization_scopes_bounded <- function(scopes) {
 # Pass the previous policy on automatic refresh, or the explicit scope request
 # when narrowing, so a deliberately removed consent is never restored.
 authorization_retained_scopes <- function(client, token, requested) {
-  union(token@granted_scopes, intersect(requested, "offline_access"))
+  union(
+    setdiff(token@granted_scopes, authorization_extra_scopes(client, token)),
+    intersect(requested, "offline_access")
+  )
+}
+
+# Ordinary OAuth accepts provider evidence beyond the configured permissions.
+# Keep it as evidence, never as an outgoing request or an operation permission.
+# SMART scopes can overlap semantically, so retain their stricter grant policy.
+authorization_extra_scopes <- function(client, token) {
+  if (client_uses_smart_scopes(client) || token_targets_configured(client)) {
+    return(character())
+  }
+  setdiff(token@granted_scopes, effective_client_scopes(client))
+}
+
+authorization_extra_scope_limit <- function(client, scopes, requested) {
+  if (is.null(scopes)) {
+    return(character())
+  }
+  validate_scopes(scopes)
+  scopes <- normalize_scope_tokens(scopes)
+  if (
+    (length(scopes) &&
+      (client_uses_smart_scopes(client) || token_targets_configured(client))) ||
+      length(intersect(scopes, effective_client_scopes(client))) ||
+      !authorization_scopes_bounded(c(requested, scopes))
+  ) {
+    err_input("Invalid previously accepted extra scope limit")
+  }
+  scopes
 }
 
 authorization_scope_limit <- function(client, scopes) {
@@ -64,7 +94,8 @@ refresh_scope_request <- function(
   client,
   token,
   scopes,
-  required_scopes = character()
+  required_scopes = character(),
+  accepted_extra_scopes = NULL
 ) {
   if (
     !is.character(scopes) ||
@@ -125,7 +156,19 @@ refresh_scope_request <- function(
   if (!covered(required_scopes, scopes)) {
     err_token("Refresh scopes must retain the target's required permissions")
   }
-  list(scopes = scopes, required_scopes = required_scopes)
+  request <- list(scopes = scopes, required_scopes = required_scopes)
+  extra <- authorization_extra_scope_limit(
+    client,
+    accepted_extra_scopes,
+    scopes
+  )
+  if (!all(extra %in% authorization_extra_scopes(client, token))) {
+    err_token("Extra scopes must have been accepted in the current grant")
+  }
+  if (length(extra)) {
+    request[["accepted_extra_scopes"]] <- extra
+  }
+  request
 }
 
 validate_refresh_scope_request <- function(client, token, request) {
@@ -134,7 +177,11 @@ validate_refresh_scope_request <- function(client, token, request) {
   }
   if (
     !is.list(request) ||
-      !identical(names(request), c("scopes", "required_scopes")) ||
+      !(identical(names(request), c("scopes", "required_scopes")) ||
+        identical(
+          names(request),
+          c("scopes", "required_scopes", "accepted_extra_scopes")
+        )) ||
       !is.character(request[["required_scopes"]])
   ) {
     err_config("Invalid internal refresh scope request")
@@ -143,7 +190,8 @@ validate_refresh_scope_request <- function(client, token, request) {
     client,
     token,
     request[["scopes"]],
-    request[["required_scopes"]]
+    request[["required_scopes"]],
+    request[["accepted_extra_scopes"]]
   )
   if (!identical(request, checked)) {
     err_config("Invalid internal refresh scope request")
@@ -157,7 +205,14 @@ validate_refresh_scope_grant <- function(client, granted, request) {
   }
   if (
     !identical(
-      client_scope_coverage(client, granted, request[["scopes"]])[["status"]],
+      client_scope_coverage(
+        client,
+        granted,
+        union(
+          request[["scopes"]],
+          request[["accepted_extra_scopes"]]
+        )
+      )[["status"]],
       "covered"
     )
   ) {

@@ -812,6 +812,27 @@ payload_verify_client_binding <- function(client, payload) {
 
   expected_scopes <- as_scope_tokens(effective_client_scopes(client))
   payload_scopes <- as_scope_tokens(payload[["scopes"]] %||% NULL)
+  if (!is.null(payload[["accepted_extra_scopes"]])) {
+    tryCatch(
+      {
+        if (is.null(payload[["configured_scopes"]])) {
+          err_invalid_state(
+            "Extra scope evidence requires a reauthorization scope limit"
+          )
+        }
+        extra <- connection_data_decode(payload[["accepted_extra_scopes"]])
+        if (
+          !identical(
+            extra,
+            authorization_extra_scope_limit(client, extra, payload_scopes)
+          )
+        ) {
+          err_invalid_state("Invalid extra scope evidence")
+        }
+      },
+      error = function(...) err_invalid_state("Invalid extra scope evidence")
+    )
+  }
   if (!is.null(payload[["target_limits"]])) {
     limits <- tryCatch(
       validate_token_target_limits(

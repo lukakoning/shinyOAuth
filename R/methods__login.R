@@ -68,7 +68,8 @@ prepare_call_internal <- function(
   .smart_launch = NULL,
   .authorization_request = FALSE,
   .requested_scopes = NULL,
-  .target_limits = NULL
+  .target_limits = NULL,
+  .accepted_extra_scopes = NULL
 ) {
   # Verify input  --------------------------------------------------------------
 
@@ -116,6 +117,14 @@ prepare_call_internal <- function(
     )
     configured_scopes <- effective_scopes
     effective_scopes <- .requested_scopes
+  }
+  .accepted_extra_scopes <- authorization_extra_scope_limit(
+    oauth_client,
+    .accepted_extra_scopes,
+    effective_scopes
+  )
+  if (length(.accepted_extra_scopes) && is.null(.requested_scopes)) {
+    err_input("Extra scope evidence requires a reauthorization scope limit")
   }
   requested_max_age <- provider_auth_max_age(oauth_client@provider)
   if (!is.null(.requested_max_age)) {
@@ -205,6 +214,9 @@ prepare_call_internal <- function(
           redirect_uri = oauth_client@redirect_uri,
           scopes = effective_scopes,
           configured_scopes = configured_scopes,
+          accepted_extra_scopes = if (length(.accepted_extra_scopes)) {
+            connection_data_encode(.accepted_extra_scopes)
+          },
           target_limits = if (is.null(.target_limits)) {
             NULL
           } else {
@@ -2047,7 +2059,12 @@ handle_callback_internal <- function(
           token@granted_scopes,
           list(
             scopes = payload[["scopes"]],
-            required_scopes = oauth_client@required_scopes
+            required_scopes = oauth_client@required_scopes,
+            accepted_extra_scopes = if (
+              !is.null(payload[["accepted_extra_scopes"]])
+            ) {
+              connection_data_decode(payload[["accepted_extra_scopes"]])
+            }
           )
         )
       }

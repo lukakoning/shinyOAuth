@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Ordinary OAuth reauthorization separates configured permissions from previously
+accepted extra scope evidence. Replacement and subsequent automatic refresh
+requests omit undeclared scopes, accept only previously observed extras, and
+continue to reject restored permissions outside the retained request limit.
+
 * Ordinary OIDC reauthorization retains requested `offline_access` consent even
 when access-token scope evidence omits it. This policy survives refresh, managed
 storage, and callback sessions; explicitly removing that scope keeps it removed.

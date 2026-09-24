@@ -390,7 +390,8 @@ connection_credentials_open <- function(
       list(
         token = token,
         targets = targets,
-        authorization_scopes = authorization_scopes %||% token@granted_scopes,
+        authorization_scopes = authorization_scopes %||%
+          authorization_retained_scopes(client, token, token@granted_scopes),
         authenticated_at = payload[["authenticated_at"]],
         refresh_scope_narrowed = isTRUE(payload[["refresh_scope_narrowed"]])
       )
