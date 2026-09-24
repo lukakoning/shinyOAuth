@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Microsoft `.default` declarations must name their target's exact resource,
+preventing a nested resource URI from selecting a different API's token.
+
 * Managed token targets pace successful refreshes using the selected token's
 lifetime, allowing short-lived tokens to renew before expiry or a requested
 lifetime buffer. Stable and rotating refresh credentials retain this pacing;

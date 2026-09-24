@@ -197,12 +197,13 @@ validate_token_targets <- function(client) {
     }
     if (identical(client@provider@token_target_mode, "microsoft")) {
       prefix <- token_target_prefix(resource)
+      static <- endsWith(scopes, "/.default")
       if (
         !all(startsWith(scopes, prefix)) ||
-          (paste0(prefix, ".default") %in% scopes && length(scopes) != 1L)
+          (any(static) && !identical(scopes, paste0(prefix, ".default")))
       ) {
         err_config(
-          "Microsoft target scopes must be qualified by their resource; .default must be used alone"
+          "Microsoft target scopes must be qualified by their resource; .default must match that exact resource and be used alone"
         )
       }
     }
