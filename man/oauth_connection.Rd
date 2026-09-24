@@ -34,6 +34,8 @@ assembling a token, client and URL for each request. It reads the reactive token
 again after refresh or logout and restricts requests to the configured APIs.
 This optional wrapper expires with its Shiny session; it does not implement
 refresh itself or retain credentials across redirects.
+Clients with \code{token_targets} must use the module's \code{connection()} factory,
+which retains the authorization's permission limits alongside its tokens.
 }
 \details{
 Create the reference once inside \code{server()}. Access it only in that session's
