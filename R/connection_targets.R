@@ -125,6 +125,11 @@ validate_token_targets <- function(client) {
       "With token targets, put API required_scopes inside each target declaration"
     )
   }
+  if ("offline_access" %in% normalize_scope_tokens(client@required_scopes)) {
+    err_config(
+      "offline_access is refresh consent; request it in client scopes, not required_scopes"
+    )
+  }
   if (!authorization_scopes_bounded(effective_client_scopes(client))) {
     err_config(
       "Token target authorizations allow at most 128 distinct scopes and 8192 scope bytes in total"
@@ -180,6 +185,11 @@ validate_token_targets <- function(client) {
     required <- connection_scope_arguments(
       item[["required_scopes"]] %||% character()
     )
+    if ("offline_access" %in% required) {
+      err_config(
+        "offline_access is refresh consent; request it in client scopes, not target required_scopes"
+      )
+    }
     if (!token_target_scopes_allowed(client, name, required)) {
       err_config(
         "Target required_scopes must be covered by that target's declaration"

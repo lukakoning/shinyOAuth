@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Target clients reject `offline_access` in client or target `required_scopes`.
+Request it in client `scopes` for refresh consent. Documentation now separates
+that request from access-token permission requirements.
+
 * Ended managed connections are removed from the session's reference cache.
 Permission observers stop when a managed reference ends or a single-module
 authorization is replaced, preventing repeated login/disconnect cycles from
