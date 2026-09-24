@@ -58,8 +58,11 @@
 #'   `token_target_mode`, `userinfo_required = FALSE`, and no `resource` or
 #'   SMART configuration. Provider `extra_auth_params` and `extra_token_params`
 #'   must not contain `resource`; declare resources only in `token_targets`.
-#'   Client-level `required_scopes` can contain OIDC
-#'   scopes only. Targets share one local authorization and refresh credential,
+#'   Client-level `required_scopes` can contain OIDC scopes only, except
+#'   `offline_access`: request refresh consent in client `scopes`, never in
+#'   client or target `required_scopes`. Access-token scopes cannot establish
+#'   whether a usable refresh credential exists.
+#'   Targets share one local authorization and refresh credential,
 #'   while their access tokens and retained permission limits remain separate.
 #'   Microsoft limits constrain local operation checks, while the actual token
 #'   can include previously consented scopes for the selected resource. Explicit

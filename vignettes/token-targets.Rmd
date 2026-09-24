@@ -85,7 +85,12 @@ request. See [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html).
 
 Declare OIDC scopes at client level, outside the targets' API scope lists.
 RFC 8707 mode recognizes `openid`, `profile`, `email`, `address`, `phone`, and
-`offline_access`; these can also be client-level `required_scopes`.
+`offline_access`. All except `offline_access` can also be client-level
+`required_scopes`. Request `offline_access` in client `scopes` for refresh
+consent; putting it in client or target `required_scopes` is a configuration
+error. A refresh token can be issued without this value appearing in the
+access-token scopes, and its presence in scopes does not establish that a
+usable refresh credential exists.
 See [OpenID Connect scope values](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims).
 Microsoft mode keeps its provider-specific set: `openid`, `profile`, `email`,
 and `offline_access`. It does not treat bare `phone` or `address` as Microsoft
