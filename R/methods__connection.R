@@ -6,6 +6,8 @@
 #' again after refresh or logout and restricts requests to the configured APIs.
 #' This optional wrapper expires with its Shiny session; it does not implement
 #' refresh itself or retain credentials across redirects.
+#' Clients with `token_targets` must use the module's `connection()` factory,
+#' which retains the authorization's permission limits alongside its tokens.
 #'
 #' @param client An [OAuthClient] with non-empty `resource_bases`, created by
 #'   [oauth_client()] or [smart_client()].
@@ -58,6 +60,11 @@ oauth_connection <- function(
   session = shiny::getDefaultReactiveDomain()
 ) {
   S7::check_is_S7(client, OAuthClient)
+  if (token_targets_configured(client)) {
+    err_config(
+      "Clients with token_targets require the module's connection() factory to retain permission limits"
+    )
+  }
   normalize_resource_bases(client@resource_bases)
   connection_client_fingerprint(client)
   if (!shiny::is.reactive(token_reactive)) {

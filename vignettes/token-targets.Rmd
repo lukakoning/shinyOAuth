@@ -93,6 +93,10 @@ OIDC scopes.
 
 ## Use the same connection interface in either module
 
+Obtain target connections from the module's `connection()` factory. The legacy
+`oauth_connection(client, token_reactive)` wrapper rejects target clients because
+the token alone does not contain their retained permission limits.
+
 ```{r, eval=FALSE}
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)

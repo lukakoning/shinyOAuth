@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* The legacy `oauth_connection()` wrapper rejects target-enabled clients. Use a
+module's `connection()` factory so broader token responses cannot bypass retained
+target permission limits.
+
 * Ordinary OAuth reauthorization separates configured permissions from previously
 accepted extra scope evidence. Replacement and subsequent automatic refresh
 requests omit undeclared scopes, accept only previously observed extras, and
@@ -57,9 +61,6 @@ thirty-second period of unavailability.
 
 * Identity documentation distinguishes retained target identity snapshots from
 current access-token validity, permissions, and fresh user authentication.
-
-* Legacy `oauth_connection()` wrappers support validated target identity and
-report secondary targets as `not_acquired` while their authorization is present.
 
 * Target authorizations mark an expired primary token as `token_stale`, including
 after a secondary target refresh, while keeping the authorization available.
