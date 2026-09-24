@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Target scope introspection treats `offline_access` as refresh consent even
+when the token endpoint omits scope. Valid rotating refreshes remain usable;
+strict checks still reject missing API permissions and grants outside the target.
+
 * The legacy `oauth_connection()` wrapper rejects target-enabled clients. Use a
 module's `connection()` factory so broader token responses cannot bypass retained
 target permission limits.
