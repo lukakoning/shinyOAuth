@@ -2326,6 +2326,11 @@ enforce_token_introspection_policy <- function(
       requested_scopes %||% effective_client_scopes(oauth_client)
     )
     intro_scope_raw <- raw[["scope"]] %||% NULL
+    if (token_targets_configured(oauth_client) && !is.null(intro_scope_raw)) {
+      # Introspection describes the access token, including when the token
+      # endpoint omitted scope. Refresh consent is retained separately.
+      requested_scopes <- setdiff(requested_scopes, "offline_access")
+    }
     if ("scope" %in% names(raw)) {
       validate_response_scope(
         intro_scope_raw,
