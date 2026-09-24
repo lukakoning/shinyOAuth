@@ -772,6 +772,37 @@ oauth_module_server_impl <- function(
       min(auth_time, now)
     }
 
+    # A verified replacement remains restricted even if code exchange fails or
+    # consent is denied in a new callback session. Call only after browser binding
+    # and single-use state validation, never merely after decrypting state.
+    .retain_reauthorization_policy <- function(payload) {
+      if (
+        !is.null(.managed) ||
+          !is.null(values[["token"]]) ||
+          is.null(payload[["configured_scopes"]])
+      ) {
+        return(invisible(NULL))
+      }
+      scopes <- authorization_scope_limit(
+        client,
+        as_scope_tokens(payload[["scopes"]])
+      )
+      limits <- if (!is.null(payload[["target_limits"]])) {
+        validate_token_target_limits(
+          client,
+          connection_data_decode(payload[["target_limits"]])
+        )
+      }
+      extra <- if (!is.null(payload[["accepted_extra_scopes"]])) {
+        connection_data_decode(payload[["accepted_extra_scopes"]])
+      }
+      extra <- authorization_extra_scope_limit(client, extra, scopes)
+      auth_operations[["reauth_scopes"]] <- scopes
+      auth_operations[["reauth_extra_scopes"]] <- extra
+      auth_operations[["target_limits"]] <- limits
+      invisible(NULL)
+    }
+
     .accept_login_token <- function(
       tok,
       context,
@@ -3408,6 +3439,7 @@ oauth_module_server_impl <- function(
           if (!is.null(.managed)) {
             .managed[["cancel"]](managed_context[["data"]])
           }
+          .retain_reauthorization_policy(consumed_state[["payload"]])
           TRUE
         },
         error = function(e) {
@@ -3733,8 +3765,8 @@ oauth_module_server_impl <- function(
           }
           # A browser redirect creates a fresh Shiny session. Keep the sealed
           # permission policy with this callback, rather than relying on the session
-          # that started reauthorization. Install it only after callback/token
-          # validation succeeds and this operation still owns the authorization.
+          # that started reauthorization. Retain retry policy after state validation;
+          # install credentials only after token validation and ownership checks.
           callback_target_limits <- NULL
           callback_scope_narrowed <- FALSE
           callback_requested_scopes <- NULL
@@ -4046,6 +4078,11 @@ oauth_module_server_impl <- function(
                             }
                           )
                         }
+                        if (
+                          .auth_operation_can_apply(login_operation, "login")
+                        ) {
+                          .retain_reauthorization_policy(pre_payload)
+                        }
                         # Build a serialization-safe client for the worker.
                         # The state_store is already consumed on the main thread, so
                         # prepare_client_for_worker() replaces it with a lightweight
@@ -4145,6 +4182,7 @@ oauth_module_server_impl <- function(
               } else {
                 if (
                   !is.null(.managed) ||
+                    callback_scope_narrowed ||
                     isTRUE(callback_validated) ||
                     identical(
                       client@authorization_server_mode,
@@ -4160,7 +4198,12 @@ oauth_module_server_impl <- function(
                     browser_token = values[["browser_token"]],
                     decrypted_payload = decrypted_payload,
                     state_store_values = state_store_values,
-                    .transaction_context = managed_context[["json"]]
+                    .transaction_context = managed_context[["json"]],
+                    .on_state_validated = function(payload) {
+                      if (.auth_operation_can_apply(login_operation, "login")) {
+                        .retain_reauthorization_policy(payload)
+                      }
+                    }
                   )
                 } else {
                   handle_callback(

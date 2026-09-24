@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Failed replacement callbacks and denied consent retain authenticated scope
+limits in fresh Shiny sessions. Retrying reauthorization cannot restore removed
+permissions; foreign-browser and replayed state cannot install retry policy.
+
 * Target clients reject `offline_access` in client or target `required_scopes`.
 Request it in client `scopes` for refresh consent. Documentation now separates
 that request from access-token permission requirements.

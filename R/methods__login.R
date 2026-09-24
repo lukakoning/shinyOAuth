@@ -1449,7 +1449,8 @@ handle_callback_internal <- function(
   state_store_values = NULL,
   trace_id_seeded = FALSE,
   shiny_session = NULL,
-  .transaction_context = NULL
+  .transaction_context = NULL,
+  .on_state_validated = NULL
 ) {
   # Type checks ----------------------------------------------------------------
 
@@ -1688,6 +1689,9 @@ handle_callback_internal <- function(
         )
       }
       audit_callback_validation_success(oauth_client, payload, shiny_session)
+      if (!is.null(.on_state_validated)) {
+        .on_state_validated(payload)
+      }
 
       # Swap code for token --------------------------------------------------------
 
