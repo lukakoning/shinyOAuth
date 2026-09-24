@@ -81,7 +81,7 @@ validate_token_targets <- function(client) {
       is.null(names(targets)) ||
       anyDuplicated(names(targets)) ||
       anyNA(names(targets)) ||
-      any(!grepl("^[A-Za-z][A-Za-z0-9_.-]{0,63}$", names(targets)))
+      !all(grepl("^[A-Za-z][A-Za-z0-9_.-]{0,63}$", names(targets)))
   ) {
     err_config(
       "token_targets must be a named list of at most 16 distinct targets"
