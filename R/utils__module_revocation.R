@@ -31,6 +31,7 @@ module_revoke_targets <- function(
   }
   entries <- c(list(token, token), unname(secondary))
   kinds <- c("refresh", rep("access", length(entries) - 1L))
+  attempted <- list(refresh = character(), access = character())
   for (i in seq_along(entries)) {
     remaining <- deadline - as.numeric(Sys.time())
     # Smaller values trigger the HTTP helper's invalid-timeout fallback.
@@ -40,6 +41,17 @@ module_revoke_targets <- function(
     if (is.null(entries[[i]])) {
       next
     }
+    kind <- kinds[[i]]
+    value <- if (kind == "refresh") {
+      entries[[i]]@refresh_token
+    } else {
+      entries[[i]]@access_token
+    }
+    if (value %in% attempted[[kind]]) {
+      next
+    }
+    # A failed attempt also consumes this credential's turn in the batch.
+    attempted[[kind]] <- c(attempted[[kind]], value)
     settings <- capture_async_options()
     settings[["shinyOAuth.timeout"]] <- min(2, remaining)
     settings[["shinyOAuth.retry_max_tries"]] <- 1L
