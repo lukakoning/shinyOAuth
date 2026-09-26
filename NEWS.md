@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Microsoft token targets compare API permission names without regard to ASCII
+case across login, refresh, restoration and operation checks. Resource identifiers
+and ordinary OAuth scopes remain exact, and original grant evidence is preserved.
+
 * Failed replacement callbacks and denied consent retain authenticated scope
 limits in fresh Shiny sessions. Retrying reauthorization cannot restore removed
 permissions; foreign-browser and replayed state cannot install retry policy.

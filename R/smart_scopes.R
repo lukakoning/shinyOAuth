@@ -130,6 +130,21 @@ client_uses_smart_scopes <- function(client) {
 }
 
 client_scope_coverage <- function(client, requested, granted) {
+  if (
+    token_targets_configured(client) &&
+      identical(client@provider@token_target_mode, "microsoft")
+  ) {
+    requested <- normalize_scope_tokens(requested)
+    missing <- requested[
+      !token_target_scope_keys(client, requested) %in%
+        token_target_scope_keys(client, granted)
+    ]
+    return(list(
+      status = if (length(missing)) "insufficient" else "covered",
+      missing = missing,
+      indeterminate = character()
+    ))
+  }
   policy <- client@scope_policy
   if (!length(policy)) {
     return(evaluate_scope_coverage(requested, granted))

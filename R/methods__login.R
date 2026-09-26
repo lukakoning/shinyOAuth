@@ -2388,7 +2388,11 @@ enforce_token_introspection_policy <- function(
       } else {
         intro_scopes <- normalize_scope_tokens(intro_scope_raw)
 
-        missing <- evaluate_scope_coverage(requested_scopes, intro_scopes)[[
+        missing <- client_scope_coverage(
+          oauth_client,
+          requested_scopes,
+          intro_scopes
+        )[[
           "missing"
         ]]
         if (length(missing) > 0) {
@@ -2949,7 +2953,11 @@ verify_token_set <- function(
           length(requested_scopes) > 0 &&
           !scope_is_omitted
       ) {
-        missing <- evaluate_scope_coverage(requested_scopes, granted_scopes)[[
+        missing <- client_scope_coverage(
+          client,
+          requested_scopes,
+          granted_scopes
+        )[[
           "missing"
         ]]
         if (length(missing) > 0) {

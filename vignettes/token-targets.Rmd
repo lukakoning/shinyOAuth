@@ -253,7 +253,9 @@ for an unacquired target.
 `.default` is never treated as proof of individual permissions. Microsoft target
 responses must include `scope`; returned short permission names are qualified
 only within the selected Microsoft resource. Token evidence records the actual
-returned permissions. Local operation limits retain only permissions within the
+returned permissions. Microsoft API permission comparisons ignore ASCII case
+(for example, `User.Read` and `user.read`); resource identifiers remain exact.
+Ordinary OAuth scopes remain case-sensitive. Local operation limits retain only permissions within the
 previous limit (expanding `.default` to its initial granted permissions), so a
 later response cannot restore a locally removed operation. See [Microsoft scopes and static consent](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc)
 and [refresh credentials](https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens).

@@ -25,6 +25,46 @@ token_target_name <- function(client, target = NULL) {
 
 token_target_prefix <- function(resource) paste0(resource, "/")
 
+# Comparison keys only: retain the provider's original scope evidence and keep
+# resource identifiers exact. Only Microsoft permission names ignore ASCII case.
+token_target_scope_keys <- function(client, scopes) {
+  scopes <- normalize_scope_tokens(scopes)
+  if (
+    !token_targets_configured(client) ||
+      !identical(client@provider@token_target_mode, "microsoft")
+  ) {
+    return(scopes)
+  }
+  prefixes <- unique(vapply(
+    client@token_targets,
+    function(target) {
+      token_target_prefix(target[["resource"]])
+    },
+    character(1)
+  ))
+  prefixes <- prefixes[order(nchar(prefixes), decreasing = TRUE)]
+  vapply(
+    scopes,
+    function(scope) {
+      matching <- prefixes[startsWith(scope, prefixes)]
+      if (!length(matching)) {
+        return(scope)
+      }
+      prefix <- matching[[1L]]
+      paste0(
+        prefix,
+        chartr(
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+          "abcdefghijklmnopqrstuvwxyz",
+          substring(scope, nchar(prefix) + 1L)
+        )
+      )
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
 token_target_scopes_allowed <- function(
   client,
   target,
@@ -65,7 +105,10 @@ token_target_scopes_allowed <- function(
       token_target_prefix(declaration[["resource"]])
     )))
   }
-  all(scopes %in% ceiling)
+  all(
+    token_target_scope_keys(client, scopes) %in%
+      token_target_scope_keys(client, ceiling)
+  )
 }
 
 validate_token_targets <- function(client) {
@@ -176,7 +219,7 @@ validate_token_targets <- function(client) {
         length(scopes) > 128L ||
         sum(nchar(scopes, type = "bytes")) > 8192L ||
         any(scopes %in% token_target_oidc_scopes(client)) ||
-        !all(scopes %in% client@scopes)
+        !connection_scope_covered(client, scopes, client@scopes)
     ) {
       err_config(
         "Target scopes must be non-empty API scopes included in the client scopes"
@@ -356,8 +399,11 @@ token_target_refresh_request <- function(
     oidc <- token_target_oidc_scopes(client)
     if (
       !setequal(
-        setdiff(normalize_scope_tokens(previous), oidc),
-        setdiff(request[["scopes"]], oidc)
+        token_target_scope_keys(
+          client,
+          setdiff(normalize_scope_tokens(previous), oidc)
+        ),
+        token_target_scope_keys(client, setdiff(request[["scopes"]], oidc))
       )
     ) {
       connection_access_error("unsupported_scope_narrowing")
@@ -445,8 +491,10 @@ validate_token_target_grant <- function(client, granted, request) {
         granted,
         request[["scopes"]]
       ) ||
-      !all(
-        union(client@required_scopes, request[["required_scopes"]]) %in% granted
+      !connection_scope_covered(
+        client,
+        union(client@required_scopes, request[["required_scopes"]]),
+        granted
       )
   ) {
     err_token(
