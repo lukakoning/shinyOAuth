@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Microsoft target `required_scopes` reject `.default` during configuration.
+Static consent declarations can require actual API permissions instead.
+
 * Managed reauthorization contexts accommodate the full supported target scope
 budget, including sealed external state stores. Replacement context validation
 runs before disconnecting the current authorization; context size remains bounded.

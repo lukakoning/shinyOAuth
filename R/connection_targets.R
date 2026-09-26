@@ -233,6 +233,14 @@ validate_token_targets <- function(client) {
         "offline_access is refresh consent; request it in client scopes, not target required_scopes"
       )
     }
+    if (
+      identical(client@provider@token_target_mode, "microsoft") &&
+        any(endsWith(token_target_scope_keys(client, required), "/.default"))
+    ) {
+      err_config(
+        "Microsoft .default requests static consent; target required_scopes must name actual API permissions"
+      )
+    }
     if (!token_target_scopes_allowed(client, name, required)) {
       err_config(
         "Target required_scopes must be covered by that target's declaration"
