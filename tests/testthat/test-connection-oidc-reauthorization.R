@@ -191,7 +191,11 @@ test_that("OIDC target replacement authenticates after API-only scope responses"
             replacement_url <<- .build_auth_url()
           }
         )
-        expected <- c(f[["scope"]]("primary", "read"), "openid", "offline_access")
+        expected <- c(
+          f[["scope"]]("primary", "read"),
+          "openid",
+          "offline_access"
+        )
         expect_setequal(
           normalize_scope_tokens(parse_query_param(
             replacement_url,
@@ -317,7 +321,11 @@ test_that("managed OIDC replacement seals matching login and target scope limits
         session[["getReturned"]]()[["reauthorize"]](id)
         hooks <- controller[["hooks"]]("a")
         context <- hooks[["prepare"]]()
-        expected <- c(f[["scope"]]("primary", "read"), "openid", "offline_access")
+        expected <- c(
+          f[["scope"]]("primary", "read"),
+          "openid",
+          "offline_access"
+        )
         expect_setequal(context[["target_limits"]][["primary"]], expected)
         expect_setequal(
           context[["target_limits"]][["secondary"]],
@@ -357,7 +365,9 @@ test_that("managed OIDC replacement seals matching login and target scope limits
         expect_true(replacement@id_token_validated)
         expect_true(is_valid_string(replacement@refresh_token))
         expect_identical(
-          suppressWarnings(connection()[["access_token"]](target = "secondary")),
+          suppressWarnings(connection()[["access_token"]](
+            target = "secondary"
+          )),
           "secondary-access"
         )
         expect_false(connection()[["has_scopes"]](f[["scope"]](
