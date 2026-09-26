@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Logout and disconnect cleanup attempt each distinct credential once per client
+and token kind, preserving the shared deadline for other tokens and reusing remote
+outcomes for duplicate target credentials.
+
 * Microsoft targets accept optional `scope_aliases` for punctuated short names
 returned by `.default` or prior consent. Aliases do not request permissions, make
 them mandatory, or widen retained operation limits.

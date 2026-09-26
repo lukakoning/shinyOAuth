@@ -1356,6 +1356,44 @@ connection_manager_controller <- function(
       )
     }
     deadline <- as.numeric(Sys.time()) + 10
+    attempted <- new.env(parent = emptyenv())
+    revoke_once <- function(
+      client_name,
+      token,
+      kinds = c("refresh", "access")
+    ) {
+      client <- client_for(client_name, check = FALSE)
+      result <- list(refresh = "not_attempted", access = "not_attempted")
+      if (is.null(token)) {
+        return(result)
+      }
+      keys <- connection_credential_keys(manager, client, token)
+      keys <- lapply(kinds, function(kind) {
+        paste0(client_name, ":", kind, ":", keys[[kind]] %||% "missing")
+      })
+      names(keys) <- kinds
+      pending <- kinds[
+        !vapply(keys, exists, logical(1), envir = attempted, inherits = FALSE)
+      ]
+      if (length(pending)) {
+        response <- connection_manager_revoke(
+          manager,
+          client,
+          token,
+          deadline,
+          kinds = pending
+        )
+        for (kind in pending) {
+          attempted[[keys[[kind]]]] <- response[[kind]]
+        }
+      }
+      # Reuse the outcome even after the deadline, so aliases do not turn an
+      # accepted revocation into an incomplete result. Client contexts stay separate.
+      for (kind in kinds) {
+        result[[kind]] <- attempted[[keys[[kind]]]]
+      }
+      result
+    }
     lapply(previous, function(record) {
       remote <- "not_requested"
       if (!is.null(record)) {
@@ -1406,18 +1444,14 @@ connection_manager_controller <- function(
           ),
           error = function(...) NULL
         )
-        remote <- connection_manager_revoke(
-          manager,
-          client_for(record[["client"]], check = FALSE),
-          opened[["token"]],
-          deadline
+        remote <- revoke_once(
+          record[["client"]],
+          opened[["token"]]
         )
         for (entry in opened[["targets"]][["tokens"]]) {
-          target_remote <- connection_manager_revoke(
-            manager,
-            client_for(record[["client"]], check = FALSE),
+          target_remote <- revoke_once(
+            record[["client"]],
             entry,
-            deadline,
             kinds = "access"
           )
           remote[["access"]] <- connection_revocation_outcome(c(

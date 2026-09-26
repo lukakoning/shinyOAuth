@@ -155,6 +155,167 @@ test_that("the cleanup deadline stops remaining targets and expired queued batch
   expect_identical(calls, 5L)
 })
 
+test_that("duplicate module credentials leave time for distinct target tokens", {
+  for (fails in c(FALSE, TRUE)) {
+    f <- revocation_target_fixture()
+    token <- f[["token"]]
+    token@access_token <- token@refresh_token
+    secondary <- f[["bundle"]][["tokens"]]
+    for (target in names(secondary)) {
+      secondary[[target]]@access_token <- if (target == "t16") {
+        "distinct"
+      } else {
+        token@access_token
+      }
+    }
+    now <- Sys.time()
+    attempted <- character()
+    local_mocked_bindings(Sys.time = function() now, .package = "base")
+    local_mocked_bindings(revoke_token = function(
+      client,
+      token,
+      token_kind,
+      ...
+    ) {
+      value <- if (token_kind == "refresh") {
+        token@refresh_token
+      } else {
+        token@access_token
+      }
+      attempted <<- c(attempted, paste(token_kind, value))
+      now <<- now + 2
+      if (fails) {
+        stop("remote failure")
+      }
+      list(revoked = TRUE)
+    })
+    module_revoke_targets(f[["client"]], token, secondary)
+    expect_identical(
+      attempted,
+      c("refresh shared", "access shared", "access distinct")
+    )
+  }
+})
+
+test_that("manager batches reuse duplicate outcomes across targets and records", {
+  for (fails in c(FALSE, TRUE)) {
+    f <- revocation_target_fixture()
+    token <- f[["token"]]
+    token@access_token <- token@refresh_token
+    f[["client"]]@redirect_uri <- "https://app.example/callback"
+    manager <- ordinary_manager_fixture(f[["client"]])
+    now <- Sys.time()
+    attempted <- character()
+    events <- list()
+    local_options(shinyOAuth.audit_hook = function(event) {
+      events[[length(events) + 1L]] <<- event
+    })
+    local_mocked_bindings(Sys.time = function() now, .package = "base")
+    local_mocked_bindings(
+      refresh_token_dispatch = function(client, token, target_request, ...) {
+        token@access_token <- if (
+          identical(target_request[["scopes"]], "s16")
+        ) {
+          "distinct"
+        } else {
+          "shared"
+        }
+        token@granted_scopes <- target_request[["scopes"]]
+        token
+      },
+      revoke_token = function(client, token, token_kind, ...) {
+        value <- if (token_kind == "refresh") {
+          token@refresh_token
+        } else {
+          token@access_token
+        }
+        attempted <<- c(attempted, paste(token_kind, value))
+        # Finish the budget on the last unique credential. Later aliases must
+        # retain their original outcomes, including failed attempts.
+        now <<- now + if (value == "distinct") 6 else 2
+        if (fails) {
+          stop("remote failure")
+        }
+        list(revoked = TRUE)
+      }
+    )
+    shiny::testServer(
+      oauth_connections_server,
+      args = list(id = "health", manager = manager[["manager"]]),
+      session = manager_test_session(manager_test_cookie(manager)),
+      {
+        for (i in 1:2) {
+          current <- connection(manager_test_accept(controller, token = token))
+          for (target in paste0("t", 2:16)) {
+            current[["refresh"]](target = target)
+          }
+        }
+        events <<- list()
+        results <- session[["getReturned"]]()[["disconnect_all"]]()
+        expect_length(results, 2L)
+        outcome <- if (fails) "failed" else "accepted"
+        for (result in results) {
+          expect_identical(result[["local"]], "disconnected")
+          expect_identical(
+            result[["remote"]],
+            list(refresh = outcome, access = outcome)
+          )
+        }
+        removed <- Filter(
+          function(event) {
+            event[["type"]] == "audit_connection_disconnected"
+          },
+          events
+        )
+        expect_length(removed, 2L)
+        for (event in removed) {
+          expect_identical(event[["remote_access_outcome"]], outcome)
+          expect_identical(event[["remote_refresh_outcome"]], outcome)
+        }
+        expect_false(current[["is_usable"]]())
+      }
+    )
+    expect_identical(
+      attempted,
+      c("refresh shared", "access shared", "access distinct")
+    )
+  }
+})
+
+test_that("batch revocation keeps identical values in different clients separate", {
+  f <- manager_test_fixture()
+  attempted <- character()
+  local_mocked_bindings(revoke_token = function(
+    client,
+    token,
+    token_kind,
+    ...
+  ) {
+    attempted <<- c(attempted, paste(client@client_id, token_kind))
+    list(revoked = TRUE)
+  })
+  shiny::testServer(
+    oauth_connections_server,
+    args = list(id = "health", manager = f[["manager"]]),
+    session = manager_test_session(manager_test_cookie(f)),
+    {
+      manager_test_accept(controller, "a")
+      manager_test_accept(controller, "b")
+      results <- session[["getReturned"]]()[["disconnect_all"]]()
+      expect_length(results, 2L)
+      expect_setequal(
+        attempted,
+        c(
+          "client-a refresh",
+          "client-a access",
+          "client-b refresh",
+          "client-b access"
+        )
+      )
+    }
+  )
+})
+
 test_that("a real cleanup worker applies one attempt per credential", {
   skip_if_not_installed("webfakes")
   skip_if_not_installed("mirai")
