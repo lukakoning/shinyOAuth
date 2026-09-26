@@ -1029,7 +1029,11 @@ connection_manager_controller <- function(
         record[["token"]],
         scopes,
         record[["client"]]@required_scopes,
-        accepted_extra_scopes
+        accepted_extra_scopes,
+        refresh_consent = authorization_refresh_consent(
+          record[["client"]],
+          record[["authorization_scopes"]]
+        )
       )
     } else {
       NULL

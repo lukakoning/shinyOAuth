@@ -1411,6 +1411,8 @@ refresh_token_impl <- function(
               token_set
             )
           }
+          # Explicit OIDC refresh consent is not an access-token permission.
+          # Preserve ordinary scope inheritance when the response omits scope.
           token_set <- verify_token_set(
             oauth_client,
             token_set = token_set,
@@ -1418,7 +1420,14 @@ refresh_token_impl <- function(
             is_refresh = TRUE,
             original_id_token = original_id_token,
             refresh_request_started_at = token_request_started_at,
-            requested_scopes = requested_scopes,
+            requested_scopes = if (
+              length(scope_request[["refresh_consent"]]) &&
+                !is.null(token_set[["scope"]])
+            ) {
+              setdiff(requested_scopes, scope_request[["refresh_consent"]])
+            } else {
+              requested_scopes
+            },
             prior_granted_scopes = requested_scopes %||% token@granted_scopes,
             shiny_session = shiny_session,
             defer_certificate_binding = defer_certificate_binding,
@@ -1509,8 +1518,17 @@ refresh_token_impl <- function(
               oauth_client = oauth_client,
               token = refreshed_token,
               introspection_result = intro_res,
-              requested_scopes = requested_scopes %||%
-                effective_client_scopes(oauth_client),
+              requested_scopes = if (
+                length(scope_request[["refresh_consent"]]) &&
+                  !is.null(intro_res[["raw"]][["scope"]])
+              ) {
+                setdiff(
+                  requested_scopes %||% effective_client_scopes(oauth_client),
+                  scope_request[["refresh_consent"]]
+                )
+              } else {
+                requested_scopes %||% effective_client_scopes(oauth_client)
+              },
               phase = "refresh_token",
               token_response_cnf = token_set[["cnf"]],
               expires_in_missing = is.null(token_set[["expires_in"]]),

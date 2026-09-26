@@ -98,7 +98,15 @@ module_connection_factory <- function(
       refresh = function(scopes = NULL, target = NULL) {
         record <- resolve()
         if (!is.null(scopes) && !token_targets_configured(client)) {
-          refresh_scope_request(client, record[["token"]], scopes)
+          refresh_scope_request(
+            client,
+            record[["token"]],
+            scopes,
+            refresh_consent = authorization_refresh_consent(
+              client,
+              operations[["last_authorized_scopes"]]
+            )
+          )
         }
         redact <- function(error) {
           if (inherits(error, "shinyOAuth_access_error")) {
@@ -259,7 +267,11 @@ module_refresh_controller <- function(
         client,
         token,
         scopes,
-        accepted_extra_scopes = accepted_extra_scopes
+        accepted_extra_scopes = accepted_extra_scopes,
+        refresh_consent = authorization_refresh_consent(
+          client,
+          operations[["last_authorized_scopes"]]
+        )
       )
     } else {
       NULL

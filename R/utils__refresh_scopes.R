@@ -16,6 +16,19 @@ authorization_retained_scopes <- function(client, token, requested) {
   )
 }
 
+# Only authenticated authorization history can supply consent omitted from an
+# ordinary OIDC access token. It is never evidence of an API permission.
+authorization_refresh_consent <- function(client, scopes) {
+  if (
+    !provider_uses_oidc(client@provider) ||
+      client_uses_smart(client) ||
+      token_targets_configured(client)
+  ) {
+    return(character())
+  }
+  intersect(scopes, "offline_access")
+}
+
 # Ordinary OAuth accepts provider evidence beyond the configured permissions.
 # Keep it as evidence, never as an outgoing request or an operation permission.
 # SMART scopes can overlap semantically, so retain their stricter grant policy.
@@ -95,7 +108,8 @@ refresh_scope_request <- function(
   token,
   scopes,
   required_scopes = character(),
-  accepted_extra_scopes = NULL
+  accepted_extra_scopes = NULL,
+  refresh_consent = character()
 ) {
   if (
     !is.character(scopes) ||
@@ -118,6 +132,17 @@ refresh_scope_request <- function(
     )
   }
   configured <- effective_client_scopes(client)
+  if (
+    !is.character(refresh_consent) ||
+      anyNA(refresh_consent) ||
+      !identical(
+        refresh_consent,
+        authorization_refresh_consent(client, refresh_consent)
+      )
+  ) {
+    err_config("Invalid retained refresh consent")
+  }
+  refresh_consent <- intersect(refresh_consent, scopes)
   # Retain accepted SMART persistence negotiation when narrowing permissions.
   # Only extend this ceiling with explicit opt-in and a current offline grant.
   if (
@@ -129,7 +154,7 @@ refresh_scope_request <- function(
     configured <- union(configured, "offline_access")
   }
   if (
-    !covered(scopes, token@granted_scopes) ||
+    !covered(scopes, union(token@granted_scopes, refresh_consent)) ||
       !covered(scopes, configured)
   ) {
     err_token(
@@ -168,6 +193,9 @@ refresh_scope_request <- function(
   if (length(extra)) {
     request[["accepted_extra_scopes"]] <- extra
   }
+  if (length(refresh_consent)) {
+    request[["refresh_consent"]] <- refresh_consent
+  }
   request
 }
 
@@ -177,11 +205,17 @@ validate_refresh_scope_request <- function(client, token, request) {
   }
   if (
     !is.list(request) ||
-      !(identical(names(request), c("scopes", "required_scopes")) ||
-        identical(
-          names(request),
-          c("scopes", "required_scopes", "accepted_extra_scopes")
-        )) ||
+      is.null(names(request)) ||
+      anyDuplicated(names(request)) ||
+      !all(
+        names(request) %in%
+          c(
+            "scopes",
+            "required_scopes",
+            "accepted_extra_scopes",
+            "refresh_consent"
+          )
+      ) ||
       !is.character(request[["required_scopes"]])
   ) {
     err_config("Invalid internal refresh scope request")
@@ -191,7 +225,8 @@ validate_refresh_scope_request <- function(client, token, request) {
     token,
     request[["scopes"]],
     request[["required_scopes"]],
-    request[["accepted_extra_scopes"]]
+    request[["accepted_extra_scopes"]],
+    request[["refresh_consent"]] %||% character()
   )
   if (!identical(request, checked)) {
     err_config("Invalid internal refresh scope request")

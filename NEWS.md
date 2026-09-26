@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Explicit ordinary OIDC refresh requests can retain previously authorized
+`offline_access` while narrowing API permissions, even when the access token
+omits that consent scope. Removed consent cannot be added back by refresh.
+
 * Microsoft token targets compare API permission names without regard to ASCII
 case across login, refresh, restoration and operation checks. Resource identifiers
 and ordinary OAuth scopes remain exact, and original grant evidence is preserved.

@@ -139,7 +139,9 @@ provider's underlying consent.
 Reauthorization retains requested `offline_access` consent separately from the
 access token's reported scopes, since OIDC providers may omit that scope while
 issuing a refresh token. Explicit refresh scopes replace this consent policy too:
-omit `offline_access` to keep it out of later reauthorization requests. Automatic
+include `offline_access` to retain previously authorized consent while narrowing
+API permissions, or omit it to keep it out of later reauthorization requests.
+Refresh cannot add consent that was absent or deliberately removed. Automatic
 refresh does not remove retained consent simply because a token omits it.
 
 Ordinary OAuth providers may report additional scopes from earlier consent.
