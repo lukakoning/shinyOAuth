@@ -578,13 +578,8 @@ connection_manager_controller <- function(
     launch_queue[[launch[["client"]]]] <- entry
     launch[["client"]]
   }
-  prepare <- function(client_name) {
-    verified <- guard(touch = TRUE)
+  make_context <- function(client_name, verified, replacement = NULL) {
     client <- client_for(client_name)
-    prune_pending()
-    if (length(state[["pending"]]) >= 1000L) {
-      err_token("Pending connection capacity reached")
-    }
     context <- list(
       version = 1L,
       manager = state[["id"]],
@@ -607,12 +602,25 @@ connection_manager_controller <- function(
         as.numeric(Sys.time()) + client@state_payload_max_age
       )
     )
-    replacement <- reauthorization_queue[[client_name]]
     if (!is.null(replacement)) {
       context[["requested_scopes"]] <- replacement[["scopes"]]
       context[["accepted_extra_scopes"]] <- replacement[["extra_scopes"]]
       context[["target_limits"]] <- replacement[["target_limits"]]
       context[["replaces_connection_id"]] <- replacement[["id"]]
+    }
+    authorization_context_json(context)
+    context
+  }
+  prepare <- function(client_name) {
+    verified <- guard(touch = TRUE)
+    client <- client_for(client_name)
+    prune_pending()
+    if (length(state[["pending"]]) >= 1000L) {
+      err_token("Pending connection capacity reached")
+    }
+    replacement <- reauthorization_queue[[client_name]]
+    context <- make_context(client_name, verified, replacement)
+    if (!is.null(replacement)) {
       rm(list = client_name, envir = reauthorization_queue)
     }
     launch_entry <- NULL
@@ -1483,13 +1491,17 @@ connection_manager_controller <- function(
       },
       scopes
     )
-    disconnect(id, revoke = FALSE)
-    reauthorization_queue[[client_name]] <- list(
+    replacement <- list(
       id = id,
       scopes = scopes,
       extra_scopes = extra_scopes,
       target_limits = limits
     )
+    # Serialization must succeed before ending the current authorization.
+    # prepare() uses this same constructor when the module starts the login.
+    make_context(client_name, guard(), replacement)
+    disconnect(id, revoke = FALSE)
+    reauthorization_queue[[client_name]] <- replacement
     client_name
   }
   disconnect_all <- function(revoke = TRUE) {

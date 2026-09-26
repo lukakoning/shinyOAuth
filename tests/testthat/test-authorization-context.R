@@ -141,7 +141,8 @@ test_that("authorization context rejects live objects, duplicate fields and over
     list(client = make_test_client()),
     list(callback = function() NULL),
     stats::setNames(list(1, 2), c("a", "a")),
-    list(target = strrep("x", 4097)),
+    list(target = strrep("x", 8193)),
+    list(targets = rep(list(strrep("x", 8192)), 33L)),
     list(generation = NA_real_)
   )) {
     expect_error(

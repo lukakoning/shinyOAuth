@@ -74,6 +74,8 @@ OIDC scopes count toward these limits. Configuration, acquired permissions
 (including Microsoft `.default` expansion), restoration and reauthorization
 enforce the same aggregate limits. Reduce the declared permissions or use
 separate authorizations when the combined set would exceed them.
+Managed transaction contexts support this full budget, including repeated limits
+across targets, and are validated before reauthorization ends the current connection.
 The independent callback and encrypted-state size limits still apply; a large
 declaration can require larger state limits even when its scope count fits.
 

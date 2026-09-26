@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Managed reauthorization contexts accommodate the full supported target scope
+budget, including sealed external state stores. Replacement context validation
+runs before disconnecting the current authorization; context size remains bounded.
+
 * Explicit ordinary OIDC refresh requests can retain previously authorized
 `offline_access` while narrowing API permissions, even when the access token
 omits that consent scope. Removed consent cannot be added back by refresh.
