@@ -10,9 +10,23 @@ authorization_scopes_bounded <- function(scopes) {
 # Pass the previous policy on automatic refresh, or the explicit scope request
 # when narrowing, so a deliberately removed consent is never restored.
 authorization_retained_scopes <- function(client, token, requested) {
+  # Standalone launch context is requested on the next authorization, not
+  # established by access-token scope evidence. Automatic refresh carries this
+  # policy forward; an explicit scope list replaces optional context requests.
+  context <- if (
+    client_uses_smart(client) &&
+      identical(client@smart[["launch"]], "standalone")
+  ) {
+    intersect(
+      normalize_scope_tokens(requested),
+      intersect(client@scopes, c("launch/patient", "launch/encounter"))
+    )
+  } else {
+    character()
+  }
   union(
     setdiff(token@granted_scopes, authorization_extra_scopes(client, token)),
-    authorization_refresh_consent(client, requested)
+    union(authorization_refresh_consent(client, requested), context)
   )
 }
 

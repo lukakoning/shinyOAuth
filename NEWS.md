@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Standalone SMART replacements retain launch-context requests independently of
+access-token scope evidence, including encounter selection. Automatic refresh and
+encrypted restoration preserve the policy; explicit narrowing can remove optional
+encounter requests without restoring removed API permissions.
+
 * Reauthorization preserves omitted `offline_access` consent only for ordinary
 OIDC clients. Generic OAuth and SMART replacements no longer restore an explicitly
 ungranted permission merely because it has that name.

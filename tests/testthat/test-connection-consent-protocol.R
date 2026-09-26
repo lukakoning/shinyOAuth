@@ -121,7 +121,7 @@ test_that("non-OIDC and SMART replacement retain only granted offline access", {
               function(row) identical(row[["replaces_connection_id"]], id),
               controller[["records"]]()
             )[[1L]]
-            expect_setequal(row[["authorization_scopes"]], grant)
+            expect_setequal(row[["authorization_scopes"]], expected)
             expect_setequal(row[["token"]]@granted_scopes, grant)
             id <- row[["stored"]][["id"]]
           }

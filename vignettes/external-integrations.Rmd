@@ -144,6 +144,13 @@ API permissions, or omit it to keep it out of later reauthorization requests.
 Refresh cannot add consent that was absent or deliberately removed. Automatic
 refresh does not remove retained consent simply because a token omits it.
 
+Standalone SMART replacements also retain requested `launch/patient` and
+`launch/encounter` context independently of access-token scopes, and obtain fresh
+context from the provider. Automatic refresh preserves these requests. Explicit
+refresh scopes replace the optional context policy too: omitting
+`launch/encounter` removes it from later replacement requests. Patient context is
+still requested whenever retained `patient/` permissions require it.
+
 Ordinary OAuth providers may report additional scopes from earlier consent.
 Reauthorization requests only retained configured permissions and seals any
 previously accepted extra scope evidence into the replacement transaction.
