@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Single-module async refresh failures again include `mirai_error_type` in
+session-cleared and session-retained audit events, with `NA` for unclassified
+errors. Synchronous failure events continue to omit this async-only field.
+
 * Microsoft target `required_scopes` reject `.default` during configuration.
 Static consent declarations can require actual API permissions instead.
 

@@ -343,7 +343,9 @@ the native audit hook and OpenTelemetry. Existing module logout events remain.
 
 - When: a token refresh attempt fails but the module is configured not to clear the session (i.e., `indefinite_session = TRUE` in `oauth_module_server()`)
 - Context: `provider`, `issuer`, `client_id_digest`, `reason` (`refresh_failed_async`|`refresh_failed_sync`), `kept_token` (TRUE), `error_class`, `mirai_error_type`
-- `mirai_error_type` is only present on async refresh failures
+- `mirai_error_type` is only present on async refresh failures. Its value is `NA`
+  when the failure is not recognizable as a mirai error, including worker errors
+  converted to ordinary R conditions by promise handling.
 
 ### Browser cookie/WebCrypto error
 

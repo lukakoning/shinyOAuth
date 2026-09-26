@@ -349,17 +349,25 @@ module_refresh_controller <- function(
           } else {
             "session_cleared"
           },
-          context = list(
-            provider = client@provider@name,
-            issuer = client@provider@issuer,
-            client_id_digest = string_digest(client@client_id),
-            reason = if (async) {
-              "refresh_failed_async"
-            } else {
-              "refresh_failed_sync"
-            },
-            kept_token = indefinite_session || keep_targets,
-            error_class = paste(class(error), collapse = ", ")
+          context = c(
+            list(
+              provider = client@provider@name,
+              issuer = client@provider@issuer,
+              client_id_digest = string_digest(client@client_id),
+              reason = if (async) {
+                "refresh_failed_async"
+              } else {
+                "refresh_failed_sync"
+              },
+              kept_token = indefinite_session || keep_targets,
+              error_class = paste(class(error), collapse = ", ")
+            ),
+            if (async) {
+              list(
+                mirai_error_type = classify_mirai_error(error) %||%
+                  NA_character_
+              )
+            }
           ),
           shiny_session = captured
         ),
