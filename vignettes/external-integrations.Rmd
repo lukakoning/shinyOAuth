@@ -220,8 +220,11 @@ promises::then(pending, function(token) {
 })
 ```
 
-The async accessor always returns a promise, including cached results. This
-only makes credential acquisition asynchronous; the SDK operation needs its
+The async accessor always returns a promise, including cached results. A cached
+result is a snapshot: its callback can receive the old bearer string after
+logout, replacement, or scope narrowing. The ownership and permission checks
+above must run before passing it to the SDK. This only makes credential
+acquisition asynchronous; the SDK operation needs its
 own async transport if it would block Shiny. Concurrent async acquisitions join
 the same owned refresh. A synchronous call never waits on that work or returns
 a promise. Validate ownership again before displaying later SDK results.
