@@ -207,8 +207,10 @@ The shared refresh credential is attempted first. With `async = TRUE`, one
 worker handles the batch; time spent waiting for a worker also counts toward
 the deadline. Targets remaining after the deadline are not attempted.
 
-`$request(refresh = TRUE)` is synchronous. It acquires before sending and
-disables generic HTTP retries for that call. It never refreshes or replays an
+`$request(refresh = TRUE)` is synchronous. It validates the destination, method,
+query and unauthenticated request before acquiring tokens. The `configure`
+function runs once; authorization is checked again before the request is sent.
+It disables generic HTTP retries for that call. It never refreshes or replays an
 application request after a resource error. DPoP nonce challenges retain the
 existing bound-transport handling. Export through `$access_token()` remains
 bearer-only; use `$request()` for DPoP/mTLS tokens. Writes belong in input-event

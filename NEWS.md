@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Connection requests with `refresh = TRUE` validate their destination, method,
+query and unauthenticated configuration before acquiring or rotating tokens.
+Configuration runs once, with current authorization rechecked before sending.
+
 * Logout and disconnect cleanup attempt each distinct credential once per client
 and token kind, preserving the shared deadline for other tokens and reusing remote
 outcomes for duplicate target credentials.

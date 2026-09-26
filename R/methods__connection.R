@@ -207,18 +207,10 @@ connection_record_request <- function(
   query,
   method,
   required_scopes,
-  configure = NULL
+  configure = NULL,
+  prepared = NULL
 ) {
-  if (
-    !is_valid_string(resource_id) ||
-      !resource_id %in% names(record[["client"]]@resource_bases)
-  ) {
-    err_input("Unknown resource ID for this connection")
-  }
-  url <- resolve_bound_resource(
-    record[["client"]]@resource_bases[[resource_id]],
-    path
-  )
+  url <- connection_request_url(record[["client"]], resource_id, path)
   if (!connection_record_status(record) %in% c("active", "limited")) {
     err_token("Connection is not usable")
   }
@@ -242,11 +234,81 @@ connection_record_request <- function(
   }
   tryCatch(
     {
+      if (is.null(prepared)) {
+        prepared <- connection_prepare_request(url, query, method, configure)
+      }
+      perform_resource_req(
+        record[["token"]],
+        prepared,
+        method = prepared[["method"]],
+        client = record[["client"]],
+        check_url = TRUE,
+        follow_redirect = FALSE,
+        idempotent = if (isTRUE(record[["single_attempt"]])) FALSE else NULL
+      )
+    },
+    error = function(e) {
+      # Transport conditions can contain a resource path, query or response body.
+      # Do not expose those details through the connection's public error surface.
+      err_http("Connection resource request failed")
+    }
+  )
+}
+
+#' Resolve a connection request within its declared resource base
+#'
+#' Validate destinations before running application request configuration.
+#' @param client OAuth client declaring resource bases.
+#' @param resource_id Declared resource name.
+#' @param path Relative path or an absolute URL within the declared base.
+#' @return The validated resource URL.
+#' @keywords internal
+#' @noRd
+connection_request_url <- function(client, resource_id, path) {
+  if (
+    !is_valid_string(resource_id) ||
+      !resource_id %in% names(client@resource_bases)
+  ) {
+    err_input("Unknown resource ID for this connection")
+  }
+  resolve_bound_resource(client@resource_bases[[resource_id]], path)
+}
+
+#' Prepare a connection request before acquiring credentials
+#'
+#' Run application configuration once and validate the unauthenticated request.
+#' @param url Validated URL from connection_request_url().
+#' @param query Optional named list of query parameters.
+#' @param method Single HTTP method string.
+#' @param configure Optional function adding a body and application headers.
+#' @return An unauthenticated httr2 request with its method and query applied.
+#' @keywords internal
+#' @noRd
+connection_prepare_request <- function(url, query, method, configure) {
+  tryCatch(
+    {
+      if (
+        !is_valid_string(method) ||
+          !grepl("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$", method)
+      ) {
+        err_input("method must be a single HTTP method string")
+      }
+      if (
+        !is.null(query) &&
+          (!is.list(query) ||
+            (length(query) &&
+              (is.null(names(query)) ||
+                anyNA(names(query)) ||
+                !all(nzchar(names(query))))))
+      ) {
+        err_input("query must be a named list")
+      }
+      template <- httr2::request(url)
+      request <- template
       if (!is.null(configure)) {
         if (!is.function(configure)) {
           err_input("configure must be a function")
         }
-        template <- httr2::request(url)
         request <- configure(template)
         if (!inherits(request, "httr2_request")) {
           err_input("configure must return an httr2 request")
@@ -264,22 +326,17 @@ connection_record_request <- function(
             "configure may only change the body and application headers"
           )
         }
-        url <- request
       }
-      perform_resource_req(
-        record[["token"]],
-        url,
-        method = method,
-        query = query,
-        client = record[["client"]],
-        check_url = TRUE,
-        follow_redirect = FALSE,
-        idempotent = if (isTRUE(record[["single_attempt"]])) FALSE else NULL
-      )
+      method <- resolve_client_bearer_method(method, request)
+      validate_client_bearer_method(method, request)
+      validate_client_bearer_url(url, check_url = TRUE)
+      request <- httr2::req_method(request, method)
+      request <- apply_client_bearer_query(request, query)
+      validate_resource_token_transport(request)
+      request
     },
     error = function(e) {
-      # Transport conditions can contain a resource path, query or response body.
-      # Do not expose those details through the connection's public error surface.
+      # Configuration and query failures may include application secrets.
       err_http("Connection resource request failed")
     }
   )

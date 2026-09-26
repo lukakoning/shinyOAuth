@@ -467,6 +467,9 @@ OAuthConnection <- R6::R6Class(
     #'   operation never waits on async refresh and never refreshes/replays after
     #'   an API failure. Generic HTTP retries are disabled for this opt-in call;
     #'   bound transport and DPoP nonce-challenge handling remain in force.
+    #'   The destination, method, query and `configure` result are validated
+    #'   before acquiring tokens. `configure` runs once; authorization is checked
+    #'   again afterward and after any acquisition, before sending the request.
     #' @param target Optional declared token-target name. Target clients require
     #'   an explicit association through that declaration's `resource_ids`.
     #' @param min_valid_for Minimum remaining lifetime when `refresh = TRUE`,
@@ -494,7 +497,16 @@ OAuthConnection <- R6::R6Class(
       target <- token_target_name(private[[".client"]], target)
       token_target_check_destination(private[[".client"]], target, resource_id)
       record <- token_target_select(private[["record"]](), target)
+      prepared <- NULL
       if (refresh) {
+        url <- connection_request_url(record[["client"]], resource_id, path)
+        required_scopes <- connection_scope_arguments(required_scopes)
+        if (!connection_record_configured_scopes(record, required_scopes)) {
+          err_input(
+            "Operation scopes must be included in the client's requested scopes"
+          )
+        }
+        prepared <- connection_prepare_request(url, query, method, configure)
         acquire <- private[[".acquire"]]
         if (!is.null(target) && is.function(acquire)) {
           acquire <- function(async, wait_only = FALSE) {
@@ -523,7 +535,8 @@ OAuthConnection <- R6::R6Class(
         query,
         method,
         required_scopes,
-        configure
+        configure,
+        prepared = prepared
       )
     },
     #' @description

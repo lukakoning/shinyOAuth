@@ -1257,6 +1257,232 @@ test_that("HTTP refresh keeps bound transport and sends an application request o
   )
 })
 
+test_that("request validation precedes token acquisition and runs configure once", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  invalid <- list(
+    list(path = "https://foreign.example/private"),
+    list(path = "../private"),
+    list(path = "%2e%2e/private"),
+    list(path = c("one", "two")),
+    list(resource_id = "unknown"),
+    list(method = "TRACE"),
+    list(method = "track"),
+    list(method = "GET\r\nX-Injected: yes"),
+    list(method = 42),
+    list(method = "HEAD", configure = function(req) {
+      httr2::req_body_json(req, list(x = 1))
+    }),
+    list(query = "invalid"),
+    list(query = list("unnamed")),
+    list(query = list(access_token = "sensitive-query-detail")),
+    list(configure = 42),
+    list(configure = function(req) NULL),
+    list(configure = function(req) stop("sensitive-configure-detail")),
+    list(configure = function(req) {
+      httr2::req_url(req, "https://foreign.example/private")
+    }),
+    list(configure = function(req) httr2::req_method(req, "POST")),
+    list(configure = function(req) {
+      httr2::req_options(req, followlocation = TRUE)
+    }),
+    list(configure = function(req) {
+      httr2::req_auth_bearer_token(req, "foreign")
+    }),
+    list(configure = function(req) httr2::req_headers(req, DPoP = "foreign")),
+    list(configure = function(req) {
+      httr2::req_headers(req, Host = "foreign.example")
+    }),
+    list(configure = function(req) {
+      httr2::req_headers(req, `Proxy-Authorization` = "foreign")
+    }),
+    list(configure = function(req) {
+      httr2::req_body_form(req, access_token = "foreign")
+    })
+  )
+  for (managed in c(FALSE, TRUE)) {
+    for (targeted in c(FALSE, TRUE)) {
+      client <- if (targeted) {
+        target_test_client()
+      } else {
+        ordinary <- make_test_client(
+          scopes = c("read", "write"),
+          use_nonce = FALSE
+        )
+        S7::props(ordinary) <- list(
+          redirect_uri = "https://app.example/callback",
+          resource_bases = c(contacts_api = "https://contacts.example/v1")
+        )
+        ordinary
+      }
+      token <- if (targeted) target_test_token() else manager_test_token()
+      if (!targeted) {
+        token@expires_at <- as.numeric(Sys.time()) + 30
+      }
+      f <- target_test_manager(client)
+      refreshes <- 0L
+      requests <- list()
+      configurations <- 0L
+      refresh <- function(client, token, target_request = NULL, ...) {
+        refreshes <<- refreshes + 1L
+        target_test_token(
+          target_request[["scopes"]] %||% client@scopes,
+          "fresh-access",
+          "rotated-refresh"
+        )
+      }
+      local_mocked_bindings(
+        refresh_token = refresh,
+        refresh_token_dispatch = refresh,
+        req_with_retry = function(req, ...) {
+          requests[[length(requests) + 1L]] <<- req
+          httr2::response(req[["url"]], status = 200L)
+        },
+        revoke_token = function(...) list(revoked = TRUE)
+      )
+      shiny::testServer(
+        if (managed) oauth_connections_server else oauth_module_server,
+        args = if (managed) {
+          list(id = "auth", manager = f[["manager"]])
+        } else {
+          list(
+            id = "auth",
+            client = client,
+            auto_redirect = FALSE,
+            refresh_proactively = FALSE
+          )
+        },
+        session = manager_test_session(
+          if (managed) manager_test_cookie(f) else NULL
+        ),
+        {
+          current <- if (managed) {
+            connection(manager_test_accept(controller, token = token))
+          } else {
+            .accept_login_token(token, NULL)
+            values[["connection"]]()
+          }
+          args <- list(
+            resource_id = "contacts_api",
+            refresh = TRUE,
+            target = if (targeted) "contacts" else NULL
+          )
+          for (case in invalid) {
+            call <- args
+            call[names(case)] <- case
+            error <- tryCatch(
+              do.call(current[["request"]], call),
+              error = identity
+            )
+            expect_s3_class(error, "shinyOAuth_error")
+            expect_false(grepl(
+              "sensitive-(query|configure)-detail",
+              conditionMessage(error)
+            ))
+            expect_identical(refreshes, 0L)
+            expect_length(requests, 0L)
+          }
+          if (targeted) {
+            expect_identical(
+              current[["targets"]]()[["contacts"]][["status"]],
+              "not_acquired"
+            )
+          }
+          response <- current[["request"]](
+            "contacts_api",
+            "items?existing=one",
+            query = list(q = "two & three"),
+            method = "post",
+            required_scopes = if (targeted) "contacts.read" else "read",
+            target = if (targeted) "contacts" else NULL,
+            refresh = TRUE,
+            configure = function(req) {
+              configurations <<- configurations + 1L
+              expect_identical(refreshes, 0L)
+              expect_null(req[["headers"]][["Authorization"]])
+              httr2::req_body_json(req, list(value = "body"))
+            }
+          )
+          expect_identical(httr2::resp_status(response), 200L)
+          expect_identical(configurations, 1L)
+          expect_identical(refreshes, 1L)
+          expect_length(requests, 1L)
+          sent <- requests[[1L]]
+          expect_identical(sent[["method"]], "POST")
+          expect_identical(
+            httr2::req_dry_run(sent, quiet = TRUE, redact_headers = FALSE)[[
+              "headers"
+            ]][["authorization"]],
+            "Bearer fresh-access"
+          )
+          expect_identical(
+            httr2::url_parse(sent[["url"]])[["query"]],
+            list(existing = "one", q = "two & three")
+          )
+          expect_identical(sent[["body"]][["data"]], list(value = "body"))
+        }
+      )
+    }
+  }
+})
+
+test_that("request acquisition rechecks authorization after configure", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  for (managed in c(FALSE, TRUE)) {
+    f <- target_test_manager()
+    refreshes <- 0L
+    requests <- 0L
+    local_mocked_bindings(
+      refresh_token_dispatch = function(...) {
+        refreshes <<- refreshes + 1L
+      },
+      req_with_retry = function(...) {
+        requests <<- requests + 1L
+      },
+      revoke_token = function(...) list(revoked = TRUE)
+    )
+    shiny::testServer(
+      if (managed) oauth_connections_server else oauth_module_server,
+      args = if (managed) {
+        list(id = "auth", manager = f[["manager"]])
+      } else {
+        list(id = "auth", client = target_test_client(), auto_redirect = FALSE)
+      },
+      session = manager_test_session(
+        if (managed) manager_test_cookie(f) else NULL
+      ),
+      {
+        current <- if (managed) {
+          connection(manager_test_accept(
+            controller,
+            token = target_test_token()
+          ))
+        } else {
+          .accept_login_token(target_test_token(), NULL)
+          values[["connection"]]()
+        }
+        expect_error(
+          current[["request"]](
+            "contacts_api",
+            target = "contacts",
+            refresh = TRUE,
+            configure = function(req) {
+              if (managed) {
+                controller[["disconnect"]](current[["id"]], FALSE)
+              } else {
+                values[["logout"]]()
+              }
+              req
+            }
+          ),
+          class = "shinyOAuth_access_error"
+        )
+        expect_identical(refreshes, 0L)
+        expect_identical(requests, 0L)
+      }
+    )
+  }
+})
+
 test_that("Microsoft static scopes use evidence and cannot restore a narrowed target", {
   client <- target_test_client("microsoft")
   targets <- client@token_targets

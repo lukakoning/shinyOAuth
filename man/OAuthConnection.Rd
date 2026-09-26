@@ -446,7 +446,10 @@ URL, transport policies, authentication and Host headers cannot be changed.}
 request. Default FALSE preserves existing behavior. This synchronous
 operation never waits on async refresh and never refreshes/replays after
 an API failure. Generic HTTP retries are disabled for this opt-in call;
-bound transport and DPoP nonce-challenge handling remain in force.}
+bound transport and DPoP nonce-challenge handling remain in force.
+The destination, method, query and \code{configure} result are validated
+before acquiring tokens. \code{configure} runs once; authorization is checked
+again afterward and after any acquisition, before sending the request.}
       \item{\code{target}}{Optional declared token-target name. Target clients require
 an explicit association through that declaration's \code{resource_ids}.}
       \item{\code{min_valid_for}}{Minimum remaining lifetime when \code{refresh = TRUE},
