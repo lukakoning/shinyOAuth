@@ -268,6 +268,28 @@ validate_token_targets <- function(client) {
       }
     }
   }
+  if (identical(client@provider@token_target_mode, "microsoft")) {
+    prefixes <- unique(vapply(
+      targets,
+      function(target) {
+        token_target_prefix(target[["resource"]])
+      },
+      character(1)
+    ))
+    if (
+      any(vapply(
+        prefixes,
+        function(prefix) {
+          sum(startsWith(prefixes, prefix)) > 1L
+        },
+        logical(1)
+      ))
+    ) {
+      err_config(
+        "Microsoft token target resources must not have overlapping scope prefixes"
+      )
+    }
+  }
   required <- lapply(names(targets), function(target) {
     token_target_required_scopes(client, target)
   })

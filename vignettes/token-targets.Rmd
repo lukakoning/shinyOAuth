@@ -250,6 +250,11 @@ scopes), without an RFC 8707 `resource`
 parameter. Disabling UserInfo avoids calling Graph with another API's token and
 preserves ID-token validation. Resource identifiers are exact: where an
 identifier ends in `/`, appending `/.default` produces a double slash.
+Distinct Microsoft resource identifiers must not have overlapping scope prefixes.
+For example, `https://api.example` and `https://api.example/reports` cannot be
+declared together: `reports/read` could be a permission of the first resource or
+`read` of the second. Configuration rejects this ambiguity before authorization.
+Targets may share the exact same resource identifier with separate scope limits.
 See the [Microsoft code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow).
 
 For static consent, declare `resource/.default` as the target's sole API scope,

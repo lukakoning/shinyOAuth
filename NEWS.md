@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Microsoft target configuration rejects overlapping resource scope prefixes,
+preventing nested resources from changing another target's permission matching.
+
 * An in-flight on-demand refresh gets the same bounded expiry grace period as a
 proactive refresh. Logout, the grace deadline, and maximum authentication age
 still prevent late refresh results from restoring authorization.

@@ -67,6 +67,8 @@
 #'   Microsoft limits constrain local operation checks, while the actual token
 #'   can include previously consented scopes for the selected resource. Explicit
 #'   API scope narrowing is unsupported for Microsoft targets.
+#'   Distinct Microsoft target resources must not have overlapping scope
+#'   prefixes; nested resources are ambiguous with slash-containing permissions.
 #'   At most 16 targets are supported. The complete authorization, including
 #'   OIDC scopes and actual permissions returned by Microsoft, is
 #'   limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
