@@ -270,8 +270,14 @@ for an unacquired target.
 `.default` is never treated as proof of individual permissions. Microsoft target
 responses must include `scope`; returned short permission names are qualified
 only within the selected Microsoft resource. Short names containing `:` or `/`
-must match that target's declared scopes, required permissions, or retained
-permissions from an earlier grant. URI-shaped names remain resource-qualified;
+must match that target's declared scopes, required permissions, optional
+`scope_aliases`, or retained permissions from an earlier grant. For example,
+declare `scope_aliases = c("items/read", "read:items")` inside a target to
+recognize these optional `.default` or prior-consent permissions. Aliases are
+short names relative to that target's resource; they do not go into authorization
+or token requests, make a permission required, or establish consent. Only actual
+returned permissions can enter the grant, and existing operation limits still
+apply. Names with `://` and declared resource prefixes remain resource-qualified;
 unknown punctuated short names must be returned in fully qualified form.
 Token evidence records the actual
 returned permissions. Microsoft API permission comparisons ignore ASCII case

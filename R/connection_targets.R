@@ -196,11 +196,17 @@ validate_token_targets <- function(client) {
         !all(c("resource", "scopes") %in% names(item)) ||
         !all(
           names(item) %in%
-            c("resource", "scopes", "required_scopes", "resource_ids")
+            c(
+              "resource",
+              "scopes",
+              "required_scopes",
+              "resource_ids",
+              "scope_aliases"
+            )
         )
     ) {
       err_config(
-        "Each token target needs resource and scopes; optional fields are required_scopes and resource_ids"
+        "Each token target needs resource and scopes; optional fields are required_scopes, resource_ids, and scope_aliases"
       )
     }
     resource <- item[["resource"]]
@@ -245,6 +251,37 @@ validate_token_targets <- function(client) {
       err_config(
         "Target required_scopes must be covered by that target's declaration"
       )
+    }
+    aliases <- connection_scope_arguments(
+      item[["scope_aliases"]] %||% character()
+    )
+    if (length(aliases)) {
+      qualified <- grepl("^[A-Za-z][A-Za-z0-9+.-]*://", aliases) |
+        vapply(
+          aliases,
+          function(alias) {
+            any(vapply(
+              targets,
+              function(target) {
+                startsWith(alias, token_target_prefix(target[["resource"]]))
+              },
+              logical(1)
+            ))
+          },
+          logical(1)
+        )
+      if (
+        !identical(client@provider@token_target_mode, "microsoft") ||
+          !authorization_scopes_bounded(aliases) ||
+          any(aliases %in% token_target_oidc_scopes(client)) ||
+          any(startsWith(aliases, ".")) ||
+          any(endsWith(aliases, "/.default")) ||
+          any(qualified)
+      ) {
+        err_config(
+          "scope_aliases must be bounded Microsoft short permission names, not OIDC scopes, .default, or resource-qualified scopes"
+        )
+      }
     }
     resources <- item[["resource_ids"]] %||% character()
     if (
@@ -497,13 +534,17 @@ token_target_response <- function(client, response, request) {
     declaration <- client@token_targets[[request[["target"]]]]
     prefix <- token_target_prefix(declaration[["resource"]])
     # Punctuation is legal in short permission names. Qualify these only when
-    # the selected target declares the permission (or retains it from an earlier
-    # grant), so an unknown resource-qualified scope cannot become local evidence.
+    # the selected target declares the permission, an optional response alias,
+    # or a retained grant. Aliases only identify names in the response; they do
+    # not request, require, or independently establish an operation permission.
     known <- token_target_scope_keys(
       client,
       c(
         declaration[["scopes"]],
         declaration[["required_scopes"]],
+        if (length(declaration[["scope_aliases"]])) {
+          paste0(prefix, normalize_scope_tokens(declaration[["scope_aliases"]]))
+        },
         request[["scopes"]]
       )
     )

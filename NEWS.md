@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Microsoft targets accept optional `scope_aliases` for punctuated short names
+returned by `.default` or prior consent. Aliases do not request permissions, make
+them mandatory, or widen retained operation limits.
+
 * Microsoft target configuration rejects overlapping resource scope prefixes,
 preventing nested resources from changing another target's permission matching.
 

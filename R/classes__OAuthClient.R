@@ -69,6 +69,11 @@
 #'   API scope narrowing is unsupported for Microsoft targets.
 #'   Distinct Microsoft target resources must not have overlapping scope
 #'   prefixes; nested resources are ambiguous with slash-containing permissions.
+#'   Optional Microsoft `scope_aliases` lists short permission names (for example,
+#'   `c("items/read", "read:items")`) accepted in token responses. These aliases
+#'   support optional `.default` and prior-consent permissions without requesting
+#'   or requiring them. Aliases never establish a grant or widen operation limits;
+#'   URI names with `://` and declared resource prefixes remain reserved.
 #'   At most 16 targets are supported. The complete authorization, including
 #'   OIDC scopes and actual permissions returned by Microsoft, is
 #'   limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
