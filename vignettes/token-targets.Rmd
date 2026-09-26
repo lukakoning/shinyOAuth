@@ -180,6 +180,14 @@ leave other entries usable. An ambiguous shared refresh outcome can invalidate
 the whole authorization. Independent authorizations with equal refresh-token
 bytes still follow the manager's conservative alias-invalidation rules.
 
+With `indefinite_session = TRUE`, the single module retains cached target access
+tokens after an ambiguous refresh failure, but retires the shared refresh
+credential. A cached token can still be exported while it meets the operation's
+lifetime and scope requirements. Forced refresh, expired tokens, and targets
+not yet acquired require a new authorization; they cannot reuse the retired
+credential. `token_stale` flags the failed refresh even while cached tokens are
+usable. The manager has no indefinite-session exception.
+
 The single module keeps a target authorization available for acquisition when
 one access token expires. Its session and configured authorization-age limits
 still apply. Its `token_stale` flag reports an expired primary token, and
