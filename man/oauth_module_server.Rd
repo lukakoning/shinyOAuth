@@ -63,7 +63,10 @@ expiry when a refresh token is available. Default \code{FALSE}. The module
 schedules refresh at approximately \code{expires_at - refresh_lead_seconds}.}
 
 \item{refresh_lead_seconds}{Number of seconds before expiry to attempt
-proactive refresh (default: 60)}
+proactive refresh (default: 60). An already running refresh, including one
+requested on demand, has this many seconds plus 5 after access-token expiry
+to finish before the module clears the authorization. This grace period
+never extends \code{reauth_after_seconds}.}
 
 \item{refresh_check_interval_ms}{Fallback interval in milliseconds for checking
 expiry and refresh (default 10000). Known expiry times are scheduled

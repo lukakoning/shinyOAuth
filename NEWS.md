@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* An in-flight on-demand refresh gets the same bounded expiry grace period as a
+proactive refresh. Logout, the grace deadline, and maximum authentication age
+still prevent late refresh results from restoring authorization.
+
 * Microsoft target responses accept declared short permission names containing
 colons or slashes, while preserving resource boundaries and rejecting ambiguous
 undeclared names.

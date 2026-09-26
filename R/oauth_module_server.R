@@ -110,7 +110,10 @@
 #'   schedules refresh at approximately `expires_at - refresh_lead_seconds`.
 #'
 #' @param refresh_lead_seconds Number of seconds before expiry to attempt
-#'  proactive refresh (default: 60)
+#'  proactive refresh (default: 60). An already running refresh, including one
+#'  requested on demand, has this many seconds plus 5 after access-token expiry
+#'  to finish before the module clears the authorization. This grace period
+#'  never extends `reauth_after_seconds`.
 #' @param refresh_check_interval_ms Fallback interval in milliseconds for checking
 #'   expiry and refresh (default 10000). Known expiry times are scheduled
 #'   directly; this interval is used as a safety check or when expiry is unknown
@@ -4626,16 +4629,10 @@ oauth_module_server_impl <- function(
           if (is.finite(exp) && !is.na(exp)) {
             remaining <- exp - now
 
-            # Grace window: if proactive refresh is enabled and a refresh is
-            # in progress, or we're still within the lead window plus a small
-            # buffer, defer clearing/reauth to allow the refresh to complete.
-            # This avoids a race where the expiry watcher triggers reauth
-            # while an async refresh is in flight under a slow IdP/network.
-            refresh_grace_seconds <- if (isTRUE(refresh_proactively)) {
-              refresh_lead_seconds + 5
-            } else {
-              0
-            }
+            # Give any owned refresh bounded time to finish, regardless of how
+            # it started. Maximum authentication age was enforced above and
+            # cannot be extended by this access-token expiry grace period.
+            refresh_grace_seconds <- refresh_lead_seconds + 5
             in_grace_window <- (remaining > -refresh_grace_seconds)
 
             if (!is.na(remaining) && remaining <= 0) {
