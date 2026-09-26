@@ -472,11 +472,43 @@ token_target_response <- function(client, response, request) {
         "A .default response must identify the actual granted permissions"
       )
     }
-    prefix <- token_target_prefix(client@token_targets[[request[["target"]]]][[
-      "resource"
-    ]])
+    declaration <- client@token_targets[[request[["target"]]]]
+    prefix <- token_target_prefix(declaration[["resource"]])
+    # Punctuation is legal in short permission names. Qualify these only when
+    # the selected target declares the permission (or retains it from an earlier
+    # grant), so an unknown resource-qualified scope cannot become local evidence.
+    known <- token_target_scope_keys(
+      client,
+      c(
+        declaration[["scopes"]],
+        declaration[["required_scopes"]],
+        request[["scopes"]]
+      )
+    )
+    declared_short <- vapply(
+      scopes,
+      function(scope) {
+        token_target_scope_keys(client, paste0(prefix, scope)) %in% known
+      },
+      logical(1)
+    )
+    qualified <- grepl("^[A-Za-z][A-Za-z0-9+.-]*://", scopes) |
+      vapply(
+        scopes,
+        function(scope) {
+          any(vapply(
+            client@token_targets,
+            function(target) {
+              startsWith(scope, token_target_prefix(target[["resource"]]))
+            },
+            logical(1)
+          ))
+        },
+        logical(1)
+      )
     bare <- !scopes %in% token_target_oidc_scopes(client) &
-      !grepl("[:/]", scopes)
+      !qualified &
+      (!grepl("[:/]", scopes) | declared_short)
     scopes[bare] <- paste0(prefix, scopes[bare])
     response[["scope"]] <- paste(scopes, collapse = " ")
   }

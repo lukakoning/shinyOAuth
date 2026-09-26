@@ -256,7 +256,11 @@ for an unacquired target.
 
 `.default` is never treated as proof of individual permissions. Microsoft target
 responses must include `scope`; returned short permission names are qualified
-only within the selected Microsoft resource. Token evidence records the actual
+only within the selected Microsoft resource. Short names containing `:` or `/`
+must match that target's declared scopes, required permissions, or retained
+permissions from an earlier grant. URI-shaped names remain resource-qualified;
+unknown punctuated short names must be returned in fully qualified form.
+Token evidence records the actual
 returned permissions. Microsoft API permission comparisons ignore ASCII case
 (for example, `User.Read` and `user.read`); resource identifiers remain exact.
 Ordinary OAuth scopes remain case-sensitive. Local operation limits retain only permissions within the

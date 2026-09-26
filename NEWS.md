@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Microsoft target responses accept declared short permission names containing
+colons or slashes, while preserving resource boundaries and rejecting ambiguous
+undeclared names.
+
 * Standalone SMART replacements retain launch-context requests independently of
 access-token scope evidence, including encounter selection. Automatic refresh and
 encrypted restoration preserve the policy; explicit narrowing can remove optional
