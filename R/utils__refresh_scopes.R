@@ -12,7 +12,7 @@ authorization_scopes_bounded <- function(scopes) {
 authorization_retained_scopes <- function(client, token, requested) {
   union(
     setdiff(token@granted_scopes, authorization_extra_scopes(client, token)),
-    intersect(requested, "offline_access")
+    authorization_refresh_consent(client, requested)
   )
 }
 

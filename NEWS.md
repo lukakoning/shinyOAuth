@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Reauthorization preserves omitted `offline_access` consent only for ordinary
+OIDC clients. Generic OAuth and SMART replacements no longer restore an explicitly
+ungranted permission merely because it has that name.
+
 * Single-module async refresh failures again include `mirai_error_type` in
 session-cleared and session-retained audit events, with `NA` for unclassified
 errors. Synchronous failure events continue to omit this async-only field.
