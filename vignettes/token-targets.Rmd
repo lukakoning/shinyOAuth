@@ -274,6 +274,12 @@ desired resource at token redemption. During reauthorization, the sealed target
 limits still constrain token acquisition even if static consent remains needed
 for an unacquired target.
 
+If a partial grant leaves a Microsoft target with only OIDC scopes, further
+acquisition fails with `insufficient_scope` before sending credentials. OIDC-only
+requests would select Graph/UserInfo instead of that API. Reauthorization also
+rejects an API-empty default target during preflight, preserving current access;
+use a new login to request the originally configured API permissions.
+
 `.default` is never treated as proof of individual permissions. Microsoft target
 responses must include `scope`; returned short permission names are qualified
 only within the selected Microsoft resource. Short names containing `:` or `/`

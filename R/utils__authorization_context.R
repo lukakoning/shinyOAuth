@@ -17,6 +17,9 @@ preflight_reauthorization <- function(
   context = NULL,
   max_age = NULL
 ) {
+  # The replacement must still be able to select its code-redemption target.
+  # Check before ending the current authorization or preparing browser state.
+  token_target_request(client, limits = target_limits)
   prepare_call_internal(
     client,
     raw_to_hex_lower(openssl::rand_bytes(64L)),

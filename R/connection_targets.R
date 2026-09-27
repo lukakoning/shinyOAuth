@@ -437,6 +437,14 @@ token_target_request <- function(
   if (!length(ceiling)) {
     connection_access_error("insufficient_scope")
   }
+  # Microsoft selects the resource through its API scopes. OIDC-only requests
+  # select Graph/UserInfo, not the resource named by this local target.
+  if (
+    identical(client@provider@token_target_mode, "microsoft") &&
+      !length(setdiff(ceiling, token_target_oidc_scopes(client)))
+  ) {
+    connection_access_error("insufficient_scope")
+  }
   required <- token_target_required_scopes(client, target)
   if (!token_target_scopes_allowed(client, target, required, ceiling)) {
     connection_access_error("insufficient_scope")

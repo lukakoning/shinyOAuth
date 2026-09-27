@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Microsoft target acquisition rejects retained grants containing only OIDC
+scopes, preventing implicit Graph/UserInfo selection for another API. An invalid
+replacement target is rejected before reauthorization ends current access.
+
 * Repeated connection reads validate and normalize scope vectors in bulk and
 encode character policy fields without per-scope dispatch. Security policy and
 key-material checks still run on every read, and fingerprints remain compatible
