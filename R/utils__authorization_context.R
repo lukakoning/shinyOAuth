@@ -5,6 +5,32 @@
 # Up to 16 target limits can repeat the same 8192-byte authorization scope set.
 # Leave room for their JSON encoding and the bounded transaction metadata.
 authorization_context_max_bytes <- 262144L
+
+# Check local preparation before a replacement ends the current authorization.
+# The browser binding is not part of the encrypted payload, and this fresh probe
+# is never stored or published. The real login still gets its own binding/state.
+preflight_reauthorization <- function(
+  client,
+  scopes = NULL,
+  target_limits = NULL,
+  extra_scopes = NULL,
+  context = NULL,
+  max_age = NULL
+) {
+  prepare_call_internal(
+    client,
+    raw_to_hex_lower(openssl::rand_bytes(64L)),
+    .requested_max_age = max_age,
+    .defer_build = TRUE,
+    .transaction_context = context,
+    .requested_scopes = scopes,
+    .target_limits = target_limits,
+    .accepted_extra_scopes = extra_scopes,
+    .preflight = TRUE
+  )
+  invisible(NULL)
+}
+
 authorization_context_json <- function(context) {
   if (is.null(context)) {
     return(NULL)

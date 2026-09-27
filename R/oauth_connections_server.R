@@ -26,6 +26,7 @@
 #'     scope checks and server-side `$access_token()` retrieval for external SDKs.
 #'   * `reauthorize(connection_id)`: end this local authorization and start its
 #'     replacement with the retained scope limit, without upstream revocation.
+#'     Local state preparation is checked first; rejection preserves current access.
 #'     The replacement summary includes `replaces_connection_id`. Failed/cancelled
 #'     replacement leaves the old reference invalid. Unrelated authorizations
 #'     remain usable; shared-credential protections still apply. EHR-only clients

@@ -172,6 +172,11 @@ the connection ID; the manager takes an ID for this operation. To request a new
 authorization with the original configuration after deliberate narrowing, use
 the normal new-login flow rather than reauthorization of the restricted grant.
 
+Both modules check replacement state against the callback and encrypted-state
+limits before ending the current authorization. A local preflight rejection
+leaves the connection usable and creates no pending login. Once replacement
+starts, failure or cancellation does not restore the old authorization.
+
 The cache and refresh credential belong to one authorization. Async accessors
 for the same operation share work; different target acquisitions queue and read
 the most recently committed refresh credential. A synchronous caller reports

@@ -69,7 +69,8 @@ prepare_call_internal <- function(
   .authorization_request = FALSE,
   .requested_scopes = NULL,
   .target_limits = NULL,
-  .accepted_extra_scopes = NULL
+  .accepted_extra_scopes = NULL,
+  .preflight = FALSE
 ) {
   # Verify input  --------------------------------------------------------------
 
@@ -245,6 +246,12 @@ prepare_call_internal <- function(
           )
         }
         state_decrypt_gcm(payload, key = oauth_client@state_key)
+
+        # Replacement preflight uses the exact state encoder and both size
+        # policies, but creates no pending login and performs no provider work.
+        if (isTRUE(.preflight)) {
+          return(invisible(NULL))
+        }
 
         # Store in state store -----------------------------------------------------
 

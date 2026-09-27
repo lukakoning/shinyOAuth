@@ -205,8 +205,9 @@
 #'     the module's configured expiry/session-clearing policy still applies.
 #'   - `auth$reauthorize()`: invalidate the current local authorization and begin
 #'     replacement with its retained scope limit, without upstream revocation.
-#'     Failed/cancelled replacement does not revive old references. With no prior
-#'     grant, this starts ordinary login. It does not force account selection or
+#'     Local state preparation is checked first; rejection preserves current access.
+#'     Failed/cancelled replacement after that does not revive old references.
+#'     With no prior grant, this starts ordinary login. It does not force account selection or
 #'     a password prompt; configured maximum authentication age still applies.
 #'   - `auth[["request_login"]]()`: start login. Waits for browser setup when needed
 #'     and does nothing if the session is already authenticated. Uses a browser
@@ -1996,17 +1997,17 @@ oauth_module_server_impl <- function(
       }
       current <- values[["token"]]
       started <- values[["auth_started_at"]]
-      auth_operations[["target_limits"]] <- token_target_reauthorization_limits(
+      target_limits <- token_target_reauthorization_limits(
         client,
         auth_operations[["target_limits"]]
       )
       retained_scopes <- if (
         token_targets_configured(client) &&
-          !is.null(auth_operations[["target_limits"]])
+          !is.null(target_limits)
       ) {
         token_target_authorization_scopes(
           client,
-          auth_operations[["target_limits"]]
+          target_limits
         )
       } else if (!is.null(current)) {
         authorization_retained_scopes(
@@ -2026,7 +2027,7 @@ oauth_module_server_impl <- function(
       ) {
         connection_access_error("interaction_required")
       }
-      auth_operations[["reauth_scopes"]] <- scopes %||%
+      requested_scopes <- scopes %||%
         if (token_targets_configured(client)) {
           retained_scopes
         } else if (
@@ -2038,12 +2039,10 @@ oauth_module_server_impl <- function(
           auth_operations[["reauth_scopes"]] %||%
             auth_operations[["last_authorized_scopes"]]
         }
-      if (!length(auth_operations[["reauth_scopes"]])) {
-        auth_operations[["reauth_scopes"]] <- NULL
+      if (!length(requested_scopes)) {
+        requested_scopes <- NULL
       }
-      auth_operations[[
-        "reauth_extra_scopes"
-      ]] <- authorization_extra_scope_limit(
+      extra_scopes <- authorization_extra_scope_limit(
         client,
         if (!is.null(current)) {
           authorization_extra_scopes(client, current)
@@ -2051,8 +2050,27 @@ oauth_module_server_impl <- function(
           auth_operations[["reauth_extra_scopes"]] %||%
             auth_operations[["last_authorized_extra_scopes"]]
         },
-        auth_operations[["reauth_scopes"]]
+        requested_scopes
       )
+      force_oidc_reauth <- isTRUE(auth_operations[["force_oidc_reauth"]]) ||
+        (!indefinite_session &&
+          !is.null(reauth_after_seconds) &&
+          length(started) == 1L &&
+          is.finite(started) &&
+          as.numeric(Sys.time()) >= started + reauth_after_seconds &&
+          provider_uses_oidc(client@provider))
+      if (is.null(.managed)) {
+        preflight_reauthorization(
+          client,
+          scopes = requested_scopes,
+          target_limits = target_limits,
+          extra_scopes = extra_scopes,
+          max_age = if (force_oidc_reauth) 0 else NULL
+        )
+      }
+      auth_operations[["target_limits"]] <- target_limits
+      auth_operations[["reauth_scopes"]] <- requested_scopes
+      auth_operations[["reauth_extra_scopes"]] <- extra_scopes
       auth_operations[["no_revoke_before_epoch"]] <- auth_operations[["epoch"]]
       .advance_auth_epoch()
       values[["token"]] <- NULL
@@ -2061,17 +2079,7 @@ oauth_module_server_impl <- function(
       values[["error"]] <- NULL
       values[["error_description"]] <- NULL
       values[["error_uri"]] <- NULL
-      if (
-        !indefinite_session &&
-          !is.null(reauth_after_seconds) &&
-          length(started) == 1L &&
-          is.finite(started) &&
-          as.numeric(Sys.time()) >= started + reauth_after_seconds
-      ) {
-        auth_operations[["force_oidc_reauth"]] <- provider_uses_oidc(
-          client@provider
-        )
-      }
+      auth_operations[["force_oidc_reauth"]] <- force_oidc_reauth
       .clear_browser_token()
       .request_login()
     }

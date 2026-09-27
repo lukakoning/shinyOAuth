@@ -165,8 +165,9 @@ Accessor-triggered refresh works without \code{refresh_proactively = TRUE};
 the module's configured expiry/session-clearing policy still applies.
 \item \code{auth$reauthorize()}: invalidate the current local authorization and begin
 replacement with its retained scope limit, without upstream revocation.
-Failed/cancelled replacement does not revive old references. With no prior
-grant, this starts ordinary login. It does not force account selection or
+Local state preparation is checked first; rejection preserves current access.
+Failed/cancelled replacement after that does not revive old references.
+With no prior grant, this starts ordinary login. It does not force account selection or
 a password prompt; configured maximum authentication age still applies.
 \item \code{auth[["request_login"]]()}: start login. Waits for browser setup when needed
 and does nothing if the session is already authenticated. Uses a browser

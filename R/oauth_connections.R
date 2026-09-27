@@ -1533,7 +1533,14 @@ connection_manager_controller <- function(
     )
     # Serialization must succeed before ending the current authorization.
     # prepare() uses this same constructor when the module starts the login.
-    make_context(client_name, guard(), replacement)
+    context <- make_context(client_name, guard(), replacement)
+    preflight_reauthorization(
+      record[["client"]],
+      scopes = scopes,
+      target_limits = limits,
+      extra_scopes = extra_scopes,
+      context = context
+    )
     disconnect(id, revoke = FALSE)
     reauthorization_queue[[client_name]] <- replacement
     client_name

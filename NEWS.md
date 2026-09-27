@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Reauthorization checks the complete replacement state against callback and
+encrypted-state limits before ending the current authorization. Local preflight
+failures preserve existing access and do not store or publish a login request.
+
 * Connection requests with `refresh = TRUE` validate their destination, method,
 query and unauthenticated configuration before acquiring or rotating tokens.
 Configuration runs once, with current authorization rechecked before sending.
