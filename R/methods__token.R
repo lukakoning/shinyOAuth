@@ -1532,7 +1532,8 @@ refresh_token_impl <- function(
               phase = "refresh_token",
               token_response_cnf = token_set[["cnf"]],
               expires_in_missing = is.null(token_set[["expires_in"]]),
-              defer_subject_match = TRUE
+              defer_subject_match = TRUE,
+              target_request = target_request
             )
             validate_token_cnf_consistency(
               access_token = refreshed_token@access_token,

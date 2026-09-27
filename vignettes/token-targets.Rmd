@@ -282,7 +282,10 @@ use a new login to request the originally configured API permissions.
 
 `.default` is never treated as proof of individual permissions. Microsoft target
 responses must include `scope`; returned short permission names are qualified
-only within the selected Microsoft resource. Short names containing `:` or `/`
+only within the selected Microsoft resource. The same normalization applies to
+scope checks when a custom introspection endpoint is configured, for both login
+and refresh. Public `introspect_token()` results retain the raw provider scope
+string. Short names containing `:` or `/`
 must match that target's declared scopes, required permissions, optional
 `scope_aliases`, or retained permissions from an earlier grant. For example,
 declare `scope_aliases = c("items/read", "read:items")` inside a target to

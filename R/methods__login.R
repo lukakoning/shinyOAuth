@@ -1974,7 +1974,8 @@ handle_callback_internal <- function(
           phase = "exchange_code",
           token_response_cnf = token_set[["cnf"]],
           expires_in_missing = is.null(token_set[["expires_in"]]),
-          defer_subject_match = TRUE
+          defer_subject_match = TRUE,
+          target_request = target_request
         )
         validate_token_cnf_consistency(
           access_token = token@access_token,
@@ -2206,6 +2207,8 @@ resolve_userinfo_subject <- function(oauth_client, userinfo) {
 #'   client's effective scopes.
 #' @param expires_in_missing Whether the token response omitted its lifetime.
 #' @param defer_subject_match Defer subject comparison that needs UserInfo.
+#' @param target_request Optional validated target request, used to qualify
+#'   Microsoft introspection scopes for the resource being acquired.
 #' @return The updated [OAuthToken], with `cnf` and `token_type` augmented from
 #'   the introspection response when available.
 #' @keywords internal
@@ -2218,7 +2221,8 @@ enforce_token_introspection_policy <- function(
   phase = NULL,
   token_response_cnf = NULL,
   expires_in_missing = FALSE,
-  defer_subject_match = FALSE
+  defer_subject_match = FALSE,
+  target_request = NULL
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
   S7::check_is_S7(token, class = OAuthToken)
@@ -2349,6 +2353,15 @@ enforce_token_introspection_policy <- function(
         allow_empty = client_uses_smart_scopes(oauth_client) ||
           length(requested_scopes) == 0L
       )
+    }
+    if (!is.null(intro_scope_raw) && !is.null(target_request)) {
+      # Introspection describes the same selected resource as the token
+      # response. Validate its raw shape before applying provider conventions.
+      intro_scope_raw <- token_target_response(
+        oauth_client,
+        list(scope = intro_scope_raw),
+        target_request
+      )[["scope"]]
     }
     if (client_uses_smart_scopes(oauth_client)) {
       if (is.null(intro_scope_raw)) {

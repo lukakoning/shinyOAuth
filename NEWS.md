@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Microsoft target clients with custom introspection now qualify short scope
+names against the selected resource during login and refresh, including declared
+punctuated aliases. Malformed scopes and permissions for another resource remain
+rejected, and raw public introspection results are unchanged.
+
 * Ordinary managed connections now pace successful refreshes by token lifetime,
 including after refresh-token rotation. Short-lived tokens can renew without a
 fixed 30-second outage while failure backoff and provider `Retry-After` remain
