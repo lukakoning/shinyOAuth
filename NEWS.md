@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Ordinary managed connections now pace successful refreshes by token lifetime,
+including after refresh-token rotation. Short-lived tokens can renew without a
+fixed 30-second outage while failure backoff and provider `Retry-After` remain
+enforced.
+
 * Microsoft target acquisition rejects retained grants containing only OIDC
 scopes, preventing implicit Graph/UserInfo selection for another API. An invalid
 replacement target is rejected before reauthorization ends current access.
