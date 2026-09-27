@@ -209,6 +209,78 @@ test_that("validate_scopes is fully compliant with RFC 6749 section 3.3", {
   )))
 })
 
+test_that("scope bulk validation checks every entry and preserves diagnostics", {
+  scopes <- sprintf("permission.%03d", seq_len(128))
+  expect_invisible(validate_scopes(scopes))
+  invalid <- list(
+    list(value = NA_character_, message = "scope[128] is NA"),
+    list(value = "", message = "scope[128] is empty"),
+    list(value = " \t\n", message = "scope[128] is empty"),
+    list(
+      value = 'read"admin',
+      message = "scope[128] contains invalid characters"
+    ),
+    list(
+      value = "read\\admin",
+      message = "scope[128] contains invalid characters"
+    ),
+    list(
+      value = "read\u00e9",
+      message = "scope[128] contains invalid characters"
+    ),
+    list(
+      value = "read\177",
+      message = "scope[128] contains invalid characters"
+    ),
+    list(
+      value = "read good\\bad",
+      message = "scope[128] contains invalid characters"
+    )
+  )
+  for (case in invalid) {
+    changed <- scopes
+    changed[[128]] <- case[["value"]]
+    expect_error(
+      validate_scopes(changed),
+      case[["message"]],
+      fixed = TRUE,
+      class = "shinyOAuth_input_error"
+    )
+  }
+  expect_error(
+    validate_scopes(c(scopes, "", NA_character_)),
+    "scope[129] is empty",
+    fixed = TRUE
+  )
+  expect_invisible(validate_scopes(c(scopes, " read\twrite\r\n", "read\n")))
+})
+
+test_that("scope token fast path preserves splitting, order, and duplicates", {
+  tokens <- c(z = "write", a = "read", b = "read", n = NA_character_)
+  expect_identical(as_scope_tokens(tokens), c("write", "read", "read"))
+  expect_identical(normalize_scope_tokens(tokens), c("read", "write"))
+  expect_identical(
+    as_scope_tokens(list(c("write", "read"), list("read", NA_character_))),
+    c("write", "read", "read")
+  )
+  for (separator in c(" ", "\t", "\r", "\n", "\r\n", "\v", "\f")) {
+    expect_identical(
+      as_scope_tokens(c(paste0("read", separator), paste0(separator, "write"))),
+      c("read", "write")
+    )
+    expect_identical(
+      as_scope_tokens(paste("read", "write", sep = separator)),
+      c("read", "write")
+    )
+  }
+  expect_identical(as_scope_tokens(c("", NA_character_, " \t\n")), character())
+  # Normalization remains permissive; grammar validation is a separate step.
+  expect_identical(
+    as_scope_tokens(c('read"', "read\\", "caf\u00e9")),
+    c('read"', "read\\", "caf\u00e9")
+  )
+})
+
 test_that("compact_list drops NULLs and length-1 NAs only", {
   f <- shinyOAuth:::compact_list
   x <- list(a = 1, b = NULL, c = NA_character_, d = c(NA, NA), e = "ok")

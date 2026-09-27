@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Repeated connection reads validate and normalize scope vectors in bulk and
+encode character policy fields without per-scope dispatch. Security policy and
+key-material checks still run on every read, and fingerprints remain compatible
+with existing pending logins and encrypted credentials.
+
 * Reauthorization checks the complete replacement state against callback and
 encrypted-state limits before ending the current authorization. Local preflight
 failures preserve existing access and do not store or publish a login request.

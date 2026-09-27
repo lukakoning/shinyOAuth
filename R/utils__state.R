@@ -299,20 +299,30 @@ state_policy_normalize_value <- function(value) {
     if (length(value_names) > 0L && !is.null(value_names)) {
       ord <- order(value_names)
       value <- value[ord]
-      out <- as.list(vapply(
+    }
+
+    # Scope lists dominate large target policies. Plain character leaves can
+    # use the same scalar encoding in bulk; classed values retain scalar
+    # dispatch, and numeric formatting must remain independent per element.
+    out <- if (is.character(value) && !is.object(value)) {
+      chars <- enc2utf8(as.vector(value, mode = "character"))
+      chars[is.na(chars)] <- "<na>"
+      chars
+    } else {
+      vapply(
         seq_along(value),
         function(i) state_policy_scalar_string(value[[i]]),
         ""
-      ))
+      )
+    }
+
+    if (length(value_names) > 0L && !is.null(value_names)) {
+      out <- as.list(out)
       names(out) <- value_names[ord]
       return(out)
     }
 
-    return(unname(vapply(
-      seq_along(value),
-      function(i) state_policy_scalar_string(value[[i]]),
-      ""
-    )))
+    return(unname(out))
   }
 
   state_policy_scalar_string(value)
