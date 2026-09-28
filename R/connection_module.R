@@ -422,6 +422,22 @@ module_refresh_controller <- function(
           if (expired) "interaction_required" else "authorization_unavailable"
         )
       }
+      accepted <- FALSE
+      on.exit(
+        {
+          # A failed delivery or bundle commit can clear the authorization after
+          # the provider has already issued new credentials. Retained indefinite
+          # sessions must not revoke their shared grant through this cleanup.
+          if (!accepted && is.null(values[["token"]])) {
+            hooks[["discard"]](
+              fresh,
+              shiny_session = captured,
+              operation_epoch = operation[["epoch"]]
+            )
+          }
+        },
+        add = TRUE
+      )
       tryCatch(
         {
           validate_refresh_delivery(fresh, token)
@@ -466,6 +482,7 @@ module_refresh_controller <- function(
           fresh
         )
       }
+      accepted <- TRUE
       values[["error"]] <- NULL
       values[["error_description"]] <- NULL
       values[["error_uri"]] <- NULL

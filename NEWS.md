@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Single modules attempt revocation of fresh credentials rejected during refresh
+delivery or target-bundle commit when the failed operation clears the local
+authorization. Indefinite sessions that retain cached access keep their existing
+revocation behavior.
+
 * Managed reauthorization works for clients without configured scopes, including
 after an uncertain refresh. Replacement connections retain ordinary refresh
 behavior instead of being marked as explicitly narrowed to an empty scope set.
