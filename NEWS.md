@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Microsoft `.default` detection consistently rejects mixed-case consent markers
+as granted permissions, including token responses, introspection and restored
+credentials. Static-consent declarations use the canonical lowercase marker;
+resource identifiers still match exactly.
+
 * Single modules attempt revocation of fresh credentials rejected during refresh
 delivery or target-bundle commit when the failed operation clears the local
 authorization. Indefinite sessions that retain cached access keep their existing

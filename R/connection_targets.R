@@ -30,6 +30,17 @@ token_target_name <- function(client, target = NULL) {
 
 token_target_prefix <- function(resource) paste0(resource, "/")
 
+# Detect a reserved permission marker; never use this folding to compare or
+# rewrite resource identifiers, which remain exact and case-sensitive.
+token_target_static_scope <- function(scopes) {
+  folded <- chartr(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "abcdefghijklmnopqrstuvwxyz",
+    scopes
+  )
+  folded == ".default" | endsWith(folded, "/.default")
+}
+
 # Comparison keys only: retain the provider's original scope evidence and keep
 # resource identifiers exact. Only Microsoft permission names ignore ASCII case.
 token_target_scope_keys <- function(client, scopes) {
@@ -189,7 +200,7 @@ validate_token_targets <- function(client) {
   }
   if (identical(client@provider@token_target_mode, "microsoft")) {
     api_scopes <- setdiff(client@scopes, token_target_oidc_scopes(client))
-    static <- endsWith(api_scopes, "/.default")
+    static <- token_target_static_scope(api_scopes)
     if (any(static) && !all(static)) {
       err_config(
         "Microsoft client scopes cannot mix .default with explicit API permissions"
@@ -265,7 +276,7 @@ validate_token_targets <- function(client) {
     }
     if (
       identical(client@provider@token_target_mode, "microsoft") &&
-        any(endsWith(token_target_scope_keys(client, required), "/.default"))
+        any(token_target_static_scope(required))
     ) {
       err_config(
         "Microsoft .default requests static consent; target required_scopes must name actual API permissions"
@@ -299,7 +310,7 @@ validate_token_targets <- function(client) {
           !authorization_scopes_bounded(aliases) ||
           any(aliases %in% token_target_oidc_scopes(client)) ||
           any(startsWith(aliases, ".")) ||
-          any(endsWith(aliases, "/.default")) ||
+          any(token_target_static_scope(aliases)) ||
           any(qualified)
       ) {
         err_config(
@@ -318,7 +329,7 @@ validate_token_targets <- function(client) {
     }
     if (identical(client@provider@token_target_mode, "microsoft")) {
       prefix <- token_target_prefix(resource)
-      static <- endsWith(scopes, "/.default")
+      static <- token_target_static_scope(scopes)
       if (
         !all(startsWith(scopes, prefix)) ||
           (any(static) && !identical(scopes, paste0(prefix, ".default")))
@@ -558,7 +569,7 @@ token_target_response <- function(client, response, request) {
       )
     }
     scopes <- normalize_scope_tokens(response[["scope"]])
-    if (any(endsWith(scopes, "/.default")) || ".default" %in% scopes) {
+    if (any(token_target_static_scope(scopes))) {
       err_token(
         "A .default response must identify the actual granted permissions"
       )
@@ -656,7 +667,7 @@ token_target_grant_scopes_allowed <- function(
   prefix <- token_target_prefix(client@token_targets[[target]][["resource"]])
   all(startsWith(api, prefix)) &&
     all(nchar(api) > nchar(prefix)) &&
-    !any(endsWith(api, "/.default")) &&
+    !any(token_target_static_scope(api)) &&
     token_target_scopes_allowed(
       client,
       target,
@@ -732,7 +743,7 @@ token_target_select <- function(record, target = NULL) {
   ]])
   if (
     identical(client@provider@token_target_mode, "microsoft") &&
-      any(endsWith(requested, "/.default"))
+      any(token_target_static_scope(requested))
   ) {
     requested <- if (is.null(record[["token"]])) {
       character()
@@ -908,7 +919,7 @@ token_target_verification_scopes <- function(client, request, response) {
   }
   if (
     identical(client@provider@token_target_mode, "microsoft") &&
-      any(endsWith(scopes, "/.default"))
+      any(token_target_static_scope(scopes))
   ) {
     return(normalize_scope_tokens(response[["scope"]]))
   }
@@ -920,7 +931,7 @@ token_target_authorization_parameters <- function(client, scopes) {
     token_targets_configured(client) &&
       identical(client@provider@token_target_mode, "microsoft")
   ) {
-    static <- scopes[endsWith(scopes, "/.default")]
+    static <- scopes[token_target_static_scope(scopes)]
     if (length(static)) {
       # One static-consent request covers the application's registered APIs.
       # Code redemption still uses the sealed primary target and its local limit.
