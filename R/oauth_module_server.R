@@ -104,6 +104,11 @@
 #'  permissions removed by local refresh narrowing. Explicit `auth$reauthorize()`
 #'  instead carries forward the previous authorization's retained scope limits.
 #'  By default this is `NULL` (no forced reauthentication).
+#'  With token targets, that default can keep `authenticated = TRUE` for the
+#'  remaining Shiny session after all access tokens expire, even without a
+#'  refresh credential and with `indefinite_session = FALSE`. Set a finite age
+#'  if local application access relies on `authenticated` and requires a bounded
+#'  login lifetime. `indefinite_session = TRUE` ignores this age limit.
 #'
 #' @param refresh_proactively If `TRUE`, obtain a replacement access token before
 #'   expiry when a refresh token is available. Default `FALSE`. The module

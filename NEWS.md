@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Token-target migration guidance now makes the default authentication lifetime
+explicit: access-token expiry alone does not end the retained local login, even
+without a refresh credential. The example sets a finite `reauth_after_seconds`
+for applications requiring a bounded login lifetime.
+
 * Clearing a retained target authorization resets `token_stale`, including when
 the maximum authentication age expires after the primary access token. The
 status no longer describes a stale token after that token has been removed.

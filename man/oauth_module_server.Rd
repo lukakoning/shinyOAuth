@@ -56,7 +56,12 @@ hard local session lifetime followed by an ordinary authorization request.
 That new authorization requests the configured scopes again, including
 permissions removed by local refresh narrowing. Explicit \code{auth$reauthorize()}
 instead carries forward the previous authorization's retained scope limits.
-By default this is \code{NULL} (no forced reauthentication).}
+By default this is \code{NULL} (no forced reauthentication).
+With token targets, that default can keep \code{authenticated = TRUE} for the
+remaining Shiny session after all access tokens expire, even without a
+refresh credential and with \code{indefinite_session = FALSE}. Set a finite age
+if local application access relies on \code{authenticated} and requires a bounded
+login lifetime. \code{indefinite_session = TRUE} ignores this age limit.}
 
 \item{refresh_proactively}{If \code{TRUE}, obtain a replacement access token before
 expiry when a refresh token is available. Default \code{FALSE}. The module

@@ -23,6 +23,16 @@ a request limit, not evidence of consent. The server can refuse a target or omit
 the refresh credential needed to acquire it. No target method starts sign-in,
 switches accounts or tenants, or implements token exchange/OBO.
 
+When adding targets to an existing `oauth_module_server()` app, choose an explicit
+authentication lifetime. Target authorizations can keep `auth$authenticated`
+true after all access tokens expire, even without a refresh token and with
+`indefinite_session = FALSE`. The default `reauth_after_seconds = NULL` leaves
+that local login available for the remaining Shiny session. If local application
+data is protected with `req(auth$authenticated)`, set a finite
+`reauth_after_seconds` appropriate for the app, as in the example below.
+`indefinite_session = TRUE` ignores that age limit. Connection methods still
+enforce the selected access token's expiry and permissions.
+
 ## Declare calendar and contacts targets
 
 ```{r, eval=FALSE}
@@ -106,7 +116,10 @@ the token alone does not contain their retained permission limits.
 
 ```{r, eval=FALSE}
 server <- function(input, output, session) {
-  auth <- oauth_module_server("auth", client)
+  auth <- oauth_module_server(
+    "auth", client,
+    reauth_after_seconds = 60 * 60 # Example: choose the app's login lifetime.
+  )
   # Alternatively: auth <- oauth_connections_server("auth", manager)
   # and select auth$connection(connection_id), or auth$connection() when unique.
 
