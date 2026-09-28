@@ -273,7 +273,10 @@ requests include the declared consent scopes; token requests select one API's
 qualified scopes plus its retained OIDC scopes (initially the configured OIDC
 scopes), without an RFC 8707 `resource`
 parameter. Disabling UserInfo avoids calling Graph with another API's token and
-preserves ID-token validation. Resource identifiers are exact: where an
+preserves ID-token validation. Microsoft resource identifiers can be absolute
+URIs or GUIDs, for example `499b84ac-1321-427f-aa17-267ca6975798` with scope
+`499b84ac-1321-427f-aa17-267ca6975798/.default`. RFC 8707 mode still requires
+absolute URIs. Resource identifiers are exact: where an
 identifier ends in `/`, appending `/.default` produces a double slash.
 Distinct Microsoft resource identifiers must not have overlapping scope prefixes.
 For example, `https://api.example` and `https://api.example/reports` cannot be

@@ -219,13 +219,24 @@ validate_token_targets <- function(client) {
       )
     }
     resource <- item[["resource"]]
+    microsoft_guid <- identical(
+      client@provider@token_target_mode,
+      "microsoft"
+    ) &&
+      is_guid_like(resource) &&
+      nchar(resource, type = "bytes") == 36L
     if (
       !is_valid_string(resource) ||
-        !is.null(resource_indicator_problem(resource)) ||
+        (!microsoft_guid && !is.null(resource_indicator_problem(resource))) ||
         nchar(resource, type = "bytes") > 2048L
     ) {
       err_config(
-        "A token target resource must be an absolute URI without a fragment or whitespace"
+        paste0(
+          "A token target resource must be an absolute URI without a fragment or whitespace",
+          if (identical(client@provider@token_target_mode, "microsoft")) {
+            "; Microsoft mode also accepts a GUID"
+          }
+        )
       )
     }
     scopes <- connection_scope_arguments(item[["scopes"]])

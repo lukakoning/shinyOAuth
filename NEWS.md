@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Microsoft token targets accept GUID resource identifiers as well as absolute
+URIs. RFC 8707 targets continue to require absolute URIs, and resource matching
+remains exact.
+
 * RFC 8707 targets reserve OIDC scope names only for OIDC providers or clients
 requesting `openid`. OAuth-only targets can require API permissions such as
 `email` or `offline_access`, without sharing or inventing those permissions.

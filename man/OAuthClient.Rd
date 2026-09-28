@@ -445,7 +445,8 @@ Extra token headers apply only to token exchange and refresh; set
 \code{extra_headers} explicitly for every other endpoint that needs them.}
 
 \item{token_targets}{Optional named list of API token declarations. Each
-entry has \code{resource} (an absolute URI) and \code{scopes} (API scopes also present
+entry has \code{resource} (an absolute URI, or a GUID in Microsoft mode)
+and \code{scopes} (API scopes also present
 in the client's \code{scopes}). Optional \code{required_scopes} apply only to this
 target; optional \code{resource_ids} explicitly associate approved HTTP
 \code{resource_bases} with this target. Requires a provider with a supported

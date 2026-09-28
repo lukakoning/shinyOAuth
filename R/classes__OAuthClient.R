@@ -51,7 +51,8 @@
 #'   used in the request and subsequent scope checks.
 #'
 #' @param token_targets Optional named list of API token declarations. Each
-#'   entry has `resource` (an absolute URI) and `scopes` (API scopes also present
+#'   entry has `resource` (an absolute URI, or a GUID in Microsoft mode)
+#'   and `scopes` (API scopes also present
 #'   in the client's `scopes`). Optional `required_scopes` apply only to this
 #'   target; optional `resource_ids` explicitly associate approved HTTP
 #'   `resource_bases` with this target. Requires a provider with a supported
