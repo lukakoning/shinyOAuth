@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Clearing a retained target authorization resets `token_stale`, including when
+the maximum authentication age expires after the primary access token. The
+status no longer describes a stale token after that token has been removed.
+
 * Connection requests recheck current authorization after application request
 configuration in both refresh modes. Logout, replacement and scope narrowing
 during configuration prevent the outgoing request; token rotations use the

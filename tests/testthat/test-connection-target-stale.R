@@ -177,3 +177,66 @@ test_that("target staleness follows primary expiry independently of secondary re
     }
   }
 })
+
+test_that("clearing an expired target authorization resets its stale status", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  start <- Sys.time()
+  now <- start
+  local_mocked_bindings(Sys.time = function() now, .package = "base")
+  provider <- make_test_provider()
+  provider@token_target_mode <- "rfc8707"
+  client <- oauth_client(
+    provider,
+    "app",
+    client_secret = "",
+    redirect_uri = "https://app.example/callback",
+    scopes = c("read", "write"),
+    token_targets = list(
+      api = list(resource = "urn:api", scopes = c("read", "write"))
+    )
+  )
+  for (ending in c("maximum_age", "token_cleared")) {
+    now <- start
+    shiny::testServer(
+      oauth_module_server,
+      args = list(
+        id = "auth",
+        client = client,
+        auto_redirect = FALSE,
+        reauth_after_seconds = 60
+      ),
+      {
+        token <- manager_test_token(refresh = NA_character_)
+        token@expires_at <- as.numeric(now) + 10
+        .accept_login_token(token, NULL)
+        session[["flushReact"]]()
+        current <- values[["connection"]]()
+        expect_true(values[["authenticated"]])
+        expect_false(values[["token_stale"]])
+
+        now <<- start + 11
+        session[["elapse"]](11000)
+        session[["flushReact"]]()
+        expect_true(values[["authenticated"]])
+        expect_true(values[["token_stale"]])
+        expect_false(current[["is_usable"]]())
+
+        if (ending == "maximum_age") {
+          now <<- start + 61
+          session[["elapse"]](50000)
+        } else {
+          values[["token"]] <- NULL
+        }
+        session[["flushReact"]]()
+        expect_null(values[["token"]])
+        expect_false(values[["authenticated"]])
+        expect_false(values[["token_stale"]])
+        expect_false(current[["is_usable"]]())
+        expect_error(
+          current[["access_token"]](min_valid_for = 0),
+          class = "shinyOAuth_access_error"
+        )
+      }
+    )
+  }
+})

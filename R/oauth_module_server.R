@@ -191,7 +191,8 @@
 #'   - `auth[["token_stale"]]`: `TRUE` when a target authorization retains an
 #'     expired primary token, or an indefinite session keeps an expired token
 #'     or one whose refresh failed. Resets after successful login, primary-token
-#'     refresh, or logout. Refreshing a secondary target does not renew the
+#'     refresh, or authorization clearing, including logout and maximum
+#'     authentication age. Refreshing a secondary target does not renew the
 #'     primary token.
 #'
 #'   The object also supplies:
@@ -1599,6 +1600,7 @@ oauth_module_server_impl <- function(
           }
         }
       },
+      ignoreNULL = FALSE,
       ignoreInit = FALSE
     )
 

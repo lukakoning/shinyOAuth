@@ -150,7 +150,8 @@ supplied a value that did not pass validation.
 \item \code{auth[["token_stale"]]}: \code{TRUE} when a target authorization retains an
 expired primary token, or an indefinite session keeps an expired token
 or one whose refresh failed. Resets after successful login, primary-token
-refresh, or logout. Refreshing a secondary target does not renew the
+refresh, or authorization clearing, including logout and maximum
+authentication age. Refreshing a secondary target does not renew the
 primary token.
 }
 
