@@ -200,17 +200,7 @@ connection_record_status <- function(record) {
   "active"
 }
 
-connection_record_request <- function(
-  record,
-  resource_id,
-  path,
-  query,
-  method,
-  required_scopes,
-  configure = NULL,
-  prepared = NULL
-) {
-  url <- connection_request_url(record[["client"]], resource_id, path)
+connection_validate_request <- function(record, required_scopes) {
   if (!connection_record_status(record) %in% c("active", "limited")) {
     err_token("Connection is not usable")
   }
@@ -232,6 +222,21 @@ connection_record_request <- function(
   ) {
     err_token("Current grant does not cover this operation")
   }
+  required_scopes
+}
+
+connection_record_request <- function(
+  record,
+  resource_id,
+  path,
+  query,
+  method,
+  required_scopes,
+  configure = NULL,
+  prepared = NULL
+) {
+  url <- connection_request_url(record[["client"]], resource_id, path)
+  connection_validate_request(record, required_scopes)
   tryCatch(
     {
       if (is.null(prepared)) {

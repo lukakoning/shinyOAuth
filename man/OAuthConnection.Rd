@@ -441,7 +441,9 @@ been requested by the client and be covered by the current grant.
 and returning it with only body and application headers changed. Use
 \code{\link[httr2:req_body_json]{httr2::req_body_json()}}, \code{\link[httr2:req_body_form]{httr2::req_body_form()}}, \code{\link[httr2:req_body_raw]{httr2::req_body_raw()}}
 and \code{\link[httr2:req_headers]{httr2::req_headers()}}. Set the HTTP method with \code{method} above.
-URL, transport policies, authentication and Host headers cannot be changed.}
+URL, transport policies, authentication and Host headers cannot be changed.
+Configuration runs once. Both refresh modes recheck the current
+authorization afterward, before sending the request.}
       \item{\code{refresh}}{Opt in to coordinated token acquisition before sending the
 request. Default FALSE preserves existing behavior. This synchronous
 operation never waits on async refresh and never refreshes/replays after

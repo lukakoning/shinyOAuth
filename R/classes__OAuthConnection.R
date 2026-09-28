@@ -462,6 +462,8 @@ OAuthConnection <- R6::R6Class(
     #'   [httr2::req_body_json()], [httr2::req_body_form()], [httr2::req_body_raw()]
     #'   and [httr2::req_headers()]. Set the HTTP method with `method` above.
     #'   URL, transport policies, authentication and Host headers cannot be changed.
+    #'   Configuration runs once. Both refresh modes recheck the current
+    #'   authorization afterward, before sending the request.
     #' @param refresh Opt in to coordinated token acquisition before sending the
     #'   request. Default FALSE preserves existing behavior. This synchronous
     #'   operation never waits on async refresh and never refreshes/replays after
@@ -497,16 +499,19 @@ OAuthConnection <- R6::R6Class(
       target <- token_target_name(private[[".client"]], target)
       token_target_check_destination(private[[".client"]], target, resource_id)
       record <- token_target_select(private[["record"]](), target)
-      prepared <- NULL
+      url <- connection_request_url(record[["client"]], resource_id, path)
       if (refresh) {
-        url <- connection_request_url(record[["client"]], resource_id, path)
         required_scopes <- connection_scope_arguments(required_scopes)
         if (!connection_record_configured_scopes(record, required_scopes)) {
           err_input(
             "Operation scopes must be included in the client's requested scopes"
           )
         }
-        prepared <- connection_prepare_request(url, query, method, configure)
+      } else {
+        required_scopes <- connection_validate_request(record, required_scopes)
+      }
+      prepared <- connection_prepare_request(url, query, method, configure)
+      if (refresh) {
         acquire <- private[[".acquire"]]
         if (!is.null(target) && is.function(acquire)) {
           acquire <- function(async, wait_only = FALSE) {
@@ -526,6 +531,10 @@ OAuthConnection <- R6::R6Class(
           FALSE,
           export_bearer = FALSE
         )
+      } else {
+        # Application configuration can yield to logout, replacement or scope
+        # changes. Resolve again before the final permission check and dispatch.
+        record <- token_target_select(private[["record"]](), target)
       }
       record[["single_attempt"]] <- refresh
       connection_record_request(

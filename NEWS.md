@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Connection requests recheck current authorization after application request
+configuration in both refresh modes. Logout, replacement and scope narrowing
+during configuration prevent the outgoing request; token rotations use the
+current credential without running configuration again.
+
 * Microsoft target clients with custom introspection now qualify short scope
 names against the selected resource during login and refresh, including declared
 punctuated aliases. Malformed scopes and permissions for another resource remain
