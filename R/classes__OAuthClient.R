@@ -58,6 +58,9 @@
 #'   `token_target_mode`, `userinfo_required = FALSE`, and no `resource` or
 #'   SMART configuration. Provider `extra_auth_params` and `extra_token_params`
 #'   must not contain `resource`; declare resources only in `token_targets`.
+#'   RFC 8707 mode reserves OIDC scope names only for an OIDC provider or when
+#'   client `scopes` includes `openid`; otherwise these names are ordinary API
+#'   scopes declared in targets. Microsoft always uses its OIDC scope set.
 #'   Client-level `required_scopes` can contain OIDC scopes only, except
 #'   `offline_access`: request refresh consent in client `scopes`, never in
 #'   client or target `required_scopes`. Access-token scopes cannot establish

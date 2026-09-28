@@ -12,7 +12,7 @@ test_that("target requirements cannot mistake refresh consent for an API permiss
         "app",
         client_secret = "",
         redirect_uri = "https://app.example/callback",
-        scopes = c(api_scope, "offline_access"),
+        scopes = c(api_scope, "openid", "offline_access"),
         required_scopes = required,
         token_targets = list(
           api = list(

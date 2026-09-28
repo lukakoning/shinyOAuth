@@ -7,7 +7,7 @@ introspected_target_client <- function() {
     "app",
     client_secret = "",
     redirect_uri = "https://app.example/callback",
-    scopes = c("read", "write", "contacts", "offline_access"),
+    scopes = c("read", "write", "contacts", "openid", "offline_access"),
     scope_validation = "strict",
     introspect = TRUE,
     introspection_checks = "scope",
@@ -74,7 +74,7 @@ test_that("introspection preserves target refresh consent with omitted response 
           parse_query_param(url, "state"),
           browser
         )
-        expect_setequal(token@granted_scopes, c("read", "write"))
+        expect_setequal(token@granted_scopes, c("read", "write", "openid"))
         exercise <- function(current) {
           expect_true(current[["refresh"]]())
           expect_identical(current[["access_token"]](), "access-2")

@@ -590,6 +590,9 @@ target; optional \code{resource_ids} explicitly associate approved HTTP
 \code{token_target_mode}, \code{userinfo_required = FALSE}, and no \code{resource} or
 SMART configuration. Provider \code{extra_auth_params} and \code{extra_token_params}
 must not contain \code{resource}; declare resources only in \code{token_targets}.
+RFC 8707 mode reserves OIDC scope names only for an OIDC provider or when
+client \code{scopes} includes \code{openid}; otherwise these names are ordinary API
+scopes declared in targets. Microsoft always uses its OIDC scope set.
 Client-level \code{required_scopes} can contain OIDC scopes only, except
 \code{offline_access}: request refresh consent in client \code{scopes}, never in
 client or target \code{required_scopes}. Access-token scopes cannot establish

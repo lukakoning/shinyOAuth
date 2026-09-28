@@ -2,8 +2,13 @@ token_target_oidc_scopes <- function(client) {
   common <- c("openid", "profile", "email", "offline_access")
   if (identical(client@provider@token_target_mode, "microsoft")) {
     common
-  } else {
+  } else if (
+    provider_uses_oidc(client@provider) ||
+      "openid" %in% normalize_scope_tokens(client@scopes)
+  ) {
     c(common, "address", "phone")
+  } else {
+    character()
   }
 }
 
@@ -168,7 +173,11 @@ validate_token_targets <- function(client) {
       "With token targets, put API required_scopes inside each target declaration"
     )
   }
-  if ("offline_access" %in% normalize_scope_tokens(client@required_scopes)) {
+  if (
+    "offline_access" %in%
+      token_target_oidc_scopes(client) &&
+      "offline_access" %in% normalize_scope_tokens(client@required_scopes)
+  ) {
     err_config(
       "offline_access is refresh consent; request it in client scopes, not required_scopes"
     )
@@ -234,7 +243,11 @@ validate_token_targets <- function(client) {
     required <- connection_scope_arguments(
       item[["required_scopes"]] %||% character()
     )
-    if ("offline_access" %in% required) {
+    if (
+      "offline_access" %in%
+        token_target_oidc_scopes(client) &&
+        "offline_access" %in% required
+    ) {
       err_config(
         "offline_access is refresh consent; request it in client scopes, not target required_scopes"
       )
@@ -654,7 +667,10 @@ token_target_retained_scopes <- function(client, token, request) {
   )
   union(
     granted,
-    intersect(request[["scopes"]], "offline_access")
+    intersect(
+      request[["scopes"]],
+      intersect("offline_access", token_target_oidc_scopes(client))
+    )
   )
 }
 
@@ -874,7 +890,10 @@ token_target_verification_scopes <- function(client, request, response) {
   if (!is.null(response[["scope"]])) {
     # offline_access requests refresh consent, not an access-token permission.
     # Its omission must not trip strict access-token scope reconciliation.
-    scopes <- setdiff(scopes, "offline_access")
+    scopes <- setdiff(
+      scopes,
+      intersect("offline_access", token_target_oidc_scopes(client))
+    )
   }
   if (
     identical(client@provider@token_target_mode, "microsoft") &&

@@ -1926,7 +1926,7 @@ test_that("target acquisition crosses a real async worker with its declared poli
 test_that("target grants and restored credentials retain client-required scopes", {
   client <- target_test_client()
   S7::props(client) <- list(
-    scopes = c(client@scopes, "email"),
+    scopes = c(client@scopes, "openid", "email"),
     required_scopes = "email"
   )
   request <- token_target_request(client, "contacts")

@@ -97,7 +97,11 @@ request. See [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html).
 
 Declare OIDC scopes at client level, outside the targets' API scope lists.
 RFC 8707 mode recognizes `openid`, `profile`, `email`, `address`, `phone`, and
-`offline_access`. All except `offline_access` can also be client-level
+`offline_access` when the provider uses OIDC or client `scopes` includes `openid`.
+For an OAuth-only provider without `openid`, these names are ordinary API scopes:
+declare them in the relevant target, including target `required_scopes` when
+needed. They are not automatically sent to sibling targets or retained as refresh
+consent. For OIDC clients, all except `offline_access` can also be client-level
 `required_scopes`. Request `offline_access` in client `scopes` for refresh
 consent; putting it in client or target `required_scopes` is a configuration
 error. A refresh token can be issued without this value appearing in the
@@ -162,7 +166,8 @@ Each ceiling includes the OIDC scopes granted to that target. Explicit refresh
 narrowing uses exactly the supplied scopes, so retain any OIDC permissions still
 needed, for example `scopes = c("calendar.read", "openid")`. Required scopes
 must remain present. Optional identity scopes such as `email` and `profile`
-are not added back on refresh or restoration. Requested `offline_access` is
+are not added back on refresh or restoration. For OIDC and Microsoft clients,
+requested `offline_access` is
 retained separately from access-token permission evidence: providers can omit
 it from token scopes while issuing a refresh token. This preserves refresh
 capability on reauthorization without reporting `offline_access` as a granted

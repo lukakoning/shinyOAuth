@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* RFC 8707 targets reserve OIDC scope names only for OIDC providers or clients
+requesting `openid`. OAuth-only targets can require API permissions such as
+`email` or `offline_access`, without sharing or inventing those permissions.
+
 * Non-forced asynchronous token reads recheck their cache after another target's
 acquisition completes. A usable cached token no longer triggers a redundant
 refresh; ownership, permission and lifetime checks still apply before delivery.
