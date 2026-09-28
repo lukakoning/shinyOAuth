@@ -1514,6 +1514,9 @@ connection_manager_controller <- function(
     }
     if (length(scopes)) {
       scopes <- authorization_scope_limit(record[["client"]], scopes)
+    } else {
+      # No configured scope is an ordinary authorization, not an empty override.
+      scopes <- NULL
     }
     extra_scopes <- authorization_extra_scope_limit(
       record[["client"]],

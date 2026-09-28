@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Managed reauthorization works for clients without configured scopes, including
+after an uncertain refresh. Replacement connections retain ordinary refresh
+behavior instead of being marked as explicitly narrowed to an empty scope set.
+
 * Microsoft token targets accept GUID resource identifiers as well as absolute
 URIs. RFC 8707 targets continue to require absolute URIs, and resource matching
 remains exact.
