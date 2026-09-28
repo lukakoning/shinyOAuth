@@ -209,11 +209,12 @@ OAuthConnection <- R6::R6Class(
       target <- token_target_name(private[[".client"]], target)
       acquire <- private[[".acquire"]]
       if (!is.null(target) && is.function(acquire)) {
-        acquire <- function(async, wait_only = FALSE) {
+        acquire <- function(async, wait_only = FALSE, reuse_cached = NULL) {
           private[[".acquire"]](
             async = async,
             target = target,
-            wait_only = wait_only
+            wait_only = wait_only,
+            reuse_cached = reuse_cached
           )
         }
       }

@@ -193,12 +193,18 @@ oauth_connections_server <- function(
             target = target
           )
         },
-        acquire = function(async = FALSE, target = NULL, wait_only = FALSE) {
+        acquire = function(
+          async = FALSE,
+          target = NULL,
+          wait_only = FALSE,
+          reuse_cached = NULL
+        ) {
           controller[["acquire"]](
             connection_id,
             async = async,
             target = target,
-            wait_only = wait_only
+            wait_only = wait_only,
+            reuse_cached = reuse_cached
           )
         }
       )

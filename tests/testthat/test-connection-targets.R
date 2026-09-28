@@ -2212,6 +2212,131 @@ test_that("target authorization parameters survive signed requests and PAR", {
   expect_setequal(unlist(payload[["scopes"]]), client@scopes)
 })
 
+test_that("non-forced queued target reads reuse only a currently usable cache", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  now <- Sys.time()
+  local_mocked_bindings(Sys.time = function() now, .package = "base")
+  for (managed in c(FALSE, TRUE)) {
+    for (outcome in c(
+      "success",
+      "not_consumed",
+      "possibly_consumed",
+      "logout",
+      "expired",
+      "short_replacement"
+    )) {
+      requests <- character()
+      completions <- list()
+      local_mocked_bindings(
+        refresh_token_dispatch = function(client, token, target_request, ...) {
+          requests <<- c(requests, target_request[["target"]])
+          i <- length(requests)
+          promises::promise(function(resolve, reject) {
+            completions[[i]] <<- list(resolve = resolve, reject = reject)
+          })
+        },
+        revoke_token = function(...) invisible(NULL)
+      )
+      fixture <- target_test_manager()
+      shiny::testServer(
+        if (managed) oauth_connections_server else oauth_module_server,
+        args = if (managed) {
+          list(id = "auth", manager = fixture[["manager"]])
+        } else {
+          list(
+            id = "auth",
+            client = target_test_client(),
+            indefinite_session = outcome %in% c("expired", "short_replacement"),
+            auto_redirect = FALSE
+          )
+        },
+        session = manager_test_session(
+          if (managed) manager_test_cookie(fixture) else NULL
+        ),
+        {
+          token <- target_test_token()
+          needs_refresh <- outcome %in% c("expired", "short_replacement")
+          if (needs_refresh) {
+            token@expires_at <- as.numeric(now) + 1
+          }
+          current <- if (managed) {
+            connection(manager_test_accept(controller, token = token))
+          } else {
+            .accept_login_token(token, NULL)
+            values[["connection"]]()
+          }
+          if (needs_refresh) {
+            now <<- now + 2
+          }
+          results <- list()
+          for (target in c("contacts", "calendar")) {
+            local({
+              name <- target
+              promises::then(
+                current[["access_token"]](target = name, async = TRUE),
+                function(value) {
+                  results[[name]] <<- value
+                },
+                function(error) {
+                  results[[name]] <<- error
+                }
+              )
+            })
+          }
+          expect_identical(requests, "contacts")
+          if (outcome == "logout") {
+            if (managed) controller[["logout"]](FALSE) else values[["logout"]]()
+          }
+          if (outcome %in% c("not_consumed", "possibly_consumed")) {
+            completions[[1L]][["reject"]](refresh_outcome_error(
+              simpleError("synthetic contacts failure"),
+              outcome
+            ))
+          } else {
+            completions[[1L]][["resolve"]](target_test_token(
+              "contacts.read",
+              "contacts-new",
+              "refresh-1"
+            ))
+          }
+          if (needs_refresh) {
+            poll_for_async(function() length(requests) == 2L, session)
+            expect_identical(requests, c("contacts", "calendar"))
+            fresh <- target_test_token(
+              access = "calendar-new",
+              refresh = "refresh-2"
+            )
+            if (outcome == "short_replacement") {
+              fresh@expires_at <- as.numeric(Sys.time()) + 5
+            }
+            completions[[2L]][["resolve"]](fresh)
+          }
+          poll_for_async(function() length(results) == 2L, session)
+          expect_length(requests, if (needs_refresh) 2L else 1L)
+          if (outcome %in% c("success", "not_consumed")) {
+            expect_identical(results[["calendar"]], "calendar-initial")
+          } else if (outcome == "expired") {
+            expect_identical(
+              results[["calendar"]],
+              "calendar-new",
+              info = paste("managed:", managed)
+            )
+          } else {
+            expect_s3_class(results[["calendar"]], "shinyOAuth_access_error")
+            if (outcome == "short_replacement") {
+              expect_identical(
+                results[["calendar"]][["context"]][["reason"]],
+                "lifetime_unavailable",
+                info = paste("managed:", managed)
+              )
+            }
+          }
+        }
+      )
+    }
+  }
+})
+
 test_that("interleaved target consumers await current ownership without another acquisition", {
   local_options(shinyOAuth.skip_browser_token = TRUE)
   for (managed in c(FALSE, TRUE)) {

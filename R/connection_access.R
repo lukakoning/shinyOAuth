@@ -258,7 +258,16 @@ connection_export_token <- function(
     ) {
       connection_access_error("interaction_required")
     }
-    result <- tryCatch(shiny::isolate(acquire(async = async)), error = failed)
+    result <- tryCatch(
+      shiny::isolate({
+        if (!force_refresh && identical(record[["status"]], "refreshing")) {
+          acquire(async = async, reuse_cached = function() check(read()))
+        } else {
+          acquire(async = async)
+        }
+      }),
+      error = failed
+    )
     if (inherits(result, "promise")) {
       return(promises::then(result, deliver, failed))
     }

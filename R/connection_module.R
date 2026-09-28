@@ -124,13 +124,19 @@ module_connection_factory <- function(
           result
         }
       },
-      acquire = function(async = FALSE, target = NULL, wait_only = FALSE) {
+      acquire = function(
+        async = FALSE,
+        target = NULL,
+        wait_only = FALSE,
+        reuse_cached = NULL
+      ) {
         resolve()
         refresh(
           async = async,
           respect_pacing = TRUE,
           target = target,
-          wait_only = wait_only
+          wait_only = wait_only,
+          reuse_cached = reuse_cached
         )
       }
     )
@@ -175,7 +181,8 @@ module_refresh_controller <- function(
     automatic = FALSE,
     respect_pacing = automatic,
     target = NULL,
-    wait_only = FALSE
+    wait_only = FALSE,
+    reuse_cached = NULL
   ) {
     target <- token_target_name(client, target)
     if (
@@ -205,7 +212,19 @@ module_refresh_controller <- function(
             if (!identical(operations[["epoch"]], generation)) {
               connection_access_error("authorization_unavailable")
             }
-            refresh(async, scopes, automatic, respect_pacing, target)
+            # Another target's refresh need not replace a still-usable token.
+            # The accessor rechecks ownership, permissions and its own lifetime.
+            if (is.function(reuse_cached) && isTRUE(reuse_cached())) {
+              return(TRUE)
+            }
+            refresh(
+              async,
+              scopes,
+              automatic,
+              respect_pacing,
+              target,
+              reuse_cached = reuse_cached
+            )
           }
           return(promises::then(pending, resume, resume))
         }

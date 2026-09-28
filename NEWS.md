@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Non-forced asynchronous token reads recheck their cache after another target's
+acquisition completes. A usable cached token no longer triggers a redundant
+refresh; ownership, permission and lifetime checks still apply before delivery.
+
 * Token-target migration guidance now makes the default authentication lifetime
 explicit: access-token expiry alone does not end the retained local login, even
 without a refresh credential. The example sets a finite `reauth_after_seconds`

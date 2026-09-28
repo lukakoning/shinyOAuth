@@ -1284,7 +1284,8 @@ connection_manager_controller <- function(
     target = NULL,
     scopes = NULL,
     touch = FALSE,
-    wait_only = FALSE
+    wait_only = FALSE,
+    reuse_cached = NULL
   ) {
     record <- read(id)
     target <- token_target_name(record[["client"]], target)
@@ -1304,12 +1305,16 @@ connection_manager_controller <- function(
             return(flight[["promise"]])
           }
           resume <- function(...) {
-            refresh(
+            if (is.function(reuse_cached) && isTRUE(reuse_cached())) {
+              return(TRUE)
+            }
+            acquire(
               id,
               async = TRUE,
               touch = touch,
               scopes = scopes,
-              target = target
+              target = target,
+              reuse_cached = reuse_cached
             )
           }
           return(promises::then(flight[["promise"]], resume, resume))
