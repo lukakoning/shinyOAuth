@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Microsoft token targets reject scopes with an empty permission name during
+client configuration, including `required_scopes` under `.default` consent.
+Valid punctuated permission names and exact resource prefixes are preserved.
+
 * Reauthorization accepts provider-default scope evidence for clients without
 configured API permissions, including after restoration or a failed refresh.
 Ordinary OIDC replacement restores `openid` when access-token scopes omit it.

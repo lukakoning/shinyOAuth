@@ -278,6 +278,9 @@ URIs or GUIDs, for example `499b84ac-1321-427f-aa17-267ca6975798` with scope
 `499b84ac-1321-427f-aa17-267ca6975798/.default`. RFC 8707 mode still requires
 absolute URIs. Resource identifiers are exact: where an
 identifier ends in `/`, appending `/.default` produces a double slash.
+Each API scope and required API scope must contain a permission name after the
+exact resource prefix and its separating slash. A bare prefix such as
+`api://resource/` is rejected during configuration.
 Distinct Microsoft resource identifiers must not have overlapping scope prefixes.
 For example, `https://api.example` and `https://api.example/reports` cannot be
 declared together: `reports/read` could be a permission of the first resource or

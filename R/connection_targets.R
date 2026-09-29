@@ -329,6 +329,11 @@ validate_token_targets <- function(client) {
     }
     if (identical(client@provider@token_target_mode, "microsoft")) {
       prefix <- token_target_prefix(resource)
+      if (any(c(scopes, required) == prefix)) {
+        err_config(
+          "Microsoft target scopes and required_scopes must name a permission after the resource prefix"
+        )
+      }
       static <- token_target_static_scope(scopes)
       if (
         !all(startsWith(scopes, prefix)) ||
