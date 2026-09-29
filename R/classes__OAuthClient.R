@@ -50,6 +50,44 @@
 #'   shinyOAuth adds `"openid"` automatically if absent. The resulting set is
 #'   used in the request and subsequent scope checks.
 #'
+#' @param token_targets Optional named list of API token declarations. Each
+#'   entry has `resource` (an absolute URI, or a GUID in Microsoft mode)
+#'   and `scopes` (API scopes also present
+#'   in the client's `scopes`). Optional `required_scopes` apply only to this
+#'   target; optional `resource_ids` explicitly associate approved HTTP
+#'   `resource_bases` with this target. Requires a provider with a supported
+#'   `token_target_mode`, `userinfo_required = FALSE`, and no `resource` or
+#'   SMART configuration. Provider `extra_auth_params` and `extra_token_params`
+#'   must not contain `resource`; declare resources only in `token_targets`.
+#'   RFC 8707 mode reserves OIDC scope names only for an OIDC provider or when
+#'   client `scopes` includes `openid`; otherwise these names are ordinary API
+#'   scopes declared in targets. Microsoft always uses its OIDC scope set.
+#'   Client-level `required_scopes` can contain OIDC scopes only, except
+#'   `offline_access`: request refresh consent in client `scopes`, never in
+#'   client or target `required_scopes`. Access-token scopes cannot establish
+#'   whether a usable refresh credential exists.
+#'   Targets share one local authorization and refresh credential,
+#'   while their access tokens and retained permission limits remain separate.
+#'   Microsoft limits constrain local operation checks, while the actual token
+#'   can include previously consented scopes for the selected resource. Explicit
+#'   API scope narrowing is unsupported for Microsoft targets.
+#'   Distinct Microsoft target resources must not have overlapping scope
+#'   prefixes; nested resources are ambiguous with slash-containing permissions.
+#'   Optional Microsoft `scope_aliases` lists short permission names (for example,
+#'   `c("items/read", "read:items")`) accepted in token responses. These aliases
+#'   support optional `.default` and prior-consent permissions without requesting
+#'   or requiring them. Aliases never establish a grant or widen operation limits;
+#'   URI names with `://` and declared resource prefixes remain reserved.
+#'   At most 16 targets are supported. The complete authorization, including
+#'   OIDC scopes and actual permissions returned by Microsoft, is
+#'   limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
+#'   Scope declarations may be vectors or space-delimited strings.
+#'   See `vignette("token-targets")` for provider rules and examples.
+#' @param default_token_target Name of the initial code-redemption target and
+#'   the default for connection methods. Required with multiple targets;
+#'   [oauth_client()] selects the sole target automatically. A method's `target`
+#'   argument overrides only that call, never the configured default.
+#'
 #' @param authorization_method Browser method for sending the authorization
 #'   request: `"GET"` (default) or `"POST"`. Select POST only after confirming
 #'   provider support. It submits form fields instead of a long URL query.
@@ -544,6 +582,11 @@ OAuthClient <- S7::new_class(
     endpoint_auth = S7::new_property(S7::class_list, default = list()),
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
+    token_targets = S7::new_property(S7::class_list, default = list()),
+    default_token_target = S7::new_property(
+      S7::class_character,
+      default = character()
+    ),
     # Authorization response mode for authorization-code callbacks.
     response_mode = S7::new_property(
       S7::class_character,
@@ -947,7 +990,13 @@ oauth_client <- function(
   required_scopes = character(),
   label = default_client_label(provider),
   ...,
-  introspect_elements = NULL
+  introspect_elements = NULL,
+  token_targets = list(),
+  default_token_target = if (length(token_targets) == 1L) {
+    names(token_targets)
+  } else {
+    character()
+  }
 ) {
   introspect_elements <- resolve_argument_alias(
     introspection_checks,
@@ -1232,6 +1281,8 @@ oauth_client <- function(
     endpoint_auth = endpoint_auth,
     redirect_uri = redirect_uri,
     scopes = scopes,
+    token_targets = token_targets,
+    default_token_target = default_token_target,
     resource_bases = if (length(resource_bases)) {
       normalize_resource_bases(resource_bases)
     } else {
@@ -1399,6 +1450,16 @@ validate_distinct_authorization_server_redirect_uris <- function(
 #' @keywords internal
 #' @noRd
 oauth_client_validate <- function(self) {
+  target_problem <- tryCatch(
+    {
+      validate_token_targets(self)
+      NULL
+    },
+    error = conditionMessage
+  )
+  if (!is.null(target_problem)) {
+    return(target_problem)
+  }
   endpoint_problem <- endpoint_auth_config_problem(self@endpoint_auth)
   if (!is.null(endpoint_problem)) {
     return(endpoint_problem)

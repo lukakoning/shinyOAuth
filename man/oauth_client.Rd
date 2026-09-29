@@ -64,7 +64,14 @@ oauth_client(
   required_scopes = character(),
   label = default_client_label(provider),
   ...,
-  introspect_elements = NULL
+  introspect_elements = NULL,
+  token_targets = list(),
+  default_token_target = if (length(token_targets) == 1L) {
+     names(token_targets)
+ }
+    else {
+     character()
+ }
 )
 }
 \arguments{
@@ -574,6 +581,45 @@ patient context.}
 compatibility.}
 
 \item{introspect_elements}{Compatibility alias for \code{introspection_checks}. Supply only one spelling.}
+
+\item{token_targets}{Optional named list of API token declarations. Each
+entry has \code{resource} (an absolute URI, or a GUID in Microsoft mode)
+and \code{scopes} (API scopes also present
+in the client's \code{scopes}). Optional \code{required_scopes} apply only to this
+target; optional \code{resource_ids} explicitly associate approved HTTP
+\code{resource_bases} with this target. Requires a provider with a supported
+\code{token_target_mode}, \code{userinfo_required = FALSE}, and no \code{resource} or
+SMART configuration. Provider \code{extra_auth_params} and \code{extra_token_params}
+must not contain \code{resource}; declare resources only in \code{token_targets}.
+RFC 8707 mode reserves OIDC scope names only for an OIDC provider or when
+client \code{scopes} includes \code{openid}; otherwise these names are ordinary API
+scopes declared in targets. Microsoft always uses its OIDC scope set.
+Client-level \code{required_scopes} can contain OIDC scopes only, except
+\code{offline_access}: request refresh consent in client \code{scopes}, never in
+client or target \code{required_scopes}. Access-token scopes cannot establish
+whether a usable refresh credential exists.
+Targets share one local authorization and refresh credential,
+while their access tokens and retained permission limits remain separate.
+Microsoft limits constrain local operation checks, while the actual token
+can include previously consented scopes for the selected resource. Explicit
+API scope narrowing is unsupported for Microsoft targets.
+Distinct Microsoft target resources must not have overlapping scope
+prefixes; nested resources are ambiguous with slash-containing permissions.
+Optional Microsoft \code{scope_aliases} lists short permission names (for example,
+\code{c("items/read", "read:items")}) accepted in token responses. These aliases
+support optional \code{.default} and prior-consent permissions without requesting
+or requiring them. Aliases never establish a grant or widen operation limits;
+URI names with \verb{://} and declared resource prefixes remain reserved.
+At most 16 targets are supported. The complete authorization, including
+OIDC scopes and actual permissions returned by Microsoft, is
+limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
+Scope declarations may be vectors or space-delimited strings.
+See \code{vignette("token-targets")} for provider rules and examples.}
+
+\item{default_token_target}{Name of the initial code-redemption target and
+the default for connection methods. Required with multiple targets;
+\code{\link[=oauth_client]{oauth_client()}} selects the sole target automatically. A method's \code{target}
+argument overrides only that call, never the configured default.}
 }
 \value{
 \link{OAuthClient} object

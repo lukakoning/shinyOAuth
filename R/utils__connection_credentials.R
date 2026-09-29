@@ -33,7 +33,11 @@ connection_credential_key <- function(key) {
 connection_client_fingerprint <- function(client) {
   S7::check_is_S7(client, OAuthClient)
   S7::validate(client)
-  bases <- normalize_resource_bases(client@resource_bases)
+  bases <- if (length(client@resource_bases)) {
+    normalize_resource_bases(client@resource_bases)
+  } else {
+    character()
+  }
   # Re-read key/certificate references and material validation policy every time.
   # Managers and connections keep their own baseline; configuration has no cache.
   state_policy_digest(list(
@@ -245,7 +249,9 @@ connection_credentials_seal <- function(
   client,
   key,
   authenticated_at,
-  refresh_scope_narrowed = FALSE
+  refresh_scope_narrowed = FALSE,
+  targets = token_target_bundle(client, token),
+  authorization_scopes = NULL
 ) {
   S7::check_is_S7(token, OAuthToken)
   connection_manager_flag(refresh_scope_narrowed, "refresh_scope_narrowed")
@@ -270,6 +276,14 @@ connection_credentials_seal <- function(
   # the authorization server reduced the refresh token's original grant.
   if (refresh_scope_narrowed) {
     payload[["refresh_scope_narrowed"]] <- TRUE
+  }
+  if (!is.null(targets)) {
+    payload[["targets"]] <- token_target_bundle_encode(targets)
+  }
+  if (!is.null(authorization_scopes)) {
+    payload[["authorization_scopes"]] <- connection_data_encode(
+      authorization_scopes
+    )
   }
   json <- jsonlite::toJSON(
     payload,
@@ -311,6 +325,14 @@ connection_credentials_open <- function(
           ct = 1024^2
         )
       )
+      targets <- token_target_bundle_decode(client, payload[["targets"]])
+      payload[["targets"]] <- NULL
+      authorization_scopes <- if (!is.null(payload[["authorization_scopes"]])) {
+        connection_data_decode(payload[["authorization_scopes"]])
+      } else {
+        NULL
+      }
+      payload[["authorization_scopes"]] <- NULL
       if (
         !(identical(
           names(payload),
@@ -340,8 +362,36 @@ connection_credentials_open <- function(
       ) {
         err_token("Invalid stored connection credential schema")
       }
+      token <- do.call(OAuthToken, fields)
+      if (!is.null(authorization_scopes)) {
+        validate_scopes(authorization_scopes)
+        if (
+          !identical(
+            authorization_scopes,
+            authorization_retained_scopes(client, token, authorization_scopes)
+          )
+        ) {
+          err_token("Invalid stored authorization scope policy")
+        }
+      }
+      if (!is.null(targets)) {
+        validate_token_target_bundle_budget(client, token, targets)
+        target <- client@default_token_target
+        validate_token_target_grant(
+          client,
+          token@granted_scopes,
+          list(
+            target = target,
+            scopes = targets[["limits"]][[target]],
+            required_scopes = token_target_required_scopes(client, target)
+          )
+        )
+      }
       list(
-        token = do.call(OAuthToken, fields),
+        token = token,
+        targets = targets,
+        authorization_scopes = authorization_scopes %||%
+          authorization_retained_scopes(client, token, token@granted_scopes),
         authenticated_at = payload[["authenticated_at"]],
         refresh_scope_narrowed = isTRUE(payload[["refresh_scope_narrowed"]])
       )

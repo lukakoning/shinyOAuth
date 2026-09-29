@@ -1,14 +1,155 @@
 # Explicit managed refresh requests use the target's existing scope evaluator.
 # The request is bounded plain data so the same policy can run in async workers.
+authorization_scopes_bounded <- function(scopes) {
+  scopes <- normalize_scope_tokens(scopes)
+  length(scopes) <= 128L && sum(nchar(scopes, type = "bytes")) <= 8192L
+}
+
+# Consent to issue a refresh token is an authorization request property. OIDC
+# providers need not repeat offline_access in the access token's scope evidence.
+# Pass the previous policy on automatic refresh, or the explicit scope request
+# when narrowing, so a deliberately removed consent is never restored.
+authorization_retained_scopes <- function(client, token, requested) {
+  # Standalone launch context is requested on the next authorization, not
+  # established by access-token scope evidence. Automatic refresh carries this
+  # policy forward; an explicit scope list replaces optional context requests.
+  context <- if (
+    client_uses_smart(client) &&
+      identical(client@smart[["launch"]], "standalone")
+  ) {
+    intersect(
+      normalize_scope_tokens(requested),
+      intersect(client@scopes, c("launch/patient", "launch/encounter"))
+    )
+  } else {
+    character()
+  }
+  union(
+    setdiff(token@granted_scopes, authorization_extra_scopes(client, token)),
+    union(authorization_refresh_consent(client, requested), context)
+  )
+}
+
+# Only authenticated authorization history can supply consent omitted from an
+# ordinary OIDC access token. It is never evidence of an API permission.
+authorization_refresh_consent <- function(client, scopes) {
+  if (
+    !provider_uses_oidc(client@provider) ||
+      client_uses_smart(client) ||
+      token_targets_configured(client)
+  ) {
+    return(character())
+  }
+  intersect(scopes, "offline_access")
+}
+
+# Ordinary OAuth accepts provider evidence beyond the configured permissions.
+# Keep it as evidence, never as an outgoing request or an operation permission.
+# SMART scopes can overlap semantically, so retain their stricter grant policy.
+authorization_extra_scopes <- function(client, token) {
+  if (client_uses_smart_scopes(client) || token_targets_configured(client)) {
+    return(character())
+  }
+  setdiff(token@granted_scopes, effective_client_scopes(client))
+}
+
+authorization_extra_scope_limit <- function(client, scopes, requested) {
+  if (is.null(scopes)) {
+    return(character())
+  }
+  validate_scopes(scopes)
+  scopes <- normalize_scope_tokens(scopes)
+  if (
+    (length(scopes) &&
+      (client_uses_smart_scopes(client) || token_targets_configured(client))) ||
+      length(intersect(scopes, effective_client_scopes(client))) ||
+      !authorization_scopes_bounded(c(requested, scopes))
+  ) {
+    err_input("Invalid previously accepted extra scope limit")
+  }
+  scopes
+}
+
+# Derive a replacement request from authorization history. An unscoped OAuth
+# client still omits scope; an ordinary OIDC login restores its protocol scope
+# even when the access token reported only provider-default permissions.
+authorization_replacement_scopes <- function(client, scopes) {
+  if (!token_targets_configured(client) && !client_uses_smart(client)) {
+    scopes <- ensure_openid_scope(scopes, client@provider, warn = FALSE)
+  }
+  if (!length(scopes)) {
+    if (length(effective_client_scopes(client))) {
+      connection_access_error("interaction_required")
+    }
+    return(NULL)
+  }
+  authorization_scope_limit(client, scopes)
+}
+
+authorization_scope_limit <- function(client, scopes) {
+  validate_scopes(scopes)
+  scopes <- normalize_scope_tokens(scopes)
+  if (!length(scopes)) {
+    err_input("Reauthorization requires a non-empty retained permission limit")
+  }
+  # A new OIDC login always needs openid, independently of the previous access
+  # token's scope evidence. Optional identity and API permissions stay narrowed.
+  scopes <- ensure_openid_scope(scopes, client@provider, warn = FALSE)
+  # Standalone patient access needs a new patient selection on each login.
+  # Launch context need not appear in the previous access token's scope claim.
+  if (
+    client_uses_smart(client) &&
+      identical(client@smart[["launch"]], "standalone") &&
+      any(startsWith(scopes, "patient/")) &&
+      "launch/patient" %in% client@scopes
+  ) {
+    scopes <- union(scopes, "launch/patient")
+  }
+  required <- client@required_scopes
+  if (
+    provider_uses_oidc(client@provider) &&
+      isTRUE(client@provider@userinfo_required)
+  ) {
+    required <- union(required, "openid")
+  }
+  if (
+    !length(scopes) ||
+      !authorization_scopes_bounded(scopes) ||
+      !(if (token_targets_configured(client)) {
+        token_target_authorization_allowed(client, scopes)
+      } else {
+        connection_scope_covered(
+          client,
+          scopes,
+          effective_client_scopes(client)
+        )
+      }) ||
+      !connection_scope_covered(client, required, scopes)
+  ) {
+    err_input(
+      "Reauthorization scopes must retain required permissions within the client configuration"
+    )
+  }
+  scopes
+}
+
 refresh_scope_request <- function(
   client,
   token,
   scopes,
-  required_scopes = character()
+  required_scopes = character(),
+  accepted_extra_scopes = NULL,
+  refresh_consent = character()
 ) {
+  # Automatic refresh can have only retained extra evidence. Omit scope on the
+  # wire but still bound the response; public explicit empty scope requests
+  # supply no such evidence and remain invalid.
+  evidence_only <- !is.null(accepted_extra_scopes) &&
+    !client_uses_smart(client) &&
+    !token_targets_configured(client)
   if (
     !is.character(scopes) ||
-      !length(scopes) ||
+      (!length(scopes) && !evidence_only) ||
       length(scopes) > 128L ||
       anyNA(scopes) ||
       sum(nchar(scopes, type = "bytes")) > 8192L
@@ -27,6 +168,17 @@ refresh_scope_request <- function(
     )
   }
   configured <- effective_client_scopes(client)
+  if (
+    !is.character(refresh_consent) ||
+      anyNA(refresh_consent) ||
+      !identical(
+        refresh_consent,
+        authorization_refresh_consent(client, refresh_consent)
+      )
+  ) {
+    err_config("Invalid retained refresh consent")
+  }
+  refresh_consent <- intersect(refresh_consent, scopes)
   # Retain accepted SMART persistence negotiation when narrowing permissions.
   # Only extend this ceiling with explicit opt-in and a current offline grant.
   if (
@@ -38,7 +190,7 @@ refresh_scope_request <- function(
     configured <- union(configured, "offline_access")
   }
   if (
-    !covered(scopes, token@granted_scopes) ||
+    !covered(scopes, union(token@granted_scopes, refresh_consent)) ||
       !covered(scopes, configured)
   ) {
     err_token(
@@ -65,7 +217,22 @@ refresh_scope_request <- function(
   if (!covered(required_scopes, scopes)) {
     err_token("Refresh scopes must retain the target's required permissions")
   }
-  list(scopes = scopes, required_scopes = required_scopes)
+  request <- list(scopes = scopes, required_scopes = required_scopes)
+  extra <- authorization_extra_scope_limit(
+    client,
+    accepted_extra_scopes,
+    scopes
+  )
+  if (!all(extra %in% authorization_extra_scopes(client, token))) {
+    err_token("Extra scopes must have been accepted in the current grant")
+  }
+  if (length(extra) || (evidence_only && !length(scopes))) {
+    request[["accepted_extra_scopes"]] <- extra
+  }
+  if (length(refresh_consent)) {
+    request[["refresh_consent"]] <- refresh_consent
+  }
+  request
 }
 
 validate_refresh_scope_request <- function(client, token, request) {
@@ -74,7 +241,17 @@ validate_refresh_scope_request <- function(client, token, request) {
   }
   if (
     !is.list(request) ||
-      !identical(names(request), c("scopes", "required_scopes")) ||
+      is.null(names(request)) ||
+      anyDuplicated(names(request)) ||
+      !all(
+        names(request) %in%
+          c(
+            "scopes",
+            "required_scopes",
+            "accepted_extra_scopes",
+            "refresh_consent"
+          )
+      ) ||
       !is.character(request[["required_scopes"]])
   ) {
     err_config("Invalid internal refresh scope request")
@@ -83,7 +260,9 @@ validate_refresh_scope_request <- function(client, token, request) {
     client,
     token,
     request[["scopes"]],
-    request[["required_scopes"]]
+    request[["required_scopes"]],
+    request[["accepted_extra_scopes"]],
+    request[["refresh_consent"]] %||% character()
   )
   if (!identical(request, checked)) {
     err_config("Invalid internal refresh scope request")
@@ -97,7 +276,14 @@ validate_refresh_scope_grant <- function(client, granted, request) {
   }
   if (
     !identical(
-      client_scope_coverage(client, granted, request[["scopes"]])[["status"]],
+      client_scope_coverage(
+        client,
+        granted,
+        union(
+          request[["scopes"]],
+          request[["accepted_extra_scopes"]]
+        )
+      )[["status"]],
       "covered"
     )
   ) {

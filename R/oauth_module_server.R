@@ -100,14 +100,25 @@
 #'  is used as the next authentication start. OAuth-only providers have no
 #'  standard way to require active user authentication, so for them this is a
 #'  hard local session lifetime followed by an ordinary authorization request.
+#'  That new authorization requests the configured scopes again, including
+#'  permissions removed by local refresh narrowing. Explicit `auth$reauthorize()`
+#'  instead carries forward the previous authorization's retained scope limits.
 #'  By default this is `NULL` (no forced reauthentication).
+#'  With token targets, that default can keep `authenticated = TRUE` for the
+#'  remaining Shiny session after all access tokens expire, even without a
+#'  refresh credential and with `indefinite_session = FALSE`. Set a finite age
+#'  if local application access relies on `authenticated` and requires a bounded
+#'  login lifetime. `indefinite_session = TRUE` ignores this age limit.
 #'
 #' @param refresh_proactively If `TRUE`, obtain a replacement access token before
 #'   expiry when a refresh token is available. Default `FALSE`. The module
 #'   schedules refresh at approximately `expires_at - refresh_lead_seconds`.
 #'
 #' @param refresh_lead_seconds Number of seconds before expiry to attempt
-#'  proactive refresh (default: 60)
+#'  proactive refresh (default: 60). An already running refresh, including one
+#'  requested on demand, has this many seconds plus 5 after access-token expiry
+#'  to finish before the module clears the authorization. This grace period
+#'  never extends `reauth_after_seconds`.
 #' @param refresh_check_interval_ms Fallback interval in milliseconds for checking
 #'   expiry and refresh (default 10000). Known expiry times are scheduled
 #'   directly; this interval is used as a safety check or when expiry is unknown
@@ -166,6 +177,10 @@
 #'   - `auth[["authenticated"]]`: `TRUE` when a token is present and the configured
 #'     checks have passed, otherwise `FALSE`. With `indefinite_session = TRUE`,
 #'     the flag stays true while a token is kept, including after refresh errors.
+#'     With token targets, it tracks the retained authorization across individual
+#'     token expiry and recoverable target failures. Connection methods check the
+#'     selected token's lifetime and permissions before use; the configured
+#'     authentication-age limit still applies to the whole authorization.
 #'   - `auth[["token"]]`: an [OAuthToken], or `NULL` before login or after clearing
 #'     the session. Read properties with `@`, for example `auth[["token"]]@userinfo`.
 #'     Additional token response parameters are available in
@@ -178,12 +193,28 @@
 #'     URLs on provider or explicitly allowed hosts are surfaced. Treat it as
 #'     untrusted navigation input. `NULL` means the provider omitted the URL or
 #'     supplied a value that did not pass validation.
-#'   - `auth[["token_stale"]]`: `TRUE` when an indefinite session keeps an expired
-#'     token or one whose refresh failed. Resets after successful login,
-#'     refresh, or logout.
+#'   - `auth[["token_stale"]]`: `TRUE` when a target authorization retains an
+#'     expired primary token, or an indefinite session keeps an expired token
+#'     or one whose refresh failed. Resets after successful login, primary-token
+#'     refresh, or authorization clearing, including logout and maximum
+#'     authentication age. Refreshing a secondary target does not renew the
+#'     primary token.
 #'
 #'   The object also supplies:
 #'
+#'   - `auth$connection()`: the current [OAuthConnection], or `NULL` before login
+#'     or after the module clears the authorization. The reference and its `$id`
+#'     survive refresh; logout, reauthorization and session closure invalidate it.
+#'     Use `connection <- shiny::req(auth$connection())` inside reactive code,
+#'     then `connection$access_token()` for a server-side SDK or database driver.
+#'     Accessor-triggered refresh works without `refresh_proactively = TRUE`;
+#'     the module's configured expiry/session-clearing policy still applies.
+#'   - `auth$reauthorize()`: invalidate the current local authorization and begin
+#'     replacement with its retained scope limit, without upstream revocation.
+#'     Local state preparation is checked first; rejection preserves current access.
+#'     Failed/cancelled replacement after that does not revive old references.
+#'     With no prior grant, this starts ordinary login. It does not force account selection or
+#'     a password prompt; configured maximum authentication age still applies.
 #'   - `auth[["request_login"]]()`: start login. Waits for browser setup when needed
 #'     and does nothing if the session is already authenticated. Uses a browser
 #'     form when the client selects `authorization_method = "POST"`; the app's
@@ -618,14 +649,21 @@ oauth_module_server_impl <- function(
     auth_operations[["active_refresh_id"]] <- NULL
     auth_operations[["session_active"]] <- TRUE
     auth_operations[["force_oidc_reauth"]] <- FALSE
+    authorization_epoch <- shiny::reactiveVal(0)
 
     .advance_auth_epoch <- function() {
+      values[["targets"]] <- NULL
+      auth_operations[["refresh_scope_narrowed"]] <- FALSE
+      auth_operations[["target_next_attempt"]] <- list()
+      auth_operations[["target_failure_count"]] <- list()
+      auth_operations[["refresh_retry_after_at"]] <- 0
       auth_operations[["epoch"]] <- auth_operations[["epoch"]] + 1
       auth_operations[["active_login_id"]] <- NULL
       auth_operations[["active_refresh_id"]] <- NULL
       values[["refresh_in_progress"]] <- FALSE
       values[["refresh_next_attempt_at"]] <- 0
       values[["refresh_failure_count"]] <- 0L
+      authorization_epoch(auth_operations[["epoch"]])
       invisible(auth_operations[["epoch"]])
     }
 
@@ -676,8 +714,17 @@ oauth_module_server_impl <- function(
     .revoke_stale_credentials <- function(
       tok,
       shiny_session = NULL,
-      cleanup = NULL
+      cleanup = NULL,
+      operation_epoch = NULL,
+      bounded = FALSE
     ) {
+      if (
+        !is.null(operation_epoch) &&
+          operation_epoch <=
+            (auth_operations[["no_revoke_before_epoch"]] %||% -Inf)
+      ) {
+        return(invisible(NULL))
+      }
       if (!S7::S7_inherits(tok, OAuthToken)) {
         return(invisible(NULL))
       }
@@ -695,6 +742,19 @@ oauth_module_server_impl <- function(
       }
 
       use_async_revocation <- isTRUE(async)
+      if (isTRUE(bounded)) {
+        try(
+          module_revoke_targets(
+            client,
+            tok,
+            secondary = NULL,
+            async = use_async_revocation,
+            shiny_session = shiny_session
+          ),
+          silent = TRUE
+        )
+        return(invisible(NULL))
+      }
       try(
         revoke_token(
           client,
@@ -736,10 +796,74 @@ oauth_module_server_impl <- function(
       min(auth_time, now)
     }
 
-    .accept_login_token <- function(tok, context) {
+    # A verified replacement remains restricted even if code exchange fails or
+    # consent is denied in a new callback session. Call only after browser binding
+    # and single-use state validation, never merely after decrypting state.
+    .retain_reauthorization_policy <- function(payload) {
+      if (
+        !is.null(.managed) ||
+          !is.null(values[["token"]]) ||
+          (is.null(payload[["configured_scopes"]]) &&
+            is.null(payload[["accepted_extra_scopes"]]))
+      ) {
+        return(invisible(NULL))
+      }
+      scopes <- if (!is.null(payload[["configured_scopes"]])) {
+        authorization_scope_limit(client, as_scope_tokens(payload[["scopes"]]))
+      }
+      limits <- if (!is.null(payload[["target_limits"]])) {
+        validate_token_target_limits(
+          client,
+          connection_data_decode(payload[["target_limits"]])
+        )
+      }
+      extra <- if (!is.null(payload[["accepted_extra_scopes"]])) {
+        connection_data_decode(payload[["accepted_extra_scopes"]])
+      }
+      extra <- authorization_extra_scope_limit(client, extra, scopes)
+      auth_operations[["reauth_scopes"]] <- scopes
+      auth_operations[["reauth_extra_scopes"]] <- extra
+      auth_operations[["target_limits"]] <- limits
+      invisible(NULL)
+    }
+
+    .accept_login_token <- function(
+      tok,
+      context,
+      target_limits = NULL,
+      refresh_scope_narrowed = !is.null(auth_operations[["reauth_scopes"]]) ||
+        !is.null(auth_operations[["reauth_extra_scopes"]]),
+      requested_scopes = auth_operations[["reauth_scopes"]] %||%
+        effective_client_scopes(client)
+    ) {
       if (is.null(.managed)) {
         validate_token_acceptance_deadline(tok)
+        values[["targets"]] <- token_target_bundle(
+          client,
+          tok,
+          target_limits
+        )
+        auth_operations[["target_limits"]] <- values[["targets"]][["limits"]]
+        auth_operations[["refresh_scope_narrowed"]] <- refresh_scope_narrowed
+        auth_operations[["last_authorized_scope_narrowed"]] <-
+          refresh_scope_narrowed
         values[["token"]] <- tok
+        auth_operations[[
+          "last_authorized_extra_scopes"
+        ]] <- authorization_extra_scopes(
+          client,
+          tok
+        )
+        auth_operations[["last_authorized_scopes"]] <- if (
+          token_targets_configured(client)
+        ) {
+          token_target_authorization_scopes(
+            client,
+            auth_operations[["target_limits"]]
+          )
+        } else {
+          authorization_retained_scopes(client, tok, requested_scopes)
+        }
         values[["auth_started_at"]] <- .interactive_auth_started_at(tok)
       } else {
         tryCatch(
@@ -763,6 +887,11 @@ oauth_module_server_impl <- function(
         values[["token"]] <- NULL
         values[["auth_started_at"]] <- NULL
       }
+      # The replacement request has completed. Keep its accepted permission
+      # history above, but do not apply this request override to ordinary login
+      # after a later authentication-age or access-token expiry.
+      auth_operations[["reauth_scopes"]] <- NULL
+      auth_operations[["reauth_extra_scopes"]] <- NULL
       invisible(NULL)
     }
 
@@ -886,8 +1015,12 @@ oauth_module_server_impl <- function(
       is_async = TRUE
     )
 
+    ended_targets <- NULL
+    ended_token <- NULL
     # Always log session end, regardless of revoke_on_session_end setting
     session[["onSessionEnded"]](function() {
+      ended_targets <<- shiny::isolate(values[["targets"]][["tokens"]])
+      ended_token <<- shiny::isolate(values[["token"]])
       auth_operations[["session_active"]] <- FALSE
       .advance_auth_epoch()
 
@@ -896,6 +1029,7 @@ oauth_module_server_impl <- function(
         isTRUE(shiny::isolate(values[["authenticated"]])),
         error = function(...) FALSE
       )
+      values[["token"]] <- NULL
 
       # Audit: session ended (always emitted)
       try(
@@ -917,7 +1051,7 @@ oauth_module_server_impl <- function(
     if (isTRUE(revoke_on_session_end)) {
       session[["onSessionEnded"]](function() {
         # Capture token at session end; may be NULL if never authenticated
-        tok <- shiny::isolate(values[["token"]])
+        tok <- ended_token
         if (!is.null(tok)) {
           with_trace_id(
             NULL,
@@ -939,28 +1073,45 @@ oauth_module_server_impl <- function(
                 )
                 # Best-effort revocation: async only when module async = TRUE
                 use_async_revocation <- isTRUE(async)
-                try(revoke_token(
-                  client,
-                  tok,
-                  token_kind = "refresh",
-                  async = use_async_revocation,
-                  shiny_session = if (isTRUE(use_async_revocation)) {
-                    captured_session_end_async_context
-                  } else {
-                    captured_session_end_context
-                  }
-                ))
-                try(revoke_token(
-                  client,
-                  tok,
-                  token_kind = "access",
-                  async = use_async_revocation,
-                  shiny_session = if (isTRUE(use_async_revocation)) {
-                    captured_session_end_async_context
-                  } else {
-                    captured_session_end_context
-                  }
-                ))
+                if (token_targets_configured(client)) {
+                  try(
+                    module_revoke_targets(
+                      client,
+                      tok,
+                      ended_targets,
+                      async = use_async_revocation,
+                      shiny_session = if (use_async_revocation) {
+                        captured_session_end_async_context
+                      } else {
+                        captured_session_end_context
+                      }
+                    ),
+                    silent = TRUE
+                  )
+                } else {
+                  try(revoke_token(
+                    client,
+                    tok,
+                    token_kind = "refresh",
+                    async = use_async_revocation,
+                    shiny_session = if (isTRUE(use_async_revocation)) {
+                      captured_session_end_async_context
+                    } else {
+                      captured_session_end_context
+                    }
+                  ))
+                  try(revoke_token(
+                    client,
+                    tok,
+                    token_kind = "access",
+                    async = use_async_revocation,
+                    shiny_session = if (isTRUE(use_async_revocation)) {
+                      captured_session_end_async_context
+                    } else {
+                      captured_session_end_context
+                    }
+                  ))
+                }
               },
               attributes = otel_client_attributes(
                 client = client,
@@ -1332,8 +1483,9 @@ oauth_module_server_impl <- function(
       }
 
       # Expiry-aware check that tolerates Inf or NA. Ignored when
-      # indefinite_session = TRUE
-      if (!isTRUE(indefinite_session)) {
+      # indefinite_session = TRUE. Target authorizations retain their session;
+      # each connection operation checks the selected token's own expiry.
+      if (!isTRUE(indefinite_session) && !token_targets_configured(client)) {
         exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
         if (is.finite(exp) && !is.na(exp)) {
           if (now >= exp) {
@@ -1376,7 +1528,7 @@ oauth_module_server_impl <- function(
         next_boundary <- Inf
 
         # Check token expiry boundary
-        if (!is.null(tok)) {
+        if (!is.null(tok) && !token_targets_configured(client)) {
           exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
           if (is.finite(exp) && !is.na(exp) && exp > now) {
             next_boundary <- min(next_boundary, exp - now)
@@ -1470,6 +1622,7 @@ oauth_module_server_impl <- function(
           }
         }
       },
+      ignoreNULL = FALSE,
       ignoreInit = FALSE
     )
 
@@ -1571,9 +1724,9 @@ oauth_module_server_impl <- function(
       if (identical(managed_context, NA)) {
         return(NA_character_)
       }
-      managed_launch <- tryCatch(
+      managed_parameters <- tryCatch(
         if (!is.null(.managed) && is.function(.managed[["parameters"]])) {
-          .managed[["parameters"]](managed_context)[["launch"]]
+          .managed[["parameters"]](managed_context)
         } else {
           NULL
         },
@@ -1582,12 +1735,25 @@ oauth_module_server_impl <- function(
           NA
         }
       )
-      if (identical(managed_launch, NA)) {
+      if (identical(managed_parameters, NA)) {
         if (!is.null(.managed)) {
           .managed[["cancel"]](managed_context)
         }
         return(NA_character_)
       }
+      managed_launch <- managed_parameters[["launch"]]
+      target_limits <- managed_parameters[["target_limits"]] %||%
+        if (!is.null(auth_operations[["reauth_scopes"]])) {
+          auth_operations[["target_limits"]]
+        } else {
+          NULL
+        }
+      requested_scopes <- managed_parameters[["requested_scopes"]] %||%
+        auth_operations[["reauth_scopes"]]
+      accepted_extra_scopes <- managed_parameters[[
+        "accepted_extra_scopes"
+      ]] %||%
+        auth_operations[["reauth_extra_scopes"]]
       register_prepared <- function(prepared) {
         if (!is.null(.managed) && is.function(.managed[["prepared"]])) {
           .managed[["prepared"]](prepared, managed_context)
@@ -1614,7 +1780,10 @@ oauth_module_server_impl <- function(
                 .requested_max_age = requested_max_age,
                 .defer_build = TRUE,
                 .transaction_context = managed_context,
-                .smart_launch = managed_launch
+                .smart_launch = managed_launch,
+                .requested_scopes = requested_scopes,
+                .target_limits = target_limits,
+                .accepted_extra_scopes = accepted_extra_scopes
               )
               register_prepared(prepared)
               finish_prepared_authorization(
@@ -1631,7 +1800,10 @@ oauth_module_server_impl <- function(
                 requested_max_age,
                 .transaction_context = managed_context,
                 .smart_launch = managed_launch,
-                .authorization_request = .authorization_request
+                .authorization_request = .authorization_request,
+                .requested_scopes = requested_scopes,
+                .target_limits = target_limits,
+                .accepted_extra_scopes = accepted_extra_scopes
               )
             }
           },
@@ -1665,7 +1837,10 @@ oauth_module_server_impl <- function(
             .requested_max_age = requested_max_age,
             .defer_build = TRUE,
             .transaction_context = managed_context,
-            .smart_launch = managed_launch
+            .smart_launch = managed_launch,
+            .requested_scopes = requested_scopes,
+            .target_limits = target_limits,
+            .accepted_extra_scopes = accepted_extra_scopes
           )
           register_prepared(prepared)
           worker <- prepare_client_for_worker(client)
@@ -1834,12 +2009,116 @@ oauth_module_server_impl <- function(
       .request_login()
     }
 
+    .reauthorize <- function(scopes = NULL) {
+      if (
+        !isTRUE(auth_operations[["session_active"]]) ||
+          !identical(
+            connection_session_root(session),
+            connection_session_root(shiny::getDefaultReactiveDomain())
+          )
+      ) {
+        connection_access_error("authorization_unavailable")
+      }
+      current <- values[["token"]]
+      started <- values[["auth_started_at"]]
+      target_limits <- token_target_reauthorization_limits(
+        client,
+        auth_operations[["target_limits"]]
+      )
+      retained_scopes <- if (
+        token_targets_configured(client) &&
+          !is.null(target_limits)
+      ) {
+        token_target_authorization_scopes(
+          client,
+          target_limits
+        )
+      } else if (!is.null(current)) {
+        authorization_retained_scopes(
+          client,
+          current,
+          auth_operations[["last_authorized_scopes"]] %||%
+            current@granted_scopes
+        )
+      } else {
+        auth_operations[["reauth_scopes"]] %||%
+          auth_operations[["last_authorized_scopes"]]
+      }
+      if (!is.null(retained_scopes)) {
+        retained_scopes <- authorization_replacement_scopes(
+          client,
+          retained_scopes
+        )
+      }
+      requested_scopes <- scopes %||% retained_scopes
+      if (!length(requested_scopes)) {
+        requested_scopes <- NULL
+      }
+      extra_scopes <- authorization_extra_scope_limit(
+        client,
+        if (!is.null(current)) {
+          authorization_extra_scopes(client, current)
+        } else {
+          auth_operations[["reauth_extra_scopes"]] %||%
+            auth_operations[["last_authorized_extra_scopes"]]
+        },
+        requested_scopes
+      )
+      # Epoch resets clear current refresh policy; retain an empty historical
+      # bound across failed callbacks and refreshes until explicit logout.
+      if (
+        !length(extra_scopes) &&
+          is.null(auth_operations[["reauth_extra_scopes"]]) &&
+          !isTRUE(auth_operations[["last_authorized_scope_narrowed"]])
+      ) {
+        extra_scopes <- NULL
+      }
+      force_oidc_reauth <- isTRUE(auth_operations[["force_oidc_reauth"]]) ||
+        (!indefinite_session &&
+          !is.null(reauth_after_seconds) &&
+          length(started) == 1L &&
+          is.finite(started) &&
+          as.numeric(Sys.time()) >= started + reauth_after_seconds &&
+          provider_uses_oidc(client@provider))
+      if (is.null(.managed)) {
+        preflight_reauthorization(
+          client,
+          scopes = requested_scopes,
+          target_limits = target_limits,
+          extra_scopes = extra_scopes,
+          max_age = if (force_oidc_reauth) 0 else NULL
+        )
+      }
+      auth_operations[["target_limits"]] <- target_limits
+      auth_operations[["reauth_scopes"]] <- requested_scopes
+      auth_operations[["reauth_extra_scopes"]] <- extra_scopes
+      auth_operations[["no_revoke_before_epoch"]] <- auth_operations[["epoch"]]
+      .advance_auth_epoch()
+      values[["token"]] <- NULL
+      values[["token_stale"]] <- FALSE
+      values[["auth_started_at"]] <- NA_real_
+      values[["error"]] <- NULL
+      values[["error_description"]] <- NULL
+      values[["error_uri"]] <- NULL
+      auth_operations[["force_oidc_reauth"]] <- force_oidc_reauth
+      .clear_browser_token()
+      .request_login()
+    }
+    values[["reauthorize"]] <- function() .reauthorize()
+    values[[".reauthorize"]] <- .reauthorize
+
     # Internal helper: expose a logout helper that revokes tokens best-effort
     # and clears session state. Used by app code through `values[["logout"]]()`.
     # @param reason Optional logout reason string for audit trails.
     # @return No return value; clears module auth state, rotates the browser
     #   token, and emits logout side effects.
     values[["logout"]] <- function(reason = "manual_logout") {
+      auth_operations[["reauth_scopes"]] <- NULL
+      auth_operations[["reauth_extra_scopes"]] <- NULL
+      auth_operations[["last_authorized_scopes"]] <- NULL
+      auth_operations[["last_authorized_extra_scopes"]] <- NULL
+      auth_operations[["last_authorized_scope_narrowed"]] <- NULL
+      auth_operations[["target_limits"]] <- NULL
       logout_shiny_session <- capture_shiny_session_context(is_async = FALSE)
       logout_async_shiny_session <- if (isTRUE(async)) {
         capture_shiny_session_context(is_async = TRUE)
@@ -1851,36 +2130,61 @@ oauth_module_server_impl <- function(
         with_otel_span(
           "shinyOAuth.logout",
           {
-            # Best-effort: revoke provider tokens asynchronously if supported.
-            # Fire-and-forget so logout returns immediately.
+            # Invalidate local access before attempting provider cleanup.
             tok <- values[["token"]]
+            secondary <- values[["targets"]][["tokens"]]
             .advance_auth_epoch()
             auth_operations[["force_oidc_reauth"]] <- FALSE
+            values[["token"]] <- NULL
+            values[["error"]] <- "logged_out"
+            values[["error_description"]] <- NULL
+            values[["error_uri"]] <- NULL
+            values[["token_stale"]] <- FALSE
+            .clear_browser_token()
+            # A later manual login still needs a fresh browser binding.
+            .set_browser_token()
             if (!is.null(tok)) {
               # Async revocation follows module async setting
               use_async_revocation <- isTRUE(async)
-              try(revoke_token(
-                client,
-                tok,
-                token_kind = "refresh",
-                async = use_async_revocation,
-                shiny_session = if (isTRUE(use_async_revocation)) {
-                  logout_async_shiny_session
-                } else {
-                  NULL
-                }
-              ))
-              try(revoke_token(
-                client,
-                tok,
-                token_kind = "access",
-                async = use_async_revocation,
-                shiny_session = if (isTRUE(use_async_revocation)) {
-                  logout_async_shiny_session
-                } else {
-                  NULL
-                }
-              ))
+              if (token_targets_configured(client)) {
+                try(
+                  module_revoke_targets(
+                    client,
+                    tok,
+                    secondary,
+                    async = use_async_revocation,
+                    shiny_session = if (use_async_revocation) {
+                      logout_async_shiny_session
+                    } else {
+                      logout_shiny_session
+                    }
+                  ),
+                  silent = TRUE
+                )
+              } else {
+                try(revoke_token(
+                  client,
+                  tok,
+                  token_kind = "refresh",
+                  async = use_async_revocation,
+                  shiny_session = if (isTRUE(use_async_revocation)) {
+                    logout_async_shiny_session
+                  } else {
+                    NULL
+                  }
+                ))
+                try(revoke_token(
+                  client,
+                  tok,
+                  token_kind = "access",
+                  async = use_async_revocation,
+                  shiny_session = if (isTRUE(use_async_revocation)) {
+                    logout_async_shiny_session
+                  } else {
+                    NULL
+                  }
+                ))
+              }
             }
 
             # Clear token and browser cookie, emit audit trail
@@ -1896,16 +2200,6 @@ oauth_module_server_impl <- function(
                 shiny_session = logout_shiny_session
               )
             )
-            values[["token"]] <- NULL
-            values[["error"]] <- "logged_out"
-            values[["error_description"]] <- NULL
-            values[["error_uri"]] <- NULL
-            values[["token_stale"]] <- FALSE
-            .clear_browser_token()
-            # Proactively re-issue a fresh browser token so that a subsequent
-            # manual login can redirect immediately without a preparatory click.
-            # This maintains session binding without authenticating the user.
-            .set_browser_token()
           },
           attributes = otel_client_attributes(
             client = client,
@@ -3178,6 +3472,7 @@ oauth_module_server_impl <- function(
           if (!is.null(.managed)) {
             .managed[["cancel"]](managed_context[["data"]])
           }
+          .retain_reauthorization_policy(consumed_state[["payload"]])
           TRUE
         },
         error = function(e) {
@@ -3501,6 +3796,39 @@ oauth_module_server_impl <- function(
             ]])
             managed_context[["cleanup"]] <- managed_cleanup
           }
+          # A browser redirect creates a fresh Shiny session. Keep the sealed
+          # permission policy with this callback, rather than relying on the session
+          # that started reauthorization. Retain retry policy after state validation;
+          # install credentials only after token validation and ownership checks.
+          callback_target_limits <- NULL
+          callback_scope_narrowed <- FALSE
+          callback_requested_scopes <- NULL
+          if (is.null(.managed)) {
+            policy_payload <- if (is.null(decrypted_payload)) {
+              state_payload_decrypt_validate(
+                client,
+                state,
+                audit_success = FALSE
+              )
+            } else {
+              state_payload_revalidate(
+                client,
+                decrypted_payload,
+                audit_success = FALSE
+              )
+            }
+            callback_scope_narrowed <- !is.null(policy_payload[[
+              "configured_scopes"
+            ]]) ||
+              !is.null(policy_payload[["accepted_extra_scopes"]])
+            callback_requested_scopes <- policy_payload[["scopes"]]
+            if (!is.null(policy_payload[["target_limits"]])) {
+              callback_target_limits <- validate_token_target_limits(
+                client,
+                connection_data_decode(policy_payload[["target_limits"]])
+              )
+            }
+          }
           with_trace_id(
             callback_hint[["trace_id"]] %||% NULL,
             {
@@ -3784,6 +4112,11 @@ oauth_module_server_impl <- function(
                             }
                           )
                         }
+                        if (
+                          .auth_operation_can_apply(login_operation, "login")
+                        ) {
+                          .retain_reauthorization_policy(pre_payload)
+                        }
                         # Build a serialization-safe client for the worker.
                         # The state_store is already consumed on the main thread, so
                         # prepare_client_for_worker() replaces it with a lightweight
@@ -3883,6 +4216,7 @@ oauth_module_server_impl <- function(
               } else {
                 if (
                   !is.null(.managed) ||
+                    callback_scope_narrowed ||
                     isTRUE(callback_validated) ||
                     identical(
                       client@authorization_server_mode,
@@ -3898,7 +4232,12 @@ oauth_module_server_impl <- function(
                     browser_token = values[["browser_token"]],
                     decrypted_payload = decrypted_payload,
                     state_store_values = state_store_values,
-                    .transaction_context = managed_context[["json"]]
+                    .transaction_context = managed_context[["json"]],
+                    .on_state_validated = function(payload) {
+                      if (.auth_operation_can_apply(login_operation, "login")) {
+                        .retain_reauthorization_policy(payload)
+                      }
+                    }
                   )
                 } else {
                   handle_callback(
@@ -3929,14 +4268,21 @@ oauth_module_server_impl <- function(
                       .revoke_stale_credentials(
                         tok,
                         shiny_session = captured_shiny_session,
-                        cleanup = managed_cleanup
+                        cleanup = managed_cleanup,
+                        operation_epoch = login_operation[["epoch"]]
                       )
                       if (!is.null(callback_parent)) {
                         otel_end_async_parent(callback_parent, status = "ok")
                       }
                       return(invisible(NULL))
                     }
-                    .accept_login_token(tok, managed_context)
+                    .accept_login_token(
+                      tok,
+                      managed_context,
+                      callback_target_limits,
+                      callback_scope_narrowed,
+                      callback_requested_scopes
+                    )
                     values[["error"]] <- NULL
                     values[["error_description"]] <- NULL
                     values[["error_uri"]] <- NULL
@@ -4013,10 +4359,20 @@ oauth_module_server_impl <- function(
                   ))
                 ) {
                   .finish_auth_operation(login_operation, "login")
-                  .revoke_stale_credentials(res, cleanup = managed_cleanup)
+                  .revoke_stale_credentials(
+                    res,
+                    cleanup = managed_cleanup,
+                    operation_epoch = login_operation[["epoch"]]
+                  )
                   return(invisible(NULL))
                 }
-                .accept_login_token(res, managed_context)
+                .accept_login_token(
+                  res,
+                  managed_context,
+                  callback_target_limits,
+                  callback_scope_narrowed,
+                  callback_requested_scopes
+                )
                 values[["error"]] <- NULL
                 values[["error_description"]] <- NULL
                 values[["error_uri"]] <- NULL
@@ -4166,362 +4522,47 @@ oauth_module_server_impl <- function(
     values[[".process_query"]] <- .process_query
     values[[".strip_oauth_query"]] <- strip_oauth_module_callback_query
 
-    ## 2.8 Proactive refresh ---------------------------------------------------
+    ## 2.8 Shared refresh ownership --------------------------------------------
 
-    # Expiry management and optional proactive refresh logic
+    .refresh_current_token <- module_refresh_controller(
+      client,
+      values,
+      auth_operations,
+      hooks = list(
+        begin = .begin_auth_operation,
+        can_apply = .auth_operation_can_apply,
+        finish = .finish_auth_operation,
+        discard = .revoke_stale_credentials,
+        set_error = .set_error
+      ),
+      indefinite_session = indefinite_session,
+      auto_redirect = auto_redirect,
+      refresh_lead_seconds = refresh_lead_seconds,
+      reauth_after_seconds = reauth_after_seconds
+    )
+    if (is.null(.managed)) {
+      values[["connection"]] <- module_connection_factory(
+        client,
+        values,
+        session,
+        auth_operations,
+        authorization_epoch,
+        .refresh_current_token,
+        async,
+        indefinite_session,
+        reauth_after_seconds
+      )
+    }
     if (isTRUE(refresh_proactively)) {
-      # Record proactive refresh pacing state for success and failure paths.
-      .record_refresh_result <- function(
-        operation,
-        token = NULL,
-        condition = NULL
-      ) {
-        can_record <- if (is.null(token)) {
-          .auth_operation_can_apply(operation, "refresh")
-        } else {
-          .auth_operation_is_owner(operation, "refresh") &&
-            identical(values[["token"]], token)
-        }
-        if (!isTRUE(can_record)) {
-          .finish_auth_operation(operation, "refresh")
-          return(FALSE)
-        }
-
-        now <- as.numeric(Sys.time())
-
-        if (!is.null(token)) {
-          values[["refresh_failure_count"]] <- 0L
-          values[["refresh_last_success_at"]] <- now
-          values[["refresh_success_generation"]] <-
-            values[["refresh_success_generation"]] + 1L
-          delay <- proactive_refresh_success_delay(
-            token,
-            now,
-            refresh_lead_seconds
-          )
-        } else {
-          values[["refresh_failure_count"]] <- values[[
-            "refresh_failure_count"
-          ]] +
-            1L
-          if (
-            !refresh_credential_retryable(condition) &&
-              !is.null(values[["token"]])
-          ) {
-            retained <- values[["token"]]
-            retained@refresh_token <- NA_character_
-            auth_operations[["retired_refresh_snapshot"]] <- retained
-            values[["token"]] <- retained
-          }
-          delay <- proactive_refresh_failure_delay(
-            values[["refresh_failure_count"]],
-            refresh_condition_retry_after(condition)
-          )
-        }
-
-        values[["refresh_next_attempt_at"]] <- now + delay
-        TRUE
-      }
-
-      shiny::observe({
-        tok <- values[["token"]]
-
-        # Default: wake up on a coarse interval when token missing/unknown
-        wake_ms <- refresh_check_interval
-
-        # Access tokens without refresh credentials remain usable until their
-        # normal expiry; lack of a refresh token is not a refresh failure.
-        if (!is.null(tok) && is_valid_string(tok@refresh_token)) {
-          exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
-          now <- as.numeric(Sys.time())
-
-          if (is.finite(exp) && !is.na(exp)) {
-            remaining <- exp - now
-            # compute time to refresh: remaining - lead
-            to_refresh <- remaining - refresh_lead_seconds
-            # add small jitter 0..1s to avoid herd
-            jitter <- stats::runif(1, min = 0, max = 1)
-            if (!is.na(to_refresh) && to_refresh > 0) {
-              wake_ms <- shiny_timer_delay_ms(
-                to_refresh,
-                buffer_seconds = jitter
-              )
-            } else {
-              # We are within the lead window or past it. Respect pacing from a
-              # recent short-lived success or failed attempt before retrying.
-              next_attempt_at <- values[["refresh_next_attempt_at"]]
-              if (is.finite(next_attempt_at) && next_attempt_at > now) {
-                wake_ms <- shiny_timer_delay_ms(next_attempt_at - now)
-              } else {
-                wake_ms <- 250L
-              }
-              # Avoid concurrent refresh attempts: if one is already running,
-              # skip starting another and try again shortly.
-              if (
-                isTRUE(values[["refresh_in_progress"]]) ||
-                  !is.null(auth_operations[["active_login_id"]]) ||
-                  (is.finite(next_attempt_at) && next_attempt_at > now)
-              ) {
-                # Keep wake_ms short and bail out of starting a new refresh
-                # The enclosing observe will schedule the next wake.
-              } else {
-                # Capture Shiny session context on the main thread for audit events
-                # emitted from the async worker (which lacks reactive domain access)
-                captured_shiny_session_refresh <- if (isTRUE(async)) {
-                  capture_shiny_session_context(is_async = TRUE)
-                } else {
-                  NULL
-                }
-
-                # Delegate to refresh_token with async and handle promise if returned
-                refresh_operation <- NULL
-                tryCatch(
-                  {
-                    # Claim ownership until this exact refresh resolves.
-                    refresh_operation <- .begin_auth_operation(
-                      "refresh",
-                      source_token = tok
-                    )
-                    values[[
-                      "refresh_last_attempt_at"
-                    ]] <- as.numeric(Sys.time())
-                    res <- refresh_token(
-                      client,
-                      tok,
-                      async = async,
-                      introspect = isTRUE(client@introspect),
-                      shiny_session = captured_shiny_session_refresh
-                    )
-
-                    # Handle async path (wait for promise to resolve; then set values)
-                    if (isTRUE(async)) {
-                      res |>
-                        promises::then(function(raw) {
-                          res_resolved <- replay_async_conditions(raw)
-                          if (
-                            !isTRUE(.auth_operation_can_apply(
-                              refresh_operation,
-                              "refresh"
-                            ))
-                          ) {
-                            .finish_auth_operation(refresh_operation, "refresh")
-                            .revoke_stale_credentials(
-                              res_resolved,
-                              shiny_session = captured_shiny_session_refresh
-                            )
-                            return(invisible(NULL))
-                          }
-                          validate_refresh_delivery(res_resolved, tok)
-                          values[["token"]] <- res_resolved
-                          values[["error"]] <- NULL
-                          values[["error_description"]] <- NULL
-                          values[["error_uri"]] <- NULL
-                          values[["token_stale"]] <- FALSE
-                          # Successful refresh should allow future reauth cycles
-                          values[["reauth_triggered"]] <- FALSE
-                          .record_refresh_result(
-                            refresh_operation,
-                            token = res_resolved
-                          )
-                          .finish_auth_operation(refresh_operation, "refresh")
-                        }) |>
-                        promises::catch(function(e) {
-                          if (
-                            !isTRUE(.record_refresh_result(
-                              refresh_operation,
-                              condition = e
-                            ))
-                          ) {
-                            return(invisible(NULL))
-                          }
-                          mirai_err_type <- classify_mirai_error(e)
-                          try(log_condition(
-                            e,
-                            context = list(
-                              phase = "async_token_refresh",
-                              mirai_error_type = mirai_err_type
-                            )
-                          ))
-
-                          # On failure, either keep token (indefinite_session)
-                          # or clear it (default behavior)
-                          if (!isTRUE(indefinite_session)) {
-                            values[["token"]] <- NULL
-                            values[["token_stale"]] <- FALSE
-                          }
-
-                          .set_error(
-                            "token_refresh_error",
-                            e,
-                            phase = "async_token_refresh"
-                          )
-                          # Mark token stale when we kept it due to indefinite_session
-                          if (isTRUE(indefinite_session)) {
-                            values[["token_stale"]] <- TRUE
-                          }
-                          .finish_auth_operation(refresh_operation, "refresh")
-                          if (isTRUE(indefinite_session)) {
-                            try(
-                              audit_event(
-                                "refresh_failed_but_kept_session",
-                                context = list(
-                                  provider = client@provider@name %||%
-                                    NA_character_,
-                                  issuer = client@provider@issuer %||%
-                                    NA_character_,
-                                  client_id_digest = string_digest(
-                                    client@client_id
-                                  ),
-                                  reason = "refresh_failed_async",
-                                  kept_token = TRUE,
-                                  error_class = paste(
-                                    class(e),
-                                    collapse = ", "
-                                  ),
-                                  mirai_error_type = mirai_err_type %||%
-                                    NA_character_
-                                ),
-                                shiny_session = captured_shiny_session_refresh
-                              ),
-                              silent = TRUE
-                            )
-                          } else {
-                            try(
-                              audit_event(
-                                "session_cleared",
-                                context = list(
-                                  provider = client@provider@name %||%
-                                    NA_character_,
-                                  issuer = client@provider@issuer %||%
-                                    NA_character_,
-                                  client_id_digest = string_digest(
-                                    client@client_id
-                                  ),
-                                  reason = "refresh_failed_async",
-                                  error_class = paste(
-                                    class(e),
-                                    collapse = ", "
-                                  ),
-                                  mirai_error_type = mirai_err_type %||%
-                                    NA_character_
-                                ),
-                                shiny_session = captured_shiny_session_refresh
-                              ),
-                              silent = TRUE
-                            )
-                          }
-
-                          if (!isTRUE(indefinite_session)) {
-                            if (
-                              isTRUE(auto_redirect) &&
-                                !isTRUE(values[["reauth_triggered"]])
-                            ) {
-                              values[["reauth_triggered"]] <- TRUE
-                              try(values[["request_login"]]())
-                            }
-                          }
-                        })
-                    } else {
-                      # Sync path; directly set values
-                      new_tok <- res
-                      if (
-                        !isTRUE(.auth_operation_can_apply(
-                          refresh_operation,
-                          "refresh"
-                        ))
-                      ) {
-                        .finish_auth_operation(refresh_operation, "refresh")
-                        .revoke_stale_credentials(new_tok)
-                        return(invisible(NULL))
-                      }
-                      validate_refresh_delivery(new_tok, tok)
-                      values[["token"]] <- new_tok
-                      values[["error"]] <- NULL
-                      values[["error_description"]] <- NULL
-                      values[["error_uri"]] <- NULL
-                      values[["token_stale"]] <- FALSE
-                      # Successful sync refresh resets reauth guard as well
-                      values[["reauth_triggered"]] <- FALSE
-                      .record_refresh_result(refresh_operation, token = new_tok)
-                      .finish_auth_operation(refresh_operation, "refresh")
-                    }
-                  },
-                  error = function(e) {
-                    if (
-                      is.null(refresh_operation) ||
-                        !isTRUE(.record_refresh_result(
-                          refresh_operation,
-                          condition = e
-                        ))
-                    ) {
-                      return(invisible(NULL))
-                    }
-                    # Set error; clear token unless indefinite_session
-                    if (!isTRUE(indefinite_session)) {
-                      values[["token"]] <- NULL
-                      values[["token_stale"]] <- FALSE
-                    }
-                    .set_error(
-                      "token_refresh_error",
-                      e,
-                      phase = "sync_token_refresh"
-                    )
-                    # Mark token stale when we kept it due to indefinite_session
-                    if (isTRUE(indefinite_session)) {
-                      values[["token_stale"]] <- TRUE
-                    }
-                    .finish_auth_operation(refresh_operation, "refresh")
-                    if (isTRUE(indefinite_session)) {
-                      try(
-                        audit_event(
-                          "refresh_failed_but_kept_session",
-                          context = list(
-                            provider = client@provider@name %||% NA_character_,
-                            issuer = client@provider@issuer %||% NA_character_,
-                            client_id_digest = string_digest(client@client_id),
-                            reason = "refresh_failed_sync",
-                            kept_token = TRUE,
-                            error_class = paste(class(e), collapse = ", ")
-                          )
-                        ),
-                        silent = TRUE
-                      )
-                    } else {
-                      try(
-                        audit_event(
-                          "session_cleared",
-                          context = list(
-                            provider = client@provider@name %||% NA_character_,
-                            issuer = client@provider@issuer %||% NA_character_,
-                            client_id_digest = string_digest(client@client_id),
-                            reason = "refresh_failed_sync",
-                            error_class = paste(class(e), collapse = ", ")
-                          )
-                        ),
-                        silent = TRUE
-                      )
-                    }
-
-                    # If refresh failed and we want to reauth, attempt a redirect
-                    if (!isTRUE(indefinite_session)) {
-                      if (
-                        isTRUE(auto_redirect) &&
-                          !isTRUE(values[["reauth_triggered"]])
-                      ) {
-                        values[["reauth_triggered"]] <- TRUE
-                        try(values[["request_login"]]())
-                      }
-                    }
-                  }
-                )
-              } # end if not refresh_in_progress
-            }
-          }
-        }
-
-        # schedule next wake
-        shiny::invalidateLater(wake_ms, session)
-      })
+      module_proactive_refresh(
+        values,
+        session,
+        .refresh_current_token,
+        auth_operations,
+        async,
+        refresh_lead_seconds,
+        refresh_check_interval
+      )
     }
 
     ## 2.9 Expiry watch --------------------------------------------------------
@@ -4599,22 +4640,30 @@ oauth_module_server_impl <- function(
           }
         }
 
+        # Target entries expire separately; the shared authorization remains
+        # available for on-demand acquisition until its owner lifetime ends.
+        if (token_targets_configured(client)) {
+          exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
+          if (is.finite(exp)) {
+            if (now >= exp) {
+              values[["token_stale"]] <- TRUE
+            } else {
+              wake_ms <- min(wake_ms, shiny_timer_delay_ms(exp - now))
+            }
+          }
+          shiny::invalidateLater(wake_ms, session)
+          return()
+        }
         # Standard expiry check; ignored when indefinite_session
         if (!isTRUE(indefinite_session)) {
           exp <- tryCatch(tok@expires_at, error = function(...) NA_real_)
           if (is.finite(exp) && !is.na(exp)) {
             remaining <- exp - now
 
-            # Grace window: if proactive refresh is enabled and a refresh is
-            # in progress, or we're still within the lead window plus a small
-            # buffer, defer clearing/reauth to allow the refresh to complete.
-            # This avoids a race where the expiry watcher triggers reauth
-            # while an async refresh is in flight under a slow IdP/network.
-            refresh_grace_seconds <- if (isTRUE(refresh_proactively)) {
-              refresh_lead_seconds + 5
-            } else {
-              0
-            }
+            # Give any owned refresh bounded time to finish, regardless of how
+            # it started. Maximum authentication age was enforced above and
+            # cannot be extended by this access-token expiry grace period.
+            refresh_grace_seconds <- refresh_lead_seconds + 5
             in_grace_window <- (remaining > -refresh_grace_seconds)
 
             if (!is.na(remaining) && remaining <= 0) {

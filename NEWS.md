@@ -1,5 +1,34 @@
 # shinyOAuth (development version)
 
+* Use your Shiny app's login with external R packages, SDKs and database drivers.
+`oauth_module_server()` adds `connection()`. Its connections, and those from
+`oauth_connections_server()`, offer `$access_token()` to get a current bearer
+token, refreshing it when needed. `$has_scopes()` helps apps enable features
+based on available permissions. See `vignette("external-integrations")` for examples.
+
+* Access several APIs through one login by configuring `token_targets` in
+`oauth_client()`. Apps can select which API's token to use without asking users
+to sign in separately for each API. Supported providers use RFC 8707 resource
+indicators or Microsoft token acquisition. See `vignette("token-targets")`.
+
+* Connections can refresh tokens before making an API call with
+`$request(refresh = TRUE)`, reducing failures caused by expired tokens.
+This option does not automatically retry a failed API call.
+
+* `oauth_module_server()` adds `reauthorize()`, and
+`oauth_connections_server()` adds `reauthorize(connection_id)`, for a
+"sign in again" flow that keeps previously reduced permissions.
+
+* Microsoft apps can skip fetching a Graph user profile with
+`oauth_provider_microsoft(userinfo_required = FALSE)`, allowing sign-in when
+the API token is intended for another service. Exported Microsoft tokens can
+include more permissions than the connection allows within the app.
+
+* When using `token_targets` with `oauth_module_server()`, set
+`reauth_after_seconds` if your app needs a time-limited login. By default,
+the login can stay active for the rest of the Shiny session even after all API
+tokens expire. API calls still require a valid token.
+
 * Updated the missing browser-setup warning and UI documentation to recommend
 `oauth_ui()` with the module ID and client, or the appropriate form-post or
 connection-manager wrapper. These wrappers include `use_shinyOAuth()` setup.

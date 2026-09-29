@@ -860,10 +860,32 @@ refresh_token_dispatch <- function(
   async = FALSE,
   introspect = NULL,
   shiny_session = NULL,
-  scope_request = NULL
+  scope_request = NULL,
+  target_request = NULL,
+  .capture_rejected = FALSE
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
+  if (token_targets_configured(oauth_client) && is.null(target_request)) {
+    limits <- token_target_limits(oauth_client)
+    limits[[
+      oauth_client@default_token_target
+    ]] <- token_target_operation_scopes(
+      oauth_client,
+      oauth_client@default_token_target,
+      token@granted_scopes
+    )
+    target_request <- token_target_request(
+      oauth_client,
+      limits = limits,
+      scopes = scope_request[["scopes"]]
+    )
+    scope_request <- NULL
+  }
+  target_request <- validate_token_target_request(oauth_client, target_request)
+  if (!is.null(target_request) && !is.null(scope_request)) {
+    err_config("Conflicting refresh scope requests")
+  }
   scope_request <- validate_refresh_scope_request(
     oauth_client,
     token,
@@ -899,6 +921,8 @@ refresh_token_dispatch <- function(
         !identical(active[["token"]], token) ||
         !identical(active[["introspect"]], effective_introspect) ||
         !identical(active[["scope_request"]], scope_request) ||
+        !identical(active[["target_request"]], target_request) ||
+        !identical(active[["capture_rejected"]], .capture_rejected) ||
         !identical(active[["options"]], policy_options)
     ) {
       err_token(
@@ -913,6 +937,8 @@ refresh_token_dispatch <- function(
   flight[["token"]] <- token
   flight[["introspect"]] <- effective_introspect
   flight[["scope_request"]] <- scope_request
+  flight[["target_request"]] <- target_request
+  flight[["capture_rejected"]] <- .capture_rejected
   flight[["options"]] <- policy_options
   flights[[key]] <- flight
   release <- function() {
@@ -934,6 +960,12 @@ refresh_token_dispatch <- function(
       )
       if (!is.null(scope_request)) {
         args[["scope_request"]] <- scope_request
+      }
+      if (!is.null(target_request)) {
+        args[["target_request"]] <- target_request
+      }
+      if (isTRUE(.capture_rejected)) {
+        args[[".capture_rejected"]] <- TRUE
       }
       do.call(refresh_token_impl, args)
     },
@@ -1009,7 +1041,16 @@ validate_refresh_delivery <- function(token, previous) {
 
 with_refresh_outcome <- function(expr, outcome) {
   tryCatch(force(expr), error = function(e) {
-    stop(refresh_outcome_error(e, outcome[["value"]]))
+    error <- refresh_outcome_error(e, outcome[["value"]])
+    if (!is.null(outcome[["rejected_token"]])) {
+      # Only authorization owners opt into this private result. Credentials
+      # never become fields on a condition, audit event or public rejection.
+      return(structure(
+        list(error = error, token = outcome[["rejected_token"]]),
+        class = "shinyOAuth_rejected_refresh"
+      ))
+    }
+    stop(error)
   })
 }
 
@@ -1019,10 +1060,16 @@ refresh_token_impl <- function(
   async = FALSE,
   introspect = NULL,
   shiny_session = NULL,
-  scope_request = NULL
+  scope_request = NULL,
+  target_request = NULL,
+  .capture_rejected = FALSE
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
+  target_request <- validate_token_target_request(oauth_client, target_request)
+  if (!is.null(target_request) && !is.null(scope_request)) {
+    err_config("Conflicting refresh scope requests")
+  }
   scope_request <- validate_refresh_scope_request(
     oauth_client,
     token,
@@ -1062,7 +1109,9 @@ refresh_token_impl <- function(
             oauth_client = oauth_client,
             token = token,
             introspect = effective_introspect,
-            scope_request = scope_request
+            scope_request = scope_request,
+            target_request = target_request,
+            .capture_rejected = .capture_rejected
           ),
           client = oauth_client,
           shiny_session = shiny_session,
@@ -1123,6 +1172,13 @@ refresh_token_impl <- function(
             } else {
               requested_scopes <- NULL
             }
+          }
+          if (!is.null(target_request)) {
+            requested_scopes <- target_request[["scopes"]]
+            params <- utils::modifyList(
+              params,
+              token_target_parameters(oauth_client, target_request)
+            )
           }
           if (length(oauth_client@resource) > 0) {
             params[["resource"]] <- oauth_client@resource
@@ -1215,17 +1271,24 @@ refresh_token_impl <- function(
                 if (identical(e[["oauth_error"]], "invalid_grant")) {
                   outcome[["value"]] <- "rejected"
                 } else if (
-                  isTRUE(
-                    e[["oauth_error"]] %in%
-                      c(
-                        "invalid_request",
-                        "invalid_client",
-                        "unauthorized_client",
-                        "unsupported_grant_type",
-                        "invalid_scope",
-                        "temporarily_unavailable"
-                      )
-                  )
+                  (!is.null(target_request) &&
+                    identical(
+                      oauth_client@provider@token_target_mode,
+                      "microsoft"
+                    ) &&
+                    identical(e[["oauth_error"]], "invalid_resource")) ||
+                    isTRUE(
+                      e[["oauth_error"]] %in%
+                        c(
+                          "invalid_request",
+                          "invalid_client",
+                          "unauthorized_client",
+                          "unsupported_grant_type",
+                          "invalid_scope",
+                          "invalid_target",
+                          "temporarily_unavailable"
+                        )
+                    )
                 ) {
                   outcome[["value"]] <- "not_consumed"
                 }
@@ -1305,6 +1368,16 @@ refresh_token_impl <- function(
           tok <- apply_missing_token_type_policy(oauth_client, tok)
           verify_token_type_allowlist(oauth_client, tok)
 
+          if (isTRUE(.capture_rejected)) {
+            # Keep only credentials needed for cleanup, before target, identity
+            # and introspection validation can reject this successful response.
+            outcome[["rejected_token"]] <- OAuthToken(
+              access_token = tok[["access_token"]],
+              refresh_token = tok[["refresh_token"]] %||% token@refresh_token,
+              cnf = token@cnf
+            )
+          }
+
           token_set <- list(
             access_token = tok[["access_token"]],
             token_type = tok[["token_type"]],
@@ -1319,6 +1392,20 @@ refresh_token_impl <- function(
             token_set,
             tok[intersect("authorization_details", names(tok))]
           )
+          token_set <- token_target_response(
+            oauth_client,
+            token_set,
+            target_request
+          )
+          if (!is.null(target_request)) {
+            validate_token_target_grant(
+              oauth_client,
+              normalize_scope_tokens(
+                token_set[["scope"]] %||% requested_scopes
+              ),
+              target_request
+            )
+          }
           if (!is.null(scope_request)) {
             # RFC 6749 permits omission only when the response matches the
             # current request. Preserve the unverified evidence flag; SMART
@@ -1344,6 +1431,15 @@ refresh_token_impl <- function(
                 cnf = token_set[["cnf"]]
               )
             )
+          if (!is.null(target_request)) {
+            requested_scopes <- token_target_verification_scopes(
+              oauth_client,
+              target_request,
+              token_set
+            )
+          }
+          # Explicit OIDC refresh consent is not an access-token permission.
+          # Preserve ordinary scope inheritance when the response omits scope.
           token_set <- verify_token_set(
             oauth_client,
             token_set = token_set,
@@ -1351,7 +1447,14 @@ refresh_token_impl <- function(
             is_refresh = TRUE,
             original_id_token = original_id_token,
             refresh_request_started_at = token_request_started_at,
-            requested_scopes = requested_scopes,
+            requested_scopes = if (
+              length(scope_request[["refresh_consent"]]) &&
+                !is.null(token_set[["scope"]])
+            ) {
+              setdiff(requested_scopes, scope_request[["refresh_consent"]])
+            } else {
+              requested_scopes
+            },
             prior_granted_scopes = requested_scopes %||% token@granted_scopes,
             shiny_session = shiny_session,
             defer_certificate_binding = defer_certificate_binding,
@@ -1442,12 +1545,22 @@ refresh_token_impl <- function(
               oauth_client = oauth_client,
               token = refreshed_token,
               introspection_result = intro_res,
-              requested_scopes = requested_scopes %||%
-                effective_client_scopes(oauth_client),
+              requested_scopes = if (
+                length(scope_request[["refresh_consent"]]) &&
+                  !is.null(intro_res[["raw"]][["scope"]])
+              ) {
+                setdiff(
+                  requested_scopes %||% effective_client_scopes(oauth_client),
+                  scope_request[["refresh_consent"]]
+                )
+              } else {
+                requested_scopes %||% effective_client_scopes(oauth_client)
+              },
               phase = "refresh_token",
               token_response_cnf = token_set[["cnf"]],
               expires_in_missing = is.null(token_set[["expires_in"]]),
-              defer_subject_match = TRUE
+              defer_subject_match = TRUE,
+              target_request = target_request
             )
             validate_token_cnf_consistency(
               access_token = refreshed_token@access_token,
@@ -1491,6 +1604,11 @@ refresh_token_impl <- function(
             )
           }
 
+          validate_token_target_grant(
+            oauth_client,
+            refreshed_token@granted_scopes,
+            target_request
+          )
           validate_refresh_scope_grant(
             oauth_client,
             refreshed_token@granted_scopes,
@@ -1937,8 +2055,35 @@ dispatch_token_async <- function(
 
   promise |>
     promises::then(function(value) {
-      value <- replay_async_conditions(value)
-      if (function_name %in% c("refresh_token", "refresh_token_impl")) {
+      value <- tryCatch(
+        replay_async_conditions(value),
+        error = function(error) {
+          # A replayed warning can become an error in the parent (warn = 2).
+          # Preserve the private cleanup handoff even when replay itself fails.
+          rejected <- if (is.list(value)) value[["value"]] else NULL
+          if (!inherits(rejected, "shinyOAuth_rejected_refresh")) {
+            stop(error)
+          }
+          rejected[["error"]] <- refresh_outcome_error(
+            error,
+            rejected[["error"]][["refresh_credential_outcome"]]
+          )
+          rejected
+        }
+      )
+      if (inherits(value, "shinyOAuth_rejected_refresh")) {
+        otel_end_async_parent(
+          otel_parent,
+          status = "error",
+          error = value[["error"]]
+        )
+        return(value)
+      }
+      if (
+        function_name %in%
+          c("refresh_token", "refresh_token_impl") &&
+          !isTRUE(call_args[[".capture_rejected"]])
+      ) {
         validate_refresh_delivery(value, call_args[["token"]])
       }
       otel_end_async_parent(

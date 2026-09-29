@@ -53,14 +53,25 @@ reset the timer. For OIDC providers, reauthentication requests send
 is used as the next authentication start. OAuth-only providers have no
 standard way to require active user authentication, so for them this is a
 hard local session lifetime followed by an ordinary authorization request.
-By default this is \code{NULL} (no forced reauthentication).}
+That new authorization requests the configured scopes again, including
+permissions removed by local refresh narrowing. Explicit \code{auth$reauthorize()}
+instead carries forward the previous authorization's retained scope limits.
+By default this is \code{NULL} (no forced reauthentication).
+With token targets, that default can keep \code{authenticated = TRUE} for the
+remaining Shiny session after all access tokens expire, even without a
+refresh credential and with \code{indefinite_session = FALSE}. Set a finite age
+if local application access relies on \code{authenticated} and requires a bounded
+login lifetime. \code{indefinite_session = TRUE} ignores this age limit.}
 
 \item{refresh_proactively}{If \code{TRUE}, obtain a replacement access token before
 expiry when a refresh token is available. Default \code{FALSE}. The module
 schedules refresh at approximately \code{expires_at - refresh_lead_seconds}.}
 
 \item{refresh_lead_seconds}{Number of seconds before expiry to attempt
-proactive refresh (default: 60)}
+proactive refresh (default: 60). An already running refresh, including one
+requested on demand, has this many seconds plus 5 after access-token expiry
+to finish before the module clears the authorization. This grace period
+never extends \code{reauth_after_seconds}.}
 
 \item{refresh_check_interval_ms}{Fallback interval in milliseconds for checking
 expiry and refresh (default 10000). Known expiry times are scheduled
@@ -125,6 +136,10 @@ its main fields are:
 \item \code{auth[["authenticated"]]}: \code{TRUE} when a token is present and the configured
 checks have passed, otherwise \code{FALSE}. With \code{indefinite_session = TRUE},
 the flag stays true while a token is kept, including after refresh errors.
+With token targets, it tracks the retained authorization across individual
+token expiry and recoverable target failures. Connection methods check the
+selected token's lifetime and permissions before use; the configured
+authentication-age limit still applies to the whole authorization.
 \item \code{auth[["token"]]}: an \link{OAuthToken}, or \code{NULL} before login or after clearing
 the session. Read properties with \code{@}, for example \code{auth[["token"]]@userinfo}.
 Additional token response parameters are available in
@@ -137,13 +152,29 @@ include sensitive provider information.
 URLs on provider or explicitly allowed hosts are surfaced. Treat it as
 untrusted navigation input. \code{NULL} means the provider omitted the URL or
 supplied a value that did not pass validation.
-\item \code{auth[["token_stale"]]}: \code{TRUE} when an indefinite session keeps an expired
-token or one whose refresh failed. Resets after successful login,
-refresh, or logout.
+\item \code{auth[["token_stale"]]}: \code{TRUE} when a target authorization retains an
+expired primary token, or an indefinite session keeps an expired token
+or one whose refresh failed. Resets after successful login, primary-token
+refresh, or authorization clearing, including logout and maximum
+authentication age. Refreshing a secondary target does not renew the
+primary token.
 }
 
 The object also supplies:
 \itemize{
+\item \code{auth$connection()}: the current \link{OAuthConnection}, or \code{NULL} before login
+or after the module clears the authorization. The reference and its \verb{$id}
+survive refresh; logout, reauthorization and session closure invalidate it.
+Use \code{connection <- shiny::req(auth$connection())} inside reactive code,
+then \code{connection$access_token()} for a server-side SDK or database driver.
+Accessor-triggered refresh works without \code{refresh_proactively = TRUE};
+the module's configured expiry/session-clearing policy still applies.
+\item \code{auth$reauthorize()}: invalidate the current local authorization and begin
+replacement with its retained scope limit, without upstream revocation.
+Local state preparation is checked first; rejection preserves current access.
+Failed/cancelled replacement after that does not revive old references.
+With no prior grant, this starts ordinary login. It does not force account selection or
+a password prompt; configured maximum authentication age still applies.
 \item \code{auth[["request_login"]]()}: start login. Waits for browser setup when needed
 and does nothing if the session is already authenticated. Uses a browser
 form when the client selects \code{authorization_method = "POST"}; the app's

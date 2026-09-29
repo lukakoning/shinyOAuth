@@ -537,6 +537,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   context <- sanitize_event_diagnostics(sanitize_event_url_fields(context))
   expose <- isTRUE(allow_expose_error_body())
   status <- NA_integer_
+  retry_after <- NA_real_
   desc <- NULL
   url <- NULL
   transport_error <- NULL
@@ -562,6 +563,12 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
   }
 
   if (!is.null(resp) && inherits(resp, "httr2_response")) {
+    # Keep only a bounded delay, never the response or its raw headers. This
+    # metadata must also survive serialization of refresh failures from workers.
+    retry_after <- parse_retry_after_header(resp)
+    if (is.finite(retry_after)) {
+      retry_after <- min(retry_after, 3600)
+    }
     st <- try(httr2::resp_status(resp), silent = TRUE)
     status <- if (!inherits(st, "try-error") && length(st) == 1) {
       st
@@ -741,6 +748,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
     class = c("shinyOAuth_http_error", "shinyOAuth_error"),
     trace_id = trace_id,
     status = status,
+    retry_after = retry_after,
     url = url,
     body_digest = body_digest,
     oauth_error = oauth_error,

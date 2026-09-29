@@ -181,6 +181,7 @@ oauth_error_code <- function(value) {
     "insufficient_scope",
     "unsupported_token_type",
     "invalid_target",
+    "invalid_resource",
     "use_dpop_nonce",
     "invalid_dpop_proof",
     "authorization_pending",

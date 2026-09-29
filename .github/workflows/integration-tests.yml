@@ -84,6 +84,9 @@ jobs:
       - name: Test retained refresh scope narrowing
         run: Rscript integration/connections/run-scope-narrowing.R
 
+      - name: Test token target replacement and recovery
+        run: Rscript integration/connections/run-targets.R
+
       - name: Test account login and retained authorization across sessions
         run: Rscript integration/connections/run-account.R
 

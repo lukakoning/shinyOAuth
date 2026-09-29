@@ -26,11 +26,16 @@ narrowing_token <- function(scopes = c("read", "write")) {
   )
 }
 
-narrowing_response <- function(req, scope = "read", rotate = TRUE) {
+narrowing_response <- function(
+  req,
+  scope = "read",
+  rotate = TRUE,
+  expires_in = 3600
+) {
   body <- list(
     access_token = "synthetic-after",
     token_type = "Bearer",
-    expires_in = 3600
+    expires_in = expires_in
   )
   if (!is.null(scope)) {
     body[["scope"]] <- scope
@@ -282,7 +287,9 @@ test_that("automatic SMART refresh retains server reductions across sessions", {
   reduced <- "user/Patient.r"
   local_mocked_bindings(req_with_retry = function(req, ...) {
     requests[[length(requests) + 1L]] <<- req[["body"]][["data"]]
-    narrowing_response(req, reduced, rotate = FALSE)
+    # A short-lived token keeps lifetime-based success pacing observable after
+    # restoring the same authorization in another session.
+    narrowing_response(req, reduced, rotate = FALSE, expires_in = 60)
   })
   server <- function(input, output, session) {
     controller <- connection_manager_controller(manager, session)

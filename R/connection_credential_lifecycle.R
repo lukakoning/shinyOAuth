@@ -133,7 +133,12 @@ connection_credential_matches <- function(a, b) {
   ))
 }
 
-connection_credential_track <- function(manager, record, token) {
+connection_credential_track <- function(
+  manager,
+  record,
+  token,
+  targets = NULL
+) {
   entries <- manager[["state"]][["credential_records"]]
   entries[[record[["id"]]]] <- list(
     owner = record[["owner"]],
@@ -144,7 +149,18 @@ connection_credential_track <- function(manager, record, token) {
       manager[["clients"]][[record[["client"]]]],
       token
     ),
-    retired = list()
+    retired = list(),
+    secondary_access = vapply(
+      targets[["tokens"]],
+      function(entry) {
+        connection_credential_keys(
+          manager,
+          manager[["clients"]][[record[["client"]]]],
+          entry
+        )[["access"]]
+      },
+      character(1)
+    )
   )
   invisible(NULL)
 }
@@ -177,6 +193,14 @@ connection_credential_retire <- function(manager, keys, except = NULL) {
   entries <- manager[["state"]][["credential_records"]]
   for (id in ls(entries, all.names = TRUE)) {
     entry <- entries[[id]]
+    if (
+      !identical(id, except) &&
+        any(keys[["access"]] %in% entry[["secondary_access"]])
+    ) {
+      # A retired child token is removed on read. Its siblings and the shared
+      # refresh credential remain available when their keys are unaffected.
+      connection_manager_signal(manager, entry[["owner"]])
+    }
     if (
       identical(id, except) ||
         !connection_credential_matches(entry[["keys"]], keys)

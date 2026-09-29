@@ -84,6 +84,23 @@ proactive_refresh_failure_delay <- function(
 #' @keywords internal
 #' @noRd
 refresh_condition_retry_after <- function(condition) {
+  delay <- tryCatch(condition[["retry_after"]], error = function(...) NULL)
+  if (!is.null(delay)) {
+    return(
+      if (
+        is.numeric(delay) &&
+          length(delay) == 1L &&
+          is.finite(delay) &&
+          delay >= 0
+      ) {
+        min(delay, 3600)
+      } else {
+        NA_real_
+      }
+    )
+  }
+  # Compatibility with externally supplied HTTP conditions. shinyOAuth's own
+  # conditions deliberately omit responses and retain only the numeric delay.
   response <- tryCatch(condition[["response"]], error = function(...) NULL)
   if (is.null(response)) {
     response <- attr(condition, "response", exact = TRUE)
@@ -92,5 +109,6 @@ refresh_condition_retry_after <- function(condition) {
     return(NA_real_)
   }
 
-  parse_retry_after_header(response)
+  delay <- parse_retry_after_header(response)
+  if (is.finite(delay)) min(delay, 3600) else NA_real_
 }

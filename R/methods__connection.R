@@ -6,6 +6,8 @@
 #' again after refresh or logout and restricts requests to the configured APIs.
 #' This optional wrapper expires with its Shiny session; it does not implement
 #' refresh itself or retain credentials across redirects.
+#' Clients with `token_targets` must use the module's `connection()` factory,
+#' which retains the authorization's permission limits alongside its tokens.
 #'
 #' @param client An [OAuthClient] with non-empty `resource_bases`, created by
 #'   [oauth_client()] or [smart_client()].
@@ -58,6 +60,12 @@ oauth_connection <- function(
   session = shiny::getDefaultReactiveDomain()
 ) {
   S7::check_is_S7(client, OAuthClient)
+  if (token_targets_configured(client)) {
+    err_config(
+      "Clients with token_targets require the module's connection() factory to retain permission limits"
+    )
+  }
+  normalize_resource_bases(client@resource_bases)
   connection_client_fingerprint(client)
   if (!shiny::is.reactive(token_reactive)) {
     err_input("token_reactive must be a Shiny reactive expression")
@@ -96,7 +104,12 @@ oauth_connection <- function(
     ) {
       err_token("Connection is unavailable")
     }
-    list(client = client, token = binding[["source"]]())
+    token <- binding[["source"]]()
+    list(
+      client = client,
+      token = token,
+      status = if (is.null(token)) "disconnected" else "active"
+    )
   }
   OAuthConnection[["new"]](random_urlsafe(32), client, resolver)
 }
@@ -109,7 +122,7 @@ connection_session_root <- function(session) {
 }
 
 connection_record_summary <- function(record, id) {
-  list(
+  result <- list(
     connection_id = id,
     client_label = record[["client"]]@label,
     status = connection_record_status(record),
@@ -118,11 +131,20 @@ connection_record_summary <- function(record, id) {
     } else {
       record[["token"]]@expires_at
     },
-    resource_ids = names(record[["client"]]@resource_bases)
+    resource_ids = names(record[["client"]]@resource_bases) %||% character()
   )
+  if (!is.null(record[["replaces_connection_id"]])) {
+    result[["replaces_connection_id"]] <- record[["replaces_connection_id"]]
+  }
+  result
 }
 
 connection_record_status <- function(record) {
+  if (
+    is.null(record[["target"]]) && token_targets_configured(record[["client"]])
+  ) {
+    record <- token_target_select(record)
+  }
   if (
     !is.null(record[["status"]]) && !identical(record[["status"]], "active")
   ) {
@@ -145,11 +167,20 @@ connection_record_status <- function(record) {
   if (expires <= as.numeric(Sys.time())) {
     return("expired")
   }
+  granted <- token@granted_scopes
+  if (!is.null(record[["target"]])) {
+    granted <- token_target_operation_scopes(
+      record[["client"]],
+      record[["target"]],
+      granted,
+      record[["target_scopes"]]
+    )
+  }
   if (
     client_scope_coverage(
       record[["client"]],
-      record[["client"]]@required_scopes,
-      token@granted_scopes
+      connection_record_required_scopes(record),
+      granted
     )[["status"]] !=
       "covered"
   ) {
@@ -158,14 +189,40 @@ connection_record_status <- function(record) {
   if (
     client_scope_coverage(
       record[["client"]],
-      effective_client_scopes(record[["client"]]),
-      token@granted_scopes
+      record[["target_requested_scopes"]] %||%
+        effective_client_scopes(record[["client"]]),
+      granted
     )[["status"]] !=
       "covered"
   ) {
     return("limited")
   }
   "active"
+}
+
+connection_validate_request <- function(record, required_scopes) {
+  if (!connection_record_status(record) %in% c("active", "limited")) {
+    err_token("Connection is not usable")
+  }
+  validate_scopes(required_scopes)
+  required_scopes <- normalize_scope_tokens(required_scopes)
+  if (!connection_record_configured_scopes(record, required_scopes)) {
+    err_input(
+      "Operation scopes must be included in the client's requested scopes"
+    )
+  }
+  if (
+    !connection_record_scope_limit_allows(record, required_scopes) ||
+      client_scope_coverage(
+        record[["client"]],
+        required_scopes,
+        record[["token"]]@granted_scopes
+      )[["status"]] !=
+        "covered"
+  ) {
+    err_token("Current grant does not cover this operation")
+  }
+  required_scopes
 }
 
 connection_record_request <- function(
@@ -175,52 +232,88 @@ connection_record_request <- function(
   query,
   method,
   required_scopes,
-  configure = NULL
+  configure = NULL,
+  prepared = NULL
 ) {
+  url <- connection_request_url(record[["client"]], resource_id, path)
+  connection_validate_request(record, required_scopes)
+  tryCatch(
+    {
+      if (is.null(prepared)) {
+        prepared <- connection_prepare_request(url, query, method, configure)
+      }
+      perform_resource_req(
+        record[["token"]],
+        prepared,
+        method = prepared[["method"]],
+        client = record[["client"]],
+        check_url = TRUE,
+        follow_redirect = FALSE,
+        idempotent = if (isTRUE(record[["single_attempt"]])) FALSE else NULL
+      )
+    },
+    error = function(e) {
+      # Transport conditions can contain a resource path, query or response body.
+      # Do not expose those details through the connection's public error surface.
+      err_http("Connection resource request failed")
+    }
+  )
+}
+
+#' Resolve a connection request within its declared resource base
+#'
+#' Validate destinations before running application request configuration.
+#' @param client OAuth client declaring resource bases.
+#' @param resource_id Declared resource name.
+#' @param path Relative path or an absolute URL within the declared base.
+#' @return The validated resource URL.
+#' @keywords internal
+#' @noRd
+connection_request_url <- function(client, resource_id, path) {
   if (
     !is_valid_string(resource_id) ||
-      !resource_id %in% names(record[["client"]]@resource_bases)
+      !resource_id %in% names(client@resource_bases)
   ) {
     err_input("Unknown resource ID for this connection")
   }
-  url <- resolve_bound_resource(
-    record[["client"]]@resource_bases[[resource_id]],
-    path
-  )
-  if (!connection_record_status(record) %in% c("active", "limited")) {
-    err_token("Connection is not usable")
-  }
-  validate_scopes(required_scopes)
-  required_scopes <- normalize_scope_tokens(required_scopes)
-  if (
-    client_scope_coverage(
-      record[["client"]],
-      required_scopes,
-      effective_client_scopes(record[["client"]])
-    )[["status"]] !=
-      "covered"
-  ) {
-    err_input(
-      "Operation scopes must be included in the client's requested scopes"
-    )
-  }
-  if (
-    client_scope_coverage(
-      record[["client"]],
-      required_scopes,
-      record[["token"]]@granted_scopes
-    )[["status"]] !=
-      "covered"
-  ) {
-    err_token("Current grant does not cover this operation")
-  }
+  resolve_bound_resource(client@resource_bases[[resource_id]], path)
+}
+
+#' Prepare a connection request before acquiring credentials
+#'
+#' Run application configuration once and validate the unauthenticated request.
+#' @param url Validated URL from connection_request_url().
+#' @param query Optional named list of query parameters.
+#' @param method Single HTTP method string.
+#' @param configure Optional function adding a body and application headers.
+#' @return An unauthenticated httr2 request with its method and query applied.
+#' @keywords internal
+#' @noRd
+connection_prepare_request <- function(url, query, method, configure) {
   tryCatch(
     {
+      if (
+        !is_valid_string(method) ||
+          !grepl("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$", method)
+      ) {
+        err_input("method must be a single HTTP method string")
+      }
+      if (
+        !is.null(query) &&
+          (!is.list(query) ||
+            (length(query) &&
+              (is.null(names(query)) ||
+                anyNA(names(query)) ||
+                !all(nzchar(names(query))))))
+      ) {
+        err_input("query must be a named list")
+      }
+      template <- httr2::request(url)
+      request <- template
       if (!is.null(configure)) {
         if (!is.function(configure)) {
           err_input("configure must be a function")
         }
-        template <- httr2::request(url)
         request <- configure(template)
         if (!inherits(request, "httr2_request")) {
           err_input("configure must return an httr2 request")
@@ -238,21 +331,17 @@ connection_record_request <- function(
             "configure may only change the body and application headers"
           )
         }
-        url <- request
       }
-      perform_resource_req(
-        record[["token"]],
-        url,
-        method = method,
-        query = query,
-        client = record[["client"]],
-        check_url = TRUE,
-        follow_redirect = FALSE
-      )
+      method <- resolve_client_bearer_method(method, request)
+      validate_client_bearer_method(method, request)
+      validate_client_bearer_url(url, check_url = TRUE)
+      request <- httr2::req_method(request, method)
+      request <- apply_client_bearer_query(request, query)
+      validate_resource_token_transport(request)
+      request
     },
     error = function(e) {
-      # Transport conditions can contain a resource path, query or response body.
-      # Do not expose those details through the connection's public error surface.
+      # Configuration and query failures may include application secrets.
       err_http("Connection resource request failed")
     }
   )

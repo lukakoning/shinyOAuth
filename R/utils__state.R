@@ -299,20 +299,30 @@ state_policy_normalize_value <- function(value) {
     if (length(value_names) > 0L && !is.null(value_names)) {
       ord <- order(value_names)
       value <- value[ord]
-      out <- as.list(vapply(
+    }
+
+    # Scope lists dominate large target policies. Plain character leaves can
+    # use the same scalar encoding in bulk; classed values retain scalar
+    # dispatch, and numeric formatting must remain independent per element.
+    out <- if (is.character(value) && !is.object(value)) {
+      chars <- enc2utf8(as.vector(value, mode = "character"))
+      chars[is.na(chars)] <- "<na>"
+      chars
+    } else {
+      vapply(
         seq_along(value),
         function(i) state_policy_scalar_string(value[[i]]),
         ""
-      ))
+      )
+    }
+
+    if (length(value_names) > 0L && !is.null(value_names)) {
+      out <- as.list(out)
       names(out) <- value_names[ord]
       return(out)
     }
 
-    return(unname(vapply(
-      seq_along(value),
-      function(i) state_policy_scalar_string(value[[i]]),
-      ""
-    )))
+    return(unname(out))
   }
 
   state_policy_scalar_string(value)
@@ -673,6 +683,10 @@ state_client_policy_fingerprint <- function(client) {
   if (client_uses_smart(client)) {
     components[["smart"]] <- client@smart
   }
+  if (token_targets_configured(client)) {
+    components[["token_targets"]] <- client@token_targets
+    components[["default_token_target"]] <- client@default_token_target
+  }
   if (length(client@resource_bases)) {
     bases <- normalize_resource_bases(client@resource_bases)
     components[["resource_bases"]] <- as.list(bases[sort(names(bases))])
@@ -808,6 +822,63 @@ payload_verify_client_binding <- function(client, payload) {
 
   expected_scopes <- as_scope_tokens(effective_client_scopes(client))
   payload_scopes <- as_scope_tokens(payload[["scopes"]] %||% NULL)
+  if (!is.null(payload[["accepted_extra_scopes"]])) {
+    tryCatch(
+      {
+        if (
+          is.null(payload[["configured_scopes"]]) && length(expected_scopes)
+        ) {
+          err_invalid_state(
+            "Extra scope evidence requires a reauthorization scope limit"
+          )
+        }
+        extra <- connection_data_decode(payload[["accepted_extra_scopes"]])
+        if (
+          !identical(
+            extra,
+            authorization_extra_scope_limit(client, extra, payload_scopes)
+          )
+        ) {
+          err_invalid_state("Invalid extra scope evidence")
+        }
+      },
+      error = function(...) err_invalid_state("Invalid extra scope evidence")
+    )
+  }
+  if (!is.null(payload[["target_limits"]])) {
+    limits <- tryCatch(
+      validate_token_target_limits(
+        client,
+        connection_data_decode(payload[["target_limits"]])
+      ),
+      error = function(...) err_invalid_state("Invalid target scope limits")
+    )
+    if (
+      !setequal(
+        payload_scopes,
+        token_target_authorization_scopes(client, limits)
+      )
+    ) {
+      err_invalid_state("Target limits do not match the authorization scopes")
+    }
+  }
+  if (!is.null(payload[["configured_scopes"]])) {
+    if (
+      !setequal(
+        expected_scopes,
+        as_scope_tokens(payload[["configured_scopes"]])
+      )
+    ) {
+      err_invalid_state("Invalid payload: configured scopes do not match")
+    }
+    tryCatch(
+      authorization_scope_limit(client, payload_scopes),
+      error = function(...) {
+        err_invalid_state("Invalid payload: authorization scope limit")
+      }
+    )
+    expected_scopes <- payload_scopes
+  }
 
   # Normalize by unique + sort so we can produce clear differences
   exp_norm <- sort(unique(expected_scopes))
@@ -1419,14 +1490,19 @@ state_store_unseal <- function(record, client, state) {
   if (!is.list(record) || !is_valid_string(record[["sealed_state_record"]])) {
     err_invalid_state("External state store entry is missing or is not sealed")
   }
+  # The context JSON is itself a string in the encrypted JSON record, so allow
+  # its escaping plus browser/PKCE/nonce fields, then both base64 envelopes.
+  max_ct <- 2L * authorization_context_max_bytes + 8192L
+  max_ct_b64 <- 4L * ceiling(max_ct / 3L)
+  max_wrapper <- max_ct_b64 + 256L
   state_decrypt_gcm(
     record[["sealed_state_record"]],
     key = state_store_sealing_key(client, state),
     size_limits = list(
-      token = 16384,
-      wrapper = 12288,
-      ct_b64 = 12288,
-      ct = 8192
+      token = 4L * ceiling(max_wrapper / 3L),
+      wrapper = max_wrapper,
+      ct_b64 = max_ct_b64,
+      ct = max_ct
     )
   )
 }

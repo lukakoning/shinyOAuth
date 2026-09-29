@@ -79,6 +79,16 @@ validate_scopes <- function(scopes) {
     return(invisible(TRUE))
   }
 
+  # Stored grants and target declarations normally contain individual tokens.
+  # Validate that common case in one vectorized pass, retaining the indexed
+  # diagnostics and whitespace-list handling below for all other inputs.
+  if (
+    !anyNA(scopes) &&
+      all(grepl("\\A[!#-\\[\\]-~]+\\z", scopes, perl = TRUE, useBytes = TRUE))
+  ) {
+    return(invisible(TRUE))
+  }
+
   # Check each scope value.
   # Allow (and split) space-delimited scope strings, since user code may pass
   # scopes = "openid profile" as a single value.
@@ -145,6 +155,12 @@ as_scope_tokens <- function(scopes) {
   scopes <- scopes[!is.na(scopes)]
   if (length(scopes) == 0L) {
     return(character())
+  }
+
+  # Already separated ASCII tokens need no splitting. Other inputs still use
+  # the existing whitespace rules; this normalizer does not validate grammar.
+  if (all(grepl("\\A[!-~]+\\z", scopes, perl = TRUE, useBytes = TRUE))) {
+    return(unname(scopes))
   }
 
   tokens <- unlist(strsplit(scopes, "\\s+"), use.names = FALSE)
