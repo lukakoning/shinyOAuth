@@ -1,307 +1,91 @@
 # shinyOAuth (development version)
 
-* Target refresh responses rejected during scope, identity or introspection
-validation retain issued credentials privately for owner-controlled cleanup.
-Single modules and connection managers attempt revocation when local access
-ends, including asynchronous responses, without exposing credentials in errors
-or revoking a retained grant or a replacement that suppresses revocation.
-
-* Microsoft token targets reject scopes with an empty permission name during
-client configuration, including `required_scopes` under `.default` consent.
-Valid punctuated permission names and exact resource prefixes are preserved.
-
-* Reauthorization accepts provider-default scope evidence for clients without
-configured API permissions, including after restoration or a failed refresh.
-Ordinary OIDC replacement restores `openid` when access-token scopes omit it.
-Extra permissions remain response evidence only: replacement and later refresh
-reject newly added permissions without requesting the recorded extras.
-
-* Microsoft `.default` detection consistently rejects mixed-case consent markers
-as granted permissions, including token responses, introspection and restored
-credentials. Static-consent declarations use the canonical lowercase marker;
-resource identifiers still match exactly.
-
-* Single modules attempt revocation of fresh credentials rejected during refresh
-delivery or target-bundle commit when the failed operation clears the local
-authorization. Indefinite sessions that retain cached access keep their existing
-revocation behavior.
-
-* Managed reauthorization works for clients without configured scopes, including
-after an uncertain refresh. Replacement connections retain ordinary refresh
-behavior instead of being marked as explicitly narrowed to an empty scope set.
-
-* Microsoft token targets accept GUID resource identifiers as well as absolute
-URIs. RFC 8707 targets continue to require absolute URIs, and resource matching
-remains exact.
-
-* RFC 8707 targets reserve OIDC scope names only for OIDC providers or clients
-requesting `openid`. OAuth-only targets can require API permissions such as
-`email` or `offline_access`, without sharing or inventing those permissions.
-
-* Non-forced asynchronous token reads recheck their cache after another target's
-acquisition completes. A usable cached token no longer triggers a redundant
-refresh; ownership, permission and lifetime checks still apply before delivery.
-
-* Token-target migration guidance now makes the default authentication lifetime
-explicit: access-token expiry alone does not end the retained local login, even
-without a refresh credential. The example sets a finite `reauth_after_seconds`
-for applications requiring a bounded login lifetime.
-
-* Clearing a retained target authorization resets `token_stale`, including when
-the maximum authentication age expires after the primary access token. The
-status no longer describes a stale token after that token has been removed.
-
-* Connection requests recheck current authorization after application request
-configuration in both refresh modes. Logout, replacement and scope narrowing
-during configuration prevent the outgoing request; token rotations use the
-current credential without running configuration again.
-
-* Microsoft target clients with custom introspection now qualify short scope
-names against the selected resource during login and refresh, including declared
-punctuated aliases. Malformed scopes and permissions for another resource remain
-rejected, and raw public introspection results are unchanged.
-
-* Ordinary managed connections now pace successful refreshes by token lifetime,
-including after refresh-token rotation. Short-lived tokens can renew without a
-fixed 30-second outage while failure backoff and provider `Retry-After` remain
-enforced.
-
-* Microsoft target acquisition rejects retained grants containing only OIDC
-scopes, preventing implicit Graph/UserInfo selection for another API. An invalid
-replacement target is rejected before reauthorization ends current access.
-
-* Repeated connection reads validate and normalize scope vectors in bulk and
-encode character policy fields without per-scope dispatch. Security policy and
-key-material checks still run on every read, and fingerprints remain compatible
-with existing pending logins and encrypted credentials.
-
-* Reauthorization checks the complete replacement state against callback and
-encrypted-state limits before ending the current authorization. Local preflight
-failures preserve existing access and do not store or publish a login request.
-
-* Connection requests with `refresh = TRUE` validate their destination, method,
-query and unauthenticated configuration before acquiring or rotating tokens.
-Configuration runs once, with current authorization rechecked before sending.
-
-* Logout and disconnect cleanup attempt each distinct credential once per client
-and token kind, preserving the shared deadline for other tokens and reusing remote
-outcomes for duplicate target credentials.
-
-* Microsoft targets accept optional `scope_aliases` for punctuated short names
-returned by `.default` or prior consent. Aliases do not request permissions, make
-them mandatory, or widen retained operation limits.
-
-* Microsoft target configuration rejects overlapping resource scope prefixes,
-preventing nested resources from changing another target's permission matching.
-
-* An in-flight on-demand refresh gets the same bounded expiry grace period as a
-proactive refresh. Logout, the grace deadline, and maximum authentication age
-still prevent late refresh results from restoring authorization.
-
-* Microsoft target responses accept declared short permission names containing
-colons or slashes, while preserving resource boundaries and rejecting ambiguous
-undeclared names.
-
-* Standalone SMART replacements retain launch-context requests independently of
-access-token scope evidence, including encounter selection. Automatic refresh and
-encrypted restoration preserve the policy; explicit narrowing can remove optional
-encounter requests without restoring removed API permissions.
-
-* Reauthorization preserves omitted `offline_access` consent only for ordinary
-OIDC clients. Generic OAuth and SMART replacements no longer restore an explicitly
-ungranted permission merely because it has that name.
-
-* Single-module async refresh failures again include `mirai_error_type` in
-session-cleared and session-retained audit events, with `NA` for unclassified
-errors. Synchronous failure events continue to omit this async-only field.
-
-* Microsoft target `required_scopes` reject `.default` during configuration.
-Static consent declarations can require actual API permissions instead.
-
-* Managed reauthorization contexts accommodate the full supported target scope
-budget, including sealed external state stores. Replacement context validation
-runs before disconnecting the current authorization; context size remains bounded.
-
-* Explicit ordinary OIDC refresh requests can retain previously authorized
-`offline_access` while narrowing API permissions, even when the access token
-omits that consent scope. Removed consent cannot be added back by refresh.
-
-* Microsoft token targets compare API permission names without regard to ASCII
-case across login, refresh, restoration and operation checks. Resource identifiers
-and ordinary OAuth scopes remain exact, and original grant evidence is preserved.
-
-* Failed replacement callbacks and denied consent retain authenticated scope
-limits in fresh Shiny sessions. Retrying reauthorization cannot restore removed
-permissions; foreign-browser and replayed state cannot install retry policy.
-
-* Target clients reject `offline_access` in client or target `required_scopes`.
-Request it in client `scopes` for refresh consent. Documentation now separates
-that request from access-token permission requirements.
-
-* Ended managed connections are removed from the session's reference cache.
-Permission observers stop when a managed reference ends or a single-module
-authorization is replaced, preventing repeated login/disconnect cycles from
-accumulating background work. Legacy token reactives still follow later logins.
-
-* Single-module target refreshes keep independent success and failure pacing.
-Acquiring a secondary token no longer delays proactive primary renewal or clears
-its backoff; provider `Retry-After` still applies to the shared credential.
-
-* Target scope introspection treats `offline_access` as refresh consent even
-when the token endpoint omits scope. Valid rotating refreshes remain usable;
-strict checks still reject missing API permissions and grants outside the target.
-
-* The legacy `oauth_connection()` wrapper rejects target-enabled clients. Use a
-module's `connection()` factory so broader token responses cannot bypass retained
-target permission limits.
-
-* Ordinary OAuth reauthorization separates configured permissions from previously
-accepted extra scope evidence. Replacement and subsequent automatic refresh
-requests omit undeclared scopes, accept only previously observed extras, and
-continue to reject restored permissions outside the retained request limit.
-
-* Ordinary OIDC reauthorization retains requested `offline_access` consent even
-when access-token scope evidence omits it. This policy survives refresh, managed
-storage, and callback sessions; explicitly removing that scope keeps it removed.
-
-* Standalone SMART reauthorization requests `launch/patient` when retained patient
-permissions require a new patient selection, even when the previous token omitted
-the launch scope. Removed API permissions stay removed.
-
-* Token target resources use the shared absolute URI validator, rejecting
-malformed escapes, control characters, and invalid URI syntax at configuration
-time while retaining the existing size limit.
-
-* Microsoft `.default` declarations must name their target's exact resource,
-preventing a nested resource URI from selecting a different API's token.
-
-* Managed token targets pace successful refreshes using the selected token's
-lifetime, allowing short-lived tokens to renew before expiry or a requested
-lifetime buffer. Stable and rotating refresh credentials retain this pacing;
-failure cooldowns and provider `Retry-After` remain enforced.
-
-* Microsoft targets accept previously consented API scopes within the selected
-resource while retaining separate local operation limits and honest token
-evidence. Additional scopes do not expand connection permissions, including
-during refresh or after encrypted restoration. Explicit API narrowing now fails
-before using refresh credentials because Entra cannot promise a narrower token.
-Exported Microsoft tokens can carry the provider's full consented permissions.
-
-* Token targets retain requested `offline_access` independently of access-token
-scope evidence, preserving refresh capability after reauthorization when a
-provider omits it from token scopes. Explicit removal remains permanent for
-that target. OIDC replacement tests now require realistic refresh-token issuance
-and reacquire secondary targets after replacement.
-
-* Refresh failures preserve a sanitized `Retry-After` delay across asynchronous
-workers without retaining HTTP responses or headers. Both connection factories
-honor the bounded delay for explicit refresh and acquisition, including sibling
-targets and managed records sharing the refresh credential. Cached valid access
-tokens remain usable.
-
-* Successful reauthorization consumes its request scope override in the original
-Shiny session. Later ordinary login uses the configured scopes, while explicit
-replacement and retries after rejection retain the previous permission limit.
-
-* The complete external-integration example routes its non-root OAuth callback
-through the protected UI handler.
-
-* Single-module target acquisition uses lifetime-aware success pacing, allowing
-short-lived tokens to refresh proactively and on demand without a fixed
-thirty-second period of unavailability.
-
-* Identity documentation distinguishes retained target identity snapshots from
-current access-token validity, permissions, and fresh user authentication.
-
-* Target authorizations mark an expired primary token as `token_stale`, including
-after a secondary target refresh, while keeping the authorization available.
-
-* OIDC reauthorization retains the mandatory `openid` scope for authorization
-and default-target code redemption, including after API-only token responses.
-Removed API and optional OIDC permissions remain excluded.
-
-* Single-module reauthorization restores ordinary OAuth permission limits in
-fresh callback sessions and rejects broader token or introspection responses on
-subsequent refreshes.
-
-* RFC 8707 targets recognize the standard OIDC `phone` and `address` scopes,
-including client-level requirements. Microsoft scope qualification continues
-to use its separate supported OIDC scope set.
-
-* Single-module target logout and session-end cleanup clear local credentials
-before remote revocation. Cleanup shares a ten-second deadline, caps each request
-at two seconds with one attempt, and uses one batch when dispatched asynchronously.
-
-* Target permission limits retain OIDC scopes as well as API scopes. Refresh,
-restoration, and reauthorization no longer restore optional OIDC permissions
-removed by a partial response or explicit narrowing.
-
-* Single-module reauthorization restores authenticated target scope limits after
-browser redirects, including limits on secondary targets in synchronous and
-asynchronous callbacks.
-
-* Token targets enforce the authorization-wide limit of 128 distinct scopes and
-8192 scope bytes at configuration and acquisition, including `.default` expansion,
-so accepted scope sets can be reused for reauthorization.
-
-* Token-target scope declarations accept equivalent vectors and space-delimited
-strings consistently during login, refresh, required-scope checks, and restoration.
-
-* `auth$reauthorize()` starts normal login for token-target clients before their
-first authorization and after logout, retaining the configured API consent request.
-
-* Disconnect results and audit events include secondary access-token revocation
-outcomes. Failed, unsupported, or skipped cleanup takes precedence over acceptance.
-
-* Microsoft token targets retain working sibling credentials after an
-`invalid_resource` rejection. Invalid grants and interaction requirements
-continue to require a new authorization.
-
-* Target acquisitions enforce client-level required scopes as well as each
-target's requirements, including when restoring encrypted credentials.
-
-* `OAuthConnection$access_token(async = TRUE)` waits for an overlapping queued
-target refresh before delivering a committed token, without another acquisition.
-
-* `oauth_connections_server()` preserves target scope vectors when accepting
-reauthorization callbacks restored from their authenticated transaction context.
-
-* `oauth_module_server()` keeps target authorizations authenticated across
-individual token expiry and recoverable target failures. Queued acquisitions
-and late refresh results enforce the authentication-age limit immediately.
-
-* `oauth_client()` supports opt-in named `token_targets` with an explicit
-`default_token_target`. Both Shiny module factories expose target selection on
-`$access_token()`, `$has_scopes()`, `$refresh()` and `$request()`, plus redacted
-`$targets()` inspection. Each authorization coordinates its shared refresh
-credential and retains separate tokens and scope limits across refresh and
-reauthorization. Providers explicitly enable RFC 8707 or Microsoft acquisition.
+* `oauth_module_server()` adds a `connection()` factory for using the current
+authorization through `OAuthConnection`, including coordinated
+`$refresh(scopes = ...)` to narrow permissions. References survive token refresh
+and become permanently invalid when the authorization ends or is replaced.
+
+* `oauth_connections_server()` allows `connection()` without an ID: it returns
+NULL when no authorization remains, selects the sole retained authorization,
+and raises a typed `selection_required` error when several remain. Expired or
+temporarily unusable authorizations still count toward this selection.
+
+* `OAuthConnection$access_token()` supplies server-side bearer tokens for
+external SDKs and database drivers, with ownership, scope and lifetime checks,
+at most one coordinated refresh, typed recovery errors and asynchronous support.
+`$has_scopes()` checks optional permissions without refreshing. Token rotation
+alone does not rerun reactive consumers of these methods or the connection
+factories. Factory-created connections can omit HTTP resource bases when used
+only for token export; sender-bound tokens require `$request()` instead.
+
+* `oauth_client()` adds named `token_targets` and `default_token_target` for
+accessing multiple APIs through one authorization and a shared refresh
+credential. Each target retains its own access token and permission limit.
+Module-created connections accept target selection in `$access_token()`,
+`$has_scopes()`, `$refresh()` and `$request()`, and expose redacted `$targets()`
+summaries. HTTP requests require an explicit association between the target
+and an approved resource base. Providers opt in with
+`token_target_mode = "rfc8707"` or `"microsoft"`; the Microsoft preset enables
+Microsoft mode. Target-enabled clients require a module's connection factory
+instead of the legacy `oauth_connection()` wrapper.
+
+* Microsoft token targets support resource-qualified permissions, `.default`
+consent and `scope_aliases` for returned short permission names. Previously
+consented permissions returned by the provider remain token evidence without
+expanding the connection's local permission limit. Exported tokens can still
+carry all provider-issued permissions; explicit API scope narrowing is rejected
+because Microsoft cannot guarantee a narrower token. `.default` is never treated
+as a granted permission.
+
+* `oauth_provider_microsoft(userinfo_required = FALSE)` allows apps to skip
+Microsoft Graph UserInfo, including when their selected token targets another
+API, while retaining configured OIDC validation.
 
 * `OAuthConnection$request(refresh = TRUE)` acquires a current token before
-sending the application request, preserves bound transport and does not refresh
-or replay the request after an API failure. Target selection requires an explicit
-association with the requested resource base.
+sending the application request and preserves sender-bound transport. It
+validates the destination, method, query and application configuration before
+refreshing, runs configuration once, and does not refresh or replay the request
+after an API failure. Both request modes recheck authorization after application
+configuration so logout, replacement or scope narrowing cannot leave the
+request using stale authorization.
 
-* `oauth_connections_server()` allows `connection()` without an ID when exactly
-one retained authorization remains, returns NULL for none, and reports a typed
-selection error for several.
+* `oauth_module_server()` adds `reauthorize()`, and
+`oauth_connections_server()` adds `reauthorize(connection_id)`, to replace an
+authorization while retaining its permission limits without upstream revocation.
+Limits survive browser callbacks and encrypted restoration, including failed
+replacement attempts. Reauthorization preserves mandatory OIDC scopes, retained
+refresh consent and standalone SMART launch-context requests without restoring
+removed API or optional OIDC permissions. Local preflight failures leave access usable;
+once replacement starts, old references remain invalid even if login fails.
+Managed replacement summaries include `replaces_connection_id`.
 
-* `OAuthConnection$access_token()` returns a current server-side bearer token for
-external SDKs and database drivers, with bounded refresh, scope checks and typed
-recovery errors. `$has_scopes()` checks optional permissions without refreshing.
-Both methods follow authorization changes without rerunning consumers merely
-because token bytes rotated. Factory-created connections can omit HTTP bases.
+* With token targets enabled, `oauth_module_server()` retains local
+authentication across individual access-token expiry and recoverable target
+failures; `token_stale` reports expiry of the primary token. With the default
+`reauth_after_seconds = NULL`, `authenticated` can remain TRUE for the rest of
+the Shiny session even when all access tokens have expired, no refresh
+credential exists and `indefinite_session = FALSE`. Set a finite
+`reauth_after_seconds` to bound this retained login. Connection operations still
+check the selected token's validity and permissions.
 
-* `oauth_connections_server()` adds `reauthorize(connection_id)`, preserving the
-selected connection's scope limit without upstream revocation. Replacement
-summaries identify the old connection through `replaces_connection_id`.
+* Refresh coordination serializes use of a shared refresh credential, paces
+target acquisitions independently, and honors provider `Retry-After` across
+synchronous and asynchronous acquisition. Successful refresh pacing accounts
+for token lifetime, including ordinary managed connections with short-lived
+tokens. In-flight on-demand refresh receives the same bounded expiry grace
+as proactive refresh; logout and maximum authentication age still prevent
+late results from restoring authorization.
 
-* `oauth_module_server()` adds `connection()` and `reauthorize()`. Its connections
-support coordinated `$refresh(scopes = ...)` and `$access_token()`; references
-survive refresh and become permanently invalid after logout or replacement.
+* Target logout and disconnect clear local access before bounded revocation
+of the shared refresh credential and acquired access tokens. Cleanup deduplicates
+credentials and includes secondary-token outcomes in disconnect results and
+audit events. Credentials from rejected target refresh responses are retained
+privately for cleanup when local access ends, without exposing them in errors
+or revoking a retained authorization or a replacement that suppresses revocation.
 
-* `oauth_provider_microsoft()` accepts `userinfo_required = FALSE` for apps that
-do not need Microsoft Graph UserInfo, while retaining configured OIDC validation.
+* Added `vignette("external-integrations")` and `vignette("token-targets")`
+covering SDK and database use, asynchronous result ownership, target
+configuration, permission limits and authentication-lifetime migration.
 
 * Updated the missing browser-setup warning and UI documentation to recommend
 `oauth_ui()` with the module ID and client, or the appropriate form-post or
