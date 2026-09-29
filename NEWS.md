@@ -1,91 +1,33 @@
 # shinyOAuth (development version)
 
-* `oauth_module_server()` adds a `connection()` factory for using the current
-authorization through `OAuthConnection`, including coordinated
-`$refresh(scopes = ...)` to narrow permissions. References survive token refresh
-and become permanently invalid when the authorization ends or is replaced.
+* Use your Shiny app's login with external R packages, SDKs and database drivers.
+`oauth_module_server()` adds `connection()`. Its connections, and those from
+`oauth_connections_server()`, offer `$access_token()` to get a current bearer
+token, refreshing it when needed. `$has_scopes()` helps apps enable features
+based on available permissions. See `vignette("external-integrations")` for examples.
 
-* `oauth_connections_server()` allows `connection()` without an ID: it returns
-NULL when no authorization remains, selects the sole retained authorization,
-and raises a typed `selection_required` error when several remain. Expired or
-temporarily unusable authorizations still count toward this selection.
+* Access several APIs through one login by configuring `token_targets` in
+`oauth_client()`. Apps can select which API's token to use without asking users
+to sign in separately for each API. Supported providers use RFC 8707 resource
+indicators or Microsoft token acquisition. See `vignette("token-targets")`.
 
-* `OAuthConnection$access_token()` supplies server-side bearer tokens for
-external SDKs and database drivers, with ownership, scope and lifetime checks,
-at most one coordinated refresh, typed recovery errors and asynchronous support.
-`$has_scopes()` checks optional permissions without refreshing. Token rotation
-alone does not rerun reactive consumers of these methods or the connection
-factories. Factory-created connections can omit HTTP resource bases when used
-only for token export; sender-bound tokens require `$request()` instead.
-
-* `oauth_client()` adds named `token_targets` and `default_token_target` for
-accessing multiple APIs through one authorization and a shared refresh
-credential. Each target retains its own access token and permission limit.
-Module-created connections accept target selection in `$access_token()`,
-`$has_scopes()`, `$refresh()` and `$request()`, and expose redacted `$targets()`
-summaries. HTTP requests require an explicit association between the target
-and an approved resource base. Providers opt in with
-`token_target_mode = "rfc8707"` or `"microsoft"`; the Microsoft preset enables
-Microsoft mode. Target-enabled clients require a module's connection factory
-instead of the legacy `oauth_connection()` wrapper.
-
-* Microsoft token targets support resource-qualified permissions, `.default`
-consent and `scope_aliases` for returned short permission names. Previously
-consented permissions returned by the provider remain token evidence without
-expanding the connection's local permission limit. Exported tokens can still
-carry all provider-issued permissions; explicit API scope narrowing is rejected
-because Microsoft cannot guarantee a narrower token. `.default` is never treated
-as a granted permission.
-
-* `oauth_provider_microsoft(userinfo_required = FALSE)` allows apps to skip
-Microsoft Graph UserInfo, including when their selected token targets another
-API, while retaining configured OIDC validation.
-
-* `OAuthConnection$request(refresh = TRUE)` acquires a current token before
-sending the application request and preserves sender-bound transport. It
-validates the destination, method, query and application configuration before
-refreshing, runs configuration once, and does not refresh or replay the request
-after an API failure. Both request modes recheck authorization after application
-configuration so logout, replacement or scope narrowing cannot leave the
-request using stale authorization.
+* Connections can refresh tokens before making an API call with
+`$request(refresh = TRUE)`, reducing failures caused by expired tokens.
+This option does not automatically retry a failed API call.
 
 * `oauth_module_server()` adds `reauthorize()`, and
-`oauth_connections_server()` adds `reauthorize(connection_id)`, to replace an
-authorization while retaining its permission limits without upstream revocation.
-Limits survive browser callbacks and encrypted restoration, including failed
-replacement attempts. Reauthorization preserves mandatory OIDC scopes, retained
-refresh consent and standalone SMART launch-context requests without restoring
-removed API or optional OIDC permissions. Local preflight failures leave access usable;
-once replacement starts, old references remain invalid even if login fails.
-Managed replacement summaries include `replaces_connection_id`.
+`oauth_connections_server()` adds `reauthorize(connection_id)`, for a
+"sign in again" flow that keeps previously reduced permissions.
 
-* With token targets enabled, `oauth_module_server()` retains local
-authentication across individual access-token expiry and recoverable target
-failures; `token_stale` reports expiry of the primary token. With the default
-`reauth_after_seconds = NULL`, `authenticated` can remain TRUE for the rest of
-the Shiny session even when all access tokens have expired, no refresh
-credential exists and `indefinite_session = FALSE`. Set a finite
-`reauth_after_seconds` to bound this retained login. Connection operations still
-check the selected token's validity and permissions.
+* Microsoft apps can skip fetching a Graph user profile with
+`oauth_provider_microsoft(userinfo_required = FALSE)`, allowing sign-in when
+the API token is intended for another service. Exported Microsoft tokens can
+include more permissions than the connection allows within the app.
 
-* Refresh coordination serializes use of a shared refresh credential, paces
-target acquisitions independently, and honors provider `Retry-After` across
-synchronous and asynchronous acquisition. Successful refresh pacing accounts
-for token lifetime, including ordinary managed connections with short-lived
-tokens. In-flight on-demand refresh receives the same bounded expiry grace
-as proactive refresh; logout and maximum authentication age still prevent
-late results from restoring authorization.
-
-* Target logout and disconnect clear local access before bounded revocation
-of the shared refresh credential and acquired access tokens. Cleanup deduplicates
-credentials and includes secondary-token outcomes in disconnect results and
-audit events. Credentials from rejected target refresh responses are retained
-privately for cleanup when local access ends, without exposing them in errors
-or revoking a retained authorization or a replacement that suppresses revocation.
-
-* Added `vignette("external-integrations")` and `vignette("token-targets")`
-covering SDK and database use, asynchronous result ownership, target
-configuration, permission limits and authentication-lifetime migration.
+* When using `token_targets` with `oauth_module_server()`, set
+`reauth_after_seconds` if your app needs a time-limited login. By default,
+the login can stay active for the rest of the Shiny session even after all API
+tokens expire. API calls still require a valid token.
 
 * Updated the missing browser-setup warning and UI documentation to recommend
 `oauth_ui()` with the module ID and client, or the appropriate form-post or
