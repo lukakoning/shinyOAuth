@@ -300,6 +300,7 @@ module_refresh_controller <- function(
     pending_scopes <<- scopes
     operation <- hooks[["begin"]]("refresh", source_token = primary)
     if (is.null(target)) {
+      operations[["last_authorized_scope_narrowed"]] <- narrowed
       operations[["last_authorized_scopes"]] <- authorization_retained_scopes(
         client,
         token,
@@ -470,6 +471,9 @@ module_refresh_controller <- function(
         )
       } else {
         values[["token"]] <- fresh
+        operations[["last_authorized_scope_narrowed"]] <- !is.null(
+          scope_request
+        )
         operations[["last_authorized_scopes"]] <- authorization_retained_scopes(
           client,
           fresh,

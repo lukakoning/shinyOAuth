@@ -789,14 +789,14 @@ oauth_module_server_impl <- function(
       if (
         !is.null(.managed) ||
           !is.null(values[["token"]]) ||
-          is.null(payload[["configured_scopes"]])
+          (is.null(payload[["configured_scopes"]]) &&
+            is.null(payload[["accepted_extra_scopes"]]))
       ) {
         return(invisible(NULL))
       }
-      scopes <- authorization_scope_limit(
-        client,
-        as_scope_tokens(payload[["scopes"]])
-      )
+      scopes <- if (!is.null(payload[["configured_scopes"]])) {
+        authorization_scope_limit(client, as_scope_tokens(payload[["scopes"]]))
+      }
       limits <- if (!is.null(payload[["target_limits"]])) {
         validate_token_target_limits(
           client,
@@ -817,7 +817,8 @@ oauth_module_server_impl <- function(
       tok,
       context,
       target_limits = NULL,
-      refresh_scope_narrowed = !is.null(auth_operations[["reauth_scopes"]]),
+      refresh_scope_narrowed = !is.null(auth_operations[["reauth_scopes"]]) ||
+        !is.null(auth_operations[["reauth_extra_scopes"]]),
       requested_scopes = auth_operations[["reauth_scopes"]] %||%
         effective_client_scopes(client)
     ) {
@@ -830,6 +831,8 @@ oauth_module_server_impl <- function(
         )
         auth_operations[["target_limits"]] <- values[["targets"]][["limits"]]
         auth_operations[["refresh_scope_narrowed"]] <- refresh_scope_narrowed
+        auth_operations[["last_authorized_scope_narrowed"]] <-
+          refresh_scope_narrowed
         values[["token"]] <- tok
         auth_operations[[
           "last_authorized_extra_scopes"
@@ -2027,25 +2030,13 @@ oauth_module_server_impl <- function(
         auth_operations[["reauth_scopes"]] %||%
           auth_operations[["last_authorized_scopes"]]
       }
-      if (
-        !is.null(retained_scopes) &&
-          !length(retained_scopes) &&
-          length(effective_client_scopes(client))
-      ) {
-        connection_access_error("interaction_required")
-      }
-      requested_scopes <- scopes %||%
-        if (token_targets_configured(client)) {
+      if (!is.null(retained_scopes)) {
+        retained_scopes <- authorization_replacement_scopes(
+          client,
           retained_scopes
-        } else if (
-          !is.null(current) &&
-            length(current@granted_scopes)
-        ) {
-          authorization_scope_limit(client, retained_scopes)
-        } else {
-          auth_operations[["reauth_scopes"]] %||%
-            auth_operations[["last_authorized_scopes"]]
-        }
+        )
+      }
+      requested_scopes <- scopes %||% retained_scopes
       if (!length(requested_scopes)) {
         requested_scopes <- NULL
       }
@@ -2059,6 +2050,15 @@ oauth_module_server_impl <- function(
         },
         requested_scopes
       )
+      # Epoch resets clear current refresh policy; retain an empty historical
+      # bound across failed callbacks and refreshes until explicit logout.
+      if (
+        !length(extra_scopes) &&
+          is.null(auth_operations[["reauth_extra_scopes"]]) &&
+          !isTRUE(auth_operations[["last_authorized_scope_narrowed"]])
+      ) {
+        extra_scopes <- NULL
+      }
       force_oidc_reauth <- isTRUE(auth_operations[["force_oidc_reauth"]]) ||
         (!indefinite_session &&
           !is.null(reauth_after_seconds) &&
@@ -2103,6 +2103,7 @@ oauth_module_server_impl <- function(
       auth_operations[["reauth_extra_scopes"]] <- NULL
       auth_operations[["last_authorized_scopes"]] <- NULL
       auth_operations[["last_authorized_extra_scopes"]] <- NULL
+      auth_operations[["last_authorized_scope_narrowed"]] <- NULL
       auth_operations[["target_limits"]] <- NULL
       logout_shiny_session <- capture_shiny_session_context(is_async = FALSE)
       logout_async_shiny_session <- if (isTRUE(async)) {
@@ -3804,7 +3805,8 @@ oauth_module_server_impl <- function(
             }
             callback_scope_narrowed <- !is.null(policy_payload[[
               "configured_scopes"
-            ]])
+            ]]) ||
+              !is.null(policy_payload[["accepted_extra_scopes"]])
             callback_requested_scopes <- policy_payload[["scopes"]]
             if (!is.null(policy_payload[["target_limits"]])) {
               callback_target_limits <- validate_token_target_limits(

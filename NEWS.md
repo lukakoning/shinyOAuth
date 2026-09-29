@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Reauthorization accepts provider-default scope evidence for clients without
+configured API permissions, including after restoration or a failed refresh.
+Ordinary OIDC replacement restores `openid` when access-token scopes omit it.
+Extra permissions remain response evidence only: replacement and later refresh
+reject newly added permissions without requesting the recorded extras.
+
 * Microsoft `.default` detection consistently rejects mixed-case consent markers
 as granted permissions, including token responses, introspection and restored
 credentials. Static-consent declarations use the canonical lowercase marker;

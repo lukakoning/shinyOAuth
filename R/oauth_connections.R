@@ -702,7 +702,8 @@ connection_manager_controller <- function(
     client <- client_for(context[["client"]])
     if (
       !token_targets_configured(client) &&
-        !is.null(context[["requested_scopes"]])
+        (!is.null(context[["requested_scopes"]]) ||
+          !is.null(context[["accepted_extra_scopes"]]))
     ) {
       validate_refresh_scope_grant(
         client,
@@ -743,7 +744,8 @@ connection_manager_controller <- function(
       client,
       manager[["keys"]][["credentials"]],
       authenticated_at,
-      refresh_scope_narrowed = !is.null(context[["requested_scopes"]]),
+      refresh_scope_narrowed = !is.null(context[["requested_scopes"]]) ||
+        !is.null(context[["accepted_extra_scopes"]]),
       targets = targets,
       authorization_scopes = authorization_scopes
     )
@@ -776,6 +778,8 @@ connection_manager_controller <- function(
     state[["authorization_metadata"]][[id]] <- list(
       scopes = authorization_scopes %||% token@granted_scopes,
       extra_scopes = authorization_extra_scopes(client, token),
+      scope_narrowed = !is.null(context[["requested_scopes"]]) ||
+        !is.null(context[["accepted_extra_scopes"]]),
       target_limits = targets[["limits"]],
       expires_at = record[["expires_at"]],
       replaces_connection_id = context[["replaces_connection_id"]]
@@ -850,6 +854,7 @@ connection_manager_controller <- function(
       metadata <- state[["authorization_metadata"]][[record[["id"]]]] %||%
         list()
       metadata[["scopes"]] <- value[["authorization_scopes"]]
+      metadata[["scope_narrowed"]] <- value[["refresh_scope_narrowed"]]
       metadata[["extra_scopes"]] <- authorization_extra_scopes(
         client,
         value[["token"]]
@@ -1202,6 +1207,7 @@ connection_manager_controller <- function(
           connection_credential_track(manager, installed, token, targets)
           metadata <- state[["authorization_metadata"]][[id]] %||% list()
           metadata[["scopes"]] <- authorization_scopes %||% token@granted_scopes
+          metadata[["scope_narrowed"]] <- !is.null(scope_request)
           metadata[["extra_scopes"]] <- authorization_extra_scopes(
             record[["client"]],
             token
@@ -1507,17 +1513,7 @@ connection_manager_controller <- function(
     } else {
       state[["authorization_metadata"]][[id]][["scopes"]]
     }
-    if (
-      length(effective_client_scopes(record[["client"]])) && !length(scopes)
-    ) {
-      connection_access_error("interaction_required")
-    }
-    if (length(scopes)) {
-      scopes <- authorization_scope_limit(record[["client"]], scopes)
-    } else {
-      # No configured scope is an ordinary authorization, not an empty override.
-      scopes <- NULL
-    }
+    scopes <- authorization_replacement_scopes(record[["client"]], scopes)
     extra_scopes <- authorization_extra_scope_limit(
       record[["client"]],
       if (!is.null(record[["token"]])) {
@@ -1527,6 +1523,14 @@ connection_manager_controller <- function(
       },
       scopes
     )
+    # Preserve an empty bound after narrowing, including an uncertain refresh.
+    # A client that has never retained scope evidence keeps ordinary login.
+    if (
+      !length(extra_scopes) &&
+        !isTRUE(state[["authorization_metadata"]][[id]][["scope_narrowed"]])
+    ) {
+      extra_scopes <- NULL
+    }
     replacement <- list(
       id = id,
       scopes = scopes,

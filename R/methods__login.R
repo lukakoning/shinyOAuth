@@ -119,12 +119,19 @@ prepare_call_internal <- function(
     configured_scopes <- effective_scopes
     effective_scopes <- .requested_scopes
   }
+  # An empty retained grant is a bound, not permission to accept new defaults.
+  empty_extra_scope_limit <- !is.null(.accepted_extra_scopes) &&
+    !length(effective_scopes)
   .accepted_extra_scopes <- authorization_extra_scope_limit(
     oauth_client,
     .accepted_extra_scopes,
     effective_scopes
   )
-  if (length(.accepted_extra_scopes) && is.null(.requested_scopes)) {
+  if (
+    length(.accepted_extra_scopes) &&
+      is.null(.requested_scopes) &&
+      length(effective_scopes)
+  ) {
     err_input("Extra scope evidence requires a reauthorization scope limit")
   }
   requested_max_age <- provider_auth_max_age(oauth_client@provider)
@@ -215,7 +222,9 @@ prepare_call_internal <- function(
           redirect_uri = oauth_client@redirect_uri,
           scopes = effective_scopes,
           configured_scopes = configured_scopes,
-          accepted_extra_scopes = if (length(.accepted_extra_scopes)) {
+          accepted_extra_scopes = if (
+            length(.accepted_extra_scopes) || empty_extra_scope_limit
+          ) {
             connection_data_encode(.accepted_extra_scopes)
           },
           target_limits = if (is.null(.target_limits)) {
@@ -2065,7 +2074,11 @@ handle_callback_internal <- function(
         token@granted_scopes,
         target_request
       )
-      if (is.null(target_request) && !is.null(payload[["configured_scopes"]])) {
+      if (
+        is.null(target_request) &&
+          (!is.null(payload[["configured_scopes"]]) ||
+            !is.null(payload[["accepted_extra_scopes"]]))
+      ) {
         validate_refresh_scope_grant(
           oauth_client,
           token@granted_scopes,

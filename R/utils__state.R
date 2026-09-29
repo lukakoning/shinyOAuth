@@ -825,7 +825,9 @@ payload_verify_client_binding <- function(client, payload) {
   if (!is.null(payload[["accepted_extra_scopes"]])) {
     tryCatch(
       {
-        if (is.null(payload[["configured_scopes"]])) {
+        if (
+          is.null(payload[["configured_scopes"]]) && length(expected_scopes)
+        ) {
           err_invalid_state(
             "Extra scope evidence requires a reauthorization scope limit"
           )

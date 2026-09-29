@@ -70,6 +70,22 @@ authorization_extra_scope_limit <- function(client, scopes, requested) {
   scopes
 }
 
+# Derive a replacement request from authorization history. An unscoped OAuth
+# client still omits scope; an ordinary OIDC login restores its protocol scope
+# even when the access token reported only provider-default permissions.
+authorization_replacement_scopes <- function(client, scopes) {
+  if (!token_targets_configured(client) && !client_uses_smart(client)) {
+    scopes <- ensure_openid_scope(scopes, client@provider, warn = FALSE)
+  }
+  if (!length(scopes)) {
+    if (length(effective_client_scopes(client))) {
+      connection_access_error("interaction_required")
+    }
+    return(NULL)
+  }
+  authorization_scope_limit(client, scopes)
+}
+
 authorization_scope_limit <- function(client, scopes) {
   validate_scopes(scopes)
   scopes <- normalize_scope_tokens(scopes)
@@ -125,9 +141,15 @@ refresh_scope_request <- function(
   accepted_extra_scopes = NULL,
   refresh_consent = character()
 ) {
+  # Automatic refresh can have only retained extra evidence. Omit scope on the
+  # wire but still bound the response; public explicit empty scope requests
+  # supply no such evidence and remain invalid.
+  evidence_only <- !is.null(accepted_extra_scopes) &&
+    !client_uses_smart(client) &&
+    !token_targets_configured(client)
   if (
     !is.character(scopes) ||
-      !length(scopes) ||
+      (!length(scopes) && !evidence_only) ||
       length(scopes) > 128L ||
       anyNA(scopes) ||
       sum(nchar(scopes, type = "bytes")) > 8192L
@@ -204,7 +226,7 @@ refresh_scope_request <- function(
   if (!all(extra %in% authorization_extra_scopes(client, token))) {
     err_token("Extra scopes must have been accepted in the current grant")
   }
-  if (length(extra)) {
+  if (length(extra) || (evidence_only && !length(scopes))) {
     request[["accepted_extra_scopes"]] <- extra
   }
   if (length(refresh_consent)) {

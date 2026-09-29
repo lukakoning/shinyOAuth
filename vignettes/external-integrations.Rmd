@@ -160,6 +160,10 @@ refresh cannot add new extras or restore configured permissions omitted from the
 retained limit. Explicit refresh narrowing still requires the returned token to
 fit the supplied scope request. Exported raw bearer tokens can carry the provider's
 broader permissions; local checks do not reduce their authority at the API.
+Clients with no configured scopes continue to omit `scope` during replacement,
+even when the provider reports default permissions. Those permissions remain
+bounded response evidence. Ordinary OIDC replacement restores `openid` even
+when the preceding access token reported only provider-default permissions.
 
 ## SDK callbacks and databases
 
