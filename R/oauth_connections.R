@@ -1115,6 +1115,25 @@ connection_manager_controller <- function(
       err_token("Connection refresh failed; inspect its status before retrying")
     }
     succeed <- function(token) {
+      if (inherits(token, "shinyOAuth_rejected_refresh")) {
+        rejection <- token[["error"]]
+        rejected <- token[["token"]]
+        on.exit(
+          {
+            # An unrotated rejected response can leave the original grant
+            # usable. Do not revoke it unless ownership or local access ended.
+            retained <- tryCatch(read(id), error = function(...) NULL)
+            if (
+              !refresh_credential_retryable(rejection) ||
+                !identical(retained[["status"]], "active")
+            ) {
+              cleanup[["discard"]](rejected)
+            }
+          },
+          add = TRUE
+        )
+        fail(rejection)
+      }
       committed <- FALSE
       fresh <- token
       on.exit(if (!committed) cleanup[["discard"]](fresh), add = TRUE)
@@ -1258,7 +1277,8 @@ connection_manager_controller <- function(
           record[["client"]],
           source,
           async = async,
-          target_request = target_request
+          target_request = target_request,
+          .capture_rejected = TRUE
         )
       } else if (is.null(scope_request)) {
         refresh_token(record[["client"]], record[["token"]], async = async)

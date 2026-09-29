@@ -198,6 +198,9 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
         stop(e)
       }
     )
+    if (inherits(.async_value, "shinyOAuth_rejected_refresh")) {
+      .async_error <- .async_value[["error"]]
+    }
     list(
       .shinyOAuth_async_wrapped = TRUE,
       value = .async_value,

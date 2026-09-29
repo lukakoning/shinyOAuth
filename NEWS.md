@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Target refresh responses rejected during scope, identity or introspection
+validation retain issued credentials privately for owner-controlled cleanup.
+Single modules and connection managers attempt revocation when local access
+ends, including asynchronous responses, without exposing credentials in errors
+or revoking a retained grant or a replacement that suppresses revocation.
+
 * Microsoft token targets reject scopes with an empty permission name during
 client configuration, including `required_scopes` under `.default` consent.
 Valid punctuated permission names and exact resource prefixes are preserved.

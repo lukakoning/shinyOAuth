@@ -407,6 +407,11 @@ module_refresh_controller <- function(
     }
     succeed <- function(raw) {
       fresh <- tryCatch(replay_async_conditions(raw), error = fail)
+      rejection <- NULL
+      if (inherits(fresh, "shinyOAuth_rejected_refresh")) {
+        rejection <- fresh[["error"]]
+        fresh <- fresh[["token"]]
+      }
       expired <- module_authorization_expired(
         values,
         indefinite_session,
@@ -417,7 +422,8 @@ module_refresh_controller <- function(
         hooks[["discard"]](
           fresh,
           shiny_session = captured,
-          operation_epoch = operation[["epoch"]]
+          operation_epoch = operation[["epoch"]],
+          bounded = !is.null(rejection)
         )
         connection_access_error(
           if (expired) "interaction_required" else "authorization_unavailable"
@@ -433,12 +439,16 @@ module_refresh_controller <- function(
             hooks[["discard"]](
               fresh,
               shiny_session = captured,
-              operation_epoch = operation[["epoch"]]
+              operation_epoch = operation[["epoch"]],
+              bounded = !is.null(rejection)
             )
           }
         },
         add = TRUE
       )
+      if (!is.null(rejection)) {
+        fail(rejection)
+      }
       tryCatch(
         {
           validate_refresh_delivery(fresh, token)
@@ -522,7 +532,8 @@ module_refresh_controller <- function(
             async = async,
             introspect = isTRUE(client@introspect),
             shiny_session = captured,
-            target_request = target_request
+            target_request = target_request,
+            .capture_rejected = TRUE
           )
         } else if (is.null(scope_request)) {
           refresh_token(

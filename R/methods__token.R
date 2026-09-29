@@ -861,7 +861,8 @@ refresh_token_dispatch <- function(
   introspect = NULL,
   shiny_session = NULL,
   scope_request = NULL,
-  target_request = NULL
+  target_request = NULL,
+  .capture_rejected = FALSE
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
@@ -921,6 +922,7 @@ refresh_token_dispatch <- function(
         !identical(active[["introspect"]], effective_introspect) ||
         !identical(active[["scope_request"]], scope_request) ||
         !identical(active[["target_request"]], target_request) ||
+        !identical(active[["capture_rejected"]], .capture_rejected) ||
         !identical(active[["options"]], policy_options)
     ) {
       err_token(
@@ -936,6 +938,7 @@ refresh_token_dispatch <- function(
   flight[["introspect"]] <- effective_introspect
   flight[["scope_request"]] <- scope_request
   flight[["target_request"]] <- target_request
+  flight[["capture_rejected"]] <- .capture_rejected
   flight[["options"]] <- policy_options
   flights[[key]] <- flight
   release <- function() {
@@ -960,6 +963,9 @@ refresh_token_dispatch <- function(
       }
       if (!is.null(target_request)) {
         args[["target_request"]] <- target_request
+      }
+      if (isTRUE(.capture_rejected)) {
+        args[[".capture_rejected"]] <- TRUE
       }
       do.call(refresh_token_impl, args)
     },
@@ -1035,7 +1041,16 @@ validate_refresh_delivery <- function(token, previous) {
 
 with_refresh_outcome <- function(expr, outcome) {
   tryCatch(force(expr), error = function(e) {
-    stop(refresh_outcome_error(e, outcome[["value"]]))
+    error <- refresh_outcome_error(e, outcome[["value"]])
+    if (!is.null(outcome[["rejected_token"]])) {
+      # Only authorization owners opt into this private result. Credentials
+      # never become fields on a condition, audit event or public rejection.
+      return(structure(
+        list(error = error, token = outcome[["rejected_token"]]),
+        class = "shinyOAuth_rejected_refresh"
+      ))
+    }
+    stop(error)
   })
 }
 
@@ -1046,7 +1061,8 @@ refresh_token_impl <- function(
   introspect = NULL,
   shiny_session = NULL,
   scope_request = NULL,
-  target_request = NULL
+  target_request = NULL,
+  .capture_rejected = FALSE
 ) {
   S7::check_is_S7(oauth_client, OAuthClient)
   S7::check_is_S7(token, OAuthToken)
@@ -1094,7 +1110,8 @@ refresh_token_impl <- function(
             token = token,
             introspect = effective_introspect,
             scope_request = scope_request,
-            target_request = target_request
+            target_request = target_request,
+            .capture_rejected = .capture_rejected
           ),
           client = oauth_client,
           shiny_session = shiny_session,
@@ -1350,6 +1367,16 @@ refresh_token_impl <- function(
           }
           tok <- apply_missing_token_type_policy(oauth_client, tok)
           verify_token_type_allowlist(oauth_client, tok)
+
+          if (isTRUE(.capture_rejected)) {
+            # Keep only credentials needed for cleanup, before target, identity
+            # and introspection validation can reject this successful response.
+            outcome[["rejected_token"]] <- OAuthToken(
+              access_token = tok[["access_token"]],
+              refresh_token = tok[["refresh_token"]] %||% token@refresh_token,
+              cnf = token@cnf
+            )
+          }
 
           token_set <- list(
             access_token = tok[["access_token"]],
@@ -2028,8 +2055,35 @@ dispatch_token_async <- function(
 
   promise |>
     promises::then(function(value) {
-      value <- replay_async_conditions(value)
-      if (function_name %in% c("refresh_token", "refresh_token_impl")) {
+      value <- tryCatch(
+        replay_async_conditions(value),
+        error = function(error) {
+          # A replayed warning can become an error in the parent (warn = 2).
+          # Preserve the private cleanup handoff even when replay itself fails.
+          rejected <- if (is.list(value)) value[["value"]] else NULL
+          if (!inherits(rejected, "shinyOAuth_rejected_refresh")) {
+            stop(error)
+          }
+          rejected[["error"]] <- refresh_outcome_error(
+            error,
+            rejected[["error"]][["refresh_credential_outcome"]]
+          )
+          rejected
+        }
+      )
+      if (inherits(value, "shinyOAuth_rejected_refresh")) {
+        otel_end_async_parent(
+          otel_parent,
+          status = "error",
+          error = value[["error"]]
+        )
+        return(value)
+      }
+      if (
+        function_name %in%
+          c("refresh_token", "refresh_token_impl") &&
+          !isTRUE(call_args[[".capture_rejected"]])
+      ) {
         validate_refresh_delivery(value, call_args[["token"]])
       }
       otel_end_async_parent(

@@ -715,7 +715,8 @@ oauth_module_server_impl <- function(
       tok,
       shiny_session = NULL,
       cleanup = NULL,
-      operation_epoch = NULL
+      operation_epoch = NULL,
+      bounded = FALSE
     ) {
       if (
         !is.null(operation_epoch) &&
@@ -741,6 +742,19 @@ oauth_module_server_impl <- function(
       }
 
       use_async_revocation <- isTRUE(async)
+      if (isTRUE(bounded)) {
+        try(
+          module_revoke_targets(
+            client,
+            tok,
+            secondary = NULL,
+            async = use_async_revocation,
+            shiny_session = shiny_session
+          ),
+          silent = TRUE
+        )
+        return(invisible(NULL))
+      }
       try(
         revoke_token(
           client,
