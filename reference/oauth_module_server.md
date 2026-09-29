@@ -86,7 +86,16 @@ oauth_module_server(
   the next authentication start. OAuth-only providers have no standard
   way to require active user authentication, so for them this is a hard
   local session lifetime followed by an ordinary authorization request.
-  By default this is `NULL` (no forced reauthentication).
+  That new authorization requests the configured scopes again, including
+  permissions removed by local refresh narrowing. Explicit
+  `auth$reauthorize()` instead carries forward the previous
+  authorization's retained scope limits. By default this is `NULL` (no
+  forced reauthentication). With token targets, that default can keep
+  `authenticated = TRUE` for the remaining Shiny session after all
+  access tokens expire, even without a refresh credential and with
+  `indefinite_session = FALSE`. Set a finite age if local application
+  access relies on `authenticated` and requires a bounded login
+  lifetime. `indefinite_session = TRUE` ignores this age limit.
 
 - refresh_proactively:
 
@@ -97,7 +106,10 @@ oauth_module_server(
 - refresh_lead_seconds:
 
   Number of seconds before expiry to attempt proactive refresh (default:
-  60)
+  60). An already running refresh, including one requested on demand,
+  has this many seconds plus 5 after access-token expiry to finish
+  before the module clears the authorization. This grace period never
+  extends `reauth_after_seconds`.
 
 - refresh_check_interval_ms:
 
@@ -185,7 +197,11 @@ object. If you assign it to `auth`, its main fields are:
 - `auth[["authenticated"]]`: `TRUE` when a token is present and the
   configured checks have passed, otherwise `FALSE`. With
   `indefinite_session = TRUE`, the flag stays true while a token is
-  kept, including after refresh errors.
+  kept, including after refresh errors. With token targets, it tracks
+  the retained authorization across individual token expiry and
+  recoverable target failures. Connection methods check the selected
+  token's lifetime and permissions before use; the configured
+  authentication-age limit still applies to the whole authorization.
 
 - `auth[["token"]]`: an
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md),
@@ -204,11 +220,33 @@ object. If you assign it to `auth`, its main fields are:
   it as untrusted navigation input. `NULL` means the provider omitted
   the URL or supplied a value that did not pass validation.
 
-- `auth[["token_stale"]]`: `TRUE` when an indefinite session keeps an
-  expired token or one whose refresh failed. Resets after successful
-  login, refresh, or logout.
+- `auth[["token_stale"]]`: `TRUE` when a target authorization retains an
+  expired primary token, or an indefinite session keeps an expired token
+  or one whose refresh failed. Resets after successful login,
+  primary-token refresh, or authorization clearing, including logout and
+  maximum authentication age. Refreshing a secondary target does not
+  renew the primary token.
 
 The object also supplies:
+
+- `auth$connection()`: the current
+  [OAuthConnection](https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.md),
+  or `NULL` before login or after the module clears the authorization.
+  The reference and its `$id` survive refresh; logout, reauthorization
+  and session closure invalidate it. Use
+  `connection <- shiny::req(auth$connection())` inside reactive code,
+  then `connection$access_token()` for a server-side SDK or database
+  driver. Accessor-triggered refresh works without
+  `refresh_proactively = TRUE`; the module's configured
+  expiry/session-clearing policy still applies.
+
+- `auth$reauthorize()`: invalidate the current local authorization and
+  begin replacement with its retained scope limit, without upstream
+  revocation. Local state preparation is checked first; rejection
+  preserves current access. Failed/cancelled replacement after that does
+  not revive old references. With no prior grant, this starts ordinary
+  login. It does not force account selection or a password prompt;
+  configured maximum authentication age still applies.
 
 - `auth[["request_login"]]()`: start login. Waits for browser setup when
   needed and does nothing if the session is already authenticated. Uses

@@ -66,15 +66,28 @@ A server-side list with:
 
 - `connections()`: reactive list of redacted connection summaries.
 
-- `connection(connection_id)`: an
+- `connection(connection_id = NULL)`: an
   [OAuthConnection](https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.md)
-  for requests and refresh.
+  for requests, refresh, scope checks and server-side `$access_token()`
+  retrieval for external SDKs.
+
+- `reauthorize(connection_id)`: end this local authorization and start
+  its replacement with the retained scope limit, without upstream
+  revocation. Local state preparation is checked first; rejection
+  preserves current access. The replacement summary includes
+  `replaces_connection_id`. Failed/cancelled replacement leaves the old
+  reference invalid. Unrelated authorizations remain usable;
+  shared-credential protections still apply. EHR-only clients require a
+  fresh EHR launch instead.
 
 - `touch()`: record explicit user activity after checking the current
   owner. Call from an input event handler; returns `TRUE` invisibly.
 
 - `disconnect(connection_id, revoke = TRUE)`: remove local usability
   first, then return separate `local` and `remote` revocation results.
+  `remote$access` aggregates the primary and acquired target tokens,
+  with precedence `failed`, `not_attempted`, `unsupported`, `accepted`,
+  `missing`.
 
 - `disconnect_all(revoke = TRUE)`: cancel pending authorizations and
   disconnect this owner's stored connections; return a list of results.
@@ -98,13 +111,23 @@ Reactive connection reads also recheck expiry at
 `connections()` or `errors()`. These checks notify dependent expressions
 when lifecycle state changes; unchanged polling does not rerun
 application requests or extend owner inactivity limits. Notifications to
-application code reflect only this owner's record changes. Resource
-requests and status reads never reset owner inactivity, including when
-reactive expressions rerun after automatic refresh. Call `touch()` from
-a user input event handler to count an application action as activity.
-Do not call it from polling observers or ordinary reactive readers.
-Connecting, explicitly refreshing and disconnecting also count as
-activity.
+application code reflect only this owner's record changes. Without an
+ID, `connection()` returns NULL when no authorization remains, selects
+the sole retained authorization, or raises `shinyOAuth_access_error`
+with reason `selection_required` when several remain. Expired, limited
+and uncertain authorizations count toward ambiguity; disconnected rows
+do not.
+
+The connection factory, `$access_token()` and `$has_scopes()` avoid
+rerunning consumers on unchanged token rotations. Acquisition never
+extends owner idle limits or replays application requests. See
+[`vignette("external-integrations")`](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md).
+Resource requests and status reads never reset owner inactivity,
+including when reactive expressions rerun after automatic refresh. Call
+`touch()` from a user input event handler to count an application action
+as activity. Do not call it from polling observers or ordinary reactive
+readers. Connecting, explicitly refreshing and disconnecting also count
+as activity.
 
 Remote revocation is best effort: at most ten seconds per
 disconnect/logout batch, at most two seconds and one HTTP attempt per

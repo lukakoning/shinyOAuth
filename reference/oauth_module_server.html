@@ -37,6 +37,8 @@ identity checks when configured for an OIDC provider.'></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -140,7 +142,15 @@ reset the timer. For OIDC providers, reauthentication requests send
 is used as the next authentication start. OAuth-only providers have no
 standard way to require active user authentication, so for them this is a
 hard local session lifetime followed by an ordinary authorization request.
-By default this is <code>NULL</code> (no forced reauthentication).</p></dd>
+That new authorization requests the configured scopes again, including
+permissions removed by local refresh narrowing. Explicit <code>auth$reauthorize()</code>
+instead carries forward the previous authorization's retained scope limits.
+By default this is <code>NULL</code> (no forced reauthentication).
+With token targets, that default can keep <code>authenticated = TRUE</code> for the
+remaining Shiny session after all access tokens expire, even without a
+refresh credential and with <code>indefinite_session = FALSE</code>. Set a finite age
+if local application access relies on <code>authenticated</code> and requires a bounded
+login lifetime. <code>indefinite_session = TRUE</code> ignores this age limit.</p></dd>
 
 
 <dt id="arg-refresh-proactively">refresh_proactively<a class="anchor" aria-label="anchor" href="#arg-refresh-proactively"></a></dt>
@@ -151,7 +161,10 @@ schedules refresh at approximately <code>expires_at - refresh_lead_seconds</code
 
 <dt id="arg-refresh-lead-seconds">refresh_lead_seconds<a class="anchor" aria-label="anchor" href="#arg-refresh-lead-seconds"></a></dt>
 <dd><p>Number of seconds before expiry to attempt
-proactive refresh (default: 60)</p></dd>
+proactive refresh (default: 60). An already running refresh, including one
+requested on demand, has this many seconds plus 5 after access-token expiry
+to finish before the module clears the authorization. This grace period
+never extends <code>reauth_after_seconds</code>.</p></dd>
 
 
 <dt id="arg-refresh-check-interval-ms">refresh_check_interval_ms<a class="anchor" aria-label="anchor" href="#arg-refresh-check-interval-ms"></a></dt>
@@ -231,7 +244,11 @@ these broader cookie-sending rules.</p></dd>
     <p>A <code><a href="https://rdrr.io/pkg/shiny/man/reactiveValues.html" class="external-link">shiny::reactiveValues()</a></code> object. If you assign it to <code>auth</code>,
 its main fields are:</p><ul><li><p><code>auth[["authenticated"]]</code>: <code>TRUE</code> when a token is present and the configured
 checks have passed, otherwise <code>FALSE</code>. With <code>indefinite_session = TRUE</code>,
-the flag stays true while a token is kept, including after refresh errors.</p></li>
+the flag stays true while a token is kept, including after refresh errors.
+With token targets, it tracks the retained authorization across individual
+token expiry and recoverable target failures. Connection methods check the
+selected token's lifetime and permissions before use; the configured
+authentication-age limit still applies to the whole authorization.</p></li>
 <li><p><code>auth[["token"]]</code>: an <a href="OAuthToken.html">OAuthToken</a>, or <code>NULL</code> before login or after clearing
 the session. Read properties with <code>@</code>, for example <code>auth[["token"]]@userinfo</code>.
 Additional token response parameters are available in
@@ -244,10 +261,26 @@ include sensitive provider information.</p></li>
 URLs on provider or explicitly allowed hosts are surfaced. Treat it as
 untrusted navigation input. <code>NULL</code> means the provider omitted the URL or
 supplied a value that did not pass validation.</p></li>
-<li><p><code>auth[["token_stale"]]</code>: <code>TRUE</code> when an indefinite session keeps an expired
-token or one whose refresh failed. Resets after successful login,
-refresh, or logout.</p></li>
-</ul><p>The object also supplies:</p><ul><li><p><code>auth[["request_login"]]()</code>: start login. Waits for browser setup when needed
+<li><p><code>auth[["token_stale"]]</code>: <code>TRUE</code> when a target authorization retains an
+expired primary token, or an indefinite session keeps an expired token
+or one whose refresh failed. Resets after successful login, primary-token
+refresh, or authorization clearing, including logout and maximum
+authentication age. Refreshing a secondary target does not renew the
+primary token.</p></li>
+</ul><p>The object also supplies:</p><ul><li><p><code>auth$connection()</code>: the current <a href="OAuthConnection.html">OAuthConnection</a>, or <code>NULL</code> before login
+or after the module clears the authorization. The reference and its <code>$id</code>
+survive refresh; logout, reauthorization and session closure invalidate it.
+Use <code>connection &lt;- shiny::req(auth$connection())</code> inside reactive code,
+then <code>connection$access_token()</code> for a server-side SDK or database driver.
+Accessor-triggered refresh works without <code>refresh_proactively = TRUE</code>;
+the module's configured expiry/session-clearing policy still applies.</p></li>
+<li><p><code>auth$reauthorize()</code>: invalidate the current local authorization and begin
+replacement with its retained scope limit, without upstream revocation.
+Local state preparation is checked first; rejection preserves current access.
+Failed/cancelled replacement after that does not revive old references.
+With no prior grant, this starts ordinary login. It does not force account selection or
+a password prompt; configured maximum authentication age still applies.</p></li>
+<li><p><code>auth[["request_login"]]()</code>: start login. Waits for browser setup when needed
 and does nothing if the session is already authenticated. Uses a browser
 form when the client selects <code>authorization_method = "POST"</code>; the app's
 Content Security Policy <code>form-action</code> must permit the provider endpoint.</p></li>

@@ -64,6 +64,7 @@ OAuthProvider(
     "Ed25519", "EdDSA"),
   allowed_token_types = "Bearer",
   leeway = getOption("shinyOAuth.leeway", 30),
+  token_target_mode = "none",
   infer_oidc_from_issuer = TRUE,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
@@ -531,6 +532,19 @@ OAuthProvider(
   Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf`
   checks and state payload `issued_at` future check. Default 30. Can be
   globally overridden via option `shinyOAuth.leeway`.
+
+- token_target_mode:
+
+  Explicit acquisition protocol for clients declaring `token_targets`:
+  `"none"` (default), `"rfc8707"`, or `"microsoft"`. Discovery never
+  infers support. The Microsoft preset selects `"microsoft"`. This has
+  no acquisition effect on clients without target declarations. RFC 8707
+  sends declared resource indicators; Microsoft uses qualified API
+  scopes, requires explicit scope evidence and handles static `.default`
+  consent in its provider policy. Microsoft responses may include
+  previously consented scopes for the selected resource; local operation
+  limits remain separate from that full grant. See
+  [`vignette("token-targets")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md).
 
 - infer_oidc_from_issuer:
 

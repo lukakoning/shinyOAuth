@@ -4,12 +4,16 @@ configured on oauth_client(). Call [[&quot;request&quot;]]() on the returned con
 assembling a token, client and URL for each request. It reads the reactive token
 again after refresh or logout and restricts requests to the configured APIs.
 This optional wrapper expires with its Shiny session; it does not implement
-refresh itself or retain credentials across redirects."><meta property="og:description" content="Combine one module's reactive token with its client and approved API addresses
+refresh itself or retain credentials across redirects.
+Clients with token_targets must use the module's connection() factory,
+which retains the authorization's permission limits alongside its tokens."><meta property="og:description" content="Combine one module's reactive token with its client and approved API addresses
 configured on oauth_client(). Call [[&quot;request&quot;]]() on the returned connection instead of
 assembling a token, client and URL for each request. It reads the reactive token
 again after refresh or logout and restricts requests to the configured APIs.
 This optional wrapper expires with its Shiny session; it does not implement
-refresh itself or retain credentials across redirects."></head><body>
+refresh itself or retain credentials across redirects.
+Clients with token_targets must use the module's connection() factory,
+which retains the authorization's permission limits alongside its tokens."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -29,6 +33,8 @@ refresh itself or retain credentials across redirects."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -59,7 +65,9 @@ configured on <code><a href="oauth_client.html">oauth_client()</a></code>. Call 
 assembling a token, client and URL for each request. It reads the reactive token
 again after refresh or logout and restricts requests to the configured APIs.
 This optional wrapper expires with its Shiny session; it does not implement
-refresh itself or retain credentials across redirects.</p>
+refresh itself or retain credentials across redirects.
+Clients with <code>token_targets</code> must use the module's <code>connection()</code> factory,
+which retains the authorization's permission limits alongside its tokens.</p>
     </div>
 
     <div class="section level2">

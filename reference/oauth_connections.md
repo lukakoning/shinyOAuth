@@ -51,10 +51,11 @@ print(x, ...)
 
   Non-empty named list of
   [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
-  objects, at most 64. Each client must configure non-empty
-  `resource_bases`. Names select local configurations (for example
-  `hospital_a`), independently of OAuth `client_id`: a letter followed
-  by letters, digits, `_` or `-`, at most 64 characters.
+  objects, at most 64. `resource_bases` is required only for connection
+  `$request()` calls; clients used solely to supply tokens to an SDK can
+  omit it. Names select local configurations (for example `hospital_a`),
+  independently of OAuth `client_id`: a letter followed by letters,
+  digits, `_` or `-`, at most 64 characters.
 
 - app_origin:
 

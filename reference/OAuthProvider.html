@@ -29,6 +29,8 @@ endpoint and validation settings."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -114,6 +116,7 @@ endpoint and validation settings.</p>
 <span>    <span class="st">"Ed25519"</span>, <span class="st">"EdDSA"</span><span class="op">)</span>,</span>
 <span>  allowed_token_types <span class="op">=</span> <span class="st">"Bearer"</span>,</span>
 <span>  leeway <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"shinyOAuth.leeway"</span>, <span class="fl">30</span><span class="op">)</span>,</span>
+<span>  token_target_mode <span class="op">=</span> <span class="st">"none"</span>,</span>
 <span>  infer_oidc_from_issuer <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  jwks_uri <span class="op">=</span> <span class="cn">NA_character_</span>,</span>
 <span>  userinfo_allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -546,6 +549,18 @@ value allowlist while still requiring <code>token_type</code> itself.</p></dd>
 <dd><p>Clock skew leeway (seconds) applied to ID token <code>exp</code>/<code>iat</code>/<code>nbf</code> checks
 and state payload <code>issued_at</code> future check. Default 30. Can be globally
 overridden via option <code>shinyOAuth.leeway</code>.</p></dd>
+
+
+<dt id="arg-token-target-mode">token_target_mode<a class="anchor" aria-label="anchor" href="#arg-token-target-mode"></a></dt>
+<dd><p>Explicit acquisition protocol for clients declaring
+<code>token_targets</code>: <code>"none"</code> (default), <code>"rfc8707"</code>, or <code>"microsoft"</code>.
+Discovery never infers support. The Microsoft preset selects <code>"microsoft"</code>.
+This has no acquisition effect on clients without target declarations.
+RFC 8707 sends declared resource indicators; Microsoft uses qualified API
+scopes, requires explicit scope evidence and handles static <code>.default</code>
+consent in its provider policy. Microsoft responses may include previously
+consented scopes for the selected resource; local operation limits remain
+separate from that full grant. See <code><a href="../articles/token-targets.html">vignette("token-targets")</a></code>.</p></dd>
 
 
 <dt id="arg-infer-oidc-from-issuer">infer_oidc_from_issuer<a class="anchor" aria-label="anchor" href="#arg-infer-oidc-from-issuer"></a></dt>

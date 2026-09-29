@@ -11,7 +11,8 @@ registered app's credentials to
 oauth_provider_microsoft(
   name = "microsoft",
   tenant = c("common", "organizations", "consumers"),
-  id_token_validation = NULL
+  id_token_validation = NULL,
+  userinfo_required = TRUE
 )
 ```
 
@@ -35,6 +36,12 @@ oauth_provider_microsoft(
   signing-key validation rules; `consumers` uses the stable consumer
   tenant issuer
 
+- userinfo_required:
+
+  Retrieve profile information from Microsoft Graph. Set FALSE for an
+  API token with a different audience. ID-token validation and nonce
+  checks remain enabled according to `id_token_validation`.
+
 ## Value
 
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
@@ -52,14 +59,16 @@ ID token validation is enabled for these tenant choices. For a directory
 ID, the issuer must match that directory. `"common"` and
 `"organizations"` use Microsoft's tenant-independent issuer template and
 signing-key issuer rules. `"consumers"` uses the consumer tenant issuer.
-The helper restricts ID token algorithms to RS256 and fetches userinfo
-from Microsoft Graph.
+The helper restricts ID token algorithms to RS256 and fetches UserInfo
+from Microsoft Graph by default. Set `userinfo_required = FALSE` when
+using an API token that cannot call Graph; validated ID-token claims
+remain available through `connection$identity()`.
 
 Setting `id_token_validation = FALSE` disables ID token and nonce checks
-and leaves OAuth plus profile retrieval. Keep the default for OIDC
-sign-in. Tenant domains and other unrecognized tenant identifiers
-require this explicit opt-out; otherwise use the directory GUID to
-retain OIDC validation.
+and leaves OAuth plus any configured profile retrieval. Keep the default
+for OIDC sign-in. Tenant domains and other unrecognized tenant
+identifiers require this explicit opt-out; otherwise use the directory
+GUID to retain OIDC validation.
 
 ## Examples
 

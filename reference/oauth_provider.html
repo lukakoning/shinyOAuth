@@ -27,6 +27,8 @@ for OIDC, oauth_provider_oidc_discover() can look up the settings."></head><body
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -122,7 +124,8 @@ for OIDC, <code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_
 <span>  endpoint_auth_metadata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  allow_missing_token_type <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  allow_missing_token_type <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  token_target_mode <span class="op">=</span> <span class="st">"none"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -617,6 +620,18 @@ token responses, contrary to OAuth 2.0. When <code>TRUE</code>, login and refres
 <code>"Bearer"</code> only when the field is absent. Explicit null, empty, invalid, or
 unsupported values still fail validation. The fallback never applies to
 clients configured with DPoP; other token and binding checks remain enforced.</p></dd>
+
+
+<dt id="arg-token-target-mode">token_target_mode<a class="anchor" aria-label="anchor" href="#arg-token-target-mode"></a></dt>
+<dd><p>Explicit acquisition protocol for clients declaring
+<code>token_targets</code>: <code>"none"</code> (default), <code>"rfc8707"</code>, or <code>"microsoft"</code>.
+Discovery never infers support. The Microsoft preset selects <code>"microsoft"</code>.
+This has no acquisition effect on clients without target declarations.
+RFC 8707 sends declared resource indicators; Microsoft uses qualified API
+scopes, requires explicit scope evidence and handles static <code>.default</code>
+consent in its provider policy. Microsoft responses may include previously
+consented scopes for the selected resource; local operation limits remain
+separate from that full grant. See <code><a href="../articles/token-targets.html">vignette("token-targets")</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

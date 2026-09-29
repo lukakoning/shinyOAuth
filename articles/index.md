@@ -3,6 +3,10 @@
 ### Usage and authentication
 
 - [Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md):
+- [External SDKs and database
+  drivers](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md):
+- [Several API tokens from one
+  authorization](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md):
 - [Keep and use multiple OAuth
   authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md):
 - [Use SMART on FHIR from

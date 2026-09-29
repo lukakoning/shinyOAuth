@@ -23,6 +23,8 @@ to oauth_module_server()."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -115,7 +117,14 @@ to <code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p
 <span>  required_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  label <span class="op">=</span> <span class="fu">default_client_label</span><span class="op">(</span><span class="va">provider</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span>,</span>
-<span>  introspect_elements <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  introspect_elements <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  token_targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  default_token_target <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span> <span class="op">==</span> <span class="fl">1L</span><span class="op">)</span> <span class="op">{</span></span>
+<span>     <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span></span>
+<span> <span class="op">}</span></span>
+<span>    <span class="kw">else</span> <span class="op">{</span></span>
+<span>     <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
+<span> <span class="op">}</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -729,6 +738,49 @@ compatibility.</p></dd>
 
 <dt id="arg-introspect-elements">introspect_elements<a class="anchor" aria-label="anchor" href="#arg-introspect-elements"></a></dt>
 <dd><p>Compatibility alias for <code>introspection_checks</code>. Supply only one spelling.</p></dd>
+
+
+<dt id="arg-token-targets">token_targets<a class="anchor" aria-label="anchor" href="#arg-token-targets"></a></dt>
+<dd><p>Optional named list of API token declarations. Each
+entry has <code>resource</code> (an absolute URI, or a GUID in Microsoft mode)
+and <code>scopes</code> (API scopes also present
+in the client's <code>scopes</code>). Optional <code>required_scopes</code> apply only to this
+target; optional <code>resource_ids</code> explicitly associate approved HTTP
+<code>resource_bases</code> with this target. Requires a provider with a supported
+<code>token_target_mode</code>, <code>userinfo_required = FALSE</code>, and no <code>resource</code> or
+SMART configuration. Provider <code>extra_auth_params</code> and <code>extra_token_params</code>
+must not contain <code>resource</code>; declare resources only in <code>token_targets</code>.
+RFC 8707 mode reserves OIDC scope names only for an OIDC provider or when
+client <code>scopes</code> includes <code>openid</code>; otherwise these names are ordinary API
+scopes declared in targets. Microsoft always uses its OIDC scope set.
+Client-level <code>required_scopes</code> can contain OIDC scopes only, except
+<code>offline_access</code>: request refresh consent in client <code>scopes</code>, never in
+client or target <code>required_scopes</code>. Access-token scopes cannot establish
+whether a usable refresh credential exists.
+Targets share one local authorization and refresh credential,
+while their access tokens and retained permission limits remain separate.
+Microsoft limits constrain local operation checks, while the actual token
+can include previously consented scopes for the selected resource. Explicit
+API scope narrowing is unsupported for Microsoft targets.
+Distinct Microsoft target resources must not have overlapping scope
+prefixes; nested resources are ambiguous with slash-containing permissions.
+Optional Microsoft <code>scope_aliases</code> lists short permission names (for example,
+<code>c("items/read", "read:items")</code>) accepted in token responses. These aliases
+support optional <code>.default</code> and prior-consent permissions without requesting
+or requiring them. Aliases never establish a grant or widen operation limits;
+URI names with <code>://</code> and declared resource prefixes remain reserved.
+At most 16 targets are supported. The complete authorization, including
+OIDC scopes and actual permissions returned by Microsoft, is
+limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
+Scope declarations may be vectors or space-delimited strings.
+See <code><a href="../articles/token-targets.html">vignette("token-targets")</a></code> for provider rules and examples.</p></dd>
+
+
+<dt id="arg-default-token-target">default_token_target<a class="anchor" aria-label="anchor" href="#arg-default-token-target"></a></dt>
+<dd><p>Name of the initial code-redemption target and
+the default for connection methods. Required with multiple targets;
+<code>oauth_client()</code> selects the sole target automatically. A method's <code>target</code>
+argument overrides only that call, never the configured default.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -19,6 +19,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -44,7 +46,13 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Updated the missing browser-setup warning and UI documentation to recommend <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> with the module ID and client, or the appropriate form-post or connection-manager wrapper. These wrappers include <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> setup.</p></li>
+<ul><li><p>Use your Shiny app’s login with external R packages, SDKs and database drivers. <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> adds <code>connection()</code>. Its connections, and those from <code><a href="../reference/oauth_connections_server.html">oauth_connections_server()</a></code>, offer <code>$access_token()</code> to get a current bearer token, refreshing it when needed. <code>$has_scopes()</code> helps apps enable features based on available permissions. See <code><a href="../articles/external-integrations.html">vignette("external-integrations")</a></code> for examples.</p></li>
+<li><p>Access several APIs through one login by configuring <code>token_targets</code> in <code><a href="../reference/oauth_client.html">oauth_client()</a></code>. Apps can select which API’s token to use without asking users to sign in separately for each API. Supported providers use RFC 8707 resource indicators or Microsoft token acquisition. See <code><a href="../articles/token-targets.html">vignette("token-targets")</a></code>.</p></li>
+<li><p>Connections can refresh tokens before making an API call with <code>$request(refresh = TRUE)</code>, reducing failures caused by expired tokens. This option does not automatically retry a failed API call.</p></li>
+<li><p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> adds <code>reauthorize()</code>, and <code><a href="../reference/oauth_connections_server.html">oauth_connections_server()</a></code> adds <code>reauthorize(connection_id)</code>, for a “sign in again” flow that keeps previously reduced permissions.</p></li>
+<li><p>Microsoft apps can skip fetching a Graph user profile with <code>oauth_provider_microsoft(userinfo_required = FALSE)</code>, allowing sign-in when the API token is intended for another service. Exported Microsoft tokens can include more permissions than the connection allows within the app.</p></li>
+<li><p>When using <code>token_targets</code> with <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>, set <code>reauth_after_seconds</code> if your app needs a time-limited login. By default, the login can stay active for the rest of the Shiny session even after all API tokens expire. API calls still require a valid token.</p></li>
+<li><p>Updated the missing browser-setup warning and UI documentation to recommend <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> with the module ID and client, or the appropriate form-post or connection-manager wrapper. These wrappers include <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> setup.</p></li>
 <li><p>Made direct-browser deployment guidance more prominent. The Shiny module now uses Posit Connect / Connect Cloud environment markers to print a specific reminder once per R process to open the direct app URL outside the dashboard’s embedded preview.</p></li>
 <li><p>Added provider helpers for ORCID (production and sandbox), GitLab (hosted and self-managed), Amazon Cognito, Globus Auth, Hugging Face, SURFconext (production and test), and authentik.</p></li>
 </ul></div>

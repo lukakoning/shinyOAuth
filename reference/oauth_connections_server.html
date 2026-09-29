@@ -25,6 +25,8 @@ on the server and are not returned by summaries."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -108,11 +110,21 @@ an uncertain refresh requires reconnecting.</p></dd>
 EHR-only clients report <code>fresh_ehr_launch_required</code> and return <code>FALSE</code>;
 use their registered <code><a href="smart_launch_route.html">smart_launch_route()</a></code> to start authorization.</p></li>
 <li><p><code>connections()</code>: reactive list of redacted connection summaries.</p></li>
-<li><p><code>connection(connection_id)</code>: an <a href="OAuthConnection.html">OAuthConnection</a> for requests and refresh.</p></li>
+<li><p><code>connection(connection_id = NULL)</code>: an <a href="OAuthConnection.html">OAuthConnection</a> for requests, refresh,
+scope checks and server-side <code>$access_token()</code> retrieval for external SDKs.</p></li>
+<li><p><code>reauthorize(connection_id)</code>: end this local authorization and start its
+replacement with the retained scope limit, without upstream revocation.
+Local state preparation is checked first; rejection preserves current access.
+The replacement summary includes <code>replaces_connection_id</code>. Failed/cancelled
+replacement leaves the old reference invalid. Unrelated authorizations
+remain usable; shared-credential protections still apply. EHR-only clients
+require a fresh EHR launch instead.</p></li>
 <li><p><code>touch()</code>: record explicit user activity after checking the current owner.
 Call from an input event handler; returns <code>TRUE</code> invisibly.</p></li>
 <li><p><code>disconnect(connection_id, revoke = TRUE)</code>: remove local usability first,
-then return separate <code>local</code> and <code>remote</code> revocation results.</p></li>
+then return separate <code>local</code> and <code>remote</code> revocation results.
+<code>remote$access</code> aggregates the primary and acquired target tokens, with
+precedence <code>failed</code>, <code>not_attempted</code>, <code>unsupported</code>, <code>accepted</code>, <code>missing</code>.</p></li>
 <li><p><code>disconnect_all(revoke = TRUE)</code>: cancel pending authorizations and disconnect
 this owner's stored connections; return a list of results.</p></li>
 <li><p><code>logout(revoke = TRUE, reload = TRUE)</code>: invalidate the local owner/session
@@ -133,6 +145,13 @@ including references used without <code>connections()</code> or <code>errors()</
 notify dependent expressions when lifecycle state changes; unchanged polling
 does not rerun application requests or extend owner inactivity limits.
 Notifications to application code reflect only this owner's record changes.
+Without an ID, <code>connection()</code> returns NULL when no authorization remains,
+selects the sole retained authorization, or raises <code>shinyOAuth_access_error</code>
+with reason <code>selection_required</code> when several remain. Expired, limited and
+uncertain authorizations count toward ambiguity; disconnected rows do not.</p>
+<p>The connection factory, <code>$access_token()</code> and <code>$has_scopes()</code> avoid rerunning
+consumers on unchanged token rotations. Acquisition never extends owner idle
+limits or replays application requests. See <code><a href="../articles/external-integrations.html">vignette("external-integrations")</a></code>.
 Resource requests and status reads never reset owner inactivity, including when
 reactive expressions rerun after automatic refresh. Call <code>touch()</code> from a user
 input event handler to count an application action as activity. Do not call it

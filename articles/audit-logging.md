@@ -371,7 +371,10 @@ and `remote_access_outcome`. Reasons are `disconnect`, `disconnect_all`,
 `logout`, or `session_end`. Identifiers use the configured audit digest
 policy; credentials and raw identities are excluded. Remote outcomes
 describe the revocation attempt, not proof that the authorization server
-previously recognized a token.
+previously recognized a token. For token targets,
+`remote_access_outcome` covers all acquired access tokens. An incomplete
+result takes precedence over acceptance: `failed`, `not_attempted`,
+`unsupported`, `accepted`, then `missing` (no credential to revoke).
 
 #### Event: `audit_connections_disconnected`
 
@@ -422,7 +425,10 @@ remain.
 - Context: `provider`, `issuer`, `client_id_digest`, `reason`
   (`refresh_failed_async`\|`refresh_failed_sync`), `kept_token` (TRUE),
   `error_class`, `mirai_error_type`
-- `mirai_error_type` is only present on async refresh failures
+- `mirai_error_type` is only present on async refresh failures. Its
+  value is `NA` when the failure is not recognizable as a mirai error,
+  including worker errors converted to ordinary R conditions by promise
+  handling.
 
 ### Browser cookie/WebCrypto error
 
