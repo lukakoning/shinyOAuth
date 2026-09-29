@@ -2,28 +2,41 @@ test_that("standalone replacement obtains patient context with narrowed permissi
   local_options(shinyOAuth.skip_browser_token = TRUE)
   site <- smart_client_fixture()
   site[["metadata"]][["capabilities"]] <- c(
-    site[["metadata"]][["capabilities"]], "permission-offline"
+    site[["metadata"]][["capabilities"]],
+    "permission-offline"
   )
   client <- smart_client(
-    site, "example", "https://app.example/callback",
+    site,
+    "example",
+    "https://app.example/callback",
     scopes = c("launch/patient", "patient/Patient.rs", "offline_access"),
     required_scopes = "patient/Patient.r"
   )
   local_mocked_bindings(req_with_retry = function(req, ...) {
     httr2::response(
-      req[["url"]], status = 200L,
+      req[["url"]],
+      status = 200L,
       headers = list("content-type" = "application/json"),
-      body = charToRaw(jsonlite::toJSON(list(
-        access_token = "smart-access", refresh_token = "smart-refresh",
-        token_type = "Bearer", expires_in = 3600,
-        scope = "patient/Patient.r offline_access", patient = "123"
-      ), auto_unbox = TRUE))
+      body = charToRaw(jsonlite::toJSON(
+        list(
+          access_token = "smart-access",
+          refresh_token = "smart-refresh",
+          token_type = "Bearer",
+          expires_in = 3600,
+          scope = "patient/Patient.r offline_access",
+          patient = "123"
+        ),
+        auto_unbox = TRUE
+      ))
     )
   })
   browser <- "__SKIPPED__"
   exchange <- function(url) {
     handle_callback(
-      client, "code", parse_query_param(url, "state"), browser
+      client,
+      "code",
+      parse_query_param(url, "state"),
+      browser
     )
   }
   token <- exchange(prepare_call(client, browser))
@@ -55,11 +68,14 @@ test_that("standalone replacement obtains patient context with narrowed permissi
   )
 
   manager <- oauth_connections(
-    list(a = client), "https://app.example",
-    retention = "browser", store = oauth_connection_store_memory(),
+    list(a = client),
+    "https://app.example",
+    retention = "browser",
+    store = oauth_connection_store_memory(),
     owner_policy = oauth_browser_owner(),
     keys = list(
-      credentials = openssl::rand_bytes(32L), owner = openssl::rand_bytes(32L)
+      credentials = openssl::rand_bytes(32L),
+      owner = openssl::rand_bytes(32L)
     )
   )
   f <- list(ui = oauth_connections_ui(shiny::fluidPage(), "health", manager))
@@ -74,7 +90,9 @@ test_that("standalone replacement obtains patient context with narrowed permissi
       context <- hooks[["prepare"]]()
       expect_setequal(context[["requested_scopes"]], expected)
       url <- prepare_call_internal(
-        client, browser, .requested_scopes = context[["requested_scopes"]]
+        client,
+        browser,
+        .requested_scopes = context[["requested_scopes"]]
       )
       replacement <- exchange(url)
       hooks[["accept"]](replacement, context, as.numeric(Sys.time()))
@@ -90,7 +108,9 @@ test_that("standalone replacement obtains patient context with narrowed permissi
 
 test_that("standalone launch repair does not restore removed patient permissions", {
   client <- smart_client(
-    smart_client_fixture(), "example", "https://app.example/callback",
+    smart_client_fixture(),
+    "example",
+    "https://app.example/callback",
     scopes = c("launch/patient", "patient/Patient.rs", "user/Observation.r"),
     required_scopes = character()
   )
