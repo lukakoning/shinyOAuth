@@ -94,11 +94,13 @@ test_that("logout and session end clear access before one bounded revocation bat
           active_values <<- values
           old_connection <<- values[["connection"]]()
           if (ending) {
+            # The revocation mock checks cleared values during teardown;
+            # Shiny 1.14 destroys these reactives before close() returns.
             session[["close"]]()
           } else {
             values[["logout"]]()
+            expect_null(values[["token"]])
           }
-          expect_null(values[["token"]])
         }
       )
       expect_length(attempts, 17L)
