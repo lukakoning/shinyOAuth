@@ -652,6 +652,7 @@ oauth_module_server_impl <- function(
     authorization_epoch <- shiny::reactiveVal(0)
 
     .advance_auth_epoch <- function() {
+      values[["pending_callback"]] <- NULL
       values[["targets"]] <- NULL
       auth_operations[["refresh_scope_narrowed"]] <- FALSE
       auth_operations[["target_next_attempt"]] <- list()
@@ -1307,7 +1308,19 @@ oauth_module_server_impl <- function(
     browser_ack <- new.env(parent = emptyenv())
     browser_ack[["generation"]] <- 0L
     browser_ack[["accept_input"]] <- TRUE
+
+    # Deferred responses belong to the authentication lifecycle and browser
+    # binding that received them, including already-validated JARM responses.
+    .defer_callback <- function(callback) {
+      callback[["auth_epoch"]] <- auth_operations[["epoch"]]
+      callback[["browser_generation"]] <- browser_ack[["generation"]]
+      values[["pending_callback"]] <- callback
+      invisible(NULL)
+    }
+
     .with_fresh_browser_token <- function(body) {
+      values[["pending_callback"]] <- NULL
+      browser_ack[["generation"]] <- browser_ack[["generation"]] + 1L
       if (isTRUE(allow_skip_browser_token())) {
         return(body())
       }
@@ -1404,6 +1417,7 @@ oauth_module_server_impl <- function(
     .clear_browser_token <- function() {
       # Invalidate both pending acknowledgments and already-queued promise
       # continuations before clearing the browser or reactive state.
+      values[["pending_callback"]] <- NULL
       reject <- browser_ack[["reject"]]
       browser_ack[["generation"]] <- browser_ack[["generation"]] + 1L
       browser_ack[["accept_input"]] <- FALSE
@@ -1957,6 +1971,7 @@ oauth_module_server_impl <- function(
         return(invisible(FALSE))
       }
 
+      .advance_auth_epoch()
       values[["pending_login"]] <- TRUE
       if (isTRUE(allow_skip_browser_token()) && !.has_browser_token()) {
         .set_browser_token()
@@ -1997,6 +2012,9 @@ oauth_module_server_impl <- function(
     # @return Authorization URL string, or `NA_character_` after recording a
     #   module error.
     values[["build_auth_url"]] <- function() {
+      if (!.is_authenticated_now()) {
+        .advance_auth_epoch()
+      }
       .with_fresh_browser_token(.build_auth_url)
     }
 
@@ -3172,12 +3190,12 @@ oauth_module_server_impl <- function(
           tab_title_cleaning,
           drop_response = drop_response
         )
-        values[["pending_callback"]] <- list(
+        .defer_callback(list(
           type = "jarm",
           normalized_response = normalized,
           decrypted_payload = decrypted_payload,
           drop_response = drop_response
-        )
+        ))
         return(invisible(NULL))
       }
 
@@ -3246,6 +3264,7 @@ oauth_module_server_impl <- function(
       }
 
       operation <- NULL
+      jarm_browser_generation <- browser_ack[["generation"]]
       fail <- function(e) {
         clear_oauth_module_callback_query(
           session,
@@ -3276,10 +3295,14 @@ oauth_module_server_impl <- function(
       }
       report_failure <- function(e) {
         if (
-          is.null(operation) || .auth_operation_can_apply(operation, "jarm")
+          (is.null(operation) ||
+            .auth_operation_can_apply(operation, "jarm")) &&
+            identical(jarm_browser_generation, browser_ack[["generation"]])
         ) {
           fail(e)
-          if (!is.null(operation)) .finish_auth_operation(operation, "jarm")
+        }
+        if (!is.null(operation)) {
+          .finish_auth_operation(operation, "jarm")
         }
         invisible(NULL)
       }
@@ -3338,7 +3361,14 @@ oauth_module_server_impl <- function(
               )
             ) |>
               promises::then(function(raw) {
-                if (!.auth_operation_can_apply(operation, "jarm")) {
+                if (
+                  !.auth_operation_can_apply(operation, "jarm") ||
+                    !identical(
+                      jarm_browser_generation,
+                      browser_ack[["generation"]]
+                    )
+                ) {
+                  .finish_auth_operation(operation, "jarm")
                   return(invisible(NULL))
                 }
                 result <- replay_async_conditions(raw)
@@ -3389,7 +3419,7 @@ oauth_module_server_impl <- function(
       # Mirror the code-callback path: wait for the browser token before
       # consuming state or surfacing provider-controlled error text.
       if (!is_valid_string(values[["browser_token"]])) {
-        values[["pending_callback"]] <- list(
+        .defer_callback(list(
           type = "error",
           error = error,
           error_description = error_description,
@@ -3398,7 +3428,7 @@ oauth_module_server_impl <- function(
           iss = iss,
           decrypted_payload = decrypted_payload,
           state_store_values = state_store_values
-        )
+        ))
         return(invisible(NULL))
       }
 
@@ -3761,7 +3791,7 @@ oauth_module_server_impl <- function(
 
       # If browser token isn't here yet, defer (set as pending) and wait for browser token
       if (!is_valid_string(values[["browser_token"]])) {
-        values[["pending_callback"]] <- list(
+        .defer_callback(list(
           type = "code",
           code = code,
           state = state,
@@ -3770,7 +3800,7 @@ oauth_module_server_impl <- function(
           state_store_values = state_store_values,
           drop_response = drop_response,
           callback_validated = callback_validated
-        )
+        ))
         return(invisible(NULL))
       }
 
@@ -4438,6 +4468,18 @@ oauth_module_server_impl <- function(
       values[["browser_token"]],
       {
         pc <- shiny::isolate(values[["pending_callback"]])
+        if (
+          !is.null(pc) &&
+            (!isTRUE(auth_operations[["session_active"]]) ||
+              !identical(pc[["auth_epoch"]], auth_operations[["epoch"]]) ||
+              !identical(
+                pc[["browser_generation"]],
+                browser_ack[["generation"]]
+              ))
+        ) {
+          values[["pending_callback"]] <- NULL
+          return(invisible(NULL))
+        }
         if (!is.null(pc) && .has_browser_token()) {
           values[["pending_callback"]] <- NULL
           pending_type <- pc[["type"]] %||%

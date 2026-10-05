@@ -4400,14 +4400,14 @@ test_that("deferred JARM resume ignores partial matches in pending callback payl
         "state"
       )
 
-      values[["pending_callback"]] <- list(
+      .defer_callback(list(
         type_hint = "error",
         normalized_response = list(
           type_hint = "error",
           code = "ok",
           state = enc_state
         )
-      )
+      ))
 
       testthat::with_mocked_bindings(
         revalidate_cached_jarm_response = function(
