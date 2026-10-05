@@ -28,6 +28,9 @@
 #'   for this provider. Defaults to TRUE
 #' @param token_auth_style Token endpoint client authentication style passed to
 #'   [oauth_provider()]. Defaults to `"header"`.
+#' @param issuer Exact OIDC issuer identifier. Defaults to `base_url`, retaining
+#'   any trailing slash. Endpoint URLs are joined using a separately normalized
+#'   base. Supply this explicitly when the issuer differs from the endpoint base.
 #' @param jwks_host_issuer_match When TRUE (default), enforce that the JWKS host
 #'   discovered from the provider matches the issuer host exactly. For
 #'   providers that serve JWKS from a different host (e.g., Google), set
@@ -55,14 +58,15 @@ oauth_provider_oidc <- function(
   jwks_host_issuer_match = TRUE,
   allowed_token_types = c("Bearer"),
   ...,
-  token_auth_style = "header"
+  token_auth_style = "header",
+  issuer = base_url
 ) {
-  base_url <- sub("/+$", "", base_url)
+  endpoint_base_url <- sub("/+$", "", base_url)
 
-  auth_url <- paste0(base_url, auth_path)
-  token_url <- paste0(base_url, token_path)
-  userinfo_url <- paste0(base_url, userinfo_path)
-  introspection_url <- paste0(base_url, introspection_path)
+  auth_url <- paste0(endpoint_base_url, auth_path)
+  token_url <- paste0(endpoint_base_url, token_path)
+  userinfo_url <- paste0(endpoint_base_url, userinfo_path)
+  introspection_url <- paste0(endpoint_base_url, introspection_path)
 
   oauth_provider(
     name = name,
@@ -70,7 +74,7 @@ oauth_provider_oidc <- function(
     token_url = token_url,
     userinfo_url = userinfo_url,
     introspection_url = introspection_url,
-    issuer = base_url,
+    issuer = issuer,
     infer_oidc_from_issuer = TRUE,
     use_nonce = use_nonce,
     id_token_validation = id_token_validation,

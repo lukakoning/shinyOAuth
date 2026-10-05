@@ -365,7 +365,7 @@ test_that("oauth_provider_oidc builds correct endpoint URLs from base_url", {
   expect_identical(p@allowed_token_types, "Bearer")
 })
 
-test_that("oauth_provider_oidc trims trailing slashes from base_url", {
+test_that("oauth_provider_oidc normalizes endpoint joins and preserves its issuer", {
   p <- oauth_provider_oidc(
     name = "test-oidc-trailing-slash",
     base_url = "https://auth.example.com/"
@@ -375,7 +375,92 @@ test_that("oauth_provider_oidc trims trailing slashes from base_url", {
   expect_identical(p@token_url, "https://auth.example.com/token")
   expect_identical(p@userinfo_url, "https://auth.example.com/userinfo")
   expect_identical(p@introspection_url, "https://auth.example.com/introspect")
-  expect_identical(p@issuer, "https://auth.example.com")
+  expect_identical(p@issuer, "https://auth.example.com/")
+})
+
+test_that("oauth_provider_oidc accepts an issuer separate from the endpoint base", {
+  p <- oauth_provider_oidc(
+    name = "test-oidc-explicit-issuer",
+    base_url = "https://auth.example.com/endpoints/",
+    issuer = "https://auth.example.com/issuer/"
+  )
+
+  expect_identical(p@auth_url, "https://auth.example.com/endpoints/authorize")
+  expect_identical(p@token_url, "https://auth.example.com/endpoints/token")
+  expect_identical(
+    p@userinfo_url,
+    "https://auth.example.com/endpoints/userinfo"
+  )
+  expect_identical(
+    p@introspection_url,
+    "https://auth.example.com/endpoints/introspect"
+  )
+  expect_identical(p@issuer, "https://auth.example.com/issuer/")
+})
+
+test_that("manual OIDC providers validate signed tokens with exact issuers", {
+  withr::local_options(shinyOAuth.skip_id_sig = FALSE)
+  signing_key <- openssl::rsa_keygen(2048)
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(signing_key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
+  jwk[["alg"]] <- "RS256"
+  local_mocked_bindings(
+    fetch_jwks = function(...) list(keys = list(jwk)),
+    .package = "shinyOAuth"
+  )
+
+  for (provider in list(
+    oauth_provider_oidc(
+      name = "default-issuer",
+      base_url = "https://auth.example.com/",
+      id_token_allowed_algs = "RS256"
+    ),
+    oauth_provider_oidc(
+      name = "explicit-issuer",
+      base_url = "https://auth.example.com/endpoints/",
+      issuer = "https://auth.example.com/issuer/",
+      id_token_allowed_algs = "RS256"
+    )
+  )) {
+    client <- oauth_client(
+      provider = provider,
+      client_id = "test-client",
+      client_secret = strrep("s", 32),
+      redirect_uri = "http://localhost/callback",
+      scopes = "openid"
+    )
+    now <- as.numeric(Sys.time())
+    sign <- function(issuer) {
+      jose::jwt_encode_sig(
+        jose::jwt_claim(
+          iss = issuer,
+          aud = client@client_id,
+          sub = "test-user",
+          nonce = "test-nonce",
+          iat = now,
+          exp = now + 60
+        ),
+        key = signing_key
+      )
+    }
+    claims <- validate_id_token(
+      client,
+      sign(provider@issuer),
+      expected_nonce = "test-nonce"
+    )
+    expect_identical(claims[["iss"]], provider@issuer)
+    expect_true(attr(claims, "signature_verified", exact = TRUE))
+    expect_error(
+      validate_id_token(
+        client,
+        sign(sub("/+$", "", provider@issuer)),
+        expected_nonce = "test-nonce"
+      ),
+      "Issuer mismatch/invalid"
+    )
+  }
 })
 
 test_that("oauth_provider_oidc allows custom paths", {

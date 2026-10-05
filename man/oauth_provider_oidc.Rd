@@ -16,7 +16,8 @@ oauth_provider_oidc(
   jwks_host_issuer_match = TRUE,
   allowed_token_types = c("Bearer"),
   ...,
-  token_auth_style = "header"
+  token_auth_style = "header",
+  issuer = base_url
 )
 }
 \arguments{
@@ -51,6 +52,10 @@ access tokens issued by this provider. Defaults to 'Bearer'}
 
 \item{token_auth_style}{Token endpoint client authentication style passed to
 \code{\link[=oauth_provider]{oauth_provider()}}. Defaults to \code{"header"}.}
+
+\item{issuer}{Exact OIDC issuer identifier. Defaults to \code{base_url}, retaining
+any trailing slash. Endpoint URLs are joined using a separately normalized
+base. Supply this explicitly when the issuer differs from the endpoint base.}
 }
 \value{
 \link{OAuthProvider} object
