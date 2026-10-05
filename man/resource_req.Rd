@@ -109,7 +109,9 @@ transport. Later request changes outside these helpers require a new check.
 \section{DPoP note}{
 
 DPoP proofs bind the current HTTP method and target URI (without query or
-fragment). Use the \code{query} argument to preserve encoded resource paths;
+fragment). Literal \code{.} and \code{..} path segments are removed before signing
+and sending; percent-encoded path segments remain escaped.
+Use the \code{query} argument to preserve encoded resource paths;
 external URL modifiers can decode reserved path characters. Changing the
 method, scheme, host, or path invalidates the proof.
 Automatic redirects are unsupported. Request a trusted final URL directly

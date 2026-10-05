@@ -571,13 +571,14 @@ dpop_public_jwk <- function(key) {
 #'
 #' @param url Request URL to normalize.
 #' @return Absolute URL string without query string or fragment, normalized for
-#'   scheme/host case and default HTTP(S) ports.
+#'   scheme/host case, default HTTP(S) ports, and literal dot path segments.
 #' @keywords internal
 #' @noRd
 dpop_target_uri <- function(url) {
   if (!is_valid_string(url)) {
     err_input("DPoP target URL must be a non-empty string")
   }
+  url <- normalize_dpop_request_url(url)
 
   parsed <- try(httr2::url_parse(url), silent = TRUE)
   if (inherits(parsed, "try-error")) {
@@ -615,6 +616,49 @@ dpop_target_uri <- function(url) {
     hostname,
     if (!is.null(port) && nzchar(port)) paste0(":", port) else "",
     url_raw_path(url)
+  )
+}
+
+#' Remove literal dot segments from a DPoP request URL
+#'
+#' Used before proof construction and transport so the proof binds to the same
+#' path even when curl's path_as_is option is enabled. Applies RFC 3986 section
+#' 5.2.4 to the escaped absolute path without decoding percent-encoded segments
+#' or changing the authority, query, or fragment.
+#'
+#' @param url Validated absolute request URL.
+#' @return Request URL with literal dot path segments removed.
+#' @keywords internal
+#' @noRd
+normalize_dpop_request_url <- function(url) {
+  path <- url_raw_path(url)
+  if (!grepl("(^|/)\\.\\.?(/|$)", path)) {
+    return(url)
+  }
+  segments <- strsplit(path, "/", fixed = TRUE)[[1L]]
+  if (endsWith(path, "/")) {
+    segments <- c(segments, "")
+  }
+  normalized <- character()
+  for (segment in segments) {
+    if (identical(segment, ".")) {
+      next
+    }
+    if (identical(segment, "..")) {
+      if (length(normalized) > 1L) {
+        normalized <- normalized[-length(normalized)]
+      }
+    } else {
+      normalized <- c(normalized, segment)
+    }
+  }
+  if (segments[[length(segments)]] %in% c(".", "..")) {
+    normalized <- c(normalized, "")
+  }
+  paste0(
+    sub("^([A-Za-z][A-Za-z0-9+.-]*://[^/?#]*).*", "\\1", url),
+    paste(normalized, collapse = "/"),
+    sub("^[^?#]*", "", url)
   )
 }
 
@@ -773,6 +817,10 @@ req_add_dpop_proof <- function(
   if (!is_valid_string(url)) {
     err_config("Request URL missing while building DPoP proof")
   }
+  url <- normalize_dpop_request_url(url)
+  # Literal dot segments are already removed; preserve escaped segments on wire.
+  req <- httr2::req_url(req, url) |>
+    httr2::req_options(path_as_is = TRUE)
   if (!is_valid_string(nonce)) {
     request_kind <- if (is_valid_string(access_token)) "resource" else "token"
     nonce <- dpop_nonce_cache_get(
