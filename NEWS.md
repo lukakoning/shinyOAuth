@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* The future async backend now requires `promises >= 1.3.3` in dependency
+metadata and runtime checks. Older versions either lack `future_promise()`
+or use a dispatch API incompatible with current versions of `future`.
+
 * Signed UserInfo key rotation now uses the client's TLS policy for both JWKS
 refresh throttling and fetching, so clients sharing a cache cannot consume
 another TLS policy's refresh allowance.

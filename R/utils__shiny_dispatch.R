@@ -222,7 +222,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
   }
 
   # Fall back to future_promise if available
-  future_available <- rlang::is_installed("promises") &&
+  future_available <- rlang::is_installed("promises", version = "1.3.3") &&
     rlang::is_installed("future") &&
     tryCatch(
       {
@@ -249,6 +249,7 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
     "No async backend available",
     c(
       "i" = "Configure mirai daemons: `mirai::daemons(2)`",
+      "i" = "The future backend requires promises >= 1.3.3",
       "i" = "Or configure a future plan: `future::plan(future::multisession)`"
     ),
     class = "shinyOAuth_no_async_backend"
@@ -308,7 +309,10 @@ async_backend_available <- function() {
   }
 
   # Check future
-  if (rlang::is_installed("promises") && rlang::is_installed("future")) {
+  if (
+    rlang::is_installed("promises", version = "1.3.3") &&
+      rlang::is_installed("future")
+  ) {
     future_ok <- tryCatch(
       {
         future::nbrOfWorkers() > 0
