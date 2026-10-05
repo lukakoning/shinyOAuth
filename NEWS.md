@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* mTLS registration preserves explicit RFC 4514 subject DNs verbatim, including
+escaped trailing spaces, while retaining SAN normalization and input checks.
+
 * The future async backend now requires `promises >= 1.3.3` in dependency
 metadata and runtime checks. Older versions either lack `future_promise()`
 or use a dispatch API incompatible with current versions of `future`.

@@ -47,6 +47,34 @@ test_that("oauth_client_mtls_registration derives subject DN metadata", {
   )
 })
 
+test_that("explicit subject DNs preserve RFC 4514 escapes and boundary spaces", {
+  client <- make_mtls_registration_client("tls_client_auth")
+  for (subject in c(
+    "CN=client\\ ",
+    "CN=\\ client\\ ",
+    "CN=client\\20",
+    "CN=client\\ ,OU=Tests",
+    "CN=client+OU=Tests\\ "
+  )) {
+    metadata <- oauth_client_mtls_registration(
+      client,
+      tls_client_auth_type = "subject_dn",
+      tls_client_auth_value = subject
+    )
+    expect_identical(metadata[["tls_client_auth_subject_dn"]], subject)
+  }
+  named_subject <- c(subject = "CN=client\\ ")
+  metadata <- oauth_client_mtls_registration(
+    client,
+    tls_client_auth_type = "subject_dn",
+    tls_client_auth_value = named_subject
+  )
+  expect_identical(
+    metadata[["tls_client_auth_subject_dn"]],
+    unname(named_subject)
+  )
+})
+
 test_that("oauth_client_mtls_registration supports explicit SAN identifiers", {
   client <- make_mtls_registration_client("tls_client_auth")
   identifiers <- list(

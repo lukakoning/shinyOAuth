@@ -25,7 +25,9 @@ certificate identifier field to emit. One of \code{"subject_dn"}, \code{"san_dns
 from the configured client certificate. SAN registration requires an
 explicit value because the current certificate extractor does not preserve
 ASN.1 SAN types. Select the type and exact value from the certificate;
-a numeric-looking DNS name is still a DNS SAN, not an IP SAN.}
+a numeric-looking DNS name is still a DNS SAN, not an IP SAN.
+Explicit \code{subject_dn} values use RFC 4514 syntax and are preserved verbatim,
+including escaped spaces.}
 
 \item{jwks_uri}{Optional absolute URL of a JWKS document to publish for
 \code{self_signed_tls_client_auth}. When omitted, the helper returns an inline

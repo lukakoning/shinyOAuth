@@ -41,6 +41,8 @@
 #'   explicit value because the current certificate extractor does not preserve
 #'   ASN.1 SAN types. Select the type and exact value from the certificate;
 #'   a numeric-looking DNS name is still a DNS SAN, not an IP SAN.
+#'   Explicit `subject_dn` values use RFC 4514 syntax and are preserved verbatim,
+#'   including escaped spaces.
 #' @param jwks_uri Optional absolute URL of a JWKS document to publish for
 #'   `self_signed_tls_client_auth`. When omitted, the helper returns an inline
 #'   `jwks` object with the configured client certificate chain in `x5c`.
@@ -453,6 +455,12 @@ normalize_mtls_registration_alt_name_value <- function(type, value) {
   normalized <- trimws(as.character(value %||% ""))
   if (!nzchar(normalized)) {
     err_input("Certificate SAN values must be non-empty strings")
+  }
+
+  # RFC 4514 permits meaningful escaped spaces at the end of a DN. Trimming
+  # them would change the subject and can leave a dangling backslash.
+  if (identical(type, "subject_dn")) {
+    return(as.character(value))
   }
 
   if (!identical(type, "san_ip")) {
