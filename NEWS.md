@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Signed UserInfo key rotation now uses the client's TLS policy for both JWKS
+refresh throttling and fetching, so clients sharing a cache cannot consume
+another TLS policy's refresh allowance.
+
 * Independent endpoint credentials no longer inherit ID-token HMAC key-length
 or Request Object signing requirements. Introspection, revocation, and PAR
 continue to validate their own authentication credentials and algorithms.
