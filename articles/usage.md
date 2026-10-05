@@ -591,7 +591,8 @@ server <- function(input, output, session) {
 
 Alternatively, configure
 `future::plan(future::multisession, workers = 2)` and use
-`async = TRUE`. If both backends are configured, mirai takes priority.
+`async = TRUE`. This backend requires `promises` version 1.3.3 or newer.
+If both backends are configured, mirai takes priority.
 [`future::sequential()`](https://future.futureverse.org/reference/sequential.html)
 runs in the same R process and does not avoid blocking.
 

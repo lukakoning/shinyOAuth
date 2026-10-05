@@ -2,6 +2,24 @@
 
 ## shinyOAuth (development version)
 
+- mTLS registration preserves explicit RFC 4514 subject DNs verbatim,
+  including escaped trailing spaces, while retaining SAN normalization
+  and input checks.
+
+- The future async backend now requires `promises >= 1.3.3` in
+  dependency metadata and runtime checks. Older versions either lack
+  `future_promise()` or use a dispatch API incompatible with current
+  versions of `future`.
+
+- Signed UserInfo key rotation now uses the client’s TLS policy for both
+  JWKS refresh throttling and fetching, so clients sharing a cache
+  cannot consume another TLS policy’s refresh allowance.
+
+- Independent endpoint credentials no longer inherit ID-token HMAC
+  key-length or Request Object signing requirements. Introspection,
+  revocation, and PAR continue to validate their own authentication
+  credentials and algorithms.
+
 - Use your Shiny app’s login with external R packages, SDKs and database
   drivers.
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)

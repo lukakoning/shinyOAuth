@@ -643,7 +643,8 @@ network work in background R processes, install <code>mirai</code> and
 <span><span class="op">}</span></span></code></pre></div>
 <p>Alternatively, configure
 <code>future::plan(future::multisession, workers = 2)</code> and use
-<code>async = TRUE</code>. If both backends are configured, mirai takes
+<code>async = TRUE</code>. This backend requires <code>promises</code>
+version 1.3.3 or newer. If both backends are configured, mirai takes
 priority. <code><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">future::sequential()</a></code> runs in the same R process
 and does not avoid blocking.</p>
 <p>For an app using future instead of mirai, configure its worker plan

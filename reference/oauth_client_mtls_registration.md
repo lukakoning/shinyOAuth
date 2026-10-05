@@ -45,7 +45,9 @@ oauth_client_mtls_registration(
   certificate. SAN registration requires an explicit value because the
   current certificate extractor does not preserve ASN.1 SAN types.
   Select the type and exact value from the certificate; a
-  numeric-looking DNS name is still a DNS SAN, not an IP SAN.
+  numeric-looking DNS name is still a DNS SAN, not an IP SAN. Explicit
+  `subject_dn` values use RFC 4514 syntax and are preserved verbatim,
+  including escaped spaces.
 
 - jwks_uri:
 
