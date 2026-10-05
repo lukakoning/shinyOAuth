@@ -1,5 +1,6 @@
-# Endpoint authentication is resolved into a temporary client used only to
-# shape the outgoing request. Identity validation retains the original client.
+# Endpoint authentication is resolved into a separate client used only to
+# shape the outgoing request. Authorization and identity policies stay on the
+# original client; they must not be revalidated against endpoint credentials.
 endpoint_auth_config_problem <- function(config) {
   if (
     !is.list(config) ||
@@ -234,6 +235,7 @@ endpoint_auth_client <- function(client, endpoint) {
   if (!is_valid_string(endpoint_url)) {
     return(client)
   }
+  S7::validate(client)
   metadata <- provider@endpoint_auth_metadata[[endpoint]]
   method <- resolve_endpoint_auth_method(provider, endpoint, override)
   if (!is.null(method[["problem"]])) {
@@ -255,13 +257,6 @@ endpoint_auth_client <- function(client, endpoint) {
   } else {
     metadata[["signing_algs"]] %||% character()
   }
-  provider_changes <- list(
-    token_auth_style = style,
-    extra_token_headers = headers,
-    token_endpoint_auth_signing_alg_values_supported = algs
-  )
-  # S7 validates the entire resolved configuration, including credentials and keys.
-  S7::props(provider) <- provider_changes
   changes <- override[setdiff(
     names(override),
     c("token_auth_style", "extra_headers")
@@ -309,17 +304,43 @@ endpoint_auth_client <- function(client, endpoint) {
       }
     }
   }
-  changes[["provider"]] <- provider
-  changes[["endpoint_auth"]] <- list()
-  if (
-    client_uses_smart(client) && endpoint %in% c("introspection", "revocation")
-  ) {
-    # SMART app-launch constraints govern the token endpoint. These temporary
-    # authentication settings follow the separate endpoint's registration.
-    # Request transport and response validation still use the original client.
-    S7::validate(client)
-    changes[["smart"]] <- list()
-  }
-  S7::props(client) <- changes
-  client
+  # Reuse the normal credential validators with an authentication-only client.
+  # Copy only fields used by request authentication, assertion audiences and
+  # certificate presentation. In particular, OIDC, JAR and SMART registration
+  # constraints must not apply to another endpoint's secret or signing key.
+  auth_provider <- OAuthProvider(
+    name = provider@name,
+    auth_url = provider@auth_url,
+    token_url = provider@token_url,
+    issuer = provider@issuer,
+    infer_oidc_from_issuer = FALSE,
+    use_pkce = provider@use_pkce,
+    pkce_method = provider@pkce_method,
+    par_url = provider@par_url,
+    introspection_url = provider@introspection_url,
+    revocation_url = provider@revocation_url,
+    token_auth_style = style,
+    extra_token_headers = headers,
+    token_endpoint_auth_signing_alg_values_supported = algs,
+    mtls_endpoint_aliases = provider@mtls_endpoint_aliases,
+    mtls_client_certificate_bound_access_tokens = provider@mtls_client_certificate_bound_access_tokens
+  )
+  settings <- S7::props(client)[c(
+    "client_id",
+    "client_secret",
+    "redirect_uri",
+    "client_assertion_private_key",
+    "client_assertion_private_key_kid",
+    "client_assertion_alg",
+    "client_assertion_audience",
+    "client_assertion_typ",
+    "mtls_client_cert_file",
+    "mtls_client_key_file",
+    "mtls_client_key_password",
+    "mtls_client_ca_file",
+    "mtls_certificate_bound_access_tokens",
+    "mtls_require_observed_cnf"
+  )]
+  settings[names(changes)] <- changes
+  do.call(OAuthClient, c(list(provider = auth_provider), settings))
 }

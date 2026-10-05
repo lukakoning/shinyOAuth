@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Independent endpoint credentials no longer inherit ID-token HMAC key-length
+or Request Object signing requirements. Introspection, revocation, and PAR
+continue to validate their own authentication credentials and algorithms.
+
 * Use your Shiny app's login with external R packages, SDKs and database drivers.
 `oauth_module_server()` adds `connection()`. Its connections, and those from
 `oauth_connections_server()`, offer `$access_token()` to get a current bearer

@@ -237,6 +237,103 @@ test_that("JWT token clients use independent Basic credentials and headers at ot
   )
 })
 
+test_that("Basic endpoint credentials are independent of ID-token HMAC secrets", {
+  local_options(shinyOAuth.allow_hs = TRUE)
+  client <- make_test_client(use_nonce = TRUE)
+  client@client_secret <- strrep("s", 32)
+  client@provider@id_token_allowed_algs <- "HS256"
+  client@provider@introspection_url <- "https://example.com/introspect"
+  client@endpoint_auth <- list(
+    introspection = list(
+      token_auth_style = "header",
+      client_id = "inspector",
+      client_secret = "inspect-secret"
+    )
+  )
+  original <- S7::props(client)
+  requests <- list()
+  local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      requests[[length(requests) + 1L]] <<- req
+      httr2::response(
+        status = 200,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"active":true}')
+      )
+    },
+    .package = "shinyOAuth"
+  )
+  expect_true(introspect_token(client, OAuthToken(access_token = "access"))[[
+    "active"
+  ]])
+  expect_length(requests, 1L)
+  authorization <- requests[[1L]][["headers"]][["Authorization"]]
+  if (typeof(authorization) == "weakref") {
+    authorization <- rlang::wref_value(authorization)
+  }
+  expect_identical(
+    authorization,
+    paste0(
+      "Basic ",
+      openssl::base64_encode(charToRaw("inspector:inspect-secret"))
+    )
+  )
+  expect_identical(S7::props(client), original)
+
+  # Login still requires the original HMAC-strength secret.
+  expect_error(
+    {
+      client@client_secret <- "short"
+    },
+    "HS\\* ID token validation"
+  )
+})
+
+test_that("endpoint assertion keys are independent of Request Object signing keys", {
+  client <- make_test_client()
+  client@provider@issuer <- "https://example.com"
+  client@provider@revocation_url <- "https://example.com/revoke"
+  client@client_assertion_private_key <- openssl::rsa_keygen()
+  client@request_object_signing_alg <- "RS256"
+  client@request_object_mode <- "request"
+  client@provider@require_signed_request_object <- TRUE
+  endpoint_key <- openssl::ec_keygen("P-256")
+  client@provider@endpoint_auth_metadata <- list(
+    revocation = list(methods = "private_key_jwt", signing_algs = "ES256")
+  )
+  client@endpoint_auth <- list(
+    revocation = list(
+      token_auth_style = "private_key_jwt",
+      client_assertion_private_key = endpoint_key,
+      client_assertion_alg = "ES256"
+    )
+  )
+  original <- S7::props(client)
+  requests <- list()
+  local_mocked_bindings(
+    req_with_retry = function(req, ...) {
+      requests[[length(requests) + 1L]] <<- req
+      httr2::response(status = 200)
+    },
+    .package = "shinyOAuth"
+  )
+  token <- OAuthToken(access_token = "access", refresh_token = "refresh")
+  expect_true(revoke_token(client, token)[[
+    "revoked"
+  ]])
+  expect_length(requests, 1L)
+  assertion <- requests[[1L]][["body"]][["data"]][["client_assertion"]]
+  expect_identical(parse_jwt_header(assertion)[["alg"]], "ES256")
+  expect_silent(jose::jwt_decode_sig(assertion, endpoint_key[["pubkey"]]))
+  expect_identical(S7::props(client), original)
+
+  # The independent credentials still have to satisfy their own algorithm policy.
+  client@endpoint_auth[["revocation"]][["client_assertion_private_key"]] <-
+    client@client_assertion_private_key
+  expect_error(revoke_token(client, token), "incompatible")
+  expect_length(requests, 1L)
+})
+
 test_that("endpoint JWT algorithms, audiences and retry assertions are independently resolved", {
   client <- make_test_client()
   client@client_secret <- strrep("t", 32)
