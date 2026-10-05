@@ -41,7 +41,8 @@ the token authentication set by this function is not overridden.}
 HTTP redirects even when \code{shinyOAuth.allow_redirect} is enabled.
 \code{NULL} inherits that global option (disabled by default).
 Set to \code{TRUE} only if you trust all possible redirect targets and
-understand the security implications.}
+understand the security implications. DPoP requests reject enabled
+redirects because each target needs a new proof; use \code{FALSE} for DPoP.}
 
 \item{check_url}{Logical. If \code{TRUE} (the default), validates \code{url} against
 \code{\link[=is_ok_host]{is_ok_host()}} before attaching the access token. This rejects relative
@@ -111,6 +112,8 @@ DPoP proofs bind the current HTTP method and target URI (without query or
 fragment). Use the \code{query} argument to preserve encoded resource paths;
 external URL modifiers can decode reserved path characters. Changing the
 method, scheme, host, or path invalidates the proof.
+Automatic redirects are unsupported. Request a trusted final URL directly
+so the helper can create a proof bound to that URL.
 }
 
 \examples{

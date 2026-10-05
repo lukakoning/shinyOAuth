@@ -757,6 +757,17 @@ req_add_dpop_proof <- function(
     return(req)
   }
 
+  follow <- req[["options"]][["followlocation"]] %||% allow_redirect()
+  if (
+    !identical(follow, FALSE) && !identical(follow, 0L) && !identical(follow, 0)
+  ) {
+    err_input(c(
+      "DPoP requests cannot follow HTTP redirects because each target requires a new proof",
+      "i" = "Use follow_redirect = FALSE for resource requests and disable shinyOAuth.allow_redirect for provider requests."
+    ))
+  }
+  req <- httr2::req_options(req, followlocation = FALSE)
+
   method <- resolve_client_bearer_method(req = req)
   url <- req[["url"]] %||% NA_character_
   if (!is_valid_string(url)) {

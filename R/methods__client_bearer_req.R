@@ -42,7 +42,8 @@
 #'   HTTP redirects even when `shinyOAuth.allow_redirect` is enabled.
 #'   `NULL` inherits that global option (disabled by default).
 #'   Set to `TRUE` only if you trust all possible redirect targets and
-#'   understand the security implications.
+#'   understand the security implications. DPoP requests reject enabled
+#'   redirects because each target needs a new proof; use `FALSE` for DPoP.
 #' @param check_url Logical. If `TRUE` (the default), validates `url` against
 #'   [is_ok_host()] before attaching the access token. This rejects relative
 #'   URLs, plain HTTP to non-loopback hosts, and when
@@ -84,6 +85,8 @@
 #' fragment). Use the `query` argument to preserve encoded resource paths;
 #' external URL modifiers can decode reserved path characters. Changing the
 #' method, scheme, host, or path invalidates the proof.
+#' Automatic redirects are unsupported. Request a trusted final URL directly
+#' so the helper can create a proof bound to that URL.
 #'
 #' @example inst/examples/client_bearer_req.R
 #'
@@ -431,6 +434,11 @@ prepare_client_bearer_request <- function(
   )
 
   req <- apply_client_bearer_query(req %||% httr2::request(target_url), query)
+  follow_redirect <- resolve_client_bearer_redirect_policy(follow_redirect)
+  req <- httr2::req_options(
+    req,
+    followlocation = follow_redirect
+  )
 
   req <- build_client_bearer_authorized_request(
     url = target_url,
@@ -904,15 +912,7 @@ finalize_client_bearer_request <- function(
   query = NULL,
   follow_redirect = FALSE
 ) {
-  if (
-    !is.null(follow_redirect) &&
-      !(is.logical(follow_redirect) &&
-        length(follow_redirect) == 1L &&
-        !is.na(follow_redirect))
-  ) {
-    err_input("follow_redirect must be NULL or a single non-NA logical")
-  }
-  follow <- if (is.null(follow_redirect)) allow_redirect() else follow_redirect
+  follow <- resolve_client_bearer_redirect_policy(follow_redirect)
   req <- httr2::req_options(req, followlocation = follow)
 
   req <- apply_client_bearer_headers(req, headers)
@@ -923,6 +923,28 @@ finalize_client_bearer_request <- function(
 
   validate_resource_token_transport(req)
   req
+}
+
+#' Resolve the redirect policy before attaching resource credentials
+#'
+#' Used during request preparation and finalization so DPoP proof construction
+#' can reject enabled redirects before signing.
+#'
+#' @param follow_redirect Logical redirect override, or NULL to inherit the
+#'   package option.
+#' @return Scalar logical indicating whether redirects are enabled.
+#' @keywords internal
+#' @noRd
+resolve_client_bearer_redirect_policy <- function(follow_redirect) {
+  if (
+    !is.null(follow_redirect) &&
+      !(is.logical(follow_redirect) &&
+        length(follow_redirect) == 1L &&
+        !is.na(follow_redirect))
+  ) {
+    err_input("follow_redirect must be NULL or a single non-NA logical")
+  }
+  if (is.null(follow_redirect)) allow_redirect() else follow_redirect
 }
 
 # Modify only the query component. httr2 URL reconstruction can decode escaped
