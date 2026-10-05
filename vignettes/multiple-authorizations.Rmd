@@ -153,6 +153,13 @@ Browser retention uses an HttpOnly cookie containing an opaque local owner ID.
 Tokens stay encrypted in the R process. The cookie associates saved connections
 with this browser; it does not identify a person or log them into either service.
 
+Cookies are shared across ports on the same host, even with HttpOnly, Secure
+and a `__Host-` name ([RFC 6265 section 8.5](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5)).
+All HTTPS services on that host that receive the owner cookie must be trusted,
+because they can read and replay it. The origin hash in the cookie name
+distinguishes applications but does not isolate the cookie from other ports.
+Use separate hostnames for mutually untrusted services.
+
 Without `retention = "browser"`, the default is `"shiny"`: existing connections
 are discarded when that Shiny session ends. Merely configuring multiple clients
 does not preserve A while the browser goes away to authorize B.

@@ -33,9 +33,16 @@
 #' @details
 #' Browser retention identifies an authorized browser session, not a verified
 #' person. The owner cookie is HttpOnly, host-only, has root path and uses Secure
-#' and a `__Host-` name on HTTPS. It contains no token or patient data. Server-side
+#' and a `__Host-` name on HTTPS. It contains no OAuth token or patient data. Server-side
 #' idle and absolute limits are authoritative. A cookie is never accepted as an
 #' owner without a matching live server record for this application origin.
+#'
+#' Cookies are shared across ports on the same host, even with HttpOnly, Secure
+#' and a `__Host-` name ([RFC 6265 section 8.5](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5)).
+#' All HTTPS services on that host that receive the owner cookie must be trusted,
+#' because they can read and replay it. The origin hash in the cookie name
+#' distinguishes applications but does not isolate the cookie from other ports.
+#' Use separate hostnames for mutually untrusted services.
 #'
 #' Cookie rotation invalidates the previous session generation immediately and
 #' preserves the original absolute lifetime. Local logout removes the live owner
