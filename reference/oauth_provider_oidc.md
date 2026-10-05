@@ -24,7 +24,8 @@ oauth_provider_oidc(
   jwks_host_issuer_match = TRUE,
   allowed_token_types = c("Bearer"),
   ...,
-  token_auth_style = "header"
+  token_auth_style = "header",
+  issuer = base_url
 )
 ```
 
@@ -88,6 +89,13 @@ oauth_provider_oidc(
   [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md).
   Defaults to `"header"`.
 
+- issuer:
+
+  Exact OIDC issuer identifier. Defaults to `base_url`, retaining any
+  trailing slash. Endpoint URLs are joined using a separately normalized
+  base. Supply this explicitly when the issuer differs from the endpoint
+  base.
+
 ## Value
 
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
@@ -117,7 +125,7 @@ generic_oidc_provider <- oauth_provider_oidc(
 if (interactive()) {
   # Using Auth0 sample issuer as an example
   oidc_discovery_provider <- oauth_provider_oidc_discover(
-    issuer = "https://samples.auth0.com"
+    issuer = "https://samples.auth0.com/"
   )
 }
 

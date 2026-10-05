@@ -758,6 +758,13 @@ to the same resource server can reuse its nonce; token-server and
 resource-server nonces are kept separate. Retries of eligible API
 requests generate fresh proofs.
 
+Automatic redirects are unsupported for DPoP: a redirected URL needs its
+own proof. Keep `follow_redirect = FALSE` for resource requests and call
+a trusted final URL directly. An explicit `TRUE`, or `NULL` inheriting
+an enabled `shinyOAuth.allow_redirect` option, raises an error before
+signing or sending the request. Keep that global option disabled for
+DPoP provider requests too.
+
 DPoP nonces must follow RFC 9449’s visible ASCII syntax. The package
 also applies a local 4096-byte limit to bound proof and cache sizes; the
 RFC itself sets no maximum length. Configure
@@ -767,9 +774,11 @@ the configured limit raises an explicit error without logging its nonce.
 
 [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
 only builds the request. A DPoP proof is tied to its HTTP method and
-base URL, so do not change those after construction. Supply query
-parameters through the helper’s `query` argument; external URL modifiers
-can decode reserved path characters and invalidate the proof. Use
+base URL, so do not change those after construction. Literal `.` and
+`..` path segments are removed before signing and sending; escaped path
+segments such as `%2F` and `%2E` remain escaped. Supply query parameters
+through the helper’s `query` argument; external URL modifiers can decode
+reserved path characters and invalidate the proof. Use
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
 to manage nonce retries.
 

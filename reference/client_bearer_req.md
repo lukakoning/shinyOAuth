@@ -64,7 +64,8 @@ client_bearer_req(
   when `shinyOAuth.allow_redirect` is enabled. `NULL` inherits that
   global option (disabled by default). Set to `TRUE` only if you trust
   all possible redirect targets and understand the security
-  implications.
+  implications. DPoP requests reject enabled redirects because each
+  target needs a new proof; use `FALSE` for DPoP.
 
 - check_url:
 

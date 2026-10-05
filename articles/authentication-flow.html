@@ -174,9 +174,15 @@ and browser token provide the browser-session binding.</li>
 <strong>Nonce (OIDC)</strong> is a random value checked in the
 returned ID token to tie that token to the login request.</li>
 </ul>
-<p>The module creates and checks these values automatically. OIDC
-provider helpers enable PKCE and nonce by default. Public clients must
-use PKCE, and <code>S256</code> is the default PKCE method.</p>
+<p>The module creates and checks these values automatically when
+enabled. <code><a href="../reference/oauth_provider_oidc.html">oauth_provider_oidc()</a></code> and
+<code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> enable PKCE and nonce by
+default. Provider presets can choose different PKCE settings to match
+their registration requirements. ORCID and Slack’s default confidential
+profile use client authentication and validated OIDC nonce without PKCE;
+see their provider helper documentation for the applicable settings.
+Public clients must use PKCE, and <code>S256</code> is the default PKCE
+method.</p>
 <p>Fixed routing queries on the authorization endpoint are preserved.
 Put protocol policy parameters such as <code>prompt</code> and
 <code>max_age</code> in <code>extra_auth_params</code>, and use the

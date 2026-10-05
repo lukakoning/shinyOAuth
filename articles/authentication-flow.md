@@ -99,8 +99,15 @@ values that link this request to the callback and token exchange:
 - **Nonce (OIDC)** is a random value checked in the returned ID token to
   tie that token to the login request.
 
-The module creates and checks these values automatically. OIDC provider
-helpers enable PKCE and nonce by default. Public clients must use PKCE,
+The module creates and checks these values automatically when enabled.
+[`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
+and
+[`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
+enable PKCE and nonce by default. Provider presets can choose different
+PKCE settings to match their registration requirements. ORCID and
+Slack’s default confidential profile use client authentication and
+validated OIDC nonce without PKCE; see their provider helper
+documentation for the applicable settings. Public clients must use PKCE,
 and `S256` is the default PKCE method.
 
 Fixed routing queries on the authorization endpoint are preserved. Put
