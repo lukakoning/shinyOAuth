@@ -210,6 +210,7 @@ Test users: `alice` / `alice` and `bob` / `bob` (for cross-user attacks).
 | `test_integration_attack_csrf_browser_token.R` | **Browser token callback validation** — mismatched, missing, or malformed browser token values passed directly into callback handling | constant_time_compare(); browser token format validation; skip-guard |
 | `test_integration_attack_csrf_browser_token_e2e.R` | **Browser token CSRF (double-submit cookie bypass)** — attacker tampers with the real app-origin browser token cookie before the callback returns | Cookie/header double-submit binding across the real browser boundary; invalid_state failure at the live callback origin |
 | `test_integration_attack_callback_swap_browser_e2e.R` | **Separate app callback isolation** — two deployments receive each other's callbacks | Foreign callback rejected with distinct redirect URIs and state infrastructure; rightful callbacks still authenticate their original sessions |
+| [`test_integration_cross_client_pkce.R`](test_integration_cross_client_pkce.R) | **Server-side client-ID binding** — redeeming a code under another client ID with the correct verifier and redirect URI | Both registrations have successful baseline exchanges; changing only `client_id` produces HTTP 400 `invalid_grant` without an access token |
 | `test_integration_attack_dpop_resource.R` | **DPoP protected-resource substitution/replay** — bearer fallback, mismatched proof key, or proof replay against a DPoP-bound access token | DPoP `cnf.jkt` binding, `ath`/`htu`/`htm` proof checks, nonce/replay defenses, and parity between package-backed and independent verifiers |
 | `test_integration_attack_expired_state.R` | **Expired state payload** — delayed callback after state max_age | issued_at freshness check in state_payload_decrypt_validate() |
 | `test_integration_attack_redirect_uri.R` | **Redirect URI manipulation** — attacker changes redirect_uri to steal authorization code | Keycloak redirect URI allowlist; state payload redirect_uri binding |
@@ -219,14 +220,18 @@ Negative PKCE authorization assertions require a callback at the configured URI,
 the matching state, no code, and `invalid_request` identifying PKCE. Transport
 and login-driver failures fail the test.
 
-The former cross-client exchange cases also had missing or incorrect PKCE
-verifiers; their generic rejections did not establish client-ID binding. Those
-cases and the module case with independent encryption keys have been removed
-from the evidence suite. `tests/testthat/test-login-callback.R` isolates local
-client-ID binding with a valid baseline and a specific mismatch assertion.
-Independent server-side client binding still needs a dedicated integration
-fixture. The separate-app browser fixture above does not establish session
-binding within a single deployed client configuration.
+Earlier cross-client exchange cases had missing or incorrect PKCE verifiers;
+their generic rejections did not establish client-ID binding. The dedicated
+[`test_integration_cross_client_pkce.R`](test_integration_cross_client_pkce.R)
+fixture now isolates server-side client-ID binding: both registrations redeem
+their own codes successfully, then a fresh code is submitted with only
+`client_id` changed, preserving its correct verifier and redirect URI. It
+requires HTTP 400 `invalid_grant` and no access token.
+The module case with independent encryption keys was removed from the evidence
+suite. `tests/testthat/test-login-callback.R` isolates local client-ID binding
+with a valid baseline and a specific mismatch assertion. The separate-app
+browser fixture above does not establish session binding within a single
+deployed client configuration.
 
 For the browser `request_uri` integration test, the Shiny app listens on all
 interfaces but the browser uses `127.0.0.1` so redirect cookies stay on one
