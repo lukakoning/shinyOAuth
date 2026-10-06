@@ -319,7 +319,7 @@ fetch_jwks <- function(
   }
 
   # Compute a cache key that incorporates issuer + pinning + provider/global
-  # host policy.
+  # host policy and the effective global/request-local TLS minimum.
   cache_key <- jwks_cache_key(
     issuer,
     pins = pins,
@@ -799,6 +799,8 @@ normalize_jwks_cache_host_patterns <- function(patterns) {
 #' pinning configuration (sorted unique pins + pin_mode), discovery issuer
 #' policy, provider host-policy fields (`jwks_host_issuer_match`,
 #' `jwks_host_allow_only`), and the effective global host allowlists.
+#' The effective minimum from the global TLS option and local `tls_minimum`
+#' scopes both cached keys and forced-refresh throttles to the transport policy.
 #' Including issuer and host policy prevents cross-policy cache reuse where a
 #' relaxed provider or looser runtime allowlist populates the cache and a
 #' stricter configuration skips validation on hit.
@@ -817,6 +819,8 @@ normalize_jwks_cache_host_patterns <- function(patterns) {
 #'   `options(shinyOAuth.allowed_hosts)`.
 #' @param allowed_non_https_hosts Optional effective value of
 #'   `options(shinyOAuth.allowed_non_https_hosts)`.
+#' @param tls_minimum Optional request/client TLS floor, combined with the
+#'   global `options(shinyOAuth.tls_min_version)` floor.
 #' @return Cache-safe key string.
 #' @keywords internal
 #' @noRd
@@ -891,12 +895,13 @@ jwks_cache_key <- function(
   ch <- paste0(sprintf("%02x", as.integer(ch_raw)), collapse = "")
   # Use an alphanumeric delimiter to satisfy cache key constraints while keeping clarity
   key <- paste0(ih, "x", ch)
-  if (!is.null(tls_minimum)) {
-    policy <- resolve_tls_policy(minimum = tls_minimum)
-    if (!is.null(policy[["problem"]])) {
-      err_config(policy[["problem"]])
-    }
-    key <- paste0(key, "tls", gsub(".", "", tls_minimum, fixed = TRUE))
+  policy <- resolve_effective_tls_policy(local_minimum = tls_minimum)
+  if (!is.null(policy[["problem"]])) {
+    err_config(policy[["problem"]])
+  }
+  minimum <- policy[["minimum"]]
+  if (!is.null(minimum)) {
+    key <- paste0(key, "tls", gsub(".", "", minimum, fixed = TRUE))
   }
   key
 }
