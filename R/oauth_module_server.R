@@ -835,37 +835,52 @@ oauth_module_server_impl <- function(
       refresh_scope_narrowed = !is.null(auth_operations[["reauth_scopes"]]) ||
         !is.null(auth_operations[["reauth_extra_scopes"]]),
       requested_scopes = auth_operations[["reauth_scopes"]] %||%
-        effective_client_scopes(client)
+        effective_client_scopes(client),
+      operation_epoch = NULL,
+      shiny_session = NULL
     ) {
       if (is.null(.managed)) {
-        validate_token_acceptance_deadline(tok)
-        values[["targets"]] <- token_target_bundle(
-          client,
-          tok,
-          target_limits
+        # Compute all fallible acceptance state before retaining the result.
+        # A successful exchange rejected locally still owns live credentials.
+        accepted <- tryCatch(
+          {
+            validate_token_acceptance_deadline(tok)
+            targets <- token_target_bundle(client, tok, target_limits)
+            extra_scopes <- authorization_extra_scopes(client, tok)
+            scopes <- if (token_targets_configured(client)) {
+              token_target_authorization_scopes(client, targets[["limits"]])
+            } else {
+              authorization_retained_scopes(client, tok, requested_scopes)
+            }
+            auth_started_at <- .interactive_auth_started_at(tok)
+            validate_token_acceptance_deadline(tok)
+            list(
+              targets = targets,
+              extra_scopes = extra_scopes,
+              scopes = scopes,
+              auth_started_at = auth_started_at
+            )
+          },
+          error = function(e) {
+            .revoke_stale_credentials(
+              tok,
+              shiny_session = shiny_session,
+              operation_epoch = operation_epoch
+            )
+            stop(e)
+          }
         )
-        auth_operations[["target_limits"]] <- values[["targets"]][["limits"]]
+        values[["targets"]] <- accepted[["targets"]]
+        auth_operations[["target_limits"]] <- accepted[["targets"]][["limits"]]
         auth_operations[["refresh_scope_narrowed"]] <- refresh_scope_narrowed
         auth_operations[["last_authorized_scope_narrowed"]] <-
           refresh_scope_narrowed
-        values[["token"]] <- tok
         auth_operations[[
           "last_authorized_extra_scopes"
-        ]] <- authorization_extra_scopes(
-          client,
-          tok
-        )
-        auth_operations[["last_authorized_scopes"]] <- if (
-          token_targets_configured(client)
-        ) {
-          token_target_authorization_scopes(
-            client,
-            auth_operations[["target_limits"]]
-          )
-        } else {
-          authorization_retained_scopes(client, tok, requested_scopes)
-        }
-        values[["auth_started_at"]] <- .interactive_auth_started_at(tok)
+        ]] <- accepted[["extra_scopes"]]
+        auth_operations[["last_authorized_scopes"]] <- accepted[["scopes"]]
+        values[["auth_started_at"]] <- accepted[["auth_started_at"]]
+        values[["token"]] <- tok
       } else {
         tryCatch(
           {
@@ -880,7 +895,11 @@ oauth_module_server_impl <- function(
             )
           },
           error = function(e) {
-            .revoke_stale_credentials(tok, cleanup = context[["cleanup"]])
+            .revoke_stale_credentials(
+              tok,
+              cleanup = context[["cleanup"]],
+              operation_epoch = operation_epoch
+            )
             stop(e)
           }
         )
@@ -4311,7 +4330,9 @@ oauth_module_server_impl <- function(
                       managed_context,
                       callback_target_limits,
                       callback_scope_narrowed,
-                      callback_requested_scopes
+                      callback_requested_scopes,
+                      operation_epoch = login_operation[["epoch"]],
+                      shiny_session = captured_shiny_session
                     )
                     values[["error"]] <- NULL
                     values[["error_description"]] <- NULL
@@ -4401,7 +4422,8 @@ oauth_module_server_impl <- function(
                   managed_context,
                   callback_target_limits,
                   callback_scope_narrowed,
-                  callback_requested_scopes
+                  callback_requested_scopes,
+                  operation_epoch = login_operation[["epoch"]]
                 )
                 values[["error"]] <- NULL
                 values[["error_description"]] <- NULL
