@@ -772,6 +772,13 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
         )
       }
       if (
+        !is_absolute_uri(request_uri) || grepl("#", request_uri, fixed = TRUE)
+      ) {
+        err_token(
+          "Pushed authorization request response request_uri must be an absolute URI without a fragment"
+        )
+      }
+      if (
         !is.numeric(expires_in) ||
           length(expires_in) != 1L ||
           !is.finite(expires_in) ||

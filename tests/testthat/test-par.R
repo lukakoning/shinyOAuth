@@ -450,6 +450,90 @@ test_that("PAR response requires request_uri and expires_in", {
   expect_length(cli@state_store[["keys"]](), 0L)
 })
 
+test_that("PAR rejects malformed references without registering pending state", {
+  invalid <- list(
+    "not-a-uri",
+    "/request/123",
+    "//example.com/request/123",
+    " urn:example:request",
+    "urn:example:request ",
+    "urn:example:request\n",
+    "urn:example:%ZZ",
+    "https://example.com/request/%",
+    "https://example.com/request/a b",
+    "urn:example:request#fragment",
+    "https://example.com/request#fragment",
+    NULL,
+    TRUE,
+    list("urn:example:request"),
+    list(reference = "urn:example:request")
+  )
+  for (reference in invalid) {
+    cli <- make_par_test_client()
+    response_body <- jsonlite::toJSON(
+      list(request_uri = reference, expires_in = 90),
+      auto_unbox = TRUE,
+      null = "null"
+    )
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = as.character(req[["url"]]),
+          status = 201,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(response_body)
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        expect_error(
+          prepare_call(cli, valid_browser_token()),
+          regexp = "request_uri",
+          class = "shinyOAuth_token_error"
+        )
+        expect_length(cli@state_store[["keys"]](), 0L)
+      }
+    )
+  }
+})
+
+test_that("PAR accepts absolute opaque URNs and HTTPS references unchanged", {
+  for (reference in c(
+    "urn:ietf:params:oauth:request_uri:test",
+    "urn:example:request:a%20b",
+    "https://example.com/request/test?handle=a%2Fb"
+  )) {
+    cli <- make_par_test_client()
+    response_body <- jsonlite::toJSON(
+      list(request_uri = reference, expires_in = 90),
+      auto_unbox = TRUE
+    )
+    testthat::with_mocked_bindings(
+      req_with_retry = function(req, ...) {
+        httr2::response(
+          url = as.character(req[["url"]]),
+          status = 201,
+          headers = list("content-type" = "application/json"),
+          body = charToRaw(response_body)
+        )
+      },
+      .package = "shinyOAuth",
+      {
+        url <- prepare_call(cli, valid_browser_token())
+        expect_identical(
+          attr(url, "shinyOAuth.par_request_uri", exact = TRUE),
+          reference
+        )
+        expect_identical(
+          parse_query_param(url, "request_uri", decode = TRUE),
+          reference
+        )
+        expect_length(cli@state_store[["keys"]](), 1L)
+      }
+    )
+  }
+})
+
 test_that("PAR response requires 201 JSON with integer expires_in", {
   cli <- make_par_test_client()
 
