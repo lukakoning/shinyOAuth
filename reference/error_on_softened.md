@@ -54,7 +54,10 @@ error_on_softened()
 
 # Below call would error (is therefore not run):
 if (interactive()) {
-  options(shinyOAuth.skip_id_sig = TRUE)
-  error_on_softened()
+  (function() {
+    old <- options(shinyOAuth.skip_id_sig = TRUE)
+    on.exit(options(old), add = TRUE)
+    error_on_softened()
+  })()
 }
 ```
