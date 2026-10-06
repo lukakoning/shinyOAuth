@@ -91,6 +91,31 @@ test_that("error_on_softened is deprecated", {
   )
 })
 
+for (previous in list(NULL, FALSE)) {
+  test_that("interactive softener example restores options after its error", {
+    withr::local_options(
+      lifecycle_verbosity = "quiet",
+      shinyOAuth.skip_browser_token = FALSE,
+      shinyOAuth.skip_id_sig = previous,
+      shinyOAuth.expose_error_body = FALSE,
+      shinyOAuth.allow_unsigned_userinfo_jwt = FALSE,
+      shinyOAuth.allow_redirect = FALSE
+    )
+    example_env <- new.env(parent = asNamespace("shinyOAuth"))
+    example_env[["interactive"]] <- function() TRUE
+    expect_error(
+      sys.source(
+        test_path("..", "..", "inst", "examples", "error_on_softened.R"),
+        envir = example_env
+      ),
+      "One or more safety settings have been disabled",
+      fixed = TRUE
+    )
+    expect_identical(getOption("shinyOAuth.skip_id_sig"), previous)
+    expect_false(allow_skip_signature())
+  })
+}
+
 test_that("allow_unsigned_userinfo_jwt errors in production (non-test, non-interactive)", {
   ns <- asNamespace("shinyOAuth")
   old_fun <- get(".is_test_or_interactive", envir = ns)
