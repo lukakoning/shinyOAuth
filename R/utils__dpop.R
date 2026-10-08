@@ -619,19 +619,33 @@ dpop_target_uri <- function(url) {
   )
 }
 
-#' Remove literal dot segments from a DPoP request URL
+#' Normalize a DPoP request path for proof construction and transport
 #'
 #' Used before proof construction and transport so the proof binds to the same
 #' path even when curl's path_as_is option is enabled. Applies RFC 3986 section
 #' 5.2.4 to the escaped absolute path without decoding percent-encoded segments
-#' or changing the authority, query, or fragment.
+#' or changing the authority, query, or fragment. Non-ASCII path characters are
+#' percent-encoded as UTF-8 (RFC 3987 section 3.1) before signing and transport.
 #'
 #' @param url Validated absolute request URL.
-#' @return Request URL with literal dot path segments removed.
+#' @return Request URL with literal dot segments removed and a URI-encoded path.
 #' @keywords internal
 #' @noRd
 normalize_dpop_request_url <- function(url) {
   path <- url_raw_path(url)
+  # RFC 3987: convert non-ASCII path characters to percent-encoded UTF-8 before
+  # signing and sending. Preserve existing escapes and reserved delimiters.
+  bytes <- as.integer(charToRaw(enc2utf8(path)))
+  if (any(bytes > 127L)) {
+    path <- paste0(vapply(bytes, function(byte) {
+      if (byte > 127L) sprintf("%%%02X", byte) else rawToChar(as.raw(byte))
+    }, character(1)), collapse = "")
+    url <- paste0(
+      sub("^([A-Za-z][A-Za-z0-9+.-]*://[^/?#]*).*", "\\1", url),
+      path,
+      sub("^[^?#]*", "", url)
+    )
+  }
   if (!grepl("(^|/)\\.\\.?(/|$)", path)) {
     return(url)
   }

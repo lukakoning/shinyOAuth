@@ -16,8 +16,15 @@ test_that("DPoP target normalization removes literal dot segments and preserves 
     "/a/.%2e/target" = "/a/.%2e/target",
     "/a/%252e%252e/target" = "/a/%252e%252e/target",
     "/a%3Ab/./c%3Bd" = "/a%3Ab/c%3Bd",
-    "/a/.../target" = "/a/.../target"
+    "/a/.../target" = "/a/.../target",
+    "/caf%C3%A9" = "/caf%C3%A9",
+    "/caf%c3%a9" = "/caf%c3%a9"
   )
+  # Build Unicode names at runtime: symbol names are native-encoded by R's parser.
+  paths <- c(paths, stats::setNames(
+    c("/caf%C3%A9", "/%E6%97%A5%E6%9C%AC%2F%F0%9F%98%80"),
+    c("/caf\u00e9", "/caf\u00e9/../\u65e5\u672c%2F\U0001f600")
+  ))
   for (path in names(paths)) {
     url <- paste0("HTTPS://API.EXAMPLE.COM:443", path, "?x=%2F..%2F#frag")
     expect_identical(
@@ -56,8 +63,14 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
     "/a/..//target" = "//target",
     "/a%2Fb/./target" = "/a%2Fb/target",
     "/a/%2e%2e/target" = "/a/%2e%2e/target",
-    "/a%3Ab/../c%3Bd" = "/c%3Bd"
+    "/a%3Ab/../c%3Bd" = "/c%3Bd",
+    "/caf%C3%A9" = "/caf%C3%A9",
+    "/caf%c3%a9" = "/caf%c3%a9"
   )
+  paths <- c(paths, stats::setNames(
+    c("/caf%C3%A9", "/%E6%97%A5%E6%9C%AC%2F%F0%9F%98%80"),
+    c("/caf\u00e9", "/caf\u00e9/../\u65e5\u672c%2F\U0001f600")
+  ))
   for (path in names(paths)) {
     expected <- paths[[path]]
     for (as_is in c(FALSE, TRUE)) {
@@ -84,8 +97,8 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
       payload <- shinyOAuth:::parse_jwt_payload(as.character(body[["proof"]]))
       expect_identical(payload[["htu"]], paste0(origin, expected))
       expect_identical(
-        sub("[?].*$", "", body[["url"]]),
-        utils::URLdecode(paste0(origin, expected))
+        charToRaw(utils::URLdecode(sub("[?].*$", "", body[["url"]]))),
+        charToRaw(utils::URLdecode(paste0(origin, expected)))
       )
       # webfakes decodes paths; curl's request line preserves the actual escapes.
       expect_length(sent, 1L)
@@ -96,7 +109,7 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
     }
   }
 
-  request <- httr2::request(paste0(origin, "/a/../token?resource=api")) |>
+  request <- httr2::request(paste0(origin, "/a/../caf\u00e9/token?resource=api")) |>
     httr2::req_method("POST") |>
     httr2::req_options(path_as_is = TRUE, followlocation = FALSE)
   response <- shinyOAuth:::req_with_dpop_retry(
@@ -106,9 +119,12 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
   )
   body <- httr2::resp_body_json(response)
   payload <- shinyOAuth:::parse_jwt_payload(as.character(body[["proof"]]))
-  expect_identical(payload[["htu"]], paste0(origin, "/token"))
+  expect_identical(payload[["htu"]], paste0(origin, "/caf%C3%A9/token"))
   expect_identical(payload[["htm"]], "POST")
-  expect_identical(sub("[?].*$", "", body[["url"]]), paste0(origin, "/token"))
+  expect_identical(
+    charToRaw(utils::URLdecode(sub("[?].*$", "", body[["url"]]))),
+    charToRaw(enc2utf8(paste0(origin, "/caf\u00e9/token")))
+  )
 })
 
 test_that("DPoP nonce cache scope follows normalized literal paths", {
@@ -130,4 +146,8 @@ test_that("DPoP nonce cache scope follows normalized literal paths", {
     ),
     shinyOAuth:::dpop_nonce_cache_key(client, "https://example.com/token")
   ))
+  expect_identical(
+    shinyOAuth:::dpop_nonce_cache_key(client, "https://example.com/caf\u00e9"),
+    shinyOAuth:::dpop_nonce_cache_key(client, "https://example.com/caf%C3%A9")
+  )
 })
