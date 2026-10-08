@@ -569,6 +569,10 @@ may still reject API calls with that token.
 refresh tokens if the provider supports it. It does not end the user's login
 session at the provider. `revoke_on_session_end = TRUE` also attempts revocation
 when the Shiny session ends and requires a configured `revocation_url`.
+With this option enabled, automatic expiry or maximum authentication age also
+attempts revocation as soon as it clears the session, including secondary
+resource tokens. The retiring credentials are cleaned up before a later login
+can replace them.
 Revocation can fail, for example if the provider is unavailable; local cleanup
 still happens. These requests run in the background only with `async = TRUE`.
 

@@ -126,6 +126,8 @@
 #'
 #' @param revoke_on_session_end If TRUE, automatically revokes provider tokens
 #'   when the Shiny session ends (e.g., browser tab closed, session timeout).
+#'   Also attempts revocation when access-token expiry or maximum authentication
+#'   age automatically clears the session, before losing its credentials.
 #'   This is a best-effort operation. Revocation runs asynchronously only when
 #'   the module is configured with `async = TRUE` (otherwise it runs
 #'   synchronously).
@@ -773,6 +775,25 @@ oauth_module_server_impl <- function(
           token_kind = "access",
           async = use_async_revocation,
           shiny_session = shiny_session
+        ),
+        silent = TRUE
+      )
+      invisible(NULL)
+    }
+
+    .revoke_automatically_retired_credentials <- function(tok, secondary) {
+      if (!isTRUE(revoke_on_session_end)) {
+        return(invisible(NULL))
+      }
+      # Local access has already been cleared. Retire this batch immediately
+      # so a later login cannot overwrite credentials awaiting session cleanup.
+      try(
+        module_revoke_targets(
+          client,
+          tok,
+          secondary,
+          async = isTRUE(async),
+          shiny_session = capture_shiny_session_context(is_async = isTRUE(async))
         ),
         silent = TRUE
       )
@@ -4663,11 +4684,13 @@ oauth_module_server_impl <- function(
             } else if ((now - started) >= reauth_after_seconds) {
               # Default behavior clears token and triggers reauth; skip when indefinite_session
               if (!isTRUE(indefinite_session)) {
+                secondary <- values[["targets"]][["tokens"]]
                 .advance_auth_epoch()
                 auth_operations[["force_oidc_reauth"]] <-
                   provider_uses_oidc(client@provider)
                 values[["token"]] <- NULL
                 values[["error"]] <- "reauth_required"
+                .revoke_automatically_retired_credentials(tok, secondary)
                 values[["error_description"]] <- paste0(
                   "Reauthentication required after ",
                   format(
@@ -4737,10 +4760,12 @@ oauth_module_server_impl <- function(
                 shiny::invalidateLater(500L, session)
                 return()
               }
+              secondary <- values[["targets"]][["tokens"]]
               .advance_auth_epoch()
               auth_operations[["force_oidc_reauth"]] <- FALSE
               values[["token"]] <- NULL
               values[["error"]] <- "token_expired"
+              .revoke_automatically_retired_credentials(tok, secondary)
               values[["error_description"]] <- "Access token expired"
               try(
                 audit_event(
