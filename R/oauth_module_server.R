@@ -4327,7 +4327,27 @@ oauth_module_server_impl <- function(
 
                 res |>
                   promises::then(function(raw) {
-                    tok <- replay_async_conditions(raw)
+                    # Retain credentials before replay: strict warning policy
+                    # can reject an otherwise successful worker result.
+                    tok <- if (
+                      is.list(raw) && isTRUE(raw[[".shinyOAuth_async_wrapped"]])
+                    ) {
+                      raw[["value"]]
+                    } else {
+                      raw
+                    }
+                    tok <- tryCatch(
+                      replay_async_conditions(raw),
+                      error = function(e) {
+                        .revoke_stale_credentials(
+                          tok,
+                          shiny_session = captured_shiny_session,
+                          cleanup = managed_cleanup,
+                          operation_epoch = login_operation[["epoch"]]
+                        )
+                        stop(e)
+                      }
+                    )
                     if (
                       !isTRUE(.auth_operation_can_apply(
                         login_operation,
