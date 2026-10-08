@@ -2867,6 +2867,9 @@ verify_token_set <- function(
   if (!is_valid_access_token(token_set[["access_token"]])) {
     err_token("Token response access_token contains invalid characters")
   }
+  token_set[["scope"]] <- normalize_provider_response_scope(
+    client@provider, token_set[["scope"]]
+  )
   token_set <- smart_verify_token_response(client, token_set, is_refresh)
 
   scope_validation_mode <- client@scope_validation %||% "warn"

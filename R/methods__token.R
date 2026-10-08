@@ -1305,6 +1305,9 @@ refresh_token_impl <- function(
               ) ==
                 0L
           )
+          tok[["scope"]] <- normalize_provider_response_scope(
+            oauth_client@provider, tok[["scope"]]
+          )
           extra_fields <- token_response_extra_fields(tok)
           outcome[["value"]] <- if (
             is_valid_string(tok[["refresh_token"]]) &&

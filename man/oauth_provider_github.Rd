@@ -16,6 +16,8 @@ oauth_provider_github(name = "github")
 Create the provider configuration for a GitHub OAuth App, then pass it with
 your app credentials to \code{\link[=oauth_client]{oauth_client()}}. This configures profile retrieval
 from GitHub's API; GitHub does not return an OIDC ID token.
+GitHub's comma-separated token response scopes are normalized before granted
+permissions are validated and stored, including when \code{name} is customized.
 }
 \details{
 You can register a new GitHub OAuth 2.0 app in your

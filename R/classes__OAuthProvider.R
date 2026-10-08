@@ -248,6 +248,11 @@
 #'   token types (for example `MAC`) still fail fast rather than being misused.
 #'   Set `allowed_token_types = character()` explicitly only to disable the
 #'   value allowlist while still requiring `token_type` itself.
+#' @param token_response_scope_format Token response scope separator, `"space"`
+#'   (standard OAuth, the default) or `"comma"` (GitHub). Comma-separated
+#'   responses are converted to standard space-separated scopes before grant
+#'   validation and storage, for both login and refresh. Set this explicitly for
+#'   custom providers with this response format; provider names do not select it.
 #' @param allow_missing_token_type Logical, default `FALSE`. Opt in only for a
 #'   provider known to issue Bearer tokens while omitting `token_type` from its
 #'   token responses, contrary to OAuth 2.0. When `TRUE`, login and refresh assume
@@ -499,6 +504,10 @@ OAuthProvider <- S7::new_class(
     allowed_token_types = S7::new_property(
       S7::class_character,
       default = c("Bearer")
+    ),
+    token_response_scope_format = S7::new_property(
+      S7::class_character,
+      default = "space"
     ),
     allow_missing_token_type = S7::new_property(
       S7::class_logical,
@@ -791,7 +800,8 @@ oauth_provider <- function(
   ...,
   allowed_algs = NULL,
   allow_missing_token_type = FALSE,
-  token_target_mode = "none"
+  token_target_mode = "none",
+  token_response_scope_format = "space"
 ) {
   allowed_algs <- resolve_argument_alias(
     id_token_allowed_algs,
@@ -1137,6 +1147,7 @@ oauth_provider <- function(
     id_token_allowed_algs = allowed_algs,
     userinfo_allowed_algs = userinfo_allowed_algs,
     allowed_token_types = allowed_token_types,
+    token_response_scope_format = token_response_scope_format,
     allow_missing_token_type = allow_missing_token_type,
     leeway = leeway,
     par_url = par_url,
@@ -1985,6 +1996,13 @@ oauth_provider_validate <- function(self) {
     )
   }
 
+  if (
+    !is_valid_string(self@token_response_scope_format) ||
+      !self@token_response_scope_format %in% c("space", "comma")
+  ) {
+    return("OAuthProvider: token_response_scope_format must be space or comma")
+  }
+
   if (length(self@allowed_token_types) > 0) {
     att <- self@allowed_token_types
     if (!is.character(att)) {
@@ -2199,6 +2217,9 @@ provider_fingerprint <- function(provider) {
       provider@jarm_tolerate_duplicate_top_level_iss
     ),
     token_auth_style = provider@token_auth_style,
+    token_response_scope_format = provider_prop(
+      "token_response_scope_format", "space"
+    ),
     endpoint_auth_metadata = provider_prop("endpoint_auth_metadata", list()),
     extra_auth_params_digest = state_policy_value_digest(
       provider_prop("extra_auth_params", list())

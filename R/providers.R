@@ -93,6 +93,8 @@ oauth_provider_oidc <- function(
 #' Create the provider configuration for a GitHub OAuth App, then pass it with
 #' your app credentials to [oauth_client()]. This configures profile retrieval
 #' from GitHub's API; GitHub does not return an OIDC ID token.
+#' GitHub's comma-separated token response scopes are normalized before granted
+#' permissions are validated and stored, including when `name` is customized.
 #'
 #' @details
 #' You can register a new GitHub OAuth 2.0 app in your
@@ -121,6 +123,7 @@ oauth_provider_github <- function(name = "github") {
     pkce_method = "S256",
 
     token_auth_style = "body",
+    token_response_scope_format = "comma",
     extra_auth_params = list(),
     extra_token_params = list(),
     extra_token_headers = c(Accept = "application/json"),

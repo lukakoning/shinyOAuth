@@ -58,6 +58,7 @@ OAuthProvider(
   infer_oidc_from_issuer = TRUE,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
+  token_response_scope_format = "space",
   allow_missing_token_type = FALSE,
   jarm_signing_alg_values_supported = character(0),
   jarm_encryption_alg_values_supported = character(0),
@@ -425,6 +426,12 @@ Discovery negotiates this independently against UserInfo metadata. Use a
 single algorithm to enforce the client's registered UserInfo signing choice.
 An empty vector rejects all signed UserInfo algorithms.
 Unlabelled RSA keys follow the same binding policy as \code{id_token_allowed_algs}.}
+
+\item{token_response_scope_format}{Token response scope separator, \code{"space"}
+(standard OAuth, the default) or \code{"comma"} (GitHub). Comma-separated
+responses are converted to standard space-separated scopes before grant
+validation and storage, for both login and refresh. Set this explicitly for
+custom providers with this response format; provider names do not select it.}
 
 \item{allow_missing_token_type}{Logical, default \code{FALSE}. Opt in only for a
 provider known to issue Bearer tokens while omitting \code{token_type} from its

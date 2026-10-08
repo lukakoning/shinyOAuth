@@ -66,7 +66,8 @@ oauth_provider(
   ...,
   allowed_algs = NULL,
   allow_missing_token_type = FALSE,
-  token_target_mode = "none"
+  token_target_mode = "none",
+  token_response_scope_format = "space"
 )
 }
 \arguments{
@@ -461,6 +462,12 @@ scopes, requires explicit scope evidence and handles static \code{.default}
 consent in its provider policy. Microsoft responses may include previously
 consented scopes for the selected resource; local operation limits remain
 separate from that full grant. See \code{vignette("token-targets")}.}
+
+\item{token_response_scope_format}{Token response scope separator, \code{"space"}
+(standard OAuth, the default) or \code{"comma"} (GitHub). Comma-separated
+responses are converted to standard space-separated scopes before grant
+validation and storage, for both login and refresh. Set this explicitly for
+custom providers with this response format; provider names do not select it.}
 }
 \value{
 \link{OAuthProvider} object
