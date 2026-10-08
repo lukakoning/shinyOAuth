@@ -121,9 +121,11 @@ oauth_module_server(
 - revoke_on_session_end:
 
   If TRUE, automatically revokes provider tokens when the Shiny session
-  ends (e.g., browser tab closed, session timeout). This is a
-  best-effort operation. Revocation runs asynchronously only when the
-  module is configured with `async = TRUE` (otherwise it runs
+  ends (e.g., browser tab closed, session timeout). Also attempts
+  revocation when access-token expiry or maximum authentication age
+  automatically clears the session, before losing its credentials. This
+  is a best-effort operation. Revocation runs asynchronously only when
+  the module is configured with `async = TRUE` (otherwise it runs
   synchronously). Requires the provider to have a `revocation_url`
   configured. Default is FALSE. Note that session-end revocation may not
   always succeed (e.g., network issues, provider unavailable), so

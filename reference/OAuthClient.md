@@ -490,7 +490,9 @@ OAuthClient(
   uses `"warn"` if `claims` includes `essential = TRUE`, `value`, or
   `values` requirements, and `"none"` otherwise. Checks on
   `claims[["id_token"]]` require ID token validation
-  (`id_token_validation = TRUE` or `use_nonce = TRUE`).
+  (`id_token_validation = TRUE` or `use_nonce = TRUE`). Checks on
+  `claims[["userinfo"]]` require `userinfo_required = TRUE` and a
+  configured UserInfo endpoint on the provider.
 
 - userinfo_jwt_required_time_claims:
 

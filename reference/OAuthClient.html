@@ -506,7 +506,9 @@ unexpected values: <code>"warn"</code> continues with a warning, <code>"strict"<
 login, and <code>"none"</code> skips the check. When omitted, <code><a href="oauth_client.html">oauth_client()</a></code> uses
 <code>"warn"</code> if <code>claims</code> includes <code>essential = TRUE</code>, <code>value</code>, or <code>values</code>
 requirements, and <code>"none"</code> otherwise. Checks on <code>claims[["id_token"]]</code> require
-ID token validation (<code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>).</p></dd>
+ID token validation (<code>id_token_validation = TRUE</code> or <code>use_nonce = TRUE</code>).
+Checks on <code>claims[["userinfo"]]</code> require <code>userinfo_required = TRUE</code> and
+a configured UserInfo endpoint on the provider.</p></dd>
 
 
 <dt id="arg-userinfo-jwt-required-time-claims">userinfo_jwt_required_time_claims<a class="anchor" aria-label="anchor" href="#arg-userinfo-jwt-required-time-claims"></a></dt>

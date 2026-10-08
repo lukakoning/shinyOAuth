@@ -125,7 +125,8 @@ for OIDC, <code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_
 <span>  <span class="va">...</span>,</span>
 <span>  allowed_algs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  allow_missing_token_type <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  token_target_mode <span class="op">=</span> <span class="st">"none"</span></span>
+<span>  token_target_mode <span class="op">=</span> <span class="st">"none"</span>,</span>
+<span>  token_response_scope_format <span class="op">=</span> <span class="st">"space"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -632,6 +633,14 @@ scopes, requires explicit scope evidence and handles static <code>.default</code
 consent in its provider policy. Microsoft responses may include previously
 consented scopes for the selected resource; local operation limits remain
 separate from that full grant. See <code><a href="../articles/token-targets.html">vignette("token-targets")</a></code>.</p></dd>
+
+
+<dt id="arg-token-response-scope-format">token_response_scope_format<a class="anchor" aria-label="anchor" href="#arg-token-response-scope-format"></a></dt>
+<dd><p>Token response scope separator, <code>"space"</code>
+(standard OAuth, the default) or <code>"comma"</code> (GitHub). Comma-separated
+responses are converted to standard space-separated scopes before grant
+validation and storage, for both login and refresh. Set this explicitly for
+custom providers with this response format; provider names do not select it.</p></dd>
 
 </dl></div>
     <div class="section level2">

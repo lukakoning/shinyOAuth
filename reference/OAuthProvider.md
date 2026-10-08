@@ -68,6 +68,7 @@ OAuthProvider(
   infer_oidc_from_issuer = TRUE,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
+  token_response_scope_format = "space",
   allow_missing_token_type = FALSE,
   jarm_signing_alg_values_supported = character(0),
   jarm_encryption_alg_values_supported = character(0),
@@ -568,6 +569,15 @@ OAuthProvider(
   choice. An empty vector rejects all signed UserInfo algorithms.
   Unlabelled RSA keys follow the same binding policy as
   `id_token_allowed_algs`.
+
+- token_response_scope_format:
+
+  Token response scope separator, `"space"` (standard OAuth, the
+  default) or `"comma"` (GitHub). Comma-separated responses are
+  converted to standard space-separated scopes before grant validation
+  and storage, for both login and refresh. Set this explicitly for
+  custom providers with this response format; provider names do not
+  select it.
 
 - allow_missing_token_type:
 

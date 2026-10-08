@@ -610,8 +610,11 @@ ID token and userinfo are both available, their <code>sub</code> values
 must match. <code>userinfo_id_token_match = TRUE</code> also requires a
 validated ID token to be available for that comparison. Requests in
 <code>claims[["userinfo"]]</code> are checked according to
-<code>claims_validation</code>, as with the ID token claims in step
-9.</p>
+<code>claims_validation</code>, as with the ID token claims in step 9.
+Enforceable UserInfo requirements with <code>"warn"</code> or
+<code>"strict"</code> require <code>userinfo_required = TRUE</code> and
+a configured <code>userinfo_url</code>; contradictory client
+configurations are rejected before starting authorization.</p>
 <div class="section level4">
 <h4 id="signed-userinfo-responses">Signed UserInfo responses<a class="anchor" aria-label="anchor" href="#signed-userinfo-responses"></a>
 </h4>
@@ -738,9 +741,13 @@ to revoke both access and refresh tokens if the provider supports it. It
 does not end the user’s login session at the provider.
 <code>revoke_on_session_end = TRUE</code> also attempts revocation when
 the Shiny session ends and requires a configured
-<code>revocation_url</code>. Revocation can fail, for example if the
-provider is unavailable; local cleanup still happens. These requests run
-in the background only with <code>async = TRUE</code>.</p>
+<code>revocation_url</code>. With this option enabled, automatic expiry
+or maximum authentication age also attempts revocation as soon as it
+clears the session, including secondary resource tokens. The retiring
+credentials are cleaned up before a later login can replace them.
+Revocation can fail, for example if the provider is unavailable; local
+cleanup still happens. These requests run in the background only with
+<code>async = TRUE</code>.</p>
 <p>The module also clears and renews the browser token for subsequent
 logins. For direct token management, <a href="https://lukakoning.github.io/shinyOAuth/reference/revoke_token.html"><code>revoke_token()</code></a>
 lets you request revocation of an access or refresh token.</p>

@@ -520,7 +520,10 @@ token and userinfo are both available, their `sub` values must match.
 `userinfo_id_token_match = TRUE` also requires a validated ID token to
 be available for that comparison. Requests in `claims[["userinfo"]]` are
 checked according to `claims_validation`, as with the ID token claims in
-step 9.
+step 9. Enforceable UserInfo requirements with `"warn"` or `"strict"`
+require `userinfo_required = TRUE` and a configured `userinfo_url`;
+contradictory client configurations are rejected before starting
+authorization.
 
 #### Signed UserInfo responses
 
@@ -636,9 +639,13 @@ refresh. The provider may still reject API calls with that token.
 access and refresh tokens if the provider supports it. It does not end
 the user’s login session at the provider. `revoke_on_session_end = TRUE`
 also attempts revocation when the Shiny session ends and requires a
-configured `revocation_url`. Revocation can fail, for example if the
-provider is unavailable; local cleanup still happens. These requests run
-in the background only with `async = TRUE`.
+configured `revocation_url`. With this option enabled, automatic expiry
+or maximum authentication age also attempts revocation as soon as it
+clears the session, including secondary resource tokens. The retiring
+credentials are cleaned up before a later login can replace them.
+Revocation can fail, for example if the provider is unavailable; local
+cleanup still happens. These requests run in the background only with
+`async = TRUE`.
 
 The module also clears and renews the browser token for subsequent
 logins. For direct token management,

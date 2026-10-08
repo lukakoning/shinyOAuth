@@ -43,9 +43,10 @@ oauth_client_secret_apple(
 
 - expires_in:
 
-  Positive lifetime in seconds. Must be no more than `15777000` seconds
-  (six months). Defaults to `15776700` seconds, leaving a five-minute
-  margin below Apple's documented maximum
+  Positive whole-number lifetime in seconds. Must be at least one second
+  and no more than `15777000` seconds (six months). Defaults to
+  `15776700` seconds, leaving a five-minute margin below Apple's
+  documented maximum
 
 - issued_at:
 
