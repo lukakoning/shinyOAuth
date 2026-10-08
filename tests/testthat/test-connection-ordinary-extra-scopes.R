@@ -105,8 +105,12 @@ test_that("ordinary replacement retains prior scope evidence without requesting 
               settled <- NULL
               promises::then(
                 result,
-                function(value) settled <<- value,
-                function(error) settled <<- error
+                function(value) {
+                  settled <<- value
+                },
+                function(error) {
+                  settled <<- error
+                }
               )
               poll_for_async(function() !is.null(settled), session)
               result <- settled
@@ -413,8 +417,12 @@ test_that("ordinary extra scope policy crosses real callback and refresh workers
           settled <- NULL
           promises::then(
             values[["connection"]]()[["refresh"]](),
-            function(value) settled <<- value,
-            function(error) settled <<- error
+            function(value) {
+              settled <<- value
+            },
+            function(error) {
+              settled <<- error
+            }
           )
           poll_for_async(function() !is.null(settled), session, timeout = 15)
           expect_true(settled)

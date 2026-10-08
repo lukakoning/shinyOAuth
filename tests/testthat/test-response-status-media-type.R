@@ -1,7 +1,10 @@
 for (form in c(FALSE, TRUE)) {
   test_that(paste("token exchange and refresh require HTTP 200", form), {
     client <- make_test_client(scopes = character(), use_nonce = FALSE)
-    previous <- OAuthToken(access_token = "previous", refresh_token = "previous-refresh")
+    previous <- OAuthToken(
+      access_token = "previous",
+      refresh_token = "previous-refresh"
+    )
     status <- 200L
     attempts <- 0L
     parse_calls <- 0L
@@ -11,17 +14,22 @@ for (form in c(FALSE, TRUE)) {
         expect_false(idempotent)
         attempts <<- attempts + 1L
         httr2::response(
-          url = req[["url"]], status = status,
-          headers = list("content-type" = if (form) {
-            "application/x-www-form-urlencoded"
-          } else {
-            "application/json"
-          }),
-          body = charToRaw(if (form) {
-            "access_token=replacement&token_type=Bearer&refresh_token=replacement-refresh&expires_in=3600"
-          } else {
-            '{"access_token":"replacement","token_type":"Bearer","refresh_token":"replacement-refresh","expires_in":3600}'
-          })
+          url = req[["url"]],
+          status = status,
+          headers = list(
+            "content-type" = if (form) {
+              "application/x-www-form-urlencoded"
+            } else {
+              "application/json"
+            }
+          ),
+          body = charToRaw(
+            if (form) {
+              "access_token=replacement&token_type=Bearer&refresh_token=replacement-refresh&expires_in=3600"
+            } else {
+              '{"access_token":"replacement","token_type":"Bearer","refresh_token":"replacement-refresh","expires_in":3600}'
+            }
+          )
         )
       },
       parse_token_response = function(...) {
@@ -45,7 +53,10 @@ for (form in c(FALSE, TRUE)) {
       } else {
         expect_s3_class(exchange, "shinyOAuth_http_error")
         expect_s3_class(refreshed, "shinyOAuth_http_error")
-        expect_identical(refreshed[["refresh_credential_outcome"]], "possibly_consumed")
+        expect_identical(
+          refreshed[["refresh_credential_outcome"]],
+          "possibly_consumed"
+        )
         expect_identical(parse_calls, 0L)
       }
       expect_identical(previous@access_token, "previous")

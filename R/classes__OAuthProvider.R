@@ -2218,7 +2218,8 @@ provider_fingerprint <- function(provider) {
     ),
     token_auth_style = provider@token_auth_style,
     token_response_scope_format = provider_prop(
-      "token_response_scope_format", "space"
+      "token_response_scope_format",
+      "space"
     ),
     endpoint_auth_metadata = provider_prop("endpoint_auth_metadata", list()),
     extra_auth_params_digest = state_policy_value_digest(

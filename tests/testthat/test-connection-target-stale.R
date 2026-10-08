@@ -76,8 +76,12 @@ test_that("target staleness follows primary expiry independently of secondary re
               settled <- NULL
               promises::then(
                 result,
-                function(value) settled <<- value,
-                function(error) settled <<- error
+                function(value) {
+                  settled <<- value
+                },
+                function(error) {
+                  settled <<- error
+                }
               )
               poll_for_async(function() !is.null(settled), session)
               result <- settled

@@ -63,8 +63,12 @@ test_that("ordinary managed refresh pacing follows token lifetime after success"
               value <- NULL
               promises::then(
                 result,
-                function(result) value <<- result,
-                function(error) value <<- error
+                function(result) {
+                  value <<- result
+                },
+                function(error) {
+                  value <<- error
+                }
               )
               poll_for_async(function() !is.null(value), session)
               if (inherits(value, "error")) {

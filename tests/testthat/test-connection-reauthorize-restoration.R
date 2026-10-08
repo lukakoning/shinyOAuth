@@ -215,8 +215,12 @@ test_that("fresh ordinary callbacks retain restrictions through later refreshes"
               settled <- NULL
               promises::then(
                 result,
-                function(value) settled <<- value,
-                function(error) settled <<- error
+                function(value) {
+                  settled <<- value
+                },
+                function(error) {
+                  settled <<- error
+                }
               )
               poll_for_async(function() !is.null(settled), session)
               result <- settled

@@ -293,7 +293,9 @@ test_that("reauthorization discards late refresh without upstream revocation", {
   revoked <- 0L
   local_mocked_bindings(
     refresh_token = function(...) {
-      promises::promise(function(resolve_, reject_) resolve <<- resolve_)
+      promises::promise(function(resolve_, reject_) {
+        resolve <<- resolve_
+      })
     },
     revoke_token = function(...) {
       revoked <<- revoked + 1L
@@ -308,7 +310,9 @@ test_that("reauthorization discards late refresh without upstream revocation", {
       result <- NULL
       promises::catch(
         previous[["access_token"]](force_refresh = TRUE, async = TRUE),
-        function(error) result <<- error
+        function(error) {
+          result <<- error
+        }
       )
       values[["reauthorize"]]()
       resolve(manager_test_token(access = "obsolete-refresh"))
@@ -331,7 +335,9 @@ test_that("managed reauthorization routes the selected connection's scope limit"
   revoked <- 0L
   local_mocked_bindings(
     refresh_token = function(...) {
-      promises::promise(function(resolve_, reject_) resolve <<- resolve_)
+      promises::promise(function(resolve_, reject_) {
+        resolve <<- resolve_
+      })
     },
     revoke_token = function(...) {
       revoked <<- revoked + 1L
@@ -350,7 +356,9 @@ test_that("managed reauthorization routes the selected connection's scope limit"
       result <- NULL
       promises::catch(
         previous[["access_token"]](force_refresh = TRUE, async = TRUE),
-        function(error) result <<- error
+        function(error) {
+          result <<- error
+        }
       )
       auth[["reauthorize"]](id)
       expect_identical(previous[["has_scopes"]]("read"), FALSE)

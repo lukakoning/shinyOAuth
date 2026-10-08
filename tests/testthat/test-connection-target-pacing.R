@@ -200,8 +200,12 @@ test_that("managed target pacing follows lifetime with stable and rotating crede
                 value <- NULL
                 promises::then(
                   result,
-                  function(result) value <<- result,
-                  function(error) value <<- error
+                  function(result) {
+                    value <<- result
+                  },
+                  function(error) {
+                    value <<- error
+                  }
                 )
                 poll_for_async(function() !is.null(value), session)
                 if (inherits(value, "error")) {

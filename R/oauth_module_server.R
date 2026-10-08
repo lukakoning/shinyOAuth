@@ -793,7 +793,9 @@ oauth_module_server_impl <- function(
           tok,
           secondary,
           async = isTRUE(async),
-          shiny_session = capture_shiny_session_context(is_async = isTRUE(async))
+          shiny_session = capture_shiny_session_context(
+            is_async = isTRUE(async)
+          )
         ),
         silent = TRUE
       )

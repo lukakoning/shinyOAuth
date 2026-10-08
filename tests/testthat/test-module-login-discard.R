@@ -1,53 +1,87 @@
 for (stale in c(FALSE, TRUE)) {
-  test_that(paste("warning replay retires successful async login credentials, stale =", stale), {
-    local_options(shinyOAuth.skip_browser_token = TRUE)
-    client <- make_test_client()
-    client@provider@revocation_url <- "https://example.com/revoke"
-    token <- OAuthToken(
-      access_token = "discarded-access", refresh_token = "discarded-refresh",
-      expires_at = as.numeric(Sys.time()) + 3600
-    )
-    finish <- NULL
-    calls <- list()
-    local_mocked_bindings(
-      async_dispatch = function(...) {
-        promises::promise(function(resolve, reject) finish <<- resolve)
-      },
-      revoke_token = function(client, token, token_kind, async, ...) {
-        calls[[length(calls) + 1L]] <<- list(token = token, kind = token_kind, async = async)
-        if (token_kind == "refresh") stop("synthetic remote failure")
-      },
-      .package = "shinyOAuth"
-    )
-    shiny::testServer(
-      oauth_module_server,
-      args = list(
-        id = "auth", client = client, auto_redirect = FALSE,
-        async = TRUE, refresh_proactively = FALSE
-      ),
-      {
-        state <- parse_query_param(values[["build_auth_url"]](), "state")
-        values[[".process_query"]](paste0("?code=code&state=", state))
-        expect_true(is.function(finish))
-        if (stale) values[["logout"]]()
-        withr::with_options(list(warn = 2), {
-          finish(list(
-            .shinyOAuth_async_wrapped = TRUE, value = token,
-            warnings = list(simpleWarning("successful worker warning")), messages = list()
-          ))
-          poll_for_async(function() length(calls) == 2L, session)
-        })
-        expect_null(values[["token"]])
-        expect_null(auth_operations[["active_login_id"]])
-        expect_identical(values[["error"]], if (stale) "logged_out" else "token_exchange_error")
-        expect_length(calls, 2L)
-        expect_identical(vapply(calls, function(call) call[["kind"]], ""), c("refresh", "access"))
-        expect_true(all(vapply(calls, function(call) identical(call[["token"]], token), logical(1))))
-        expect_true(all(vapply(calls, function(call) call[["async"]], logical(1))))
-      }
-    )
-    expect_length(calls, 2L)
-  })
+  test_that(
+    paste(
+      "warning replay retires successful async login credentials, stale =",
+      stale
+    ),
+    {
+      local_options(shinyOAuth.skip_browser_token = TRUE)
+      client <- make_test_client()
+      client@provider@revocation_url <- "https://example.com/revoke"
+      token <- OAuthToken(
+        access_token = "discarded-access",
+        refresh_token = "discarded-refresh",
+        expires_at = as.numeric(Sys.time()) + 3600
+      )
+      finish <- NULL
+      calls <- list()
+      local_mocked_bindings(
+        async_dispatch = function(...) {
+          promises::promise(function(resolve, reject) {
+            finish <<- resolve
+          })
+        },
+        revoke_token = function(client, token, token_kind, async, ...) {
+          calls[[length(calls) + 1L]] <<- list(
+            token = token,
+            kind = token_kind,
+            async = async
+          )
+          if (token_kind == "refresh") stop("synthetic remote failure")
+        },
+        .package = "shinyOAuth"
+      )
+      shiny::testServer(
+        oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          async = TRUE,
+          refresh_proactively = FALSE
+        ),
+        {
+          state <- parse_query_param(values[["build_auth_url"]](), "state")
+          values[[".process_query"]](paste0("?code=code&state=", state))
+          expect_true(is.function(finish))
+          if (stale) {
+            values[["logout"]]()
+          }
+          withr::with_options(list(warn = 2), {
+            finish(list(
+              .shinyOAuth_async_wrapped = TRUE,
+              value = token,
+              warnings = list(simpleWarning("successful worker warning")),
+              messages = list()
+            ))
+            poll_for_async(function() length(calls) == 2L, session)
+          })
+          expect_null(values[["token"]])
+          expect_null(auth_operations[["active_login_id"]])
+          expect_identical(
+            values[["error"]],
+            if (stale) "logged_out" else "token_exchange_error"
+          )
+          expect_length(calls, 2L)
+          expect_identical(
+            vapply(calls, function(call) call[["kind"]], ""),
+            c("refresh", "access")
+          )
+          expect_true(all(vapply(
+            calls,
+            function(call) identical(call[["token"]], token),
+            logical(1)
+          )))
+          expect_true(all(vapply(
+            calls,
+            function(call) call[["async"]],
+            logical(1)
+          )))
+        }
+      )
+      expect_length(calls, 2L)
+    }
+  )
 }
 
 for (async in c(FALSE, TRUE)) {
@@ -76,7 +110,9 @@ for (async in c(FALSE, TRUE)) {
         )
         local_mocked_bindings(
           handle_callback = function(...) {
-            if (stage == "deadline") now <<- now + 2
+            if (stage == "deadline") {
+              now <<- now + 2
+            }
             result
           },
           async_dispatch = function(...) {
@@ -85,11 +121,15 @@ for (async in c(FALSE, TRUE)) {
             })
           },
           token_target_bundle = function(...) {
-            if (stage == "targets") err_token("Rejected target bundle")
+            if (stage == "targets") {
+              err_token("Rejected target bundle")
+            }
             original_bundle(...)
           },
           authorization_extra_scopes = function(...) {
-            if (stage == "scopes") err_token("Rejected scope history")
+            if (stage == "scopes") {
+              err_token("Rejected scope history")
+            }
             original_extra_scopes(...)
           },
           revoke_token = function(client, token, token_kind, async, ...) {
@@ -129,7 +169,9 @@ for (async in c(FALSE, TRUE)) {
             values[[".process_query"]](paste0("?code=ok&state=", state))
             if (async) {
               expect_true(is.function(finish))
-              if (stage == "deadline") now <<- now + 2
+              if (stage == "deadline") {
+                now <<- now + 2
+              }
               finish(result)
               poll_for_async(function() !is.null(values[["error"]]), session)
             }

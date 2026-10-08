@@ -45,8 +45,12 @@ test_that("on-demand refresh survives ordinary expiry only within its owned grac
         if (scenario != "no_refresh") {
           promises::then(
             current[["access_token"]](async = TRUE),
-            function(x) result <<- x,
-            function(x) result <<- x
+            function(x) {
+              result <<- x
+            },
+            function(x) {
+              result <<- x
+            }
           )
           expect_true(is.function(resolve))
         }

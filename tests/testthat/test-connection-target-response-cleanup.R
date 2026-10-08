@@ -139,8 +139,12 @@ test_that("HTTP validation rejection reaches both owners without exposing creden
                 settled <- NULL
                 promises::then(
                   result,
-                  function(value) settled <<- value,
-                  function(error) settled <<- error
+                  function(value) {
+                    settled <<- value
+                  },
+                  function(error) {
+                    settled <<- error
+                  }
                 )
                 poll_for_async(function() !is.null(settled), session)
                 result <- settled
@@ -232,7 +236,9 @@ test_that("indefinite target sessions retain their shared grant after HTTP rejec
         )
         if (inherits(result, "promise")) {
           settled <- NULL
-          promises::catch(result, function(error) settled <<- error)
+          promises::catch(result, function(error) {
+            settled <<- error
+          })
           poll_for_async(function() !is.null(settled), session)
           result <- settled
         }
@@ -299,7 +305,9 @@ test_that("warning replay failures cannot lose rejected response credentials", {
           target = "secondary",
           async = TRUE
         ),
-        function(error) result <<- error
+        function(error) {
+          result <<- error
+        }
       )
       poll_for_async(function() !is.null(result), session)
       expect_s3_class(result, "shinyOAuth_access_error")
@@ -363,7 +371,9 @@ test_that("late HTTP rejection respects logout and replacement cleanup intent", 
           result <- NULL
           promises::catch(
             current[["access_token"]](target = "secondary", async = TRUE),
-            function(error) result <<- error
+            function(error) {
+              result <<- error
+            }
           )
           if (managed) {
             if (revoke) {
@@ -464,7 +474,9 @@ test_that("a real worker delivers rejected credentials privately for bounded cle
         result <- NULL
         promises::catch(
           current[["access_token"]](target = "secondary", async = TRUE),
-          function(error) result <<- error
+          function(error) {
+            result <<- error
+          }
         )
         poll_for_async(function() !is.null(result), session, timeout = 30)
         expect_s3_class(result, "shinyOAuth_access_error")

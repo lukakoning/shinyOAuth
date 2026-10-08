@@ -103,9 +103,15 @@ test_that("Microsoft API-empty grants cannot acquire a token for another resourc
             )
             if (inherits(error, "promise")) {
               settled <- NULL
-              promises::then(error, function(x) settled <<- x, function(x) {
-                settled <<- x
-              })
+              promises::then(
+                error,
+                function(x) {
+                  settled <<- x
+                },
+                function(x) {
+                  settled <<- x
+                }
+              )
               poll_for_async(function() !is.null(settled), session)
               error <- settled
             }

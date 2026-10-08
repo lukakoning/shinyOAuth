@@ -60,7 +60,9 @@ test_that("Microsoft prior consent remains honest evidence without widening oper
       local_mocked_bindings(
         refresh_token_dispatch = function(...) {
           if (hold_refresh) {
-            promises::promise(function(resolve, reject) finish <<- resolve)
+            promises::promise(function(resolve, reject) {
+              finish <<- resolve
+            })
           } else {
             dispatch(...)
           }
@@ -211,7 +213,9 @@ test_that("Microsoft prior consent remains honest evidence without widening oper
           expect_false(current[["has_scopes"]]("https://api.example/write"))
           expect_true(current[["has_scopes"]]("https://api.example/read"))
           completed <- NULL
-          promises::then(pending, function(value) completed <<- value)
+          promises::then(pending, function(value) {
+            completed <<- value
+          })
           finish(record[["token"]])
           poll_for_async(function() !is.null(completed), session)
           expect_identical(completed, "access-2")

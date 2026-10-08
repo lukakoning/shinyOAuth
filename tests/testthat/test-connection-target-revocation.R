@@ -351,7 +351,9 @@ test_that("a real cleanup worker applies one attempt per credential", {
     f[["bundle"]][["tokens"]],
     async = TRUE
   )
-  promises::then(pending, function(...) done <<- TRUE)
+  promises::then(pending, function(...) {
+    done <<- TRUE
+  })
   poll_for_async(function() done, timeout = 30)
   expect_true(done)
   metrics <- httr2::resp_body_json(httr2::req_perform(httr2::request(server[[

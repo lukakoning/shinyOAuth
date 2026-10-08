@@ -172,8 +172,12 @@ test_that("real refresh errors pace sibling targets and queued acquisitions", {
               value <- NULL
               promises::then(
                 result,
-                function(x) value <<- x,
-                function(e) value <<- e
+                function(x) {
+                  value <<- x
+                },
+                function(e) {
+                  value <<- e
+                }
               )
               poll_for_async(function() !is.null(value), session)
               value
@@ -260,8 +264,12 @@ test_that("Retry-After survives a real refresh worker without retaining its resp
       async = TRUE,
       target_request = token_target_request(client, "secondary")
     ),
-    function(value) result <<- value,
-    function(error) result <<- error
+    function(value) {
+      result <<- value
+    },
+    function(error) {
+      result <<- error
+    }
   )
   poll_for_async(function() !is.null(result), timeout = 30)
   expect_s3_class(result, "shinyOAuth_http_error")

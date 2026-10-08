@@ -362,17 +362,24 @@ test_that("Apple client-secret lifetimes are positive whole seconds", {
   for (lifetime in c(0.5, 1.5, 0, -1, Inf, NA_real_)) {
     expect_error(
       oauth_client_secret_apple(
-        client_id = "com.example.web", team_id = "ABCDEFGHIJ",
-        key_id = "ABC123DEFG", private_key = key, expires_in = lifetime
+        client_id = "com.example.web",
+        team_id = "ABCDEFGHIJ",
+        key_id = "ABC123DEFG",
+        private_key = key,
+        expires_in = lifetime
       ),
-      "positive whole number", class = "shinyOAuth_input_error"
+      "positive whole number",
+      class = "shinyOAuth_input_error"
     )
   }
   for (lifetime in c(1, 15777000)) {
     secret <- oauth_client_secret_apple(
-      client_id = "com.example.web", team_id = "ABCDEFGHIJ",
-      key_id = "ABC123DEFG", private_key = key,
-      expires_in = lifetime, issued_at = 1700000000.75
+      client_id = "com.example.web",
+      team_id = "ABCDEFGHIJ",
+      key_id = "ABC123DEFG",
+      private_key = key,
+      expires_in = lifetime,
+      issued_at = 1700000000.75
     )
     payload <- parse_jwt_payload(secret)
     expect_equal(payload[["iat"]], 1700000000)

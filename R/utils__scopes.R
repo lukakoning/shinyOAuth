@@ -59,7 +59,9 @@ validate_response_scope <- function(
 # Provider deviations are explicit policy: commas remain valid characters in
 # ordinary OAuth scope tokens. GitHub returns comma-separated granted scopes.
 normalize_provider_response_scope <- function(provider, scope) {
-  if (is.null(scope) || identical(provider@token_response_scope_format, "space")) {
+  if (
+    is.null(scope) || identical(provider@token_response_scope_format, "space")
+  ) {
     return(scope)
   }
   validate_response_scope(scope, signal_error = err_token, allow_empty = TRUE)

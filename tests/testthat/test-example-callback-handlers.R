@@ -42,7 +42,7 @@ test_that("the external integrations vignette serves its registered callback", {
   skip_if_not(file.exists(file))
   lines <- readLines(file, warn = FALSE)
   ends <- which(lines == "```")
-  chunks <- lapply(which(grepl("^```\\{r", lines)), function(start) {
+  chunks <- lapply(grep("^```\\{r", lines), function(start) {
     end <- ends[ends > start][[1L]]
     lines[seq.int(start + 1L, end - 1L)]
   })

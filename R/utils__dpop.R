@@ -637,9 +637,16 @@ normalize_dpop_request_url <- function(url) {
   # signing and sending. Preserve existing escapes and reserved delimiters.
   bytes <- as.integer(charToRaw(enc2utf8(path)))
   if (any(bytes > 127L)) {
-    path <- paste0(vapply(bytes, function(byte) {
-      if (byte > 127L) sprintf("%%%02X", byte) else rawToChar(as.raw(byte))
-    }, character(1)), collapse = "")
+    path <- paste0(
+      vapply(
+        bytes,
+        function(byte) {
+          if (byte > 127L) sprintf("%%%02X", byte) else rawToChar(as.raw(byte))
+        },
+        character(1)
+      ),
+      collapse = ""
+    )
     url <- paste0(
       sub("^([A-Za-z][A-Za-z0-9+.-]*://[^/?#]*).*", "\\1", url),
       path,

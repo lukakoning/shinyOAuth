@@ -25,7 +25,8 @@ test_that("response scope format is explicit validated provider policy", {
   }
   expect_error(
     oauth_provider(
-      name = "custom", auth_url = "https://example.com/auth",
+      name = "custom",
+      auth_url = "https://example.com/auth",
       token_url = "https://example.com/token",
       token_response_scope_format = "other"
     ),
@@ -33,7 +34,8 @@ test_that("response scope format is explicit validated provider policy", {
   )
   expect_error(
     OAuthProvider(
-      name = "custom", auth_url = "https://example.com/auth",
+      name = "custom",
+      auth_url = "https://example.com/auth",
       token_url = "https://example.com/token",
       token_response_scope_format = "other"
     ),
@@ -46,24 +48,31 @@ for (form in c(FALSE, TRUE)) {
     client <- github_scope_client()
     local_mocked_bindings(req_with_dpop_retry = function(req, ...) {
       httr2::response(
-        url = req[["url"]], status = 200L,
-        headers = list("content-type" = if (form) {
-          "application/x-www-form-urlencoded"
-        } else {
-          "application/json"
-        }),
-        body = charToRaw(if (form) {
-          "access_token=synthetic-after&token_type=Bearer&refresh_token=synthetic-refresh&scope=repo%2Cgist&expires_in=3600"
-        } else {
-          '{"access_token":"synthetic-after","token_type":"Bearer","refresh_token":"synthetic-refresh","scope":"repo,gist","expires_in":3600}'
-        })
+        url = req[["url"]],
+        status = 200L,
+        headers = list(
+          "content-type" = if (form) {
+            "application/x-www-form-urlencoded"
+          } else {
+            "application/json"
+          }
+        ),
+        body = charToRaw(
+          if (form) {
+            "access_token=synthetic-after&token_type=Bearer&refresh_token=synthetic-refresh&scope=repo%2Cgist&expires_in=3600"
+          } else {
+            '{"access_token":"synthetic-after","token_type":"Bearer","refresh_token":"synthetic-refresh","scope":"repo,gist","expires_in":3600}'
+          }
+        )
       )
     })
     browser <- valid_browser_token()
     url <- prepare_call(client, browser_token = browser)
     token <- handle_callback(
-      client, code = "synthetic-code",
-      state = parse_query_param(url, "state"), browser_token = browser
+      client,
+      code = "synthetic-code",
+      state = parse_query_param(url, "state"),
+      browser_token = browser
     )
     expect_setequal(token@granted_scopes, c("repo", "gist"))
     expect_true(token@granted_scopes_verified)
@@ -76,8 +85,12 @@ for (form in c(FALSE, TRUE)) {
 test_that("comma handling preserves standard OAuth tokens and rejects empty entries", {
   client <- make_test_client(scopes = "repo,gist", use_nonce = FALSE)
   client@scope_validation <- "strict"
-  response <- list(access_token = "synthetic-access", token_type = "Bearer",
-                   scope = "repo,gist", expires_in = 3600)
+  response <- list(
+    access_token = "synthetic-access",
+    token_type = "Bearer",
+    scope = "repo,gist",
+    expires_in = 3600
+  )
   standard <- verify_token_set(client, response, nonce = NULL)
   expect_identical(standard[["granted_scopes"]], "repo,gist")
 
@@ -92,15 +105,18 @@ test_that("comma handling preserves standard OAuth tokens and rejects empty entr
   response[["scope"]] <- "repo"
   expect_error(
     verify_token_set(github, response, nonce = NULL),
-    "Granted scopes missing", class = "shinyOAuth_token_error"
+    "Granted scopes missing",
+    class = "shinyOAuth_token_error"
   )
   empty <- github_scope_client(character())
   response[["scope"]] <- ""
   expect_identical(
-    verify_token_set(empty, response, nonce = NULL)[["granted_scopes"]], character()
+    verify_token_set(empty, response, nonce = NULL)[["granted_scopes"]],
+    character()
   )
   response[["scope"]] <- NULL
   expect_identical(
-    verify_token_set(empty, response, nonce = NULL)[["granted_scopes"]], character()
+    verify_token_set(empty, response, nonce = NULL)[["granted_scopes"]],
+    character()
   )
 })

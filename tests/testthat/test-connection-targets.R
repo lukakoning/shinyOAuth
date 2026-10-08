@@ -1016,18 +1016,30 @@ test_that("different targets queue and matching async accessors share one refres
         results <- list()
         promises::then(
           current[["access_token"]](target = "contacts", async = TRUE),
-          function(value) results[["first"]] <<- value,
-          function(error) results[["first"]] <<- error
+          function(value) {
+            results[["first"]] <<- value
+          },
+          function(error) {
+            results[["first"]] <<- error
+          }
         )
         promises::then(
           current[["access_token"]](target = "contacts", async = TRUE),
-          function(value) results[["same"]] <<- value,
-          function(error) results[["same"]] <<- error
+          function(value) {
+            results[["same"]] <<- value
+          },
+          function(error) {
+            results[["same"]] <<- error
+          }
         )
         promises::then(
           current[["access_token"]](force_refresh = TRUE, async = TRUE),
-          function(value) results[["other"]] <<- value,
-          function(error) results[["other"]] <<- error
+          function(value) {
+            results[["other"]] <<- value
+          },
+          function(error) {
+            results[["other"]] <<- error
+          }
         )
         expect_length(requests, 1L)
         error <- tryCatch(current[["access_token"]](), error = identity)
@@ -1128,7 +1140,9 @@ test_that("logout discards an in-flight target and every queued acquisition", {
     local_mocked_bindings(
       refresh_token_dispatch = function(...) {
         requests <<- requests + 1L
-        promises::promise(function(resolve_, reject_) resolve <<- resolve_)
+        promises::promise(function(resolve_, reject_) {
+          resolve <<- resolve_
+        })
       },
       revoke_token = function(...) invisible(NULL)
     )
@@ -1158,13 +1172,21 @@ test_that("logout discards an in-flight target and every queued acquisition", {
         results <- list()
         promises::then(
           current[["access_token"]](target = "contacts", async = TRUE),
-          function(value) results[["first"]] <<- value,
-          function(error) results[["first"]] <<- error
+          function(value) {
+            results[["first"]] <<- value
+          },
+          function(error) {
+            results[["first"]] <<- error
+          }
         )
         promises::then(
           current[["access_token"]](force_refresh = TRUE, async = TRUE),
-          function(value) results[["second"]] <<- value,
-          function(error) results[["second"]] <<- error
+          function(value) {
+            results[["second"]] <<- value
+          },
+          function(error) {
+            results[["second"]] <<- error
+          }
         )
         if (managed) {
           controller[["logout"]](FALSE)
@@ -1913,9 +1935,15 @@ test_that("target acquisition crosses a real async worker with its declared poli
     async = TRUE,
     target_request = token_target_request(client, "contacts")
   )
-  promises::then(pending, function(value) result <<- value, function(error) {
-    result <<- error
-  })
+  promises::then(
+    pending,
+    function(value) {
+      result <<- value
+    },
+    function(error) {
+      result <<- error
+    }
+  )
   poll_for_async(function() !is.null(result), timeout = 30)
   expect_identical(S7::S7_inherits(result, OAuthToken), TRUE)
   expect_identical(result@access_token, "worker-contacts")
@@ -1976,7 +2004,9 @@ test_that("queued targets and late refresh delivery respect authentication age b
   local_mocked_bindings(
     refresh_token_dispatch = function(...) {
       calls <<- calls + 1L
-      promises::promise(function(resolve, reject) complete <<- resolve)
+      promises::promise(function(resolve, reject) {
+        complete <<- resolve
+      })
     },
     revoke_token = function(client, token, token_kind, ...) {
       revoked <<- c(revoked, token@access_token)
@@ -1999,13 +2029,21 @@ test_that("queued targets and late refresh delivery respect authentication age b
       results <- list()
       promises::then(
         current[["access_token"]](target = "contacts", async = TRUE),
-        function(value) results[["first"]] <<- value,
-        function(error) results[["first"]] <<- error
+        function(value) {
+          results[["first"]] <<- value
+        },
+        function(error) {
+          results[["first"]] <<- error
+        }
       )
       promises::then(
         current[["access_token"]](force_refresh = TRUE, async = TRUE),
-        function(value) results[["queued"]] <<- value,
-        function(error) results[["queued"]] <<- error
+        function(value) {
+          results[["queued"]] <<- value
+        },
+        function(error) {
+          results[["queued"]] <<- error
+        }
       )
       values[["auth_started_at"]] <- as.numeric(Sys.time()) - 61
       complete(target_test_token(
@@ -2395,8 +2433,12 @@ test_that("interleaved target consumers await current ownership without another 
                   force_refresh = label == "other",
                   async = TRUE
                 ),
-                function(value) results[[label]] <<- value,
-                function(error) results[[label]] <<- error
+                function(value) {
+                  results[[label]] <<- value
+                },
+                function(error) {
+                  results[[label]] <<- error
+                }
               )
             })
           }

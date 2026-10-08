@@ -21,10 +21,13 @@ test_that("DPoP target normalization removes literal dot segments and preserves 
     "/caf%c3%a9" = "/caf%c3%a9"
   )
   # Build Unicode names at runtime: symbol names are native-encoded by R's parser.
-  paths <- c(paths, stats::setNames(
-    c("/caf%C3%A9", "/%E6%97%A5%E6%9C%AC%2F%F0%9F%98%80"),
-    c("/caf\u00e9", "/caf\u00e9/../\u65e5\u672c%2F\U0001f600")
-  ))
+  paths <- c(
+    paths,
+    stats::setNames(
+      c("/caf%C3%A9", "/%E6%97%A5%E6%9C%AC%2F%F0%9F%98%80"),
+      c("/caf\u00e9", "/caf\u00e9/../\u65e5\u672c%2F\U0001f600")
+    )
+  )
   for (path in names(paths)) {
     url <- paste0("HTTPS://API.EXAMPLE.COM:443", path, "?x=%2F..%2F#frag")
     expect_identical(
@@ -67,10 +70,13 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
     "/caf%C3%A9" = "/caf%C3%A9",
     "/caf%c3%a9" = "/caf%c3%a9"
   )
-  paths <- c(paths, stats::setNames(
-    c("/caf%C3%A9", "/%E6%97%A5%E6%9C%AC%2F%F0%9F%98%80"),
-    c("/caf\u00e9", "/caf\u00e9/../\u65e5\u672c%2F\U0001f600")
-  ))
+  paths <- c(
+    paths,
+    stats::setNames(
+      c("/caf%C3%A9", "/%E6%97%A5%E6%9C%AC%2F%F0%9F%98%80"),
+      c("/caf\u00e9", "/caf\u00e9/../\u65e5\u672c%2F\U0001f600")
+    )
+  )
   for (path in names(paths)) {
     expected <- paths[[path]]
     for (as_is in c(FALSE, TRUE)) {
@@ -109,7 +115,10 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
     }
   }
 
-  request <- httr2::request(paste0(origin, "/a/../caf\u00e9/token?resource=api")) |>
+  request <- httr2::request(paste0(
+    origin,
+    "/a/../caf\u00e9/token?resource=api"
+  )) |>
     httr2::req_method("POST") |>
     httr2::req_options(path_as_is = TRUE, followlocation = FALSE)
   response <- shinyOAuth:::req_with_dpop_retry(

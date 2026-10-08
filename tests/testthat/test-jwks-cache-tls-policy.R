@@ -22,7 +22,10 @@ test_that("JWKS cache identity follows the combined global and local TLS floor",
 
 for (smart in c(FALSE, TRUE)) {
   test_that(
-    paste("TLS tightening isolates JWKS reuse and refresh throttles; SMART =", smart),
+    paste(
+      "TLS tightening isolates JWKS reuse and refresh throttles; SMART =",
+      smart
+    ),
     {
       local_options(shinyOAuth.tls_min_version = "1.2")
       client <- smart_client(
@@ -95,7 +98,11 @@ for (smart in c(FALSE, TRUE)) {
       expect_null(refresh())
       expect_length(requests, 4L)
       expect_identical(
-        vapply(requests, function(req) req[["options"]][["sslversion"]], integer(1)),
+        vapply(
+          requests,
+          function(req) req[["options"]][["sslversion"]],
+          integer(1)
+        ),
         c(6L, 6L, 7L, 7L)
       )
 

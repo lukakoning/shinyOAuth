@@ -147,7 +147,9 @@ test_that("async callers share the committed refresh and sync callers never wait
   calls <- 0L
   local_mocked_bindings(refresh_token = function(...) {
     calls <<- calls + 1L
-    promises::promise(function(resolve_, reject_) resolve <<- resolve_)
+    promises::promise(function(resolve_, reject_) {
+      resolve <<- resolve_
+    })
   })
   shiny::testServer(
     oauth_module_server,
@@ -161,8 +163,12 @@ test_that("async callers share the committed refresh and sync callers never wait
       expect_identical(error[["context"]][["reason"]], "refresh_pending")
       expect_identical(calls, 1L)
       answers <- list()
-      promises::then(first, function(value) answers[["first"]] <<- value)
-      promises::then(second, function(value) answers[["second"]] <<- value)
+      promises::then(first, function(value) {
+        answers[["first"]] <<- value
+      })
+      promises::then(second, function(value) {
+        answers[["second"]] <<- value
+      })
       resolve(manager_test_token(access = "committed"))
       for (i in seq_len(10)) {
         later::run_now(0)
@@ -204,7 +210,9 @@ test_that("managed connections expose the same accessor and join refresh", {
   calls <- 0L
   local_mocked_bindings(refresh_token = function(...) {
     calls <<- calls + 1L
-    promises::promise(function(resolve_, reject_) resolve <<- resolve_)
+    promises::promise(function(resolve_, reject_) {
+      resolve <<- resolve_
+    })
   })
   shiny::testServer(
     oauth_connections_server,
@@ -223,8 +231,12 @@ test_that("managed connections expose the same accessor and join refresh", {
       second <- connection[["access_token"]](async = TRUE)
       expect_identical(calls, 1L)
       answers <- list()
-      promises::then(first, function(x) answers[["a"]] <<- x)
-      promises::then(second, function(x) answers[["b"]] <<- x)
+      promises::then(first, function(x) {
+        answers[["a"]] <<- x
+      })
+      promises::then(second, function(x) {
+        answers[["b"]] <<- x
+      })
       resolve(manager_test_token(access = "managed-fresh"))
       for (i in seq_len(10)) {
         later::run_now(0)
@@ -248,7 +260,9 @@ test_that("token export never escapes its original session or late logout", {
   client@scopes <- c("read", "write")
   resolve <- NULL
   local_mocked_bindings(refresh_token = function(...) {
-    promises::promise(function(resolve_, reject_) resolve <<- resolve_)
+    promises::promise(function(resolve_, reject_) {
+      resolve <<- resolve_
+    })
   })
   foreign <- shiny::MockShinySession[["new"]]()
   withr::defer(foreign[["close"]]())
@@ -275,8 +289,12 @@ test_that("token export never escapes its original session or late logout", {
       )
       promises::then(
         pending,
-        function(value) result <<- value,
-        function(error) result <<- error
+        function(value) {
+          result <<- value
+        },
+        function(error) {
+          result <<- error
+        }
       )
       values[["logout"]]()
       resolve(manager_test_token(access = "must-not-escape"))
