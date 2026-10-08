@@ -2726,9 +2726,9 @@ swap_code_for_token_set <- function(
       )
       # Security: reject redirect responses to prevent credential leakage
       reject_redirect_response(resp, context = "token_exchange")
-      if (httr2::resp_is_error(resp)) {
+      if (httr2::resp_status(resp) != 200L) {
         err_http(
-          "Token exchange failed",
+          "Token exchange failed: successful token responses require HTTP 200",
           resp,
           context = list(phase = "exchange_code")
         )

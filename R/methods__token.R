@@ -1297,6 +1297,16 @@ refresh_token_impl <- function(
             )
           }
 
+          if (httr2::resp_status(resp) != 200L) {
+            # An unexpected status cannot establish whether a rotating renewal
+            # credential was consumed; retain the conservative outcome.
+            err_http(
+              "Token refresh failed: successful token responses require HTTP 200",
+              resp,
+              context = list(phase = "refresh_token")
+            )
+          }
+
           tok <- parse_token_response(
             resp,
             allow_empty_scope = client_uses_smart_scopes(oauth_client) ||
