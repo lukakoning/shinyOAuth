@@ -66,7 +66,8 @@ oauth_provider_apple <- function(name = "apple") {
 #'   documents this as a 10-character identifier
 #' @param private_key Apple private key as an `openssl::key` or PEM string. The
 #'   key must be compatible with `ES256` (P-256 ECDSA)
-#' @param expires_in Positive lifetime in seconds. Must be no more than
+#' @param expires_in Positive whole-number lifetime in seconds. Must be at least
+#'   one second and no more than
 #'   `15777000` seconds (six months). Defaults to `15776700` seconds, leaving a
 #'   five-minute margin below Apple's documented maximum
 #' @param issued_at Issue time for the JWT. Defaults to `Sys.time()`
@@ -116,9 +117,10 @@ oauth_client_secret_apple <- function(
       length(expires_in) != 1L ||
       is.na(expires_in) ||
       !is.finite(expires_in) ||
-      expires_in <= 0
+      expires_in < 1 ||
+      expires_in != floor(expires_in)
   ) {
-    err_input("expires_in must be a single positive number of seconds")
+    err_input("expires_in must be a single positive whole number of seconds")
   }
   if (expires_in > 15777000) {
     err_input(

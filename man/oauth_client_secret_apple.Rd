@@ -26,7 +26,8 @@ documents this as a 10-character identifier}
 \item{private_key}{Apple private key as an \code{openssl::key} or PEM string. The
 key must be compatible with \code{ES256} (P-256 ECDSA)}
 
-\item{expires_in}{Positive lifetime in seconds. Must be no more than
+\item{expires_in}{Positive whole-number lifetime in seconds. Must be at least
+one second and no more than
 \code{15777000} seconds (six months). Defaults to \code{15776700} seconds, leaving a
 five-minute margin below Apple's documented maximum}
 
