@@ -105,7 +105,12 @@ for (previous in list(NULL, FALSE)) {
     example_env[["interactive"]] <- function() TRUE
     expect_error(
       sys.source(
-        test_path("..", "..", "inst", "examples", "error_on_softened.R"),
+        system.file(
+          "examples",
+          "error_on_softened.R",
+          package = "shinyOAuth",
+          mustWork = TRUE
+        ),
         envir = example_env
       ),
       "One or more safety settings have been disabled",
