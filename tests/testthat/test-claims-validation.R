@@ -83,6 +83,8 @@ test_that("extract_essential_claims: essential = FALSE is not essential", {
 
 test_that("oauth_client defaults to warn for enforceable claim requests", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = TRUE)
+  prov@userinfo_url <- "https://example.com/userinfo"
+  prov@userinfo_required <- TRUE
 
   warned <- FALSE
 
@@ -110,6 +112,8 @@ test_that("oauth_client defaults to warn for enforceable claim requests", {
 
 test_that("oauth_client does not warn when enforceable claims opt into validation", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = TRUE)
+  prov@userinfo_url <- "https://example.com/userinfo"
+  prov@userinfo_required <- TRUE
 
   expect_no_warning(
     oauth_client(
@@ -866,6 +870,8 @@ test_that("claims_validation defaults to 'none' when no enforceable claims are r
 
 test_that("claims_validation defaults to 'warn' when enforceable claims are requested", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = TRUE)
+  prov@userinfo_url <- "https://example.com/userinfo"
+  prov@userinfo_required <- TRUE
   cli <- oauth_client(
     provider = prov,
     client_id = "abc",

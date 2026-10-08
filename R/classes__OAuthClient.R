@@ -226,6 +226,8 @@
 #'   `"warn"` if `claims` includes `essential = TRUE`, `value`, or `values`
 #'   requirements, and `"none"` otherwise. Checks on `claims[["id_token"]]` require
 #'   ID token validation (`id_token_validation = TRUE` or `use_nonce = TRUE`).
+#'   Checks on `claims[["userinfo"]]` require `userinfo_required = TRUE` and
+#'   a configured UserInfo endpoint on the provider.
 #'
 #' @param trusted_id_token_audiences Character vector of additional ID-token
 #'   audiences explicitly trusted by this client. Defaults to `character(0)`,
@@ -3184,6 +3186,21 @@ oauth_client_validate <- function(self) {
         )
       )
     }
+  }
+
+  if (
+    !identical(self@claims_validation, "none") &&
+      claims_request_target_has_enforceable_requirements(
+        self@claims,
+        "userinfo"
+      ) &&
+      (!isTRUE(self@provider@userinfo_required) ||
+        !is_valid_string(self@provider@userinfo_url))
+  ) {
+    return(paste(
+      "OAuthClient: claims$userinfo validation requires the provider to fetch UserInfo;",
+      "set userinfo_required = TRUE and configure userinfo_url"
+    ))
   }
 
   # Validate userinfo_jwt_required_time_claims

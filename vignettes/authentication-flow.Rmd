@@ -460,6 +460,9 @@ and userinfo are both available, their `sub` values must match.
 `userinfo_id_token_match = TRUE` also requires a validated ID token to be
 available for that comparison. Requests in `claims[["userinfo"]]` are checked
 according to `claims_validation`, as with the ID token claims in step 9.
+Enforceable UserInfo requirements with `"warn"` or `"strict"` require
+`userinfo_required = TRUE` and a configured `userinfo_url`; contradictory
+client configurations are rejected before starting authorization.
 
 #### Signed UserInfo responses
 

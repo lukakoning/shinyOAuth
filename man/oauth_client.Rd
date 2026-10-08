@@ -373,7 +373,9 @@ unexpected values: \code{"warn"} continues with a warning, \code{"strict"} stops
 login, and \code{"none"} skips the check. When omitted, \code{\link[=oauth_client]{oauth_client()}} uses
 \code{"warn"} if \code{claims} includes \code{essential = TRUE}, \code{value}, or \code{values}
 requirements, and \code{"none"} otherwise. Checks on \code{claims[["id_token"]]} require
-ID token validation (\code{id_token_validation = TRUE} or \code{use_nonce = TRUE}).}
+ID token validation (\code{id_token_validation = TRUE} or \code{use_nonce = TRUE}).
+Checks on \code{claims[["userinfo"]]} require \code{userinfo_required = TRUE} and
+a configured UserInfo endpoint on the provider.}
 
 \item{userinfo_jwt_required_time_claims}{Optional character vector of
 temporal JWT claims that must be present when the UserInfo response is a

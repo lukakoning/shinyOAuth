@@ -97,6 +97,7 @@ test_that("JSON and signed JWT UserInfo preserve types through claim policy", {
   jwk[["kid"]] <- "type-parity"
   cli <- make_test_client(use_nonce = FALSE)
   cli@provider@userinfo_url <- "https://example.com/userinfo"
+  cli@provider@userinfo_required <- TRUE
   cli@provider@issuer <- "https://example.com"
   cli@claims_validation <- "strict"
   body <- ""

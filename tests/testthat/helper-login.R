@@ -144,6 +144,14 @@ make_test_client <- function(
     use_nonce = use_nonce,
     userinfo_signed_jwt_required = userinfo_signed_jwt_required
   )
+  # Enforced UserInfo fixtures need the same fetch path as real clients.
+  if (
+    !identical(claims_validation, "none") &&
+      claims_request_target_has_enforceable_requirements(claims, "userinfo")
+  ) {
+    prov@userinfo_url <- "https://example.com/userinfo"
+    prov@userinfo_required <- TRUE
+  }
   # For an effective OIDC provider, default to "openid" scope to silence the
   # auto-prepend warning in ensure_openid_scope().
   if (is.null(scopes)) {
