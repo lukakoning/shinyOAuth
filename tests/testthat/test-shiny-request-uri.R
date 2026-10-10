@@ -212,6 +212,59 @@ test_that("publish_shiny_request_object uses an explicit public base URL", {
   )
 })
 
+test_that("explicit Request Object base paths preserve reserved percent escapes", {
+  for (path in c(
+    "/proxy/a%3Fb",
+    "/proxy/a%23b",
+    "/proxy/a%2Fb",
+    "/proxy/a%2fb",
+    "/proxy/a%25b",
+    "/proxy/a%3Bb",
+    "/proxy/a%2Fb%2F",
+    "/proxy/a%3fb%23c/"
+  )) {
+    fixture <- make_request_uri_test_session()
+    base <- paste0("https://public.example.net", path)
+    normalized <- sub("/+$", "", base)
+    expect_identical(normalize_request_uri_base_url(base), normalized)
+    url <- publish_shiny_request_object(
+      fixture[["session"]],
+      "header.payload.signature",
+      oauth_client = fixture[["client"]],
+      request_handle_id = "state",
+      expires_at = Sys.time() + 60,
+      base_url = base
+    )
+    expect_true(startsWith(
+      url,
+      paste0(normalized, "/?", shiny_request_object_param, "=")
+    ))
+    expect_identical(url_raw_path(url), paste0(sub("/+$", "", path), "/"))
+    expect_false(has_uri_fragment(url))
+    query <- httr2::url_parse(url)[["query"]]
+    expect_named(query, shiny_request_object_param)
+    handle <- query[[shiny_request_object_param]]
+    expect_match(handle, "^[A-Za-z0-9_-]{43}$")
+    handler <- shiny::shinyApp(
+      oauth_ui(
+        function(...) stop("must not render UI"),
+        "auth",
+        fixture[["client"]]
+      ),
+      function(...) {}
+    )[["httpHandler"]]
+    request <- list(
+      REQUEST_METHOD = "GET",
+      PATH_INFO = "/",
+      QUERY_STRING = oauth_callback_uri_query(url)
+    )
+    response <- handler(request)
+    expect_identical(response[["status"]], 200L)
+    expect_identical(response[["content"]], "header.payload.signature")
+    expect_identical(handler(request)[["status"]], 410L)
+  }
+})
+
 test_that("publish_shiny_request_object rejects non-HTTPS request_uri URLs", {
   fixture <- make_request_uri_test_session(
     protocol = "http:",

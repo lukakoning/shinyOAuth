@@ -105,7 +105,9 @@ normalize_request_uri_base_url <- function(
   port <- as.character(parsed[["port"]] %||% "")
   port <- if (!is.na(port) && nzchar(port)) paste0(":", port) else ""
 
-  path <- as.character(parsed[["path"]] %||% "")
+  # url_parse() decodes reserved characters, which can move part of the public
+  # path into the query or fragment when the publication URL is reconstructed.
+  path <- url_raw_path(base_url)
   path <- if (!nzchar(path) || identical(path, "/")) {
     ""
   } else {
