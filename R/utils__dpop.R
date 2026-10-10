@@ -624,14 +624,37 @@ dpop_target_uri <- function(url) {
 #' Used before proof construction and transport so the proof binds to the same
 #' path even when curl's path_as_is option is enabled. Applies RFC 3986 section
 #' 5.2.4 to the escaped absolute path without decoding percent-encoded segments
-#' or changing the authority, query, or fragment. Non-ASCII path characters are
-#' percent-encoded as UTF-8 (RFC 3987 section 3.1) before signing and transport.
+#' or changing the query or fragment. Unicode DNS hosts are converted to ASCII
+#' A-labels and non-ASCII path characters are percent-encoded as UTF-8 (RFC 3987
+#' section 3.1) before signing and transport.
 #'
 #' @param url Validated absolute request URL.
 #' @return Request URL with literal dot segments removed and a URI-encoded path.
 #' @keywords internal
 #' @noRd
 normalize_dpop_request_url <- function(url) {
+  parsed <- httr2::url_parse(url)
+  host <- text_force_utf8(parsed[["hostname"]])
+  if (!is.null(host) && any(utf8ToInt(host) > 127L)) {
+    ascii_host <- host_normalize_idna(host)
+    # Host comparisons drop a final root dot; transport and proof binding must
+    # preserve it because it is part of the actual request authority.
+    if (endsWith(host, ".")) {
+      ascii_host <- paste0(ascii_host, ".")
+    }
+    if (any(utf8ToInt(ascii_host) > 127L)) {
+      err_input("Failed to convert DPoP target hostname to ASCII")
+    }
+    parsed[["hostname"]] <- ascii_host
+    parsed[["path"]] <- ""
+    parsed[["query"]] <- NULL
+    parsed[["fragment"]] <- NULL
+    url <- paste0(
+      sub("/$", "", httr2::url_build(parsed)),
+      url_raw_path(url),
+      sub("^[^?#]*", "", url)
+    )
+  }
   path <- url_raw_path(url)
   # RFC 3987: convert non-ASCII path characters to percent-encoded UTF-8 before
   # signing and sending. Preserve existing escapes and reserved delimiters.

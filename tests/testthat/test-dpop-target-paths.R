@@ -172,3 +172,103 @@ test_that("DPoP nonce cache scope follows normalized literal paths", {
     shinyOAuth:::dpop_nonce_cache_key(client, "https://example.com/caf%C3%A9")
   )
 })
+
+test_that("DPoP Unicode and ASCII hostnames bind the same authority", {
+  unicode <- "b\u00fccher.example"
+  ascii <- "xn--bcher-kva.example"
+  for (port in c("", ":443", ":8443")) {
+    url <- paste0("https://", unicode, port, "/caf\u00e9?x=%2F#fragment")
+    expected <- paste0(
+      "https://",
+      ascii,
+      if (port == ":443") "" else port,
+      "/caf%C3%A9"
+    )
+    expect_identical(dpop_target_uri(url), expected)
+    expect_identical(
+      dpop_target_uri(paste0("https://", ascii, port, "/caf\u00e9")),
+      expected
+    )
+  }
+  expect_identical(
+    dpop_target_uri(paste0("https://", unicode, "./")),
+    paste0("https://", ascii, "./")
+  )
+  expect_identical(
+    dpop_target_uri("https://[::1]:8443/a%2Fb?x=1"),
+    "https://[::1]:8443/a%2Fb"
+  )
+})
+
+test_that("DPoP Unicode hosts agree with real GET and POST wire authorities", {
+  skip_if_not_installed("webfakes")
+  app <- webfakes::new_app()
+  app[["use"]](function(req, res) {
+    res[["send_json"]](list(
+      host = req[["get_header"]]("host"),
+      proof = req[["get_header"]]("dpop")
+    ))
+  })
+  server <- webfakes::local_app_process(app)
+  port <- httr2::url_parse(server[["url"]]())[["port"]]
+  ascii <- "xn--bcher-kva.example"
+  local_options(
+    shinyOAuth.allowed_non_https_hosts = c(ascii, "localhost", "127.0.0.1")
+  )
+  client <- oauth_client(
+    make_test_provider(),
+    "dpop-idn",
+    client_secret = "",
+    redirect_uri = "http://localhost:8100",
+    dpop_private_key = openssl::ec_keygen()
+  )
+  for (host in c("b\u00fccher.example", ascii)) {
+    for (method in c("GET", "POST")) {
+      request <- httr2::request(paste0(
+        "http://",
+        host,
+        ":",
+        port,
+        "/a/../api%2Fitem?x=1#fragment"
+      )) |>
+        httr2::req_method(method) |>
+        httr2::req_options(
+          resolve = paste0(ascii, ":", port, ":127.0.0.1"),
+          proxy = ""
+        )
+      response <- if (method == "GET") {
+        perform_resource_req(
+          "access",
+          request,
+          token_type = "DPoP",
+          client = client,
+          idempotent = FALSE
+        )
+      } else {
+        req_with_dpop_retry(request, client, idempotent = FALSE)
+      }
+      body <- httr2::resp_body_json(response)
+      proof <- as.character(body[["proof"]])
+      payload <- parse_jwt_payload(proof)
+      expect_identical(as.character(body[["host"]]), paste0(ascii, ":", port))
+      expect_identical(
+        payload[["htu"]],
+        paste0("http://", body[["host"]], "/api%2Fitem")
+      )
+      expect_identical(payload[["htm"]], method)
+      # Inspect the signed JSON bytes too, independently of decoded R strings.
+      expect_match(
+        rawToChar(jwt_compact_parts(proof)[["payload_raw"]]),
+        ascii,
+        fixed = TRUE
+      )
+    }
+  }
+  expect_identical(
+    dpop_nonce_cache_key(
+      client,
+      paste0("http://b\u00fccher.example:", port, "/api")
+    ),
+    dpop_nonce_cache_key(client, paste0("http://", ascii, ":", port, "/api"))
+  )
+})
