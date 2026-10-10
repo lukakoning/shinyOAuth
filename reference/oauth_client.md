@@ -151,11 +151,13 @@ oauth_client(
 
   Lists are JSON-encoded with `auto_unbox = TRUE`. Use `NULL` for an
   unconstrained claim, `value` for one required value, or `values` for a
-  set. Wrap a single-element `values` vector in
-  [`I()`](https://rdrr.io/r/base/AsIs.html) to keep it a JSON array, for
-  example `list(values = I("example-acr"))`. A pre-encoded JSON string
-  is also accepted. Your provider must support the OIDC claims
-  parameter.
+  set. `values` vectors are always encoded as JSON arrays, including
+  single-element vectors. A pre-encoded JSON string is also accepted.
+  Object member names must be unique; targets must be objects, claim
+  entries must be `NULL` or objects, and `essential` must be a Boolean.
+  Pre-encoded `values` must be non-empty arrays. Malformed requests are
+  rejected even with `claims_validation = "none"`. Your provider must
+  support the OIDC claims parameter.
 
 - state_store:
 

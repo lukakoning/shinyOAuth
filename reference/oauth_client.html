@@ -193,9 +193,12 @@ Default <code>NULL</code> sends no request. Supply a list with <code>userinfo</c
 Use <code>claims_validation = "strict"</code> if an unmet request must stop login.</p>
 <p>Lists are JSON-encoded with <code>auto_unbox = TRUE</code>. Use <code>NULL</code> for an
 unconstrained claim, <code>value</code> for one required value, or <code>values</code> for a set.
-Wrap a single-element <code>values</code> vector in <code><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I()</a></code> to keep it a JSON array,
-for example <code>list(values = I("example-acr"))</code>. A pre-encoded JSON string
-is also accepted. Your provider must support the OIDC claims parameter.</p></dd>
+<code>values</code> vectors are always encoded as JSON arrays, including single-element
+vectors. A pre-encoded JSON string is also accepted. Object member names must
+be unique; targets must be objects, claim entries must be <code>NULL</code> or objects,
+and <code>essential</code> must be a Boolean. Pre-encoded <code>values</code> must be non-empty
+arrays. Malformed requests are rejected even with <code>claims_validation = "none"</code>.
+Your provider must support the OIDC claims parameter.</p></dd>
 
 
 <dt id="arg-state-store">state_store<a class="anchor" aria-label="anchor" href="#arg-state-store"></a></dt>
