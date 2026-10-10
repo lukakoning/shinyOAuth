@@ -80,8 +80,9 @@ or infinite.}
 
 \item{revoke_on_session_end}{If TRUE, automatically revokes provider tokens
 when the Shiny session ends (e.g., browser tab closed, session timeout).
-Also attempts revocation when access-token expiry or maximum authentication
-age automatically clears the session, before losing its credentials.
+Also attempts revocation when access-token expiry, maximum authentication
+age, or refresh failure automatically clears the session, before losing its
+credentials. A retained session keeps its provider grant.
 This is a best-effort operation. Revocation runs asynchronously only when
 the module is configured with \code{async = TRUE} (otherwise it runs
 synchronously).

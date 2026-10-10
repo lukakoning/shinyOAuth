@@ -345,6 +345,8 @@ module_refresh_controller <- function(
         now + proactive_refresh_failure_delay(failure_count, retry_after),
         failure_count
       )
+      retired_token <- values[["token"]]
+      retired_targets <- values[["targets"]][["tokens"]]
       if (!refresh_credential_retryable(error)) {
         retained <- values[["token"]]
         retained@refresh_token <- NA_character_
@@ -355,6 +357,7 @@ module_refresh_controller <- function(
       if (!indefinite_session && !keep_targets) {
         values[["token"]] <- NULL
         values[["targets"]] <- NULL
+        hooks[["retire"]](retired_token, retired_targets)
       }
       if (!keep_targets) {
         values[["token_stale"]] <- indefinite_session

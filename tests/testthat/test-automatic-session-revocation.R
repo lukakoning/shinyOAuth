@@ -1,3 +1,108 @@
+test_that("refresh failure revokes original credentials only after local access ends", {
+  local_options(shinyOAuth.skip_browser_token = TRUE)
+  for (async in c(FALSE, TRUE)) {
+    for (enabled in c(FALSE, TRUE)) {
+      for (indefinite in c(FALSE, TRUE)) {
+        for (outcome in c(
+          "not_consumed",
+          "possibly_consumed",
+          "consumed",
+          "rejected"
+        )) {
+          client <- make_test_client()
+          client@provider@revocation_url <- "https://example.com/revoke"
+          token <- manager_test_token()
+          calls <- character()
+          read_local_token <- NULL
+          local_mocked_bindings(
+            refresh_token_dispatch = function(...) {
+              error <- refresh_outcome_error(
+                simpleError("synthetic refresh failure"),
+                outcome
+              )
+              if (async) promises::promise_reject(error) else stop(error)
+            },
+            async_dispatch = function(expr, args, ...) {
+              promises::promise_resolve(eval(
+                expr,
+                list2env(args, parent = globalenv())
+              ))
+            },
+            revoke_token = function(client, token, token_kind, ...) {
+              expect_null(read_local_token())
+              calls <<- c(
+                calls,
+                if (token_kind == "refresh") {
+                  token@refresh_token
+                } else {
+                  token@access_token
+                }
+              )
+              if (token_kind == "refresh") {
+                stop("synthetic revocation failure")
+              }
+              invisible(NULL)
+            }
+          )
+          shiny::testServer(
+            oauth_module_server,
+            args = list(
+              id = "auth",
+              client = client,
+              auto_redirect = FALSE,
+              async = async,
+              indefinite_session = indefinite,
+              revoke_on_session_end = enabled
+            ),
+            {
+              read_local_token <<- function() values[["token"]]
+              .accept_login_token(token, NULL)
+              result <- tryCatch(
+                .refresh_current_token(async = async),
+                error = identity
+              )
+              if (inherits(result, "promise")) {
+                settled <- NULL
+                promises::catch(result, function(error) {
+                  settled <<- error
+                })
+                poll_for_async(function() !is.null(settled), session)
+                result <- settled
+              }
+              expect_s3_class(result, "error")
+              if (indefinite) {
+                expect_identical(
+                  values[["token"]]@access_token,
+                  token@access_token
+                )
+              } else {
+                expect_null(values[["token"]])
+              }
+              expected <- if (enabled && !indefinite) {
+                c("synthetic-refresh", "synthetic-access")
+              } else {
+                character()
+              }
+              poll_for_async(
+                function() length(calls) == length(expected),
+                session
+              )
+              expect_identical(calls, expected)
+              if (indefinite) {
+                # This assertion covers refresh failure; session-end cleanup has
+                # separate tests. Remove the retained fixture before closing it.
+                values[["token"]] <- NULL
+              }
+              session[["close"]]()
+              expect_identical(calls, expected)
+            }
+          )
+        }
+      }
+    }
+  }
+})
+
 test_that("automatic clearing revokes opted-in credentials before session end", {
   local_options(shinyOAuth.skip_browser_token = TRUE)
   for (mode in c("expiry", "reauth")) {

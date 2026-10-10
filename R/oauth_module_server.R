@@ -126,8 +126,9 @@
 #'
 #' @param revoke_on_session_end If TRUE, automatically revokes provider tokens
 #'   when the Shiny session ends (e.g., browser tab closed, session timeout).
-#'   Also attempts revocation when access-token expiry or maximum authentication
-#'   age automatically clears the session, before losing its credentials.
+#'   Also attempts revocation when access-token expiry, maximum authentication
+#'   age, or refresh failure automatically clears the session, before losing its
+#'   credentials. A retained session keeps its provider grant.
 #'   This is a best-effort operation. Revocation runs asynchronously only when
 #'   the module is configured with `async = TRUE` (otherwise it runs
 #'   synchronously).
@@ -4640,6 +4641,7 @@ oauth_module_server_impl <- function(
         can_apply = .auth_operation_can_apply,
         finish = .finish_auth_operation,
         discard = .revoke_stale_credentials,
+        retire = .revoke_automatically_retired_credentials,
         set_error = .set_error
       ),
       indefinite_session = indefinite_session,
