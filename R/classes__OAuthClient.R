@@ -122,9 +122,12 @@
 #'
 #'   Lists are JSON-encoded with `auto_unbox = TRUE`. Use `NULL` for an
 #'   unconstrained claim, `value` for one required value, or `values` for a set.
-#'   Wrap a single-element `values` vector in [I()] to keep it a JSON array,
-#'   for example `list(values = I("example-acr"))`. A pre-encoded JSON string
-#'   is also accepted. Your provider must support the OIDC claims parameter.
+#'   `values` vectors are always encoded as JSON arrays, including single-element
+#'   vectors. A pre-encoded JSON string is also accepted. Object member names must
+#'   be unique; targets must be objects, claim entries must be `NULL` or objects,
+#'   and `essential` must be a Boolean. Pre-encoded `values` must be non-empty
+#'   arrays. Malformed requests are rejected even with `claims_validation = "none"`.
+#'   Your provider must support the OIDC claims parameter.
 #'
 #' @param enforce_callback_issuer Logical or `NULL`. When `TRUE`, enforce that
 #'   authorization responses handled through this client include an RFC 9207
@@ -1200,7 +1203,6 @@ oauth_client <- function(
     claims_validation <- "warn"
   }
   claims_validation <- match.arg(claims_validation)
-  warn_about_scalar_claim_values(claims)
   request_object_mode <- match.arg(request_object_mode)
   jarm_encrypted_response_alg <- jarm_encrypted_response_alg %||%
     NA_character_
@@ -3107,33 +3109,15 @@ oauth_client_validate <- function(self) {
   }
 
   # Validate claims
-  if (!is.null(self@claims)) {
-    # Must be either a list or a single non-empty character string
-    if (is.list(self@claims)) {
-      # Lists are valid; they will be JSON-encoded later
-    } else if (is.character(self@claims)) {
-      if (length(self@claims) != 1L || !nzchar(self@claims)) {
-        return(
-          "OAuthClient: claims must be a single non-empty character string when provided as character"
-        )
-      }
-      # Try to validate it's valid JSON
-      json_valid <- try(jsonlite::validate(self@claims), silent = TRUE)
-      if (inherits(json_valid, "try-error") || !isTRUE(json_valid)) {
-        return(
-          "OAuthClient: claims provided as character must be valid JSON"
-        )
-      }
-      if (!grepl("^\\s*\\{", self@claims, perl = TRUE)) {
-        return(
-          "OAuthClient: claims provided as character must be a JSON object"
-        )
-      }
-    } else {
-      return(
-        "OAuthClient: claims must be NULL, a list, or a character string"
-      )
-    }
+  claims_problem <- tryCatch(
+    {
+      claims_request_json(self@claims)
+      NULL
+    },
+    error = function(e) paste0("OAuthClient: ", conditionMessage(e))
+  )
+  if (!is.null(claims_problem)) {
+    return(claims_problem)
   }
 
   # Validate scope_validation
@@ -3383,82 +3367,6 @@ warn_about_oauth_client_created_in_shiny <- function(state_key_missing = NA) {
     bullets,
     .frequency = "once",
     .frequency_id = "oauth-client-created-in-shiny"
-  )
-
-  invisible(TRUE)
-}
-
-#' Warn when claims `values` entries will auto-unbox to scalars
-#'
-#' Detects list-based OIDC claims requests that use a single-element `values`
-#' vector without wrapping it in [I()]. Used by [oauth_client()] so callers get
-#' an early warning before `jsonlite::toJSON(auto_unbox = TRUE)` serializes that
-#' value as a scalar instead of the OIDC-required array.
-#'
-#' @param claims Claims request passed to [oauth_client()].
-#' @return Invisibly returns `TRUE` when a warning is emitted; otherwise
-#'   invisibly returns `NULL`.
-#' @keywords internal
-#' @noRd
-warn_about_scalar_claim_values <- function(claims) {
-  if (!is.list(claims) || length(claims) == 0L) {
-    return(invisible(NULL))
-  }
-
-  bad_paths <- character(0)
-
-  walk_claims <- function(node, path) {
-    if (!is.list(node) || length(node) == 0L) {
-      return(invisible(NULL))
-    }
-
-    node_names <- names(node) %||% rep("", length(node))
-    for (i in seq_along(node)) {
-      node_name <- node_names[[i]] %||% ""
-      child_path <- if (nzchar(node_name)) {
-        paste0(path, "$", node_name)
-      } else {
-        paste0(path, "[[", i, "]]")
-      }
-      child <- node[[i]]
-
-      if (
-        identical(node_name, "values") &&
-          !inherits(child, "AsIs") &&
-          is.atomic(child) &&
-          length(child) == 1L
-      ) {
-        bad_paths <<- c(bad_paths, child_path)
-      }
-
-      if (is.list(child)) {
-        walk_claims(child, child_path)
-      }
-    }
-
-    invisible(NULL)
-  }
-
-  walk_claims(claims, "claims")
-  bad_paths <- unique(bad_paths)
-  if (length(bad_paths) == 0L) {
-    return(invisible(NULL))
-  }
-
-  warn_pkg(
-    "OIDC claims `values` may serialize incorrectly",
-    c(
-      "!" = paste0(
-        "Single-element `values` entries are serialized as JSON scalars under `jsonlite::toJSON(auto_unbox = TRUE)`: ",
-        paste(bad_paths, collapse = ", ")
-      ),
-      "i" = paste0(
-        "Wrap single-element `values` entries in `I(...)` to force array encoding, ",
-        "for example `values = I(\"urn:example:acr\")`."
-      )
-    ),
-    .frequency = "once",
-    .frequency_id = "claims-values-singleton-scalar"
   )
 
   invisible(TRUE)

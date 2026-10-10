@@ -516,15 +516,7 @@ build_authorization_params <- function(
   # OIDC claims parameter (OIDC Core Section 5.5): JSON-encode claim lists while
   # preserving explicit null values used to request claims without parameters.
   if (!is.null(oauth_client@claims)) {
-    if (is.list(oauth_client@claims)) {
-      params[["claims"]] <- jsonlite::toJSON(
-        oauth_client@claims,
-        auto_unbox = TRUE,
-        null = "null"
-      )
-    } else {
-      params[["claims"]] <- oauth_client@claims
-    }
+    params[["claims"]] <- claims_request_json(oauth_client@claims)
   }
 
   # OIDC Core allows acr_values as a voluntary hint to the provider.

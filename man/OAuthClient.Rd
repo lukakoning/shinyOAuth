@@ -339,9 +339,12 @@ Use \code{claims_validation = "strict"} if an unmet request must stop login.
 
 Lists are JSON-encoded with \code{auto_unbox = TRUE}. Use \code{NULL} for an
 unconstrained claim, \code{value} for one required value, or \code{values} for a set.
-Wrap a single-element \code{values} vector in \code{\link[=I]{I()}} to keep it a JSON array,
-for example \code{list(values = I("example-acr"))}. A pre-encoded JSON string
-is also accepted. Your provider must support the OIDC claims parameter.}
+\code{values} vectors are always encoded as JSON arrays, including single-element
+vectors. A pre-encoded JSON string is also accepted. Object member names must
+be unique; targets must be objects, claim entries must be \code{NULL} or objects,
+and \code{essential} must be a Boolean. Pre-encoded \code{values} must be non-empty
+arrays. Malformed requests are rejected even with \code{claims_validation = "none"}.
+Your provider must support the OIDC claims parameter.}
 
 \item{state_store}{Storage for pending logins. The default
 \code{cachem::cache_mem(max_age = 300)} is suitable for one R process.

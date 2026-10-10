@@ -73,7 +73,7 @@ test_that("OAuthClient rejects invalid claims (not list, character, or NULL)", {
       redirect_uri = "http://localhost:8100",
       claims = 123
     ),
-    regexp = "claims must be NULL, a list, or a character string"
+    regexp = "claims must be NULL, a named list"
   )
 })
 
@@ -87,7 +87,7 @@ test_that("OAuthClient rejects empty character string claims", {
       redirect_uri = "http://localhost:8100",
       claims = ""
     ),
-    regexp = "claims must be a single non-empty character string"
+    regexp = "single non-empty JSON string"
   )
 })
 
@@ -101,7 +101,7 @@ test_that("OAuthClient rejects character vector with multiple elements", {
       redirect_uri = "http://localhost:8100",
       claims = c("{}", "{}")
     ),
-    regexp = "claims must be a single non-empty character string"
+    regexp = "single non-empty JSON string"
   )
 })
 
@@ -115,7 +115,7 @@ test_that("OAuthClient rejects invalid JSON string claims", {
       redirect_uri = "http://localhost:8100",
       claims = "{not valid json"
     ),
-    regexp = "claims provided as character must be valid JSON"
+    regexp = "claims must be valid JSON"
   )
 })
 
@@ -131,7 +131,7 @@ test_that("OAuthClient requires character claims to encode a JSON object", {
         redirect_uri = "http://localhost:8100",
         claims = claims_json
       ),
-      regexp = "claims provided as character must be a JSON object"
+      regexp = "claims must be a JSON object"
     )
   }
 
@@ -363,35 +363,19 @@ test_that("I() forces array encoding for single-element values field", {
   )
 })
 
-test_that("single-element values without I() becomes scalar (expected)", {
-  # Without I(), auto_unbox produces a scalar — user should be aware
-  rlang::reset_warning_verbosity("claims-values-singleton-scalar")
-
-  warning_cnd <- NULL
-  cli <- withCallingHandlers(
-    make_test_client(
-      claims = list(
-        id_token = list(
-          acr = list(values = "urn:mace:incommon:iap:silver")
-        )
-      )
-    ),
-    warning = function(w) {
-      warning_cnd <<- w
-      invokeRestart("muffleWarning")
-    }
-  )
-  expect_s3_class(warning_cnd, "warning")
-  expect_match(
-    conditionMessage(warning_cnd),
-    "values.*serialize|Wrap single-element `values` entries"
-  )
-  tok <- valid_browser_token()
-  url <- shinyOAuth:::prepare_call(cli, browser_token = tok)
+test_that("single-element values are encoded as arrays without I()", {
+  cli <- expect_no_warning(make_test_client(
+    claims = list(
+      id_token = list(acr = list(values = "urn:mace:incommon:iap:silver"))
+    )
+  ))
+  url <- shinyOAuth:::prepare_call(cli, browser_token = valid_browser_token())
   claims_val <- parse_query_param(url, "claims", decode = TRUE)
-
-  # The raw JSON will contain a scalar string, not an array
-  expect_true(grepl('"values":"urn:mace:incommon:iap:silver"', claims_val))
+  expect_match(
+    claims_val,
+    '"values":["urn:mace:incommon:iap:silver"]',
+    fixed = TRUE
+  )
 })
 
 # ---- Spec example from OIDC Core §5.5 ----------------------------------------
