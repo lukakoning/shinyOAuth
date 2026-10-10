@@ -258,6 +258,9 @@ oauth_provider_microsoft <- function(
   tenant_independent_alias <- tenant %in% c("common", "organizations")
   consumer_alias <- identical(tenant, "consumers")
   is_guid <- is_guid_like(tenant)
+  if (is_guid) {
+    tenant <- tolower(tenant)
+  }
   if (
     !(is_guid || tenant_independent_alias || consumer_alias) &&
       !identical(id_token_validation, FALSE)

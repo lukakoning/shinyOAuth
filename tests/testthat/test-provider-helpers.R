@@ -285,6 +285,76 @@ test_that("oauth_provider_microsoft with GUID tenant enables validation", {
   expect_true(p@userinfo_id_token_match)
 })
 
+test_that("Microsoft directory GUID casing uses the canonical issuer and endpoints", {
+  guid <- "12345678-9abc-4def-8123-456789abcdef"
+  canonical <- oauth_provider_microsoft(
+    tenant = guid,
+    userinfo_required = FALSE
+  )
+  for (tenant in c(toupper(guid), "12345678-9aBc-4dEf-8123-456789ABCdef")) {
+    provider <- oauth_provider_microsoft(
+      tenant = tenant,
+      userinfo_required = FALSE
+    )
+    expect_identical(provider@issuer, canonical@issuer)
+    expect_identical(provider@auth_url, canonical@auth_url)
+    expect_identical(provider@token_url, canonical@token_url)
+    expect_identical(provider@issuer_match, "url")
+    expect_true(provider@id_token_validation)
+  }
+})
+
+test_that("uppercase Microsoft tenant configuration accepts a signed canonical issuer", {
+  local_options(shinyOAuth.skip_id_sig = FALSE)
+  guid <- "12345678-9abc-4def-8123-456789abcdef"
+  provider <- oauth_provider_microsoft(
+    tenant = toupper(guid),
+    userinfo_required = FALSE
+  )
+  client <- oauth_client(
+    provider,
+    "app",
+    client_secret = "secret",
+    redirect_uri = "https://app.example/callback",
+    scopes = "openid"
+  )
+  key <- openssl::read_key(mtls_pem_fixture("client-key.pem"))
+  jwk <- jsonlite::fromJSON(
+    write_test_jwk(key[["pubkey"]]),
+    simplifyVector = FALSE
+  )
+  jwk[["alg"]] <- "RS256"
+  local_mocked_bindings(fetch_jwks = function(...) list(keys = list(jwk)))
+  sign <- function(issuer) {
+    jose::jwt_encode_sig(
+      jose::jwt_claim(
+        iss = issuer,
+        aud = "app",
+        sub = "user",
+        tid = guid,
+        nonce = "nonce",
+        iat = as.numeric(Sys.time()),
+        exp = as.numeric(Sys.time()) + 120
+      ),
+      key = key
+    )
+  }
+  issuer <- paste0("https://login.microsoftonline.com/", guid, "/v2.0")
+  expect_identical(
+    validate_id_token(client, sign(issuer), expected_nonce = "nonce")[["iss"]],
+    issuer
+  )
+  for (wrong in c(
+    paste0("https://login.microsoftonline.com/", toupper(guid), "/v2.0"),
+    "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0"
+  )) {
+    expect_error(
+      validate_id_token(client, sign(wrong), expected_nonce = "nonce"),
+      class = "shinyOAuth_id_token_error"
+    )
+  }
+})
+
 test_that("Microsoft tenant inputs cannot silently disable OIDC validation", {
   for (tenant in c("contoso.onmicrosoft.com", "unknown", "Common")) {
     expect_error(
