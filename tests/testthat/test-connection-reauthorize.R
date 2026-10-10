@@ -141,7 +141,9 @@ test_that("managed replacement preserves restrictions after uncertain refresh", 
   f <- manager_test_fixture()
   cookie <- manager_test_cookie(f)
   local_mocked_bindings(
-    refresh_token = function(...) stop("synthetic transport interruption"),
+    refresh_token_dispatch = function(...) {
+      stop("synthetic transport interruption")
+    },
     revoke_token = function(...) stop("reauthorization must not revoke")
   )
   shiny::testServer(
@@ -292,7 +294,7 @@ test_that("reauthorization discards late refresh without upstream revocation", {
   resolve <- NULL
   revoked <- 0L
   local_mocked_bindings(
-    refresh_token = function(...) {
+    refresh_token_dispatch = function(...) {
       promises::promise(function(resolve_, reject_) {
         resolve <<- resolve_
       })
@@ -334,7 +336,7 @@ test_that("managed reauthorization routes the selected connection's scope limit"
   resolve <- NULL
   revoked <- 0L
   local_mocked_bindings(
-    refresh_token = function(...) {
+    refresh_token_dispatch = function(...) {
       promises::promise(function(resolve_, reject_) {
         resolve <<- resolve_
       })

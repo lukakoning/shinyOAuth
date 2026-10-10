@@ -4,7 +4,7 @@ test_that("single-module connections export credentials and survive refresh only
   client <- make_test_client(use_nonce = FALSE)
   client@scopes <- c("read", "write")
   calls <- 0L
-  local_mocked_bindings(refresh_token = function(client, token, ...) {
+  local_mocked_bindings(refresh_token_dispatch = function(client, token, ...) {
     calls <<- calls + 1L
     token@access_token <- paste0("fresh-", calls)
     token@expires_at <- as.numeric(Sys.time()) + 3600
@@ -56,7 +56,7 @@ test_that("scope checks do not require fresh tokens and acquisition is bounded",
   client <- make_test_client(use_nonce = FALSE)
   client@scopes <- c("read", "write")
   calls <- 0L
-  local_mocked_bindings(refresh_token = function(client, token, ...) {
+  local_mocked_bindings(refresh_token_dispatch = function(client, token, ...) {
     calls <<- calls + 1L
     token@expires_at <- as.numeric(Sys.time()) + 5
     token
@@ -105,7 +105,7 @@ test_that("integration consumers ignore rotations but invalidate on logout", {
   local_mocked_bindings(revoke_token = function(...) invisible(NULL))
   client <- make_test_client(use_nonce = FALSE)
   client@scopes <- c("read", "write")
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     manager_test_token(access = "first-refresh")
   })
   shiny::testServer(
@@ -145,7 +145,7 @@ test_that("async callers share the committed refresh and sync callers never wait
   client@scopes <- c("read", "write")
   resolve <- NULL
   calls <- 0L
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     calls <<- calls + 1L
     promises::promise(function(resolve_, reject_) {
       resolve <<- resolve_
@@ -208,7 +208,7 @@ test_that("managed connections expose the same accessor and join refresh", {
   cookie <- manager_test_cookie(f)
   resolve <- NULL
   calls <- 0L
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     calls <<- calls + 1L
     promises::promise(function(resolve_, reject_) {
       resolve <<- resolve_
@@ -259,7 +259,7 @@ test_that("token export never escapes its original session or late logout", {
   client <- make_test_client(use_nonce = FALSE)
   client@scopes <- c("read", "write")
   resolve <- NULL
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     promises::promise(function(resolve_, reject_) {
       resolve <<- resolve_
     })
@@ -410,7 +410,7 @@ test_that("accessor refresh obeys the module's retry pacing", {
   client <- make_test_client(use_nonce = FALSE)
   client@scopes <- c("read", "write")
   calls <- 0L
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     calls <<- calls + 1L
     stop(refresh_outcome_error(simpleError("retry later"), "not_consumed"))
   })

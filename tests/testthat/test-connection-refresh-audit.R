@@ -13,7 +13,7 @@ test_that("module refresh failure audits preserve async classification and redac
     }
   )
   local_mocked_bindings(
-    refresh_token = function(..., async = FALSE) {
+    refresh_token_dispatch = function(..., async = FALSE) {
       if (!async) {
         observed_error <<- simpleError("private-provider-detail")
         stop(observed_error)

@@ -50,12 +50,13 @@ testthat::test_that("proactive async refresh may trigger multiple attempts but s
       # Count refresh attempts and alternate returned access tokens
       calls <- 0L
       token_after <- testthat::with_mocked_bindings(
-        refresh_token = function(
+        refresh_token_dispatch = function(
           oauth_client,
           token,
           async = TRUE,
           introspect = FALSE,
-          shiny_session = NULL
+          shiny_session = NULL,
+          ...
         ) {
           calls <<- calls + 1L
           call_num <- calls
@@ -161,12 +162,13 @@ testthat::test_that("expiry watcher defers clearing token while refresh is in pr
       # Track refresh calls and simulate a slow IdP (~2s response)
       calls <- 0L
       result <- testthat::with_mocked_bindings(
-        refresh_token = function(
+        refresh_token_dispatch = function(
           oauth_client,
           token,
           async = TRUE,
           introspect = FALSE,
-          shiny_session = NULL
+          shiny_session = NULL,
+          ...
         ) {
           calls <<- calls + 1L
           call_num <- calls
@@ -242,7 +244,7 @@ testthat::test_that("short-lived refreshed tokens do not cause a refresh storm",
     expr = {
       calls <- 0L
       testthat::with_mocked_bindings(
-        refresh_token = function(...) {
+        refresh_token_dispatch = function(...) {
           calls <<- calls + 1L
           OAuthToken(
             access_token = paste0("new-", calls),
@@ -294,7 +296,7 @@ testthat::test_that("persistent refresh failures use bounded retries", {
     expr = {
       calls <- 0L
       testthat::with_mocked_bindings(
-        refresh_token = function(...) {
+        refresh_token_dispatch = function(...) {
           calls <<- calls + 1L
           stop("persistent provider failure")
         },

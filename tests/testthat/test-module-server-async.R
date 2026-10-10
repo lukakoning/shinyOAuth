@@ -292,12 +292,13 @@ testthat::test_that("async refresh failure with auto_redirect queues reauth", {
       session[["flushReact"]]()
 
       testthat::with_mocked_bindings(
-        refresh_token = function(
+        refresh_token_dispatch = function(
           oauth_client,
           token,
           async = TRUE,
           introspect = FALSE,
-          shiny_session = NULL
+          shiny_session = NULL,
+          ...
         ) {
           promises::promise_reject(async_refresh_error)
         },

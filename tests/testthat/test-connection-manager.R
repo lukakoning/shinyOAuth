@@ -463,7 +463,7 @@ test_that("owner rotation and disconnect-all invalidate pending managed commits"
 test_that("refresh preserves grant identity and original retention time", {
   f <- manager_test_fixture()
   cookie <- manager_test_cookie(f)
-  local_mocked_bindings(refresh_token = function(client, token, ...) {
+  local_mocked_bindings(refresh_token_dispatch = function(client, token, ...) {
     manager_test_token("refreshed", "rotated")
   })
   shiny::testServer(
@@ -503,7 +503,7 @@ for (outcome in c("not_consumed", "possibly_consumed", "consumed")) {
     f <- manager_test_fixture()
     cookie <- manager_test_cookie(f)
     calls <- 0L
-    local_mocked_bindings(refresh_token = function(...) {
+    local_mocked_bindings(refresh_token_dispatch = function(...) {
       calls <<- calls + 1L
       stop(refresh_outcome_error(
         simpleError("sensitive provider response"),
@@ -556,7 +556,7 @@ for (revoke in c(FALSE, TRUE)) {
         calls <- 0L
         revoked <- 0L
         local_mocked_bindings(
-          refresh_token = function(...) {
+          refresh_token_dispatch = function(...) {
             calls <<- calls + 1L
             promises::promise(function(resolve, reject) {
               finish <<- resolve
@@ -722,7 +722,7 @@ test_that("public manager references use latest credentials and redact summaries
       )
     },
     req_with_retry = function(req, ...) req,
-    refresh_token = function(...) {
+    refresh_token_dispatch = function(...) {
       manager_test_token("public-rotated", "refresh-rotated")
     }
   )
@@ -876,7 +876,7 @@ test_that("owner expiry rejects a completed refresh and polling cannot extend id
   finish <- NULL
   revoked <- 0L
   local_mocked_bindings(
-    refresh_token = function(...) {
+    refresh_token_dispatch = function(...) {
       promises::promise(function(resolve, reject) {
         finish <<- resolve
       })
@@ -922,7 +922,7 @@ test_that("automatic refresh retry cooldown survives new sessions", {
   f <- manager_test_fixture()
   cookie <- manager_test_cookie(f)
   calls <- 0L
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     calls <<- calls + 1L
     stop(refresh_outcome_error(
       simpleError("offline before send"),
@@ -1139,7 +1139,7 @@ test_that("a retained refresh notifies a replacement session after its initiator
   finish <- NULL
   completed <- FALSE
   local_mocked_bindings(
-    refresh_token = function(...) {
+    refresh_token_dispatch = function(...) {
       promises::promise(function(resolve, reject) {
         finish <<- resolve
       })
@@ -1221,7 +1221,7 @@ for (retention in c("browser", "account")) {
       refreshes <- 0L
       requests <- 0L
       local_mocked_bindings(
-        refresh_token = function(...) {
+        refresh_token_dispatch = function(...) {
           refreshes <<- refreshes + 1L
           manager_test_token("current-access", "current-refresh")
         },

@@ -2,7 +2,7 @@ test_that("proactive refresh preserves valid tokens without refresh credentials"
   local_options(shinyOAuth.skip_browser_token = TRUE)
   attempts <- 0L
   local_mocked_bindings(
-    refresh_token = function(...) {
+    refresh_token_dispatch = function(...) {
       attempts <<- attempts + 1L
       stop("refresh must not start without credentials")
     },

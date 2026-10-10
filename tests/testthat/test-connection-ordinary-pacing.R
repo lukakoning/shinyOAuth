@@ -3,10 +3,10 @@ test_that("ordinary managed refresh pacing follows token lifetime after success"
   local_mocked_bindings(Sys.time = function() now, .package = "base")
   calls <- 0L
   lifetime <- 10
-  refresh <- refresh_token
+  refresh <- refresh_token_dispatch
   local_mocked_bindings(
     revoke_token = function(...) invisible(NULL),
-    refresh_token = function(oauth_client, token, async = FALSE, ...) {
+    refresh_token_dispatch = function(oauth_client, token, async = FALSE, ...) {
       result <- refresh(oauth_client, token, async = FALSE, ...)
       if (async) promises::promise_resolve(result) else result
     },

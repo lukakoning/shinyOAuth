@@ -119,7 +119,7 @@ for (async in c(FALSE, TRUE)) {
         local_options(shinyOAuth.skip_browser_token = TRUE)
         calls <- 0L
         local_mocked_bindings(
-          refresh_token = function(...) {
+          refresh_token_dispatch = function(...) {
             calls <<- calls + 1L
             error <- refresh_outcome_error(
               simpleError("refresh failed"),

@@ -145,7 +145,7 @@ test_that("changed runtime policy prevents refresh commits and still permits loc
   withr::defer(session[["close"]]())
   revoked <- 0L
   local_mocked_bindings(
-    refresh_token = function(client, token, ...) {
+    refresh_token_dispatch = function(client, token, ...) {
       options(shinyOAuth.tls_min_version = "1.3")
       OAuthToken(
         access_token = "replacement",

@@ -1281,13 +1281,19 @@ connection_manager_controller <- function(
           .capture_rejected = TRUE
         )
       } else if (is.null(scope_request)) {
-        refresh_token(record[["client"]], record[["token"]], async = async)
+        refresh_token_dispatch(
+          record[["client"]],
+          record[["token"]],
+          async = async,
+          .capture_rejected = TRUE
+        )
       } else {
         refresh_token_dispatch(
           record[["client"]],
           record[["token"]],
           async = async,
-          scope_request = scope_request
+          scope_request = scope_request,
+          .capture_rejected = TRUE
         )
       },
       error = fail

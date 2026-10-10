@@ -1328,6 +1328,23 @@ refresh_token_impl <- function(
           } else {
             "not_consumed"
           }
+          if (
+            isTRUE(.capture_rejected) &&
+              is_valid_access_token(tok[["access_token"]])
+          ) {
+            # Retain usable credentials before lifetime, type, identity or scope
+            # validation can reject a response that has already rotated the grant.
+            cleanup_refresh <- tok[["refresh_token"]] %||% token@refresh_token
+            outcome[["rejected_token"]] <- OAuthToken(
+              access_token = tok[["access_token"]],
+              refresh_token = if (is_valid_string(cleanup_refresh)) {
+                cleanup_refresh
+              } else {
+                NA_character_
+              },
+              cnf = token@cnf
+            )
+          }
           # Normalize expires_in when provided as a quoted number (form or JSON)
           if (!is.null(tok[["expires_in"]])) {
             tok[["expires_in"]] <- coerce_expires_in(
@@ -1381,16 +1398,6 @@ refresh_token_impl <- function(
           }
           tok <- apply_missing_token_type_policy(oauth_client, tok)
           verify_token_type_allowlist(oauth_client, tok)
-
-          if (isTRUE(.capture_rejected)) {
-            # Keep only credentials needed for cleanup, before target, identity
-            # and introspection validation can reject this successful response.
-            outcome[["rejected_token"]] <- OAuthToken(
-              access_token = tok[["access_token"]],
-              refresh_token = tok[["refresh_token"]] %||% token@refresh_token,
-              cnf = token@cnf
-            )
-          }
 
           token_set <- list(
             access_token = tok[["access_token"]],
@@ -2074,7 +2081,38 @@ dispatch_token_async <- function(
         error = function(error) {
           # A replayed warning can become an error in the parent (warn = 2).
           # Preserve the private cleanup handoff even when replay itself fails.
-          rejected <- if (is.list(value)) value[["value"]] else NULL
+          rejected <- if (
+            is.list(value) && isTRUE(value[[".shinyOAuth_async_wrapped"]])
+          ) {
+            value[["value"]]
+          } else {
+            value
+          }
+          if (
+            isTRUE(call_args[[".capture_rejected"]]) &&
+              function_name %in% c("refresh_token", "refresh_token_impl") &&
+              S7::S7_inherits(rejected, OAuthToken)
+          ) {
+            rejected <- structure(
+              list(
+                error = refresh_outcome_error(
+                  error,
+                  if (
+                    identical(
+                      rejected@refresh_token,
+                      call_args[["token"]]@refresh_token
+                    )
+                  ) {
+                    "not_consumed"
+                  } else {
+                    "consumed"
+                  }
+                ),
+                token = rejected
+              ),
+              class = "shinyOAuth_rejected_refresh"
+            )
+          }
           if (!inherits(rejected, "shinyOAuth_rejected_refresh")) {
             stop(error)
           }

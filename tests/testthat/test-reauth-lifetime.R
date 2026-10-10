@@ -27,7 +27,7 @@ testthat::test_that("token refresh does not extend reauthentication lifetime", {
         )
 
         testthat::with_mocked_bindings(
-          refresh_token = function(...) {
+          refresh_token_dispatch = function(...) {
             if (isTRUE(async_mode)) {
               promises::promise_resolve(refreshed)
             } else {

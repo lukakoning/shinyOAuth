@@ -105,7 +105,7 @@ for (async in c(FALSE, TRUE)) {
           .package = "base"
         )
         local_mocked_bindings(
-          refresh_token = function(...) {
+          refresh_token_dispatch = function(...) {
             if (async) {
               promises::promise(function(resolve, reject) {
                 finish <<- resolve

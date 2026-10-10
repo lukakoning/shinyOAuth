@@ -1908,12 +1908,13 @@ testthat::test_that("oauth_module_server clears token and sets error when proact
 
       # Force refresh_token() to error as if ID token validation failed.
       testthat::with_mocked_bindings(
-        refresh_token = function(
+        refresh_token_dispatch = function(
           oauth_client,
           token,
           async = FALSE,
           introspect = FALSE,
-          shiny_session = NULL
+          shiny_session = NULL,
+          ...
         ) {
           shinyOAuth:::err_id_token("Invalid ID token")
         },
@@ -1977,12 +1978,13 @@ testthat::test_that("oauth_module_server refresh failure with auto_redirect queu
       session[["flushReact"]]()
 
       testthat::with_mocked_bindings(
-        refresh_token = function(
+        refresh_token_dispatch = function(
           oauth_client,
           token,
           async = FALSE,
           introspect = FALSE,
-          shiny_session = NULL
+          shiny_session = NULL,
+          ...
         ) {
           shinyOAuth:::err_id_token("Invalid ID token")
         },

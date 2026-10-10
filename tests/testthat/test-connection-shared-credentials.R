@@ -1,7 +1,7 @@
 test_that("a delayed authorization cannot reinstall a retired sole refresh credential", {
   f <- manager_test_fixture()
   calls <- 0L
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     calls <<- calls + 1L
     manager_test_token("new-access", "new-refresh")
   })
@@ -51,7 +51,7 @@ test_that("retirement capacity is reserved before dispatch and never evicts evid
   calls <- 0L
   local_mocked_bindings(
     connection_credential_retirement_limit = function() 1L,
-    refresh_token = function(...) {
+    refresh_token_dispatch = function(...) {
       calls <<- calls + 1L
       manager_test_token("new-access", "new-refresh")
     },
@@ -118,7 +118,7 @@ test_that("retirements outlive pending authorizations and overlapping reservatio
 test_that("rotation disposes of known refresh aliases without merging authorizations", {
   f <- manager_test_fixture()
   seen <- character()
-  local_mocked_bindings(refresh_token = function(client, token, ...) {
+  local_mocked_bindings(refresh_token_dispatch = function(client, token, ...) {
     seen <<- c(seen, token@refresh_token)
     manager_test_token("new-access", "rotated-refresh")
   })
@@ -265,7 +265,7 @@ for (outcome in c("not_consumed", "possibly_consumed", "consumed")) {
     paste("shared refresh failures honor credential outcome", outcome),
     {
       f <- manager_test_fixture()
-      local_mocked_bindings(refresh_token = function(...) {
+      local_mocked_bindings(refresh_token_dispatch = function(...) {
         stop(refresh_outcome_error(simpleError("fixture failure"), outcome))
       })
       shiny::testServer(
@@ -346,7 +346,7 @@ test_that("successful revocation retires byte-identical credentials across owner
 test_that("abandoned shared refreshes invalidate aliases before another dispatch", {
   f <- manager_test_fixture()
   finish <- NULL
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     promises::promise(function(resolve, reject) {
       finish <<- resolve
     })

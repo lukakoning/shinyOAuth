@@ -148,7 +148,7 @@ test_that("retained refresh consent does not fail strict API scope reconciliatio
 test_that("single-module refresh failure preserves authorization consent", {
   local_options(shinyOAuth.skip_browser_token = TRUE)
   client <- ordinary_oidc_fixture()[["client"]]
-  local_mocked_bindings(refresh_token = function(...) {
+  local_mocked_bindings(refresh_token_dispatch = function(...) {
     stop("synthetic transport interruption")
   })
   shiny::testServer(

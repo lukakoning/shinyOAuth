@@ -536,12 +536,13 @@ module_refresh_controller <- function(
             .capture_rejected = TRUE
           )
         } else if (is.null(scope_request)) {
-          refresh_token(
+          refresh_token_dispatch(
             client,
             token,
             async = async,
             introspect = isTRUE(client@introspect),
-            shiny_session = captured
+            shiny_session = captured,
+            .capture_rejected = TRUE
           )
         } else {
           refresh_token_dispatch(
@@ -550,7 +551,8 @@ module_refresh_controller <- function(
             async = async,
             introspect = isTRUE(client@introspect),
             shiny_session = captured,
-            scope_request = scope_request
+            scope_request = scope_request,
+            .capture_rejected = TRUE
           )
         }
       },

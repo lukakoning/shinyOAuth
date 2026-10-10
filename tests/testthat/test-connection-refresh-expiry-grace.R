@@ -6,7 +6,7 @@ test_that("on-demand refresh survives ordinary expiry only within its owned grac
   resolve <- NULL
   revoked <- character()
   local_mocked_bindings(
-    refresh_token = function(...) {
+    refresh_token_dispatch = function(...) {
       promises::promise(function(resolve_, reject_) {
         resolve <<- resolve_
       })
