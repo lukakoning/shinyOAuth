@@ -45,8 +45,10 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
   skip_if_not_installed("webfakes")
   app <- webfakes::new_app()
   app[["use"]](function(req, res) {
+    # webfakes can mix raw UTF-8 bytes and percent escapes in req$url on macOS.
+    # Echo bytes so JSON serialization does not require a valid UTF-8 string.
     res[["send_json"]](list(
-      url = req[["url"]],
+      url = as.integer(charToRaw(req[["url"]])),
       proof = req[["get_header"]]("dpop")
     ))
   })
@@ -103,7 +105,12 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
       payload <- shinyOAuth:::parse_jwt_payload(as.character(body[["proof"]]))
       expect_identical(payload[["htu"]], paste0(origin, expected))
       expect_identical(
-        charToRaw(utils::URLdecode(sub("[?].*$", "", body[["url"]]))),
+        charToRaw(utils::URLdecode(sub(
+          "[?].*$",
+          "",
+          rawToChar(as.raw(body[["url"]])),
+          useBytes = TRUE
+        ))),
         charToRaw(utils::URLdecode(paste0(origin, expected)))
       )
       # webfakes decodes paths; curl's request line preserves the actual escapes.
@@ -131,7 +138,12 @@ test_that("DPoP resource and provider proofs agree with transmitted paths", {
   expect_identical(payload[["htu"]], paste0(origin, "/caf%C3%A9/token"))
   expect_identical(payload[["htm"]], "POST")
   expect_identical(
-    charToRaw(utils::URLdecode(sub("[?].*$", "", body[["url"]]))),
+    charToRaw(utils::URLdecode(sub(
+      "[?].*$",
+      "",
+      rawToChar(as.raw(body[["url"]])),
+      useBytes = TRUE
+    ))),
     charToRaw(enc2utf8(paste0(origin, "/caf\u00e9/token")))
   )
 })
