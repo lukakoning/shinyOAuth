@@ -64,9 +64,9 @@ export(smart_launch_route)
 export(smart_patient)
 export(use_shinyOAuth)
 if (getRversion() < "4.3.0") importFrom("S7", "@")
-import(S7, except = `:=`)
+import(S7)
 import(httr2)
-import(rlang)
+import(rlang, except = ":=")
 importFrom(cli,cli_format)
 importFrom(jsonlite,
   fromJSON,
