@@ -131,7 +131,7 @@ OAuthToken <- S7::new_class(
 
     granted_scopes = S7::new_property(
       S7::class_character,
-      default = quote(character(0))
+      default = character(0)
     ),
 
     granted_scopes_verified = S7::new_property(
@@ -185,7 +185,7 @@ OAuthToken <- S7::new_class(
     ),
     original_granted_scopes = S7::new_property(
       S7::class_character,
-      default = quote(character())
+      default = character()
     )
   ),
   validator = function(self) oauth_token_validate(self)

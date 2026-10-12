@@ -19,7 +19,7 @@ OAuthToken(
   extra_fields = list(),
   initial_extra_fields = list(),
   smart_context = list(),
-  original_granted_scopes = character()
+  original_granted_scopes = character(0)
 )
 }
 \arguments{

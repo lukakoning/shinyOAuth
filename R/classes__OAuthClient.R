@@ -590,7 +590,7 @@ OAuthClient <- S7::new_class(
     token_targets = S7::new_property(S7::class_list, default = list()),
     default_token_target = S7::new_property(
       S7::class_character,
-      default = quote(character())
+      default = character()
     ),
     # Authorization response mode for authorization-code callbacks.
     response_mode = S7::new_property(
@@ -599,7 +599,7 @@ OAuthClient <- S7::new_class(
     ),
     resource = S7::new_property(
       S7::class_character,
-      default = quote(character(0))
+      default = character(0)
     ),
     # Optional OIDC claims request parameter (OIDC Core §5.5):
     # can be NULL (no claims), a list (auto JSON-encoded), or a character
@@ -620,7 +620,7 @@ OAuthClient <- S7::new_class(
     ),
     authorization_server_redirect_uris = S7::new_property(
       S7::class_character,
-      default = quote(character(0))
+      default = character(0)
     ),
     scope_validation = S7::new_property(
       S7::class_character,
@@ -634,18 +634,18 @@ OAuthClient <- S7::new_class(
     # token's acr claim must match one of these values.
     required_acr_values = S7::new_property(
       S7::class_character,
-      default = quote(character(0))
+      default = character(0)
     ),
     userinfo_jwt_required_time_claims = S7::new_property(
       S7::class_character,
-      default = quote(character(0))
+      default = character(0)
     ),
     # Token introspection settings (RFC 7662): control whether login validates
     # the access token via the provider's introspection endpoint.
     introspect = S7::new_property(S7::class_logical, default = FALSE),
     introspect_elements = S7::new_property(
       S7::class_character,
-      default = quote(character(0))
+      default = character(0)
     ),
     state_store = S7::new_property(
       S7::class_any,
@@ -795,7 +795,7 @@ OAuthClient <- S7::new_class(
     ),
     trusted_id_token_audiences = S7::new_property(
       S7::class_character,
-      default = quote(character(0))
+      default = character(0)
     ),
     compare_callback_issuer = S7::new_property(
       S7::class_logical,
@@ -811,11 +811,11 @@ OAuthClient <- S7::new_class(
     # Append new properties to preserve the public positional constructor.
     resource_bases = S7::new_property(
       S7::class_character,
-      default = quote(character())
+      default = character()
     ),
     required_scopes = S7::new_property(
       S7::class_character,
-      default = quote(character())
+      default = character()
     ),
     label = S7::new_property(
       S7::class_character,
