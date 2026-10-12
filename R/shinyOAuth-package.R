@@ -11,7 +11,7 @@
 ## usethis namespace: start
 #' @import httr2
 #' @import rlang
-#' @import S7
+#' @rawNamespace import(S7, except = `:=`)
 #' @importFrom cli cli_format
 #' @importFrom jsonlite fromJSON toJSON
 #' @importFrom openssl sha256 base64_encode rand_bytes

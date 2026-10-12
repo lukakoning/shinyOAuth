@@ -459,7 +459,7 @@ OAuthProvider <- S7::new_class(
     extra_token_params = S7::class_list,
     extra_token_headers = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     jwks_uri = S7::new_property(
       S7::class_character,
@@ -469,7 +469,10 @@ OAuthProvider <- S7::new_class(
       S7::class_any,
       default = quote(cachem::cache_mem(max_age = 3600))
     ),
-    jwks_pins = S7::new_property(S7::class_character, default = character()),
+    jwks_pins = S7::new_property(
+      S7::class_character,
+      default = quote(character())
+    ),
     jwks_pin_mode = S7::new_property(S7::class_character, default = "any"),
     jwks_host_issuer_match = S7::new_property(
       S7::class_logical,
@@ -490,7 +493,7 @@ OAuthProvider <- S7::new_class(
     ),
     allowed_algs = S7::new_property(
       S7::class_character,
-      default = c(
+      default = quote(c(
         "RS256",
         "RS384",
         "RS512",
@@ -499,7 +502,7 @@ OAuthProvider <- S7::new_class(
         "ES512",
         "Ed25519",
         "EdDSA"
-      )
+      ))
     ),
     allowed_token_types = S7::new_property(
       S7::class_character,
@@ -546,15 +549,15 @@ OAuthProvider <- S7::new_class(
     ),
     request_object_signing_alg_values_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     request_object_encryption_alg_values_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     request_object_encryption_enc_values_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     request_object_encryption_jwk = S7::new_property(
       S7::class_any,
@@ -570,19 +573,19 @@ OAuthProvider <- S7::new_class(
     ),
     response_modes_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     jarm_signing_alg_values_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     jarm_encryption_alg_values_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     jarm_encryption_enc_values_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     jarm_tolerate_duplicate_top_level_iss = S7::new_property(
       S7::class_logical,
@@ -590,16 +593,19 @@ OAuthProvider <- S7::new_class(
     ),
     token_endpoint_auth_signing_alg_values_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
-    endpoint_auth_metadata = S7::new_property(S7::class_list, default = list()),
+    endpoint_auth_metadata = S7::new_property(
+      S7::class_list,
+      default = quote(list())
+    ),
     dpop_signing_alg_values_supported = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(character())
     ),
     mtls_endpoint_aliases = S7::new_property(
       S7::class_list,
-      default = list()
+      default = quote(list())
     ),
     mtls_client_certificate_bound_access_tokens = S7::new_property(
       S7::class_logical,
