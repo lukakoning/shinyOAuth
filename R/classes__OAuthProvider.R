@@ -597,7 +597,7 @@ OAuthProvider <- S7::new_class(
     ),
     endpoint_auth_metadata = S7::new_property(
       S7::class_list,
-      default = quote(list())
+      default = list()
     ),
     dpop_signing_alg_values_supported = S7::new_property(
       S7::class_character,
@@ -605,7 +605,7 @@ OAuthProvider <- S7::new_class(
     ),
     mtls_endpoint_aliases = S7::new_property(
       S7::class_list,
-      default = quote(list())
+      default = list()
     ),
     mtls_client_certificate_bound_access_tokens = S7::new_property(
       S7::class_logical,

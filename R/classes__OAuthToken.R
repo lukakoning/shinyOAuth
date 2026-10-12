@@ -126,7 +126,7 @@ OAuthToken <- S7::new_class(
 
     cnf = S7::new_property(
       S7::class_list,
-      default = quote(list())
+      default = list()
     ),
 
     granted_scopes = S7::new_property(
@@ -172,16 +172,16 @@ OAuthToken <- S7::new_class(
 
     extra_fields = S7::new_property(
       S7::class_list,
-      default = quote(list())
+      default = list()
     ),
 
     initial_extra_fields = S7::new_property(
       S7::class_list,
-      default = quote(list())
+      default = list()
     ),
     smart_context = S7::new_property(
       S7::class_list,
-      default = quote(list())
+      default = list()
     ),
     original_granted_scopes = S7::new_property(
       S7::class_character,

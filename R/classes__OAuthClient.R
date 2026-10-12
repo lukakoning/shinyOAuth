@@ -584,10 +584,10 @@ OAuthClient <- S7::new_class(
     provider = S7::class_any,
     client_id = S7::class_character,
     client_secret = S7::class_character,
-    endpoint_auth = S7::new_property(S7::class_list, default = quote(list())),
+    endpoint_auth = S7::new_property(S7::class_list, default = list()),
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
-    token_targets = S7::new_property(S7::class_list, default = quote(list())),
+    token_targets = S7::new_property(S7::class_list, default = list()),
     default_token_target = S7::new_property(
       S7::class_character,
       default = quote(character())
@@ -827,8 +827,8 @@ OAuthClient <- S7::new_class(
     ),
     # Internal, versioned policy selected by SMART clients. A generic client
     # retains literal scopes and RFC 6749 omission behavior.
-    scope_policy = S7::new_property(S7::class_list, default = quote(list())),
-    smart = S7::new_property(S7::class_list, default = quote(list()))
+    scope_policy = S7::new_property(S7::class_list, default = list()),
+    smart = S7::new_property(S7::class_list, default = list())
   ),
   validator = function(self) oauth_client_validate(self)
 )
