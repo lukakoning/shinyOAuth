@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* HMAC key-length checks use the UTF-8 bytes used for signing and verification,
+  consistently across client authentication, Request Objects, ID tokens, JARM,
+  endpoint negotiation, and OAuth 2.1 configuration assessments.
+
 * Signed JWT profiles reject explicitly null `kid` and `typ` headers while
   continuing to permit those optional fields to be absent.
 

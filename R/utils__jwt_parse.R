@@ -1027,7 +1027,7 @@ verify_hmac_jws_signature_no_time <- function(jwt, secret, alg) {
   secret_raw <- tryCatch(
     {
       if (is.character(secret)) {
-        charToRaw(enc2utf8(secret))
+        hmac_secret_bytes(secret)
       } else {
         secret
       }

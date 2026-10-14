@@ -40,6 +40,7 @@
 #'   an empty secret is omitted. With `"public"` (alias `"none"`), it is never
 #'   sent for client authentication. HMAC-signed ID token validation still
 #'   requires a non-empty secret, regardless of the client authentication method.
+#'   HMAC key-length checks measure the UTF-8 bytes used for signing and verification.
 #'
 #' @param redirect_uri The URL where users return after login. It must match the
 #'   callback URL registered with your provider, including scheme, host, port,
@@ -1744,7 +1745,7 @@ oauth_client_validate <- function(self) {
       min_hmac_key_bytes,
       integer(1)
     ))
-    if (nchar(self@client_secret, type = "bytes") < required_hs_bytes) {
+    if (length(hmac_secret_bytes(self@client_secret)) < required_hs_bytes) {
       return(
         paste0(
           "OAuthClient: HS* ID token validation requires client_secret >= ",
@@ -1916,7 +1917,7 @@ oauth_client_validate <- function(self) {
 
   if (identical(tok_style, "client_secret_jwt")) {
     min_secret_bytes <- min_hmac_key_bytes(resolved_client_assertion_alg)
-    if (nchar(self@client_secret, type = "bytes") < min_secret_bytes) {
+    if (length(hmac_secret_bytes(self@client_secret)) < min_secret_bytes) {
       return(paste0(
         "OAuthClient: client_secret_jwt with client_assertion_alg '",
         resolved_client_assertion_alg,
@@ -2264,7 +2265,7 @@ oauth_client_validate <- function(self) {
       return("OAuthClient: HS* JARM validation requires client_secret")
     }
     min_secret_bytes <- min_hmac_key_bytes(signed_response_alg)
-    if (nchar(self@client_secret, type = "bytes") < min_secret_bytes) {
+    if (length(hmac_secret_bytes(self@client_secret)) < min_secret_bytes) {
       return(paste0(
         "OAuthClient: jarm_signed_response_alg '",
         signed_response_alg,
@@ -2524,7 +2525,7 @@ oauth_client_validate <- function(self) {
       }
       if (
         !isTRUE(has_private_key) &&
-          nchar(self@client_secret, type = "bytes") <
+          length(hmac_secret_bytes(self@client_secret)) <
             min_hmac_key_bytes("HS256")
       ) {
         return(
@@ -2542,7 +2543,7 @@ oauth_client_validate <- function(self) {
         )
       }
       min_secret_bytes <- min_hmac_key_bytes(alg)
-      if (nchar(self@client_secret, type = "bytes") < min_secret_bytes) {
+      if (length(hmac_secret_bytes(self@client_secret)) < min_secret_bytes) {
         return(paste0(
           "OAuthClient: request_object_signing_alg '",
           alg,

@@ -147,7 +147,7 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
     }
 
     min_secret_bytes <- min_hmac_key_bytes(alg)
-    if (nchar(oauth_client@client_secret, type = "bytes") < min_secret_bytes) {
+    if (length(hmac_secret_bytes(oauth_client@client_secret)) < min_secret_bytes) {
       err_invalid_state(paste0(
         "JARM ",
         alg,

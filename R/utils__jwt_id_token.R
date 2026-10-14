@@ -299,7 +299,7 @@ validate_id_token <- function(
       }
 
       min_secret_bytes <- min_hmac_key_bytes(alg)
-      if (nchar(client_secret, type = "bytes") < min_secret_bytes) {
+      if (length(hmac_secret_bytes(client_secret)) < min_secret_bytes) {
         err_input(paste0(
           alg,
           " requires client_secret >= ",

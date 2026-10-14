@@ -137,7 +137,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     header = has_secret,
     body = has_secret || isTRUE(provider@use_pkce),
     public = TRUE,
-    client_secret_jwt = has_secret && nchar(secret, type = "bytes") >= 32,
+    client_secret_jwt = has_secret && length(hmac_secret_bytes(secret)) >= 32,
     private_key_jwt = !is.null(effective("client_assertion_private_key")),
     tls_client_auth = cert,
     self_signed_tls_client_auth = cert,
@@ -170,7 +170,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
         if (style == "client_secret_jwt") {
           has_secret &&
             candidate %in% c("HS256", "HS384", "HS512") &&
-            nchar(secret, type = "bytes") >= min_hmac_key_bytes(candidate)
+            length(hmac_secret_bytes(secret)) >= min_hmac_key_bytes(candidate)
         } else {
           private_key_jws_alg_compatibility(
             effective("client_assertion_private_key"),

@@ -275,7 +275,7 @@ endpoint_auth_client <- function(client, endpoint) {
         function(alg) {
           alg %in%
             c("HS256", "HS384", "HS512") &&
-            nchar(secret, type = "bytes") >= min_hmac_key_bytes(alg)
+            length(hmac_secret_bytes(secret)) >= min_hmac_key_bytes(alg)
         },
         algs
       )

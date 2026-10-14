@@ -86,7 +86,8 @@ oauth_client(
 It is required for \code{token_auth_style = "header"}. With \code{"body"} and PKCE,
 an empty secret is omitted. With \code{"public"} (alias \code{"none"}), it is never
 sent for client authentication. HMAC-signed ID token validation still
-requires a non-empty secret, regardless of the client authentication method.}
+requires a non-empty secret, regardless of the client authentication method.
+HMAC key-length checks measure the UTF-8 bytes used for signing and verification.}
 
 \item{redirect_uri}{The URL where users return after login. It must match the
 callback URL registered with your provider, including scheme, host, port,

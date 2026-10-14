@@ -99,7 +99,8 @@ OAuthClient(
 It is required for \code{token_auth_style = "header"}. With \code{"body"} and PKCE,
 an empty secret is omitted. With \code{"public"} (alias \code{"none"}), it is never
 sent for client authentication. HMAC-signed ID token validation still
-requires a non-empty secret, regardless of the client authentication method.}
+requires a non-empty secret, regardless of the client authentication method.
+HMAC key-length checks measure the UTF-8 bytes used for signing and verification.}
 
 \item{client_assertion_private_key}{Optional private key for \code{private_key_jwt} client authentication
 at the token endpoint. Can be an \code{openssl::key} or a PEM string containing a

@@ -133,7 +133,7 @@ build_client_assertion <- function(client, aud) {
     size <- min_secret_bytes * 8L
     secret <- client@client_secret %||%
       err_config("client_secret missing for client_secret_jwt")
-    if (nchar(secret, type = "bytes") < min_secret_bytes) {
+    if (length(hmac_secret_bytes(secret)) < min_secret_bytes) {
       err_config(
         paste0(
           "client_secret_jwt with client_assertion_alg '",
@@ -309,7 +309,7 @@ resolve_request_object_signing_alg <- function(client) {
         )
       )
     }
-    if (nchar(client@client_secret, type = "bytes") < 32) {
+    if (length(hmac_secret_bytes(client@client_secret)) < 32) {
       err_config(
         paste(
           "request_object_mode = 'request' or 'request_uri' requires",
@@ -329,7 +329,7 @@ resolve_request_object_signing_alg <- function(client) {
     if (!is_valid_string(client@client_secret)) {
       err_config("HS* request_object_signing_alg requires client_secret")
     }
-    if (nchar(client@client_secret, type = "bytes") < 32) {
+    if (length(hmac_secret_bytes(client@client_secret)) < 32) {
       err_config(
         "HS* request_object_signing_alg requires client_secret >= 32 bytes"
       )
@@ -433,6 +433,16 @@ min_hmac_key_bytes <- function(alg) {
     HS512 = 64L,
     err_config(paste0("Unsupported HMAC alg for key length check: ", alg))
   )
+}
+
+#' Normalize an HMAC secret to the exact bytes used for signing and verification
+#'
+#' @param secret Scalar character secret.
+#' @return UTF-8 key bytes.
+#' @keywords internal
+#' @noRd
+hmac_secret_bytes <- function(secret) {
+  charToRaw(enc2utf8(secret))
 }
 
 #' Check whether a private key can sign a JWT with a given alg.
@@ -577,8 +587,9 @@ encode_hmac_jwt_with_header <- function(
     )
   }
 
+  key_raw <- hmac_secret_bytes(secret)
   min_secret_bytes <- min_hmac_key_bytes(alg)
-  if (nchar(secret, type = "bytes") < min_secret_bytes) {
+  if (length(key_raw) < min_secret_bytes) {
     err_config(paste0(
       alg,
       " requires client_secret >= ",
@@ -603,7 +614,6 @@ encode_hmac_jwt_with_header <- function(
   encoded_header <- base64url_encode(charToRaw(enc2utf8(header_json)))
   encoded_payload <- base64url_encode(charToRaw(enc2utf8(payload_json)))
   signing_input <- paste0(encoded_header, ".", encoded_payload)
-  key_raw <- charToRaw(enc2utf8(secret))
 
   signature_raw <- switch(
     as.character(size),
