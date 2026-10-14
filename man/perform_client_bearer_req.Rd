@@ -29,7 +29,7 @@ it as the base request, still applies token authentication and request
 defaults, and then layers any explicit \code{method}, \code{headers}, \code{query}, and
 \code{follow_redirect} overrides on top.
 Inherited httr2 authentication, caching, and retry policies, and curl
-authentication or method-changing options are rejected. Use
+authentication, method-changing, or \code{request_target} options are rejected. Use
 \code{\link[httr2:req_method]{httr2::req_method()}} and httr2 body helpers to configure the request.
 HEAD requests with bodies are rejected because httr2 can transmit them
 as POST despite the explicit method.

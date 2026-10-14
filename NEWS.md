@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Prebuilt authenticated resource requests reject curl `request_target`
+  overrides, keeping the checked URL and DPoP URI aligned with the wire target.
+
 * Authenticated requests reject malformed HTTP headers and prohibited controls.
   Managed connections enforce protected headers after syntax validation; DPoP
   resource requests reject Host overrides.

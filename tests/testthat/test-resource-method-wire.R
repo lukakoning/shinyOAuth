@@ -25,6 +25,45 @@ test_that("method-changing curl options are rejected before credentials", {
   }
 })
 
+test_that("curl request targets are rejected before credentials or network activity", {
+  skip_if_not_installed("webfakes")
+  app <- webfakes::new_app()
+  app[["locals"]][["requests"]] <- list()
+  app[["get"]]("/evidence", function(req, res) {
+    res[["send_json"]](req[["app"]][["locals"]][["requests"]])
+  })
+  app[["use"]](function(req, res) {
+    req[["app"]][["locals"]][["requests"]] <- c(
+      req[["app"]][["locals"]][["requests"]],
+      list(list(path = req[["path"]], dpop = req[["get_header"]]("dpop")))
+    )
+    res[["send"]]("ok")
+  })
+  server <- webfakes::local_app_process(app)
+  url <- server[["url"]]("/resource")
+  cli <- make_test_client(use_nonce = FALSE)
+  cli@dpop_private_key <- openssl::ec_keygen()
+  for (target in c("/other-resource", "/other?query=1", "*", "https://other.example/")) {
+    req <- httr2::request(url) |> httr2::req_options(request_target = target)
+    for (type in c("Bearer", "DPoP")) {
+      expect_error(perform_resource_req("synthetic", req,
+        client = cli, token_type = type), "must not configure curl request_target")
+    }
+    expect_error(perform_resource_req(NULL, req), "must not configure curl request_target")
+  }
+  response <- perform_resource_req("synthetic", httr2::request(url),
+    client = cli, token_type = "DPoP")
+  expect_identical(httr2::resp_body_string(response), "ok")
+  evidence <- httr2::request(server[["url"]]("/evidence")) |>
+    httr2::req_perform() |>
+    httr2::resp_body_json(simplifyVector = FALSE)
+  expect_length(evidence, 1L)
+  expect_identical(unlist(evidence[[1L]][["path"]]), "/resource")
+  expect_identical(shinyOAuth:::parse_jwt_payload(
+    unlist(evidence[[1L]][["dpop"]])
+  )[["htu"]], url)
+})
+
 test_that("wire methods agree with DPoP and retry policy", {
   skip_if_not_installed("webfakes")
   withr::local_options(list(

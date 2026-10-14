@@ -213,7 +213,7 @@ client_bearer_req <- function(
 #'   defaults, and then layers any explicit `method`, `headers`, `query`, and
 #'   `follow_redirect` overrides on top.
 #'   Inherited httr2 authentication, caching, and retry policies, and curl
-#'   authentication or method-changing options are rejected. Use
+#'   authentication, method-changing, or `request_target` options are rejected. Use
 #'   [httr2::req_method()] and httr2 body helpers to configure the request.
 #'   HEAD requests with bodies are rejected because httr2 can transmit them
 #'   as POST despite the explicit method.
@@ -863,6 +863,11 @@ build_client_bearer_authorized_request <- function(
 # Prebuilt requests may carry deferred behavior that runs after we attach the
 # user's token. Reject conflicting policies before constructing credentials.
 validate_resource_request_policies <- function(req) {
+  if ("request_target" %in% names(req[["options"]])) {
+    err_input(
+      "Prebuilt resource requests must not configure curl request_target; set the target with the request URL"
+    )
+  }
   policy_names <- names(req[["policies"]])
   if (any(grepl("^(auth|cache|retry)_", policy_names))) {
     err_input(
