@@ -603,7 +603,8 @@ jwt_validate_b64_field <- function(value, signal_error) {
 
 #' Reject duplicate JSON object members
 #'
-#' Used before JWT header and payload JSON is parsed.
+#' Used before protocol JSON is parsed. Also rejects Unicode escapes that R
+#' cannot represent losslessly, in every member name and string value.
 #'
 #' @param json_text JSON text to inspect.
 #' @param label Human-readable label used in parse errors.
@@ -630,6 +631,19 @@ reject_duplicate_json_object_members <- function(
   index <- 1L
   container_stack <- character(0)
   seen_stack <- list()
+  duplicate_name <- NULL
+
+  read_unicode_escape <- function(start) {
+    end <- start + 5L
+    if (end > length(chars)) {
+      on_error(paste0(label, " contains an invalid Unicode escape"))
+    }
+    hex <- paste(chars[seq.int(start + 2L, end)], collapse = "")
+    if (!grepl("^[0-9A-Fa-f]{4}$", hex)) {
+      on_error(paste0(label, " contains an invalid Unicode escape"))
+    }
+    strtoi(hex, base = 16L)
+  }
 
   while (index <= length(chars)) {
     ch <- chars[[index]]
@@ -637,14 +651,40 @@ reject_duplicate_json_object_members <- function(
     if (identical(ch, '"')) {
       index <- index + 1L
       token_start <- index
-      escaping <- FALSE
-
       while (index <= length(chars)) {
         ch_inner <- chars[[index]]
-        if (isTRUE(escaping)) {
-          escaping <- FALSE
-        } else if (identical(ch_inner, "\\")) {
-          escaping <- TRUE
+        if (identical(ch_inner, "\\")) {
+          if (
+            index < length(chars) &&
+              identical(chars[[index + 1L]], "u")
+          ) {
+            code_point <- read_unicode_escape(index)
+            if (code_point == 0L) {
+              on_error(paste0(label, " contains an escaped NUL character"))
+            }
+            if (code_point >= 0xD800L && code_point <= 0xDBFFL) {
+              next_escape <- index + 6L
+              if (
+                next_escape + 5L > length(chars) ||
+                  !identical(chars[[next_escape]], "\\") ||
+                  !identical(chars[[next_escape + 1L]], "u")
+              ) {
+                on_error(paste0(label, " contains an unpaired Unicode surrogate"))
+              }
+              low_surrogate <- read_unicode_escape(next_escape)
+              if (low_surrogate < 0xDC00L || low_surrogate > 0xDFFFL) {
+                on_error(paste0(label, " contains an unpaired Unicode surrogate"))
+              }
+              index <- next_escape + 5L
+            } else if (code_point >= 0xDC00L && code_point <= 0xDFFFL) {
+              on_error(paste0(label, " contains an unpaired Unicode surrogate"))
+            } else {
+              index <- index + 5L
+            }
+          } else {
+            # Skip a complete escape, including an escaped literal backslash.
+            index <- index + 1L
+          }
         } else if (identical(ch_inner, '"')) {
           break
         }
@@ -683,13 +723,9 @@ reject_duplicate_json_object_members <- function(
           base64url_encode(charToRaw(enc2utf8(key)))
         )
         if (exists(key_id, envir = seen, inherits = FALSE)) {
-          if (is.function(on_duplicate)) {
-            on_duplicate(key)
+          if (is.null(duplicate_name)) {
+            duplicate_name <- key
           }
-          on_error(protocol_diagnostic_message(
-            paste0(label, " contains duplicate member name"),
-            key
-          ))
         }
         assign(key_id, TRUE, envir = seen)
       }
@@ -716,6 +752,18 @@ reject_duplicate_json_object_members <- function(
     }
 
     index <- index + 1L
+  }
+
+  # Inspect all strings before reporting a duplicate. JARM's compatibility
+  # normalizer must never remove a malformed string after a duplicate error.
+  if (!is.null(duplicate_name)) {
+    if (is.function(on_duplicate)) {
+      on_duplicate(duplicate_name)
+    }
+    on_error(protocol_diagnostic_message(
+      paste0(label, " contains duplicate member name"),
+      duplicate_name
+    ))
   }
 
   invisible(NULL)

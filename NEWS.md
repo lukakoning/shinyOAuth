@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Protocol JSON rejects escaped NUL characters and unpaired Unicode surrogates
+  before decoding, preserving exact claim and member-name comparisons.
+
 * mTLS registration preserves explicit RFC 4514 subject DNs verbatim, including
 escaped trailing spaces, while retaining SAN normalization and input checks.
 

@@ -48,6 +48,40 @@ make_jarm_test_client <- function(
   )
 }
 
+test_that("signed JARM rejects lossy strings before using response parameters", {
+  secret <- strrep("s", 32)
+  client <- make_jarm_test_client(
+    jarm_signed_response_alg = "HS256", client_secret = secret
+  )
+  payload <- paste0(
+    '{"iss":"https://issuer.example.com","aud":"abc","exp":',
+    floor(as.numeric(Sys.time())) + 120,
+    ',"code":"authorization-code","state":"sealed-state"}'
+  )
+  sign <- function(payload) {
+    input <- paste(
+      shinyOAuth:::base64url_encode(charToRaw('{"alg":"HS256"}')),
+      shinyOAuth:::base64url_encode(charToRaw(payload)), sep = "."
+    )
+    signature <- openssl::sha256(charToRaw(input), key = charToRaw(secret))
+    paste(input, shinyOAuth:::base64url_encode(signature), sep = ".")
+  }
+  expect_identical(
+    shinyOAuth:::validate_jarm_response(client, sign(payload))[["code"]],
+    "authorization-code"
+  )
+  for (text in c(
+    sub('"aud":"abc"', '"aud":"abc\\u0000other"', payload, fixed = TRUE),
+    sub('"iss":', '"iss\\u0000alias":', payload, fixed = TRUE),
+    sub('"code":', '"code\\u0000alias":', payload, fixed = TRUE)
+  )) {
+    expect_error(
+      shinyOAuth:::validate_jarm_response(client, sign(text)),
+      "JARM payload could not be parsed", class = "shinyOAuth_state_error"
+    )
+  }
+})
+
 make_jarm_public_jwk <- function(key, kid = "sig-1", use = "sig") {
   jwk <- jsonlite::fromJSON(
     write_test_jwk(key[["pubkey"]]),

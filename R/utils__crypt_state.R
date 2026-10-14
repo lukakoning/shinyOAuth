@@ -419,7 +419,10 @@ state_decrypt_gcm <- function(
     )
   }
   obj <- try(
-    jsonlite::fromJSON(payload_json, simplifyVector = FALSE),
+    {
+      reject_duplicate_json_object_members(payload_json, "State envelope JSON")
+      jsonlite::fromJSON(payload_json, simplifyVector = FALSE)
+    },
     silent = TRUE
   )
   # Ensure predictable structure: must be a named list (not data.frame)
@@ -571,7 +574,11 @@ state_decrypt_gcm <- function(
     )
   }
   parsed <- try(
-    jsonlite::fromJSON(rawToChar(res), simplifyVector = FALSE),
+    {
+      payload_json <- rawToChar(res)
+      reject_duplicate_json_object_members(payload_json, "Decrypted state JSON")
+      jsonlite::fromJSON(payload_json, simplifyVector = FALSE)
+    },
     silent = TRUE
   )
   if (
