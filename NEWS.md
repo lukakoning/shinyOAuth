@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Signed JWT profiles reject explicitly null `kid` and `typ` headers while
+  continuing to permit those optional fields to be absent.
+
 * Redirect regression tests observe target requests across the server process
   boundary and verify their counters with enabled 302, 307, and 308 redirects.
 

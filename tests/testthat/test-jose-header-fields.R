@@ -131,7 +131,7 @@ test_that("shared JWT typ policy accepts the JWT media type", {
   }
 })
 
-test_that("signed JWT profiles reject explicit null crit and b64 headers", {
+test_that("signed JWT profiles reject explicitly null optional JOSE headers", {
   withr::local_options(shinyOAuth.skip_id_sig = FALSE)
   key <- openssl::rsa_keygen(2048)
   jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]))
@@ -156,7 +156,9 @@ test_that("signed JWT profiles reject explicit null crit and b64 headers", {
   for (header in c(
     '{"alg":"RS256"}',
     '{"alg":"RS256","crit":null}',
-    '{"alg":"RS256","b64":null}'
+    '{"alg":"RS256","b64":null}',
+    '{"alg":"RS256","kid":null}',
+    '{"alg":"RS256","typ":null}'
   )) {
     unsigned <- make_header_jwt(header, claims)
     signing_input <- sub("\\.$", "", unsigned)
