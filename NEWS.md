@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* ID tokens and OIDC UserInfo reject malformed standard profile claim types,
+  including name/email strings, numeric `updated_at`, and address objects and
+  their standard members. Custom extension claims remain available.
+
 * HMAC key-length checks use the UTF-8 bytes used for signing and verification,
   consistently across client authentication, Request Objects, ID tokens, JARM,
   endpoint negotiation, and OAuth 2.1 configuration assessments.

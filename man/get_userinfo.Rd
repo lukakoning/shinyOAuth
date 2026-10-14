@@ -53,6 +53,12 @@ Signed responses are verified using the provider's signing keys and
 and \code{userinfo_jwt_required_time_claims} on the client to require time claims
 such as \code{exp}. Present time claims are checked even when not required.
 
+Standard OIDC profile claims in ID tokens and UserInfo are checked against
+their JSON types, including strings for names and email, a number for
+\code{updated_at}, and an \code{address} object with string-valued standard members.
+Applications should validate formats and policies for the claim values they
+use, and supply schemas for custom extension claims.
+
 For certificate-bound tokens (mTLS) and key-bound tokens (DPoP), the helper
 uses the client's certificate or signing key and checks the token binding.
 It handles one DPoP nonce challenge with a fresh-proof retry. See the

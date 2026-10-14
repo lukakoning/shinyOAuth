@@ -76,11 +76,27 @@ test_that("ID tokens and both UserInfo formats preserve standard claim types", {
       '[null]'
     )
   )
+  for (field in c(
+    "name", "given_name", "family_name", "middle_name", "nickname",
+    "preferred_username", "profile", "picture", "website", "email", "gender",
+    "birthdate", "zoneinfo", "locale", "phone_number"
+  )) {
+    invalid[[field]] <- c('1', 'true', 'null', '["text"]', '{}')
+  }
+  invalid[["updated_at"]] <- c('"yesterday"', 'true', 'null', '[1700000000]', '{}', '1e999')
+  invalid[["address"]] <- c(
+    '"line"', 'true', 'null', '[]', '["line"]',
+    '{"country":1}', '{"country":["country"]}', '{"formatted":null}'
+  )
   valid <- c(
     '',
     ',"email_verified":true,"phone_number_verified":false,"acr":"mfa","amr":["pwd","otp"]',
     ',"email_verified":false,"phone_number_verified":true,"acr":"","amr":[]',
-    ',"amr":["pwd"]'
+    ',"amr":["pwd"]',
+    ',"name":"Example User","email":"user@example.com","updated_at":1700000000',
+    ',"address":{}',
+    ',"address":{"formatted":"Line 1\\nLine 2","country":"NL","extension":123}',
+    ',"groups":["staff"],"custom":{"key":[123]}'
   )
   for (channel in c("id_token", "userinfo_json", "userinfo_jwt")) {
     for (extra in valid) {
