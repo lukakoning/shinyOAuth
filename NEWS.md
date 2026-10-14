@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Redirect regression tests observe target requests across the server process
+  boundary and verify their counters with enabled 302, 307, and 308 redirects.
+
 * Prebuilt authenticated resource requests reject curl `request_target`
   overrides, keeping the checked URL and DPoP URI aligned with the wire target.
 

@@ -1,6 +1,56 @@
 # Test that HTTP redirects are NOT followed for sensitive requests
 # This prevents leaking tokens/secrets to redirect targets and bypassing host validation
 
+add_redirect_target_counter <- function(app) {
+  app[["locals"]][["redirect_hits"]] <- 0L
+  # Count every method, including POST redirected to GET by a 302 response.
+  app[["all"]]("/evil", function(req, res) {
+    locals <- req[["app"]][["locals"]]
+    locals[["redirect_hits"]] <- locals[["redirect_hits"]] + 1L
+    "next"
+  })
+  app[["get"]]("/__redirect_hits", function(req, res) {
+    res[["send_json"]](req[["app"]][["locals"]][["redirect_hits"]],
+      auto_unbox = TRUE)
+  })
+}
+
+redirect_target_hits <- function(server) {
+  httr2::request(server[["url"]]("/__redirect_hits")) |>
+    httr2::req_perform() |>
+    httr2::resp_body_json(simplifyVector = TRUE)
+}
+
+test_that("redirect target counters observe enabled and disabled redirects", {
+  skip_if_not_installed("webfakes")
+  app <- webfakes::new_app()
+  add_redirect_target_counter(app)
+  app[["all"]]("/redirect/:status", function(req, res) {
+    res[["redirect"]]("/evil", as.integer(req[["params"]][["status"]]))
+  })
+  app[["all"]]("/evil", function(req, res) {
+    res[["send"]](req[["method"]])
+  })
+  server <- webfakes::local_app_process(app)
+  hits <- 0L
+  for (status in c(302L, 307L, 308L)) {
+    request <- httr2::request(server[["url"]](paste0("/redirect/", status))) |>
+      httr2::req_body_form(value = "synthetic")
+    withr::with_options(list(shinyOAuth.allow_redirect = FALSE), {
+      response <- shinyOAuth:::req_no_redirect(request) |> httr2::req_perform()
+      expect_identical(httr2::resp_status(response), status)
+      expect_equal(redirect_target_hits(server), hits)
+    })
+    withr::with_options(list(shinyOAuth.allow_redirect = TRUE), {
+      response <- shinyOAuth:::req_no_redirect(request) |> httr2::req_perform()
+      expect_identical(toupper(httr2::resp_body_string(response)),
+        if (status == 302L) "GET" else "POST")
+      hits <- hits + 1L
+      expect_equal(redirect_target_hits(server), hits)
+    })
+  }
+})
+
 test_that("req_no_redirect disables redirect following by default", {
   req <- httr2::request("https://example.com")
   req2 <- shinyOAuth:::req_no_redirect(req)
@@ -49,8 +99,8 @@ test_that("token exchange does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
-  redirect_target_hit <- FALSE
   app <- webfakes::new_app()
+  add_redirect_target_counter(app)
   app[["post"]]("/token", function(req, res) {
     # Return a 302 redirect to a different endpoint
     res[["set_status"]](302)
@@ -61,7 +111,6 @@ test_that("token exchange does not follow redirects", {
     res[["send"]]("")
   })
   app[["post"]]("/evil", function(req, res) {
-    redirect_target_hit <<- TRUE
     res[["send_json"]](
       object = list(
         access_token = "t",
@@ -121,15 +170,15 @@ test_that("token exchange does not follow redirects", {
 
   # The redirect target should NOT have been hit
 
-  expect_false(redirect_target_hit)
+  expect_equal(redirect_target_hits(srv), 0L)
 })
 
 test_that("token refresh does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
-  redirect_target_hit <- FALSE
   app <- webfakes::new_app()
+  add_redirect_target_counter(app)
   app[["post"]]("/token", function(req, res) {
     res[["set_status"]](307)
     res[["set_header"]](
@@ -139,7 +188,6 @@ test_that("token refresh does not follow redirects", {
     res[["send"]]("")
   })
   app[["post"]]("/evil", function(req, res) {
-    redirect_target_hit <<- TRUE
     res[["send_json"]](
       object = list(
         access_token = "new_t",
@@ -193,15 +241,15 @@ test_that("token refresh does not follow redirects", {
     shinyOAuth::refresh_token(cli, token),
     class = "shinyOAuth_error"
   )
-  expect_false(redirect_target_hit)
+  expect_equal(redirect_target_hits(srv), 0L)
 })
 
 test_that("userinfo fetch does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
-  redirect_target_hit <- FALSE
   app <- webfakes::new_app()
+  add_redirect_target_counter(app)
   app[["get"]]("/userinfo", function(req, res) {
     res[["set_status"]](302)
     res[["set_header"]](
@@ -211,7 +259,6 @@ test_that("userinfo fetch does not follow redirects", {
     res[["send"]]("")
   })
   app[["get"]]("/evil", function(req, res) {
-    redirect_target_hit <<- TRUE
     res[["send_json"]](object = list(sub = "u123"), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
@@ -250,15 +297,15 @@ test_that("userinfo fetch does not follow redirects", {
     shinyOAuth::get_userinfo(cli, token = "test_token"),
     class = "shinyOAuth_error"
   )
-  expect_false(redirect_target_hit)
+  expect_equal(redirect_target_hits(srv), 0L)
 })
 
 test_that("token introspection does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
-  redirect_target_hit <- FALSE
   app <- webfakes::new_app()
+  add_redirect_target_counter(app)
   app[["post"]]("/introspect", function(req, res) {
     res[["set_status"]](302)
     res[["set_header"]](
@@ -268,7 +315,6 @@ test_that("token introspection does not follow redirects", {
     res[["send"]]("")
   })
   app[["post"]]("/evil", function(req, res) {
-    redirect_target_hit <<- TRUE
     res[["send_json"]](object = list(active = TRUE), auto_unbox = TRUE)
   })
   srv <- webfakes::local_app_process(app)
@@ -316,15 +362,15 @@ test_that("token introspection does not follow redirects", {
   expect_true(result[["supported"]])
   expect_true(is.na(result[["active"]]))
   expect_match(result[["status"]], "^http_")
-  expect_false(redirect_target_hit)
+  expect_equal(redirect_target_hits(srv), 0L)
 })
 
 test_that("token revocation does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
-  redirect_target_hit <- FALSE
   app <- webfakes::new_app()
+  add_redirect_target_counter(app)
   app[["post"]]("/revoke", function(req, res) {
     res[["set_status"]](307)
     res[["set_header"]](
@@ -334,7 +380,6 @@ test_that("token revocation does not follow redirects", {
     res[["send"]]("")
   })
   app[["post"]]("/evil", function(req, res) {
-    redirect_target_hit <<- TRUE
     res[["set_status"]](200)
     res[["send"]]("")
   })
@@ -384,15 +429,15 @@ test_that("token revocation does not follow redirects", {
   expect_true(result[["supported"]])
   expect_true(is.na(result[["revoked"]]))
   expect_match(result[["status"]], "^http_")
-  expect_false(redirect_target_hit)
+  expect_equal(redirect_target_hits(srv), 0L)
 })
 
 test_that("OIDC discovery does not follow redirects", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
 
-  redirect_target_hit <- FALSE
   app <- webfakes::new_app()
+  add_redirect_target_counter(app)
   app[["get"]]("/.well-known/openid-configuration", function(req, res) {
     res[["set_status"]](302)
     res[["set_header"]](
@@ -402,7 +447,6 @@ test_that("OIDC discovery does not follow redirects", {
     res[["send"]]("")
   })
   app[["get"]]("/evil", function(req, res) {
-    redirect_target_hit <<- TRUE
     res[["send_json"]](
       object = list(
         issuer = paste0(req[["protocol"]], "://", req[["host"]]),
@@ -430,7 +474,7 @@ test_that("OIDC discovery does not follow redirects", {
     shinyOAuth::oauth_provider_oidc_discover(issuer = base, name = "fake"),
     class = "shinyOAuth_error"
   )
-  expect_false(redirect_target_hit)
+  expect_equal(redirect_target_hits(srv), 0L)
 })
 
 # -----------------------------------------------------------------------------
