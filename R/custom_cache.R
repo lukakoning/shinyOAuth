@@ -160,7 +160,7 @@ custom_cache <- function(
   }
   if (!is.function(remove)) {
     err_input(
-      "cache_backend: `remove` must be a function(key) -> boolean result (see `?custom_cache`)"
+      "cache_backend: `remove` must be a function(key); state consumption ignores its return value (see `?custom_cache`)"
     )
   }
   # Validate optional take hook if provided
@@ -221,9 +221,8 @@ custom_cache <- function(
         invisible(NULL)
       },
       remove = function(key) {
-        # Pass through the underlying return value so callers can distinguish
-        # successful deletion (TRUE) from no-op/absence (non-TRUE). Visibility
-        # is intentionally not forced to invisible, to preserve boolean returns.
+        # Preserve the backend's return value and visibility for direct callers.
+        # State consumption uses atomic take or a post-removal absence check.
         private[[".remove"]](key)
       },
       info = function() {

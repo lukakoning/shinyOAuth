@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Custom-cache diagnostics now match the documented `remove()` contract:
+  state consumption verifies deletion independently of its return value.
+
 * ID tokens and OIDC UserInfo reject malformed standard profile claim types,
   including name/email strings, numeric `updated_at`, and address objects and
   their standard members. Custom extension claims remain available.
