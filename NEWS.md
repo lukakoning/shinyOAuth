@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Authenticated requests reject malformed HTTP headers and prohibited controls.
+  Managed connections enforce protected headers after syntax validation; DPoP
+  resource requests reject Host overrides.
+
 * Protocol JSON rejects escaped NUL characters and unpaired Unicode surrogates
   before decoding, preserving exact claim and member-name comparisons.
 

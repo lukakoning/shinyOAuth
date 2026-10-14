@@ -45,6 +45,8 @@ reflected by the server and disclose credentials.}
 
 \item{headers}{Optional named list or named character vector of extra
 headers to set on the request. Header names are case-insensitive.
+Names must be unique HTTP field-name tokens, and values must not contain
+prohibited control characters. DPoP requests reject \code{Host} overrides.
 Any user-supplied \code{Authorization} or \code{DPoP} header is ignored to ensure
 the token authentication set by this function is not overridden.}
 

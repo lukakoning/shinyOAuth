@@ -75,6 +75,7 @@ endpoint_auth_config_problem <- function(config) {
       !is.null(headers) &&
         (!is.character(headers) ||
           anyNA(headers) ||
+          !is.null(http_headers_problem(headers)) ||
           (length(headers) &&
             (is.null(names(headers)) ||
               !all(nzchar(names(headers))) ||

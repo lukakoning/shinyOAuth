@@ -35,6 +35,8 @@
 #'   reflected by the server and disclose credentials.
 #' @param headers Optional named list or named character vector of extra
 #'   headers to set on the request. Header names are case-insensitive.
+#'   Names must be unique HTTP field-name tokens, and values must not contain
+#'   prohibited control characters. DPoP requests reject `Host` overrides.
 #'   Any user-supplied `Authorization` or `DPoP` header is ignored to ensure
 #'   the token authentication set by this function is not overridden.
 #' @param query Optional named list of query parameters to append to the URL.
@@ -407,7 +409,9 @@ prepare_client_bearer_request <- function(
 ) {
   if (inherits(req, "httr2_request")) {
     validate_resource_request_policies(req)
+    validate_http_request_headers(req)
   }
+  headers <- normalize_client_bearer_headers(headers)
   request_method <- resolve_client_bearer_method(method = method, req = req)
   validate_client_bearer_method(method = request_method, req = req)
 
@@ -415,6 +419,14 @@ prepare_client_bearer_request <- function(
     token = token,
     token_type = token_type
   )
+  if (is_dpop_token_type(token_info[["token_type"]])) {
+    has_host <- function(values) {
+      any(tolower(names(values)) == "host" & !vapply(values, is.null, logical(1)))
+    }
+    if (has_host(req[["headers"]]) || has_host(headers)) {
+      err_input("DPoP resource requests must not override the Host header")
+    }
+  }
 
   validate_client_bearer_token_context(
     token_type = token_info[["token_type"]],
@@ -1059,10 +1071,12 @@ normalize_client_bearer_headers <- function(headers = NULL) {
   }
 
   if (is.list(headers)) {
+    validate_http_headers(headers, allow_removal = TRUE)
     return(headers)
   }
 
   if (is.character(headers) && !is.null(names(headers))) {
+    validate_http_headers(headers)
     return(as.list(headers))
   }
 

@@ -559,6 +559,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
   if (!inherits(req, "httr2_request")) {
     return(httr2::req_perform(req))
   }
+  validate_http_request_headers(req)
 
   # Note: httr2 throws on HTTP error statuses (4xx/5xx) by default
   # We disable that behavior so we can distinguish transport errors (network
@@ -583,6 +584,7 @@ req_with_retry <- function(req, idempotent = TRUE) {
       attempt_req <- prepare_attempt(req, attempt)
     }
     if (inherits(attempt_req, "httr2_request")) {
+      validate_http_request_headers(attempt_req)
       attempt_req[["shinyOAuth_prepare_attempt"]] <- NULL
       attempt_req[["shinyOAuth_response_observer"]] <- NULL
     }

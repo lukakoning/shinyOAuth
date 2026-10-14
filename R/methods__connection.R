@@ -318,6 +318,7 @@ connection_prepare_request <- function(url, query, method, configure) {
         if (!inherits(request, "httr2_request")) {
           err_input("configure must return an httr2 request")
         }
+        validate_http_request_headers(request)
         unchanged <- request
         unchanged[c("body", "headers")] <- template[c("body", "headers")]
         if (

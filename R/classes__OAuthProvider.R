@@ -1292,6 +1292,10 @@ oauth_provider_validate <- function(self) {
         "OAuthProvider: extra_token_headers must have non-empty names for all headers"
       )
     }
+    header_problem <- http_headers_problem(eth)
+    if (!is.null(header_problem)) {
+      return(paste0("OAuthProvider: extra_token_headers: ", header_problem))
+    }
 
     default_reserved_headers <- c("authorization", "cookie")
     unblocked <- tolower(getOption(
