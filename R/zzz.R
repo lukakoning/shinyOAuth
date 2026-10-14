@@ -18,10 +18,24 @@ utils::globalVariables(c("input", "private", "public"))
 #' @keywords internal
 #' @noRd
 .onLoad <- function(...) {
-  S7::methods_register()
+  if ("S7_on_load" %in% getNamespaceExports("S7")) {
+    S7::S7_on_load()
+  } else {
+    S7::methods_register()
+  }
   rlang::run_on_load()
 }
 
 # Conditions carry literal data, including nested conditionMessage() output.
 # Render only fixed package-owned templates explicitly at their call sites.
 rlang::on_load(rlang::local_use_cli(format = TRUE, inline = FALSE))
+
+.onUnload <- function(...) {
+  if ("S7_on_unload" %in% getNamespaceExports("S7")) {
+    S7::S7_on_unload()
+  }
+}
+
+if ("S7_on_build" %in% getNamespaceExports("S7")) {
+  S7::S7_on_build()
+}
