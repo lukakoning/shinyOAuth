@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Ed25519 client assertions and signed authorization requests now work through
+  the public authorization flow. Their public signing key is fingerprinted
+  using the same OKP-capable export as DPoP, retaining callback key binding.
+
 * Strict browser-owner cookies survive ordinary entry from an external site.
   An inert same-origin recovery page rechecks the existing cookie before an
   empty owner can be created; recovery attempts are bounded and preserve the

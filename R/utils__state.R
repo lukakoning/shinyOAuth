@@ -419,12 +419,9 @@ state_policy_client_assertion_key_thumbprint <- function(client) {
     client@client_assertion_private_key,
     arg_name = "client_assertion_private_key"
   )
-  public_key <- as.list(key)[["pubkey"]]
-  jwk <- jsonlite::fromJSON(
-    jose::write_jwk(public_key),
-    simplifyVector = TRUE
-  )
-  compute_jwk_thumbprint(canonicalize_local_public_jwk(jwk))
+  compute_jwk_thumbprint(private_key_public_jwk(
+    key, arg_name = "client_assertion_private_key"
+  ))
 }
 
 #' Identify an explicit provider Request Object encryption key

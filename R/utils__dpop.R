@@ -523,9 +523,16 @@ resolve_dpop_alg <- function(client) {
 #' @keywords internal
 #' @noRd
 dpop_public_jwk <- function(key) {
+  private_key_public_jwk(key, arg_name = "dpop_private_key")
+}
+
+# Export only public members, including OKP keys unsupported by jose's exporter.
+# Share this representation with assertion/JAR policy binding so the signed
+# transaction binds the same key that is used for outbound signatures.
+private_key_public_jwk <- function(key, arg_name = "private key") {
   pub <- try(openssl::read_pubkey(openssl::write_pem(key)), silent = TRUE)
   if (inherits(pub, "try-error")) {
-    err_config("Failed to derive public key from dpop_private_key")
+    err_config(paste0("Failed to derive public key from ", arg_name))
   }
   if (inherits(pub, "ed25519")) {
     public_bytes <- as.list(pub)[["data"]]
@@ -541,7 +548,7 @@ dpop_public_jwk <- function(key) {
 
   jwk_json <- try(jose::jwk_write(pub), silent = TRUE)
   if (inherits(jwk_json, "try-error")) {
-    err_config("Failed to serialize DPoP public key as JWK")
+    err_config("Failed to serialize public key as JWK")
   }
 
   jwk <- try(
@@ -549,7 +556,7 @@ dpop_public_jwk <- function(key) {
     silent = TRUE
   )
   if (inherits(jwk, "try-error") || !is.list(jwk)) {
-    err_parse("Failed to parse serialized DPoP public JWK")
+    err_parse("Failed to parse serialized public JWK")
   }
 
   private_members <- intersect(
@@ -558,7 +565,7 @@ dpop_public_jwk <- function(key) {
   )
   if (length(private_members) > 0L) {
     err_config(
-      "Serialized DPoP JWK unexpectedly contained private key material"
+      "Serialized public JWK unexpectedly contained private key material"
     )
   }
 
