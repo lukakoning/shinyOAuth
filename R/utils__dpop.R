@@ -932,35 +932,47 @@ parse_http_auth_challenges <- function(value) {
     return(list())
   }
 
+  # Bound untrusted work before allocating or scanning. Header/body transport
+  # limits and HTTP timeouts do not constrain CPU spent parsing a response.
+  if (nchar(value, type = "bytes") > 65536L) {
+    err_token("WWW-Authenticate response header exceeds the maximum of 65536 bytes")
+  }
   chars <- strsplit(value, "", fixed = TRUE)[[1]]
-  parts <- character()
-  current <- character()
+  separators <- integer(255L)
+  count <- 0L
   quoted <- FALSE
   escaped <- FALSE
-  for (ch in chars) {
+  for (i in seq_along(chars)) {
+    ch <- chars[[i]]
     if (escaped) {
-      current <- c(current, ch)
       escaped <- FALSE
       next
     }
     if (quoted && identical(ch, "\\")) {
-      current <- c(current, ch)
       escaped <- TRUE
       next
     }
     if (identical(ch, '"')) {
       quoted <- !quoted
-      current <- c(current, ch)
       next
     }
     if (!quoted && identical(ch, ",")) {
-      parts <- c(parts, paste0(current, collapse = ""))
-      current <- character()
-      next
+      if (count == length(separators)) {
+        err_token(
+          "WWW-Authenticate response header exceeds the maximum of 256 challenge/parameter parts"
+        )
+      }
+      count <- count + 1L
+      separators[[count]] <- i
     }
-    current <- c(current, ch)
   }
-  parts <- trimws(c(parts, paste0(current, collapse = "")))
+  separators <- separators[seq_len(count)]
+  # Slice each part once instead of copying a growing vector per character.
+  parts <- trimws(substring(
+    value,
+    c(1L, separators + 1L),
+    c(separators - 1L, length(chars))
+  ))
   parts <- parts[nzchar(parts)]
 
   token_pattern <- "[!#$%&'*+.^_`|~0-9A-Za-z-]+"

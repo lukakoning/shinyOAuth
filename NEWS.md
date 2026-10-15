@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* DPoP authentication challenges use bounded parsing instead of repeatedly
+  copying long header values. Oversized headers and excessive challenge parts
+  fail explicitly before nonce retries.
+
 * Custom-cache diagnostics now match the documented `remove()` contract:
   state consumption verifies deletion independently of its return value.
 
