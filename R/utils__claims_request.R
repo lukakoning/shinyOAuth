@@ -67,7 +67,8 @@ claims_request_json <- function(claims) {
     claims <- as.character(jsonlite::toJSON(
       claims,
       auto_unbox = TRUE,
-      null = "null"
+      null = "null",
+      digits = NA
     ))
   } else if (!is_valid_string(claims)) {
     err_config(

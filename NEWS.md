@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Numeric OIDC claims requirements retain their precision in ordinary
+  authorization parameters and signed Request Objects for every supported
+  signing algorithm. Strict claim validation now checks the values that were
+  actually requested without authorization-time rounding.
+
 * Ed25519 client assertions and signed authorization requests now work through
   the public authorization flow. Their public signing key is fingerprinted
   using the same OKP-capable export as DPoP, retaining callback key binding.

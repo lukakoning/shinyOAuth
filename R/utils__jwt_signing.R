@@ -515,19 +515,14 @@ private_key_jws_alg_compatibility <- function(key, alg) {
   NA
 }
 
-# jose's RSA digest size defaults to 256 independently of the supplied header.
-# Select SHA-384 explicitly for RS384 (RFC 7518 section 3.3). For OKP keys,
-# retain our explicit-header encoder and delegate Ed25519 to OpenSSL.
+# Serialize all algorithms identically with full numeric precision. jose's
+# encoder rounds nested numbers to four decimal places, which changes OIDC
+# claims requests. OpenSSL signs the exact serialized input; ECDSA signatures
+# use fixed-width R || S rather than ASN.1 DER (RFC 7518 section 3.4).
 encode_asymmetric_jwt_with_header <- function(claims, key, header) {
   alg <- canonicalize_jws_alg(header[["alg"]])
   if (!private_key_can_sign_jws_alg(key, alg)) {
     err_config("JWT signing algorithm is incompatible with the private key")
-  }
-  if (identical(alg, "RS384")) {
-    return(jose::jwt_encode_sig(claims, key = key, size = 384, header = header))
-  }
-  if (!(alg %in% c("Ed25519", "EdDSA"))) {
-    return(jose::jwt_encode_sig(claims, key = key, header = header))
   }
   encode <- function(value) {
     base64url_encode(charToRaw(enc2utf8(jsonlite::toJSON(
@@ -539,9 +534,30 @@ encode_asymmetric_jwt_with_header <- function(claims, key, header) {
   }
   header[["alg"]] <- alg
   signing_input <- paste(encode(header), encode(claims), sep = ".")
-  signature <- openssl::ed25519_sign(charToRaw(signing_input), key)
-  if (length(signature) != 64L) {
-    err_config("Ed25519 produced an invalid signature length")
+  if (alg %in% c("Ed25519", "EdDSA")) {
+    signature <- openssl::ed25519_sign(charToRaw(signing_input), key)
+    if (length(signature) != 64L) {
+      err_config("Ed25519 produced an invalid signature length")
+    }
+  } else {
+    hash <- switch(alg,
+      RS256 = openssl::sha256, RS384 = openssl::sha384,
+      ES256 = openssl::sha256, ES384 = openssl::sha384, ES512 = openssl::sha512
+    )
+    signature <- openssl::signature_create(
+      charToRaw(signing_input), hash = hash, key = key
+    )
+    if (inherits(key, "ecdsa")) {
+      params <- openssl::ecdsa_parse(signature)
+      width <- switch(alg, ES256 = 32L, ES384 = 48L, ES512 = 66L)
+      pad <- function(value) {
+        if (length(value) > width) {
+          err_config("ECDSA produced an invalid signature component length")
+        }
+        c(raw(width - length(value)), value)
+      }
+      signature <- c(pad(params[["r"]]), pad(params[["s"]]))
+    }
   }
   paste(signing_input, base64url_encode(signature), sep = ".")
 }
