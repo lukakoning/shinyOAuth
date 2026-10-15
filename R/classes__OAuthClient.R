@@ -1541,7 +1541,8 @@ oauth_client_validate <- function(self) {
           oauth_module_callback_query_keys,
           "response",
           "scope",
-          shiny_request_object_param
+          shiny_request_object_param,
+          connection_owner_recovery_param
         )
     )
   ) {

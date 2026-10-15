@@ -37,6 +37,10 @@
 #' continuation, allowing the browser to send its existing cookie. The document
 #' does not establish an owner or exchange credentials. A managed continuation
 #' must carry a still-valid owner before credentials can be exchanged.
+#' Ordinary entry without a Strict cookie also uses a bounded same-origin
+#' navigation before creating an empty owner. Browsers must supply same-origin
+#' Fetch Metadata or a same-origin `Referer` or `Origin` header on that request.
+#' The `shinyOAuth_owner_recovery` query parameter is reserved for this navigation.
 #' A validated ordinary callback for
 #' `additional_clients` can establish a new empty manager owner independently.
 #' An invalid cookie on an ordinary
@@ -247,6 +251,14 @@ oauth_connections_ui <- function(
             )
           ))
         }
+        if (identical(manager[["owner"]][["same_site"]], "Strict")) {
+          recovery <- connection_manager_owner_recovery(
+            req, uri, owner, cookie, manager[["app_origin"]]
+          )
+          if (!is.null(recovery)) {
+            return(recovery)
+          }
+        }
         response <- handler(req)
         if (
           is.null(owner) &&
@@ -281,6 +293,71 @@ oauth_connections_ui <- function(
     exact = TRUE
   )
   ui
+}
+
+# A missing Strict cookie on an external entry is ambiguous: the browser may
+# already hold one. Commit an inert document and recheck it on a same-origin
+# navigation. The query flag only bounds recovery; it never proves ownership.
+connection_owner_recovery_param <- "shinyOAuth_owner_recovery"
+
+connection_manager_owner_recovery <- function(req, uri, owner, cookie, origin) {
+  query <- sub("^\\?", "", req[["QUERY_STRING"]] %||% "")
+  fields <- decode_form_pairs(query, "Owner recovery")
+  marked <- names(fields) == connection_owner_recovery_param
+  site <- req[["HTTP_SEC_FETCH_SITE"]]
+  same_origin <- if (!is.null(site)) {
+    identical(site, "same-origin")
+  } else {
+    connection_manager_same_origin(req[["HTTP_REFERER"]], origin) ||
+      identical(req[["HTTP_ORIGIN"]], origin)
+  }
+  if (any(marked)) {
+    if (
+      sum(marked) != 1L || !identical(unname(fields[marked]), list("1")) ||
+        !same_origin
+    ) {
+      return(oauth_get_setup_error("The browser owner recovery request is invalid."))
+    }
+    # Preserve every application query byte, including repeated parameters.
+    parts <- utils::head(
+      strsplit(paste0(query, "&sentinel"), "&", fixed = TRUE)[[1L]], -1L
+    )
+    marked_parts <- rep(FALSE, length(parts))
+    marked_parts[nzchar(parts)] <- marked
+    clean <- paste(parts[!marked_parts], collapse = "&")
+    location <- paste0(
+      sub("[?#].*$", "", uri), if (nzchar(clean)) paste0("?", clean) else ""
+    )
+    return(shiny::httpResponse(
+      303L, "text/plain", "",
+      headers = list(
+        Location = location, "Cache-Control" = "no-store",
+        "Referrer-Policy" = "origin"
+      )
+    ))
+  }
+  if (!is.null(owner) || !is.null(cookie) || same_origin) {
+    return(NULL)
+  }
+  location <- paste0(
+    sub("[?#].*$", "", uri), "?", query, if (nzchar(query)) "&",
+    connection_owner_recovery_param, "=1"
+  )
+  location <- htmltools::htmlEscape(location, attribute = TRUE)
+  shiny::httpResponse(
+    200L, "text/html; charset=UTF-8",
+    paste0(
+      '<!doctype html><html><head><meta name="referrer" content="origin">',
+      '<meta http-equiv="refresh" content="0;url=', location, '">',
+      '<title>Continue to application</title></head><body>',
+      '<a href="', location, '">Continue</a></body></html>'
+    ),
+    headers = list(
+      "Cache-Control" = "no-store", "Pragma" = "no-cache",
+      "Referrer-Policy" = "origin",
+      "Content-Security-Policy" = "default-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+    )
+  )
 }
 
 # A cross-site HTTP redirect chain withholds Strict cookies even on its final

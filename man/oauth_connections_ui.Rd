@@ -62,6 +62,10 @@ first serves an inert same-origin document that navigates to the clean
 continuation, allowing the browser to send its existing cookie. The document
 does not establish an owner or exchange credentials. A managed continuation
 must carry a still-valid owner before credentials can be exchanged.
+Ordinary entry without a Strict cookie also uses a bounded same-origin
+navigation before creating an empty owner. Browsers must supply same-origin
+Fetch Metadata or a same-origin \code{Referer} or \code{Origin} header on that request.
+The \code{shinyOAuth_owner_recovery} query parameter is reserved for this navigation.
 A validated ordinary callback for
 \code{additional_clients} can establish a new empty manager owner independently.
 An invalid cookie on an ordinary

@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Strict browser-owner cookies survive ordinary entry from an external site.
+  An inert same-origin recovery page rechecks the existing cookie before an
+  empty owner can be created; recovery attempts are bounded and preserve the
+  application query.
+
 * DPoP authentication challenges use bounded parsing instead of repeatedly
   copying long header values. Oversized headers and excessive challenge parts
   fail explicitly before nonce retries.

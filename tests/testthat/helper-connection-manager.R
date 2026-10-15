@@ -36,7 +36,9 @@ manager_test_session <- function(cookie = NULL) {
 }
 
 manager_test_cookie <- function(f) {
-  response <- f[["ui"]](manager_test_request())
+  req <- manager_test_request()
+  req[["HTTP_SEC_FETCH_SITE"]] <- "same-origin"
+  response <- f[["ui"]](req)
   sub(";.*$", "", response[["headers"]][["Set-Cookie"]])
 }
 

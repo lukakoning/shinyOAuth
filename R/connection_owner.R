@@ -14,7 +14,9 @@
 #' @param same_site Owner-cookie policy, `"Lax"` for top-level authorization
 #'   navigation or `"Strict"`. Embedded cross-site ownership is not supported.
 #'   With `"Strict"`, [oauth_connections_ui()] serves an intermediate same-origin
-#'   document after validating a callback, before checking the existing owner.
+#'   document on external entry and after validating a callback, before checking
+#'   the existing owner. Ordinary entry recovery requires same-origin Fetch
+#'   Metadata or a same-origin `Referer` or `Origin` header from the browser.
 #' @param allow_http_loopback Explicit development-only exception for HTTP on
 #'   localhost or a loopback address. Default `FALSE` requires HTTPS. The exception
 #'   cannot provide a Secure, host-prefixed owner cookie.

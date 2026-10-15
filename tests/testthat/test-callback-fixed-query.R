@@ -3,7 +3,9 @@ test_that("client configuration rejects reserved fixed callback query names", {
     oauth_module_callback_query_keys,
     "response",
     "scope",
-    "%73tate"
+    "%73tate",
+    connection_owner_recovery_param,
+    "%73hinyOAuth_owner_recovery"
   )) {
     client <- make_test_client()
     expect_error(
