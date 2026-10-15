@@ -48,9 +48,11 @@ resource_req(
 - headers:
 
   Optional named list or named character vector of extra headers to set
-  on the request. Header names are case-insensitive. Any user-supplied
-  `Authorization` or `DPoP` header is ignored to ensure the token
-  authentication set by this function is not overridden.
+  on the request. Header names are case-insensitive. Names must be
+  unique HTTP field-name tokens, and values must not contain prohibited
+  control characters. DPoP requests reject `Host` overrides. Any
+  user-supplied `Authorization` or `DPoP` header is ignored to ensure
+  the token authentication set by this function is not overridden.
 
 - query:
 

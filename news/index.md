@@ -2,6 +2,39 @@
 
 ## shinyOAuth (development version)
 
+- Custom-cache diagnostics now match the documented
+  [`remove()`](https://rdrr.io/r/base/rm.html) contract: state
+  consumption verifies deletion independently of its return value.
+
+- ID tokens and OIDC UserInfo reject malformed standard profile claim
+  types, including name/email strings, numeric `updated_at`, and address
+  objects and their standard members. Custom extension claims remain
+  available.
+
+- HMAC key-length checks use the UTF-8 bytes used for signing and
+  verification, consistently across client authentication, Request
+  Objects, ID tokens, JARM, endpoint negotiation, and OAuth 2.1
+  configuration assessments.
+
+- Signed JWT profiles reject explicitly null `kid` and `typ` headers
+  while continuing to permit those optional fields to be absent.
+
+- Redirect regression tests observe target requests across the server
+  process boundary and verify their counters with enabled 302, 307, and
+  308 redirects.
+
+- Prebuilt authenticated resource requests reject curl `request_target`
+  overrides, keeping the checked URL and DPoP URI aligned with the wire
+  target.
+
+- Authenticated requests reject malformed HTTP headers and prohibited
+  controls. Managed connections enforce protected headers after syntax
+  validation; DPoP resource requests reject Host overrides.
+
+- Protocol JSON rejects escaped NUL characters and unpaired Unicode
+  surrogates before decoding, preserving exact claim and member-name
+  comparisons.
+
 - mTLS registration preserves explicit RFC 4514 subject DNs verbatim,
   including escaped trailing spaces, while retaining SAN normalization
   and input checks.

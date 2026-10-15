@@ -147,7 +147,8 @@ to <code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p
 <p>It is required for <code>token_auth_style = "header"</code>. With <code>"body"</code> and PKCE,
 an empty secret is omitted. With <code>"public"</code> (alias <code>"none"</code>), it is never
 sent for client authentication. HMAC-signed ID token validation still
-requires a non-empty secret, regardless of the client authentication method.</p></dd>
+requires a non-empty secret, regardless of the client authentication method.
+HMAC key-length checks measure the UTF-8 bytes used for signing and verification.</p></dd>
 
 
 <dt id="arg-redirect-uri">redirect_uri<a class="anchor" aria-label="anchor" href="#arg-redirect-uri"></a></dt>

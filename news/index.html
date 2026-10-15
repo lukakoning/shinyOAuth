@@ -46,7 +46,15 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>mTLS registration preserves explicit RFC 4514 subject DNs verbatim, including escaped trailing spaces, while retaining SAN normalization and input checks.</p></li>
+<ul><li><p>Custom-cache diagnostics now match the documented <code><a href="https://rdrr.io/r/base/rm.html" class="external-link">remove()</a></code> contract: state consumption verifies deletion independently of its return value.</p></li>
+<li><p>ID tokens and OIDC UserInfo reject malformed standard profile claim types, including name/email strings, numeric <code>updated_at</code>, and address objects and their standard members. Custom extension claims remain available.</p></li>
+<li><p>HMAC key-length checks use the UTF-8 bytes used for signing and verification, consistently across client authentication, Request Objects, ID tokens, JARM, endpoint negotiation, and OAuth 2.1 configuration assessments.</p></li>
+<li><p>Signed JWT profiles reject explicitly null <code>kid</code> and <code>typ</code> headers while continuing to permit those optional fields to be absent.</p></li>
+<li><p>Redirect regression tests observe target requests across the server process boundary and verify their counters with enabled 302, 307, and 308 redirects.</p></li>
+<li><p>Prebuilt authenticated resource requests reject curl <code>request_target</code> overrides, keeping the checked URL and DPoP URI aligned with the wire target.</p></li>
+<li><p>Authenticated requests reject malformed HTTP headers and prohibited controls. Managed connections enforce protected headers after syntax validation; DPoP resource requests reject Host overrides.</p></li>
+<li><p>Protocol JSON rejects escaped NUL characters and unpaired Unicode surrogates before decoding, preserving exact claim and member-name comparisons.</p></li>
+<li><p>mTLS registration preserves explicit RFC 4514 subject DNs verbatim, including escaped trailing spaces, while retaining SAN normalization and input checks.</p></li>
 <li><p>The future async backend now requires <code>promises &gt;= 1.3.3</code> in dependency metadata and runtime checks. Older versions either lack <code>future_promise()</code> or use a dispatch API incompatible with current versions of <code>future</code>.</p></li>
 <li><p>Signed UserInfo key rotation now uses the client’s TLS policy for both JWKS refresh throttling and fetching, so clients sharing a cache cannot consume another TLS policy’s refresh allowance.</p></li>
 <li><p>Independent endpoint credentials no longer inherit ID-token HMAC key-length or Request Object signing requirements. Introspection, revocation, and PAR continue to validate their own authentication credentials and algorithms.</p></li>

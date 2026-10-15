@@ -45,7 +45,8 @@ perform_client_bearer_req(
   authentication and request defaults, and then layers any explicit
   `method`, `headers`, `query`, and `follow_redirect` overrides on top.
   Inherited httr2 authentication, caching, and retry policies, and curl
-  authentication or method-changing options are rejected. Use
+  authentication, method-changing, or `request_target` options are
+  rejected. Use
   [`httr2::req_method()`](https://httr2.r-lib.org/reference/req_method.html)
   and httr2 body helpers to configure the request. HEAD requests with
   bodies are rejected because httr2 can transmit them as POST despite
@@ -64,9 +65,11 @@ perform_client_bearer_req(
 - headers:
 
   Optional named list or named character vector of extra headers to set
-  on the request. Header names are case-insensitive. Any user-supplied
-  `Authorization` or `DPoP` header is ignored to ensure the token
-  authentication set by this function is not overridden.
+  on the request. Header names are case-insensitive. Names must be
+  unique HTTP field-name tokens, and values must not contain prohibited
+  control characters. DPoP requests reject `Host` overrides. Any
+  user-supplied `Authorization` or `DPoP` header is ignored to ensure
+  the token authentication set by this function is not overridden.
 
 - query:
 

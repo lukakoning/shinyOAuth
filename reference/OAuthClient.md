@@ -118,7 +118,8 @@ OAuthClient(
   PKCE, an empty secret is omitted. With `"public"` (alias `"none"`), it
   is never sent for client authentication. HMAC-signed ID token
   validation still requires a non-empty secret, regardless of the client
-  authentication method.
+  authentication method. HMAC key-length checks measure the UTF-8 bytes
+  used for signing and verification.
 
 - client_assertion_private_key:
 

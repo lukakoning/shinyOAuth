@@ -89,7 +89,7 @@ it as the base request, still applies token authentication and request
 defaults, and then layers any explicit <code>method</code>, <code>headers</code>, <code>query</code>, and
 <code>follow_redirect</code> overrides on top.
 Inherited httr2 authentication, caching, and retry policies, and curl
-authentication or method-changing options are rejected. Use
+authentication, method-changing, or <code>request_target</code> options are rejected. Use
 <code><a href="https://httr2.r-lib.org/reference/req_method.html" class="external-link">httr2::req_method()</a></code> and httr2 body helpers to configure the request.
 HEAD requests with bodies are rejected because httr2 can transmit them
 as POST despite the explicit method.
@@ -109,6 +109,8 @@ reflected by the server and disclose credentials.</p></dd>
 <dt id="arg-headers">headers<a class="anchor" aria-label="anchor" href="#arg-headers"></a></dt>
 <dd><p>Optional named list or named character vector of extra
 headers to set on the request. Header names are case-insensitive.
+Names must be unique HTTP field-name tokens, and values must not contain
+prohibited control characters. DPoP requests reject <code>Host</code> overrides.
 Any user-supplied <code>Authorization</code> or <code>DPoP</code> header is ignored to ensure
 the token authentication set by this function is not overridden.</p></dd>
 
