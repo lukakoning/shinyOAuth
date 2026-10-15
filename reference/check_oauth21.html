@@ -92,11 +92,12 @@ evidence or excuse missing local prerequisites. Prefer S256 PKCE.</p></dd>
     <p>A <code>shinyOAuth_oauth21_assessment</code> list with <code>configuration_compliant</code>,
 <code>checks</code>, <code>draft</code>, <code>ruleset_version</code>, <code>package_version</code>, <code>assessed_at</code>,
 <code>assessment_scope</code>, and <code>operations</code>. <code>checks</code> is a data frame with stable
-<code>id</code>, <code>scope</code>, <code>status</code> (<code>pass</code>, <code>fail</code>, <code>unknown</code>, <code>not_applicable</code>),
+<code>id</code>, <code>scope</code>, <code>status</code> (<code>pass</code>, <code>fail</code>, <code>warn</code>, <code>unknown</code>, <code>not_applicable</code>),
 <code>requirement</code> (<code>MUST</code>, <code>SHOULD</code>, <code>info</code>), <code>message</code>, <code>remediation</code>, <code>reference</code>,
 <code>evidence_source</code>, <code>requirement_source</code>, and logical <code>affects_verdict</code> columns. Only rows with
 <code>affects_verdict = TRUE</code> enter aggregation; unknown external obligations
-remain visible separately.</p>
+remain visible separately. <code>warn</code> records a compatibility warning, such as
+accepting a missing token type, and does not by itself fail the verdict.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

@@ -2,6 +2,30 @@
 
 ## shinyOAuth (development version)
 
+- [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
+  documents the `warn` check status and its effect on the configuration
+  verdict, including compatibility with missing token types.
+
+- Numeric OIDC claims requirements retain their precision in ordinary
+  authorization parameters and signed Request Objects for every
+  supported signing algorithm. Strict claim validation now checks the
+  values that were actually requested without authorization-time
+  rounding.
+
+- Ed25519 client assertions and signed authorization requests now work
+  through the public authorization flow. Their public signing key is
+  fingerprinted using the same OKP-capable export as DPoP, retaining
+  callback key binding.
+
+- Strict browser-owner cookies survive ordinary entry from an external
+  site. An inert same-origin recovery page rechecks the existing cookie
+  before an empty owner can be created; recovery attempts are bounded
+  and preserve the application query.
+
+- DPoP authentication challenges use bounded parsing instead of
+  repeatedly copying long header values. Oversized headers and excessive
+  challenge parts fail explicitly before nonce retries.
+
 - Custom-cache diagnostics now match the documented
   [`remove()`](https://rdrr.io/r/base/rm.html) contract: state
   consumption verifies deletion independently of its return value.

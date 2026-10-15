@@ -88,11 +88,15 @@ callback first serves an inert same-origin document that navigates to
 the clean continuation, allowing the browser to send its existing
 cookie. The document does not establish an owner or exchange
 credentials. A managed continuation must carry a still-valid owner
-before credentials can be exchanged. A validated ordinary callback for
-`additional_clients` can establish a new empty manager owner
-independently. An invalid cookie on an ordinary page is cleared using an
-HTTP response and a same-origin redirect; the next request establishes a
-new empty browser owner.
+before credentials can be exchanged. Ordinary entry without a Strict
+cookie also uses a bounded same-origin navigation before creating an
+empty owner. Browsers must supply same-origin Fetch Metadata or a
+same-origin `Referer` or `Origin` header on that request. The
+`shinyOAuth_owner_recovery` query parameter is reserved for this
+navigation. A validated ordinary callback for `additional_clients` can
+establish a new empty manager owner independently. An invalid cookie on
+an ordinary page is cleared using an HTTP response and a same-origin
+redirect; the next request establishes a new empty browser owner.
 
 The cookie is scoped to its host. Separate applications on that host
 must be trusted; different ports or paths do not isolate their cookies.

@@ -52,8 +52,10 @@ print(x, ...)
   `"Strict"`. Embedded cross-site ownership is not supported. With
   `"Strict"`,
   [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
-  serves an intermediate same-origin document after validating a
-  callback, before checking the existing owner.
+  serves an intermediate same-origin document on external entry and
+  after validating a callback, before checking the existing owner.
+  Ordinary entry recovery requires same-origin Fetch Metadata or a
+  same-origin `Referer` or `Origin` header from the browser.
 
 - allow_http_loopback:
 

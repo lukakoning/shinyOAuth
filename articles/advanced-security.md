@@ -772,6 +772,13 @@ RFC itself sets no maximum length. Configure
 issuing larger nonces (supported range: 1–65536 bytes). A response above
 the configured limit raises an explicit error without logging its nonce.
 
+DPoP authentication challenges are parsed with bounded work. A
+`WWW-Authenticate` response header exceeding 65,536 bytes or 256
+comma-separated challenge/parameter parts is rejected explicitly. Commas
+inside quoted values do not count as separators. These local limits also
+apply when the response body is empty; HTTP timeouts do not bound
+subsequent header parsing.
+
 [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
 only builds the request. A DPoP proof is tied to its HTTP method and
 base URL, so do not change those after construction. Literal `.` and
