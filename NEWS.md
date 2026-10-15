@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* `check_oauth21()` documents the `warn` check status and its effect on the
+  configuration verdict, including compatibility with missing token types.
+
 * Numeric OIDC claims requirements retain their precision in ordinary
   authorization parameters and signed Request Objects for every supported
   signing algorithm. Strict claim validation now checks the values that were

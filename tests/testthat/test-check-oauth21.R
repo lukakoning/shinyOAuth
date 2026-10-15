@@ -55,7 +55,7 @@ test_that("a supported public client passes a bounded, deterministic assessment"
   expect_identical(report[["ruleset_version"]], "1.1.0")
   expect_true(all(
     report[["checks"]][["status"]] %in%
-      c("pass", "fail", "unknown", "not_applicable")
+      c("pass", "fail", "warn", "unknown", "not_applicable")
   ))
   expect_false(anyDuplicated(report[["checks"]][["id"]]) > 0L)
   expect_identical(check_oauth21(client)[["checks"]], report[["checks"]])
@@ -1007,10 +1007,15 @@ test_that("malformed API arguments are programming errors with redacted diagnost
   )
 })
 test_that("assessment reports compatibility with missing token types", {
+  withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   client <- oauth21_test_client()
+  verdict <- check_oauth21(client)[["configuration_compliant"]]
   client@provider@allow_missing_token_type <- TRUE
-  finding <- oauth21_finding(check_oauth21(client), "tokens.validation")
+  report <- check_oauth21(client)
+  finding <- oauth21_finding(report, "tokens.validation")
   expect_identical(finding[["status"]], "warn")
+  expect_false(finding[["affects_verdict"]])
+  expect_identical(report[["configuration_compliant"]], verdict)
   expect_match(finding[["remediation"]], "allow_missing_token_type")
   expect_identical(
     oauth21_finding(check_oauth21(client@provider), "tokens.validation")[[

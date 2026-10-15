@@ -25,11 +25,12 @@ evidence or excuse missing local prerequisites. Prefer S256 PKCE.}
 A \code{shinyOAuth_oauth21_assessment} list with \code{configuration_compliant},
 \code{checks}, \code{draft}, \code{ruleset_version}, \code{package_version}, \code{assessed_at},
 \code{assessment_scope}, and \code{operations}. \code{checks} is a data frame with stable
-\code{id}, \code{scope}, \code{status} (\code{pass}, \code{fail}, \code{unknown}, \code{not_applicable}),
+\code{id}, \code{scope}, \code{status} (\code{pass}, \code{fail}, \code{warn}, \code{unknown}, \code{not_applicable}),
 \code{requirement} (\code{MUST}, \code{SHOULD}, \code{info}), \code{message}, \code{remediation}, \code{reference},
 \code{evidence_source}, \code{requirement_source}, and logical \code{affects_verdict} columns. Only rows with
 \code{affects_verdict = TRUE} enter aggregation; unknown external obligations
-remain visible separately.
+remain visible separately. \code{warn} records a compatibility warning, such as
+accepting a missing token type, and does not by itself fail the verdict.
 }
 \description{
 This function inspects a configured \link{OAuthClient} and its \link{OAuthProvider} for

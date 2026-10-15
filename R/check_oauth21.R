@@ -47,11 +47,12 @@
 #' @return A `shinyOAuth_oauth21_assessment` list with `configuration_compliant`,
 #'   `checks`, `draft`, `ruleset_version`, `package_version`, `assessed_at`,
 #'   `assessment_scope`, and `operations`. `checks` is a data frame with stable
-#'   `id`, `scope`, `status` (`pass`, `fail`, `unknown`, `not_applicable`),
+#'   `id`, `scope`, `status` (`pass`, `fail`, `warn`, `unknown`, `not_applicable`),
 #'   `requirement` (`MUST`, `SHOULD`, `info`), `message`, `remediation`, `reference`,
 #'   `evidence_source`, `requirement_source`, and logical `affects_verdict` columns. Only rows with
 #'   `affects_verdict = TRUE` enter aggregation; unknown external obligations
-#'   remain visible separately.
+#'   remain visible separately. `warn` records a compatibility warning, such as
+#'   accepting a missing token type, and does not by itself fail the verdict.
 #' @references
 #' \url{https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16}
 #'
