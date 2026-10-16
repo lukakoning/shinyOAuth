@@ -313,7 +313,22 @@ resolve_oauth_client_response_mode <- function(
 ) {
   S7::check_is_S7(oauth_client, class = OAuthClient)
 
-  extra_auth_params <- oauth_client@provider@extra_auth_params
+  resolve_oauth_response_mode(
+    oauth_client@response_mode,
+    oauth_client@provider@extra_auth_params,
+    oauth_client@provider@response_modes_supported,
+    default_mode = default_mode
+  )
+}
+
+# Pure counterpart for constructor checks, before an OAuthClient exists. Keep
+# provider fallback, conflicts and advertised-mode policy identical everywhere.
+resolve_oauth_response_mode <- function(
+  response_mode,
+  extra_auth_params,
+  response_modes_supported = character(),
+  default_mode = "query"
+) {
   out <- list(
     mode = default_mode,
     explicit_mode = NULL,
@@ -322,7 +337,7 @@ resolve_oauth_client_response_mode <- function(
   )
 
   client_response_mode_info <- resolve_auth_response_mode(
-    oauth_client@response_mode %||% NA_character_,
+    response_mode %||% NA_character_,
     arg = "response_mode",
     context = "OAuthClient"
   )
@@ -379,10 +394,10 @@ resolve_oauth_client_response_mode <- function(
     out[["mode"]]
   if (
     !is.null(outbound_mode) &&
-      length(oauth_client@provider@response_modes_supported) > 0 &&
+      length(response_modes_supported) > 0 &&
       !outbound_mode %in%
         tolower(trimws(
-          oauth_client@provider@response_modes_supported
+          response_modes_supported
         ))
   ) {
     out[["error"]] <- paste0(

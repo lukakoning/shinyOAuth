@@ -299,6 +299,51 @@ test_that("oauth_client preserves provider jwt response_mode when inherited", {
   )
 })
 
+test_that("multi-issuer clients inherit provider JARM policy consistently", {
+  for (mode in c("query.jwt", "form_post.jwt", "jwt")) {
+    provider <- oauth_provider(
+      name = "jarm-default",
+      issuer = "https://issuer.example",
+      infer_oidc_from_issuer = FALSE,
+      auth_url = "https://issuer.example/auth",
+      token_url = "https://issuer.example/token",
+      response_modes_supported = c("query", "query.jwt", "form_post.jwt", "jwt"),
+      extra_auth_params = list(response_mode = mode)
+    )
+    args <- list(
+      provider = provider,
+      client_id = "app",
+      client_secret = "secret",
+      redirect_uri = "http://localhost:8100",
+      authorization_server_mode = "multi_issuer"
+    )
+    for (constructor in list(oauth_client, OAuthClient)) {
+      for (explicit in c(FALSE, TRUE)) {
+        configured <- args
+        if (explicit) configured[["response_mode"]] <- mode
+        client <- expect_no_error(do.call(constructor, configured))
+        policy <- resolve_oauth_client_response_mode(client)
+        expect_identical(policy[["mode"]], if (mode == "jwt") "query.jwt" else mode)
+        expect_identical(policy[["explicit_mode"]], mode)
+        expect_false(client@enforce_callback_issuer)
+
+        url <- prepare_call(client, browser_token = valid_browser_token())
+        expect_identical(parse_query_param(url, "response_mode", decode = TRUE), mode)
+        expect_error(client@response_mode <- "query", "conflicts")
+      }
+      conflicting <- args
+      conflicting[["response_mode"]] <- "query"
+      expect_error(do.call(constructor, conflicting), "conflicts")
+
+      direct <- provider
+      direct@extra_auth_params <- list(response_mode = "query")
+      direct_args <- args
+      direct_args[["provider"]] <- direct
+      expect_error(do.call(constructor, direct_args), "RFC 9207")
+    }
+  }
+})
+
 test_that("oauth_client rejects unsupported fragment JARM response_mode", {
   prov <- make_test_provider(use_pkce = TRUE, use_nonce = FALSE)
   prov@issuer <- "https://issuer.example.com"

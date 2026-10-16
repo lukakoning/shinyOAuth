@@ -1093,7 +1093,13 @@ oauth_client <- function(
   }
   response_mode <- response_mode_info[["mode"]] %||%
     NA_character_
-  jarm_response_mode <- response_mode_info[["effective_mode"]] %in%
+  response_mode_policy <- resolve_oauth_response_mode(
+    response_mode, provider@extra_auth_params, provider@response_modes_supported
+  )
+  if (!is.null(response_mode_policy[["error"]])) {
+    err_config(response_mode_policy[["error"]])
+  }
+  jarm_response_mode <- response_mode_policy[["mode"]] %in%
     c("query.jwt", "form_post.jwt")
 
   auto_enforce_callback_issuer <-
@@ -1609,13 +1615,11 @@ oauth_client_validate <- function(self) {
   ) {
     return("OAuthClient: authorization_method must be GET or POST")
   }
-  response_mode_info <- resolve_auth_response_mode(
-    self@response_mode,
-    arg = "response_mode",
-    context = "OAuthClient"
-  )
-  response_mode <- response_mode_info[["mode"]] %||% "query"
-  jarm_response_mode <- response_mode_info[["effective_mode"]] %in%
+  response_mode_info <- resolve_oauth_client_response_mode(self)
+  if (!is.null(response_mode_info[["error"]])) {
+    return(response_mode_info[["error"]])
+  }
+  jarm_response_mode <- response_mode_info[["mode"]] %in%
     c("query.jwt", "form_post.jwt")
   if (identical(self@authorization_server_mode, "multi_issuer")) {
     if (!is_valid_string(self@provider@issuer %||% NA_character_)) {
@@ -1954,18 +1958,6 @@ oauth_client_validate <- function(self) {
       "OAuthClient: request_object_mode must be a scalar character string"
     )
   }
-  response_mode_info <- resolve_oauth_client_response_mode(self)
-  if (!is.null(response_mode_info[["error"]])) {
-    return(response_mode_info[["error"]])
-  }
-  effective_response_mode <- response_mode_info[["mode"]] %||%
-    "query"
-  jarm_response_mode <- effective_response_mode %in%
-    c(
-      "query.jwt",
-      "form_post.jwt"
-    )
-
   if (isTRUE(jarm_response_mode)) {
     jml <- suppressWarnings(as.numeric(self@jarm_max_lifetime))
     if (length(jml) != 1L || !is.finite(jml) || jml <= 0) {

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Multi-issuer clients recognize JARM response modes inherited from provider
+  defaults. Constructors, class validation and authorization requests share
+  the same response-mode policy, including conflicts and advertised support.
+
 * ID tokens reject present non-string `nonce` claims even when nonce use is
   disabled, including explicit JSON null. Requested nonces still require an
   exact match to the authorization transaction.
