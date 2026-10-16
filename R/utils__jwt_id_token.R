@@ -453,6 +453,16 @@ validate_id_token <- function(
       err_id_token("ID token not yet valid (nbf)")
     }
   }
+  # OIDC Core section 2 defines nonce as a string even when the request omitted
+  # it. Test membership so an explicit JSON null cannot masquerade as absence.
+  if (
+    "nonce" %in% names(payload) &&
+      !(is.character(payload[["nonce"]]) &&
+        length(payload[["nonce"]]) == 1L &&
+        !is.na(payload[["nonce"]]))
+  ) {
+    err_id_token("ID token nonce claim must be a JSON string when present")
+  }
   if (is_valid_string(expected_nonce)) {
     if (is.null(payload[["nonce"]])) {
       err_id_token("ID token missing nonce claim")

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* ID tokens reject present non-string `nonce` claims even when nonce use is
+  disabled, including explicit JSON null. Requested nonces still require an
+  exact match to the authorization transaction.
+
 * Wire scopes and OAuth error text reject final line breaks instead of accepting
   them at a permissive regular-expression boundary. Malformed scope responses
   cannot become verified grants through parsing, refresh or introspection.
