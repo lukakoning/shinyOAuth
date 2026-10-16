@@ -28,6 +28,94 @@ spotify_dashboard_helpers <- function() {
   env
 }
 
+test_that("Spotify vignette clears cached data when authorization or scopes change", {
+  candidates <- c(
+    test_path("..", "..", "vignettes", "example-spotify.Rmd"),
+    system.file("doc", "example-spotify.Rmd", package = "shinyOAuth")
+  )
+  candidates <- candidates[nzchar(candidates) & file.exists(candidates)]
+  skip_if_not(length(candidates) > 0L, "Vignette source unavailable")
+  lines <- readLines(candidates[[1L]], warn = FALSE)
+  start <- match("```{r spotify-app, eval = FALSE}", lines)
+  expect_false(is.na(start))
+  end <- start + which(lines[-seq_len(start)] == "```")[[1L]]
+  env <- new.env(parent = asNamespace("shinyOAuth"))
+  for (name in getNamespaceExports("shiny")) {
+    env[[name]] <- getExportedValue("shiny", name)
+  }
+  env[["library"]] <- function(...) invisible(NULL)
+  env[["runApp"]] <- function(appDir, ...) appDir
+  env[["oauth_module_server"]] <- function(...) {
+    oauth_module_server(..., auto_redirect = FALSE)
+  }
+  withr::local_envvar(c(
+    SPOTIFY_OAUTH_CLIENT_ID = "fixture-client",
+    SPOTIFY_OAUTH_CLIENT_SECRET = "fixture-secret"
+  ))
+  eval(parse(text = lines[seq.int(start + 1L, end - 1L)]), env)
+
+  requests <- 0L
+  local_mocked_bindings(
+    req_perform = function(req, ...) {
+      requests <<- requests + 1L
+      expect_match(req[["url"]], "https://api.spotify.com/v1/me/top/tracks", fixed = TRUE)
+      httr2::response(
+        status = 200L,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"items":[{"name":"Fixture private track"}]}')
+      )
+    },
+    .package = "httr2"
+  )
+  token <- OAuthToken(
+    access_token = "fixture-access",
+    expires_at = as.numeric(Sys.time()) + 3600,
+    granted_scopes = c("user-read-private", "user-top-read"),
+    granted_scopes_verified = TRUE
+  )
+  shiny::testServer(env[["server"]], {
+    auth[["token"]] <- token
+    session[["setInputs"]](load = 1)
+    expect_match(output[["tracks"]], "Fixture private track", fixed = TRUE)
+    expect_identical(requests, 1L)
+    authorization <- auth[["connection"]]()[["id"]]
+
+    narrowed <- token
+    narrowed@granted_scopes <- "user-read-private"
+    auth[["token"]] <- narrowed
+    session[["flushReact"]]()
+    expect_identical(auth[["connection"]]()[["id"]], authorization)
+    expect_true(auth[["authenticated"]])
+    expect_null(tracks())
+    expect_error(output[["tracks"]], class = "shiny.silent.error")
+    session[["setInputs"]](load = 2)
+    expect_identical(requests, 1L)
+
+    auth[["token"]] <- token
+    session[["flushReact"]]()
+    expect_null(tracks())
+    expect_error(output[["tracks"]], class = "shiny.silent.error")
+    session[["setInputs"]](load = 3)
+    expect_match(output[["tracks"]], "Fixture private track", fixed = TRUE)
+
+    # Replace the authorization without an intermediate reactive flush.
+    auth[["logout"]]()
+    auth[["token"]] <- token
+    session[["flushReact"]]()
+    expect_false(identical(auth[["connection"]]()[["id"]], authorization))
+    expect_null(tracks())
+    expect_error(output[["tracks"]], class = "shiny.silent.error")
+    session[["setInputs"]](load = 4)
+    expect_match(output[["tracks"]], "Fixture private track", fixed = TRUE)
+
+    auth[["logout"]]()
+    session[["flushReact"]]()
+    expect_null(tracks())
+    expect_error(output[["tracks"]], class = "shiny.silent.error")
+    expect_identical(requests, 3L)
+  })
+})
+
 test_that("Spotify URLs preserve safe links and reject unsupported origins", {
   helpers <- spotify_dashboard_helpers()
   safe_url <- helpers[["spotify_safe_url"]]

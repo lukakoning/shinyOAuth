@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* The Spotify vignette checks current operation scopes and authorization IDs,
+  clears cached listening data after permission loss or login replacement, and
+  uses a connection request to enforce API destinations and refresh credentials.
+
 * Multi-issuer clients recognize JARM response modes inherited from provider
   defaults. Constructors, class validation and authorization requests share
   the same response-mode policy, including conflicts and advertised support.
