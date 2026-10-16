@@ -174,14 +174,14 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
     class = "shinyOAuth_state_error"
   )
 
-  # Bad UTF-8 in wrapper payload (after base64 decode, before JSON parse)
+  # Reject malformed UTF-8 before JSON parsing without parser warnings.
   bad_utf8 <- as.raw(c(0xff, 0xfe, 0xfd))
   t_utf8 <- shinyOAuth:::base64url_encode(bad_utf8)
-  expect_error(
+  expect_warning(expect_error(
     shinyOAuth:::state_decrypt_gcm(t_utf8, key = key),
-    "state token payload is not valid JSON",
+    "state token payload is not valid UTF-8",
     class = "shinyOAuth_state_error"
-  )
+  ), NA)
 })
 
 test_that("state_encrypt_gcm validates inputs and decrypt fails on tamper", {
