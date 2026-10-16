@@ -10,7 +10,7 @@
 
 ## usethis namespace: start
 #' @import httr2
-#' @import rlang
+#' @import rlang, except = ":="
 #' @import S7
 #' @importFrom cli cli_format
 #' @importFrom jsonlite fromJSON toJSON

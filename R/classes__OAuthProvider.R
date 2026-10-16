@@ -490,7 +490,7 @@ OAuthProvider <- S7::new_class(
     ),
     allowed_algs = S7::new_property(
       S7::class_character,
-      default = c(
+      default = quote(c(
         "RS256",
         "RS384",
         "RS512",
@@ -499,7 +499,7 @@ OAuthProvider <- S7::new_class(
         "ES512",
         "Ed25519",
         "EdDSA"
-      )
+      ))
     ),
     allowed_token_types = S7::new_property(
       S7::class_character,
