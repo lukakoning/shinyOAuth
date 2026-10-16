@@ -46,7 +46,12 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>Malformed UTF-8 state envelopes and protocol JSON are rejected before string scanning, preventing parser warnings during callback-store inspection.</p></li>
+<ul><li><p>The Spotify vignette checks current operation scopes and authorization IDs, clears cached listening data after permission loss or login replacement, and uses a connection request to enforce API destinations and refresh credentials.</p></li>
+<li><p>Multi-issuer clients recognize JARM response modes inherited from provider defaults. Constructors, class validation and authorization requests share the same response-mode policy, including conflicts and advertised support.</p></li>
+<li><p>ID tokens reject present non-string <code>nonce</code> claims even when nonce use is disabled, including explicit JSON null. Requested nonces still require an exact match to the authorization transaction.</p></li>
+<li><p>Wire scopes and OAuth error text reject final line breaks instead of accepting them at a permissive regular-expression boundary. Malformed scope responses cannot become verified grants through parsing, refresh or introspection.</p></li>
+<li><p>SMART clients with OIDC identity reject finite module reauthentication ages at startup because remote freshness overrides are unsupported, avoiding a failed login after the age limit expires. OAuth-only SMART lifetimes remain available.</p></li>
+<li><p>Malformed UTF-8 state envelopes and protocol JSON are rejected before string scanning, preventing parser warnings during callback-store inspection.</p></li>
 <li><p><code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> documents the <code>warn</code> check status and its effect on the configuration verdict, including compatibility with missing token types.</p></li>
 <li><p>Numeric OIDC claims requirements retain their precision in ordinary authorization parameters and signed Request Objects for every supported signing algorithm. Strict claim validation now checks the values that were actually requested without authorization-time rounding.</p></li>
 <li><p>Ed25519 client assertions and signed authorization requests now work through the public authorization flow. Their public signing key is fingerprinted using the same OKP-capable export as DPoP, retaining callback key binding.</p></li>

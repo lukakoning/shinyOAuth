@@ -150,7 +150,10 @@ With token targets, that default can keep <code>authenticated = TRUE</code> for 
 remaining Shiny session after all access tokens expire, even without a
 refresh credential and with <code>indefinite_session = FALSE</code>. Set a finite age
 if local application access relies on <code>authenticated</code> and requires a bounded
-login lifetime. <code>indefinite_session = TRUE</code> ignores this age limit.</p></dd>
+login lifetime. <code>indefinite_session = TRUE</code> ignores this age limit.
+SMART clients with OIDC identity enabled do not support remote freshness
+overrides and require <code>reauth_after_seconds = NULL</code> unless
+<code>indefinite_session = TRUE</code>.</p></dd>
 
 
 <dt id="arg-refresh-proactively">refresh_proactively<a class="anchor" aria-label="anchor" href="#arg-refresh-proactively"></a></dt>

@@ -95,7 +95,10 @@ oauth_module_server(
   access tokens expire, even without a refresh credential and with
   `indefinite_session = FALSE`. Set a finite age if local application
   access relies on `authenticated` and requires a bounded login
-  lifetime. `indefinite_session = TRUE` ignores this age limit.
+  lifetime. `indefinite_session = TRUE` ignores this age limit. SMART
+  clients with OIDC identity enabled do not support remote freshness
+  overrides and require `reauth_after_seconds = NULL` unless
+  `indefinite_session = TRUE`.
 
 - refresh_proactively:
 

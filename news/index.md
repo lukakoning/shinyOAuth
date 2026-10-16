@@ -2,6 +2,30 @@
 
 ## shinyOAuth (development version)
 
+- The Spotify vignette checks current operation scopes and authorization
+  IDs, clears cached listening data after permission loss or login
+  replacement, and uses a connection request to enforce API destinations
+  and refresh credentials.
+
+- Multi-issuer clients recognize JARM response modes inherited from
+  provider defaults. Constructors, class validation and authorization
+  requests share the same response-mode policy, including conflicts and
+  advertised support.
+
+- ID tokens reject present non-string `nonce` claims even when nonce use
+  is disabled, including explicit JSON null. Requested nonces still
+  require an exact match to the authorization transaction.
+
+- Wire scopes and OAuth error text reject final line breaks instead of
+  accepting them at a permissive regular-expression boundary. Malformed
+  scope responses cannot become verified grants through parsing, refresh
+  or introspection.
+
+- SMART clients with OIDC identity reject finite module reauthentication
+  ages at startup because remote freshness overrides are unsupported,
+  avoiding a failed login after the age limit expires. OAuth-only SMART
+  lifetimes remain available.
+
 - Malformed UTF-8 state envelopes and protocol JSON are rejected before
   string scanning, preventing parser warnings during callback-store
   inspection.

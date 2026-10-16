@@ -50,7 +50,8 @@ client <- oauth_client(
   client_id = Sys.getenv("SPOTIFY_OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("SPOTIFY_OAUTH_CLIENT_SECRET"),
   redirect_uri = "http://127.0.0.1:8100",
-  scopes = c("user-read-private", "user-top-read")
+  scopes = c("user-read-private", "user-top-read"),
+  resource_bases = c(spotify = "https://api.spotify.com/v1")
 )
 
 ui <- oauth_ui(fluidPage(
@@ -61,24 +62,42 @@ ui <- oauth_ui(fluidPage(
 
 server <- function(input, output, session) {
   auth <- oauth_module_server("auth", client)
+  tracks <- reactiveVal(NULL)
 
-  tracks <- eventReactive(input[["load"]], {
-    req(auth[["authenticated"]])
-    tryCatch({
-      response <- perform_resource_req(
-        auth[["token"]],
-        "https://api.spotify.com/v1/me/top/tracks",
-        query = list(limit = 10, time_range = "short_term")
+  observe({
+    connection <- auth[["connection"]]()
+    result <- isolate(tracks())
+    if (is.null(connection) ||
+        !connection[["has_scopes"]]("user-top-read") ||
+        (!is.null(result) &&
+         !identical(result[["authorization"]], connection[["id"]]))) {
+      tracks(NULL)
+    }
+  })
+
+  observeEvent(input[["load"]], {
+    connection <- req(auth[["connection"]]())
+    req(connection[["has_scopes"]]("user-top-read"))
+    data <- tryCatch({
+      response <- connection[["request"]](
+        "spotify", "me/top/tracks",
+        query = list(limit = 10, time_range = "short_term"),
+        required_scopes = "user-top-read",
+        refresh = TRUE
       )
       httr2::resp_check_status(response)
       body <- httr2::resp_body_json(response, simplifyVector = FALSE)
       vapply(body[["items"]], function(track) track[["name"]], character(1))
     }, error = function(e) NULL)
+    tracks(list(authorization = connection[["id"]], data = data))
   })
 
   output[["tracks"]] <- renderTable({
-    req(auth[["authenticated"]])
-    values <- tracks()
+    connection <- req(auth[["connection"]]())
+    req(connection[["has_scopes"]]("user-top-read"))
+    result <- tracks()
+    req(identical(result[["authorization"]], connection[["id"]]))
+    values <- result[["data"]]
     validate(need(!is.null(values), "Could not load tracks. Try again later."))
     validate(need(length(values) > 0, "No listening data to show yet."))
     data.frame(Track = values)
@@ -92,13 +111,16 @@ runApp(shinyApp(ui, server), port = 8100, launch.browser = FALSE)
 
 `user-top-read` grants permission to read listening preferences. The
 request above asks for up to ten tracks from the short-term range. The
-module obtains and stores the access token;
-[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-uses it to call the API.
-[`eventReactive()`](https://rdrr.io/pkg/shiny/man/observeEvent.html)
+module obtains and stores the access token. The connection checks the
+operation’s scope and approved API address, refreshing the token if
+needed before the request.
+[`observeEvent()`](https://rdrr.io/pkg/shiny/man/observeEvent.html)
 loads the data when the button is clicked, and
 [`renderTable()`](https://rdrr.io/pkg/shiny/man/renderTable.html)
-displays the result.
+displays the result only for the current authorization with
+`user-top-read`. The observer clears cached results on logout,
+authorization replacement or permission loss, so regaining permission
+does not redisplay old data.
 
 For other data, choose the API URL and requested scopes together. A
 successful login does not mean every API is available to the app. Empty
