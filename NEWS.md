@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Wire scopes and OAuth error text reject final line breaks instead of accepting
+  them at a permissive regular-expression boundary. Malformed scope responses
+  cannot become verified grants through parsing, refresh or introspection.
+
 * SMART clients with OIDC identity reject finite module reauthentication ages
   at startup because remote freshness overrides are unsupported, avoiding a
   failed login after the age limit expires. OAuth-only SMART lifetimes remain

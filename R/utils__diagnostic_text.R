@@ -148,7 +148,7 @@ is_oauth_error_text <- function(value) {
   is.character(value) &&
     length(value) == 1L &&
     !is.na(value) &&
-    isTRUE(grepl("^[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]*$", value, perl = TRUE))
+    isTRUE(grepl("\\A[\\x20-\\x21\\x23-\\x5B\\x5D-\\x7E]*\\z", value, perl = TRUE))
 }
 
 # Protocol syntax permits arbitrary extension values, so only recognized

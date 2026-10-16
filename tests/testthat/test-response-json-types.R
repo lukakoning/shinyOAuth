@@ -66,6 +66,10 @@ test_that("malformed wire scopes never become verified grants", {
   for (wire in c(
     '"read\\twrite"',
     '"read\\nwrite"',
+    '"read write\\n"',
+    '"read write\\r\\n"',
+    '"read write\\n\\n"',
+    '"\\n"',
     '"read  write"',
     '" read"',
     '"read "',
@@ -111,4 +115,36 @@ test_that("malformed wire scopes never become verified grants", {
     shinyOAuth:::as_scope_tokens(list("read\twrite")),
     c("read", "write")
   )
+})
+
+test_that("trailing scope controls are rejected before parsing or grant normalization", {
+  client <- make_test_client(use_nonce = FALSE)
+  client@scopes <- "read"
+  client@scope_validation <- "strict"
+
+  for (scope in c("read\n", "read\r\n", "read\n\n", "\n")) {
+    response <- httr2::response(
+      status_code = 200L,
+      headers = list("Content-Type" = "application/x-www-form-urlencoded"),
+      body = charToRaw(paste0(
+        "access_token=token&token_type=Bearer&scope=",
+        utils::URLencode(scope, reserved = TRUE)
+      ))
+    )
+    expect_error(parse_token_response(response), "scope", class = "shinyOAuth_parse_error")
+
+    for (refresh in c(FALSE, TRUE)) {
+      expect_error(
+        verify_token_set(
+          client,
+          list(access_token = "token", token_type = "Bearer", scope = scope),
+          nonce = NULL,
+          is_refresh = refresh,
+          prior_granted_scopes = "read"
+        ),
+        "scope",
+        class = "shinyOAuth_token_error"
+      )
+    }
+  }
 })

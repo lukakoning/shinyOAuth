@@ -47,7 +47,7 @@ validate_response_scope <- function(
       length(scope) != 1L ||
       is.na(scope) ||
       (!isTRUE(allow_empty) && !nzchar(scope)) ||
-      !grepl("^(?:[!#-\\[\\]-~]+(?: [!#-\\[\\]-~]+)*)?$", scope, perl = TRUE)
+      !grepl("\\A(?:[!#-\\[\\]-~]+(?: [!#-\\[\\]-~]+)*)?\\z", scope, perl = TRUE)
   ) {
     signal_error(
       "Response scope must be a scalar string of SP-delimited OAuth scope tokens"

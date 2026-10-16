@@ -172,12 +172,17 @@ test_that("provider HTTP descriptions respect exposure and OAuth text syntax", {
     error = identity
   )
   expect_match(conditionMessage(error), "private detail", fixed = TRUE)
-  for (text in c("bad\r\ntext", "bad\ttext", 'bad"text', "bad\\text", "é")) {
+  for (text in c(
+    "bad\r\ntext", "bad\ttext", 'bad"text', "bad\\text", "é",
+    "access_denied\n", "access_denied\r\n", "access_denied\n\n", "\n"
+  )) {
     expect_false(is_oauth_error_text(text))
-    expect_error(
-      validate_untrusted_query_param("error_description", text, 4096),
-      "printable ASCII"
-    )
+    for (field in c("error", "error_description")) {
+      expect_error(
+        validate_untrusted_query_param(field, text, 4096),
+        "printable ASCII"
+      )
+    }
   }
   expect_true(is_oauth_error_text("The request was denied."))
 })

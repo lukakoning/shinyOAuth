@@ -39,7 +39,10 @@ test_that("no-scope introspection preserves an explicit empty grant through refr
   expect_identical(refreshed@granted_scopes, character())
   expect_identical(refreshed@granted_scopes_verified, TRUE)
 
-  for (scope in list(NULL, list(), c("read", "write"), " ", "read\twrite")) {
+  for (scope in list(
+    NULL, list(), c("read", "write"), " ", "read\twrite",
+    "read\n", "read\r\n", "read\n\n", "\n"
+  )) {
     body <- jsonlite::toJSON(
       list(active = TRUE, scope = scope),
       auto_unbox = TRUE
