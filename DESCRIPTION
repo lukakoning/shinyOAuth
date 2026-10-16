@@ -50,6 +50,7 @@ Suggests:
     processx,
     pkgload,
     chromote,
+    httpuv,
     sodium,
     shinytest2,
     xml2,
