@@ -28,7 +28,8 @@ test_that("external browser navigation preserves a retained Strict owner", {
         response <- ui(req)
         if (grepl("Application", response[["content"]], fixed = TRUE)) {
           response[["content"]] <- sub("</body>", paste0(
-            "<p id='known-owner'>", !is.null(owner), "</p></body>"
+            "<p id='known-owner' data-cookie-name='", owners[["cookie_name"]],
+            "'>", !is.null(owner), "</p></body>"
           ), response[["content"]], fixed = TRUE)
         }
         list(status = response[["status"]],
@@ -59,8 +60,17 @@ test_that("external browser navigation preserves a retained Strict owner", {
     }
     owner_cookie <- function() {
       cookies <- browser[["Network"]][["getCookies"]](urls = list(origin))[["cookies"]]
-      Filter(function(x) startsWith(x[["name"]], "shinyOAuth-owner-"), cookies)[[1L]][["value"]]
+      name <- evaluate("document.getElementById('known-owner').dataset.cookieName")
+      matching <- Filter(function(x) identical(x[["name"]], name), cookies)
+      expect_length(matching, 1L)
+      expect_identical(matching[[1L]][["sameSite"]], same_site)
+      matching[[1L]][["value"]]
     }
+    # Other managers on this host share Chrome's cookie jar across ports.
+    invisible(browser[["Network"]][["setCookie"]](
+      name = "shinyOAuth-owner-unrelated", value = "unrelated-owner",
+      url = origin, httpOnly = TRUE, sameSite = "Lax"
+    ))
     browser[["go_to"]](paste0(origin, "/"))
     wait_for_app()
     first <- owner_cookie()
@@ -72,7 +82,7 @@ test_that("external browser navigation preserves a retained Strict owner", {
     wait_for_app()
     expect_identical(evaluate("document.getElementById('known-owner').textContent"), "TRUE")
     expect_identical(evaluate("location.search"), "?view=keep")
-    expect_identical(owner_cookie(), first)
+    expect_identical(owner_cookie(), first, info = same_site)
     browser[["close"]]()
     process[["kill"]]()
   }

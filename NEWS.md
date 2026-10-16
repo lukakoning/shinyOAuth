@@ -1,5 +1,8 @@
 # shinyOAuth (development version)
 
+* Malformed UTF-8 state envelopes and protocol JSON are rejected before string
+  scanning, preventing parser warnings during callback-store inspection.
+
 * `check_oauth21()` documents the `warn` check status and its effect on the
   configuration verdict, including compatibility with missing token types.
 

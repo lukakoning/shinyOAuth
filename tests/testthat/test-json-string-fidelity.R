@@ -1,3 +1,14 @@
+test_that("protocol JSON rejects malformed UTF-8 before scanning strings", {
+  for (bytes in list(0x80, 0xFF, c(0xC3, 0x28), c(0xED, 0xA0, 0x80))) {
+    text <- rawToChar(c(charToRaw('{"value":"'), as.raw(bytes), charToRaw('"}')))
+    Encoding(text) <- "UTF-8"
+    expect_warning(expect_error(
+      shinyOAuth:::reject_duplicate_json_object_members(text, "Protocol JSON"),
+      "invalid UTF-8", class = "shinyOAuth_parse_error"
+    ), NA)
+  }
+})
+
 test_that("protocol JSON rejects lossy Unicode escapes in all strings", {
   for (escape in c(
     "\\u0000", "\\ud800", "\\uDBFF", "\\udc00", "\\uDFFF",

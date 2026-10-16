@@ -50,3 +50,15 @@ test_that("state_decrypt_gcm fails safely for malformed tokens", {
     class = "shinyOAuth_state_error"
   )
 })
+
+test_that("state envelopes reject malformed UTF-8 without parser warnings", {
+  for (bytes in list(0x80, 0xFF, c(0xC3, 0x28), c(0xED, 0xA0, 0x80))) {
+    token <- shinyOAuth:::base64url_encode(c(
+      charToRaw('{"v":1,"extension":"'), as.raw(bytes), charToRaw('"}')
+    ))
+    expect_warning(expect_error(
+      shinyOAuth:::state_decrypt_gcm(token, key = strrep("a", 64)),
+      "not valid UTF-8", class = "shinyOAuth_state_error"
+    ), NA)
+  }
+})
