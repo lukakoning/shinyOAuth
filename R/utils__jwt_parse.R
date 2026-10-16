@@ -623,6 +623,9 @@ reject_duplicate_json_object_members <- function(
   on_duplicate = NULL
 ) {
   json_text <- enc2utf8(json_text)
+  if (!isTRUE(validUTF8(json_text))) {
+    on_error(paste0(label, " contains invalid UTF-8"))
+  }
   chars <- strsplit(json_text, "", fixed = TRUE)[[1]]
   if (!length(chars)) {
     return(invisible(NULL))

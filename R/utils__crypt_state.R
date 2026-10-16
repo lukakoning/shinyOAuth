@@ -411,13 +411,17 @@ state_decrypt_gcm <- function(
     )
   }
   payload_json <- try(rawToChar(decoded), silent = TRUE)
-  if (inherits(payload_json, "try-error")) {
+  if (
+    inherits(payload_json, "try-error") ||
+      !isTRUE(validUTF8(payload_json))
+  ) {
     audit_fail("token_payload_utf8_invalid")
     state_fail(
       "state token payload is not valid UTF-8",
       context = list(phase = "decrypt")
     )
   }
+  Encoding(payload_json) <- "UTF-8"
   obj <- try(
     {
       reject_duplicate_json_object_members(payload_json, "State envelope JSON")
