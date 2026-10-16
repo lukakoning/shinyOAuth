@@ -109,6 +109,9 @@
 #'  refresh credential and with `indefinite_session = FALSE`. Set a finite age
 #'  if local application access relies on `authenticated` and requires a bounded
 #'  login lifetime. `indefinite_session = TRUE` ignores this age limit.
+#'  SMART clients with OIDC identity enabled do not support remote freshness
+#'  overrides and require `reauth_after_seconds = NULL` unless
+#'  `indefinite_session = TRUE`.
 #'
 #' @param refresh_proactively If `TRUE`, obtain a replacement access token before
 #'   expiry when a refresh token is available. Default `FALSE`. The module
@@ -416,6 +419,17 @@ oauth_module_server_impl <- function(
       !is.na(indefinite_session))
   ) {
     err_input("`indefinite_session` must be a single non-NA logical.")
+  }
+  if (
+    !isTRUE(indefinite_session) &&
+      !is.null(reauth_after_seconds) &&
+      client_uses_smart(client) &&
+      provider_uses_oidc(client@provider)
+  ) {
+    err_config(paste(
+      "SMART clients with OIDC identity do not support remote freshness",
+      "overrides; set `reauth_after_seconds = NULL`."
+    ))
   }
   if (
     !(is.null(browser_cookie_path) ||

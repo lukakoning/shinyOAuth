@@ -61,7 +61,10 @@ With token targets, that default can keep \code{authenticated = TRUE} for the
 remaining Shiny session after all access tokens expire, even without a
 refresh credential and with \code{indefinite_session = FALSE}. Set a finite age
 if local application access relies on \code{authenticated} and requires a bounded
-login lifetime. \code{indefinite_session = TRUE} ignores this age limit.}
+login lifetime. \code{indefinite_session = TRUE} ignores this age limit.
+SMART clients with OIDC identity enabled do not support remote freshness
+overrides and require \code{reauth_after_seconds = NULL} unless
+\code{indefinite_session = TRUE}.}
 
 \item{refresh_proactively}{If \code{TRUE}, obtain a replacement access token before
 expiry when a refresh token is available. Default \code{FALSE}. The module

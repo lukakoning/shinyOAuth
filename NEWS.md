@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* SMART clients with OIDC identity reject finite module reauthentication ages
+  at startup because remote freshness overrides are unsupported, avoiding a
+  failed login after the age limit expires. OAuth-only SMART lifetimes remain
+  available.
+
 * Malformed UTF-8 state envelopes and protocol JSON are rejected before string
   scanning, preventing parser warnings during callback-store inspection.
 

@@ -1,3 +1,71 @@
+testthat::test_that("SMART OIDC rejects unsupported reauthentication ages at startup", {
+  for (identity in c("openid", "fhirUser")) {
+    client <- smart_client(
+      smart_client_fixture(oidc = TRUE),
+      "example",
+      "https://app.example/callback",
+      scopes = character(),
+      identity = identity
+    )
+
+    testthat::expect_error(
+      oauth_module_server(
+        "auth", client, auto_redirect = FALSE, reauth_after_seconds = 60
+      ),
+      "SMART clients with OIDC identity do not support remote freshness",
+      class = "shinyOAuth_config_error"
+    )
+
+    for (indefinite in c(FALSE, TRUE)) {
+      shiny::testServer(
+        app = oauth_module_server,
+        args = list(
+          id = "auth",
+          client = client,
+          auto_redirect = FALSE,
+          indefinite_session = indefinite,
+          reauth_after_seconds = if (indefinite) 60 else NULL
+        ),
+        expr = {
+          testthat::expect_null(values[["token"]])
+        }
+      )
+    }
+  }
+})
+
+testthat::test_that("SMART without identity can reauthorize after its local lifetime", {
+  withr::local_options(list(shinyOAuth.skip_browser_token = TRUE))
+  client <- smart_client(
+    smart_client_fixture(), "example", "https://app.example/callback",
+    scopes = c("launch/patient", "patient/Patient.r")
+  )
+
+  shiny::testServer(
+    app = oauth_module_server,
+    args = list(
+      id = "auth",
+      client = client,
+      auto_redirect = FALSE,
+      reauth_after_seconds = 1
+    ),
+    expr = {
+      values[["auth_started_at"]] <- as.numeric(Sys.time()) - 10
+      values[["token"]] <- OAuthToken(
+        access_token = "old",
+        expires_at = as.numeric(Sys.time()) + 3600
+      )
+      session[["flushReact"]]()
+
+      testthat::expect_identical(values[["error"]], "reauth_required")
+      url <- values[["build_auth_url"]]()
+      testthat::expect_true(is_valid_string(url))
+      testthat::expect_true(is.na(parse_query_param(url, "max_age")))
+      testthat::expect_identical(values[["error"]], "reauth_required")
+    }
+  )
+})
+
 testthat::test_that("token refresh does not extend reauthentication lifetime", {
   testthat::skip_if_not_installed("promises")
   testthat::skip_if_not_installed("later")
