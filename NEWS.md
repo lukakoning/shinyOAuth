@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Token verification rejects supplied ID tokens with malformed scalar types or
+  empty values, including refresh responses. Optional omitted ID tokens retain
+  the previously validated identity during refresh.
+
 * The Spotify vignette checks current operation scopes and authorization IDs,
   clears cached listening data after permission loss or login replacement, and
   uses a connection request to enforce API destinations and refresh credentials.

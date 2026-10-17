@@ -2859,6 +2859,14 @@ verify_token_set <- function(
   if (!is_valid_access_token(token_set[["access_token"]])) {
     err_token("Token response access_token contains invalid characters")
   }
+  # Refresh may omit an ID token, but a supplied value must not be mistaken
+  # for omission and silently inherit the previously validated identity.
+  if (
+    !is.null(token_set[["id_token"]]) &&
+      !is_valid_string(token_set[["id_token"]])
+  ) {
+    err_id_token("Token response id_token must be a non-empty string")
+  }
   token_set[["scope"]] <- normalize_provider_response_scope(
     client@provider,
     token_set[["scope"]]
