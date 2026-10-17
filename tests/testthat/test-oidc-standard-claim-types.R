@@ -39,11 +39,15 @@ test_that("ID token nonce types are checked even when nonce use is disabled", {
 
   absent <- sign(NULL, include = FALSE)
   matching <- sign("transaction-nonce")
-  expect_true(attr(validate_id_token(client, absent), "signature_verified"))
-  expect_true(attr(validate_id_token(client, matching), "signature_verified"))
+  expect_true(attr(
+    validate_id_token(client, absent), "signature_verified", exact = TRUE
+  ))
+  expect_true(attr(
+    validate_id_token(client, matching), "signature_verified", exact = TRUE
+  ))
   expect_true(attr(
     validate_id_token(client, matching, expected_nonce = "transaction-nonce"),
-    "signature_verified"
+    "signature_verified", exact = TRUE
   ))
   expect_error(
     validate_id_token(client, absent, expected_nonce = "transaction-nonce"),
