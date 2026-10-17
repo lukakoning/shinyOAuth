@@ -19,6 +19,7 @@ on:
       - integration/connections/fixture-account-app.R
       - integration/connections/tls-proxy.py
       - integration/keycloak/tls/**
+      - .github/actions/setup-r-dependencies/**
       - .github/workflows/smart-fhir.yml
   push:
     branches: [main, master]
@@ -33,6 +34,7 @@ on:
       - integration/connections/fixture-account-app.R
       - integration/connections/tls-proxy.py
       - integration/keycloak/tls/**
+      - .github/actions/setup-r-dependencies/**
       - .github/workflows/smart-fhir.yml
 
 permissions:
@@ -56,7 +58,7 @@ jobs:
         uses: browser-actions/setup-chrome@2dbff04819ebbfd5c974947148805a825b8a07fd # v2.1.0
       - name: Select Chrome for browser tests
         run: echo "CHROMOTE_CHROME=${{ steps.setup-chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
-      - uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+      - uses: ./.github/actions/setup-r-dependencies
         with:
           extra-packages: |
             local::.

@@ -1,0 +1,40 @@
+name: Set up R dependencies with retry
+description: Install R dependencies, retrying once after a transient setup failure.
+
+inputs:
+  extra-packages:
+    description: Extra R packages to install alongside package dependencies.
+    default: ''
+  needs:
+    description: Additional Config/Needs fields to include.
+    default: ''
+  cache-version:
+    description: Dependency cache version.
+    default: '1'
+
+runs:
+  using: composite
+  steps:
+    - name: Install R dependencies
+      id: install
+      continue-on-error: true
+      uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+      with:
+        extra-packages: ${{ inputs.extra-packages }}
+        needs: ${{ inputs.needs }}
+        cache-version: ${{ inputs.cache-version }}
+
+    # pak already retries downloads, but external system-package repositories
+    # can remain unavailable for longer. Pause before one final setup attempt.
+    - name: Wait before retrying R dependencies
+      if: steps.install.outcome == 'failure'
+      shell: bash
+      run: sleep 30
+
+    - name: Retry R dependency installation
+      if: steps.install.outcome == 'failure'
+      uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+      with:
+        extra-packages: ${{ inputs.extra-packages }}
+        needs: ${{ inputs.needs }}
+        cache-version: ${{ inputs.cache-version }}
