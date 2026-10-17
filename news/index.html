@@ -46,7 +46,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>The Spotify vignette checks current operation scopes and authorization IDs, clears cached listening data after permission loss or login replacement, and uses a connection request to enforce API destinations and refresh credentials.</p></li>
+<ul><li><p>JARM algorithm mismatch errors withhold received header values by default, including in HTTP callback responses. Opt-in diagnostics sanitize and bound values for signing, key encryption and content encryption mismatches.</p></li>
+<li><p>Token verification rejects supplied ID tokens with malformed scalar types or empty values, including refresh responses. Optional omitted ID tokens retain the previously validated identity during refresh.</p></li>
+<li><p>The Spotify vignette checks current operation scopes and authorization IDs, clears cached listening data after permission loss or login replacement, and uses a connection request to enforce API destinations and refresh credentials.</p></li>
 <li><p>Multi-issuer clients recognize JARM response modes inherited from provider defaults. Constructors, class validation and authorization requests share the same response-mode policy, including conflicts and advertised support.</p></li>
 <li><p>ID tokens reject present non-string <code>nonce</code> claims even when nonce use is disabled, including explicit JSON null. Requested nonces still require an exact match to the authorization transaction.</p></li>
 <li><p>Wire scopes and OAuth error text reject final line breaks instead of accepting them at a permissive regular-expression boundary. Malformed scope responses cannot become verified grants through parsing, refresh or introspection.</p></li>
