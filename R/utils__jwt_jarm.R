@@ -930,20 +930,22 @@ validate_jarm_response <- function(
     outer_alg <- outer_header_fields[["alg"]] %||% ""
     outer_enc <- outer_header_fields[["enc"]] %||% ""
     if (!identical(outer_alg, encryption_config[["alg"]])) {
-      err_invalid_state(paste0(
-        "Encrypted JARM alg mismatch: expected ",
-        encryption_config[["alg"]],
-        ", got ",
-        outer_alg
-      ))
+      err_claim_validation(
+        "Encrypted JARM alg mismatch",
+        claim = "alg",
+        expected = encryption_config[["alg"]],
+        received = outer_alg,
+        error = err_invalid_state
+      )
     }
     if (!identical(outer_enc, encryption_config[["enc"]])) {
-      err_invalid_state(paste0(
-        "Encrypted JARM enc mismatch: expected ",
-        encryption_config[["enc"]],
-        ", got ",
-        outer_enc
-      ))
+      err_claim_validation(
+        "Encrypted JARM enc mismatch",
+        claim = "enc",
+        expected = encryption_config[["enc"]],
+        received = outer_enc,
+        error = err_invalid_state
+      )
     }
 
     decrypted <- tryCatch(
@@ -1008,12 +1010,13 @@ validate_jarm_response <- function(
     err_invalid_state("JARM alg=none is not allowed")
   }
   if (!identical(alg, expected_alg)) {
-    err_invalid_state(paste0(
-      "JARM signing alg mismatch: expected ",
-      expected_alg,
-      ", got ",
-      alg
-    ))
+    err_claim_validation(
+      "JARM signing alg mismatch",
+      claim = "alg",
+      expected = expected_alg,
+      received = alg,
+      error = err_invalid_state
+    )
   }
 
   claims <- tryCatch(
