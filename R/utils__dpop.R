@@ -942,7 +942,9 @@ parse_http_auth_challenges <- function(value) {
   # Bound untrusted work before allocating or scanning. Header/body transport
   # limits and HTTP timeouts do not constrain CPU spent parsing a response.
   if (nchar(value, type = "bytes") > 65536L) {
-    err_token("WWW-Authenticate response header exceeds the maximum of 65536 bytes")
+    err_token(
+      "WWW-Authenticate response header exceeds the maximum of 65536 bytes"
+    )
   }
   chars <- strsplit(value, "", fixed = TRUE)[[1]]
   separators <- integer(255L)
@@ -1073,7 +1075,10 @@ resp_is_dpop_nonce_challenge <- function(resp) {
 
   if (identical(status, 400L)) {
     body <- try(
-      jsonlite::parse_json(httr2::resp_body_string(resp), simplifyVector = TRUE),
+      jsonlite::parse_json(
+        httr2::resp_body_string(resp),
+        simplifyVector = TRUE
+      ),
       silent = TRUE
     )
     if (is.list(body)) {
@@ -1119,6 +1124,8 @@ resp_is_dpop_nonce_challenge <- function(resp) {
 #'   nonce regardless, as required by RFC 9449.
 #' @param nonce Optional nonce to use for the initial DPoP proof before any
 #'   server challenge is received.
+#' @param track_start Attach the successful attempt's conservative start time
+#'   to the response for short-lived PAR request URI accounting.
 #' @return httr2 response object.
 #' @keywords internal
 #' @noRd
@@ -1127,10 +1134,18 @@ req_with_dpop_retry <- function(
   client,
   access_token = NULL,
   idempotent = TRUE,
-  nonce = NULL
+  nonce = NULL,
+  track_start = FALSE
 ) {
+  started_at <- as.numeric(Sys.time())
+  finish <- function(resp) {
+    if (isTRUE(track_start)) {
+      attr(resp, "shinyOAuth.request_started_at") <- started_at
+    }
+    resp
+  }
   if (!client_has_dpop(client)) {
-    return(req_with_retry(req, idempotent = idempotent))
+    return(finish(req_with_retry(req, idempotent = idempotent)))
   }
 
   url <- req[["url"]] %||% NA_character_
@@ -1189,7 +1204,7 @@ req_with_dpop_retry <- function(
   }
 
   if (!resp_is_dpop_nonce_challenge(resp)) {
-    return(resp)
+    return(finish(resp))
   }
 
   attr(resp, "shinyOAuth.otel_attributes") <- compact_list(c(
@@ -1201,10 +1216,11 @@ req_with_dpop_retry <- function(
   ))
 
   if (!is_valid_string(nonce)) {
-    return(resp)
+    return(finish(resp))
   }
 
   current_nonce <- nonce
+  started_at <- as.numeric(Sys.time())
   retry_req <- req_add_dpop_proof(
     req,
     client,
@@ -1233,5 +1249,5 @@ req_with_dpop_retry <- function(
     )
   ))
 
-  resp
+  finish(resp)
 }

@@ -1139,6 +1139,56 @@ test_that("OIDC discovery wires PAR metadata into provider", {
 
   expect_identical(prov@par_url, "https://issuer.example.com/par")
 })
+test_that("PAR lifetime accounts for delayed responses and nonce retry attempts", {
+  clock <- new.env(parent = emptyenv())
+  clock[["now"]] <- as.POSIXct("2026-01-01", tz = "UTC")
+  local_mocked_bindings(Sys.time = function() clock[["now"]], .package = "base")
+  for (nonce_retry in c(FALSE, TRUE)) {
+    cli <- make_par_test_client(
+      dpop_private_key = if (nonce_retry) openssl::ec_keygen() else NULL
+    )
+    calls <- 0L
+    lifetime <- 10
+    attempt_start <- NULL
+    local_mocked_bindings(req_with_retry = function(req, ...) {
+      calls <<- calls + 1L
+      attempt_start <<- as.numeric(clock[["now"]])
+      challenge <- nonce_retry && calls == 1L
+      clock[["now"]] <- clock[["now"]] + if (challenge) 20 else 2
+      httr2::response(
+        req[["url"]],
+        status = if (challenge) 400L else 201L,
+        headers = list(
+          "content-type" = "application/json",
+          "dpop-nonce" = "nonce"
+        ),
+        body = charToRaw(
+          if (challenge) {
+            '{"error":"use_dpop_nonce"}'
+          } else {
+            as.character(jsonlite::toJSON(
+              list(request_uri = "urn:example:par", expires_in = lifetime),
+              auto_unbox = TRUE
+            ))
+          }
+        )
+      )
+    })
+    url <- prepare_call(cli, valid_browser_token())
+    deadline <- as.numeric(attr(url, "shinyOAuth.par_expires_at", exact = TRUE))
+    expect_equal(deadline, attempt_start + lifetime)
+    expect_equal(deadline - as.numeric(clock[["now"]]), 8)
+    expect_identical(calls, if (nonce_retry) 2L else 1L)
+    lifetime <- 1
+    calls <- 0L
+    expect_error(
+      prepare_call(cli, valid_browser_token()),
+      "expired",
+      class = "shinyOAuth_token_error"
+    )
+  }
+})
+
 test_that("PAR expiry metadata preserves lifetimes beyond integer range", {
   lifetime <- .Machine[["integer.max"]] + 1
   url <- attach_par_auth_url_metadata(

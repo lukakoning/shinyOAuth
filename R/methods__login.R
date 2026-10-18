@@ -681,6 +681,7 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
       )
       req <- httr2::req_method(req, "POST")
 
+      request_started_at <- as.numeric(Sys.time())
       resp <- with_otel_span(
         "shinyOAuth.login.par.http",
         {
@@ -688,7 +689,12 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
           # request_uri, so do not replay it after transport or transient HTTP
           # failures. req_with_dpop_retry() still performs the one bounded
           # replay required to answer a DPoP nonce challenge.
-          resp <- req_with_dpop_retry(req, client, idempotent = FALSE)
+          resp <- req_with_dpop_retry(
+            req,
+            client,
+            idempotent = FALSE,
+            track_start = TRUE
+          )
           otel_record_http_result(resp)
           resp
         },
@@ -786,7 +792,21 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
         )
       }
 
-      list(request_uri = request_uri, expires_in = expires_in)
+      started_at <- attr(
+        resp,
+        "shinyOAuth.request_started_at",
+        exact = TRUE
+      ) %||%
+        request_started_at
+      if (as.numeric(Sys.time()) >= started_at + expires_in) {
+        err_token(
+          "Pushed authorization request URI expired before it could be used"
+        )
+      }
+      structure(
+        list(request_uri = request_uri, expires_in = expires_in),
+        shinyOAuth.par_started_at = started_at
+      )
     },
     attributes = otel_client_attributes(
       client = client,
@@ -813,15 +833,15 @@ push_authorization_request <- function(client, params, shiny_session = NULL) {
 #'
 #' @param auth_url Length-1 authorization URL string.
 #' @param par_resp List returned by `push_authorization_request()`.
-#' @param issued_at Optional numeric timestamp in seconds since the Unix epoch.
-#'   Defaults to the current time.
+#' @param issued_at Conservative request start time in seconds since the Unix
+#'   epoch. Defaults to the successful PAR attempt's recorded start time.
 #' @return `auth_url`, with PAR metadata attributes attached when possible.
 #' @keywords internal
 #' @noRd
 attach_par_auth_url_metadata <- function(
   auth_url,
   par_resp,
-  issued_at = as.numeric(Sys.time())
+  issued_at = attr(par_resp, "shinyOAuth.par_started_at", exact = TRUE)
 ) {
   if (
     (!is_valid_string(auth_url) && !is.list(auth_url)) || !is.list(par_resp)
@@ -854,6 +874,11 @@ attach_par_auth_url_metadata <- function(
     )
   } else {
     NULL
+  }
+  if (!is.null(expires_at) && Sys.time() >= expires_at) {
+    err_token(
+      "Pushed authorization request URI expired before it could be used"
+    )
   }
 
   structure(
@@ -1092,6 +1117,7 @@ build_auth_url <- function(
     }
 
     if (isTRUE(par_used)) {
+      par_started_at <- as.numeric(Sys.time())
       par_resp <- push_authorization_request(
         client = oauth_client,
         params = list(
@@ -1113,7 +1139,16 @@ build_auth_url <- function(
         )
       )
 
-      return(attach_par_auth_url_metadata(auth_url, par_resp))
+      return(attach_par_auth_url_metadata(
+        auth_url,
+        par_resp,
+        issued_at = attr(
+          par_resp,
+          "shinyOAuth.par_started_at",
+          exact = TRUE
+        ) %||%
+          par_started_at
+      ))
     }
 
     return(authorization_url_append(
@@ -1126,6 +1161,7 @@ build_auth_url <- function(
   }
 
   if (isTRUE(par_used)) {
+    par_started_at <- as.numeric(Sys.time())
     par_resp <- push_authorization_request(
       client = oauth_client,
       params = params
@@ -1143,7 +1179,12 @@ build_auth_url <- function(
       )
     )
 
-    return(attach_par_auth_url_metadata(auth_url, par_resp))
+    return(attach_par_auth_url_metadata(
+      auth_url,
+      par_resp,
+      issued_at = attr(par_resp, "shinyOAuth.par_started_at", exact = TRUE) %||%
+        par_started_at
+    ))
   }
 
   authorization_url_append(oauth_client@provider@auth_url, params)

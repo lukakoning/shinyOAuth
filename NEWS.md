@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* PAR expiry deadlines start conservatively at the successful request attempt,
+  including a DPoP nonce retry. Responses already expired on delivery are
+  rejected before a browser redirect can be returned.
+
 * OAuth 2.1 assessments select UserInfo endpoints using resource-token binding
   policy rather than token-endpoint client authentication. Unresolved
   binding-dependent HTTPS choices are reported as unknown.
