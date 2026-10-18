@@ -10,6 +10,11 @@ authorization_scopes_bounded <- function(scopes) {
 # Pass the previous policy on automatic refresh, or the explicit scope request
 # when narrowing, so a deliberately removed consent is never restored.
 authorization_retained_scopes <- function(client, token, requested) {
+  retained <- if (client_uses_smart_scopes(client)) {
+    smart_authorization_retained_scopes(client, token@granted_scopes, requested)
+  } else {
+    setdiff(token@granted_scopes, authorization_extra_scopes(client, token))
+  }
   # Standalone launch context is requested on the next authorization, not
   # established by access-token scope evidence. Automatic refresh carries this
   # policy forward; an explicit scope list replaces optional context requests.
@@ -25,7 +30,7 @@ authorization_retained_scopes <- function(client, token, requested) {
     character()
   }
   union(
-    setdiff(token@granted_scopes, authorization_extra_scopes(client, token)),
+    retained,
     union(authorization_refresh_consent(client, requested), context)
   )
 }
@@ -45,10 +50,22 @@ authorization_refresh_consent <- function(client, scopes) {
 
 # Ordinary OAuth accepts provider evidence beyond the configured permissions.
 # Keep it as evidence, never as an outgoing request or an operation permission.
-# SMART scopes can overlap semantically, so retain their stricter grant policy.
+# SMART evidence is compared semantically and never sent as an extra request.
 authorization_extra_scopes <- function(client, token) {
-  if (client_uses_smart_scopes(client) || token_targets_configured(client)) {
+  if (token_targets_configured(client)) {
     return(character())
+  }
+  if (client_uses_smart_scopes(client)) {
+    return(Filter(
+      function(scope) {
+        !connection_scope_covered(
+          client,
+          scope,
+          effective_client_scopes(client)
+        )
+      },
+      token@granted_scopes
+    ))
   }
   setdiff(token@granted_scopes, effective_client_scopes(client))
 }
@@ -61,8 +78,9 @@ authorization_extra_scope_limit <- function(client, scopes, requested) {
   scopes <- normalize_scope_tokens(scopes)
   if (
     (length(scopes) &&
-      (client_uses_smart_scopes(client) || token_targets_configured(client))) ||
-      length(intersect(scopes, effective_client_scopes(client))) ||
+      token_targets_configured(client)) ||
+      (!client_uses_smart_scopes(client) &&
+        length(intersect(scopes, effective_client_scopes(client)))) ||
       !authorization_scopes_bounded(c(requested, scopes))
   ) {
     err_input("Invalid previously accepted extra scope limit")

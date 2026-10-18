@@ -1019,7 +1019,15 @@ connection_manager_controller <- function(
         record[["client"]],
         record[["token"]]
       )
-      scopes <- setdiff(record[["token"]]@granted_scopes, accepted_extra_scopes)
+      scopes <- if (client_uses_smart_scopes(record[["client"]])) {
+        authorization_retained_scopes(
+          record[["client"]],
+          record[["token"]],
+          record[["authorization_scopes"]]
+        )
+      } else {
+        setdiff(record[["token"]]@granted_scopes, accepted_extra_scopes)
+      }
     }
     target_request <- if (!is.null(target)) {
       token_target_refresh_request(

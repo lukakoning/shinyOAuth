@@ -125,6 +125,71 @@ smart_scope_coverage <- function(requested, granted, allow_v1_scopes = FALSE) {
   )
 }
 
+#' Retain SMART permissions within both the request ceiling and actual grant
+#'
+#' Broader wildcard grants remain token evidence. Replacement requests retain
+#' only their intersection with the previous request and client configuration.
+#' Compare individual interactions to preserve partial resource permissions.
+#' @param client OAuthClient with the SMART scope policy.
+#' @param granted Actual accepted scope evidence.
+#' @param requested Previous configured or narrowed request ceiling.
+#' @return A character vector of retained request scopes.
+#' @keywords internal
+#' @noRd
+smart_authorization_retained_scopes <- function(client, granted, requested) {
+  requested <- normalize_scope_tokens(requested)
+  configured <- effective_client_scopes(client)
+  covered <- function(scope, limit) {
+    connection_scope_covered(client, scope, limit)
+  }
+  if (covered(requested, configured) && covered(requested, granted)) {
+    return(requested)
+  }
+  if (covered(granted, requested) && covered(granted, configured)) {
+    return(granted)
+  }
+  retained <- character()
+  for (scope in union(requested, granted)) {
+    if (covered(scope, retained)) {
+      next
+    }
+    if (
+      covered(scope, requested) &&
+        covered(scope, configured) &&
+        covered(scope, granted)
+    ) {
+      retained <- union(retained, scope)
+      next
+    }
+    parsed <- smart_scope_parse(scope, client@scope_policy[["allow_v1_scopes"]])
+    if (!identical(parsed[["kind"]], "resource")) {
+      next
+    }
+    prefix <- paste0(parsed[["context"]], "/", parsed[["resource"]], ".")
+    suffix <- if (nzchar(parsed[["constraint"]])) {
+      paste0("?", parsed[["constraint"]])
+    } else {
+      ""
+    }
+    interactions <- Filter(
+      function(interaction) {
+        atom <- paste0(prefix, interaction, suffix)
+        covered(atom, requested) &&
+          covered(atom, configured) &&
+          covered(atom, granted)
+      },
+      parsed[["interactions"]]
+    )
+    if (length(interactions)) {
+      retained <- union(
+        retained,
+        paste0(prefix, paste0(interactions, collapse = ""), suffix)
+      )
+    }
+  }
+  retained
+}
+
 client_uses_smart_scopes <- function(client) {
   identical(client@scope_policy[["profile"]], "smart")
 }

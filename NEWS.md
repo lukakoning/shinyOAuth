@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* SMART replacement authorization keeps configured or narrowed request limits
+  when servers grant broader wildcard scopes. Actual grants remain separate
+  evidence for replacement acceptance and prior-grant refresh checks.
+
 * Protocol JSON is parsed as literal text throughout, preventing malformed
   responses or state envelopes from causing implicit URL fetches or file reads.
   The minimum supported jsonlite version is now 1.6.

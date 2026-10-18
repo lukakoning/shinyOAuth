@@ -268,7 +268,15 @@ module_refresh_controller <- function(
     accepted_extra_scopes <- NULL
     if (is.null(target) && is.null(scopes) && narrowed) {
       accepted_extra_scopes <- authorization_extra_scopes(client, token)
-      scopes <- setdiff(token@granted_scopes, accepted_extra_scopes)
+      scopes <- if (client_uses_smart_scopes(client)) {
+        authorization_retained_scopes(
+          client,
+          token,
+          operations[["last_authorized_scopes"]]
+        )
+      } else {
+        setdiff(token@granted_scopes, accepted_extra_scopes)
+      }
     }
     target_request <- if (!is.null(target)) {
       token_target_refresh_request(client, target, bundle[["limits"]], scopes)
