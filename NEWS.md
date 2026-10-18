@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Manual UserInfo retrieval applies subject-binding and signed-response policies
+  independently of automatic retrieval. Both provider constructors require a
+  validated ID token by default for an OIDC UserInfo endpoint, including when
+  `userinfo_required = FALSE`.
+
 * JARM algorithm mismatch errors withhold received header values by default,
   including in HTTP callback responses. Opt-in diagnostics sanitize and bound
   values for signing, key encryption and content encryption mismatches.

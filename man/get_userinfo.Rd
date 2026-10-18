@@ -41,15 +41,19 @@ The Shiny module fetches and stores this information during login when
 \details{
 The provider must have a \code{userinfo_url}: the OpenID Connect (OIDC) UserInfo
 endpoint, or an OAuth provider's profile API. With OIDC, this function checks that
-userinfo belongs to the same user as a validated ID token when available.
-If provider policy requires that comparison, an absent validated ID token
-causes an error. Prefer passing the complete \link{OAuthToken}, which carries
-the ID token needed for this check.
+userinfo belongs to the same user as a validated ID token. Pass the complete
+\link{OAuthToken}, which carries the validated ID token needed for this check.
+OIDC providers with a UserInfo endpoint require this baseline by default,
+including when \code{userinfo_required = FALSE} disables automatic retrieval.
+Raw access tokens and unvalidated ID tokens then cause an error. An explicit
+\code{userinfo_id_token_match = FALSE} permits profile retrieval without a validated
+identity; when one is available, its subject is always compared.
 
 Ordinary JSON profiles and signed JWT UserInfo responses are supported.
 Signed responses are verified using the provider's signing keys and
 \code{userinfo_allowed_algs}; encrypted UserInfo is not supported. Set
 \code{userinfo_signed_jwt_required} on the provider to require a signed response,
+including when fetching manually with \code{userinfo_required = FALSE},
 and \code{userinfo_jwt_required_time_claims} on the client to require time claims
 such as \code{exp}. Present time claims are checked even when not required.
 

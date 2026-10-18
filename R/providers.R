@@ -228,6 +228,8 @@ oauth_provider_google <- function(name = "google") {
 #' @param userinfo_required Retrieve profile information from Microsoft Graph.
 #'   Set FALSE for an API token with a different audience. ID-token validation
 #'   and nonce checks remain enabled according to `id_token_validation`.
+#'   Manual `get_userinfo()` calls still require the complete validated
+#'   [OAuthToken] when OIDC validation is enabled.
 #'
 #' @return [OAuthProvider] object configured for Microsoft identity platform
 #'
@@ -321,8 +323,6 @@ oauth_provider_microsoft <- function(
     id_token_allowed_algs = c("RS256"),
 
     userinfo_required = userinfo_required,
-    userinfo_id_token_match = isTRUE(id_token_validation) &&
-      isTRUE(userinfo_required),
     userinfo_id_selector = function(userinfo) {
       userinfo[["sub"]]
     },

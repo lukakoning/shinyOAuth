@@ -225,7 +225,7 @@ test_that("reauthorization scope overrides are authenticated and bounded", {
 test_that("Microsoft UserInfo can be disabled without weakening OIDC", {
   provider <- oauth_provider_microsoft(userinfo_required = FALSE)
   expect_identical(provider@userinfo_required, FALSE)
-  expect_identical(provider@userinfo_id_token_match, FALSE)
+  expect_identical(provider@userinfo_id_token_match, TRUE)
   expect_identical(provider@id_token_validation, TRUE)
   expect_identical(provider@id_token_required, TRUE)
   expect_identical(provider@use_nonce, TRUE)

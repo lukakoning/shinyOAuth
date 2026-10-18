@@ -33,7 +33,8 @@ OAuthProvider(
   pkce_method = "S256",
   userinfo_required = FALSE,
   userinfo_id_selector = function(userinfo) userinfo[["sub"]],
-  userinfo_id_token_match = FALSE,
+  userinfo_id_token_match = is_valid_string(userinfo_url) && is_ok_host(userinfo_url) &&
+    (isTRUE(id_token_validation) || isTRUE(use_nonce)),
   userinfo_signed_jwt_required = FALSE,
   id_token_required = is_valid_string(issuer) && isTRUE(infer_oidc_from_issuer),
   id_token_validation = is_valid_string(issuer) && isTRUE(infer_oidc_from_issuer),
@@ -241,16 +242,18 @@ and \code{\link[=oauth_provider_oidc]{oauth_provider_oidc()}} provide a default 
 \item{userinfo_id_token_match}{Whether fetched userinfo requires a validated ID
 token for comparison. When both are available, their actual \code{sub} values
 are always compared. \code{TRUE} also stops login if the validated ID token is
-absent. Requires \code{userinfo_required} and either \code{id_token_validation} or
-\code{use_nonce}. \code{\link[=oauth_provider]{oauth_provider()}} enables this by default when those
-requirements are met.}
+absent. Requires a valid \code{userinfo_url} and either \code{id_token_validation} or
+\code{use_nonce}. Both constructors enable this by default when those requirements
+are met, including when \code{userinfo_required = FALSE} and UserInfo is fetched
+manually. Set an explicit \code{FALSE} only to permit profile retrieval without
+a validated identity; an available validated ID token is always compared.}
 
 \item{userinfo_signed_jwt_required}{Whether to require the user profile to arrive
 as a signed JWT (\code{application/jwt}). Default \code{FALSE}; ordinary JSON
-userinfo is accepted. When \code{TRUE}, requires \code{userinfo_required} and
-\code{issuer}; the signature must validate with an asymmetric algorithm from
-\code{userinfo_allowed_algs}. Unsigned, HMAC-signed, and encrypted userinfo
-JWTs are not accepted by the normal configuration. Discovery does not
+userinfo is accepted. When \code{TRUE}, requires a valid \code{userinfo_url} and
+\code{issuer}, including for manual retrieval; the signature must validate with
+an asymmetric algorithm from \code{userinfo_allowed_algs}. Unsigned, HMAC-signed,
+and encrypted userinfo JWTs are not accepted by the normal configuration. Discovery does not
 enable this automatically: provider support does not mean your app's
 registration requests signed userinfo.}
 

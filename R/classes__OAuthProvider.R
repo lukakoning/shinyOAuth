@@ -111,16 +111,18 @@
 #' @param userinfo_id_token_match Whether fetched userinfo requires a validated ID
 #'   token for comparison. When both are available, their actual `sub` values
 #'   are always compared. `TRUE` also stops login if the validated ID token is
-#'   absent. Requires `userinfo_required` and either `id_token_validation` or
-#'   `use_nonce`. [oauth_provider()] enables this by default when those
-#'   requirements are met.
+#'   absent. Requires a valid `userinfo_url` and either `id_token_validation` or
+#'   `use_nonce`. Both constructors enable this by default when those requirements
+#'   are met, including when `userinfo_required = FALSE` and UserInfo is fetched
+#'   manually. Set an explicit `FALSE` only to permit profile retrieval without
+#'   a validated identity; an available validated ID token is always compared.
 #'
 #' @param userinfo_signed_jwt_required Whether to require the user profile to arrive
 #'   as a signed JWT (`application/jwt`). Default `FALSE`; ordinary JSON
-#'   userinfo is accepted. When `TRUE`, requires `userinfo_required` and
-#'   `issuer`; the signature must validate with an asymmetric algorithm from
-#'   `userinfo_allowed_algs`. Unsigned, HMAC-signed, and encrypted userinfo
-#'   JWTs are not accepted by the normal configuration. Discovery does not
+#'   userinfo is accepted. When `TRUE`, requires a valid `userinfo_url` and
+#'   `issuer`, including for manual retrieval; the signature must validate with
+#'   an asymmetric algorithm from `userinfo_allowed_algs`. Unsigned, HMAC-signed,
+#'   and encrypted userinfo JWTs are not accepted by the normal configuration. Discovery does not
 #'   enable this automatically: provider support does not mean your app's
 #'   registration requests signed userinfo.
 #'
@@ -429,7 +431,10 @@ OAuthProvider <- S7::new_class(
     ),
     userinfo_id_token_match = S7::new_property(
       S7::class_logical,
-      default = FALSE
+      default = quote(
+        is_valid_string(userinfo_url) && is_ok_host(userinfo_url) &&
+          (isTRUE(id_token_validation) || isTRUE(use_nonce))
+      )
     ),
     userinfo_signed_jwt_required = S7::new_property(
       S7::class_logical,
@@ -1109,7 +1114,7 @@ oauth_provider <- function(
     userinfo_required <- isTRUE(has_ui)
   }
   if (is.null(userinfo_id_token_match)) {
-    userinfo_id_token_match <- isTRUE(userinfo_required) &&
+    userinfo_id_token_match <- isTRUE(has_ui) &&
       (isTRUE(id_token_validation) || isTRUE(use_nonce))
   }
 
@@ -2049,9 +2054,9 @@ oauth_provider_validate <- function(self) {
   }
 
   if (isTRUE(self@userinfo_signed_jwt_required)) {
-    if (!isTRUE(self@userinfo_required)) {
+    if (!is_valid_string(self@userinfo_url) || !is_ok_host(self@userinfo_url)) {
       return(
-        "OAuthProvider: userinfo_signed_jwt_required = TRUE requires userinfo_required = TRUE"
+        "OAuthProvider: userinfo_signed_jwt_required = TRUE requires a valid userinfo_url"
       )
     }
     if (!is_valid_string(self@issuer)) {
@@ -2062,11 +2067,6 @@ oauth_provider_validate <- function(self) {
   }
 
   if (isTRUE(self@userinfo_id_token_match)) {
-    if (!isTRUE(self@userinfo_required)) {
-      return(
-        "OAuthProvider: userinfo_id_token_match = TRUE requires userinfo_required = TRUE"
-      )
-    }
     if (!(isTRUE(self@id_token_validation) || isTRUE(self@use_nonce))) {
       return(
         "OAuthProvider: userinfo_id_token_match = TRUE requires id_token_validation = TRUE or use_nonce = TRUE"

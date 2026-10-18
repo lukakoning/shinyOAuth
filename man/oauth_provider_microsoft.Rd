@@ -26,7 +26,9 @@ issuer}
 
 \item{userinfo_required}{Retrieve profile information from Microsoft Graph.
 Set FALSE for an API token with a different audience. ID-token validation
-and nonce checks remain enabled according to \code{id_token_validation}.}
+and nonce checks remain enabled according to \code{id_token_validation}.
+Manual \code{get_userinfo()} calls still require the complete validated
+\link{OAuthToken} when OIDC validation is enabled.}
 }
 \value{
 \link{OAuthProvider} object configured for Microsoft identity platform
