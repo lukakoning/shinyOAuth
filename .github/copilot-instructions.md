@@ -40,6 +40,12 @@
 - Provider objects gate PKCE/nonce/id-token policies and `token_type` enforcement; align new provider helpers with existing defaults in R/providers.R (e.g., `allowed_algs`, `allowed_token_types`).
 
 ## HTTP & External Providers
+
+- Parse JSON text with `jsonlite::parse_json()` and specify `simplifyVector`
+  explicitly. Never pass protocol text to `jsonlite::fromJSON()` or
+  `httr2::resp_body_json()`: their URL/file input handling can perform I/O before
+  payload validation, including on unauthenticated state envelopes. Network
+  fetching must remain separate and pass the package's transport policy.
 - Every outbound call should wrap `httr2::request()` with `add_req_defaults()` for timeout/UA and `req_with_retry()` for transient handling; tune via `options(shinyOAuth.timeout, shinyOAuth.retry_*)`.
 - `oauth_provider_oidc_discover()` intersects discovery metadata with caller `allowed_algs` and infers `token_auth_style`; surface configuration failures with `err_config()`/`err_http()` to retain trace ids.
 - Built-in providers (`oauth_provider_github/google/microsoft/...`) illustrate `extra_token_headers`, JWKS pinning, and fingerprinting; mirror their structure when adding providers so tests can stub with `with_mocked_bindings()`.

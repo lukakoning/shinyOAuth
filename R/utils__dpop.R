@@ -552,7 +552,7 @@ private_key_public_jwk <- function(key, arg_name = "private key") {
   }
 
   jwk <- try(
-    jsonlite::fromJSON(jwk_json, simplifyVector = FALSE),
+    jsonlite::parse_json(jwk_json, simplifyVector = FALSE),
     silent = TRUE
   )
   if (inherits(jwk, "try-error") || !is.list(jwk)) {
@@ -1073,7 +1073,7 @@ resp_is_dpop_nonce_challenge <- function(resp) {
 
   if (identical(status, 400L)) {
     body <- try(
-      httr2::resp_body_json(resp, simplifyVector = TRUE),
+      jsonlite::parse_json(httr2::resp_body_string(resp), simplifyVector = TRUE),
       silent = TRUE
     )
     if (is.list(body)) {

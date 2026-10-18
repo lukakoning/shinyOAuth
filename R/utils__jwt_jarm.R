@@ -548,7 +548,7 @@ parse_jarm_payload <- function(
   assert_json_text_is_object(payload_text, "JWT payload")
 
   tryCatch(
-    jsonlite::fromJSON(payload_text, simplifyVector = FALSE),
+    jsonlite::parse_json(payload_text, simplifyVector = FALSE),
     error = function(e) {
       err_parse(
         "Failed to parse JWT payload JSON",

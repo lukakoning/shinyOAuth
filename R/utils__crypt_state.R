@@ -425,7 +425,7 @@ state_decrypt_gcm <- function(
   obj <- try(
     {
       reject_duplicate_json_object_members(payload_json, "State envelope JSON")
-      jsonlite::fromJSON(payload_json, simplifyVector = FALSE)
+      jsonlite::parse_json(payload_json, simplifyVector = FALSE)
     },
     silent = TRUE
   )
@@ -581,7 +581,7 @@ state_decrypt_gcm <- function(
     {
       payload_json <- rawToChar(res)
       reject_duplicate_json_object_members(payload_json, "Decrypted state JSON")
-      jsonlite::fromJSON(payload_json, simplifyVector = FALSE)
+      jsonlite::parse_json(payload_json, simplifyVector = FALSE)
     },
     silent = TRUE
   )

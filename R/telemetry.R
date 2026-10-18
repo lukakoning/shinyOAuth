@@ -574,7 +574,7 @@ otel_claim_target_names <- function(claims) {
 
   if (is.character(claims)) {
     parsed <- tryCatch(
-      jsonlite::fromJSON(claims, simplifyVector = FALSE),
+      jsonlite::parse_json(claims, simplifyVector = FALSE),
       error = function(...) NULL
     )
     if (is.null(parsed)) {

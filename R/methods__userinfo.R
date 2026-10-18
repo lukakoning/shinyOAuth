@@ -260,7 +260,7 @@ fetch_userinfo <- function(
                 "UserInfo response JSON"
               )
               assert_json_text_is_object(body_txt, "UserInfo response JSON")
-              jsonlite::fromJSON(body_txt, simplifyVector = FALSE)
+              jsonlite::parse_json(body_txt, simplifyVector = FALSE)
             },
             silent = TRUE
           )
@@ -366,7 +366,7 @@ fetch_userinfo <- function(
           validate_essential_claims(oauth_client, ui, "userinfo")
         }
         if (!is_jwt_response) {
-          ui <- jsonlite::fromJSON(body_txt, simplifyVector = TRUE)
+          ui <- jsonlite::parse_json(body_txt, simplifyVector = TRUE)
         }
 
         otel_set_span_attributes(

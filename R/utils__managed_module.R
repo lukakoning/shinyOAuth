@@ -57,7 +57,7 @@ oauth_module_managed_context <- function(
   if (!is_valid_string(json)) {
     err_invalid_state("Managed callback requires its authorization context")
   }
-  context <- jsonlite::fromJSON(json, simplifyVector = FALSE)
+  context <- jsonlite::parse_json(json, simplifyVector = FALSE)
   authorization_context_json(context)
   if (!isTRUE(hooks[["validate"]](context))) {
     err_invalid_state("Managed authorization owner is unavailable")

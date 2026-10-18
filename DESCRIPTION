@@ -20,7 +20,7 @@ Imports:
     R6 (>= 2.0),
     rlang (>= 1.0.0),
     shiny (>= 1.7.0),
-    jsonlite (>= 1.0),
+    jsonlite (>= 1.6),
     openssl (>= 2.1.2),
     httr2 (>= 1.1.0),
     curl,

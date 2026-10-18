@@ -516,7 +516,7 @@ fetch_jwks <- function(
   jwks_body <- httr2::resp_body_string(jresp)
   reject_duplicate_json_object_members(jwks_body, "JWKS JSON")
   jwks <- try(
-    jsonlite::fromJSON(jwks_body, simplifyVector = FALSE),
+    jsonlite::parse_json(jwks_body, simplifyVector = FALSE),
     silent = TRUE
   )
   if (inherits(jwks, "try-error")) {

@@ -106,8 +106,7 @@ token_response_extra_fields <- function(token_response) {
 #' cannot be smuggled through provider or parser differences.
 #'
 #' @param body Raw response body as a string.
-#' @param resp Optional httr2 response. When supplied, httr2's JSON parser is
-#'   attempted before falling back to `jsonlite::fromJSON()`.
+#' @param resp Optional httr2 response, retained for internal call compatibility.
 #' @return Parsed JSON value, normalized by `normalize_token_response_json()`.
 #' @keywords internal
 #' @noRd
@@ -138,7 +137,7 @@ parse_token_response_json <- function(
 #' whether to fall back to form parsing.
 #'
 #' @param body Raw response body as a string.
-#' @param resp Optional httr2 response for httr2-native parsing.
+#' @param resp Optional httr2 response, retained for internal call compatibility.
 #' @return A list with `ok`, a scalar logical, and `value`, the parsed JSON
 #'   value when `ok` is `TRUE` or `NULL` when JSON parsing failed, plus
 #'   `is_object` indicating whether the payload used a top-level JSON object.
@@ -152,15 +151,9 @@ try_parse_token_response_json <- function(
   reject_duplicate_json_object_members(body, "Token response JSON")
   is_object <- json_text_is_object(body)
 
-  out <- if (inherits(resp, "httr2_response")) {
-    try(httr2::resp_body_json(resp, simplifyVector = FALSE), silent = TRUE)
-  } else {
-    try(jsonlite::fromJSON(body, simplifyVector = FALSE), silent = TRUE)
-  }
-
-  if (inherits(out, "try-error")) {
-    out <- try(jsonlite::fromJSON(body, simplifyVector = FALSE), silent = TRUE)
-  }
+  # Parse literal text only: fromJSON(), including through resp_body_json(),
+  # can interpret an untrusted response as a URL or local filename.
+  out <- try(jsonlite::parse_json(body, simplifyVector = FALSE), silent = TRUE)
   if (inherits(out, "try-error")) {
     return(list(ok = FALSE, value = NULL, is_object = is_object))
   }

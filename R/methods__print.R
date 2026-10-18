@@ -407,7 +407,7 @@ method(format, OAuthClient) <- function(x, ...) {
       scopes = x@scopes,
       claims = if (is.character(x@claims) && is_valid_string(x@claims)) {
         tryCatch(
-          jsonlite::fromJSON(x@claims, simplifyVector = FALSE),
+          jsonlite::parse_json(x@claims, simplifyVector = FALSE),
           error = function(...) list()
         )
       } else {

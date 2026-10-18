@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Protocol JSON is parsed as literal text throughout, preventing malformed
+  responses or state envelopes from causing implicit URL fetches or file reads.
+  The minimum supported jsonlite version is now 1.6.
+
 * Callback bridges limit each transaction to two pending candidates in a bounded
   pool and reject overflow instead of evicting an unexpired response. Shared
   callback stores now require atomic `set_if_absent` as well as `take` to

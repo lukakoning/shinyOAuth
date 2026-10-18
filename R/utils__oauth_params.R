@@ -512,7 +512,7 @@ parse_claims_spec <- function(claims_spec) {
   if (is.character(claims_spec)) {
     return(
       tryCatch(
-        jsonlite::fromJSON(claims_spec, simplifyVector = FALSE),
+        jsonlite::parse_json(claims_spec, simplifyVector = FALSE),
         error = function(e) NULL
       )
     )

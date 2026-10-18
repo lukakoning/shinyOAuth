@@ -443,7 +443,7 @@ state_policy_request_encryption_key_identity <- function(value) {
       grepl("^\\s*\\{", paste(value, collapse = "\n"))
   ) {
     tryCatch(
-      jsonlite::fromJSON(
+      jsonlite::parse_json(
         paste(value, collapse = "\n"),
         simplifyVector = FALSE
       ),
@@ -453,7 +453,7 @@ state_policy_request_encryption_key_identity <- function(value) {
     list()
   }
   public_key <- normalize_jwe_recipient_public_key(value)
-  public_jwk <- jsonlite::fromJSON(
+  public_jwk <- jsonlite::parse_json(
     jose::write_jwk(public_key),
     simplifyVector = TRUE
   )
@@ -531,7 +531,10 @@ state_policy_jarm_decryption_key_thumbprint <- function(client) {
     arg_name = "jarm_decryption_private_key"
   )
   key_pubkey <- as.list(key)[["pubkey"]]
-  jwk <- jsonlite::fromJSON(jose::write_jwk(key_pubkey), simplifyVector = TRUE)
+  jwk <- jsonlite::parse_json(
+    jose::write_jwk(key_pubkey),
+    simplifyVector = TRUE
+  )
 
   compute_jwk_thumbprint(canonicalize_local_public_jwk(jwk))
 }

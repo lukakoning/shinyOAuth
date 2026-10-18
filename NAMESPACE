@@ -69,7 +69,7 @@ import(httr2)
 import(rlang, except = ":=")
 importFrom(cli,cli_format)
 importFrom(jsonlite,
-  fromJSON,
+  parse_json,
   toJSON
 )
 importFrom(openssl,

@@ -875,7 +875,7 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
     )
   }
   jwk <- try(
-    jsonlite::fromJSON(jwk_json, simplifyVector = FALSE),
+    jsonlite::parse_json(jwk_json, simplifyVector = FALSE),
     silent = TRUE
   )
   if (inherits(jwk, "try-error") || !is.list(jwk)) {

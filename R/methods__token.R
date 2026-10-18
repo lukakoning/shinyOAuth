@@ -651,7 +651,7 @@ introspect_token <- function(
               body_txt,
               "Introspection response JSON"
             )
-            value <- jsonlite::fromJSON(body_txt, simplifyVector = FALSE)
+            value <- jsonlite::parse_json(body_txt, simplifyVector = FALSE)
             if ("scope" %in% names(value)) {
               validate_response_scope(
                 value[["scope"]],

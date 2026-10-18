@@ -486,7 +486,7 @@ private_key_jws_alg_compatibility <- function(key, alg) {
 
   if (inherits(key, "ecdsa")) {
     jwk <- try(
-      jsonlite::fromJSON(jose::write_jwk(key), simplifyVector = TRUE),
+      jsonlite::parse_json(jose::write_jwk(key), simplifyVector = TRUE),
       silent = TRUE
     )
     if (!inherits(jwk, "try-error") && is.list(jwk)) {
@@ -706,7 +706,7 @@ build_authorization_request_object <- function(client, params) {
       nzchar(claims_param)
   ) {
     parsed_claims <- tryCatch(
-      jsonlite::fromJSON(claims_param, simplifyVector = FALSE),
+      jsonlite::parse_json(claims_param, simplifyVector = FALSE),
       error = function(...) NULL
     )
     if (is.list(parsed_claims)) {

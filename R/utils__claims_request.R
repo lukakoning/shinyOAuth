@@ -81,7 +81,7 @@ claims_request_json <- function(claims) {
   }
   assert_json_text_is_object(claims, "claims", signal_error = err_config)
   reject_duplicate_json_object_members(claims, "claims", on_error = err_config)
-  parsed <- jsonlite::fromJSON(claims, simplifyVector = FALSE)
+  parsed <- jsonlite::parse_json(claims, simplifyVector = FALSE)
   is_object <- function(value) is.list(value) && !is.null(names(value))
   for (target in intersect(c("id_token", "userinfo"), names(parsed))) {
     section <- parsed[[target]]

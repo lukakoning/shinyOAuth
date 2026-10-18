@@ -215,7 +215,7 @@ smart_discovery_parse <- function(resp) {
     }
   )
   metadata <- tryCatch(
-    jsonlite::fromJSON(body, simplifyVector = FALSE),
+    jsonlite::parse_json(body, simplifyVector = FALSE),
     error = function(...) err_parse("Invalid SMART discovery JSON")
   )
   if (

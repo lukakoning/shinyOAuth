@@ -26,7 +26,7 @@ parse_jwt_payload <- function(jwt) {
   assert_json_text_is_object(payload_text, "JWT payload")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
-    jsonlite::fromJSON(payload_text, simplifyVector = FALSE),
+    jsonlite::parse_json(payload_text, simplifyVector = FALSE),
     error = function(e) {
       err_parse(
         "Failed to parse JWT payload JSON",
@@ -96,7 +96,7 @@ parse_jwt_header <- function(jwt) {
   assert_json_text_is_object(header_text, "JWT header")
   # Normalize JSON parse failures to a consistent parse error class
   tryCatch(
-    jsonlite::fromJSON(header_text, simplifyVector = FALSE),
+    jsonlite::parse_json(header_text, simplifyVector = FALSE),
     error = function(e) {
       err_parse(
         "Failed to parse JWT header JSON",
@@ -391,7 +391,7 @@ parse_jwt_payload_or_null <- function(jwt) {
       )
       # Binding checks must distinguish a string from a one-element array and
       # a confirmation object from an array containing one object.
-      jsonlite::fromJSON(payload_text, simplifyVector = FALSE)
+      jsonlite::parse_json(payload_text, simplifyVector = FALSE)
     },
     error = function(...) NULL
   )
@@ -413,7 +413,7 @@ parse_jwt_payload_or_null <- function(jwt) {
 #' @noRd
 jwt_decode_json_string_token <- function(token) {
   tryCatch(
-    jsonlite::fromJSON(
+    jsonlite::parse_json(
       paste0('["', token, '"]'),
       simplifyVector = TRUE
     )[[1]],

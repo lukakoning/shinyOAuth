@@ -136,7 +136,7 @@ jwe_compact_parts <- function(jwe) {
   reject_duplicate_json_object_members(protected_text, "JWE protected header")
   assert_json_text_is_object(protected_text, "JWE protected header")
   protected_header <- tryCatch(
-    jsonlite::fromJSON(protected_text, simplifyVector = FALSE),
+    jsonlite::parse_json(protected_text, simplifyVector = FALSE),
     error = function(e) {
       err_parse(
         "Failed to parse JWE protected header JSON",
@@ -192,7 +192,7 @@ normalize_jwe_recipient_jwk <- function(
     text <- paste(key, collapse = "\n")
     if (grepl("^\\s*\\{", text)) {
       parsed_jwk <- try(
-        jsonlite::fromJSON(text, simplifyVector = FALSE),
+        jsonlite::parse_json(text, simplifyVector = FALSE),
         silent = TRUE
       )
       if (!inherits(parsed_jwk, "try-error") && is.list(parsed_jwk)) {

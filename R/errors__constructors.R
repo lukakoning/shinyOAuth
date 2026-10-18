@@ -620,7 +620,7 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
       body_digest <- string_digest(bs)
       # RFC 6749 §5.2: try to extract structured error fields from JSON body
       parsed <- try(
-        jsonlite::fromJSON(bs, simplifyVector = TRUE),
+        jsonlite::parse_json(bs, simplifyVector = TRUE),
         silent = TRUE
       )
       if (!inherits(parsed, "try-error") && is.list(parsed)) {
