@@ -40,7 +40,11 @@ oauth_provider_microsoft(
 
   Retrieve profile information from Microsoft Graph. Set FALSE for an
   API token with a different audience. ID-token validation and nonce
-  checks remain enabled according to `id_token_validation`.
+  checks remain enabled according to `id_token_validation`. Manual
+  [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
+  calls still require the complete validated
+  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
+  when OIDC validation is enabled.
 
 ## Value
 

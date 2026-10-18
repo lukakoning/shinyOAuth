@@ -90,7 +90,9 @@ issuer</p></dd>
 <dt id="arg-userinfo-required">userinfo_required<a class="anchor" aria-label="anchor" href="#arg-userinfo-required"></a></dt>
 <dd><p>Retrieve profile information from Microsoft Graph.
 Set FALSE for an API token with a different audience. ID-token validation
-and nonce checks remain enabled according to <code>id_token_validation</code>.</p></dd>
+and nonce checks remain enabled according to <code>id_token_validation</code>.
+Manual <code><a href="get_userinfo.html">get_userinfo()</a></code> calls still require the complete validated
+<a href="OAuthToken.html">OAuthToken</a> when OIDC validation is enabled.</p></dd>
 
 </dl></div>
     <div class="section level2">

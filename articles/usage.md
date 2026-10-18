@@ -692,6 +692,12 @@ can let two requests use the same entry. See
 [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
 for the backend contract.
 
+For `form_post` and `form_post.jwt`, also provide atomic `set_if_absent`
+with expiry to reserve callback slots without overwriting another
+pending response. Each transaction can retain two candidates; overflow
+is rejected until a slot is consumed or expires. The default
+process-local memory store also preserves unexpired candidates.
+
 Hosted Request Objects (`request_object_mode = "request_uri"`) also use
 this store, in separate records. Their JWT claims are readable when
 signed without JWE encryption; the pending-login record’s `state_key`

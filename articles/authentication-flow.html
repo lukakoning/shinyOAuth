@@ -608,8 +608,16 @@ fetch stops login.</p>
 <p>With OIDC, this happens after ID token validation. When a validated
 ID token and userinfo are both available, their <code>sub</code> values
 must match. <code>userinfo_id_token_match = TRUE</code> also requires a
-validated ID token to be available for that comparison. Requests in
-<code>claims[["userinfo"]]</code> are checked according to
+validated ID token to be available for that comparison. This defaults to
+<code>TRUE</code> for a configured UserInfo endpoint when ID token
+validation or nonce validation is enabled, including when
+<code>userinfo_required = FALSE</code>. Manual calls to
+<code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> should pass the complete
+<code>OAuthToken</code>; a raw access token cannot supply the required
+validated identity. An explicit
+<code>userinfo_id_token_match = FALSE</code> permits unbound profile
+retrieval, but any available validated ID token must still match.
+Requests in <code>claims[["userinfo"]]</code> are checked according to
 <code>claims_validation</code>, as with the ID token claims in step 9.
 Enforceable UserInfo requirements with <code>"warn"</code> or
 <code>"strict"</code> require <code>userinfo_required = TRUE</code> and
@@ -625,7 +633,10 @@ to require this format and
 <code>userinfo_jwt_required_time_claims</code>, for example
 <code>"exp"</code>, to require time claims. Present time claims are
 checked even when not required. Signed userinfo uses the asymmetric
-algorithms in <code>userinfo_allowed_algs</code>.</p>
+algorithms in <code>userinfo_allowed_algs</code>. Both the
+signed-response requirement and subject binding apply to manual
+retrieval when <code>userinfo_required = FALSE</code>; that flag only
+controls automatic retrieval during login and refresh.</p>
 <p>Discovery records whether the provider supports signed UserInfo, but
 does not enable <code>userinfo_signed_jwt_required</code>: support at
 the provider does not mean your app registration requests that response

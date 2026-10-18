@@ -137,9 +137,12 @@ uniqueness constraint with expiry. shinyOAuth uses this operation to make
 forced JWKS-refresh throttling safe across workers. Without it, forced
 refresh is disabled for shared/custom caches; <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> keeps
 its process-local serialized fallback.
-Callback bridges use it when available to avoid overwriting concurrent
-candidates; full partitions then reject callbacks until slots expire or
-are consumed. Other state-store writes still use <code>set</code>.</p></dd>
+Callback bridges require it for custom/shared stores to avoid overwriting
+concurrent candidates; full partitions reject callbacks until slots expire
+or are consumed. The process-local memory store uses a serialized fallback.
+The existing <code>shinyOAuth.allow_non_atomic_state_store = TRUE</code> option also
+permits non-atomic callback insertion, with no protection against concurrent
+writers replacing a candidate. Other state-store writes still use <code>set</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -168,7 +171,9 @@ login as one indivisible operation, so two requests cannot use it. Redis
 that can do this. Use the same <code>state_key</code> and matching provider/client
 settings on every worker. Separate reads and deletes, including those in
 <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code>, cannot ensure single-use state under concurrent access.
-See the <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes">deployment guidance</a>.</p>
+See the <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes">deployment guidance</a>.
+For the <code>form_post</code> and <code>form_post.jwt</code> callback bridges, also implement
+<code>set_if_absent</code> to reserve callback slots without replacing pending responses.</p>
 <p>Store values are small R lists; preserve them without interpreting fields.
 Pending login records in external stores are AES-GCM sealed with a distinct
 key derived from <code>state_key</code> and bound to the client, provider, and state key.

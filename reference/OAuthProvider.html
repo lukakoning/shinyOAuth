@@ -95,7 +95,8 @@ endpoint and validation settings.</p>
 <span>  pkce_method <span class="op">=</span> <span class="st">"S256"</span>,</span>
 <span>  userinfo_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  userinfo_id_selector <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">userinfo</span><span class="op">)</span> <span class="va">userinfo</span><span class="op">[[</span><span class="st">"sub"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>  userinfo_id_token_match <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  userinfo_id_token_match <span class="op">=</span> <span class="fu">is_valid_string</span><span class="op">(</span><span class="va">userinfo_url</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="is_ok_host.html">is_ok_host</a></span><span class="op">(</span><span class="va">userinfo_url</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span>
+<span>    <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">id_token_validation</span><span class="op">)</span> <span class="op">||</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">use_nonce</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  userinfo_signed_jwt_required <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  id_token_required <span class="op">=</span> <span class="fu">is_valid_string</span><span class="op">(</span><span class="va">issuer</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">infer_oidc_from_issuer</span><span class="op">)</span>,</span>
 <span>  id_token_validation <span class="op">=</span> <span class="fu">is_valid_string</span><span class="op">(</span><span class="va">issuer</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">infer_oidc_from_issuer</span><span class="op">)</span>,</span>
@@ -359,18 +360,20 @@ and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> pr
 <dd><p>Whether fetched userinfo requires a validated ID
 token for comparison. When both are available, their actual <code>sub</code> values
 are always compared. <code>TRUE</code> also stops login if the validated ID token is
-absent. Requires <code>userinfo_required</code> and either <code>id_token_validation</code> or
-<code>use_nonce</code>. <code><a href="oauth_provider.html">oauth_provider()</a></code> enables this by default when those
-requirements are met.</p></dd>
+absent. Requires a valid <code>userinfo_url</code> and either <code>id_token_validation</code> or
+<code>use_nonce</code>. Both constructors enable this by default when those requirements
+are met, including when <code>userinfo_required = FALSE</code> and UserInfo is fetched
+manually. Set an explicit <code>FALSE</code> only to permit profile retrieval without
+a validated identity; an available validated ID token is always compared.</p></dd>
 
 
 <dt id="arg-userinfo-signed-jwt-required">userinfo_signed_jwt_required<a class="anchor" aria-label="anchor" href="#arg-userinfo-signed-jwt-required"></a></dt>
 <dd><p>Whether to require the user profile to arrive
 as a signed JWT (<code>application/jwt</code>). Default <code>FALSE</code>; ordinary JSON
-userinfo is accepted. When <code>TRUE</code>, requires <code>userinfo_required</code> and
-<code>issuer</code>; the signature must validate with an asymmetric algorithm from
-<code>userinfo_allowed_algs</code>. Unsigned, HMAC-signed, and encrypted userinfo
-JWTs are not accepted by the normal configuration. Discovery does not
+userinfo is accepted. When <code>TRUE</code>, requires a valid <code>userinfo_url</code> and
+<code>issuer</code>, including for manual retrieval; the signature must validate with
+an asymmetric algorithm from <code>userinfo_allowed_algs</code>. Unsigned, HMAC-signed,
+and encrypted userinfo JWTs are not accepted by the normal configuration. Discovery does not
 enable this automatically: provider support does not mean your app's
 registration requests signed userinfo.</p></dd>
 

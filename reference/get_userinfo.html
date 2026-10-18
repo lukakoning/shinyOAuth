@@ -109,14 +109,18 @@ possible. Signed JWT responses retain arrays as lists.</p>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The provider must have a <code>userinfo_url</code>: the OpenID Connect (OIDC) UserInfo
 endpoint, or an OAuth provider's profile API. With OIDC, this function checks that
-userinfo belongs to the same user as a validated ID token when available.
-If provider policy requires that comparison, an absent validated ID token
-causes an error. Prefer passing the complete <a href="OAuthToken.html">OAuthToken</a>, which carries
-the ID token needed for this check.</p>
+userinfo belongs to the same user as a validated ID token. Pass the complete
+<a href="OAuthToken.html">OAuthToken</a>, which carries the validated ID token needed for this check.
+OIDC providers with a UserInfo endpoint require this baseline by default,
+including when <code>userinfo_required = FALSE</code> disables automatic retrieval.
+Raw access tokens and unvalidated ID tokens then cause an error. An explicit
+<code>userinfo_id_token_match = FALSE</code> permits profile retrieval without a validated
+identity; when one is available, its subject is always compared.</p>
 <p>Ordinary JSON profiles and signed JWT UserInfo responses are supported.
 Signed responses are verified using the provider's signing keys and
 <code>userinfo_allowed_algs</code>; encrypted UserInfo is not supported. Set
 <code>userinfo_signed_jwt_required</code> on the provider to require a signed response,
+including when fetching manually with <code>userinfo_required = FALSE</code>,
 and <code>userinfo_jwt_required_time_claims</code> on the client to require time claims
 such as <code>exp</code>. Present time claims are checked even when not required.</p>
 <p>Standard OIDC profile claims in ID tokens and UserInfo are checked against

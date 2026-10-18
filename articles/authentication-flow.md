@@ -518,12 +518,20 @@ token. A failed required fetch stops login.
 With OIDC, this happens after ID token validation. When a validated ID
 token and userinfo are both available, their `sub` values must match.
 `userinfo_id_token_match = TRUE` also requires a validated ID token to
-be available for that comparison. Requests in `claims[["userinfo"]]` are
-checked according to `claims_validation`, as with the ID token claims in
-step 9. Enforceable UserInfo requirements with `"warn"` or `"strict"`
-require `userinfo_required = TRUE` and a configured `userinfo_url`;
-contradictory client configurations are rejected before starting
-authorization.
+be available for that comparison. This defaults to `TRUE` for a
+configured UserInfo endpoint when ID token validation or nonce
+validation is enabled, including when `userinfo_required = FALSE`.
+Manual calls to
+[`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
+should pass the complete `OAuthToken`; a raw access token cannot supply
+the required validated identity. An explicit
+`userinfo_id_token_match = FALSE` permits unbound profile retrieval, but
+any available validated ID token must still match. Requests in
+`claims[["userinfo"]]` are checked according to `claims_validation`, as
+with the ID token claims in step 9. Enforceable UserInfo requirements
+with `"warn"` or `"strict"` require `userinfo_required = TRUE` and a
+configured `userinfo_url`; contradictory client configurations are
+rejected before starting authorization.
 
 #### Signed UserInfo responses
 
@@ -533,7 +541,10 @@ userinfo is not supported. Use `userinfo_signed_jwt_required` to require
 this format and `userinfo_jwt_required_time_claims`, for example
 `"exp"`, to require time claims. Present time claims are checked even
 when not required. Signed userinfo uses the asymmetric algorithms in
-`userinfo_allowed_algs`.
+`userinfo_allowed_algs`. Both the signed-response requirement and
+subject binding apply to manual retrieval when
+`userinfo_required = FALSE`; that flag only controls automatic retrieval
+during login and refresh.
 
 Discovery records whether the provider supports signed UserInfo, but
 does not enable `userinfo_signed_jwt_required`: support at the provider

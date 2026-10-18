@@ -316,20 +316,24 @@ userinfo[["sub"]]
   Whether fetched userinfo requires a validated ID token for comparison.
   When both are available, their actual `sub` values are always
   compared. `TRUE` also stops login if the validated ID token is absent.
-  Requires `userinfo_required` and either `id_token_validation` or
-  `use_nonce`. `oauth_provider()` enables this by default when those
-  requirements are met.
+  Requires a valid `userinfo_url` and either `id_token_validation` or
+  `use_nonce`. Both constructors enable this by default when those
+  requirements are met, including when `userinfo_required = FALSE` and
+  UserInfo is fetched manually. Set an explicit `FALSE` only to permit
+  profile retrieval without a validated identity; an available validated
+  ID token is always compared.
 
 - userinfo_signed_jwt_required:
 
   Whether to require the user profile to arrive as a signed JWT
   (`application/jwt`). Default `FALSE`; ordinary JSON userinfo is
-  accepted. When `TRUE`, requires `userinfo_required` and `issuer`; the
-  signature must validate with an asymmetric algorithm from
-  `userinfo_allowed_algs`. Unsigned, HMAC-signed, and encrypted userinfo
-  JWTs are not accepted by the normal configuration. Discovery does not
-  enable this automatically: provider support does not mean your app's
-  registration requests signed userinfo.
+  accepted. When `TRUE`, requires a valid `userinfo_url` and `issuer`,
+  including for manual retrieval; the signature must validate with an
+  asymmetric algorithm from `userinfo_allowed_algs`. Unsigned,
+  HMAC-signed, and encrypted userinfo JWTs are not accepted by the
+  normal configuration. Discovery does not enable this automatically:
+  provider support does not mean your app's registration requests signed
+  userinfo.
 
 - userinfo_id_selector:
 

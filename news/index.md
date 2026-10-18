@@ -2,6 +2,26 @@
 
 ## shinyOAuth (development version)
 
+- Callback bridges limit each transaction to two pending candidates in a
+  bounded pool and reject overflow instead of evicting an unexpired
+  response. Shared callback stores now require atomic `set_if_absent` as
+  well as `take` to preserve pending candidates when workers race.
+
+- [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
+  compares canonical assertion algorithm names so supported EdDSA and
+  Ed25519 credentials agree with runtime signing at token, PAR,
+  introspection, and revocation endpoints.
+
+- DPoP and mTLS confirmation checks preserve access-token JSON types and
+  reject arrays in place of confirmation objects or scalar thumbprints.
+  Token responses and introspection use the same confirmation-shape
+  validation.
+
+- Manual UserInfo retrieval applies subject-binding and signed-response
+  policies independently of automatic retrieval. Both provider
+  constructors require a validated ID token by default for an OIDC
+  UserInfo endpoint, including when `userinfo_required = FALSE`.
+
 - JARM algorithm mismatch errors withhold received header values by
   default, including in HTTP callback responses. Opt-in diagnostics
   sanitize and bound values for signing, key encryption and content

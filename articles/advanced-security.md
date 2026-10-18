@@ -742,6 +742,12 @@ needs fresh binding data from the new token or its introspection
 response; the old certificate thumbprint is not carried forward when the
 response omits it.
 
+Observed `cnf` values must be JSON objects, and `jkt` and `x5t#S256`
+must be scalar strings containing canonical base64url SHA-256
+thumbprints. Arrays are rejected even when they contain a single object
+or string. These checks apply to token responses, JWT access-token
+payloads, and introspection results.
+
 Binding data read from a JWT access token is observed payload data;
 shinyOAuth does not independently verify that access token’s signature.
 Introspection can provide confirmation from the provider. The API must
