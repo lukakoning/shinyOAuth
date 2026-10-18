@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Provider and discovery validation reject issuer identifiers with empty query
+  components (`?`) before making discovery requests. Encoded path delimiters
+  such as `%3F` remain valid.
+
 * Internal OpenTelemetry active-span, attribute and propagation calls apply
   the diagnostic exposure policy, including SDK setup messages during nested
   OAuth operations and context capture.

@@ -1261,7 +1261,7 @@ oauth_provider_validate <- function(self) {
     parsed_issuer <- try(httr2::url_parse(self@issuer), silent = TRUE)
     if (
       !inherits(parsed_issuer, "try-error") &&
-        (length(parsed_issuer[["query"]]) > 0L ||
+        (grepl("?", self@issuer, fixed = TRUE) ||
           has_uri_fragment(self@issuer))
     ) {
       return(

@@ -515,7 +515,7 @@ oauth_provider_oidc_discover <- function(
   }
 
   if (
-    length(parsed[["query"]]) > 0L ||
+    grepl("?", issuer, fixed = TRUE) ||
       has_uri_fragment(issuer)
   ) {
     err_input(
