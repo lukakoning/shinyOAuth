@@ -152,6 +152,12 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     } else {
       provider@endpoint_auth_metadata[[endpoint]][["signing_algs"]]
     }
+    advertised <- vapply(
+      advertised,
+      canonicalize_jws_alg,
+      character(1),
+      USE.NAMES = FALSE
+    )
     candidates <- if (nzchar(alg)) {
       alg
     } else if (

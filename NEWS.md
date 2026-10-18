@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* `check_oauth21()` compares canonical assertion algorithm names so supported
+  EdDSA and Ed25519 credentials agree with runtime signing at token, PAR,
+  introspection, and revocation endpoints.
+
 * DPoP and mTLS confirmation checks preserve access-token JSON types and reject
   arrays in place of confirmation objects or scalar thumbprints. Token responses
   and introspection use the same confirmation-shape validation.

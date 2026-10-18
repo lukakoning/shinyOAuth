@@ -26,6 +26,101 @@ oauth21_finding <- function(report, id) {
   report[["checks"]][report[["checks"]][["id"]] == id, , drop = FALSE]
 }
 
+test_that("EdDSA and Ed25519 token and PAR assessments agree with actual signing", {
+  withr::local_options(shinyOAuth.tls_min_version = "1.2")
+  key <- openssl::ed25519_keygen()
+  for (alg in c("EdDSA", "Ed25519")) {
+    # Runtime defaults to EdDSA; Ed25519-only metadata requires an explicit
+    # algorithm and the constructor rejects an incompatible inferred default.
+    for (explicit in if (alg == "EdDSA") c(FALSE, TRUE) else TRUE) {
+      client <- oauth21_test_client(
+        list(
+          token_auth_style = "private_key_jwt",
+          issuer = "https://issuer.example",
+          infer_oidc_from_issuer = FALSE,
+          par_url = "https://issuer.example/par",
+          token_endpoint_auth_signing_alg_values_supported = alg
+        ),
+        client_assertion_private_key = key,
+        client_assertion_alg = if (explicit) alg else NULL,
+        client_assertion_audience = "https://issuer.example",
+        client_assertion_typ = "client-authentication+jwt"
+      )
+      report <- check_oauth21(client)
+      expect_true(report[["configuration_compliant"]])
+      for (endpoint in c("token", "par")) {
+        expect_identical(
+          oauth21_finding(report, paste0("client_auth.", endpoint))[["status"]],
+          "pass"
+        )
+        request <- httr2::request(resolve_provider_endpoint_url(
+          client@provider, paste0(endpoint, "_endpoint")
+        ))
+        assertion <- apply_direct_client_auth(
+          request, list(), client, endpoint
+        )[["params"]][["client_assertion"]]
+        expect_identical(parse_jwt_header(assertion)[["alg"]], alg)
+        parts <- strsplit(assertion, ".", fixed = TRUE)[[1L]]
+        expect_true(openssl::ed25519_verify(
+          charToRaw(paste(parts[1:2], collapse = ".")),
+          base64url_decode_raw(parts[[3L]]), key[["pubkey"]]
+        ))
+      }
+    }
+  }
+})
+
+test_that("endpoint assertion metadata uses runtime algorithm normalization", {
+  withr::local_options(shinyOAuth.tls_min_version = "1.2")
+  key <- openssl::ed25519_keygen()
+  for (advertised in c("EdDSA", "EDDSA", "Ed25519", "ED25519")) {
+    alg <- canonicalize_jws_alg(advertised)
+    for (explicit in c(FALSE, TRUE)) {
+      override <- list(
+        token_auth_style = "private_key_jwt",
+        client_assertion_private_key = key,
+        client_assertion_audience = "https://issuer.example",
+        client_assertion_typ = "client-authentication+jwt"
+      )
+      if (explicit) override[["client_assertion_alg"]] <- alg
+      client <- oauth21_test_client(
+        list(
+          issuer = "https://issuer.example", infer_oidc_from_issuer = FALSE,
+          introspection_url = "https://issuer.example/introspect",
+          revocation_url = "https://issuer.example/revoke",
+          endpoint_auth_metadata = list(
+            introspection = list(methods = "private_key_jwt", signing_algs = advertised),
+            revocation = list(methods = "private_key_jwt", signing_algs = advertised)
+          )
+        ),
+        endpoint_auth = list(introspection = override, revocation = override)
+      )
+      report <- check_oauth21(
+        client, context = list(operations = c("introspection", "revocation"))
+      )
+      expect_true(report[["configuration_compliant"]])
+      for (endpoint in c("introspection", "revocation")) {
+        expect_identical(
+          oauth21_finding(report, paste0("client_auth.", endpoint))[["status"]], "pass"
+        )
+        effective <- endpoint_auth_client(client, endpoint)
+        assertion <- apply_direct_client_auth(
+          httr2::request(resolve_provider_endpoint_url(
+            client@provider, paste0(endpoint, "_endpoint")
+          )),
+          list(), effective, endpoint
+        )[["params"]][["client_assertion"]]
+        expect_identical(parse_jwt_header(assertion)[["alg"]], alg)
+        parts <- strsplit(assertion, ".", fixed = TRUE)[[1L]]
+        expect_true(openssl::ed25519_verify(
+          charToRaw(paste(parts[1:2], collapse = ".")),
+          base64url_decode_raw(parts[[3L]]), key[["pubkey"]]
+        ))
+      }
+    }
+  }
+})
+
 test_that("a supported public client passes a bounded, deterministic assessment", {
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   client <- oauth21_test_client()
