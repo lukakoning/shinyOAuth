@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OAuth 2.1 assessments select UserInfo endpoints using resource-token binding
+  policy rather than token-endpoint client authentication. Unresolved
+  binding-dependent HTTPS choices are reported as unknown.
+
 * SMART replacement authorization, explicit refresh narrowing and transaction
   contexts support the profile's 256-scope / 64 KiB comparison budget throughout
   the lifecycle. Overlapping request and broader grant evidence is compared

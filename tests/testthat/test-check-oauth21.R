@@ -54,16 +54,21 @@ test_that("EdDSA and Ed25519 token and PAR assessments agree with actual signing
           "pass"
         )
         request <- httr2::request(resolve_provider_endpoint_url(
-          client@provider, paste0(endpoint, "_endpoint")
+          client@provider,
+          paste0(endpoint, "_endpoint")
         ))
         assertion <- apply_direct_client_auth(
-          request, list(), client, endpoint
+          request,
+          list(),
+          client,
+          endpoint
         )[["params"]][["client_assertion"]]
         expect_identical(parse_jwt_header(assertion)[["alg"]], alg)
         parts <- strsplit(assertion, ".", fixed = TRUE)[[1L]]
         expect_true(openssl::ed25519_verify(
           charToRaw(paste(parts[1:2], collapse = ".")),
-          base64url_decode_raw(parts[[3L]]), key[["pubkey"]]
+          base64url_decode_raw(parts[[3L]]),
+          key[["pubkey"]]
         ))
       }
     }
@@ -82,39 +87,54 @@ test_that("endpoint assertion metadata uses runtime algorithm normalization", {
         client_assertion_audience = "https://issuer.example",
         client_assertion_typ = "client-authentication+jwt"
       )
-      if (explicit) override[["client_assertion_alg"]] <- alg
+      if (explicit) {
+        override[["client_assertion_alg"]] <- alg
+      }
       client <- oauth21_test_client(
         list(
-          issuer = "https://issuer.example", infer_oidc_from_issuer = FALSE,
+          issuer = "https://issuer.example",
+          infer_oidc_from_issuer = FALSE,
           introspection_url = "https://issuer.example/introspect",
           revocation_url = "https://issuer.example/revoke",
           endpoint_auth_metadata = list(
-            introspection = list(methods = "private_key_jwt", signing_algs = advertised),
-            revocation = list(methods = "private_key_jwt", signing_algs = advertised)
+            introspection = list(
+              methods = "private_key_jwt",
+              signing_algs = advertised
+            ),
+            revocation = list(
+              methods = "private_key_jwt",
+              signing_algs = advertised
+            )
           )
         ),
         endpoint_auth = list(introspection = override, revocation = override)
       )
       report <- check_oauth21(
-        client, context = list(operations = c("introspection", "revocation"))
+        client,
+        context = list(operations = c("introspection", "revocation"))
       )
       expect_true(report[["configuration_compliant"]])
       for (endpoint in c("introspection", "revocation")) {
         expect_identical(
-          oauth21_finding(report, paste0("client_auth.", endpoint))[["status"]], "pass"
+          oauth21_finding(report, paste0("client_auth.", endpoint))[["status"]],
+          "pass"
         )
         effective <- endpoint_auth_client(client, endpoint)
         assertion <- apply_direct_client_auth(
           httr2::request(resolve_provider_endpoint_url(
-            client@provider, paste0(endpoint, "_endpoint")
+            client@provider,
+            paste0(endpoint, "_endpoint")
           )),
-          list(), effective, endpoint
+          list(),
+          effective,
+          endpoint
         )[["params"]][["client_assertion"]]
         expect_identical(parse_jwt_header(assertion)[["alg"]], alg)
         parts <- strsplit(assertion, ".", fixed = TRUE)[[1L]]
         expect_true(openssl::ed25519_verify(
           charToRaw(paste(parts[1:2], collapse = ".")),
-          base64url_decode_raw(parts[[3L]]), key[["pubkey"]]
+          base64url_decode_raw(parts[[3L]]),
+          key[["pubkey"]]
         ))
       }
     }
@@ -373,6 +393,72 @@ test_that("mTLS endpoint selection is shared with request construction", {
       client_uses_mtls_endpoint(client)
     )
   )
+})
+
+test_that("UserInfo assessment follows resource binding rather than token authentication", {
+  local_options(shinyOAuth.tls_min_version = "1.2")
+  for (canonical_https in c(FALSE, TRUE)) {
+    canonical <- if (canonical_https) {
+      "https://issuer.example/userinfo"
+    } else {
+      "http://localhost:9876/userinfo"
+    }
+    alias <- if (canonical_https) {
+      "http://localhost:9877/userinfo"
+    } else {
+      "https://mtls.issuer.example/userinfo"
+    }
+    client <- oauth21_test_client(
+      list(
+        token_auth_style = "tls_client_auth",
+        use_nonce = FALSE,
+        userinfo_url = canonical,
+        mtls_endpoint_aliases = list(userinfo_endpoint = alias)
+      ),
+      mtls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
+      mtls_client_key_file = mtls_pem_fixture("client-key.pem")
+    )
+    seen <- NULL
+    local_mocked_bindings(req_with_retry = function(req, ...) {
+      seen <<- req
+      httr2::response(
+        status = 200L,
+        headers = list("content-type" = "application/json"),
+        body = charToRaw('{"sub":"user"}')
+      )
+    })
+    get_userinfo(
+      client,
+      OAuthToken(access_token = "opaque", token_type = "Bearer")
+    )
+    settings <- oauth21_endpoint_settings(client, client@provider, "userinfo")
+    expect_identical(settings[["url"]], seen[["url"]])
+    expect_false(settings[["mtls"]])
+    expect_null(seen[["options"]][["sslcert"]])
+    report <- check_oauth21(client, context = list(operations = "userinfo"))
+    expect_identical(
+      oauth21_finding(report, "https.userinfo")[["status"]],
+      if (canonical_https) "unknown" else "fail"
+    )
+    expect_identical(
+      report[["configuration_compliant"]],
+      if (canonical_https) NA else FALSE
+    )
+    report <- check_oauth21(
+      client@provider,
+      context = list(operations = "userinfo")
+    )
+    expect_identical(
+      oauth21_finding(report, "https.userinfo")[["status"]],
+      "unknown"
+    )
+    client@provider@mtls_client_certificate_bound_access_tokens <- TRUE
+    client@mtls_certificate_bound_access_tokens <- TRUE
+    settings <- oauth21_endpoint_settings(client, client@provider, "userinfo")
+    expect_identical(settings[["url"]], alias)
+    expect_true(settings[["mtls"]])
+    expect_identical(settings[["https"]], !canonical_https)
+  }
 })
 
 test_that("runtime TLS defaults are unknown unless the linked curl default is known", {

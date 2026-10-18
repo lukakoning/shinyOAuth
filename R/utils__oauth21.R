@@ -124,12 +124,31 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     isTRUE(client@mtls_certificate_bound_access_tokens) &&
     isTRUE(provider@mtls_client_certificate_bound_access_tokens) &&
     cert
-  mtls <- style %in% MTLS_TOKEN_AUTH_STYLES || bound
+  # UserInfo is a resource request. Token-endpoint client authentication does
+  # not imply certificate-bound access tokens (RFC 8705 Section 3).
+  mtls <- if (endpoint == "userinfo") {
+    !is.null(client) && token_requires_mtls_sender_constraint(NULL, client)
+  } else {
+    style %in% MTLS_TOKEN_AUTH_STYLES || bound
+  }
   url <- resolve_provider_endpoint_url(
     provider,
     paste0(endpoint, "_endpoint"),
     mtls
   )
+  https <- oauth21_https(url)
+  if (endpoint == "userinfo" && !mtls) {
+    alias <- resolve_provider_endpoint_url(provider, "userinfo_endpoint", TRUE)
+    if (
+      !identical(https, oauth21_https(alias)) &&
+        (is.null(client) || (cert && https))
+    ) {
+      # Provider-only binding policy is unknown. Even without configured binding
+      # intent, observed token cnf can select an alias when credentials exist.
+      # An insecure canonical endpoint still fails: ordinary Bearer uses it.
+      https <- NA
+    }
+  }
   secret <- effective("client_secret")
   has_secret <- is_valid_string(secret)
   credentials <- switch(
@@ -224,6 +243,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
   list(
     style = style,
     url = url,
+    https = https,
     credentials = credentials,
     mtls = mtls,
     mtls_backend = mtls_backend,

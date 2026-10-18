@@ -220,7 +220,7 @@ check_oauth21 <- function(
     auth_settings[[endpoint]] <- effective
     add(
       paste0("https.", endpoint),
-      status(oauth21_https(effective[["url"]])),
+      status(effective[["https"]]),
       paste(
         "The selected",
         endpoint,
