@@ -42,8 +42,13 @@ authorization_context_json <- function(context) {
     err_config("Authorization context must be a bounded named data list")
   }
   remaining <- authorization_context_max_bytes
-  check <- function(value, depth = 0L) {
-    if (depth > 8L || is.object(value) || length(value) > 128L) {
+  check <- function(value, depth = 0L, field = NULL) {
+    # Scope fields can carry the SMART profile's larger permission sets.
+    # Client-specific validation still runs before requests and acceptance.
+    scope_field <- field %in% c("requested_scopes", "accepted_extra_scopes")
+    max_items <- if (isTRUE(scope_field)) 256L else 128L
+    max_bytes <- if (isTRUE(scope_field)) 65536L else 8192L
+    if (depth > 8L || is.object(value) || length(value) > max_items) {
       invalid()
     }
     remaining <<- remaining -
@@ -67,13 +72,15 @@ authorization_context_json <- function(context) {
       ) {
         invalid()
       }
-      lapply(value, check, depth = depth + 1L)
+      for (i in seq_along(value)) {
+        check(value[[i]], depth + 1L, if (is.null(nm)) NULL else nm[[i]])
+      }
     } else if (
       !(is.character(value) || is.logical(value) || is.numeric(value)) ||
         anyNA(value) ||
         !is.null(attributes(value)) ||
         (is.numeric(value) && !all(is.finite(value))) ||
-        (is.character(value) && sum(nchar(value, type = "bytes")) > 8192L)
+        (is.character(value) && sum(nchar(value, type = "bytes")) > max_bytes)
     ) {
       invalid()
     }

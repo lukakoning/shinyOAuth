@@ -1,7 +1,12 @@
 # Explicit managed refresh requests use the target's existing scope evaluator.
 # The request is bounded plain data so the same policy can run in async workers.
-authorization_scopes_bounded <- function(scopes) {
+authorization_scopes_bounded <- function(scopes, client = NULL) {
   scopes <- normalize_scope_tokens(scopes)
+  if (!is.null(client) && client_uses_smart_scopes(client)) {
+    return(
+      length(scopes) <= 256L && sum(nchar(scopes, type = "bytes")) <= 65536L
+    )
+  }
   length(scopes) <= 128L && sum(nchar(scopes, type = "bytes")) <= 8192L
 }
 
@@ -56,6 +61,15 @@ authorization_extra_scopes <- function(client, token) {
     return(character())
   }
   if (client_uses_smart_scopes(client)) {
+    if (
+      connection_scope_covered(
+        client,
+        token@granted_scopes,
+        effective_client_scopes(client)
+      )
+    ) {
+      return(character())
+    }
     return(Filter(
       function(scope) {
         !connection_scope_covered(
@@ -81,7 +95,13 @@ authorization_extra_scope_limit <- function(client, scopes, requested) {
       token_targets_configured(client)) ||
       (!client_uses_smart_scopes(client) &&
         length(intersect(scopes, effective_client_scopes(client)))) ||
-      !authorization_scopes_bounded(c(requested, scopes))
+      !(if (client_uses_smart_scopes(client)) {
+        authorization_scopes_bounded(requested, client) &&
+          authorization_scopes_bounded(scopes, client) &&
+          sum(nchar(c(requested, scopes), type = "bytes")) <= 65536L
+      } else {
+        authorization_scopes_bounded(c(requested, scopes))
+      })
   ) {
     err_input("Invalid previously accepted extra scope limit")
   }
@@ -132,7 +152,7 @@ authorization_scope_limit <- function(client, scopes) {
   }
   if (
     !length(scopes) ||
-      !authorization_scopes_bounded(scopes) ||
+      !authorization_scopes_bounded(scopes, client) ||
       !(if (token_targets_configured(client)) {
         token_target_authorization_allowed(client, scopes)
       } else {
@@ -168,15 +188,17 @@ refresh_scope_request <- function(
   if (
     !is.character(scopes) ||
       (!length(scopes) && !evidence_only) ||
-      length(scopes) > 128L ||
       anyNA(scopes) ||
-      sum(nchar(scopes, type = "bytes")) > 8192L
+      length(scopes) > (if (client_uses_smart_scopes(client)) 256L else 128L) ||
+      sum(nchar(scopes, type = "bytes")) >
+        (if (client_uses_smart_scopes(client)) 65536L else 8192L) ||
+      !authorization_scopes_bounded(scopes, client)
   ) {
     err_input("Refresh scopes must be a non-empty, bounded character vector")
   }
   validate_scopes(scopes)
   scopes <- normalize_scope_tokens(scopes)
-  if (length(scopes) > 128L) {
+  if (!authorization_scopes_bounded(scopes, client)) {
     err_input("Too many refresh scope tokens")
   }
   covered <- function(requested, granted) {
@@ -292,15 +314,26 @@ validate_refresh_scope_grant <- function(client, granted, request) {
   if (is.null(request)) {
     return(invisible(NULL))
   }
+  limit <- union(request[["scopes"]], request[["accepted_extra_scopes"]])
+  if (
+    client_uses_smart_scopes(client) &&
+      length(request[["accepted_extra_scopes"]])
+  ) {
+    # Keep each side within the SMART comparison budget. Broader prior grants
+    # can already cover many requested tokens despite having different spelling.
+    extra <- request[["accepted_extra_scopes"]]
+    coverage <- client_scope_coverage(client, request[["scopes"]], extra)
+    limit <- union(
+      extra,
+      union(coverage[["missing"]], coverage[["indeterminate"]])
+    )
+  }
   if (
     !identical(
       client_scope_coverage(
         client,
         granted,
-        union(
-          request[["scopes"]],
-          request[["accepted_extra_scopes"]]
-        )
+        limit
       )[["status"]],
       "covered"
     )

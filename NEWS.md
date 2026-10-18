@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* SMART replacement authorization, explicit refresh narrowing and transaction
+  contexts support the profile's 256-scope / 64 KiB comparison budget throughout
+  the lifecycle. Overlapping request and broader grant evidence is compared
+  semantically. Configurable callback and state-envelope limits still apply.
+
 * SMART replacement authorization keeps configured or narrowed request limits
   when servers grant broader wildcard scopes. Actual grants remain separate
   evidence for replacement acceptance and prior-grant refresh checks.
