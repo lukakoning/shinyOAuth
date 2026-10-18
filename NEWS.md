@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Callback bridges limit each transaction to two pending candidates in a bounded
+  pool and reject overflow instead of evicting an unexpired response. Shared
+  callback stores now require atomic `set_if_absent` as well as `take` to
+  preserve pending candidates when workers race.
+
 * `check_oauth21()` compares canonical assertion algorithm names so supported
   EdDSA and Ed25519 credentials agree with runtime signing at token, PAR,
   introspection, and revocation endpoints.

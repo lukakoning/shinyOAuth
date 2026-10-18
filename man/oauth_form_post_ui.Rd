@@ -64,20 +64,21 @@ temporarily, and redirects the browser to a normal Shiny page with a
 single-use handle. Raw callback values do not appear in that redirected URL.
 For \code{"form_post.jwt"}, it also validates the signed response using
 JWT Secured Authorization Response Mode (JARM).
-Every POST receives its own random handle. Handles expire after 120 seconds
-or the smaller of \code{state_payload_max_age} and the state store lifetime.
+Every accepted POST receives its own random handle. Handles expire after
+120 seconds or the smaller of \code{state_payload_max_age} and the state store lifetime.
 The module still verifies the browser binding before consuming login state.
 Each client/provider/module namespace has a separate bounded pool in the
-state store: 256 partitions of
-eight slots, with each login assigned to one partition. When a partition is
-full, a new POST replaces its oldest response. An expired or replaced handle
-fails validation; it can never select the replacement response. Completed
-logins invalidate their remaining candidates and remove locally known
-candidates where possible. Shared stores still require atomic \code{take}.
-With \code{set_if_absent}, slots are claimed atomically with a short TTL; a full
-partition rejects new callbacks until a slot is consumed or expires.
-Otherwise, concurrent writers can also
-replace a candidate; handle validation fails closed in that case. Pending
+state store: 1024 partitions of two slots, with each login assigned to one
+partition. A full partition rejects new callbacks until a slot is consumed
+or expires; a POST never evicts an unexpired response. Hash collisions can
+share capacity, but repeating one callback cannot displace another login's
+pending response. An expired handle fails validation and cannot select a
+later response stored in the same slot. Completed
+logins invalidate their remaining candidates. The process-local memory store
+also removes sibling candidates; shared stores retain them until expiry to
+avoid deleting a new occupant during cleanup. Shared stores require atomic
+\code{take} and \code{set_if_absent}; slots are claimed atomically with a short TTL.
+The process-local memory store reuses only consumed or expired slots. Pending
 form-post handles issued by an older version must be restarted after upgrading.
 }
 \section{Deployment behind a proxy}{

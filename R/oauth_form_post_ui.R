@@ -28,20 +28,21 @@
 #' single-use handle. Raw callback values do not appear in that redirected URL.
 #' For `"form_post.jwt"`, it also validates the signed response using
 #' JWT Secured Authorization Response Mode (JARM).
-#' Every POST receives its own random handle. Handles expire after 120 seconds
-#' or the smaller of `state_payload_max_age` and the state store lifetime.
+#' Every accepted POST receives its own random handle. Handles expire after
+#' 120 seconds or the smaller of `state_payload_max_age` and the state store lifetime.
 #' The module still verifies the browser binding before consuming login state.
 #' Each client/provider/module namespace has a separate bounded pool in the
-#' state store: 256 partitions of
-#' eight slots, with each login assigned to one partition. When a partition is
-#' full, a new POST replaces its oldest response. An expired or replaced handle
-#' fails validation; it can never select the replacement response. Completed
-#' logins invalidate their remaining candidates and remove locally known
-#' candidates where possible. Shared stores still require atomic `take`.
-#' With `set_if_absent`, slots are claimed atomically with a short TTL; a full
-#' partition rejects new callbacks until a slot is consumed or expires.
-#' Otherwise, concurrent writers can also
-#' replace a candidate; handle validation fails closed in that case. Pending
+#' state store: 1024 partitions of two slots, with each login assigned to one
+#' partition. A full partition rejects new callbacks until a slot is consumed
+#' or expires; a POST never evicts an unexpired response. Hash collisions can
+#' share capacity, but repeating one callback cannot displace another login's
+#' pending response. An expired handle fails validation and cannot select a
+#' later response stored in the same slot. Completed
+#' logins invalidate their remaining candidates. The process-local memory store
+#' also removes sibling candidates; shared stores retain them until expiry to
+#' avoid deleting a new occupant during cleanup. Shared stores require atomic
+#' `take` and `set_if_absent`; slots are claimed atomically with a short TTL.
+#' The process-local memory store reuses only consumed or expired slots. Pending
 #' form-post handles issued by an older version must be restarted after upgrading.
 #'
 #' @section Deployment behind a proxy:
@@ -1109,9 +1110,11 @@ oauth_form_post_slot_key <- function(slot, namespace) {
 
 oauth_form_post_candidate_slots <- function(state) {
   # Fixed keys keep both per-transaction and total storage bounded even when
-  # shared-store writers race. Hash collisions only share eviction capacity.
-  partition <- as.integer(openssl::sha256(charToRaw(state))[[1L]])
-  partition * 8L + seq_len(8L)
+  # shared-store writers race. Each state can occupy at most two of 2048 slots;
+  # collisions share capacity but never permit eviction of live candidates.
+  digest <- as.integer(openssl::sha256(charToRaw(state)))
+  partition <- digest[[1L]] * 4L + digest[[2L]] %/% 64L
+  partition * 2L + seq_len(2L)
 }
 
 oauth_form_post_candidate_envelope <- function(client, sealed) {
@@ -1131,36 +1134,32 @@ oauth_form_post_candidate_envelope <- function(client, sealed) {
 oauth_form_post_candidate_slot <- function(client, state, id) {
   slots <- oauth_form_post_candidate_slots(state)
   namespace <- oauth_form_post_namespace(client, id)
-  timestamps <- vapply(
-    slots,
-    function(slot) {
-      sealed <- state_store_backend_call(
-        client@state_store[["get"]](
-          oauth_form_post_slot_key(slot, namespace),
-          missing = NULL
-        ),
-        "form_post_store_get"
-      )
-      envelope <- oauth_form_post_candidate_envelope(client, sealed)
-      stored_at <- envelope[["stored_at"]] %||% NULL
-      if (
-        !is.numeric(stored_at) ||
-          length(stored_at) != 1L ||
-          !is.finite(stored_at)
-      ) {
-        return(-Inf)
-      }
-      stored_at
-    },
-    numeric(1)
-  )
-  slots[[which.min(timestamps)]]
+  for (slot in slots) {
+    sealed <- state_store_backend_call(
+      client@state_store[["get"]](
+        oauth_form_post_slot_key(slot, namespace),
+        missing = NULL
+      ),
+      "form_post_store_get"
+    )
+    if (is.null(sealed)) return(slot)
+    envelope <- oauth_form_post_candidate_envelope(client, sealed)
+    fresh <- tryCatch(
+      oauth_form_post_validate_handle_freshness(client, envelope),
+      shinyOAuth_state_error = function(e) FALSE
+    )
+    if (!isTRUE(fresh)) return(slot)
+  }
+  NULL
 }
 
 oauth_form_post_store_remove_siblings <- function(client, state, id = NULL) {
   # Called only after browser-bound single-use state consumption. Cleanup is
   # best effort: stale candidates also fail the normal live-state check, and
   # the pool bounds retention even if a backend cannot remove an entry.
+  # Without compare-and-delete, a shared-store read followed by remove could
+  # delete a different transaction inserted after another worker took the slot.
+  if (!inherits(client@state_store, "cache_mem")) return(invisible(NULL))
   namespaces <- if (!is.null(id)) {
     oauth_form_post_namespace(client, id)
   } else {
@@ -1233,13 +1232,24 @@ oauth_form_post_store_set <- function(client, id, payload) {
     state_store_get(client, logical_state)
   }
   storage_state <- logical_state %||% payload[["state"]] %||% random_urlsafe(32)
-  slot <- oauth_form_post_candidate_slot(client, storage_state, id)
   store <- client@state_store
+  if (
+    !is.function(store[["set_if_absent"]]) && !inherits(store, "cache_mem") &&
+      !isTRUE(getOption("shinyOAuth.allow_non_atomic_state_store"))
+  ) {
+    err_config(c(
+      "form_post callback store requires atomic `$set_if_absent(key, value, ttl)` method",
+      "i" = paste(
+        "Provide atomic insertion via `custom_cache(set_if_absent = ...)`",
+        "or use `cachem::cache_mem()` for a single process."
+      )
+    ))
+  }
   if (is.function(store[["set_if_absent"]])) {
     # Atomic insert avoids overwriting a concurrent writer. With no CAS
     # replacement API, preserve occupied slots and rely on their short TTL.
     slots <- oauth_form_post_candidate_slots(storage_state)
-    for (candidate in unique(c(slot, slots))) {
+    for (candidate in slots) {
       handle <- paste0(
         "fp1_",
         sprintf("%04d", candidate),
@@ -1259,29 +1269,32 @@ oauth_form_post_store_set <- function(client, id, payload) {
       )
       if (isTRUE(claimed)) return(handle)
     }
-    err_invalid_state(
-      "form_post callback namespace partition is full",
-      context = list(phase = "form_post_store_set")
-    )
-  }
-  handle <- paste0("fp1_", sprintf("%04d", slot), "_", random_urlsafe(43))
-  key <- oauth_form_post_cache_key(id, handle, client)
-  sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
+  } else {
+    slot <- oauth_form_post_candidate_slot(client, storage_state, id)
+    if (!is.null(slot)) {
+      handle <- paste0("fp1_", sprintf("%04d", slot), "_", random_urlsafe(43))
+      key <- oauth_form_post_cache_key(id, handle, client)
+      sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
 
-  tryCatch(
-    client@state_store[["set"]](key, sealed_payload),
-    error = function(e) {
-      err_invalid_state(
-        sprintf(
-          "Failed to persist form_post callback payload: %s",
-          class(e)[[1L]]
-        ),
-        context = list(phase = "form_post_store_set")
+      tryCatch(
+        store[["set"]](key, sealed_payload),
+        error = function(e) {
+          err_invalid_state(
+            sprintf(
+              "Failed to persist form_post callback payload: %s",
+              class(e)[[1L]]
+            ),
+            context = list(phase = "form_post_store_set")
+          )
+        }
       )
+      return(handle)
     }
+  }
+  err_invalid_state(
+    "form_post callback namespace partition is full",
+    context = list(phase = "form_post_store_set")
   )
-
-  handle
 }
 
 oauth_form_post_store_take <- function(client, id, handle) {

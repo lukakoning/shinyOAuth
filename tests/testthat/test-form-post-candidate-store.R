@@ -1,19 +1,10 @@
 test_that("candidate storage has a per-namespace bound even without backend expiry", {
   client <- make_test_client(response_mode = "form_post")
   backing <- cachem::cache_mem(max_age = Inf, max_n = Inf)
-  client@state_store <- custom_cache(
-    get = backing[["get"]],
-    set = backing[["set"]],
-    remove = backing[["remove"]],
-    take = function(key, missing = NULL) {
-      value <- backing[["get"]](key, missing = missing)
-      backing[["remove"]](key)
-      value
-    }
-  )
-  # Cover every partition, then fill and overflow each. The custom store has
+  client@state_store <- form_post_test_atomic_cache(backing)
+  # Cover and fill every partition, then overflow a full one. The custom store has
   # neither a key-listing method nor an expiry policy to enforce this for us.
-  states <- paste0("candidate-pool-fixture-", seq_len(4096L))
+  states <- paste0("candidate-pool-fixture-", seq_len(16384L))
   partitions <- vapply(
     states,
     function(state) {
@@ -22,9 +13,9 @@ test_that("candidate storage has a per-namespace bound even without backend expi
     integer(1)
   )
   states <- states[!duplicated(partitions)]
-  expect_length(states, 256L)
+  expect_length(states, 1024L)
   for (state in states) {
-    for (i in seq_len(9L)) {
+    for (i in seq_len(2L)) {
       shinyOAuth:::oauth_form_post_store_set(
         client,
         "auth",
@@ -32,6 +23,12 @@ test_that("candidate storage has a per-namespace bound even without backend expi
       )
     }
   }
+  expect_error(
+    shinyOAuth:::oauth_form_post_store_set(
+      client, "auth", list(code = "overflow", state = states[[1L]])
+    ),
+    "partition is full"
+  )
   expect_length(backing[["keys"]](), 2048L)
 })
 
@@ -55,6 +52,26 @@ test_that("malformed and pre-upgrade handles are rejected before store access", 
       "Invalid form_post callback handle"
     )
   }
+})
+
+test_that("custom callback stores require atomic insertion before writing candidates", {
+  client <- make_test_client(response_mode = "form_post")
+  backing <- client@state_store
+  client@state_store <- custom_cache(
+    get = backing[["get"]], set = backing[["set"]], remove = backing[["remove"]],
+    take = function(key, missing = NULL) {
+      value <- backing[["get"]](key, missing = missing)
+      backing[["remove"]](key)
+      value
+    }
+  )
+  expect_error(
+    shinyOAuth:::oauth_form_post_store_set(
+      client, "auth", list(code = "fixture", state = "fixture-state")
+    ),
+    class = "shinyOAuth_config_error", regexp = "requires atomic.*set_if_absent"
+  )
+  expect_length(backing[["keys"]](), 0L)
 })
 
 test_that("candidate handles have a short expiry independent of store TTL", {
@@ -83,13 +100,13 @@ test_that("candidate handles have a short expiry independent of store TTL", {
   )
 })
 
-test_that("evicted and foreign-module handles cannot consume a replacement", {
+test_that("expired and foreign-module handles cannot consume a replacement", {
   client <- make_test_client(response_mode = "form_post")
-  # Equal timestamps also exercise the tie case when a slot is recycled.
+  # Both candidates remain valid until their own lifetime has elapsed.
   now <- Sys.time()
   local_mocked_bindings(Sys.time = function() now, .package = "base")
   handles <- vapply(
-    seq_len(9L),
+    seq_len(2L),
     function(i) {
       shinyOAuth:::oauth_form_post_store_set(
         client,
@@ -99,23 +116,33 @@ test_that("evicted and foreign-module handles cannot consume a replacement", {
     },
     character(1)
   )
-  expect_length(unique(handles), 9L)
+  expect_length(unique(handles), 2L)
+  expect_error(
+    shinyOAuth:::oauth_form_post_store_set(
+      client, "auth", list(code = "overflow", state = "fixture-state")
+    ),
+    "partition is full"
+  )
+  now <- now + 121
+  replacement <- shinyOAuth:::oauth_form_post_store_set(
+    client, "auth", list(code = "replacement", state = "fixture-state")
+  )
   expect_error(
     shinyOAuth:::oauth_form_post_store_take(client, "auth", handles[[1L]]),
     "handle mismatch"
   )
   expect_error(
-    shinyOAuth:::oauth_form_post_store_take(client, "other", handles[[9L]]),
+    shinyOAuth:::oauth_form_post_store_take(client, "other", replacement),
     "missing or already consumed"
   )
   payload <- shinyOAuth:::oauth_form_post_store_take(
     client,
     "auth",
-    handles[[9L]]
+    replacement
   )
-  expect_identical(payload[["code"]], "response-9")
+  expect_identical(payload[["code"]], "replacement")
   expect_error(
-    shinyOAuth:::oauth_form_post_store_take(client, "auth", handles[[9L]]),
+    shinyOAuth:::oauth_form_post_store_take(client, "auth", replacement),
     "missing or already consumed"
   )
 })
@@ -161,7 +188,8 @@ test_that("a slot replacement racing atomic take never supplies another response
   expect_null(backing[["get"]](key, missing = NULL))
 })
 
-test_that("racing candidate writers keep distinct identities within the same slot", {
+test_that("explicit non-atomic fallback still binds racing candidate identities", {
+  local_options(shinyOAuth.allow_non_atomic_state_store = TRUE)
   client <- make_test_client(response_mode = "form_post")
   backing <- client@state_store
   interleave <- TRUE
@@ -206,7 +234,7 @@ test_that("racing candidate writers keep distinct identities within the same slo
 
 test_that("sibling cleanup preserves other transactions sharing a partition", {
   client <- make_test_client(response_mode = "form_post")
-  states <- paste0("cleanup-fixture-", seq_len(257L))
+  states <- paste0("cleanup-fixture-", seq_len(1025L))
   partitions <- vapply(
     states,
     function(state) {
@@ -252,4 +280,25 @@ test_that("sibling cleanup preserves other transactions sharing a partition", {
     ]],
     states[[2L]]
   )
+})
+
+test_that("shared sibling cleanup cannot delete a racing replacement", {
+  client <- make_test_client(response_mode = "form_post")
+  backing <- client@state_store
+  handle <- shinyOAuth:::oauth_form_post_store_set(
+    client, "auth", list(code = "pending", state = "fixture-state")
+  )
+  key <- shinyOAuth:::oauth_form_post_cache_key("auth", handle, client)
+  original <- backing[["get"]](key)
+  store <- form_post_test_atomic_cache(backing)
+  client@state_store <- custom_cache(
+    get = store[["get"]], set = store[["set"]],
+    remove = function(...) stop("unsafe shared cleanup"),
+    take = store[["take"]], set_if_absent = store[["set_if_absent"]],
+    info = store[["info"]]
+  )
+  expect_silent(shinyOAuth:::oauth_form_post_store_remove_siblings(
+    client, "fixture-state", "auth"
+  ))
+  expect_identical(backing[["get"]](key), original)
 })

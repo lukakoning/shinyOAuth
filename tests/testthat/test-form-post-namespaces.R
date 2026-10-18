@@ -16,17 +16,7 @@ test_that("shared callback storage isolates clients, providers, keys and modules
       second_id <- "another-module"
     }
     backing <- cachem::cache_mem(max_age = Inf, max_n = Inf)
-    shared <- custom_cache(
-      get = backing[["get"]],
-      set = backing[["set"]],
-      remove = backing[["remove"]],
-      take = function(key, missing = NULL) {
-        value <- backing[["get"]](key, missing = missing)
-        backing[["remove"]](key)
-        value
-      },
-      info = function() list(max_age = 300)
-    )
+    shared <- form_post_test_atomic_cache(backing)
     first@state_store <- shared
     second@state_store <- shared
     pending <- oauth_form_post_store_set(
@@ -36,15 +26,21 @@ test_that("shared callback storage isolates clients, providers, keys and modules
     )
     pending_key <- oauth_form_post_cache_key(second_id, pending, second)
     original <- backing[["get"]](pending_key)
-    for (i in seq_len(24L)) {
+    for (i in seq_len(2L)) {
       oauth_form_post_store_set(
         first,
         "auth",
         list(code = "other", state = "same-partition")
       )
     }
+    expect_error(
+      oauth_form_post_store_set(
+        first, "auth", list(code = "overflow", state = "same-partition")
+      ),
+      "partition is full"
+    )
     expect_identical(backing[["get"]](pending_key), original)
-    expect_length(backing[["keys"]](), 9L)
+    expect_length(backing[["keys"]](), 3L)
     expect_identical(
       oauth_form_post_store_take(second, second_id, pending)[["code"]],
       "pending"
@@ -84,7 +80,7 @@ test_that("atomic callback claims preserve concurrent occupants and enforce name
     }
   )
   handles <- vapply(
-    seq_len(7L),
+    seq_len(1L),
     function(i) {
       oauth_form_post_store_set(
         client,
@@ -94,8 +90,8 @@ test_that("atomic callback claims preserve concurrent occupants and enforce name
     },
     ""
   )
-  expect_length(unique(handles), 7L)
-  expect_length(backing[["keys"]](), 8L)
+  expect_length(unique(handles), 1L)
+  expect_length(backing[["keys"]](), 2L)
   expect_error(
     oauth_form_post_store_set(
       client,

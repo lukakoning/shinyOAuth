@@ -1,3 +1,22 @@
+# Process-local stand-in for a shared backend's atomic primitives. Tests that
+# omit backend expiry can still verify the bridge's fixed key bound.
+form_post_test_atomic_cache <- function(backing) {
+  custom_cache(
+    get = backing[["get"]], set = backing[["set"]],
+    remove = backing[["remove"]], info = function() list(max_age = 300),
+    take = function(key, missing = NULL) {
+      value <- backing[["get"]](key, missing = missing)
+      backing[["remove"]](key)
+      value
+    },
+    set_if_absent = function(key, value, ttl = NULL) {
+      if (!is.null(backing[["get"]](key, missing = NULL))) return(FALSE)
+      backing[["set"]](key, value)
+      TRUE
+    }
+  )
+}
+
 # Exercise response isolation through the POST boundary and two independent
 # Shiny sessions. All responses and token exchanges are local test fixtures.
 expect_form_post_candidate_isolation <- function(

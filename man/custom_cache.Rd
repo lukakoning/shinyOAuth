@@ -61,9 +61,12 @@ uniqueness constraint with expiry. shinyOAuth uses this operation to make
 forced JWKS-refresh throttling safe across workers. Without it, forced
 refresh is disabled for shared/custom caches; \code{\link[cachem:cache_mem]{cachem::cache_mem()}} keeps
 its process-local serialized fallback.
-Callback bridges use it when available to avoid overwriting concurrent
-candidates; full partitions then reject callbacks until slots expire or
-are consumed. Other state-store writes still use \code{set}.}
+Callback bridges require it for custom/shared stores to avoid overwriting
+concurrent candidates; full partitions reject callbacks until slots expire
+or are consumed. The process-local memory store uses a serialized fallback.
+The existing \code{shinyOAuth.allow_non_atomic_state_store = TRUE} option also
+permits non-atomic callback insertion, with no protection against concurrent
+writers replacing a candidate. Other state-store writes still use \code{set}.}
 }
 \value{
 An R6 object exposing cachem-like \verb{[["get"]]/[["set"]]/[["remove"]]/[["info"]]} methods
@@ -100,6 +103,8 @@ that can do this. Use the same \code{state_key} and matching provider/client
 settings on every worker. Separate reads and deletes, including those in
 \code{\link[cachem:cache_disk]{cachem::cache_disk()}}, cannot ensure single-use state under concurrent access.
 See the \href{https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes}{deployment guidance}.
+For the \code{form_post} and \code{form_post.jwt} callback bridges, also implement
+\code{set_if_absent} to reserve callback slots without replacing pending responses.
 
 Store values are small R lists; preserve them without interpreting fields.
 Pending login records in external stores are AES-GCM sealed with a distinct

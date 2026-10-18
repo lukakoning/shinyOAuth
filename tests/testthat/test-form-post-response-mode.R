@@ -505,7 +505,12 @@ test_that("oauth_form_post_store_take rejects expired handles", {
       rm(list = key, envir = backing)
       value
     },
-    info = function() list(max_age = 3600)
+    info = function() list(max_age = 3600),
+    set_if_absent = function(key, value, ttl = NULL) {
+      if (exists(key, envir = backing, inherits = FALSE)) return(FALSE)
+      assign(key, value, envir = backing)
+      TRUE
+    }
   )
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@state_store <- store
@@ -795,6 +800,10 @@ test_that("oauth_form_post_ui hides internal callback POST failures", {
       missing
     },
     set = function(key, value) stop("backend-secret-detail", call. = FALSE),
+    info = function() list(max_age = 600),
+    set_if_absent = function(key, value, ttl = NULL) {
+      stop("backend-secret-detail", call. = FALSE)
+    },
     remove = function(key) {
       if (exists(key, envir = backing, inherits = FALSE)) {
         rm(list = key, envir = backing)
@@ -1975,24 +1984,26 @@ test_that("repeated POSTs have bounded independent candidates and consumed state
   state_payload <- shinyOAuth:::state_payload_decrypt_validate(cli, sealed)
   first <- ui(make_form_post_req(body = paste0("code=ok&state=", enc)))
   expect_identical(first[["status"]], 303L)
-  locations <- first[["headers"]][["Location"]]
+  second <- ui(make_form_post_req(body = paste0("code=other&state=", enc)))
+  expect_identical(second[["status"]], 303L)
+  expect_false(identical(
+    second[["headers"]][["Location"]], first[["headers"]][["Location"]]
+  ))
   for (i in seq_len(20L)) {
     again <- ui(make_form_post_req(body = paste0("code=other&state=", enc)))
-    expect_identical(again[["status"]], 303L)
-    expect_false(again[["headers"]][["Location"]] %in% locations)
-    locations <- c(locations, again[["headers"]][["Location"]])
-    expect_lte(length(cli@state_store[["keys"]]()), 9L)
+    expect_identical(again[["status"]], 400L)
+    expect_null(again[["headers"]][["Location"]])
+    expect_length(cli@state_store[["keys"]](), 3L)
   }
-  expect_length(cli@state_store[["keys"]](), 9L)
+  expect_length(cli@state_store[["keys"]](), 3L)
   handle <- shiny::parseQueryString(first[["headers"]][["Location"]])[[
     "shinyOAuth_form_post"
   ]]
-  expect_error(
-    shinyOAuth:::oauth_form_post_store_take(cli, "auth", handle),
-    "handle mismatch"
-  )
+  expect_identical(shinyOAuth:::oauth_form_post_store_take(
+    cli, "auth", handle
+  )[["code"]], "ok")
   latest_handle <- shiny::parseQueryString(
-    again[["headers"]][["Location"]]
+    second[["headers"]][["Location"]]
   )[["shinyOAuth_form_post"]]
   stored <- shinyOAuth:::oauth_form_post_store_take(cli, "auth", latest_handle)
   expect_identical(stored[["code"]], "other")
@@ -2077,5 +2088,78 @@ test_that("maximum accepted callback fields survive the form-post bridge", {
     for (field in names(fields)) {
       expect_identical(payload[[field]], fields[[field]])
     }
+  }
+})
+
+test_that("replaying a colliding transaction preserves another browser's pending callback", {
+  for (backend in c("memory", "shared")) {
+    client <- make_test_client(response_mode = "form_post")
+    if (backend == "shared") {
+      client@state_store <- form_post_test_atomic_cache(client@state_store)
+    }
+    browser <- valid_browser_token()
+    seen <- new.env(parent = emptyenv())
+    pair <- NULL
+    # Find two real live transactions sharing a partition without relying on
+    # fixed random state values. The pigeonhole bound makes this deterministic.
+    for (i in seq_len(1025L)) {
+      url <- prepare_call(client, browser_token = browser)
+      state <- parse_query_param(url, "state", decode = TRUE)
+      payload <- shinyOAuth:::state_payload_decrypt_validate(client, state)
+      partition <- as.character(oauth_form_post_candidate_slots(payload[["state"]])[[1L]])
+      candidate <- list(state = state, payload = payload)
+      if (!is.null(seen[[partition]])) {
+        pair <- list(victim = seen[[partition]], attacker = candidate)
+        break
+      }
+      seen[[partition]] <- candidate
+    }
+    expect_false(is.null(pair))
+    ui <- oauth_form_post_ui(shiny::fluidPage(), id = "auth", client = client)
+    post <- function(candidate, code) ui(make_form_post_req(
+      body = httr2::url_query_build(list(code = code, state = candidate[["state"]]))
+    ))
+    victim <- post(pair[["victim"]], "victim-code")
+    expect_identical(victim[["status"]], 303L)
+    handle <- parse_query_param(
+      victim[["headers"]][["Location"]], "shinyOAuth_form_post", decode = TRUE
+    )
+    key <- oauth_form_post_cache_key("auth", handle, client)
+    original <- client@state_store[["get"]](key)
+    attacker <- post(pair[["attacker"]], "attacker-code")
+    expect_identical(attacker[["status"]], 303L)
+    for (i in seq_len(8L)) {
+      expect_identical(post(pair[["attacker"]], "attacker-code")[["status"]], 400L)
+    }
+    expect_identical(client@state_store[["get"]](key), original)
+    expect_silent(shinyOAuth:::state_store_get(client, pair[["victim"]][["payload"]][["state"]]))
+
+    exchanges <- 0L
+    testthat::local_mocked_bindings(
+      swap_code_for_token_set = function(client, code, code_verifier) {
+        exchanges <<- exchanges + 1L
+        expect_identical(code, "victim-code")
+        list(access_token = "victim-access", token_type = "Bearer", expires_in = 300)
+      },
+      .package = "shinyOAuth"
+    )
+    shiny::testServer(oauth_module_server, args = list(
+      id = "auth", client = client, auto_redirect = FALSE, indefinite_session = TRUE
+    ), expr = {
+      values[["browser_token"]] <- browser
+      values[[".process_query"]](victim[["headers"]][["Location"]])
+      session[["flushReact"]]()
+      expect_true(isTRUE(values[["authenticated"]]))
+      expect_identical(values[["token"]]@access_token, "victim-access")
+    })
+    expect_identical(exchanges, 1L)
+    expect_error(oauth_form_post_store_take(client, "auth", handle), "missing or already consumed")
+    # Victim cleanup must preserve the colliding transaction's own candidate.
+    attacker_handle <- parse_query_param(
+      attacker[["headers"]][["Location"]], "shinyOAuth_form_post", decode = TRUE
+    )
+    expect_identical(oauth_form_post_store_take(
+      client, "auth", attacker_handle
+    )[["code"]], "attacker-code")
   }
 })
