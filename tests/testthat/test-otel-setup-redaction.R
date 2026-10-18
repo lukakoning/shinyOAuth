@@ -8,11 +8,40 @@ test_that("real SDK message diagnostics follow exposure policy and preserve work
     shinyOAuth.otel_logging_enabled = TRUE
   )
   withr::local_envvar(c(
-    OTEL_R_TRACES_EXPORTER = "INVALID-SDK-SENTINEL",
-    OTEL_R_LOGS_EXPORTER = "INVALID-SDK-SENTINEL"
+    OTEL_R_TRACES_EXPORTER = "INVALID-SDK-SENTINEL https://review-user:review-password@example.invalid/export?key=review-key",
+    OTEL_R_LOGS_EXPORTER = "INVALID-SDK-SENTINEL https://review-user:review-password@example.invalid/export?key=review-key"
   ))
   operations <- list(
     span = function() with_otel_span("diagnostic-test", "success"),
+    nested = function() {
+      with_otel_span("diagnostic-nested", {
+        otel_set_span_attributes(attributes = list(test = TRUE))
+        otel_mark_span_ok()
+        otel_record_token_operation_result(list(status = "ok"))
+        otel_note_error(simpleError("synthetic"))
+        otel_record_http_result(httr2::response(status = 200L))
+        "success"
+      })
+    },
+    token = function() {
+      verify_token_set(
+        make_test_client(use_nonce = FALSE),
+        list(
+          access_token = "synthetic",
+          token_type = "Bearer",
+          expires_in = 3600
+        ),
+        nonce = NULL
+      )
+      "success"
+    },
+    context = function() {
+      otel_capture_context()
+      otel_span_context_from_headers(list(
+        traceparent = "00-01234567890123456789012345678901-0123456789012345-01"
+      ))
+      "success"
+    },
     log = function() {
       otel_emit_log(list(type = "sample"))
       "success"
@@ -46,6 +75,7 @@ test_that("real SDK message diagnostics follow exposure policy and preserve work
       for (warning in warnings) {
         expect_s3_class(warning, "shinyOAuth_event_sink_warning")
         detail <- conditionMessage(warning)
+        expect_false(grepl("review-password|review-key", detail))
         expect_match(detail, "otel_error_message")
         expect_match(detail, "diagnostic digest: [a-f0-9]+")
         expect_identical(

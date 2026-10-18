@@ -235,7 +235,7 @@ otel_attributes <- function(x) {
     return(NULL)
   }
 
-  otel::as_attributes(attrs)
+  otel_sdk_call(otel::as_attributes(attrs), "attribute conversion")
 }
 
 #' Extract an HTTP host for telemetry
@@ -1157,11 +1157,14 @@ otel_set_span_attributes <- function(span = NULL, attributes = list()) {
     return(invisible(NULL))
   }
 
-  span <- span %||% otel::get_active_span()
+  span <- span %||% otel_sdk_call(otel::get_active_span(), "active span lookup")
   for (nm in names(attributes)) {
     value <- otel_scalar_attribute(attributes[[nm]])
     if (!is.null(value)) {
-      try(span[["set_attribute"]](nm, value), silent = TRUE)
+      try(
+        otel_sdk_call(span[["set_attribute"]](nm, value), "span attributes"),
+        silent = TRUE
+      )
     }
   }
 
@@ -1181,8 +1184,8 @@ otel_mark_span_ok <- function(span = NULL) {
     return(invisible(NULL))
   }
 
-  span <- span %||% otel::get_active_span()
-  try(span[["set_status"]]("ok"), silent = TRUE)
+  span <- span %||% otel_sdk_call(otel::get_active_span(), "active span lookup")
+  try(otel_sdk_call(span[["set_status"]]("ok"), "span status"), silent = TRUE)
   invisible(NULL)
 }
 
@@ -1193,7 +1196,7 @@ otel_record_token_operation_result <- function(result, span = NULL) {
   if (!otel_tracing_enabled()) {
     return(invisible(NULL))
   }
-  span <- span %||% otel::get_active_span()
+  span <- span %||% otel_sdk_call(otel::get_active_span(), "active span lookup")
   outcome <- result[["status"]] %||% "unknown"
   status <- if (identical(outcome, "ok")) {
     "ok"
@@ -1217,9 +1220,12 @@ otel_record_token_operation_result <- function(result, span = NULL) {
   )
   if (status != "unset") {
     try(
-      span[["set_status"]](
-        status,
-        description = if (status == "error") outcome else NULL
+      otel_sdk_call(
+        span[["set_status"]](
+          status,
+          description = if (status == "error") outcome else NULL
+        ),
+        "span status"
       ),
       silent = TRUE
     )
@@ -1242,7 +1248,7 @@ otel_note_error <- function(error, span = NULL, attributes = list()) {
     return(invisible(NULL))
   }
 
-  span <- span %||% otel::get_active_span()
+  span <- span %||% otel_sdk_call(otel::get_active_span(), "active span lookup")
   if (is.null(error)) {
     return(invisible(NULL))
   }
@@ -1279,16 +1285,22 @@ otel_note_error <- function(error, span = NULL, attributes = list()) {
 
   otel_set_span_attributes(span = span, attributes = span_attrs)
   try(
-    span[["add_event"]](
-      "exception",
-      attributes = otel_attributes(event_attrs)
+    otel_sdk_call(
+      span[["add_event"]](
+        "exception",
+        attributes = otel_attributes(event_attrs)
+      ),
+      "span event"
     ),
     silent = TRUE
   )
   try(
-    span[["set_status"]](
-      "error",
-      description = error_type
+    otel_sdk_call(
+      span[["set_status"]](
+        "error",
+        description = error_type
+      ),
+      "span status"
     ),
     silent = TRUE
   )
@@ -1314,7 +1326,7 @@ otel_record_http_result <- function(resp, span = NULL) {
     return(invisible(NULL))
   }
 
-  span <- span %||% otel::get_active_span()
+  span <- span %||% otel_sdk_call(otel::get_active_span(), "active span lookup")
   status_code <- tryCatch(httr2::resp_status(resp), error = function(...) NULL)
   content_type <- otel_http_content_type(resp = resp)
   otel_set_span_attributes(
@@ -1342,7 +1354,7 @@ otel_record_http_result <- function(resp, span = NULL) {
       attributes = list(error.type = as.character(status_code))
     )
     try(
-      span[["set_status"]]("error"),
+      otel_sdk_call(span[["set_status"]]("error"), "span status"),
       silent = TRUE
     )
   }
@@ -1482,9 +1494,12 @@ otel_capture_context <- function(span = NULL) {
   headers <- tryCatch(
     {
       if (!is.null(span)) {
-        span[["get_context"]]()[["to_http_headers"]]()
+        otel_sdk_call(
+          span[["get_context"]]()[["to_http_headers"]](),
+          "context capture"
+        )
       } else {
-        otel::pack_http_context()
+        otel_sdk_call(otel::pack_http_context(), "context capture")
       }
     },
     error = function(...) NULL
@@ -1542,7 +1557,10 @@ otel_span_context_from_headers <- function(otel_headers) {
   }
 
   parent_ctx <- tryCatch(
-    otel::extract_http_context(otel_headers),
+    otel_sdk_call(
+      otel::extract_http_context(otel_headers),
+      "context extraction"
+    ),
     error = function(...) NULL
   )
   if (is.null(parent_ctx)) {
@@ -1550,7 +1568,10 @@ otel_span_context_from_headers <- function(otel_headers) {
   }
 
   if (
-    !isTRUE(tryCatch(parent_ctx[["is_valid"]](), error = function(...) FALSE))
+    !isTRUE(tryCatch(
+      otel_sdk_call(parent_ctx[["is_valid"]](), "context validation"),
+      error = function(...) FALSE
+    ))
   ) {
     return(NULL)
   }

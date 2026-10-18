@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Internal OpenTelemetry active-span, attribute and propagation calls apply
+  the diagnostic exposure policy, including SDK setup messages during nested
+  OAuth operations and context capture.
+
 * PAR expiry deadlines start conservatively at the successful request attempt,
   including a DPoP nonce retry. Responses already expired on delivery are
   rejected before a browser redirect can be returned.
