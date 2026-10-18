@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* DPoP and mTLS confirmation checks preserve access-token JSON types and reject
+  arrays in place of confirmation objects or scalar thumbprints. Token responses
+  and introspection use the same confirmation-shape validation.
+
 * Manual UserInfo retrieval applies subject-binding and signed-response policies
   independently of automatic retrieval. Both provider constructors require a
   validated ID token by default for an OIDC UserInfo endpoint, including when

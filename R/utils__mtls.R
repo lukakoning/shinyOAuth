@@ -387,11 +387,15 @@ token_cnf_x5t_s256 <- function(token = NULL, access_token = NULL, cnf = NULL) {
 #' @keywords internal
 #' @noRd
 normalize_token_cnf <- function(cnf) {
-  if (is.data.frame(cnf)) {
-    cnf <- as.list(cnf)
-  }
-  if (!is.list(cnf)) {
+  if (is.null(cnf)) {
     return(list())
+  }
+  if (
+    !is.list(cnf) || is.data.frame(cnf) ||
+      (length(cnf) && (is.null(names(cnf)) || anyNA(names(cnf)) ||
+        any(!nzchar(names(cnf))) || anyDuplicated(names(cnf))))
+  ) {
+    err_token("Invalid token cnf: expected a JSON object")
   }
 
   # SHA-256 thumbprints contain 32 bytes in canonical unpadded base64url.

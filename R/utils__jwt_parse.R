@@ -352,7 +352,8 @@ jwt_compact_parts_or_null <- function(jwt, allow_empty_signature = TRUE) {
 #' errors.
 #'
 #' @param jwt Compact JWT candidate string.
-#' @return Parsed payload list, or `NULL` when `jwt` is opaque or malformed.
+#' @return Parsed payload list preserving JSON arrays as lists, or `NULL` when
+#'   `jwt` is opaque or malformed.
 #' @keywords internal
 #' @noRd
 parse_jwt_payload_or_null <- function(jwt) {
@@ -388,13 +389,12 @@ parse_jwt_payload_or_null <- function(jwt) {
         "JWT payload",
         on_error = function(message) stop(message)
       )
-      jsonlite::fromJSON(payload_text, simplifyVector = TRUE)
+      # Binding checks must distinguish a string from a one-element array and
+      # a confirmation object from an array containing one object.
+      jsonlite::fromJSON(payload_text, simplifyVector = FALSE)
     },
     error = function(...) NULL
   )
-  if (is.data.frame(payload)) {
-    payload <- as.list(payload)
-  }
   if (!is.list(payload)) {
     return(NULL)
   }
