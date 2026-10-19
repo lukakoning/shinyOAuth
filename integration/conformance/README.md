@@ -15,6 +15,14 @@ local TLS. DPoP proofs are verified against the signed Request Object's key
 thumbprint; mTLS authenticates an actual TLS peer certificate. PKCE is checked
 before issuing an access token. All keys and certificates are temporary.
 
+Authorization requests must include an outer `client_id` matching the registered
+client and signed Request Object, as required by
+[RFC 9101 sections 5 and 6.3](https://www.rfc-editor.org/rfc/rfc9101.html#section-5)
+and [RFC 9126 section 4](https://www.rfc-editor.org/rfc/rfc9126.html#section-4).
+Fresh valid requests test missing, empty and mismatched outer IDs over both GET
+and POST, with direct JAR and PAR references. Invalid outer IDs do not consume a
+PAR handle; a subsequent correctly bound request succeeds and replay is rejected.
+
 The same independent fixture verifies RS256 and RS384 client assertions for both legacy
 endpoint-audience/`JWT` and issuer-audience/`client-authentication+jwt` profiles.
 Each profile completes code and refresh exchanges, introspection and revocation,

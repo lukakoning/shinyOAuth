@@ -85,6 +85,15 @@ run_strict_as <- function(alg) {
       httr2::req_perform()
   }
   query <- function(url) httr2::url_parse(url)[["query"]]
+  authorization_input <- function(params, method) {
+    endpoint <- paste0(issuer, "/authorize")
+    if (method == "GET") {
+      return(paste0(endpoint, "?", httr2::url_query_build(params)))
+    }
+    list(method = "POST", url = endpoint, fields = lapply(names(params), function(name) {
+      list(name = name, value = params[[name]])
+    }))
+  }
   # Required signing is an AS policy, independently enforced before code issue.
   unsigned <- get(paste0(
     issuer,
@@ -119,7 +128,7 @@ run_strict_as <- function(alg) {
     response <- get(paste0(
       issuer,
       "/authorize?",
-      httr2::url_query_build(list(request = jwt))
+      httr2::url_query_build(list(client_id = "client", request = jwt))
     ))
     testthat::expect_identical(httr2::resp_status(response), 400L)
     testthat::expect_identical(
@@ -139,6 +148,33 @@ run_strict_as <- function(alg) {
     httr2::resp_body_json(replay)[["reason"]],
     "jar_replay"
   )
+
+  # Fresh valid signatures isolate the outer-ID requirement from JAR replay,
+  # signature and claim checks. PAR references retain their handle on rejection.
+  for (method in c("GET", "POST")) {
+    for (use_par in c(FALSE, TRUE)) {
+      configured <- client
+      if (use_par) configured@provider@par_url <- paste0(issuer, "/par")
+      for (variant in c("missing", "empty", "mismatched")) {
+        params <- query(shinyOAuth::prepare_call(configured, browser_token = browser))
+        params[["client_id"]] <- switch(variant,
+          missing = NULL, empty = "", mismatched = "attacker")
+        response <- get(authorization_input(params, method))
+        testthat::expect_identical(httr2::resp_status(response), 400L,
+          info = paste(alg, method, use_par, variant))
+        testthat::expect_identical(httr2::resp_body_json(response)[["reason"]],
+          "authorization_client_id")
+        if (use_par) {
+          params[["client_id"]] <- "client"
+          response <- get(authorization_input(params, method))
+          testthat::expect_identical(httr2::resp_status(response), 302L)
+          replay <- get(authorization_input(params, method))
+          testthat::expect_identical(httr2::resp_body_json(replay)[["reason"]],
+            "par_replay")
+        }
+      }
+    }
+  }
 
   for (authorization_method in c("GET", "POST")) {
     for (mode in c(

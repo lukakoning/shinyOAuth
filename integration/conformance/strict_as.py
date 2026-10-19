@@ -207,6 +207,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.respond(200, {'keys': [{'kty': 'RSA', 'kid': 'as', 'use': 'sig',
                     'alg': jws_alg, 'n': b64(n.n.to_bytes(256, 'big')), 'e': b64(n.e.to_bytes(3, 'big'))}]})
             if path in ('/authorize', '/par'):
+                if path == '/authorize':
+                    # RFC 9101 sections 5/6.3 and RFC 9126 section 4: the
+                    # outer ID must match this fixture's registered client,
+                    # also enforced inside every signed Request Object.
+                    require(params.get('client_id') == 'client', 'authorization_client_id')
                 if 'request_uri' in params:
                     require(params['request_uri'] in pushed, 'par_replay')
                     claims = pushed.pop(params['request_uri'])

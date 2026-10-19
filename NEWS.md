@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* The independent JAR/PAR conformance fixture rejects authorization requests with
+  missing, empty or mismatched outer client identifiers, with negative checks for
+  both GET and POST authorization.
+
 * Async callbacks fall back to synchronous execution before code redemption when
   custom JWKS caches have not declared worker safety. `custom_cache()` gains an
   explicit `worker_safe` opt-in for backends that reconnect resources inside each
