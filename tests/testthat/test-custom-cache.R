@@ -84,4 +84,23 @@ test_that("custom_cache supplies benign defaults", {
   expect_identical(cache[["info"]](), list())
   expect_null(cache[["remove"]]("anything"))
   expect_identical(cache[["get"]]("something", missing = 42), 42)
+  expect_false(cache[["worker_safe"]])
+})
+
+test_that("custom_cache requires an explicit scalar worker-safety declaration", {
+  for (worker_safe in list(NULL, NA, 1, "TRUE", c(TRUE, FALSE))) {
+    expect_error(custom_cache(
+      get = function(key, missing = NULL) missing,
+      set = function(key, value) invisible(NULL),
+      remove = function(key) invisible(NULL),
+      worker_safe = worker_safe
+    ), "worker_safe must be TRUE or FALSE", class = "shinyOAuth_input_error")
+  }
+  cache <- custom_cache(
+    get = function(key, missing = NULL) missing,
+    set = function(key, value) invisible(NULL),
+    remove = function(key) invisible(NULL),
+    worker_safe = TRUE
+  )
+  expect_true(cache[["worker_safe"]])
 })

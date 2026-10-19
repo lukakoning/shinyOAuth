@@ -184,6 +184,9 @@
 #'   before reuse. Advertised freshness also accounts for `Age` and `Expires`.
 #'   The package also attempts a rate-limited refresh when a key is missing
 #'   or no longer verifies a signature.
+#'   For async login and token operations, custom caches use synchronous fallback
+#'   unless they explicitly declare worker safety; see [custom_cache()] and its
+#'   `worker_safe` argument.
 #'
 #' @param jwks_pins Optional character vector of RFC 7638 JWK thumbprints
 #'   (base64url) to pin against. If non-empty, fetched JWKS must contain keys

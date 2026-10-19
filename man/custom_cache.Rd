@@ -4,7 +4,15 @@
 \alias{custom_cache}
 \title{Create a custom state store or signing-key cache}
 \usage{
-custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
+custom_cache(
+  get,
+  set,
+  remove,
+  take = NULL,
+  info = NULL,
+  set_if_absent = NULL,
+  worker_safe = FALSE
+)
 }
 \arguments{
 \item{get}{A function(key, missing = NULL) -> value. Required.
@@ -67,6 +75,10 @@ or are consumed. The process-local memory store uses a serialized fallback.
 The existing \code{shinyOAuth.allow_non_atomic_state_store = TRUE} option also
 permits non-atomic callback insertion, with no protection against concurrent
 writers replacing a candidate. Other state-store writes still use \code{set}.}
+
+\item{worker_safe}{Logical, default \code{FALSE}. Explicitly declares that this
+backend can be serialized and used in another R process. Applies when the
+cache is used as \code{jwks_cache}; see the worker-safety requirements above.}
 }
 \value{
 An R6 object exposing cachem-like \verb{[["get"]]/[["set"]]/[["remove"]]/[["info"]]} methods
@@ -139,6 +151,17 @@ rate-limited forced key refreshes across workers, for example when the provider
 rotates its signing keys. Without that atomic operation, forced refresh is
 disabled for custom/shared caches. Use separate stores or key namespaces for
 login state and signing keys when they require different expiry policies.
+
+For asynchronous login and token operations, a custom signing-key cache
+defaults to synchronous fallback. Set \code{worker_safe = TRUE} only if its
+functions and captured values
+remain usable after serialization into a new R process. Open database/file
+connections and other process-bound resources must not be captured; open and
+close connections inside each operation instead. Serialization success alone
+does not establish worker safety. Standard \code{cachem::cache_mem()} and
+\code{cachem::cache_disk()} backends support worker dispatch without this opt-in.
+Other cache implementations can expose a scalar logical \code{worker_safe} member
+with the same contract. State stores are not used in callback workers.
 }
 
 \examples{

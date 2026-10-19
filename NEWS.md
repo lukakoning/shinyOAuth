@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Async callbacks fall back to synchronous execution before code redemption when
+  custom JWKS caches have not declared worker safety. `custom_cache()` gains an
+  explicit `worker_safe` opt-in for backends that reconnect resources inside each
+  operation; serialization success alone no longer qualifies these caches.
+
 * Exact numeric claim constraints distinguish adjacent large integers and retain
   binary64 precision in ordinary claims requests and signed JWTs. Unsupported
   non-finite or out-of-safe-range numeric constraints are rejected; larger exact

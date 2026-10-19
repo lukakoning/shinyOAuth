@@ -334,7 +334,10 @@ HTTP cache directives can shorten this lifetime. Responses marked
 \code{no-store} are not retained, and \code{no-cache} responses are fetched again
 before reuse. Advertised freshness also accounts for \code{Age} and \code{Expires}.
 The package also attempts a rate-limited refresh when a key is missing
-or no longer verifies a signature.}
+or no longer verifies a signature.
+For async login and token operations, custom caches use synchronous fallback
+unless they explicitly declare worker safety; see \code{\link[=custom_cache]{custom_cache()}} and its
+\code{worker_safe} argument.}
 
 \item{jwks_pins}{Optional character vector of RFC 7638 JWK thumbprints
 (base64url) to pin against. If non-empty, fetched JWKS must contain keys

@@ -77,6 +77,17 @@
 #' disabled for custom/shared caches. Use separate stores or key namespaces for
 #' login state and signing keys when they require different expiry policies.
 #'
+#' For asynchronous login and token operations, a custom signing-key cache
+#' defaults to synchronous fallback. Set `worker_safe = TRUE` only if its
+#' functions and captured values
+#' remain usable after serialization into a new R process. Open database/file
+#' connections and other process-bound resources must not be captured; open and
+#' close connections inside each operation instead. Serialization success alone
+#' does not establish worker safety. Standard `cachem::cache_mem()` and
+#' `cachem::cache_disk()` backends support worker dispatch without this opt-in.
+#' Other cache implementations can expose a scalar logical `worker_safe` member
+#' with the same contract. State stores are not used in callback workers.
+#'
 #' @param get A function(key, missing = NULL) -> value. Required.
 #' Should return the stored value, or the `missing` argument if the key is not
 #' present. The `missing` parameter is required because shinyOAuth passes it
@@ -138,6 +149,10 @@
 #'   TTL information from `[["info"]]()` is used to align browser cookie max age in
 #'   [oauth_module_server()].
 #'
+#' @param worker_safe Logical, default `FALSE`. Explicitly declares that this
+#'   backend can be serialized and used in another R process. Applies when the
+#'   cache is used as `jwks_cache`; see the worker-safety requirements above.
+#'
 #' @return An R6 object exposing cachem-like `[["get"]]/[["set"]]/[["remove"]]/[["info"]]` methods
 #'   and the optional `[["take"]]` and `[["set_if_absent"]]` atomic methods.
 #'
@@ -150,8 +165,12 @@ custom_cache <- function(
   remove,
   take = NULL,
   info = NULL,
-  set_if_absent = NULL
+  set_if_absent = NULL,
+  worker_safe = FALSE
 ) {
+  if (!is.logical(worker_safe) || length(worker_safe) != 1L || is.na(worker_safe)) {
+    err_input("custom_cache: worker_safe must be TRUE or FALSE")
+  }
   # Validate required functions
   if (!is.function(get)) {
     err_input(
@@ -192,6 +211,7 @@ custom_cache <- function(
   CacheCls <- R6::R6Class(
     classname = "shinyOAuthCustomCache",
     public = list(
+      worker_safe = FALSE,
       # Set to a function in initialize() when an atomic take implementation is
       # provided; remains NULL otherwise.  Duck-typing check
       # is.function(store[["take"]]) naturally returns TRUE/FALSE.
@@ -203,8 +223,10 @@ custom_cache <- function(
         .remove,
         .take,
         .info,
-        .set_if_absent
+        .set_if_absent,
+        .worker_safe
       ) {
+        self[["worker_safe"]] <- .worker_safe
         private[[".get"]] <- .get
         private[[".set"]] <- .set
         private[[".remove"]] <- .remove
@@ -249,5 +271,5 @@ custom_cache <- function(
     )
   )
 
-  CacheCls[["new"]](get, set, remove, take, info, set_if_absent)
+  CacheCls[["new"]](get, set, remove, take, info, set_if_absent, worker_safe)
 }

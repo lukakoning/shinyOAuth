@@ -1917,12 +1917,13 @@ oauth_module_server_impl <- function(
           )
           register_prepared(prepared)
           worker <- prepare_client_for_worker(client)
+          dispatch <- async_dispatch
           if (is.null(worker)) {
-            err_config(
-              "Authorization client cannot be serialized for async work"
-            )
+            warn_async_worker_fallback()
+            worker <- client
+            dispatch <- dispatch_in_current_process
           }
-          async_dispatch(
+          dispatch(
             quote({
               .ns <- asNamespace("shinyOAuth")
               .ns[["with_async_options"]](captured_options, {
@@ -3390,10 +3391,13 @@ oauth_module_server_impl <- function(
         return(tryCatch(
           {
             worker <- prepare_client_for_worker(client)
+            dispatch <- async_dispatch
             if (is.null(worker)) {
-              err_config("JARM client cannot be serialized for async work")
+              warn_async_worker_fallback()
+              worker <- client
+              dispatch <- dispatch_in_current_process
             }
-            async_dispatch(
+            dispatch(
               quote({
                 .ns <- asNamespace("shinyOAuth")
                 .ns[["with_async_options"]](captured_options, {
@@ -4209,23 +4213,12 @@ oauth_module_server_impl <- function(
                         # Build a serialization-safe client for the worker.
                         # The state_store is already consumed on the main thread, so
                         # prepare_client_for_worker() replaces it with a lightweight
-                        # serializable dummy and verifies overall serializability.
+                        # serializable dummy and checks worker safety/serialization.
                         client_for_worker <- prepare_client_for_worker(client)
                         async_fallback <- is.null(client_for_worker)
 
                         if (async_fallback) {
-                          warn_pkg(
-                            "Async callback fell back to synchronous execution",
-                            c(
-                              "!" = "Client object contains non-serializable components, so async callback dispatch could not proceed.",
-                              "i" = "Falling back to synchronous callback execution",
-                              "i" = "Custom state_store or JWKS cache backends must be serializable for async mode",
-                              "i" = "Consider using cachem::cache_mem() or cachem::cache_disk() for async compatibility"
-                            ),
-                            class = "shinyOAuth_async_serialization_fallback",
-                            .frequency = "once",
-                            .frequency_id = "shinyOAuth-async-serialization-fallback"
-                          )
+                          warn_async_worker_fallback()
                           # Fall back to synchronous execution using pre-computed values
                           # (state_store was already consumed above, so we must use
                           # handle_callback_internal with the pre-fetched data)

@@ -2007,6 +2007,21 @@ dispatch_token_async <- function(
   captured_trace_id <- trace_id
   parent_shiny_session <- normalize_shiny_session_context(shiny_session)
 
+  worker_client <- prepare_client_for_worker(client)
+  if (is.null(worker_client)) {
+    warn_async_worker_fallback()
+    return(tryCatch(
+      promises::promise_resolve(do.call(
+        get(function_name, envir = asNamespace("shinyOAuth"), inherits = FALSE),
+        c(call_args, list(async = FALSE, shiny_session = shiny_session))
+      )),
+      error = function(error) promises::promise_reject(error)
+    ))
+  }
+  for (name in intersect(c("client", "oauth_client"), names(call_args))) {
+    call_args[[name]] <- worker_client
+  }
+
   # Capture shinyOAuth.* options for propagation to the async worker.
   # This ensures audit hooks, HTTP settings, and other options are
   # available in the worker process.
