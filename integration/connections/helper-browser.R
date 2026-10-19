@@ -68,7 +68,9 @@ retention_browser_wait <- function(
       page <- retention_browser_value(
         browser,
         paste0(
-          "({path:location.pathname, provider:document.querySelector('#provider')?.textContent,",
+          "({path:location.pathname, protocol:location.protocol,",
+          "documentProtocol:new URL(document.documentURI).protocol, shiny:!!window.Shiny,",
+          "provider:document.querySelector('#provider')?.textContent,",
           "result:document.querySelector('#result')?.textContent,",
           "errors:(()=>{try{return JSON.parse(document.querySelector('#snapshot').textContent).errors}",
           "catch(_){return null}})()})"
@@ -155,7 +157,9 @@ retention_browser_setup <- function(
   https_providers = FALSE,
   .env = parent.frame()
 ) {
-  port <- httpuv::randomPort()
+  # httpuv's unsafe-port list omits some ports blocked by Chrome (e.g. 10080).
+  # Use the dynamic range so HTTP readiness also implies a browser-usable port.
+  port <- httpuv::randomPort(min = 49152L, max = 65535L)
   if (https) {
     python <- Sys.which(
       if (.Platform[["OS.type"]] == "windows") "py" else "python3"

@@ -19,7 +19,7 @@ permissions_start <- function(root, output, app_origin, .env = parent.frame()) {
   directory <- file.path(root, "integration/smart/permissions")
   runtime <- file.path(output, "runtime")
   dir.create(runtime)
-  port <- httpuv::randomPort()
+  port <- httpuv::randomPort(min = 49152L, max = 65535L)
   origin <- paste0("https://localhost:", port)
   jsonlite::write_json(
     list(origin = origin, callback = paste0(app_origin, "/callback")),

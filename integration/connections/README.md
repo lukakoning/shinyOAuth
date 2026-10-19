@@ -25,6 +25,12 @@ The original runner creates two loopback OAuth providers, a Shiny process and is
 Chrome browser contexts, then cleans up the processes it owns. It uses invented
 credentials only. No Docker service or external account is required.
 
+The Shiny app and the SMART permissions fixture select browser-facing ports in
+the dynamic range 49152–65535. This avoids Chrome's blocked service ports, some
+of which are missing from httpuv's exclusions and still pass an HTTP readiness
+probe. Browser timeout diagnostics include the document protocol and Shiny
+presence to distinguish error pages from an application that is still loading.
+
 The [P6 shared-callback gate](shared-callbacks.md) uses one authorization server,
 two registrations and two resource paths on the same origin. It checks pending
 logins in separate tabs through the same callback URL, resource isolation and

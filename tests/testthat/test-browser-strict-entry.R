@@ -3,7 +3,7 @@ test_that("external browser navigation preserves a retained Strict owner", {
   skip_if_not(identical(Sys.getenv("SHINYOAUTH_BROWSER_TESTS"), "true"))
   skip_if_not_installed("chromote")
   for (same_site in c("Strict", "Lax")) {
-    port <- httpuv::randomPort()
+    port <- httpuv::randomPort(min = 49152L, max = 65535L)
     origin <- paste0("http://127.0.0.1:", port)
     repo <- normalizePath(test_path("../.."), winslash = "/")
     process <- callr::r_bg(function(repo, port, origin, same_site) {
