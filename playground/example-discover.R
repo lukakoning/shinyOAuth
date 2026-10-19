@@ -7,17 +7,16 @@ library(shiny)
   if (is.null(x)) fallback else x
 }
 
-library(shinyjs)
-
-# Configure provider and client (Google OIDC)
+# Register http://localhost:8100 as a redirect URI in your Google OAuth client,
+# then set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET.
+# Configure provider and client (Google OIDC).
 provider <- oauth_provider_oidc_discover(
-  # Microsoft example
-  issuer = "https://login.microsoftonline.com/common/v2.0",
-  # Optional overrides
-  name = "example-idp",
+  issuer = "https://accounts.google.com",
+  name = "google",
   id_token_validation = TRUE,
-  # Allow only asymmetric algs by default; include "HS256" only if you use it
-  id_token_allowed_algs = c("RS256", "ES256")
+  id_token_allowed_algs = "RS256",
+  # Google's discovery document hosts its public signing keys on this host.
+  jwks_host_allow_only = "www.googleapis.com"
 )
 
 client <- oauth_client(
@@ -30,7 +29,6 @@ client <- oauth_client(
 
 # UI
 ui <- fluidPage(
-  useShinyjs(),
   h3("OAuth demo (Google OIDC)"),
   uiOutput("oauth_error"),
   tags[["hr"]](),
@@ -75,7 +73,7 @@ server <- function(input, output, session) {
 
   output[["user_info"]] <- renderPrint({
     req(auth[["token"]])
-    auth[["token"]]@user
+    auth[["token"]]@userinfo
   })
 
   observeEvent(

@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* The discovery playground consistently uses Google OIDC, pins Google's signing
+  key host, and reads the token's `userinfo` property. Its unused shinyjs
+  dependency has been removed.
+
 * The independent JAR/PAR conformance fixture rejects authorization requests with
   missing, empty or mismatched outer client identifiers, with negative checks for
   both GET and POST authorization.
