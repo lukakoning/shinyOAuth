@@ -4,7 +4,7 @@ validate_claim_constraint_numbers <- function(value) {
   if (is.list(value)) {
     invisible(lapply(value, validate_claim_constraint_numbers))
   } else if (is.numeric(value)) {
-    if (any(!is.finite(value)) || any(abs(value) > 2^53 - 1)) {
+    if (!all(is.finite(value)) || any(abs(value) > 2^53 - 1)) {
       err_config(paste(
         "claims numeric constraints must be finite and within the safe",
         "integer range (+/- (2^53 - 1)); use strings for larger identifiers"
