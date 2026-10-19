@@ -1,18 +1,22 @@
 test_that("numeric claims survive ordinary parameters and every asymmetric JAR algorithm", {
-  value <- 1.23456789
+  value <- 1.2345678901234567
   claims <- list(
     id_token = list(
       level = list(value = value),
-      choices = list(values = c(value, 1e-10)),
-      nested = list(value = list(level = value, small = -0.123456789))
+      choices = list(values = c(value, 1e-100)),
+      nested = list(value = list(level = 1000000000000001, small = -0.123456789))
     ),
     userinfo = list(level = list(value = value))
   )
-  expected <- jsonlite::fromJSON(jsonlite::toJSON(
-    claims, auto_unbox = TRUE, digits = NA), simplifyVector = FALSE)
+  literal <- paste0(
+    '{"id_token":{"level":{"value":1.2345678901234567},',
+    '"choices":{"values":[1.2345678901234567,1e-100]},',
+    '"nested":{"value":{"level":1000000000000001,"small":-0.123456789}}},',
+    '"userinfo":{"level":{"value":1.2345678901234567}}}'
+  )
+  expected <- jsonlite::parse_json(literal, simplifyVector = FALSE)
   # Explicit JSON must also survive the second serialization inside JAR.
-  inputs <- list(claims, as.character(jsonlite::toJSON(claims,
-    auto_unbox = TRUE, digits = NA)))
+  inputs <- list(claims, literal)
   provider <- make_test_provider(use_nonce = TRUE)
   provider@issuer <- "https://issuer.example.com"
   provider@userinfo_url <- "https://issuer.example.com/userinfo"
@@ -45,15 +49,14 @@ test_that("numeric claims survive ordinary parameters and every asymmetric JAR a
           outbound_jwt_claim(parse_jwt_payload(jwt)), key,
           list(typ = "JWT", alg = alg))
         decoded <- jose::jwt_decode_sig(compatible, key[["pubkey"]])
-        expect_identical(decoded[["claims"]], jsonlite::fromJSON(
-          jsonlite::toJSON(expected, auto_unbox = TRUE, digits = NA)))
+        expect_identical(decoded[["claims"]], jsonlite::fromJSON(literal))
       }
     }
   }
 })
 
 test_that("strict ID token and UserInfo validation accept the exact requested number", {
-  value <- 1.23456789
+  value <- 1000000000000001
   client <- make_test_client(use_nonce = TRUE,
     claims = list(id_token = list(level = list(value = value)),
       userinfo = list(level = list(value = value))), claims_validation = "strict")
@@ -81,9 +84,11 @@ test_that("strict ID token and UserInfo validation accept the exact requested nu
   content_type <- "application/json"
   local_mocked_bindings(req_with_retry = function(...) httr2::response(
     status = 200L, headers = list("content-type" = content_type), body = charToRaw(body)))
-  for (returned in c(value, 1.2346)) {
+  for (returned in c(value, 1000000000000002)) {
     claims[["level"]] <- returned
-    json <- as.character(jsonlite::toJSON(claims, auto_unbox = TRUE, digits = NA))
+    json <- as.character(jsonlite::toJSON(claims, auto_unbox = TRUE, digits = 17))
+    # This expectation is independent of the package's outbound serializer.
+    expect_identical(jsonlite::parse_json(json)[["level"]], returned)
     token_set <- list(access_token = "synthetic", token_type = "Bearer", expires_in = 300,
       scope = "openid", id_token = sign(json))
     if (identical(returned, value)) {
@@ -101,4 +106,62 @@ test_that("strict ID token and UserInfo validation accept the exact requested nu
       }
     }
   }
+})
+
+test_that("exact claim comparison retains numeric types, precision and structure", {
+  pairs <- list(
+    c(1000000000000001, 1000000000000002),
+    c(1.2345678901234567, 1.2345678901234569)
+  )
+  for (pair in pairs) {
+    expected <- pair[[1]]
+    different <- pair[[2]]
+    for (wrap in list(identity, function(x) list(z = list(x, TRUE), a = "id"))) {
+      expect_true(claim_matches_requested_values(wrap(expected), list(wrap(expected))))
+      expect_false(claim_matches_requested_values(wrap(different), list(wrap(expected))))
+      expect_true(claim_matches_requested_values(wrap(expected),
+        list(wrap(different), wrap(expected))))
+      expect_false(claim_matches_requested_values(wrap("1"), list(wrap(1))))
+    }
+    for (target in c("id_token", "userinfo")) {
+      client <- make_test_client(use_nonce = TRUE, claims_validation = "strict",
+        claims = setNames(list(list(level = list(values = c(expected, -expected)))), target))
+      expect_no_error(validate_essential_claims(client, list(level = expected), target))
+      expect_no_error(validate_essential_claims(client, list(level = -expected), target))
+      expect_error(validate_essential_claims(client, list(level = different), target),
+        "Requested claim values not satisfied")
+    }
+  }
+  expect_true(claim_matches_requested_values(1L, list(1)))
+  expect_true(claim_matches_requested_values(-0, list(0)))
+  expect_false(claim_matches_requested_values(list(), list(setNames(list(), character()))))
+})
+
+test_that("HMAC JWTs preserve independently specified numeric claims", {
+  expected <- jsonlite::parse_json(
+    '{"id":1000000000000001,"decimal":1.2345678901234567,"tiny":1e-100}'
+  )
+  for (size in c(256L, 384L, 512L)) {
+    jwt <- encode_hmac_jwt_with_header(expected, strrep("s", 64),
+      list(typ = "JWT", alg = paste0("HS", size)), size)
+    expect_identical(parse_jwt_payload(jwt), expected)
+  }
+})
+
+test_that("numeric constraints outside the supported range fail before authorization", {
+  for (value in list(9007199254740992, -9007199254740992, Inf, NaN, NA_real_)) {
+    expect_error(claims_request_json(list(id_token = list(id = list(value = value)))),
+      "numeric constraints must be finite")
+  }
+  for (literal in c("9007199254740993", "-9007199254740993", "1e400")) {
+    expect_error(claims_request_json(paste0(
+      '{"id_token":{"id":{"value":', literal, '}}}'
+    )), "numeric constraints must be finite")
+  }
+  expect_identical(jsonlite::parse_json(claims_request_json(list(
+    id_token = list(id = list(value = 9007199254740991))
+  )))[["id_token"]][["id"]][["value"]], 9007199254740991)
+  expect_no_error(claims_request_json(
+    '{"id_token":{"id":{"value":"9007199254740993"}}}'
+  ))
 })

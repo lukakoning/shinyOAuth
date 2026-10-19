@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Exact numeric claim constraints distinguish adjacent large integers and retain
+  binary64 precision in ordinary claims requests and signed JWTs. Unsupported
+  non-finite or out-of-safe-range numeric constraints are rejected; larger exact
+  identifiers can be requested as strings.
+
 * Browser-token input is validated in its original form. Vectors and lists no
   longer adopt a valid first element, and malformed input produces only a scalar
   length diagnostic before requesting token repair.

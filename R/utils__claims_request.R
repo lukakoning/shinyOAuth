@@ -1,3 +1,19 @@
+# Reject numbers whose integer identity cannot be represented safely in R.
+# Decimal claims use R's binary64 precision; larger identifiers must be strings.
+validate_claim_constraint_numbers <- function(value) {
+  if (is.list(value)) {
+    invisible(lapply(value, validate_claim_constraint_numbers))
+  } else if (is.numeric(value)) {
+    if (any(!is.finite(value)) || any(abs(value) > 2^53 - 1)) {
+      err_config(paste(
+        "claims numeric constraints must be finite and within the safe",
+        "integer range (+/- (2^53 - 1)); use strings for larger identifiers"
+      ))
+    }
+  }
+  invisible(NULL)
+}
+
 #' Encode and validate an OIDC claims request
 #'
 #' Used by client validation and authorization construction so local enforcement
@@ -51,6 +67,9 @@ claims_request_json <- function(claims) {
         if (length(entry) == 0L) {
           names(entry) <- character()
         }
+        for (value in extract_requested_claim_values(entry)) {
+          validate_claim_constraint_numbers(value)
+        }
         if (
           "values" %in%
             names(entry) &&
@@ -68,7 +87,7 @@ claims_request_json <- function(claims) {
       claims,
       auto_unbox = TRUE,
       null = "null",
-      digits = NA
+      digits = 17
     ))
   } else if (!is_valid_string(claims)) {
     err_config(
@@ -119,6 +138,7 @@ claims_request_json <- function(claims) {
       }
       requested <- extract_requested_claim_values(entry)
       for (value in requested) {
+        validate_claim_constraint_numbers(value)
         validate_oidc_standard_claim_types(
           stats::setNames(list(value), name),
           err_config,

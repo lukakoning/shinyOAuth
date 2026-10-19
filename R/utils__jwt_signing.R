@@ -529,7 +529,7 @@ encode_asymmetric_jwt_with_header <- function(claims, key, header) {
       unclass(value),
       auto_unbox = TRUE,
       null = "null",
-      digits = NA
+      digits = 17
     ))))
   }
   header[["alg"]] <- alg
@@ -618,13 +618,13 @@ encode_hmac_jwt_with_header <- function(
     header,
     auto_unbox = TRUE,
     null = "null",
-    digits = NA
+    digits = 17
   )
   payload_json <- jsonlite::toJSON(
     claims,
     auto_unbox = TRUE,
     null = "null",
-    digits = NA
+    digits = 17
   )
 
   encoded_header <- base64url_encode(charToRaw(enc2utf8(header_json)))

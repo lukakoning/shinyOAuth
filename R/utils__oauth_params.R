@@ -709,7 +709,7 @@ canonicalize_claim_value <- function(value) {
       auto_unbox = TRUE,
       null = "null",
       na = "null",
-      digits = NA
+      digits = 17
     ),
     error = function(e) NULL
   )
@@ -736,9 +736,35 @@ canonicalize_claim_value <- function(value) {
 #' @keywords internal
 #' @noRd
 claim_matches_requested_values <- function(actual, requested) {
-  actual_value <- canonicalize_claim_value(actual)
-  requested_values <- vapply(requested, canonicalize_claim_value, character(1))
-  actual_value %in% requested_values
+  # Normalize R vectors/classes to their JSON types without rounding doubles.
+  # Compare the resulting values recursively, rather than formatted numbers.
+  normalize <- function(value) {
+    jsonlite::parse_json(canonicalize_claim_value(value), simplifyVector = FALSE)
+  }
+  equal <- function(actual, expected) {
+    if (is.list(actual) || is.list(expected)) {
+      if (!is.list(actual) || !is.list(expected) ||
+          length(actual) != length(expected) ||
+          !identical(names(actual), names(expected))) {
+        return(FALSE)
+      }
+      return(all(vapply(seq_along(actual), function(i) {
+        equal(actual[[i]], expected[[i]])
+      }, logical(1))))
+    }
+    if (is.numeric(actual) && is.numeric(expected)) {
+      return(all(is.finite(actual)) && all(is.finite(expected)) &&
+        all(abs(actual) <= 2^53 - 1) && all(abs(expected) <= 2^53 - 1) &&
+        identical(as.double(actual), as.double(expected)))
+    }
+    identical(actual, expected)
+  }
+  tryCatch({
+    actual_value <- normalize(actual)
+    any(vapply(requested, function(value) {
+      equal(actual_value, normalize(value))
+    }, logical(1)))
+  }, error = function(...) FALSE)
 }
 
 #' Format a claim value expectation
