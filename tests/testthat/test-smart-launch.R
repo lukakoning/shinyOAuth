@@ -107,6 +107,80 @@ test_that("EHR HTTP entry redirects before UI and binds an encrypted launch to i
   expect_length(f[["manager"]][["state"]][["launches"]], 1L)
 })
 
+test_that("SMART-enabled HTTP entry bounds queries before scanning on every route", {
+  f <- smart_launch_test_fixture()
+  local_mocked_bindings(
+    oauth_module_query_raw_values = function(...) stop("Query scanner ran"),
+    oauth_get_query_is_callback = function(...) stop("Callback scanner ran"),
+    req_with_retry = function(...) stop("Unexpected network call"),
+    .package = "shinyOAuth"
+  )
+  for (limit in c(oauth_callback_limits()[["query"]], 64L)) {
+    withr::local_options(shinyOAuth.callback_max_query_bytes = limit)
+    queries <- c(
+      paste0("theme=", strrep("x", limit + 1L)),
+      paste0("iss=https://ehr.example/fhir/R4&launch=", strrep("x", limit)),
+      paste(
+        rep("shinyOAuth_smart_launch=x", ceiling(limit / 24L) + 1L),
+        collapse = "&"
+      ),
+      paste0("%73hinyOAuth_smart_launch=", strrep("x", limit))
+    )
+    for (query in queries) {
+      expect_gt(nchar(query, type = "bytes"), limit)
+      for (path in c("/", "/launch", "/callback", "/wrong-route")) {
+        for (method in c("GET", "HEAD", "POST")) {
+          response <- f[["ui"]](manager_test_request(
+            method = method,
+            path = path,
+            query = query
+          ))
+          expect_identical(response[["status"]], 400L)
+          expect_identical(response[["headers"]][["Cache-Control"]], "no-store")
+          expect_null(response[["headers"]][["Set-Cookie"]])
+          if (method == "HEAD") expect_identical(response[["content"]], "")
+        }
+      }
+    }
+  }
+  expect_identical(f[["rendered"]][["count"]], 0L)
+  expect_length(f[["manager"]][["state"]][["launches"]], 0L)
+})
+
+test_that("SMART-enabled HTTP entry rejects malformed query shapes before scanning", {
+  f <- smart_launch_test_fixture()
+  local_mocked_bindings(
+    oauth_module_query_raw_values = function(...) stop("Query scanner ran"),
+    oauth_get_query_is_callback = function(...) stop("Callback scanner ran"),
+    req_with_retry = function(...) stop("Unexpected network call"),
+    .package = "shinyOAuth"
+  )
+  for (query in list(
+    character(),
+    c("theme=light", "shinyOAuth_smart_launch=x"),
+    NA_character_,
+    list("shinyOAuth_smart_launch=x"),
+    42,
+    raw(1L)
+  )) {
+    for (path in c("/", "/launch", "/callback")) {
+      for (method in c("GET", "HEAD", "POST")) {
+        response <- f[["ui"]](manager_test_request(
+          method = method,
+          path = path,
+          query = query
+        ))
+        expect_identical(response[["status"]], 400L)
+        expect_identical(response[["headers"]][["Cache-Control"]], "no-store")
+        expect_null(response[["headers"]][["Set-Cookie"]])
+        if (method == "HEAD") expect_identical(response[["content"]], "")
+      }
+    }
+  }
+  expect_identical(f[["rendered"]][["count"]], 0L)
+  expect_length(f[["manager"]][["state"]][["launches"]], 0L)
+})
+
 test_that("unapproved and mixed EHR entry fails before network or UI", {
   f <- smart_launch_test_fixture()
   local_mocked_bindings(

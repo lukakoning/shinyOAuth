@@ -163,6 +163,11 @@ oauth_connections_ui <- function(
   state[["ui_bound"]] <- TRUE
   ui <- function(req) {
     connection_manager_check(manager)
+    # Bound queries before URI resolution and SMART request classification.
+    rejected <- oauth_http_query_guard(req)
+    if (!is.null(rejected)) {
+      return(rejected)
+    }
     uri <- tryCatch(resolver(req), error = function(...) NULL)
     if (!connection_manager_same_origin(uri, manager[["app_origin"]])) {
       return(oauth_get_setup_error(
@@ -179,10 +184,6 @@ oauth_connections_ui <- function(
     )
     if (!is.null(launch_response)) {
       return(launch_response)
-    }
-    rejected <- oauth_http_query_guard(req)
-    if (!is.null(rejected)) {
-      return(rejected)
     }
     query <- req[["QUERY_STRING"]] %||% ""
     raw_callback <- oauth_get_query_is_callback(query)

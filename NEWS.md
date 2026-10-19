@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Connection-manager HTTP entry rejects oversized and malformed queries before
+  SMART launch classification, preventing unbounded parsing and allocation on
+  ordinary application routes as well as launch and callback routes.
+
 * Provider and discovery validation reject issuer identifiers with empty query
   components (`?`) before making discovery requests. Encoded path delimiters
   such as `%3F` remain valid.
