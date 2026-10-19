@@ -694,7 +694,7 @@ testthat::test_that("mixed none + client_secret_post prefers confidential auth",
 })
 
 
-testthat::test_that("when methods are not advertised, fall back to header (historic default)", {
+testthat::test_that("omitted auth methods use the OIDC client_secret_basic default", {
   testthat::skip_if_not_installed("webfakes")
   testthat::skip_on_cran() # webfakes subprocess can timeout on slow CRAN machines
   app <- webfakes::new_app()

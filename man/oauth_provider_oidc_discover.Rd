@@ -113,6 +113,9 @@ match the registration. Automatic selection prefers \code{"header"}, then \code{
 then \code{"public"} when \code{none} is advertised and PKCE is enabled. For a public
 client registration, set \code{token_auth_style = "public"} explicitly. JWT and
 mTLS methods must also be selected explicitly.
+Explicit choices must match the discovery metadata. If
+\code{token_endpoint_auth_methods_supported} is omitted, the OIDC default is
+\code{client_secret_basic} (\code{"header"}); other methods must be advertised.
 }
 \section{Discovery validation}{
 

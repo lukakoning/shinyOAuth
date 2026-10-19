@@ -10,6 +10,71 @@ strict_oidc_metadata <- function() {
   )
 }
 
+test_that("omitted token auth metadata permits only the OIDC Basic default", {
+  metadata <- strict_oidc_metadata()
+  local_mocked_bindings(.discover_fetch_response = function(req, issuer) {
+    httr2::response(
+      status_code = 200L,
+      headers = list(`content-type` = "application/json"),
+      body = charToRaw(jsonlite::toJSON(metadata, auto_unbox = TRUE))
+    )
+  })
+  for (pkce in c(TRUE, FALSE)) {
+    for (style in list(NULL, "header")) {
+      provider <- oauth_provider_oidc_discover(
+        metadata[["issuer"]], token_auth_style = style, use_pkce = pkce
+      )
+      expect_identical(provider@token_auth_style, "header")
+    }
+    for (style in c(
+      "public", "none", "body", "client_secret_jwt", "private_key_jwt",
+      "tls_client_auth", "self_signed_tls_client_auth"
+    )) {
+      expect_error(
+        oauth_provider_oidc_discover(
+          metadata[["issuer"]], token_auth_style = style, use_pkce = pkce
+        ),
+        "not advertised",
+        class = "shinyOAuth_config_error"
+      )
+    }
+  }
+
+  # Explicit advertisements continue to allow the corresponding methods.
+  methods <- c(
+    header = "client_secret_basic", body = "client_secret_post", public = "none",
+    client_secret_jwt = "client_secret_jwt", private_key_jwt = "private_key_jwt",
+    tls_client_auth = "tls_client_auth",
+    self_signed_tls_client_auth = "self_signed_tls_client_auth"
+  )
+  for (style in names(methods)) {
+    metadata[["token_endpoint_auth_methods_supported"]] <- list(methods[[style]])
+    provider <- oauth_provider_oidc_discover(
+      metadata[["issuer"]], token_auth_style = style, use_pkce = TRUE
+    )
+    expect_identical(provider@token_auth_style, style)
+  }
+})
+
+test_that("empty token auth metadata cannot bypass advertised-method checks", {
+  metadata <- strict_oidc_metadata()
+  metadata[["token_endpoint_auth_methods_supported"]] <- list()
+  local_mocked_bindings(.discover_fetch_response = function(req, issuer) {
+    httr2::response(
+      status_code = 200L,
+      headers = list(`content-type` = "application/json"),
+      body = charToRaw(jsonlite::toJSON(metadata, auto_unbox = TRUE))
+    )
+  })
+  for (style in list(NULL, "header", "public", "private_key_jwt")) {
+    expect_error(
+      oauth_provider_oidc_discover(metadata[["issuer"]], token_auth_style = style),
+      "token_endpoint_auth_methods_supported",
+      class = "shinyOAuth_parse_error"
+    )
+  }
+})
+
 test_that("OIDC discovery requires its mandatory string-array metadata", {
   required_arrays <- c(
     "response_types_supported",

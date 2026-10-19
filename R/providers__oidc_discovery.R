@@ -33,6 +33,9 @@
 #' then `"public"` when `none` is advertised and PKCE is enabled. For a public
 #' client registration, set `token_auth_style = "public"` explicitly. JWT and
 #' mTLS methods must also be selected explicitly.
+#' Explicit choices must match the discovery metadata. If
+#' `token_endpoint_auth_methods_supported` is omitted, the OIDC default is
+#' `client_secret_basic` (`"header"`); other methods must be advertised.
 #'
 #' @section Discovery validation:
 #' The discovered issuer must match the requested identifier by default.
@@ -702,6 +705,12 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
+  # OIDC Discovery 4.2 requires zero-element claims to be omitted. In
+  # particular, an empty auth-method list must not become an unrestricted set.
+  if ("token_endpoint_auth_methods_supported" %in% names(disc)) {
+    .discover_require_string_array(disc, "token_endpoint_auth_methods_supported")
+  }
+
   optional_string_arrays <- c(
     "scopes_supported",
     "response_modes_supported",
@@ -715,7 +724,6 @@ oauth_provider_oidc_discover <- function(
     "request_object_signing_alg_values_supported",
     "request_object_encryption_alg_values_supported",
     "request_object_encryption_enc_values_supported",
-    "token_endpoint_auth_methods_supported",
     "token_endpoint_auth_signing_alg_values_supported",
     "display_values_supported",
     "claim_types_supported",
@@ -1139,7 +1147,10 @@ oauth_provider_oidc_discover <- function(
   iss,
   token_url
 ) {
-  methods <- disc[["token_endpoint_auth_methods_supported"]] %||% character(0)
+  # OIDC Discovery 3 defines Basic as the default when this field is omitted.
+  # Apply it before validating an explicit choice as well as before inference.
+  methods <- disc[["token_endpoint_auth_methods_supported"]] %||%
+    "client_secret_basic"
   methods <- tolower(as.character(methods))
 
   if (!is.null(token_auth_style)) {
@@ -1221,7 +1232,7 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
-  # When methods are not advertised, fall back to historic default: header.
+  # Retain the conservative fallback for unrecognized extension methods.
   "header"
 }
 
@@ -1249,10 +1260,6 @@ oauth_provider_oidc_discover <- function(
   token_url
 ) {
   token_auth_style <- normalize_token_auth_style(token_auth_style)
-
-  if (length(methods) == 0L) {
-    return(token_auth_style)
-  }
 
   is_supported <- switch(
     token_auth_style,
