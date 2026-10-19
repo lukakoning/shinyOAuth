@@ -169,6 +169,12 @@ authority by default; paths require an explicit
 templates. Opt-in detail has URL userinfo, query strings, fragments, and
 control characters removed and is limited to 512 UTF-8 bytes per
 field.</li>
+<li>HTTP calls performed by shinyOAuth suppress httr2’s automatic spans,
+which otherwise include full request paths and query strings. Package
+HTTP spans follow the URL privacy policy above. Direct calls to
+<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> use httr2’s own telemetry settings,
+including requests built with <code><a href="../reference/resource_req.html">resource_req()</a></code> and then
+performed by application code.</li>
 <li>Tokens, authorization codes, state payloads, and browser tokens are
 not included as ordinary span attributes. Digest fields support
 correlation without the raw value. Keep debugging options off for

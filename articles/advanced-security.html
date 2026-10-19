@@ -131,6 +131,13 @@ and mTLS endpoint aliases:</p>
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>An explicitly selected token authentication method must match
+discovery. If <code>token_endpoint_auth_methods_supported</code> is
+omitted, the <a href="https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata" class="external-link">OIDC
+Discovery default</a> is <code>client_secret_basic</code>
+(<code>token_auth_style = "header"</code>). Public, POST, JWT, and mTLS
+methods therefore require an explicit advertisement. An empty method
+array is rejected as malformed metadata.</p>
 <p>The sections below show the extra settings you usually add on top of
 your normal <code><a href="../reference/oauth_client.html">oauth_client()</a></code> setup.</p>
 </div>

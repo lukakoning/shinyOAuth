@@ -46,7 +46,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>The discovery playground consistently uses Google OIDC, pins Google’s signing key host, and reads the token’s <code>userinfo</code> property. Its unused shinyjs dependency has been removed.</p></li>
+<ul><li><p>OIDC discovery applies the <code>client_secret_basic</code> default before validating an explicit token authentication choice. Omitted metadata no longer permits unadvertised public, POST, JWT, or mTLS methods; empty method arrays are rejected.</p></li>
+<li><p>HTTP requests performed by shinyOAuth suppress httr2’s automatic full-URL spans, preventing private paths and query strings from bypassing telemetry redaction or the package tracing switch. Other application HTTP requests retain their own instrumentation.</p></li>
+<li><p>The discovery playground consistently uses Google OIDC, pins Google’s signing key host, and reads the token’s <code>userinfo</code> property. Its unused shinyjs dependency has been removed.</p></li>
 <li><p>The independent JAR/PAR conformance fixture rejects authorization requests with missing, empty or mismatched outer client identifiers, with negative checks for both GET and POST authorization.</p></li>
 <li><p>Async callbacks fall back to synchronous execution before code redemption when custom JWKS caches have not declared worker safety. <code><a href="../reference/custom_cache.html">custom_cache()</a></code> gains an explicit <code>worker_safe</code> opt-in for backends that reconnect resources inside each operation; serialization success alone no longer qualifies these caches.</p></li>
 <li><p>Exact numeric claim constraints distinguish adjacent large integers and retain binary64 precision in ordinary claims requests and signed JWTs. Unsupported non-finite or out-of-safe-range numeric constraints are rejected; larger exact identifiers can be requested as strings.</p></li>

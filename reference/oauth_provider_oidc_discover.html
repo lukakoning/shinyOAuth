@@ -186,7 +186,10 @@ require a particular <code>token_auth_style</code>, secret, or key; configure th
 match the registration. Automatic selection prefers <code>"header"</code>, then <code>"body"</code>,
 then <code>"public"</code> when <code>none</code> is advertised and PKCE is enabled. For a public
 client registration, set <code>token_auth_style = "public"</code> explicitly. JWT and
-mTLS methods must also be selected explicitly.</p>
+mTLS methods must also be selected explicitly.
+Explicit choices must match the discovery metadata. If
+<code>token_endpoint_auth_methods_supported</code> is omitted, the OIDC default is
+<code>client_secret_basic</code> (<code>"header"</code>); other methods must be advertised.</p>
     </div>
     <div class="section level2">
     <h2 id="discovery-validation">Discovery validation<a class="anchor" aria-label="anchor" href="#discovery-validation"></a></h2>

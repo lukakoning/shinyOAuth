@@ -67,6 +67,14 @@ provider <- oauth_provider_oidc_discover(
 )
 ```
 
+An explicitly selected token authentication method must match discovery.
+If `token_endpoint_auth_methods_supported` is omitted, the [OIDC
+Discovery
+default](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata)
+is `client_secret_basic` (`token_auth_style = "header"`). Public, POST,
+JWT, and mTLS methods therefore require an explicit advertisement. An
+empty method array is rejected as malformed metadata.
+
 The sections below show the extra settings you usually add on top of
 your normal
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
