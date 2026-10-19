@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* HTTP requests performed by shinyOAuth suppress httr2's automatic full-URL
+  spans, preventing private paths and query strings from bypassing telemetry
+  redaction or the package tracing switch. Other application HTTP requests
+  retain their own instrumentation.
+
 * The discovery playground consistently uses Google OIDC, pins Google's signing
   key host, and reads the token's `userinfo` property. Its unused shinyjs
   dependency has been removed.

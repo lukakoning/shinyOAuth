@@ -431,6 +431,49 @@ check_resp_body_size <- function(
   invisible(TRUE)
 }
 
+# httr2 >= 1.2.2 starts automatic spans with the unredacted URL. It has no
+# per-request opt-out. Use call-local copies of its synchronous dispatchers,
+# with only the instrumentation hook replaced; never modify its namespace,
+# cached tracer, or the application's SDK configuration. Keep transport,
+# request preparation, mocks, and response/error handling in httr2.
+#
+# This compatibility adapter intentionally fails closed if the dispatch layout
+# changes. Remove it when httr2 offers a public per-request tracing control.
+req_perform_without_auto_trace <- function(req, path = NULL) {
+  perform <- httr2::req_perform
+  ns <- asNamespace("httr2")
+  if (
+    utils::packageVersion("httr2") < "1.2.2" ||
+      !identical(environment(perform), ns)
+  ) {
+    # Older versions have no automatic instrumentation. Also preserve test
+    # doubles for the public perform function without depending on their body.
+    return(perform(req, path = path))
+  }
+  perform_one <- get0("req_perform1", envir = ns, inherits = FALSE)
+  if (
+    !is.function(perform_one) ||
+      !"req_perform1" %in% all.names(body(perform)) ||
+      !"req_with_span" %in% all.names(body(perform_one))
+  ) {
+    err_config("Unsupported httr2 HTTP instrumentation; cannot protect URL privacy")
+  }
+  dispatch <- new.env(parent = ns)
+  dispatch[["req_with_span"]] <- function(req, ...) {
+    # Propagate the package's active, sanitized span when tracing is enabled.
+    # This helper also applies the package's telemetry diagnostic policy.
+    headers <- otel_capture_context()
+    if (length(headers)) {
+      req <- httr2::req_headers(req, !!!headers)
+    }
+    req
+  }
+  environment(perform_one) <- dispatch
+  dispatch[["req_perform1"]] <- perform_one
+  environment(perform) <- dispatch
+  perform(req, path = path)
+}
+
 # Download encoded bytes to a temporary file, then read at most the decoded
 # budget plus one sentinel byte. libcurl's connection API can buffer an entire
 # decompression burst before returning to R, so it is not a decoded-size guard.
@@ -453,7 +496,7 @@ req_perform_bounded <- function(req) {
       !download_exceeded
     }
   )
-  resp <- tryCatch(httr2::req_perform(req, path = path), error = function(e) {
+  resp <- tryCatch(req_perform_without_auto_trace(req, path = path), error = function(e) {
     current <- e
     while (!is.null(current)) {
       if (inherits(current, "curl_error_filesize_exceeded")) {
