@@ -1223,10 +1223,7 @@ oauth_module_server_impl <- function(
         if (!isTRUE(browser_ack[["accept_input"]])) {
           return(invisible(NULL))
         }
-        tok <- tryCatch(
-          as.character(input[["shinyOAuth_sid"]])[1],
-          error = function(...) NULL
-        )
+        tok <- input[["shinyOAuth_sid"]]
         # In test/interactive mode when skip_browser_token is enabled, keep the
         # synthetic sentinel and do not clobber it on initial NULL input.
         if (isTRUE(allow_skip_browser_token()) && !is_valid_string(tok)) {
@@ -1249,9 +1246,14 @@ oauth_module_server_impl <- function(
           # Do not accept invalid tokens; attempt regeneration via JS and audit once
           values[["browser_token"]] <- NULL
           # Emit an audit trail entry for visibility (no sensitive values)
-          len <- tryCatch(nchar(tok, type = "bytes"), error = function(...) {
-            NA_integer_
-          })
+          len <- tryCatch(
+            if (is.character(tok) && length(tok) == 1L) {
+              nchar(tok, type = "bytes")
+            } else {
+              NA_integer_
+            },
+            error = function(...) NA_integer_
+          )
           try(
             audit_event(
               "invalid_browser_token",

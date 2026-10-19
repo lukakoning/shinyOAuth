@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Browser-token input is validated in its original form. Vectors and lists no
+  longer adopt a valid first element, and malformed input produces only a scalar
+  length diagnostic before requesting token repair.
+
 * Connection-manager HTTP entry rejects oversized and malformed queries before
   SMART launch classification, preventing unbounded parsing and allocation on
   ordinary application routes as well as launch and callback routes.
