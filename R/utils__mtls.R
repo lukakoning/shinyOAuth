@@ -393,7 +393,7 @@ normalize_token_cnf <- function(cnf) {
   if (
     !is.list(cnf) || is.data.frame(cnf) ||
       (length(cnf) && (is.null(names(cnf)) || anyNA(names(cnf)) ||
-        any(!nzchar(names(cnf))) || anyDuplicated(names(cnf))))
+        !all(nzchar(names(cnf))) || anyDuplicated(names(cnf))))
   ) {
     err_token("Invalid token cnf: expected a JSON object")
   }
