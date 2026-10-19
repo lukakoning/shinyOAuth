@@ -157,8 +157,11 @@ oauth_client(
   Object member names must be unique; targets must be objects, claim
   entries must be `NULL` or objects, and `essential` must be a Boolean.
   Pre-encoded `values` must be non-empty arrays. Malformed requests are
-  rejected even with `claims_validation = "none"`. Your provider must
-  support the OIDC claims parameter.
+  rejected even with `claims_validation = "none"`. Numeric constraints
+  use R's binary64 precision and must be finite and within
+  `+/- (2^53 - 1)`. Use strings for larger identifiers or values
+  requiring decimal precision beyond R's numeric representation. Your
+  provider must support the OIDC claims parameter.
 
 - state_store:
 

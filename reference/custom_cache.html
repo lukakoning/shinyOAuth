@@ -72,7 +72,15 @@ fetched from the provider rather than maintaining separate caches.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">custom_cache</span><span class="op">(</span><span class="va">get</span>, <span class="va">set</span>, <span class="va">remove</span>, take <span class="op">=</span> <span class="cn">NULL</span>, info <span class="op">=</span> <span class="cn">NULL</span>, set_if_absent <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">custom_cache</span><span class="op">(</span></span>
+<span>  <span class="va">get</span>,</span>
+<span>  <span class="va">set</span>,</span>
+<span>  <span class="va">remove</span>,</span>
+<span>  take <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  info <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  set_if_absent <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  worker_safe <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -144,6 +152,12 @@ The existing <code>shinyOAuth.allow_non_atomic_state_store = TRUE</code> option 
 permits non-atomic callback insertion, with no protection against concurrent
 writers replacing a candidate. Other state-store writes still use <code>set</code>.</p></dd>
 
+
+<dt id="arg-worker-safe">worker_safe<a class="anchor" aria-label="anchor" href="#arg-worker-safe"></a></dt>
+<dd><p>Logical, default <code>FALSE</code>. Explicitly declares that this
+backend can be serialized and used in another R process. Applies when the
+cache is used as <code>jwks_cache</code>; see the worker-safety requirements above.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -205,6 +219,16 @@ rate-limited forced key refreshes across workers, for example when the provider
 rotates its signing keys. Without that atomic operation, forced refresh is
 disabled for custom/shared caches. Use separate stores or key namespaces for
 login state and signing keys when they require different expiry policies.</p>
+<p>For asynchronous login and token operations, a custom signing-key cache
+defaults to synchronous fallback. Set <code>worker_safe = TRUE</code> only if its
+functions and captured values
+remain usable after serialization into a new R process. Open database/file
+connections and other process-bound resources must not be captured; open and
+close connections inside each operation instead. Serialization success alone
+does not establish worker safety. Standard <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code> and
+<code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> backends support worker dispatch without this opt-in.
+Other cache implementations can expose a scalar logical <code>worker_safe</code> member
+with the same contract. State stores are not used in callback workers.</p>
     </div>
 
     <div class="section level2">

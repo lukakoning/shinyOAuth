@@ -199,6 +199,9 @@ vectors. A pre-encoded JSON string is also accepted. Object member names must
 be unique; targets must be objects, claim entries must be <code>NULL</code> or objects,
 and <code>essential</code> must be a Boolean. Pre-encoded <code>values</code> must be non-empty
 arrays. Malformed requests are rejected even with <code>claims_validation = "none"</code>.
+Numeric constraints use R's binary64 precision and must be finite and within
+<code>+/- (2^53 - 1)</code>. Use strings for larger identifiers or values requiring
+decimal precision beyond R's numeric representation.
 Your provider must support the OIDC claims parameter.</p></dd>
 
 

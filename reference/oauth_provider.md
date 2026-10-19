@@ -428,7 +428,11 @@ userinfo[["sub"]]
   not retained, and `no-cache` responses are fetched again before reuse.
   Advertised freshness also accounts for `Age` and `Expires`. The
   package also attempts a rate-limited refresh when a key is missing or
-  no longer verifies a signature.
+  no longer verifies a signature. For async login and token operations,
+  custom caches use synchronous fallback unless they explicitly declare
+  worker safety; see
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
+  and its `worker_safe` argument.
 
 - jwks_pins:
 

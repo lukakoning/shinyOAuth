@@ -456,7 +456,10 @@ HTTP cache directives can shorten this lifetime. Responses marked
 <code>no-store</code> are not retained, and <code>no-cache</code> responses are fetched again
 before reuse. Advertised freshness also accounts for <code>Age</code> and <code>Expires</code>.
 The package also attempts a rate-limited refresh when a key is missing
-or no longer verifies a signature.</p></dd>
+or no longer verifies a signature.
+For async login and token operations, custom caches use synchronous fallback
+unless they explicitly declare worker safety; see <code><a href="custom_cache.html">custom_cache()</a></code> and its
+<code>worker_safe</code> argument.</p></dd>
 
 
 <dt id="arg-jwks-pins">jwks_pins<a class="anchor" aria-label="anchor" href="#arg-jwks-pins"></a></dt>

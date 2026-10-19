@@ -2,6 +2,36 @@
 
 ## shinyOAuth (development version)
 
+- The discovery playground consistently uses Google OIDC, pins Google’s
+  signing key host, and reads the token’s `userinfo` property. Its
+  unused shinyjs dependency has been removed.
+
+- The independent JAR/PAR conformance fixture rejects authorization
+  requests with missing, empty or mismatched outer client identifiers,
+  with negative checks for both GET and POST authorization.
+
+- Async callbacks fall back to synchronous execution before code
+  redemption when custom JWKS caches have not declared worker safety.
+  [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
+  gains an explicit `worker_safe` opt-in for backends that reconnect
+  resources inside each operation; serialization success alone no longer
+  qualifies these caches.
+
+- Exact numeric claim constraints distinguish adjacent large integers
+  and retain binary64 precision in ordinary claims requests and signed
+  JWTs. Unsupported non-finite or out-of-safe-range numeric constraints
+  are rejected; larger exact identifiers can be requested as strings.
+
+- Browser-token input is validated in its original form. Vectors and
+  lists no longer adopt a valid first element, and malformed input
+  produces only a scalar length diagnostic before requesting token
+  repair.
+
+- Connection-manager HTTP entry rejects oversized and malformed queries
+  before SMART launch classification, preventing unbounded parsing and
+  allocation on ordinary application routes as well as launch and
+  callback routes.
+
 - Provider and discovery validation reject issuer identifiers with empty
   query components (`?`) before making discovery requests. Encoded path
   delimiters such as `%3F` remain valid.

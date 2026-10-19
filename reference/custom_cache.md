@@ -17,7 +17,15 @@ separate caches.
 ## Usage
 
 ``` r
-custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
+custom_cache(
+  get,
+  set,
+  remove,
+  take = NULL,
+  info = NULL,
+  set_if_absent = NULL,
+  worker_safe = FALSE
+)
 ```
 
 ## Arguments
@@ -102,6 +110,12 @@ custom_cache(get, set, remove, take = NULL, info = NULL, set_if_absent = NULL)
   concurrent writers replacing a candidate. Other state-store writes
   still use `set`.
 
+- worker_safe:
+
+  Logical, default `FALSE`. Explicitly declares that this backend can be
+  serialized and used in another R process. Applies when the cache is
+  used as `jwks_cache`; see the worker-safety requirements above.
+
 ## Value
 
 An R6 object exposing cachem-like
@@ -178,6 +192,20 @@ when the provider rotates its signing keys. Without that atomic
 operation, forced refresh is disabled for custom/shared caches. Use
 separate stores or key namespaces for login state and signing keys when
 they require different expiry policies.
+
+For asynchronous login and token operations, a custom signing-key cache
+defaults to synchronous fallback. Set `worker_safe = TRUE` only if its
+functions and captured values remain usable after serialization into a
+new R process. Open database/file connections and other process-bound
+resources must not be captured; open and close connections inside each
+operation instead. Serialization success alone does not establish worker
+safety. Standard
+[`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
+and
+[`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
+backends support worker dispatch without this opt-in. Other cache
+implementations can expose a scalar logical `worker_safe` member with
+the same contract. State stores are not used in callback workers.
 
 ## Examples
 
