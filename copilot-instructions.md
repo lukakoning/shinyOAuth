@@ -136,6 +136,15 @@
 
 ## HTTP & External Providers
 
+- Parse JSON text with
+  [`jsonlite::parse_json()`](https://jeroen.r-universe.dev/jsonlite/reference/read_json.html)
+  and specify `simplifyVector` explicitly. Never pass protocol text to
+  [`jsonlite::fromJSON()`](https://jeroen.r-universe.dev/jsonlite/reference/fromJSON.html)
+  or
+  [`httr2::resp_body_json()`](https://httr2.r-lib.org/reference/resp_body_raw.html):
+  their URL/file input handling can perform I/O before payload
+  validation, including on unauthenticated state envelopes. Network
+  fetching must remain separate and pass the package’s transport policy.
 - Every outbound call should wrap
   [`httr2::request()`](https://httr2.r-lib.org/reference/request.html)
   with `add_req_defaults()` for timeout/UA and `req_with_retry()` for
