@@ -42,6 +42,16 @@ decode_dpop_payload <- function(proof) {
   jsonlite::fromJSON(shinyOAuth:::base64url_decode(parts[[2]]))
 }
 
+dpop_test_prepared_proof <- function(req) {
+  # Unit transport mocks inspect the prepared proof directly. req_dry_run starts
+  # a local echo server and has returned missing headers in full-suite runs.
+  # Real wire behavior is covered separately by webfakes and conformance tests.
+  proof <- req[["headers"]][["DPoP"]]
+  expect_type(proof, "character")
+  expect_length(proof, 1L)
+  proof
+}
+
 verify_dpop_rs256_signature <- function(proof, pubkey) {
   parts <- strsplit(proof, ".", fixed = TRUE)[[1]]
   sig <- shinyOAuth:::base64url_decode_raw(parts[[3]])
@@ -1363,10 +1373,7 @@ test_that("swap_code_for_token_set retries DPoP nonce challenges once", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
       state[["count"]] <- state[["count"]] + 1L
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      payload <- decode_dpop_payload(dpop_test_prepared_proof(req))
       if (state[["count"]] == 1L) {
         state[["first_has_nonce"]] <- "nonce" %in% names(payload)
       } else {
@@ -1492,10 +1499,7 @@ test_that("swap_code_for_token_set rebuilds JWT client assertions on DPoP nonce 
         decode = TRUE
       )
       payload <- shinyOAuth:::parse_jwt_payload(assertion)
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      proof_payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      proof_payload <- decode_dpop_payload(dpop_test_prepared_proof(req))
       state[["assertion_jtis"]] <- c(
         state[["assertion_jtis"]],
         payload[["jti"]] %||% NA_character_
@@ -1573,10 +1577,7 @@ test_that("req_with_dpop_retry retries nonce challenges for non-idempotent reque
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
       state[["count"]] <- state[["count"]] + 1L
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      payload <- decode_dpop_payload(dpop_test_prepared_proof(req))
 
       if (state[["count"]] == 2L) {
         return(httr2::response(
@@ -1745,8 +1746,7 @@ test_that("req_with_dpop_retry regenerates DPoP proofs for transient retries", {
 
   testthat::local_mocked_bindings(
     req_perform = function(request, ...) {
-      dry <- httr2::req_dry_run(request, quiet = TRUE, redact_headers = FALSE)
-      proof <- dry[["headers"]][["dpop"]]
+      proof <- dpop_test_prepared_proof(request)
       payload <- decode_dpop_payload(proof)
       state[["jtis"]] <- c(state[["jtis"]], payload[["jti"]])
       state[["proofs"]] <- c(state[["proofs"]], proof)
@@ -1824,10 +1824,7 @@ test_that("req_with_dpop_retry preserves existing prepare-attempt hooks", {
 
   testthat::local_mocked_bindings(
     req_perform = function(request, ...) {
-      dry <- httr2::req_dry_run(request, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      payload <- decode_dpop_payload(dpop_test_prepared_proof(request))
       state[["markers"]] <- c(
         state[["markers"]],
         as.character(
@@ -1901,10 +1898,7 @@ test_that("req_with_dpop_retry reuses a nonce learned from a successful response
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      payload <- decode_dpop_payload(dpop_test_prepared_proof(req))
       state[["proof_nonces"]] <- c(
         state[["proof_nonces"]],
         payload[["nonce"]] %||% ""
@@ -1958,13 +1952,12 @@ test_that("req_with_dpop_retry isolates same-origin resource endpoints", {
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      proof <- dpop_test_prepared_proof(req)
+      payload <- decode_dpop_payload(proof)
       state[["seen"]][[length(state[["seen"]]) + 1L]] <<- list(
         url = as.character(req[["url"]]),
-        nonce = payload[["nonce"]] %||% ""
+        nonce = payload[["nonce"]] %||% "",
+        htu = payload[["htu"]]
       )
 
       headers <- list("content-type" = "application/json")
@@ -1982,23 +1975,22 @@ test_that("req_with_dpop_retry isolates same-origin resource endpoints", {
     .package = "shinyOAuth"
   )
 
-  shinyOAuth:::req_with_dpop_retry(
-    userinfo_req,
-    cli,
-    access_token = "at-1",
-    idempotent = TRUE
-  )
-  shinyOAuth:::req_with_dpop_retry(
-    resource_req,
-    cli,
-    access_token = "at-1",
-    idempotent = TRUE
-  )
+  for (req in list(userinfo_req, resource_req, userinfo_req, resource_req)) {
+    shinyOAuth:::req_with_dpop_retry(
+      req,
+      cli,
+      access_token = "at-1",
+      idempotent = TRUE
+    )
+  }
 
-  expect_identical(state[["seen"]][[1]][["url"]], prov@userinfo_url)
-  expect_identical(state[["seen"]][[1]][["nonce"]], "")
-  expect_identical(state[["seen"]][[2]][["url"]], "https://example.com/profile")
-  expect_identical(state[["seen"]][[2]][["nonce"]], "")
+  seen <- function(field) {
+    vapply(state[["seen"]], function(entry) entry[[field]], character(1L))
+  }
+  urls <- rep(c(prov@userinfo_url, "https://example.com/profile"), 2L)
+  expect_identical(seen("url"), urls)
+  expect_identical(seen("htu"), urls)
+  expect_identical(seen("nonce"), c("", "", "resource-nonce-1", ""))
 })
 
 test_that("DPoP nonce cache separates tenant paths and issuers", {
@@ -2042,10 +2034,7 @@ test_that("req_with_dpop_retry keeps token and resource nonces separate on the s
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      payload <- decode_dpop_payload(dpop_test_prepared_proof(req))
       state[["seen"]][[length(state[["seen"]]) + 1L]] <<- list(
         url = as.character(req[["url"]]),
         nonce = payload[["nonce"]] %||% ""
@@ -2241,10 +2230,7 @@ test_that("refresh_token retries DPoP nonce challenges once", {
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
       state[["count"]] <- state[["count"]] + 1L
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      payload <- decode_dpop_payload(dpop_test_prepared_proof(req))
       if (state[["count"]] == 1L) {
         state[["first_has_nonce"]] <- "nonce" %in% names(payload)
       } else {
@@ -2313,10 +2299,7 @@ test_that("refresh_token reuses a nonce learned from a successful token exchange
 
   testthat::local_mocked_bindings(
     req_with_retry = function(req, idempotent = TRUE) {
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      payload <- decode_dpop_payload(dpop_test_prepared_proof(req))
       state[["request_nonces"]] <- c(
         state[["request_nonces"]],
         payload[["nonce"]] %||% ""
@@ -2540,10 +2523,7 @@ test_that("get_userinfo retries a DPoP nonce challenge for raw JWT tokens with e
   testthat::local_mocked_bindings(
     req_with_retry = function(req, ...) {
       state[["count"]] <<- state[["count"]] + 1L
-      dry <- httr2::req_dry_run(req, quiet = TRUE, redact_headers = FALSE)
-      payload <- decode_dpop_payload(
-        dry[["headers"]][["dpop"]]
-      )
+      payload <- decode_dpop_payload(dpop_test_prepared_proof(req))
 
       if (state[["count"]] == 1L) {
         state[["first_has_nonce"]] <<- "nonce" %in% names(payload)

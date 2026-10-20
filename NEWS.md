@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* DPoP nonce and retry unit tests inspect prepared proofs at their mocked
+  transport boundaries without starting local HTTP echo servers. Repeated
+  visits verify that each endpoint retains its own nonce state; separate
+  real-HTTP tests continue to cover transmitted proofs.
+
 * SMART scope comparisons index resource permissions and exact search constraints
   within each comparison, avoiding repeated scans of every granted scope during
   connection polling. Changed grants, policies, and credential material continue
