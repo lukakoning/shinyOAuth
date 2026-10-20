@@ -114,7 +114,6 @@ assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 #> 5       client_auth.asymmetric.token configuration not_applicable      SHOULD
 #> 6                 jwt_audience.token configuration not_applicable        MUST
 #> 7                      jwt_typ.token configuration not_applicable      SHOULD
-#> 8                        tls.minimum configuration        unknown        MUST
 #> 10                   tls.connections      external        unknown        MUST
 #> 13               identity.validation configuration not_applicable        MUST
 #> 14                    identity.nonce configuration not_applicable        MUST
@@ -138,7 +137,6 @@ assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 #> 5                                                    Asymmetric client authentication is recommended where supported; secret-based authentication remains compatible.
 #> 6                                                                           JWT client authentication requires the sole audience to equal the trusted issuer exactly.
 #> 7                                                                      Explicit client-authentication+jwt typing is recommended; legacy JWT typing remains supported.
-#> 8                                                         A configured minimum of TLS 1.2 or later, or a known suitable libcurl default, is required by this ruleset.
 #> 10                                                                            Negotiated connections, browser/proxy hops and trust-root deployment were not observed.
 #> 13                                                                         Applicable OIDC identity use requires ID token validation without active signature bypass.
 #> 14                                                                                      Configured nonce use is checked against the transaction's validated ID token.
@@ -162,7 +160,6 @@ assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 #> 5                 Consider private_key_jwt or mTLS for this endpoint, subject to provider registration and deployment support.
 #> 6                                Set client_assertion_audience to the trusted issuer, including applicable endpoint overrides.
 #> 7                                      Select client_assertion_typ = 'client-authentication+jwt' when supported by the server.
-#> 8                                              Select shinyOAuth.tls_min_version = '1.2' or '1.3' on a supporting TLS backend.
 #> 10                                                                                       Obtain deployment or server evidence.
 #> 13                                           Require and validate ID tokens for OIDC identity; disable shinyOAuth.skip_id_sig.
 #> 14                                                                              Retain nonce and ID token validation together.
@@ -186,7 +183,6 @@ assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 #> 5                         https://www.rfc-editor.org/rfc/rfc9700.html#section-2.5
 #> 6  https://datatracker.ietf.org/doc/html/draft-ietf-oauth-rfc7523bis-11#section-4
 #> 7  https://datatracker.ietf.org/doc/html/draft-ietf-oauth-rfc7523bis-11#section-4
-#> 8                       https://www.rfc-editor.org/rfc/rfc9325.html#section-3.1.1
 #> 10     https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16#section-1.5
 #> 13        https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation
 #> 14 https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16#section-7.5.1.1
@@ -210,7 +206,6 @@ assessment[["checks"]][assessment[["checks"]][["status"]] != "pass", ]
 #> 5                       configuration        oauth_security_bcp           FALSE
 #> 6                       configuration jwt_client_authentication            TRUE
 #> 7                       configuration jwt_client_authentication           FALSE
-#> 8                     runtime_default          tls_security_bcp            TRUE
 #> 10                       not_observed                   oauth21           FALSE
 #> 13                      configuration                      oidc            TRUE
 #> 14 configuration_and_package_contract                   oauth21            TRUE
