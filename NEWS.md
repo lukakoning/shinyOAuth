@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* SMART scope comparisons index resource permissions and exact search constraints
+  within each comparison, avoiding repeated scans of every granted scope during
+  connection polling. Changed grants, policies, and credential material continue
+  to be revalidated on each operation.
+
 * Self-signed mTLS registration exports Ed25519 certificates as public OKP JWKs
   with their certificate chain, using the same public-key exporter as other
   signing-key metadata. Private key material remains excluded.

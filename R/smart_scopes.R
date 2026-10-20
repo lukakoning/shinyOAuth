@@ -61,14 +61,104 @@ smart_scope_coverage <- function(requested, granted, allow_v1_scopes = FALSE) {
   ) {
     err_token("SMART scope comparison exceeds the supported size limit")
   }
+  if (!length(requested)) {
+    return(list(
+      status = "covered",
+      missing = character(),
+      indeterminate = character()
+    ))
+  }
+  # Index permissions once per comparison. Scanning every grant for every need
+  # made granular scope sets quadratic in connection polling and validation.
+  # This index is local: changed grants and policies are always re-evaluated.
+  action_bits <- c(c = 1L, r = 2L, u = 4L, d = 8L, s = 16L)
   grants <- lapply(
     granted,
     smart_scope_parse,
     allow_v1_scopes = allow_v1_scopes
   )
+  unknown_grant <- any(vapply(
+    grants,
+    function(grant) identical(grant[["kind"]], "unknown"),
+    logical(1L)
+  ))
+  resources <- Filter(
+    function(grant) identical(grant[["kind"]], "resource"),
+    grants
+  )
+  resource_key <- function(permission, wildcard = FALSE) {
+    if (!identical(permission[["kind"]], "resource")) {
+      return("")
+    }
+    paste0(
+      permission[["context"]],
+      "/",
+      if (wildcard) "*" else permission[["resource"]]
+    )
+  }
+  grant_keys <- vapply(resources, resource_key, character(1L))
+  constraints <- vapply(
+    resources,
+    function(grant) grant[["constraint"]],
+    character(1L)
+  )
+  masks <- vapply(
+    resources,
+    function(grant) {
+      as.integer(sum(action_bits[grant[["interactions"]]]))
+    },
+    integer(1L)
+  )
+  # '/' and '?' cannot occur in parsed context/resource names. A key without
+  # '?' aggregates all constraints for possible overlap; '?' keys prove only
+  # exact constraints (including the empty, unrestricted constraint).
+  keys <- c(grant_keys, paste0(grant_keys, "?", constraints, recycle0 = TRUE))
+  masks <- rep(masks, 2L)
+  distinct_keys <- unique(keys)
+  positions <- match(keys, distinct_keys)
+  permissions <- integer(length(distinct_keys))
+  for (i in seq_along(positions)) {
+    position <- positions[[i]]
+    permissions[[position]] <- bitwOr(permissions[[position]], masks[[i]])
+  }
+  # Vectorized match hashes the keys without interning untrusted scope strings
+  # as environment names, which also have a 10,000-byte limit in R.
+  lookup <- function(queries) {
+    c(0L, permissions)[match(queries, distinct_keys, nomatch = 0L) + 1L]
+  }
+  needs <- lapply(
+    requested,
+    smart_scope_parse,
+    allow_v1_scopes = allow_v1_scopes
+  )
+  need_keys <- vapply(needs, resource_key, character(1L))
+  wildcard_keys <- vapply(needs, resource_key, character(1L), wildcard = TRUE)
+  constraints <- vapply(
+    needs,
+    function(need) need[["constraint"]] %||% "",
+    character(1L)
+  )
+  covered <- bitwOr(
+    lookup(paste0(need_keys, "?")),
+    lookup(paste0(wildcard_keys, "?"))
+  )
+  covered <- bitwOr(
+    covered,
+    bitwOr(
+      lookup(paste0(need_keys, "?", constraints)),
+      lookup(paste0(wildcard_keys, "?", constraints))
+    )
+  )
+  possible <- bitwOr(lookup(need_keys), lookup(wildcard_keys))
+  possible[!nzchar(constraints)] <- 0L
+  # Unknown syntax cannot establish coverage, even if spelled identically.
+  if (unknown_grant) {
+    possible[] <- 31L
+  }
   missing <- indeterminate <- character()
-  for (scope in requested) {
-    need <- smart_scope_parse(scope, allow_v1_scopes)
+  for (i in seq_along(requested)) {
+    scope <- requested[[i]]
+    need <- needs[[i]]
     if (identical(need[["kind"]], "literal")) {
       if (!scope %in% granted) {
         missing <- c(missing, scope)
@@ -79,34 +169,11 @@ smart_scope_coverage <- function(requested, granted, allow_v1_scopes = FALSE) {
       indeterminate <- c(indeterminate, scope)
       next
     }
-    covered <- possible <- character()
-    for (grant in grants) {
-      if (identical(grant[["kind"]], "unknown")) {
-        # Unknown syntax cannot establish coverage, even if spelled identically.
-        possible <- union(possible, need[["interactions"]])
-        next
-      }
-      if (
-        !identical(grant[["kind"]], "resource") ||
-          !identical(need[["context"]], grant[["context"]]) ||
-          !(identical(grant[["resource"]], "*") ||
-            identical(need[["resource"]], grant[["resource"]]))
-      ) {
-        next
-      }
-      if (
-        !nzchar(grant[["constraint"]]) ||
-          identical(need[["constraint"]], grant[["constraint"]])
-      ) {
-        covered <- union(covered, grant[["interactions"]])
-      } else if (nzchar(need[["constraint"]])) {
-        possible <- union(possible, grant[["interactions"]])
-      }
-    }
-    if (all(need[["interactions"]] %in% covered)) {
+    mask <- as.integer(sum(action_bits[need[["interactions"]]]))
+    if (bitwAnd(mask, covered[[i]]) == mask) {
       next
     }
-    if (all(need[["interactions"]] %in% union(covered, possible))) {
+    if (bitwAnd(mask, bitwOr(covered[[i]], possible[[i]])) == mask) {
       indeterminate <- c(indeterminate, scope)
     } else {
       missing <- c(missing, scope)
