@@ -190,7 +190,9 @@ loopback origins; production OIDC metadata URLs must use HTTPS</p></li>
 non‑empty, restricts accepted hosts to this whitelist</p></li>
 <li><p><code>options(shinyOAuth.allow_hs = TRUE)</code> – opt‑in HMAC
 validation for ID tokens (HS256/HS384/HS512). Requires a strictly
-server‑side <code>client_secret</code></p></li>
+server‑side <code>client_secret</code> and exactly one HS algorithm in
+<code>id_token_allowed_algs</code>, binding the shared key to one
+algorithm (RFC 8725 section 3.1)</p></li>
 <li><p><code>options(shinyOAuth.client_assertion_ttl = 120L)</code> –
 lifetime in seconds for JWT client assertions used with
 <code>client_secret_jwt</code> or <code>private_key_jwt</code> token

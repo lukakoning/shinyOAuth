@@ -113,7 +113,9 @@ for more details about logs and traces via OpenTelemetry.
 
 - `options(shinyOAuth.allow_hs = TRUE)` – opt‑in HMAC validation for ID
   tokens (HS256/HS384/HS512). Requires a strictly server‑side
-  `client_secret`
+  `client_secret` and exactly one HS algorithm in
+  `id_token_allowed_algs`, binding the shared key to one algorithm (RFC
+  8725 section 3.1)
 
 - `options(shinyOAuth.client_assertion_ttl = 120L)` – lifetime in
   seconds for JWT client assertions used with `client_secret_jwt` or

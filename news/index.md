@@ -2,6 +2,26 @@
 
 ## shinyOAuth (development version)
 
+- The DPoP same-origin nonce-isolation regression inspects prepared
+  proofs at the mocked transport boundary without starting a local HTTP
+  echo server. Repeated visits verify that each endpoint retains its own
+  nonce state.
+
+- SMART scope comparisons index resource permissions and exact search
+  constraints within each comparison, avoiding repeated scans of every
+  granted scope during connection polling. Changed grants, policies, and
+  credential material continue to be revalidated on each operation.
+
+- Self-signed mTLS registration exports Ed25519 certificates as public
+  OKP JWKs with their certificate chain, using the same public-key
+  exporter as other signing-key metadata. Private key material remains
+  excluded.
+
+- HMAC ID-token validation binds each client secret to exactly one HS
+  algorithm, rejecting multiple-HS configurations during client
+  validation and runtime verification, including configuration restored
+  without S7 property setters.
+
 - OIDC discovery applies the `client_secret_basic` default before
   validating an explicit token authentication choice. Omitted metadata
   no longer permits unadvertised public, POST, JWT, or mTLS methods;
