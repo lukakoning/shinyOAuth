@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Self-signed mTLS registration exports Ed25519 certificates as public OKP JWKs
+  with their certificate chain, using the same public-key exporter as other
+  signing-key metadata. Private key material remains excluded.
+
 * HMAC ID-token validation binds each client secret to exactly one HS algorithm,
   rejecting multiple-HS configurations during client validation and runtime
   verification, including configuration restored without S7 property setters.

@@ -866,23 +866,17 @@ build_self_signed_mtls_registration_jwks <- function(oauth_client) {
     )
   }
 
-  jwk_json <- try(jose::jwk_write(pubkey), silent = TRUE)
-  if (inherits(jwk_json, "try-error")) {
+  jwk <- try(
+    private_key_public_jwk(pubkey, arg_name = "mTLS client certificate"),
+    silent = TRUE
+  )
+  if (inherits(jwk, "try-error")) {
     err_config(
       paste(
         "Failed to serialize the self-signed TLS client certificate as a JWK"
       )
     )
   }
-  jwk <- try(
-    jsonlite::parse_json(jwk_json, simplifyVector = FALSE),
-    silent = TRUE
-  )
-  if (inherits(jwk, "try-error") || !is.list(jwk)) {
-    err_parse("Failed to parse serialized self-signed mTLS JWK")
-  }
-  jwk <- canonicalize_local_public_jwk(jwk)
-
   private_members <- intersect(
     names(jwk),
     c("d", "p", "q", "dp", "dq", "qi", "oth", "k")
