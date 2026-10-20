@@ -1,9 +1,12 @@
 test_that("numeric claims survive ordinary parameters and every asymmetric JAR algorithm", {
-  value <- 1.2345678901234567
+  # Decimal literals can round differently when R has no extended-precision
+  # long double (e.g. macOS ARM). Fix the intended binary64 values exactly.
+  value <- 0x1.3c0ca428c59fbp0
+  tiny <- 0x1.bff2ee48e053p-333
   claims <- list(
     id_token = list(
       level = list(value = value),
-      choices = list(values = c(value, 1e-100)),
+      choices = list(values = c(value, tiny)),
       nested = list(value = list(level = 1000000000000001, small = -0.123456789))
     ),
     userinfo = list(level = list(value = value))
@@ -111,11 +114,13 @@ test_that("strict ID token and UserInfo validation accept the exact requested nu
 test_that("exact claim comparison retains numeric types, precision and structure", {
   pairs <- list(
     c(1000000000000001, 1000000000000002),
-    c(1.2345678901234567, 1.2345678901234569)
+    # These adjacent binary64 values must stay distinct on every platform.
+    c(0x1.3c0ca428c59fbp0, 0x1.3c0ca428c59fcp0)
   )
   for (pair in pairs) {
     expected <- pair[[1]]
     different <- pair[[2]]
+    expect_false(identical(expected, different))
     for (wrap in list(identity, function(x) list(z = list(x, TRUE), a = "id"))) {
       expect_true(claim_matches_requested_values(wrap(expected), list(wrap(expected))))
       expect_false(claim_matches_requested_values(wrap(different), list(wrap(expected))))
