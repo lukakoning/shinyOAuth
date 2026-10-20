@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* HMAC ID-token validation binds each client secret to exactly one HS algorithm,
+  rejecting multiple-HS configurations during client validation and runtime
+  verification, including configuration restored without S7 property setters.
+
 * OIDC discovery applies the `client_secret_basic` default before validating an
   explicit token authentication choice. Omitted metadata no longer permits
   unadvertised public, POST, JWT, or mTLS methods; empty method arrays are rejected.

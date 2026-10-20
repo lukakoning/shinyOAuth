@@ -1743,6 +1743,11 @@ oauth_client_validate <- function(self) {
     isTRUE(self@provider@id_token_validation) ||
     isTRUE(self@provider@use_nonce)
   if (length(hs_algs_enabled) > 0 && isTRUE(should_validate_id_token)) {
+    if (length(hs_algs_enabled) != 1L) {
+      return(
+        "OAuthClient: HS* ID token validation requires exactly one HS algorithm per client_secret (RFC 8725 section 3.1)"
+      )
+    }
     if (!is_valid_string(self@client_secret)) {
       return(
         "OAuthClient: client_secret is required for HS* ID token validation when id_token_validation or use_nonce is enabled"

@@ -294,6 +294,15 @@ validate_id_token <- function(
         ))
       }
 
+      # Restored objects may bypass constructor/property validation. Bind the
+      # shared verification key to one trusted algorithm, never to a choice
+      # between several token-header algorithms (RFC 8725 section 3.1).
+      if (length(intersect(allowed_algs, c("HS256", "HS384", "HS512"))) != 1L) {
+        err_id_token(
+          "HS* ID token validation requires exactly one HS algorithm per client_secret (RFC 8725 section 3.1)"
+        )
+      }
+
       if (!is_valid_string(client_secret)) {
         err_input("HS* validation requires client_secret")
       }

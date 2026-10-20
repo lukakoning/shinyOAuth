@@ -370,6 +370,8 @@ validation). Ed448 verification is unsupported and fails closed.
 Symmetric HMAC algorithms \code{HS256}, \code{HS384}, \code{HS512} are also supported but
 require that you supply a \code{client_secret} and explicitly enable HMAC
 verification via the option \code{options(shinyOAuth.allow_hs = TRUE)}.
+Configure exactly one HS algorithm for ID-token validation: the client's
+shared secret must be bound to one algorithm (RFC 8725 section 3.1).
 Defaults to \code{c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")},
 which intentionally excludes HS*.
 Each RSA verification key is bound to one algorithm: its JWK \code{alg}, if

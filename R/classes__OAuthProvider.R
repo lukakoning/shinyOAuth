@@ -231,6 +231,8 @@
 #'   Symmetric HMAC algorithms `HS256`, `HS384`, `HS512` are also supported but
 #'   require that you supply a `client_secret` and explicitly enable HMAC
 #'   verification via the option `options(shinyOAuth.allow_hs = TRUE)`.
+#'   Configure exactly one HS algorithm for ID-token validation: the client's
+#'   shared secret must be bound to one algorithm (RFC 8725 section 3.1).
 #'   Defaults to `c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")`,
 #'   which intentionally excludes HS*.
 #'   Each RSA verification key is bound to one algorithm: its JWK `alg`, if
