@@ -46,7 +46,7 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="shinyoauth-development-version">shinyOAuth (development version)<a class="anchor" aria-label="anchor" href="#shinyoauth-development-version"></a></h2>
-<ul><li><p>The DPoP same-origin nonce-isolation regression inspects prepared proofs at the mocked transport boundary without starting a local HTTP echo server. Repeated visits verify that each endpoint retains its own nonce state.</p></li>
+<ul><li><p>DPoP nonce and retry unit tests inspect prepared proofs at their mocked transport boundaries without starting local HTTP echo servers. Repeated visits verify that each endpoint retains its own nonce state; separate real-HTTP tests continue to cover transmitted proofs.</p></li>
 <li><p>SMART scope comparisons index resource permissions and exact search constraints within each comparison, avoiding repeated scans of every granted scope during connection polling. Changed grants, policies, and credential material continue to be revalidated on each operation.</p></li>
 <li><p>Self-signed mTLS registration exports Ed25519 certificates as public OKP JWKs with their certificate chain, using the same public-key exporter as other signing-key metadata. Private key material remains excluded.</p></li>
 <li><p>HMAC ID-token validation binds each client secret to exactly one HS algorithm, rejecting multiple-HS configurations during client validation and runtime verification, including configuration restored without S7 property setters.</p></li>

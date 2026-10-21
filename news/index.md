@@ -2,10 +2,10 @@
 
 ## shinyOAuth (development version)
 
-- The DPoP same-origin nonce-isolation regression inspects prepared
-  proofs at the mocked transport boundary without starting a local HTTP
-  echo server. Repeated visits verify that each endpoint retains its own
-  nonce state.
+- DPoP nonce and retry unit tests inspect prepared proofs at their
+  mocked transport boundaries without starting local HTTP echo servers.
+  Repeated visits verify that each endpoint retains its own nonce state;
+  separate real-HTTP tests continue to cover transmitted proofs.
 
 - SMART scope comparisons index resource permissions and exact search
   constraints within each comparison, avoiding repeated scans of every
