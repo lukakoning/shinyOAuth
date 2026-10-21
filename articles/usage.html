@@ -378,8 +378,11 @@ does not relax OIDC discovery.</p>
 assessment of the authorization-code/refresh client role against <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16" class="external-link">OAuth
 2.1 draft 16</a>, published 3 September 2026. This is an Internet-Draft,
 not a published RFC. <code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> currently implements
-only that revision, with ruleset <code>1.1.0</code>. It makes no network
-requests, creates no login state and never enables automatic
+only that revision, with ruleset <code>1.1.1</code>. It does not load
+mTLS certificate/key files, so their usability remains an unknown
+mandatory check even when both paths are configured. Runtime validates
+the current certificate/key pair before each mTLS request. It makes no
+network requests, creates no login state and never enables automatic
 enforcement. Existing provider examples and applications remain
 usable.</p>
 <p>This example constructs an OAuth-only public client with S256 PKCE

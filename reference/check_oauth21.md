@@ -4,7 +4,7 @@ This function inspects a configured
 [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
 and its
 [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
-for compliance with the OAuth 2.1 draft 16 (ruleset `1.1.0`)
+for compliance with the OAuth 2.1 draft 16 (ruleset `1.1.1`)
 specification. It reports configuration gaps, unresolved external
 prerequisites, and recommendations without changing the configuration or
 making requests.
@@ -59,13 +59,18 @@ verdict.
 
 ## Details
 
-Ruleset `1.1.0` covers code/refresh, enabled PAR, required UserInfo and
+Ruleset `1.1.1` covers code/refresh, enabled PAR, required UserInfo and
 introspection, and the additional operations selected in `context`.
 Signing and encryption key retrieval is included when applicable. Future
 resource URLs, arbitrary request customization, browser/proxy TLS,
 registered redirect matching, secret custody, and authorization/resource
 server behavior require separate evidence. Optional DPoP, mTLS, PAR, JAR
-and JARM are not required as a bundle.
+and JARM are not required as a bundle. File-backed mTLS credential
+usability is unresolved: assessment does not load certificate or
+private-key files or establish their correspondence. Applicable
+`mtls.credentials.*` checks remain unknown even when both paths are
+configured; missing required paths fail. Runtime validates the current
+files before each mTLS request, including after rotation.
 
 `configuration_compliant` is `FALSE` if an applicable mandatory
 configuration check fails; otherwise `NA` if a mandatory configuration

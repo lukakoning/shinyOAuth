@@ -22,7 +22,7 @@ app setup.
 
 [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
 is an opt-in, read-only assessment pinned to OAuth 2.1 draft 16. Ruleset
-`1.1.0` reports requirement sources: OAuth core, OIDC, extensions,
+`1.1.1` reports requirement sources: OAuth core, OIDC, extensions,
 security guidance, and package or application policy. Recommendations do
 not change the mandatory configuration verdict. Existing OAuth 2.0
 authentication methods and callback choices remain available. For

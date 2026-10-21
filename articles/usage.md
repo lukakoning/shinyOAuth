@@ -336,9 +336,13 @@ assessment of the authorization-code/refresh client role against [OAuth
 published 3 September 2026. This is an Internet-Draft, not a published
 RFC.
 [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-currently implements only that revision, with ruleset `1.1.0`. It makes
-no network requests, creates no login state and never enables automatic
-enforcement. Existing provider examples and applications remain usable.
+currently implements only that revision, with ruleset `1.1.1`. It does
+not load mTLS certificate/key files, so their usability remains an
+unknown mandatory check even when both paths are configured. Runtime
+validates the current certificate/key pair before each mTLS request. It
+makes no network requests, creates no login state and never enables
+automatic enforcement. Existing provider examples and applications
+remain usable.
 
 This example constructs an OAuth-only public client with S256 PKCE and
 HTTPS:
