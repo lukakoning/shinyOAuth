@@ -68,7 +68,9 @@ testthat::test_that("process-bound caches fall back during PAR, JAR and JARM pre
       result <- suppressWarnings(values[["build_auth_url"]]())
       url <- NULL
       if (promises::is.promise(result)) {
-        promises::then(result, function(value) url <<- value)
+        promises::then(result, function(value) {
+          url <<- value
+        })
         poll_for_async(function() !is.null(url), session)
       } else {
         url <- result
@@ -308,8 +310,12 @@ testthat::test_that("async login with a process-bound JWKS cache falls back befo
                 introspect = FALSE))
               testthat::expect_true(promises::is.promise(promise))
               promises::then(promise,
-                onFulfilled = function(value) refreshed <<- value,
-                onRejected = function(error) refresh_error <<- error)
+                onFulfilled = function(value) {
+                  refreshed <<- value
+                },
+                onRejected = function(error) {
+                  refresh_error <<- error
+                })
               poll_for_async(function() !is.null(refreshed) || !is.null(refresh_error), session)
             }
           )

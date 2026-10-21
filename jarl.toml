@@ -1,2 +1,3 @@
-[lint]
-ignore = ["internal_function"]
+[lint.undesirable_operator]
+# Closure state uses <<-; tests deliberately access package internals with :::.
+operators = ["->>"]

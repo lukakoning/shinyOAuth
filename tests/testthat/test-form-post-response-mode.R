@@ -46,15 +46,6 @@ count_referrer_meta <- function(html) {
   length(matches)
 }
 
-get_ui_dependency_names <- function(ui) {
-  vapply(
-    htmltools::resolveDependencies(htmltools::findDependencies(ui)),
-    `[[`,
-    "",
-    "name"
-  )
-}
-
 test_that("form_post reminder warns when oauth_form_post_ui was not called", {
   cli <- make_form_post_test_client(use_pkce = TRUE, use_nonce = FALSE)
   id <- "auth_form_post_watchdog_missing"
