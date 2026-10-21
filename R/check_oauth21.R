@@ -1,7 +1,7 @@
 #' Assess an OAuth configuration against a pinned OAuth 2.1 draft
 #'
 #' This function inspects a configured [OAuthClient] and its [OAuthProvider] for
-#' compliance with the OAuth 2.1 draft 16 (ruleset `1.1.0`) specification. It
+#' compliance with the OAuth 2.1 draft 16 (ruleset `1.1.1`) specification. It
 #' reports configuration gaps, unresolved external prerequisites, and recommendations
 #' without changing the configuration or making requests.
 #'
@@ -18,12 +18,17 @@
 #'   evidence or excuse missing local prerequisites. Prefer S256 PKCE.
 #'
 #' @details
-#' Ruleset `1.1.0` covers code/refresh, enabled PAR, required UserInfo and
+#' Ruleset `1.1.1` covers code/refresh, enabled PAR, required UserInfo and
 #' introspection, and the additional operations selected in `context`. Signing
 #' and encryption key retrieval is included when applicable. Future resource URLs, arbitrary
 #' request customization, browser/proxy TLS, registered redirect matching, secret
 #' custody, and authorization/resource server behavior require separate evidence.
 #' Optional DPoP, mTLS, PAR, JAR and JARM are not required as a bundle.
+#' File-backed mTLS credential usability is unresolved: assessment does not load
+#' certificate or private-key files or establish their correspondence. Applicable
+#' `mtls.credentials.*` checks remain unknown even when both paths are configured;
+#' missing required paths fail. Runtime validates the current files before each
+#' mTLS request, including after rotation.
 #'
 #' `configuration_compliant` is `FALSE` if an applicable mandatory configuration
 #' check fails; otherwise `NA` if a mandatory configuration check is unresolved;
@@ -230,6 +235,18 @@ check_oauth21 <- function(
       section = "1.5"
     )
     if (effective[["mtls"]]) {
+      add(
+        paste0("mtls.credentials.", endpoint),
+        status(effective[["mtls_credentials"]]),
+        "The selected mTLS endpoint requires readable, matching certificate and private-key files; assessment does not load them.",
+        "Verify the current certificate/key files, passphrase and leaf-first certificate order before making a request.",
+        evidence = if (is.na(effective[["mtls_credentials"]])) {
+          "not_observed"
+        } else {
+          "configuration"
+        },
+        reference = "https://www.rfc-editor.org/rfc/rfc8705.html#section-2"
+      )
       add(
         paste0("mtls.backend.", endpoint),
         status(effective[["mtls_backend"]]),
@@ -768,7 +785,7 @@ check_oauth21 <- function(
       configuration_compliant = oauth21_verdict(checks),
       checks = checks,
       draft = draft,
-      ruleset_version = "1.1.0",
+      ruleset_version = "1.1.1",
       package_version = as.character(utils::packageVersion("shinyOAuth")),
       assessed_at = Sys.time(),
       assessment_scope = if (has_client) {

@@ -167,7 +167,7 @@ test_that("a supported public client passes a bounded, deterministic assessment"
     c("authorization", "code", "refresh")
   )
   expect_identical(report[["draft"]], "draft-ietf-oauth-v2-1-16")
-  expect_identical(report[["ruleset_version"]], "1.1.0")
+  expect_identical(report[["ruleset_version"]], "1.1.1")
   expect_true(all(
     report[["checks"]][["status"]] %in%
       c("pass", "fail", "warn", "unknown", "not_applicable")
@@ -1112,10 +1112,10 @@ test_that("assessment and PEM mTLS construction agree on the active backend", {
     )
     supported <- startsWith(backend, "OpenSSL")
     report <- check_oauth21(client)
-    expect_identical(report[["configuration_compliant"]], supported)
+    expect_identical(report[["configuration_compliant"]], if (supported) NA else FALSE)
     expect_identical(
       oauth21_finding(report, "client_auth.token")[["status"]],
-      if (supported) "pass" else "fail"
+      if (supported) "unknown" else "fail"
     )
     expect_identical(
       oauth21_finding(report, "mtls.backend.token")[["status"]],
@@ -1139,6 +1139,109 @@ test_that("assessment and PEM mTLS construction agree on the active backend", {
       )
     }
   }
+})
+
+test_that("mTLS assessment does not attest to uninspected file-backed credentials", {
+  local_options(shinyOAuth.tls_min_version = "1.2")
+  for (style in c("tls_client_auth", "self_signed_tls_client_auth")) {
+    key_file <- tempfile(fileext = ".pem")
+    withr::defer(unlink(key_file))
+    file.copy(mtls_pem_fixture("client-key.pem"), key_file)
+    client <- oauth21_test_client(
+      list(token_auth_style = style),
+      mtls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
+      mtls_client_key_file = key_file
+    )
+    edited <- client
+    edited@mtls_client_key_file <- mtls_pem_fixture("ed25519-client-key.pem")
+    direct <- do.call(OAuthClient, S7::props(edited))
+    # An existing client also becomes invalid when the file is rotated in place.
+    file.copy(mtls_pem_fixture("ed25519-client-key.pem"), key_file, overwrite = TRUE)
+    for (invalid in list(edited, direct, client)) {
+      expect_silent(S7::validate(invalid))
+      report <- check_oauth21(invalid)
+      expect_identical(report[["configuration_compliant"]], NA)
+      for (id in c("client_auth.token", "mtls.credentials.token")) {
+        finding <- oauth21_finding(report, id)
+        expect_identical(finding[["status"]], "unknown")
+        expect_true(finding[["affects_verdict"]])
+      }
+      expect_error(
+        req_apply_mtls_client_certificate(
+          httr2::request(invalid@provider@token_url),
+          invalid
+        ),
+        "certificate matching"
+      )
+    }
+  }
+})
+
+test_that("mTLS credential assessment includes overrides and bound UserInfo without IO", {
+  local_options(shinyOAuth.tls_min_version = "1.2")
+  credentials <- list(
+    token_auth_style = "tls_client_auth",
+    mtls_client_cert_file = mtls_pem_fixture("client-cert.pem"),
+    mtls_client_key_file = mtls_pem_fixture("client-key.pem")
+  )
+  client <- oauth21_test_client(
+    list(
+      par_url = "https://issuer.example/par",
+      introspection_url = "https://issuer.example/introspect",
+      revocation_url = "https://issuer.example/revoke"
+    ),
+    endpoint_auth = list(
+      par = credentials,
+      introspection = credentials,
+      revocation = credentials
+    )
+  )
+  bound <- oauth21_test_client(
+    list(
+      userinfo_url = "https://issuer.example/userinfo",
+      mtls_client_certificate_bound_access_tokens = TRUE
+    ),
+    mtls_client_cert_file = credentials[["mtls_client_cert_file"]],
+    mtls_client_key_file = credentials[["mtls_client_key_file"]],
+    mtls_certificate_bound_access_tokens = TRUE
+  )
+  local_mocked_bindings(
+    read_keyed_client_certificate = function(...) stop("must not load credentials"),
+    tls_client_cert_thumbprint_s256 = function(...) stop("must not use the cache")
+  )
+  report <- expect_silent(check_oauth21(
+    client,
+    context = list(operations = c("introspection", "revocation"))
+  ))
+  expect_identical(report[["configuration_compliant"]], NA)
+  expect_identical(oauth21_finding(report, "client_auth.token")[["status"]], "pass")
+  for (endpoint in c("par", "introspection", "revocation")) {
+    for (prefix in c("client_auth.", "mtls.credentials.")) {
+      expect_identical(
+        oauth21_finding(report, paste0(prefix, endpoint))[["status"]],
+        "unknown"
+      )
+    }
+  }
+  report <- expect_silent(check_oauth21(
+    bound,
+    context = list(operations = "userinfo")
+  ))
+  expect_identical(report[["configuration_compliant"]], NA)
+  expect_identical(
+    oauth21_finding(report, "mtls.credentials.userinfo")[["status"]],
+    "unknown"
+  )
+  report <- check_oauth21(oauth_provider(
+    name = "Provider-only mTLS",
+    auth_url = "https://issuer.example/auth",
+    token_url = "https://issuer.example/token",
+    token_auth_style = "tls_client_auth"
+  ))
+  expect_identical(
+    oauth21_finding(report, "mtls.credentials.token")[["status"]],
+    "unknown"
+  )
 })
 
 test_that("development bypass assessment follows legacy numeric flag semantics", {

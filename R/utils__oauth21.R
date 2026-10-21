@@ -211,7 +211,17 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     credentials <- credentials && any(compatible)
   }
   mtls_backend <- !mtls || mtls_pem_backend_supported()
-  credentials <- credentials && mtls_backend
+  # Paths establish presence, not readable, matching certificate/key material.
+  # Keep assessment free of key loading and cache access, including after file
+  # rotation. Runtime validates the current files before each mTLS request.
+  mtls_credentials <- if (!mtls) {
+    TRUE
+  } else if (is.null(client) || cert) {
+    NA
+  } else {
+    FALSE
+  }
+  credentials <- credentials && mtls_backend && mtls_credentials
   headers <- if (endpoint == "token") {
     provider@extra_token_headers
   } else {
@@ -247,6 +257,7 @@ oauth21_endpoint_settings <- function(client, provider, endpoint) {
     credentials = credentials,
     mtls = mtls,
     mtls_backend = mtls_backend,
+    mtls_credentials = mtls_credentials,
     problem = method[["problem"]],
     confidential = !style %in% c("public") &&
       !(style == "body" && !has_secret) &&

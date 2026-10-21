@@ -24,7 +24,7 @@ Options affect the R process; use `oauth_client()` and
 module. See [Usage](usage.html) for app setup.
 
 `check_oauth21()` is an opt-in, read-only assessment pinned to OAuth 2.1 draft 16.
-Ruleset `1.1.0` reports requirement sources: OAuth core, OIDC, extensions,
+Ruleset `1.1.1` reports requirement sources: OAuth core, OIDC, extensions,
 security guidance, and package or application policy. Recommendations do not
 change the mandatory configuration verdict. Existing OAuth 2.0 authentication
 methods and callback choices remain available. For example, Basic/body client
