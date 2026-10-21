@@ -27,3 +27,4 @@ docs
 ..Rcheck/00check.log
 shinyOAuth_0.3.0.9000.tar.gz
 /codex
+/.codex-review
