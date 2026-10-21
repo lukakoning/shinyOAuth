@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Async worker spans record their final status, error events and token-operation
+  outcomes before restoring worker-local telemetry options and exporter settings.
+  Reused workers with tracing previously disabled retain complete outcomes while
+  still restoring their prior settings after successful or failed work.
+
 * OAuth 2.1 assessment ruleset `1.1.1` reports file-backed mTLS credential
   usability as unresolved instead of passing based on configured paths. This
   includes endpoint overrides and certificate-bound UserInfo. Assessment keeps

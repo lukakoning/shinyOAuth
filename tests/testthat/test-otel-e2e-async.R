@@ -747,6 +747,9 @@ otel_async_daemon("async parent/worker propagation survives stale worker tracing
   child_span <- child_span[[1L]]
 
   testthat::expect_identical(worker_pid, poison_pid)
+  testthat::expect_true(
+    as.character(worker_span[["status_code"]]) %in% c("STATUS_CODE_OK", "1")
+  )
   testthat::expect_identical(worker_span[["process_id"]], poison_pid)
   testthat::expect_identical(
     worker_span[["trace_id"]],
@@ -796,6 +799,13 @@ otel_async_daemon("async error propagation exports error parent and worker spans
   ))
   get("otel_clean_cache", envir = asNamespace("otel"))()
   withr::defer(reset_test_otel_cache())
+
+  poison_worker <- mirai::mirai({
+    options(shinyOAuth.otel_tracing_enabled = FALSE)
+    Sys.getpid()
+  })
+  mirai::call_mirai(poison_worker)
+  poison_pid <- poison_worker[["data"]]
 
   parent <- shinyOAuth:::otel_start_async_parent(
     "shinyOAuth.test.async.error.parent"
@@ -872,6 +882,13 @@ otel_async_daemon("async error propagation exports error parent and worker spans
   testthat::expect_true(otel_span_status_is_error(worker_span))
   testthat::expect_true(otel_span_has_event(parent_span, "exception"))
   testthat::expect_true(otel_span_has_event(worker_span, "exception"))
+  restored_worker <- mirai::mirai({
+    list(pid = Sys.getpid(), tracing = getOption("shinyOAuth.otel_tracing_enabled"))
+  })
+  mirai::call_mirai(restored_worker)
+  testthat::expect_identical(worker_span[["process_id"]], poison_pid)
+  testthat::expect_identical(restored_worker[["data"]][["pid"]], poison_pid)
+  testthat::expect_false(restored_worker[["data"]][["tracing"]])
 })
 
 otel_async_daemon("reused real mirai daemons clear stale file exporters after env restore", {

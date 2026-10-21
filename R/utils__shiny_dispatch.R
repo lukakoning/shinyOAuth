@@ -159,6 +159,8 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
         }
       )
     }
+    # Finalize with the propagated gates and exporter environment still active,
+    # before restoring this worker's settings from any preceding task.
     on.exit(
       .ns[["otel_end_async_parent"]](
         list(span = .otel_worker_span),
@@ -170,7 +172,8 @@ async_dispatch <- function(expr, args, .timeout = NULL, otel_context = NULL) {
           NULL
         }
       ),
-      add = TRUE
+      add = TRUE,
+      after = FALSE
     )
     .async_warnings <- list()
     .async_messages <- list()
