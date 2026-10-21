@@ -15,10 +15,16 @@ inputs:
 runs:
   using: composite
   steps:
+    # Posit's Chrome rule reuses the browser already on the runner:
+    # https://github.com/rstudio/r-system-requirements/commit/bd2bb0c65a2736fd0c13ad7d2a10c9216cb168b4
+    # Refresh mappings even when pak has a recent database from its default fork.
     - name: Install R dependencies
       id: install
       continue-on-error: true
       uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+      env:
+        R_PKG_SYSREQS_GIT_REPO_URL: https://github.com/rstudio/r-system-requirements.git
+        PKG_METADATA_UPDATE_AFTER: 0s
       with:
         extra-packages: ${{ inputs.extra-packages }}
         needs: ${{ inputs.needs }}
@@ -34,6 +40,9 @@ runs:
     - name: Retry R dependency installation
       if: steps.install.outcome == 'failure'
       uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+      env:
+        R_PKG_SYSREQS_GIT_REPO_URL: https://github.com/rstudio/r-system-requirements.git
+        PKG_METADATA_UPDATE_AFTER: 0s
       with:
         extra-packages: ${{ inputs.extra-packages }}
         needs: ${{ inputs.needs }}
