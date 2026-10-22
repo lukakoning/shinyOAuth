@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Form callback parsing uses preallocated storage and a hashed duplicate check.
+  Many distinct fields no longer cause quadratic allocation and scanning, and
+  callbacks decode each field once while retaining strict percent and duplicate
+  validation.
+
 * Malformed explicit JWKS host pins now fail closed during provider construction,
   S7 assignment, discovery and runtime host checks. Vectors and invalid types no
   longer silently remove the restriction; NULL and scalar NA still omit it.

@@ -668,20 +668,13 @@ oauth_form_post_parse_body <- function(
     )
   }
 
-  tryCatch(
-    reject_duplicate_form_encoded_members(
+  parsed <- tryCatch(
+    parse_unique_form_encoded_members(
       body,
       "OAuth form_post callback body"
     ),
     shinyOAuth_parse_error = function(e) {
       err_form_post_http(conditionMessage(e))
-    }
-  )
-
-  parsed <- tryCatch(
-    shiny::parseQueryString(paste0("?", body)),
-    error = function(e) {
-      err_form_post_http("OAuth form_post callback body could not be parsed.")
     }
   )
 
@@ -1142,7 +1135,9 @@ oauth_form_post_candidate_slot <- function(client, state, id) {
       ),
       "form_post_store_get"
     )
-    if (is.null(sealed)) return(slot)
+    if (is.null(sealed)) {
+      return(slot)
+    }
     envelope <- oauth_form_post_candidate_envelope(client, sealed)
     fresh <- tryCatch(
       oauth_form_post_validate_handle_freshness(client, envelope),
@@ -1159,7 +1154,9 @@ oauth_form_post_store_remove_siblings <- function(client, state, id = NULL) {
   # the pool bounds retention even if a backend cannot remove an entry.
   # Without compare-and-delete, a shared-store read followed by remove could
   # delete a different transaction inserted after another worker took the slot.
-  if (!inherits(client@state_store, "cache_mem")) return(invisible(NULL))
+  if (!inherits(client@state_store, "cache_mem")) {
+    return(invisible(NULL))
+  }
   namespaces <- if (!is.null(id)) {
     oauth_form_post_namespace(client, id)
   } else {
@@ -1234,7 +1231,8 @@ oauth_form_post_store_set <- function(client, id, payload) {
   storage_state <- logical_state %||% payload[["state"]] %||% random_urlsafe(32)
   store <- client@state_store
   if (
-    !is.function(store[["set_if_absent"]]) && !inherits(store, "cache_mem") &&
+    !is.function(store[["set_if_absent"]]) &&
+      !inherits(store, "cache_mem") &&
       !isTRUE(getOption("shinyOAuth.allow_non_atomic_state_store"))
   ) {
     err_config(c(
@@ -1274,7 +1272,12 @@ oauth_form_post_store_set <- function(client, id, payload) {
     if (!is.null(slot)) {
       handle <- paste0("fp1_", sprintf("%04d", slot), "_", random_urlsafe(43))
       key <- oauth_form_post_cache_key(id, handle, client)
-      sealed_payload <- oauth_form_post_seal_payload(client, id, handle, payload)
+      sealed_payload <- oauth_form_post_seal_payload(
+        client,
+        id,
+        handle,
+        payload
+      )
 
       tryCatch(
         store[["set"]](key, sealed_payload),

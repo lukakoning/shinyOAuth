@@ -263,39 +263,22 @@ parse_lenient_token_response <- function(body, allow_empty_scope = FALSE) {
 #' @keywords internal
 #' @noRd
 reject_duplicate_form_encoded_members <- function(form_text, label) {
-  if (is.null(form_text) || !nzchar(form_text)) {
-    return(invisible(NULL))
-  }
-
-  parts <- strsplit(form_text, "&", fixed = TRUE)[[1]]
-  parts <- parts[nzchar(parts)]
-  if (!length(parts)) {
-    return(invisible(NULL))
-  }
-
-  seen <- character(0)
-  for (part in parts) {
-    separator <- regexpr("=", part, fixed = TRUE)[[1]]
-    if (separator < 0) {
-      raw_key <- part
-      raw_value <- ""
-    } else {
-      raw_key <- substr(part, 1L, separator - 1L)
-      raw_value <- substr(part, separator + 1L, nchar(part, type = "chars"))
-    }
-
-    key <- decode_form_member(raw_key, label, "parameter name")
-    decode_form_member(raw_value, label, "parameter value")
-    if (key %in% seen) {
-      err_parse(protocol_diagnostic_message(
-        paste0(label, " contains duplicate parameter name"),
-        key
-      ))
-    }
-    seen <- c(seen, key)
-  }
-
+  parse_unique_form_encoded_members(form_text, label)
   invisible(NULL)
+}
+
+# Parse into preallocated vectors and use R's hashed duplicate check. Growing
+# and searching a vector (or named list) per field amplifies small hostile forms.
+parse_unique_form_encoded_members <- function(form_text, label) {
+  pairs <- decode_form_pairs(form_text, label, fail = err_parse)
+  duplicate <- anyDuplicated(names(pairs))
+  if (duplicate) {
+    err_parse(protocol_diagnostic_message(
+      paste0(label, " contains duplicate parameter name"),
+      names(pairs)[[duplicate]]
+    ))
+  }
+  pairs
 }
 
 decode_form_member <- function(value, label, member, fail = err_parse) {
@@ -327,11 +310,14 @@ decode_form_member <- function(value, label, member, fail = err_parse) {
 
 # Decode names and values without collapsing repeated fields. Keep raw query
 # composition separate so unrelated configured query bytes need not be rewritten.
-decode_form_pairs <- function(text, label = "Form/query") {
+decode_form_pairs <- function(
+  text,
+  label = "Form/query",
+  fail = function(message) stop(message, call. = FALSE)
+) {
   if (is.null(text) || !nzchar(text)) {
     return(list())
   }
-  fail <- function(message) stop(message, call. = FALSE)
   parts <- strsplit(text, "&", fixed = TRUE)[[1]]
   parts <- parts[nzchar(parts)]
   keys <- values <- character(length(parts))
