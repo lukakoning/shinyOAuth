@@ -169,8 +169,13 @@ you can unblock them using the following options:
   leaking to redirect targets. Set to `TRUE` only when you deliberately accept that redirect-following risk for a
   specific deployment; this opt-in is honored in all sessions
 - `options(shinyOAuth.max_body_bytes = 1048576)` – maximum response body size (bytes, default 1 MiB) accepted
-  from OAuth endpoints and resource requests. Increase this if an API legitimately returns larger payloads. The limit also applies
-  after gzip decompression; other content encodings are rejected. Values above R's supported binary-read size are capped
+  by shinyOAuth's performer for OAuth endpoints, `perform_resource_req()` and connection requests.
+  Both encoded downloads and decoded gzip data are bounded before the full body is accumulated;
+  other content encodings are rejected. Increase this if an API legitimately returns larger payloads.
+  Values above R's supported binary-read size are capped. `resource_req()` only builds a request:
+  sending it through `httr2::req_perform()` does not use shinyOAuth's bounded performer, and the
+  curl size option alone does not limit decoded data on libcurl before 8.20.0. Prefer
+  `perform_resource_req(token, request)` for prepared requests too, supplying `client` for DPoP or mTLS.
 
 ## State store
 

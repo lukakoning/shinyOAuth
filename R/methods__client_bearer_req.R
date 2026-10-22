@@ -26,6 +26,14 @@
 #' not parsed; callers must ensure these contain no additional OAuth credential
 #' transport. Later request changes outside these helpers require a new check.
 #'
+#' Response body limits require [perform_resource_req()], which bounds both
+#' encoded downloads and decoded gzip data before accumulating the full body.
+#' Performing this builder's result with [httr2::req_perform()] uses httr2's
+#' transport instead: shinyOAuth's decoded-body guarantee does not apply, and
+#' curl's size option depends on the installed libcurl version. Pass a prepared
+#' request to `perform_resource_req(token, request, client = client)` to retain
+#' the package's bounded transport and fresh authentication.
+#'
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param url The absolute URL to call.
 #' @param method Optional HTTP method (character). Defaults to "GET". When
@@ -76,8 +84,8 @@
 #'   request. This is primarily useful after a resource server challenges with
 #'   `DPoP-Nonce`.
 #'
-#' @return An [httr2] request object, ready to be performed with
-#'   [httr2::req_perform()]. Callers may still add headers or query
+#' @return An [httr2] request object. Prefer passing it to
+#'   [perform_resource_req()] for bounded response handling. Callers may still add headers or query
 #'   parameters, but when the effective token type is `DPoP` they must not
 #'   change the request method or base URL after calling
 #'   [resource_req()] because the proof is already bound to those values.
@@ -205,6 +213,11 @@ client_bearer_req <- function(
 #' and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
 #' also supply `client` so the request uses the matching key or
 #' certificate.
+#'
+#' This performer enforces `shinyOAuth.max_body_bytes` on encoded downloads and
+#' decoded gzip bodies before full accumulation, independently of libcurl's
+#' decompression limit support. Other content encodings are rejected. Use this
+#' path for prepared httr2 requests as well as URL strings.
 #'
 #' @inheritParams resource_req
 #' @param url Either the absolute URL to call or an [httr2::request()] object

@@ -41,6 +41,11 @@ test_that("decoded gzip budgets are enforced before full accumulation", {
   expect_s3_class(err, "shinyOAuth_parse_error")
   # The error records only budget + sentinel, rather than the 2 MiB plaintext.
   expect_equal(err[["context"]][["body_bytes"]], 4097L)
+  # Prepared builders must use the same bounded path as direct URL requests.
+  prepared <- resource_req("synthetic", srv[["url"]]("/large"))
+  err <- tryCatch(perform_resource_req("synthetic", prepared), error = identity)
+  expect_s3_class(err, "shinyOAuth_parse_error")
+  expect_equal(err[["context"]][["body_bytes"]], 4097L)
   expect_error(
     perform_resource_req(
       "synthetic",
@@ -50,6 +55,9 @@ test_that("decoded gzip budgets are enforced before full accumulation", {
     class = "shinyOAuth_parse_error"
   )
   resp <- perform_resource_req("synthetic", srv[["url"]]("/small"))
+  expect_identical(httr2::resp_body_string(resp), "small response")
+  prepared <- resource_req("synthetic", srv[["url"]]("/small"))
+  resp <- perform_resource_req("synthetic", prepared)
   expect_identical(httr2::resp_body_string(resp), "small response")
   expect_identical(
     list.files(tempdir(), pattern = "^shinyOAuth-response-"),

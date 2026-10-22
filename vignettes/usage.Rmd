@@ -194,7 +194,9 @@ output[["repositories"]] <- renderTable({
 Only send tokens to an API you intend to authorize. The example requests one
 page of results; fetching more pages depends on the API. Use `resource_req()`
 to build an `httr2` request without sending it, or pass a prepared `httr2`
-request to `perform_resource_req()`. See the
+request to `perform_resource_req()` to retain encoded and decoded response-size
+limits. Sending the builder's output directly with `httr2::req_perform()` uses
+httr2's transport and has no shinyOAuth decoded-size guarantee. See the
 [Spotify example](example-spotify.html) for another complete app.
 
 ### Additional token response fields

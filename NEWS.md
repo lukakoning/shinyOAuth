@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Resource-request documentation and examples use `perform_resource_req()` for
+  bounded encoded and decoded response handling, including prepared requests.
+  They now state that independently executing `resource_req()` with httr2 does
+  not provide shinyOAuth's decoded-size guarantee on older libcurl versions.
+
 * JSON duplicate-member scanning uses byte offsets for UTF-8 input. Many short
   keys following non-ASCII text no longer trigger repeated Unicode prefix scans;
   escaped-key equivalence, surrogate validation and nesting limits are preserved.
