@@ -799,8 +799,13 @@ are removed before signing and sending; escaped path segments such as
 <code>%2F</code> and <code>%2E</code> remain escaped. Supply query
 parameters through the helper’s <code>query</code> argument; external
 URL modifiers can decode reserved path characters and invalidate the
-proof. Use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to manage nonce
-retries.</p>
+proof. Use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to manage nonce retries
+and bound both encoded and decoded response bodies. Direct
+<code>httr2::req_perform(resource_req(...))</code> uses httr2’s
+transport and does not provide shinyOAuth’s decoded-size guarantee;
+older libcurl versions limit only the encoded transfer. Prepared
+requests can be sent with
+<code>perform_resource_req(token, request, client = client)</code>.</p>
 </div>
 </div>
 <div class="section level2">

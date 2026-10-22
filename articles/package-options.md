@@ -255,11 +255,21 @@ options:
   specific deployment; this opt-in is honored in all sessions
 
 - `options(shinyOAuth.max_body_bytes = 1048576)` – maximum response body
-  size (bytes, default 1 MiB) accepted from OAuth endpoints and resource
-  requests. Increase this if an API legitimately returns larger
-  payloads. The limit also applies after gzip decompression; other
-  content encodings are rejected. Values above R’s supported binary-read
-  size are capped
+  size (bytes, default 1 MiB) accepted by shinyOAuth’s performer for
+  OAuth endpoints,
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+  and connection requests. Both encoded downloads and decoded gzip data
+  are bounded before the full body is accumulated; other content
+  encodings are rejected. Increase this if an API legitimately returns
+  larger payloads. Values above R’s supported binary-read size are
+  capped.
+  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+  only builds a request: sending it through
+  [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
+  does not use shinyOAuth’s bounded performer, and the curl size option
+  alone does not limit decoded data on libcurl before 8.20.0. Prefer
+  `perform_resource_req(token, request)` for prepared requests too,
+  supplying `client` for DPoP or mTLS.
 
 ## State store
 

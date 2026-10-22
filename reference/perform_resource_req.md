@@ -157,6 +157,12 @@ authentication and tokens tied to a key (DPoP) or certificate (mTLS).
 For DPoP or mTLS, also supply `client` so the request uses the matching
 key or certificate.
 
+This performer enforces `shinyOAuth.max_body_bytes` on encoded downloads
+and decoded gzip bodies before full accumulation, independently of
+libcurl's decompression limit support. Other content encodings are
+rejected. Use this path for prepared httr2 requests as well as URL
+strings.
+
 ## Examples
 
 ``` r
@@ -181,10 +187,11 @@ if (interactive()) {
   )
 
   # Inspect request settings without printing authentication headers.
-  # httr2::req_perform(request) sends it when ready.
+  # Keep bounded encoded/decoded response handling when sending it.
+  response <- perform_resource_req(token, request)
 
   # Or start from your own httr2 request and still let shinyOAuth perform it
-  # so DPoP nonce retries remain available.
+  # so response limits and DPoP nonce retries remain available.
   custom_request <- httr2::request("https://api.example.com/resource") |>
     httr2::req_headers(Accept = "application/json") |>
     httr2::req_url_query(limit = 5)

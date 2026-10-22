@@ -358,11 +358,18 @@ targets. Set to <code>TRUE</code> only when you deliberately accept that
 redirect-following risk for a specific deployment; this opt-in is
 honored in all sessions</p></li>
 <li><p><code>options(shinyOAuth.max_body_bytes = 1048576)</code> –
-maximum response body size (bytes, default 1 MiB) accepted from OAuth
-endpoints and resource requests. Increase this if an API legitimately
-returns larger payloads. The limit also applies after gzip
-decompression; other content encodings are rejected. Values above R’s
-supported binary-read size are capped</p></li>
+maximum response body size (bytes, default 1 MiB) accepted by
+shinyOAuth’s performer for OAuth endpoints,
+<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> and connection requests. Both
+encoded downloads and decoded gzip data are bounded before the full body
+is accumulated; other content encodings are rejected. Increase this if
+an API legitimately returns larger payloads. Values above R’s supported
+binary-read size are capped. <code><a href="../reference/resource_req.html">resource_req()</a></code> only builds a
+request: sending it through <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> does not
+use shinyOAuth’s bounded performer, and the curl size option alone does
+not limit decoded data on libcurl before 8.20.0. Prefer
+<code>perform_resource_req(token, request)</code> for prepared requests
+too, supplying <code>client</code> for DPoP or mTLS.</p></li>
 </ul>
 </div>
 <div class="section level2">

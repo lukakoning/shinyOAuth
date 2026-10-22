@@ -124,12 +124,12 @@ resource_req(
 ## Value
 
 An [httr2](https://httr2.r-lib.org/reference/httr2-package.html) request
-object, ready to be performed with
-[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html).
-Callers may still add headers or query parameters, but when the
-effective token type is `DPoP` they must not change the request method
-or base URL after calling `resource_req()` because the proof is already
-bound to those values.
+object. Prefer passing it to
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+for bounded response handling. Callers may still add headers or query
+parameters, but when the effective token type is `DPoP` they must not
+change the request method or base URL after calling `resource_req()`
+because the proof is already bound to those values.
 
 ## Details
 
@@ -146,6 +146,17 @@ URL/query inputs and prebuilt httr2 form, raw and string bodies labelled
 unaffected. File, multipart and streaming bodies are not parsed; callers
 must ensure these contain no additional OAuth credential transport.
 Later request changes outside these helpers require a new check.
+
+Response body limits require
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md),
+which bounds both encoded downloads and decoded gzip data before
+accumulating the full body. Performing this builder's result with
+[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
+uses httr2's transport instead: shinyOAuth's decoded-body guarantee does
+not apply, and curl's size option depends on the installed libcurl
+version. Pass a prepared request to
+`perform_resource_req(token, request, client = client)` to retain the
+package's bounded transport and fresh authentication.
 
 ## DPoP note
 
@@ -182,10 +193,11 @@ if (interactive()) {
   )
 
   # Inspect request settings without printing authentication headers.
-  # httr2::req_perform(request) sends it when ready.
+  # Keep bounded encoded/decoded response handling when sending it.
+  response <- perform_resource_req(token, request)
 
   # Or start from your own httr2 request and still let shinyOAuth perform it
-  # so DPoP nonce retries remain available.
+  # so response limits and DPoP nonce retries remain available.
   custom_request <- httr2::request("https://api.example.com/resource") |>
     httr2::req_headers(Accept = "application/json") |>
     httr2::req_url_query(limit = 5)

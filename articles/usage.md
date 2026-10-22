@@ -220,8 +220,12 @@ one page of results; fetching more pages depends on the API. Use
 [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
 to build an `httr2` request without sending it, or pass a prepared
 `httr2` request to
-[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md).
-See the [Spotify
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+to retain encoded and decoded response-size limits. Sending the
+builder’s output directly with
+[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
+uses httr2’s transport and has no shinyOAuth decoded-size guarantee. See
+the [Spotify
 example](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md)
 for another complete app.
 

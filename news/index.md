@@ -2,6 +2,46 @@
 
 ## shinyOAuth (development version)
 
+- Connection polling reuses redacted lifecycle metadata for unchanged
+  store revisions across sessions, instead of decrypting every grant on
+  each tick. Expiry, owner state, client policy, credential retirement
+  and changed revisions are still checked. Explicit enumeration prunes
+  shared indexes once per batch and validates each client’s current
+  policy once; use-time reads remain strict.
+
+- Resource-request documentation and examples use
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+  for bounded encoded and decoded response handling, including prepared
+  requests. They now state that independently executing
+  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+  with httr2 does not provide shinyOAuth’s decoded-size guarantee on
+  older libcurl versions.
+
+- JSON duplicate-member scanning uses byte offsets for UTF-8 input. Many
+  short keys following non-ASCII text no longer trigger repeated Unicode
+  prefix scans; escaped-key equivalence, surrogate validation and
+  nesting limits are preserved.
+
+- Form callback parsing uses preallocated storage and a hashed duplicate
+  check. Many distinct fields no longer cause quadratic allocation and
+  scanning, and callbacks decode each field once while retaining strict
+  percent and duplicate validation.
+
+- Malformed explicit JWKS host pins now fail closed during provider
+  construction, S7 assignment, discovery and runtime host checks.
+  Vectors and invalid types no longer silently remove the restriction;
+  NULL and scalar NA still omit it.
+
+- OIDC discovery rejects unsupported-only token authentication
+  advertisements instead of selecting unadvertised Basic authentication.
+  Omitted metadata still defaults to Basic; supported methods can
+  coexist with extension methods.
+
+- Resource request helpers reject malformed HTTP methods before
+  attaching credentials, including inherited request methods. Whitespace
+  and control characters can no longer bypass method restrictions or
+  alter request framing.
+
 - Async worker spans record their final status, error events and
   token-operation outcomes before restoring worker-local telemetry
   options and exporter settings. Reused workers with tracing previously

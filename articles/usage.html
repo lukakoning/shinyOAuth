@@ -284,7 +284,10 @@ the authenticated user’s access token. For example, add
 requests one page of results; fetching more pages depends on the API.
 Use <code><a href="../reference/resource_req.html">resource_req()</a></code> to build an <code>httr2</code> request
 without sending it, or pass a prepared <code>httr2</code> request to
-<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code>. See the <a href="example-spotify.html">Spotify example</a> for another complete
+<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to retain encoded and decoded
+response-size limits. Sending the builder’s output directly with
+<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> uses httr2’s transport and has no
+shinyOAuth decoded-size guarantee. See the <a href="example-spotify.html">Spotify example</a> for another complete
 app.</p>
 <div class="section level3">
 <h3 id="additional-token-response-fields">Additional token response fields<a class="anchor" aria-label="anchor" href="#additional-token-response-fields"></a>
