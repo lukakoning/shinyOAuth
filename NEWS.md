@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OIDC discovery rejects unsupported-only token authentication advertisements
+  instead of selecting unadvertised Basic authentication. Omitted metadata still
+  defaults to Basic; supported methods can coexist with extension methods.
+
 * Resource request helpers reject malformed HTTP methods before attaching
   credentials, including inherited request methods. Whitespace and control
   characters can no longer bypass method restrictions or alter request framing.

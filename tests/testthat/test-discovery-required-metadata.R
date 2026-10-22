@@ -22,17 +22,26 @@ test_that("omitted token auth metadata permits only the OIDC Basic default", {
   for (pkce in c(TRUE, FALSE)) {
     for (style in list(NULL, "header")) {
       provider <- oauth_provider_oidc_discover(
-        metadata[["issuer"]], token_auth_style = style, use_pkce = pkce
+        metadata[["issuer"]],
+        token_auth_style = style,
+        use_pkce = pkce
       )
       expect_identical(provider@token_auth_style, "header")
     }
     for (style in c(
-      "public", "none", "body", "client_secret_jwt", "private_key_jwt",
-      "tls_client_auth", "self_signed_tls_client_auth"
+      "public",
+      "none",
+      "body",
+      "client_secret_jwt",
+      "private_key_jwt",
+      "tls_client_auth",
+      "self_signed_tls_client_auth"
     )) {
       expect_error(
         oauth_provider_oidc_discover(
-          metadata[["issuer"]], token_auth_style = style, use_pkce = pkce
+          metadata[["issuer"]],
+          token_auth_style = style,
+          use_pkce = pkce
         ),
         "not advertised",
         class = "shinyOAuth_config_error"
@@ -42,17 +51,64 @@ test_that("omitted token auth metadata permits only the OIDC Basic default", {
 
   # Explicit advertisements continue to allow the corresponding methods.
   methods <- c(
-    header = "client_secret_basic", body = "client_secret_post", public = "none",
-    client_secret_jwt = "client_secret_jwt", private_key_jwt = "private_key_jwt",
+    header = "client_secret_basic",
+    body = "client_secret_post",
+    public = "none",
+    client_secret_jwt = "client_secret_jwt",
+    private_key_jwt = "private_key_jwt",
     tls_client_auth = "tls_client_auth",
     self_signed_tls_client_auth = "self_signed_tls_client_auth"
   )
   for (style in names(methods)) {
-    metadata[["token_endpoint_auth_methods_supported"]] <- list(methods[[style]])
+    metadata[["token_endpoint_auth_methods_supported"]] <- list(methods[[
+      style
+    ]])
     provider <- oauth_provider_oidc_discover(
-      metadata[["issuer"]], token_auth_style = style, use_pkce = TRUE
+      metadata[["issuer"]],
+      token_auth_style = style,
+      use_pkce = TRUE
     )
     expect_identical(provider@token_auth_style, style)
+  }
+})
+
+test_that("extension auth methods cannot select unadvertised Basic authentication", {
+  metadata <- strict_oidc_metadata()
+  local_mocked_bindings(.discover_fetch_response = function(req, issuer) {
+    httr2::response(
+      status_code = 200L,
+      headers = list(`content-type` = "application/json"),
+      body = charToRaw(jsonlite::toJSON(metadata, auto_unbox = TRUE))
+    )
+  })
+  metadata[["token_endpoint_auth_methods_supported"]] <- list(
+    "urn:example:auth"
+  )
+  for (pkce in c(TRUE, FALSE)) {
+    expect_error(
+      oauth_provider_oidc_discover(metadata[["issuer"]], use_pkce = pkce),
+      "no supported token endpoint authentication method",
+      class = "shinyOAuth_config_error"
+    )
+  }
+  for (method in c("client_secret_basic", "client_secret_post", "none")) {
+    metadata[["token_endpoint_auth_methods_supported"]] <- list(
+      "urn:example:auth",
+      method
+    )
+    provider <- oauth_provider_oidc_discover(
+      metadata[["issuer"]],
+      use_pkce = TRUE
+    )
+    expect_identical(
+      provider@token_auth_style,
+      switch(
+        method,
+        client_secret_basic = "header",
+        client_secret_post = "body",
+        none = "public"
+      )
+    )
   }
 })
 
@@ -68,7 +124,10 @@ test_that("empty token auth metadata cannot bypass advertised-method checks", {
   })
   for (style in list(NULL, "header", "public", "private_key_jwt")) {
     expect_error(
-      oauth_provider_oidc_discover(metadata[["issuer"]], token_auth_style = style),
+      oauth_provider_oidc_discover(
+        metadata[["issuer"]],
+        token_auth_style = style
+      ),
       "token_endpoint_auth_methods_supported",
       class = "shinyOAuth_parse_error"
     )

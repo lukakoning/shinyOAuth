@@ -708,7 +708,10 @@ oauth_provider_oidc_discover <- function(
   # OIDC Discovery 4.2 requires zero-element claims to be omitted. In
   # particular, an empty auth-method list must not become an unrestricted set.
   if ("token_endpoint_auth_methods_supported" %in% names(disc)) {
-    .discover_require_string_array(disc, "token_endpoint_auth_methods_supported")
+    .discover_require_string_array(
+      disc,
+      "token_endpoint_auth_methods_supported"
+    )
   }
 
   optional_string_arrays <- c(
@@ -1232,8 +1235,16 @@ oauth_provider_oidc_discover <- function(
     )
   }
 
-  # Retain the conservative fallback for unrecognized extension methods.
-  "header"
+  err_config(
+    c(
+      "x" = "OIDC discovery advertises no supported token endpoint authentication method",
+      "i" = paste(
+        "Supported methods are client_secret_basic, client_secret_post, none",
+        "(with PKCE), and explicitly configured JWT or mutual TLS methods"
+      )
+    ),
+    context = list(issuer = iss, token_endpoint = token_url, methods = methods)
+  )
 }
 
 #' Validate an explicitly requested token auth style
