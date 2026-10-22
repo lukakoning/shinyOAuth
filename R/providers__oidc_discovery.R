@@ -221,8 +221,9 @@ oauth_provider_oidc_discover <- function(
 
   # 6a) Read caller overrides before JWKS host-policy checks.
   dots <- list(...)
-  jwks_host_allow_only <- dots[["jwks_host_allow_only"]] %||%
-    NULL
+  jwks_host_allow_only <- normalize_jwks_host_pin(dots[[
+    "jwks_host_allow_only"
+  ]])
 
   .discover_validate_jwks_uri(
     disc = disc,

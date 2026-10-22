@@ -846,7 +846,8 @@ jwks_cache_key <- function(
   if (!is.null(pins) && length(pins) > 0) {
     pins_norm <- sort(unique(as.character(pins)))
   }
-  # Normalize host-policy fields
+  # Normalize host-policy fields; reject malformed pins before any cache hit.
+  jwks_host_allow_only <- normalize_jwks_host_pin(jwks_host_allow_only)
   host_match <- isTRUE(jwks_host_issuer_match)
   allow_only <- ""
   if (
@@ -906,6 +907,34 @@ jwks_cache_key <- function(
   key
 }
 
+# Normalize explicit pins before cache lookups, discovery or network access.
+normalize_jwks_host_pin <- function(value, fail = err_config) {
+  if (
+    is.null(value) || identical(value, NA_character_) || identical(value, NA)
+  ) {
+    return(NA_character_)
+  }
+  invalid <- function() {
+    fail(
+      "jwks_host_allow_only must be a single hostname or URL, NULL, or scalar NA"
+    )
+  }
+  if (!is_valid_string(value)) {
+    invalid()
+  }
+  host <- tolower(trimws(value))
+  if (grepl("^https?://", host)) {
+    host <- parse_url_host(host, "jwks_host_allow_only")
+  } else if (!grepl("^[A-Za-z0-9.-]+$", host)) {
+    invalid()
+  }
+  host <- sub("\\.$", "", host)
+  if (!is_valid_string(host)) {
+    invalid()
+  }
+  host
+}
+
 #' Internal: ensure JWKS host aligns with issuer
 #'
 #' Validates the discovery `jwks_uri` hostname according to the provider's
@@ -942,30 +971,15 @@ validate_jwks_host_matches_issuer <- function(
     # Best-effort access without hard S7 dependency here
     check_host <- isTRUE(try(provider@jwks_host_issuer_match, silent = TRUE))
     pinned_host <- try(provider@jwks_host_allow_only, silent = TRUE)
-    if (inherits(pinned_host, "try-error")) pinned_host <- NA_character_
+    if (inherits(pinned_host, "try-error")) {
+      err_config("Could not read provider jwks_host_allow_only policy")
+    }
   }
 
+  pinned_host <- normalize_jwks_host_pin(pinned_host)
   # If a pinned host is configured, enforce exact match to it
-  if (
-    is.character(pinned_host) &&
-      length(pinned_host) == 1 &&
-      !is.na(pinned_host) &&
-      nzchar(pinned_host)
-  ) {
-    ph <- tolower(trimws(pinned_host))
-    # Allow specifying either a bare host ("www.googleapis.com") or a full URL
-    # ("https://www.googleapis.com"). Normalize to host-only for comparison.
-    if (grepl("://", ph, fixed = TRUE)) {
-      # Best-effort: extract host from URL; on failure, keep original string
-      ph <- try(
-        parse_url_host(ph, label = "jwks_host_allow_only"),
-        silent = TRUE
-      )
-      if (inherits(ph, "try-error")) {
-        ph <- tolower(trimws(pinned_host))
-      }
-    }
-    ph <- sub("\\.$", "", ph)
+  if (!is.na(pinned_host)) {
+    ph <- pinned_host
     if (!identical(jwks_host, ph)) {
       err_config(c(
         "x" = "jwks_uri host must equal configured jwks_host_allow_only",

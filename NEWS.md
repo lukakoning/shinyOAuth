@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Malformed explicit JWKS host pins now fail closed during provider construction,
+  S7 assignment, discovery and runtime host checks. Vectors and invalid types no
+  longer silently remove the restriction; NULL and scalar NA still omit it.
+
 * OIDC discovery rejects unsupported-only token authentication advertisements
   instead of selecting unadvertised Basic authentication. Omitted metadata still
   defaults to Basic; supported methods can coexist with extension methods.

@@ -437,7 +437,8 @@ OAuthProvider <- S7::new_class(
     userinfo_id_token_match = S7::new_property(
       S7::class_logical,
       default = quote(
-        is_valid_string(userinfo_url) && is_ok_host(userinfo_url) &&
+        is_valid_string(userinfo_url) &&
+          is_ok_host(userinfo_url) &&
           (isTRUE(id_token_validation) || isTRUE(use_nonce))
       )
     ),
@@ -1037,18 +1038,10 @@ oauth_provider <- function(
   }
   allowed_algs <- toupper(allowed_algs)
 
-  # Normalize jwks_host_allow_only: allow either hostname or full URL; store hostname only
-  if (is_valid_string(jwks_host_allow_only)) {
-    jh <- trimws(jwks_host_allow_only)
-    if (grepl("^https?://", tolower(jh))) {
-      jh <- parse_url_host(jh, "jwks_host_allow_only")
-    } else {
-      jh <- tolower(sub("\\.$", "", jh))
-    }
-    jwks_host_allow_only <- jh
-  } else {
-    jwks_host_allow_only <- NA_character_
-  }
+  jwks_host_allow_only <- normalize_jwks_host_pin(
+    jwks_host_allow_only,
+    err_input
+  )
 
   if (
     !(is.logical(infer_oidc_from_issuer) &&
@@ -2103,25 +2096,17 @@ oauth_provider_validate <- function(self) {
     )
   }
 
-  if (is_valid_string(self@jwks_host_allow_only)) {
-    val <- trimws(self@jwks_host_allow_only)
-    host_only <- val
-    if (grepl("^https?://", tolower(val))) {
-      host_only <- try(
-        parse_url_host(val, "jwks_host_allow_only"),
-        silent = TRUE
-      )
-      if (inherits(host_only, "try-error")) {
-        return("OAuthProvider: jwks_host_allow_only URL could not be parsed")
-      }
-    } else {
-      if (!grepl("^[A-Za-z0-9.-]+$", host_only)) {
-        return(
-          "OAuthProvider: jwks_host_allow_only must be a hostname or a URL containing a hostname"
-        )
-      }
-      host_only <- sub("\\.$", "", tolower(host_only))
-    }
+  pin_error <- tryCatch(
+    {
+      normalize_jwks_host_pin(self@jwks_host_allow_only, function(message) {
+        stop(message, call. = FALSE)
+      })
+      NULL
+    },
+    error = conditionMessage
+  )
+  if (!is.null(pin_error)) {
+    return(paste0("OAuthProvider: ", pin_error))
   }
 
   NULL
