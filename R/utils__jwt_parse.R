@@ -626,7 +626,9 @@ reject_duplicate_json_object_members <- function(
   if (!isTRUE(validUTF8(json_text))) {
     on_error(paste0(label, " contains invalid UTF-8"))
   }
-  chars <- strsplit(json_text, "", fixed = TRUE)[[1]]
+  # JSON structural characters are ASCII. Byte offsets let us extract keys
+  # without repeatedly traversing UTF-8 prefixes for character-indexed substr().
+  chars <- as.integer(charToRaw(json_text))
   if (!length(chars)) {
     return(invisible(NULL))
   }
@@ -641,7 +643,7 @@ reject_duplicate_json_object_members <- function(
     if (end > length(chars)) {
       on_error(paste0(label, " contains an invalid Unicode escape"))
     }
-    hex <- paste(chars[seq.int(start + 2L, end)], collapse = "")
+    hex <- rawToChar(as.raw(chars[seq.int(start + 2L, end)]))
     if (!grepl("^[0-9A-Fa-f]{4}$", hex)) {
       on_error(paste0(label, " contains an invalid Unicode escape"))
     }
@@ -651,15 +653,15 @@ reject_duplicate_json_object_members <- function(
   while (index <= length(chars)) {
     ch <- chars[[index]]
 
-    if (identical(ch, '"')) {
+    if (ch == 34L) {
       index <- index + 1L
       token_start <- index
       while (index <= length(chars)) {
         ch_inner <- chars[[index]]
-        if (identical(ch_inner, "\\")) {
+        if (ch_inner == 92L) {
           if (
             index < length(chars) &&
-              identical(chars[[index + 1L]], "u")
+              chars[[index + 1L]] == 117L
           ) {
             code_point <- read_unicode_escape(index)
             if (code_point == 0L) {
@@ -669,14 +671,20 @@ reject_duplicate_json_object_members <- function(
               next_escape <- index + 6L
               if (
                 next_escape + 5L > length(chars) ||
-                  !identical(chars[[next_escape]], "\\") ||
-                  !identical(chars[[next_escape + 1L]], "u")
+                  chars[[next_escape]] != 92L ||
+                  chars[[next_escape + 1L]] != 117L
               ) {
-                on_error(paste0(label, " contains an unpaired Unicode surrogate"))
+                on_error(paste0(
+                  label,
+                  " contains an unpaired Unicode surrogate"
+                ))
               }
               low_surrogate <- read_unicode_escape(next_escape)
               if (low_surrogate < 0xDC00L || low_surrogate > 0xDFFFL) {
-                on_error(paste0(label, " contains an unpaired Unicode surrogate"))
+                on_error(paste0(
+                  label,
+                  " contains an unpaired Unicode surrogate"
+                ))
               }
               index <- next_escape + 5L
             } else if (code_point >= 0xDC00L && code_point <= 0xDFFFL) {
@@ -688,7 +696,7 @@ reject_duplicate_json_object_members <- function(
             # Skip a complete escape, including an escaped literal backslash.
             index <- index + 1L
           }
-        } else if (identical(ch_inner, '"')) {
+        } else if (ch_inner == 34L) {
           break
         }
         index <- index + 1L
@@ -701,7 +709,7 @@ reject_duplicate_json_object_members <- function(
       lookahead <- index + 1L
       while (
         lookahead <= length(chars) &&
-          grepl("[[:space:]]", chars[[lookahead]])
+          chars[[lookahead]] %in% c(9L, 10L, 13L, 32L)
       ) {
         lookahead <- lookahead + 1L
       }
@@ -710,13 +718,15 @@ reject_duplicate_json_object_members <- function(
         length(container_stack) > 0L &&
           identical(container_stack[[length(container_stack)]], "object") &&
           lookahead <= length(chars) &&
-          identical(chars[[lookahead]], ":")
+          chars[[lookahead]] == 58L
       ) {
         token_end <- index - 1L
         token <- if (token_end < token_start) {
           ""
         } else {
-          substr(json_text, token_start, token_end)
+          token <- rawToChar(as.raw(chars[seq.int(token_start, token_end)]))
+          Encoding(token) <- "UTF-8"
+          token
         }
         key <- jwt_decode_json_string_token(token)
         level <- length(container_stack)
@@ -732,21 +742,21 @@ reject_duplicate_json_object_members <- function(
         }
         assign(key_id, TRUE, envir = seen)
       }
-    } else if (identical(ch, "{")) {
+    } else if (ch == 123L) {
       level <- length(container_stack) + 1L
       if (level > max_depth) {
         on_error(paste0(label, " exceeds the maximum JSON nesting depth"))
       }
       container_stack[[level]] <- "object"
       seen_stack[level] <- list(new.env(hash = TRUE, parent = emptyenv()))
-    } else if (identical(ch, "[")) {
+    } else if (ch == 91L) {
       level <- length(container_stack) + 1L
       if (level > max_depth) {
         on_error(paste0(label, " exceeds the maximum JSON nesting depth"))
       }
       container_stack[[level]] <- "array"
       seen_stack[level] <- list(NULL)
-    } else if (identical(ch, "}") || identical(ch, "]")) {
+    } else if (ch == 125L || ch == 93L) {
       if (length(container_stack) > 0L) {
         last_index <- length(container_stack)
         length(container_stack) <- last_index - 1L

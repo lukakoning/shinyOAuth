@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* JSON duplicate-member scanning uses byte offsets for UTF-8 input. Many short
+  keys following non-ASCII text no longer trigger repeated Unicode prefix scans;
+  escaped-key equivalence, surrogate validation and nesting limits are preserved.
+
 * Form callback parsing uses preallocated storage and a hashed duplicate check.
   Many distinct fields no longer cause quadratic allocation and scanning, and
   callbacks decode each field once while retaining strict percent and duplicate

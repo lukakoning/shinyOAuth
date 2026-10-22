@@ -133,6 +133,29 @@ test_that("duplicate guard handles long values without accumulating tokens", {
   )
 })
 
+test_that("duplicate guard handles many UTF-8 members without rescanning prefixes", {
+  members <- paste0('"k', seq_len(8000L), '":0', collapse = ",")
+  json <- paste0('{"prefix":"\u00e9\U0001f600",', members, ',"\u00e9":1}')
+  expect_no_error(reject_duplicate_json_object_members(json, "JSON"))
+  for (key in c('"\u00e9"', '"\\u00e9"')) {
+    duplicate <- paste0(substr(json, 1L, nchar(json) - 1L), ",", key, ":2}")
+    expect_error(
+      reject_duplicate_json_object_members(duplicate, "JSON"),
+      "duplicate member name",
+      class = "shinyOAuth_parse_error"
+    )
+  }
+  # Large UTF-8 prefixes must not change per-key extraction work. Timing is
+  # recorded separately in tests/benchmarks/json-members.R.
+  expect_error(
+    reject_duplicate_json_object_members(
+      '{"\U0001f600":0,"\\ud83d\\ude00":1}',
+      "JSON"
+    ),
+    "duplicate member name"
+  )
+})
+
 test_that("duplicate guard bounds JSON nesting depth", {
   within_limit <- paste0(strrep("[", 64), "0", strrep("]", 64))
   over_limit <- paste0(strrep("[", 65), "0", strrep("]", 65))
