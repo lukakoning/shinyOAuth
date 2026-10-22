@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* Connection polling reuses redacted lifecycle metadata for unchanged store
+  revisions across sessions, instead of decrypting every grant on each tick.
+  Expiry, owner state, client policy, credential retirement and changed revisions
+  are still checked. Explicit enumeration prunes shared indexes once per batch
+  and validates each client's current policy once; use-time reads remain strict.
+
 * Resource-request documentation and examples use `perform_resource_req()` for
   bounded encoded and decoded response handling, including prepared requests.
   They now state that independently executing `resource_req()` with httr2 does

@@ -52,7 +52,12 @@ connection_client_fingerprint <- function(client) {
   ))
 }
 
-connection_credential_binding <- function(owner, id, client) {
+connection_credential_binding <- function(
+  owner,
+  id,
+  client,
+  checked_fingerprint = connection_client_fingerprint(client)
+) {
   for (value in list(owner, id)) {
     if (!is_valid_string(value) || !grepl("^[A-Za-z0-9_-]{16,128}$", value)) {
       err_input("Invalid connection credential binding")
@@ -63,7 +68,7 @@ connection_credential_binding <- function(owner, id, client) {
     version = 1L,
     owner = owner,
     id = id,
-    fingerprint = connection_client_fingerprint(client)
+    fingerprint = checked_fingerprint
   )
 }
 
@@ -303,10 +308,16 @@ connection_credentials_open <- function(
   id,
   client,
   key,
-  expected_fingerprint = NULL
+  expected_fingerprint = NULL,
+  checked_fingerprint = connection_client_fingerprint(client)
 ) {
   derived_key <- connection_credential_key(key)
-  binding <- connection_credential_binding(owner, id, client)
+  binding <- connection_credential_binding(
+    owner,
+    id,
+    client,
+    checked_fingerprint
+  )
   if (
     !is.null(expected_fingerprint) &&
       !identical(binding[["fingerprint"]], expected_fingerprint)

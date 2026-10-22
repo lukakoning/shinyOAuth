@@ -224,6 +224,7 @@ oauth_connections <- function(
   state[["credential_retirements"]] <- new.env(parent = emptyenv())
   state[["credential_flights"]] <- new.env(parent = emptyenv())
   state[["authorization_metadata"]] <- new.env(parent = emptyenv())
+  state[["lifecycle_metadata"]] <- new.env(parent = emptyenv())
   manager <- new.env(parent = emptyenv())
   for (name in c(
     "clients",
@@ -787,7 +788,7 @@ connection_manager_controller <- function(
     signal()
     invisible(TRUE)
   }
-  decode <- function(record) {
+  decode <- function(record, checked_fingerprint = NULL) {
     client <- client_for(record[["client"]], check = FALSE)
     result <- list(
       client = client,
@@ -809,7 +810,11 @@ connection_manager_controller <- function(
           record[["id"]],
           client,
           manager[["keys"]][["credentials"]],
-          expected_fingerprint = manager[["fingerprints"]][[record[["client"]]]]
+          expected_fingerprint = manager[["fingerprints"]][[record[[
+            "client"
+          ]]]],
+          checked_fingerprint = checked_fingerprint %||%
+            connection_client_fingerprint(client)
         )
       },
       error = function(...) NULL
@@ -865,17 +870,21 @@ connection_manager_controller <- function(
     }
     result
   }
-  read <- function(id, touch = FALSE) {
-    guard(touch)
-    for (key in ls(state[["authorization_metadata"]], all.names = TRUE)) {
-      if (
-        state[["authorization_metadata"]][[key]][["expires_at"]] <=
-          as.numeric(Sys.time())
-      ) {
-        rm(list = key, envir = state[["authorization_metadata"]])
+  prune_records <- function() {
+    now <- as.numeric(Sys.time())
+    for (name in c("authorization_metadata", "lifecycle_metadata")) {
+      entries <- state[[name]]
+      for (key in ls(entries, all.names = TRUE)) {
+        if (entries[[key]][["expires_at"]] <= now) {
+          rm(list = key, envir = entries)
+        }
       }
     }
     connection_credential_prune(manager)
+  }
+  read <- function(id, touch = FALSE) {
+    guard(touch)
+    prune_records()
     record <- store[["read"]](owner[["id"]], id)
     if (is.null(record)) {
       err_token("Connection is unavailable")
@@ -884,7 +893,124 @@ connection_manager_controller <- function(
   }
   records <- function() {
     guard()
-    lapply(store[["list"]](owner[["id"]]), function(row) read(row[["id"]]))
+    prune_records()
+    rows <- store[["list"]](owner[["id"]])
+    fingerprints <- batch_fingerprints(rows)
+    lapply(rows, function(row) {
+      record <- store[["read"]](owner[["id"]], row[["id"]])
+      if (is.null(record)) {
+        err_token("Connection is unavailable")
+      }
+      decode(record, fingerprints[[row[["client"]]]])
+    })
+  }
+  # A batch is synchronous and cannot yield. Recheck current client policy once
+  # per client here; individual credential/request/refresh reads still recheck it.
+  batch_fingerprints <- function(rows) {
+    clients <- unique(vapply(rows, function(row) row[["client"]], character(1)))
+    stats::setNames(
+      lapply(clients, function(name) {
+        tryCatch(
+          connection_client_fingerprint(client_for(name, check = FALSE)),
+          error = function(...) NA_character_
+        )
+      }),
+      clients
+    )
+  }
+  poll <- function() {
+    guard()
+    prune_records()
+    rows <- store[["list"]](owner[["id"]])
+    fingerprints <- batch_fingerprints(rows)
+    key_id <- raw_to_hex_lower(openssl::sha256(connection_credential_key(
+      manager[["keys"]][["credentials"]]
+    )))
+    cache <- state[["lifecycle_metadata"]]
+    retained <- vapply(rows, function(row) row[["id"]], character(1))
+    cached_ids <- ls(cache, all.names = TRUE)
+    owned <- vapply(
+      cached_ids,
+      function(id) {
+        identical(cache[[id]][["owner"]], owner[["id"]])
+      },
+      logical(1)
+    )
+    removed <- setdiff(cached_ids[owned], retained)
+    if (length(removed)) {
+      rm(list = removed, envir = cache)
+    }
+    Filter(
+      Negate(is.null),
+      lapply(rows, function(row) {
+        id <- row[["id"]]
+        fingerprint <- fingerprints[[row[["client"]]]]
+        cached <- cache[[id]]
+        now <- as.numeric(Sys.time())
+        if (
+          !is.null(cached) &&
+            identical(cached[["owner"]], owner[["id"]]) &&
+            identical(cached[["row"]], row) &&
+            identical(cached[["fingerprint"]], fingerprint) &&
+            identical(cached[["key_id"]], key_id) &&
+            now < cached[["deadline"]] &&
+            !connection_credential_unusable(manager, cached[["keys"]]) &&
+            !any(vapply(
+              cached[["secondary"]],
+              function(key) {
+                connection_credential_unusable(manager, list(access = key))
+              },
+              logical(1)
+            ))
+        ) {
+          return(cached[["summary"]])
+        }
+        stored <- store[["read"]](owner[["id"]], id)
+        if (is.null(stored)) {
+          return(NULL)
+        }
+        record <- decode(stored, fingerprint)
+        token <- record[["token"]]
+        expiry <- if (is.null(token)) NA_real_ else token@expires_at
+        deadlines <- c(
+          expiry,
+          vapply(
+            record[["targets"]][["tokens"]],
+            function(token) {
+              token@expires_at
+            },
+            numeric(1)
+          )
+        )
+        deadlines <- deadlines[!is.na(deadlines) & deadlines > now]
+        summary <- list(
+          stored = row,
+          status = record[["status"]],
+          lifecycle_status = connection_record_status(record),
+          refresh_at = expiry,
+          refreshable = !is.null(token) && is_valid_string(token@refresh_token)
+        )
+        tracked <- state[["credential_records"]][[id]]
+        # Shared across sessions, but retain only lifecycle data and keyed credential
+        # digests. Tokens and decrypted envelopes are never cached here.
+        cache[[id]] <- list(
+          owner = owner[["id"]],
+          expires_at = row[["expires_at"]],
+          row = row,
+          fingerprint = fingerprint,
+          key_id = key_id,
+          deadline = min(c(Inf, deadlines)),
+          summary = summary,
+          keys = if (is.null(token)) NULL else tracked[["keys"]],
+          secondary = if (is.null(token)) {
+            character()
+          } else {
+            tracked[["secondary_access"]]
+          }
+        )
+        summary
+      })
+    )
   }
   discard <- function(client_name, token) {
     connection_manager_revoke(
@@ -1697,6 +1823,7 @@ connection_manager_controller <- function(
     guard = guard,
     read = read,
     records = records,
+    poll = poll,
     hooks = hooks,
     resume_launch = resume_launch,
     refresh = refresh,

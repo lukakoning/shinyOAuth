@@ -250,7 +250,7 @@ oauth_connections_server <- function(
     shiny::observe({
       controller[["changed"]]()
       shiny::invalidateLater(refresh_check_interval_ms, session)
-      rows <- tryCatch(controller[["records"]](), error = function(...) NULL)
+      rows <- tryCatch(controller[["poll"]](), error = function(...) NULL)
       if (!is.null(rows)) {
         retained <- vapply(
           Filter(
@@ -281,20 +281,18 @@ oauth_connections_server <- function(
         records = lapply(rows, function(record) {
           list(
             id = record[["stored"]][["id"]],
-            status = connection_record_status(record)
+            status = record[["lifecycle_status"]]
           )
         })
       ))
       for (record in rows) {
-        token <- record[["token"]]
         now <- as.numeric(Sys.time())
         lead <- if (refresh_proactively) refresh_lead_seconds else 0
         if (
           identical(record[["status"]], "active") &&
-            !is.null(token) &&
-            !is.na(token@expires_at) &&
-            token@expires_at <= now + lead &&
-            is_valid_string(token@refresh_token)
+            isTRUE(record[["refreshable"]]) &&
+            !is.na(record[["refresh_at"]]) &&
+            record[["refresh_at"]] <= now + lead
         ) {
           result <- tryCatch(
             controller[["refresh"]](
