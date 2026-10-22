@@ -38,6 +38,56 @@ test_that("resource_req builds request metadata without network", {
   )
 })
 
+test_that("resource helpers reject malformed methods before attaching credentials", {
+  local_mocked_bindings(
+    build_client_bearer_authorized_request = function(...) {
+      fail("authentication must not be attached to malformed requests")
+    }
+  )
+  invalid <- list(
+    "TRACE ",
+    " GET",
+    "GET\t",
+    "GET /other HTTP/1.1\r\nX-Probe: yes",
+    "GET\n",
+    "G\u00c9T",
+    "",
+    NA_character_,
+    character(),
+    c("GET", "POST"),
+    7L,
+    list("GET")
+  )
+  for (method in invalid) {
+    expect_error(
+      resource_req("synthetic", "https://example.com", method = method),
+      "single HTTP method token",
+      class = "shinyOAuth_input_error"
+    )
+    request <- httr2::request("https://example.com")
+    request[["method"]] <- method
+    expect_error(
+      perform_resource_req("synthetic", request),
+      "single HTTP method token",
+      class = "shinyOAuth_input_error"
+    )
+  }
+})
+
+test_that("resource helpers preserve valid extension methods and method inference", {
+  expect_identical(
+    resource_req("synthetic", "https://example.com", method = "m-search")[[
+      "method"
+    ]],
+    "M-SEARCH"
+  )
+  request <- httr2::request("https://example.com")
+  expect_identical(resolve_client_bearer_method(req = request), "GET")
+  request <- httr2::req_body_json(request, list(x = 1))
+  expect_identical(resolve_client_bearer_method(req = request), "POST")
+  expect_identical(resolve_client_bearer_method("patch", request), "PATCH")
+})
+
 test_that("resource_req rejects TRACE for raw Bearer tokens before auth", {
   testthat::local_mocked_bindings(
     build_client_bearer_authorized_request = function(...) {

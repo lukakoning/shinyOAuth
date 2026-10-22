@@ -421,7 +421,9 @@ prepare_client_bearer_request <- function(
   )
   if (is_dpop_token_type(token_info[["token_type"]])) {
     has_host <- function(values) {
-      any(tolower(names(values)) == "host" & !vapply(values, is.null, logical(1)))
+      any(
+        tolower(names(values)) == "host" & !vapply(values, is.null, logical(1))
+      )
     }
     if (has_host(req[["headers"]]) || has_host(headers)) {
       err_input("DPoP resource requests must not override the Host header")
@@ -487,24 +489,22 @@ prepare_client_bearer_request <- function(
 #' @keywords internal
 #' @noRd
 resolve_client_bearer_method <- function(method = NULL, req = NULL) {
-  if (is_valid_string(method)) {
-    return(toupper(as.character(method)))
+  if (is.null(method) && inherits(req, "httr2_request")) {
+    method <- req[["method"]]
   }
-  if (!inherits(req, "httr2_request")) {
-    return("GET")
+  if (is.null(method)) {
+    method <- if (is.null(req[["body"]])) "GET" else "POST"
   }
-
-  request_method <- tryCatch(req[["method"]], error = function(...) NULL)
-  if (is_valid_string(request_method)) {
-    return(toupper(as.character(request_method)))
-  }
-
-  body <- tryCatch(req[["body"]], error = function(...) NULL)
-  if (!is.null(body)) {
-    return("POST")
+  # CURLOPT_CUSTOMREQUEST transmits this value verbatim. Validate before
+  # normalization so malformed overrides cannot silently become GET or POST.
+  if (
+    !is_valid_string(method) ||
+      !grepl("^[!#$%&'*+.^_`|~0-9A-Za-z-]+$", method, useBytes = TRUE)
+  ) {
+    err_input("method must be a single HTTP method token")
   }
 
-  "GET"
+  toupper(method)
 }
 
 #' Reject credential-reflecting HTTP methods

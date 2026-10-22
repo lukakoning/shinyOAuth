@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Resource request helpers reject malformed HTTP methods before attaching
+  credentials, including inherited request methods. Whitespace and control
+  characters can no longer bypass method restrictions or alter request framing.
+
 * Async worker spans record their final status, error events and token-operation
   outcomes before restoring worker-local telemetry options and exporter settings.
   Reused workers with tracing previously disabled retain complete outcomes while
