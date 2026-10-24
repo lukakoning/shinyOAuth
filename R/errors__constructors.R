@@ -618,12 +618,24 @@ err_http <- function(msg, resp = NULL, context = list(), trace_id = NULL) {
     bs <- try(httr2::resp_body_string(resp), silent = TRUE)
     if (!inherits(bs, "try-error")) {
       body_digest <- string_digest(bs)
-      # RFC 6749 §5.2: try to extract structured error fields from JSON body
+      # These fields affect refresh-credential retirement. Preserve wire types
+      # and reject duplicate members before trusting RFC 6749 section 5.2 data.
+      # Malformed bodies must still produce the original HTTP condition.
       parsed <- try(
-        jsonlite::parse_json(bs, simplifyVector = TRUE),
+        {
+          reject_duplicate_json_object_members(
+            bs,
+            "OAuth error JSON",
+            on_error = function(...) stop("Malformed OAuth error JSON", call. = FALSE)
+          )
+          jsonlite::parse_json(bs, simplifyVector = FALSE)
+        },
         silent = TRUE
       )
-      if (!inherits(parsed, "try-error") && is.list(parsed)) {
+      if (
+        !inherits(parsed, "try-error") && is.list(parsed) &&
+          json_text_is_object(bs)
+      ) {
         if (
           is_valid_string(parsed[["error"]]) &&
             is_oauth_error_text(parsed[["error"]])

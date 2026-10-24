@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* OAuth HTTP error parsing preserves JSON types and rejects duplicate members.
+  Malformed error codes cannot mark a refresh credential as safe to reuse;
+  uncertain requests retain their conservative `possibly_consumed` outcome.
+
 * Verified authorization error callbacks clear their completed browser binding.
   Repeated denied logins no longer accumulate marker cookies and exhaust HTTP
   header limits; bindings for other pending transactions remain independent.
