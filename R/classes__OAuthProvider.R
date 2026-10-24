@@ -233,6 +233,8 @@
 #'   verification via the option `options(shinyOAuth.allow_hs = TRUE)`.
 #'   Configure exactly one HS algorithm for ID-token validation: the client's
 #'   shared secret must be bound to one algorithm (RFC 8725 section 3.1).
+#'   The same secret must also use that algorithm for JARM, JAR and JWT client
+#'   assertions, including endpoint overrides that inherit or repeat the secret.
 #'   Defaults to `c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")`,
 #'   which intentionally excludes HS*.
 #'   Each RSA verification key is bound to one algorithm: its JWK `alg`, if

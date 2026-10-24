@@ -142,6 +142,7 @@ verify_jarm_signature <- function(oauth_client, jwt_str, alg, kid = NULL) {
   prov <- oauth_client@provider
 
   if (alg %in% c("HS256", "HS384", "HS512")) {
+    check_client_hmac_algorithm(oauth_client, alg, "JARM verification", err_invalid_state)
     if (!is_valid_string(oauth_client@client_secret)) {
       err_invalid_state("JARM HMAC validation requires client_secret")
     }

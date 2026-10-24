@@ -271,14 +271,7 @@ endpoint_auth_client <- function(client, endpoint) {
     preferred <- NA_character_
     compatible <- if (style == "client_secret_jwt") {
       secret <- changes[["client_secret"]] %||% client@client_secret
-      Filter(
-        function(alg) {
-          alg %in%
-            c("HS256", "HS384", "HS512") &&
-            length(hmac_secret_bytes(secret)) >= min_hmac_key_bytes(alg)
-        },
-        algs
-      )
+      compatible_hmac_assertion_algs(secret, algs)
     } else if (style == "private_key_jwt") {
       key <- normalize_private_key_input(
         changes[["client_assertion_private_key"]] %||%

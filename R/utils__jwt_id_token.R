@@ -307,6 +307,8 @@ validate_id_token <- function(
         err_input("HS* validation requires client_secret")
       }
 
+      check_client_hmac_algorithm(client, alg, "ID token verification", err_id_token)
+
       min_secret_bytes <- min_hmac_key_bytes(alg)
       if (length(hmac_secret_bytes(client_secret)) < min_secret_bytes) {
         err_input(paste0(

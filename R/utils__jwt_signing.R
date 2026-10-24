@@ -129,6 +129,7 @@ build_client_assertion <- function(client, aud) {
   }
 
   if (identical(style, "client_secret_jwt")) {
+    check_client_hmac_algorithm(client, alg, "client assertion signing")
     min_secret_bytes <- min_hmac_key_bytes(alg)
     size <- min_secret_bytes * 8L
     secret <- client@client_secret %||%
@@ -686,6 +687,7 @@ build_authorization_request_object <- function(client, params) {
   }
 
   alg <- resolve_request_object_signing_alg(client)
+  check_client_hmac_algorithm(client, alg, "JAR signing")
   aud <- resolve_request_object_audience(client)
   if (!is_valid_string(aud)) {
     err_config(

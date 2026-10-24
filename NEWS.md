@@ -1,5 +1,10 @@
 # shinyOAuth (development version)
 
+* Shared HMAC secrets are bound to one algorithm across enabled ID token, JARM,
+  JAR and JWT endpoint authentication profiles, including inferred defaults and
+  metadata-selected algorithms. Construction and use reject conflicting choices;
+  endpoint overrides using distinct secrets can still select different algorithms.
+
 * OAuth HTTP error parsing preserves JSON types and rejects duplicate members.
   Malformed error codes cannot mark a refresh credential as safe to reuse;
   uncertain requests retain their conservative `possibly_consumed` outcome.

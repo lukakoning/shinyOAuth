@@ -184,7 +184,11 @@ inferred defaults must be included in that set.
 Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_jwt and asymmetric algorithms
 supported for outbound signing (\code{RS256}, \code{RS384}, \code{ES256}, \code{ES384}, \code{ES512}, and
 \code{Ed25519} or legacy \code{EdDSA} with Ed25519 keys) for private keys. \code{RS512}, \code{PS256}, \code{PS384}, and \code{PS512}
-are not currently supported for outbound client assertions.}
+are not currently supported for outbound client assertions.
+A shared HMAC secret must use the same algorithm across enabled ID token,
+JARM, JAR and endpoint assertion profiles (RFC 8725 section 3.1). This includes
+inferred defaults and metadata-selected endpoint algorithms. Endpoint
+overrides using distinct secrets may select different algorithms.}
 
 \item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
 JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth
