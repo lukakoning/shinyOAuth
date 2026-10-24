@@ -3582,6 +3582,10 @@ oauth_module_server_impl <- function(
         return(invisible(NULL))
       }
 
+      # The verified transaction has finished. Retire only its binding so retries
+      # do not retain a new marker cookie for every completed error response.
+      .clear_browser_token()
+
       # State validated and consumed: now surface provider error.
       # Keep the raw value in deferred state so replay/resume paths preserve
       # provider error context, but sanitize before surfacing it to callers.

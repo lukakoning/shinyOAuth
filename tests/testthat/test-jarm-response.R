@@ -2678,11 +2678,14 @@ test_that("oauth_module_server handles query.jwt error callbacks and blocks repl
           expect_identical(values[["error_description"]], "Denied")
           expect_null(values[["error_uri"]])
           expect_length(client@state_store[["keys"]](), 0L)
+          expect_null(values[["browser_token"]])
 
           values[["error"]] <- NULL
           values[["error_description"]] <- NULL
           values[["error_uri"]] <- NULL
 
+          # Even supplying the retired binding cannot replay consumed state.
+          values[["browser_token"]] <- browser_token
           values[[".process_query"]](query)
           session[["flushReact"]]()
 

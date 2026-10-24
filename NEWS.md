@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Verified authorization error callbacks clear their completed browser binding.
+  Repeated denied logins no longer accumulate marker cookies and exhaust HTTP
+  header limits; bindings for other pending transactions remain independent.
+
 * Connection polling reuses redacted lifecycle metadata for unchanged store
   revisions across sessions, instead of decrypting every grant on each tick.
   Expiry, owner state, client policy, credential retirement and changed revisions

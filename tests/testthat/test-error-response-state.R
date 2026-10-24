@@ -167,6 +167,10 @@ testthat::test_that("error response with state waits for browser_token before va
       )
       testthat::expect_null(values[["pending_callback"]])
 
+      # A completed error retires its binding; rejected callbacks below must
+      # leave the pending transaction available instead.
+      testthat::expect_null(values[["browser_token"]])
+
       # State should be consumed after successful browser-token validation.
       after <- cli@state_store[["get"]](key, missing = NULL)
       testthat::expect_null(after)
@@ -246,6 +250,7 @@ testthat::test_that("error response with mismatched browser_token is rejected as
       testthat::expect_false(values[["authenticated"]])
 
       # Browser-token rejection must not burn the pending login state.
+      testthat::expect_identical(values[["browser_token"]], wrong_browser_token)
       after <- cli@state_store[["get"]](key, missing = NULL)
       testthat::expect_false(is.null(after))
     }
