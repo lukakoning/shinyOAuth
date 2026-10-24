@@ -110,15 +110,17 @@ and a distinct marker cookie. Idle predecessor markers are removed when
 the new binding is ready. Predecessors associated with pending
 transactions (or older records whose transaction status is unknown)
 remain until their original TTL expires, so a cloned tab cannot
-invalidate the original tab’s pending login. Application callback routes
-and tabs have independent records; complete login in the tab that
-started it. Private module inputs are excluded from both URL and disk
-bookmarks. Avoid copying browser tokens into custom bookmark values or
-logs. The acknowledgment is a delivery check, not independent server
-verification of HTTP cookie possession. The standalone
-<code><a href="../reference/prepare_call.html">prepare_call()</a></code> and <code><a href="../reference/handle_callback.html">handle_callback()</a></code> APIs
-still require the caller to establish and protect their own browser
-binding.</p>
+invalidate the original tab’s pending login. A verified error callback
+consumes its transaction and removes its binding, just as a successful
+login does; repeated denied logins therefore do not accumulate marker
+cookies. Application callback routes and tabs have independent records;
+complete login in the tab that started it. Private module inputs are
+excluded from both URL and disk bookmarks. Avoid copying browser tokens
+into custom bookmark values or logs. The acknowledgment is a delivery
+check, not independent server verification of HTTP cookie possession.
+The standalone <code><a href="../reference/prepare_call.html">prepare_call()</a></code> and
+<code><a href="../reference/handle_callback.html">handle_callback()</a></code> APIs still require the caller to
+establish and protect their own browser binding.</p>
 </div>
 <div class="section level2">
 <h2 id="provider-metadata-and-oidc-discovery">Provider metadata and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-metadata-and-oidc-discovery"></a>

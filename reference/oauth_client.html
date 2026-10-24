@@ -266,7 +266,11 @@ inferred defaults must be included in that set.
 Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> for client_secret_jwt and asymmetric algorithms
 supported for outbound signing (<code>RS256</code>, <code>RS384</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
 <code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys) for private keys. <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code>
-are not currently supported for outbound client assertions.</p></dd>
+are not currently supported for outbound client assertions.
+A shared HMAC secret must use the same algorithm across enabled ID token,
+JARM, JAR and endpoint assertion profiles (RFC 8725 section 3.1). This includes
+inferred defaults and metadata-selected endpoint algorithms. Endpoint
+overrides using distinct secrets may select different algorithms.</p></dd>
 
 
 <dt id="arg-client-assertion-audience">client_assertion_audience<a class="anchor" aria-label="anchor" href="#arg-client-assertion-audience"></a></dt>

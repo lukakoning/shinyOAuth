@@ -42,12 +42,15 @@ a distinct marker cookie. Idle predecessor markers are removed when the
 new binding is ready. Predecessors associated with pending transactions
 (or older records whose transaction status is unknown) remain until
 their original TTL expires, so a cloned tab cannot invalidate the
-original tab’s pending login. Application callback routes and tabs have
-independent records; complete login in the tab that started it. Private
-module inputs are excluded from both URL and disk bookmarks. Avoid
-copying browser tokens into custom bookmark values or logs. The
-acknowledgment is a delivery check, not independent server verification
-of HTTP cookie possession. The standalone
+original tab’s pending login. A verified error callback consumes its
+transaction and removes its binding, just as a successful login does;
+repeated denied logins therefore do not accumulate marker cookies.
+Application callback routes and tabs have independent records; complete
+login in the tab that started it. Private module inputs are excluded
+from both URL and disk bookmarks. Avoid copying browser tokens into
+custom bookmark values or logs. The acknowledgment is a delivery check,
+not independent server verification of HTTP cookie possession. The
+standalone
 [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
 and
 [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)

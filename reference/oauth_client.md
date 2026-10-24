@@ -233,7 +233,12 @@ oauth_client(
   and asymmetric algorithms supported for outbound signing (`RS256`,
   `RS384`, `ES256`, `ES384`, `ES512`, and `Ed25519` or legacy `EdDSA`
   with Ed25519 keys) for private keys. `RS512`, `PS256`, `PS384`, and
-  `PS512` are not currently supported for outbound client assertions.
+  `PS512` are not currently supported for outbound client assertions. A
+  shared HMAC secret must use the same algorithm across enabled ID
+  token, JARM, JAR and endpoint assertion profiles (RFC 8725 section
+  3.1). This includes inferred defaults and metadata-selected endpoint
+  algorithms. Endpoint overrides using distinct secrets may select
+  different algorithms.
 
 - client_assertion_audience:
 
