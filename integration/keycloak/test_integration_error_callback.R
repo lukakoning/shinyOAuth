@@ -96,9 +96,20 @@ testthat::test_that("authorization error callback consumes state and blocks repl
         expected_error_uri
       )
       expect_state_store_entry_consumed(client, state_info)
+      testthat::expect_null(values[["browser_token"]])
 
       clear_oauth_error_values(values)
       values[[".process_query"]](query)
+      session[["flushReact"]]()
+
+      # The verified error retired its browser binding. With no JS in
+      # testServer, the replay waits until we restore the headless test token.
+      testthat::expect_null(values[["error"]])
+      testthat::expect_identical(
+        values[["pending_callback"]][["type"]],
+        "error"
+      )
+      values[["browser_token"]] <- "__SKIPPED__"
       session[["flushReact"]]()
 
       testthat::expect_identical(values[["error"]], "invalid_state")
@@ -107,6 +118,8 @@ testthat::test_that("authorization error callback consumes state and blocks repl
         "state",
         ignore.case = TRUE
       )
+      testthat::expect_null(values[["pending_callback"]])
+      testthat::expect_null(values[["error_uri"]])
       testthat::expect_false(isTRUE(values[["authenticated"]]))
     }
   )
