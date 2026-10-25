@@ -32,6 +32,7 @@ base64url_encode <- function(raw_bytes) {
 #' Decode a base64url string into raw bytes
 #'
 #' Used by JWT, JWKS, and cryptographic helpers.
+#' Decoding errors from openssl are propagated to the caller.
 #'
 #' @param x Base64url-encoded string.
 #' @return Raw vector.

@@ -55,17 +55,28 @@ test_that("unicode text roundtrips via base64url text decode", {
   expect_identical(Encoding(out), "UTF-8")
 })
 
-test_that("invalid input yields empty decode without error", {
-  r1 <- shinyOAuth:::base64url_decode_raw("!@#")
-  expect_true(is.raw(r1))
-  expect_length(r1, 0)
+test_that("empty input decodes to empty raw and text values", {
+  expect_identical(shinyOAuth:::base64url_decode_raw(""), raw())
+  expect_identical(shinyOAuth:::base64url_decode(""), "")
+})
 
-  t1 <- shinyOAuth:::base64url_decode("!@#")
-  expect_identical(t1, "")
-
-  r2 <- shinyOAuth:::base64url_decode_raw("!@#")
-  expect_true(is.raw(r2))
-  expect_length(r2, 0)
+test_that("invalid base64url input follows openssl's decoding behavior", {
+  # openssl 2.4.3 changed invalid-input handling from raw() to an error.
+  for (input in c("!@#", "***", "A")) {
+    if (utils::packageVersion("openssl") >= "2.4.3") {
+      expect_error(
+        shinyOAuth:::base64url_decode_raw(input),
+        "Failed to decode base64 string"
+      )
+      expect_error(
+        shinyOAuth:::base64url_decode(input),
+        "Failed to decode base64 string"
+      )
+    } else {
+      expect_identical(shinyOAuth:::base64url_decode_raw(input), raw())
+      expect_identical(shinyOAuth:::base64url_decode(input), "")
+    }
+  }
 })
 
 test_that("base64url_decode rejects embedded NUL bytes", {

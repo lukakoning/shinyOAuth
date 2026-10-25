@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* Base64url helper tests support openssl versions that error on invalid base64
+  instead of returning empty bytes. Existing JWT, JWK and sealed-state validation
+  already handles decoding failures (#25).
+
 * Shared HMAC secrets are bound to one algorithm across enabled ID token, JARM,
   JAR and JWT endpoint authentication profiles, including inferred defaults and
   metadata-selected algorithms. Construction and use reject conflicting choices;
