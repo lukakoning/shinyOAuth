@@ -1,5 +1,13 @@
 # shinyOAuth (development version)
 
+* Policy fingerprints use a versioned typed encoding with exact numeric values,
+  UTF-8 text and explicit container semantics. Spotify legacy-selector choices
+  are bound separately; custom selectors can bind captured configuration with
+  `userinfo_id_selector_policy_id`. Keep captured settings immutable and update
+  that ID when they change. This deliberately invalidates older pending logins
+  and retained credentials: users must sign in and connect again after upgrading.
+  Deploy the upgrade consistently across workers that share keys and storage.
+
 * DPoP dot-segment normalization uses a preallocated stack with linear allocation
   and constant-time removal. Generic resource requests reject URLs over 8192
   bytes before parsing/signing and after query shaping, even with host checks off.

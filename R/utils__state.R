@@ -210,7 +210,7 @@ audit_callback_validation_success <- function(
 #' security policy that initiated login.
 #'
 #' @param components Named list of normalized policy components.
-#' @return A length-1 character string in `sha256:<digest>` format.
+#' @return A length-1 character string in `sha256:v2:<digest>` format.
 #' @keywords internal
 #' @noRd
 state_policy_digest <- function(components) {
@@ -231,8 +231,11 @@ state_policy_digest <- function(components) {
   )
 
   paste0(
-    "sha256:",
-    string_digest(enc2utf8(paste(canonical, collapse = "\n")), key = NULL)
+    "sha256:v2:",
+    string_digest(
+      enc2utf8(paste0("shinyOAuth/state-policy/v2\n", paste(canonical, collapse = "\n"))),
+      key = NULL
+    )
   )
 }
 
@@ -249,6 +252,7 @@ state_policy_component_string <- function(value) {
   enc2utf8(jsonlite::toJSON(
     normalized,
     auto_unbox = TRUE,
+    na = "null",
     null = "null",
     pretty = FALSE
   ))
@@ -265,113 +269,52 @@ state_policy_component_string <- function(value) {
 #' @noRd
 state_policy_normalize_value <- function(value) {
   if (is.null(value)) {
-    return(NULL)
+    return(list(type = "null"))
   }
 
   if (is.function(value)) {
-    return(list(`__function__` = paste(deparse(value), collapse = "\n")))
+    # Closure environments can contain secrets and process-local mutable state.
+    # Captured configuration is bound by the provider's explicit selector ID.
+    return(list(type = "function", source = paste(deparse(value), collapse = "\n")))
   }
 
-  if (is.raw(value)) {
-    return(paste0(sprintf("%02x", as.integer(value)), collapse = ""))
+  if (!is.list(value) && !is.atomic(value)) {
+    err_config(paste0("Unsupported policy value type: ", typeof(value)))
   }
 
-  if (is.list(value)) {
-    if (length(value) == 0L) {
-      return(list())
-    }
-
-    value_names <- names(value)
-    if (length(value_names) > 0L && !is.null(value_names)) {
-      ord <- order(value_names)
-      value <- value[ord]
-      value_names <- value_names[ord]
-      out <- lapply(value, state_policy_normalize_value)
-      names(out) <- value_names
-      return(out)
-    }
-
-    return(lapply(value, state_policy_normalize_value))
+  value_names <- names(value)
+  attrs <- attributes(value)
+  attrs[["names"]] <- NULL
+  attributes(value) <- NULL
+  # Named objects are order-independent only when their names are unique and
+  # complete. Preserve duplicate/empty names and array dimensions explicitly.
+  if (
+    !is.null(value_names) && is.null(attrs[["dim"]]) &&
+      !anyNA(value_names) && all(nzchar(value_names)) &&
+      !anyDuplicated(value_names)
+  ) {
+    ord <- order(enc2utf8(value_names), method = "radix")
+    value <- value[ord]
+    value_names <- value_names[ord]
   }
 
-  if (is.atomic(value)) {
-    value_names <- names(value)
-    if (length(value_names) > 0L && !is.null(value_names)) {
-      ord <- order(value_names)
-      value <- value[ord]
-    }
-
-    # Scope lists dominate large target policies. Plain character leaves can
-    # use the same scalar encoding in bulk; classed values retain scalar
-    # dispatch, and numeric formatting must remain independent per element.
-    out <- if (is.character(value) && !is.object(value)) {
-      chars <- enc2utf8(as.vector(value, mode = "character"))
-      chars[is.na(chars)] <- "<na>"
-      chars
-    } else {
-      vapply(
-        seq_along(value),
-        function(i) state_policy_scalar_string(value[[i]]),
-        ""
-      )
-    }
-
-    if (length(value_names) > 0L && !is.null(value_names)) {
-      out <- as.list(out)
-      names(out) <- value_names[ord]
-      return(out)
-    }
-
-    return(unname(out))
+  data <- if (is.list(value)) {
+    lapply(value, state_policy_normalize_value)
+  } else if (is.character(value)) {
+    enc2utf8(value)
+  } else {
+    # Exact, fixed-endian IEEE/integer bytes avoid display precision, decimal
+    # locale and JSON rounding. Type tags distinguish logicals, integers, raw
+    # bytes and doubles; NA, NaN and literal strings remain distinct.
+    bytes <- if (is.raw(value)) value else writeBin(value, raw(), endian = "big")
+    paste0(sprintf("%02x", as.integer(bytes)), collapse = "")
   }
-
-  state_policy_scalar_string(value)
-}
-
-#' Convert one scalar policy value to a stable string
-#'
-#' Used by `state_policy_normalize_value()` for atomic leaves.
-#'
-#' @param value Scalar policy value.
-#' @return Length-1 UTF-8 string.
-#' @keywords internal
-#' @noRd
-state_policy_scalar_string <- function(value) {
-  if (is.null(value) || length(value) == 0L) {
-    return("")
-  }
-
-  if (is.logical(value)) {
-    return(
-      if (is.na(value[[1L]])) {
-        "<na>"
-      } else if (isTRUE(value[[1L]])) {
-        "true"
-      } else {
-        "false"
-      }
-    )
-  }
-
-  if (is.numeric(value)) {
-    if (is.na(value[[1L]])) {
-      return("<na>")
-    }
-    return(format(
-      signif(as.numeric(value[[1L]]), digits = 17),
-      scientific = FALSE,
-      trim = TRUE
-    ))
-  }
-
-  value_chr <- tryCatch(as.character(value[[1L]]), error = function(...) {
-    "<unsupported>"
-  })
-  if (!is.character(value_chr) || length(value_chr) != 1L || is.na(value_chr)) {
-    return("<na>")
-  }
-
-  enc2utf8(value_chr)
+  list(
+    type = typeof(value),
+    names = if (is.null(value_names)) NULL else enc2utf8(value_names),
+    attributes = if (length(attrs)) state_policy_normalize_value(attrs) else NULL,
+    value = data
+  )
 }
 
 #' Normalize a character-like set for policy fingerprints
@@ -546,7 +489,7 @@ state_policy_jarm_decryption_key_thumbprint <- function(client) {
 #' callback cannot resume under a looser client policy on another worker.
 #'
 #' @param client [OAuthClient] instance to fingerprint.
-#' @return A length-1 character string in `sha256:<digest>` format.
+#' @return A length-1 character string in `sha256:v2:<digest>` format.
 #' @keywords internal
 #' @noRd
 state_client_policy_fingerprint <- function(client) {

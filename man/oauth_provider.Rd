@@ -67,7 +67,8 @@ oauth_provider(
   allowed_algs = NULL,
   allow_missing_token_type = FALSE,
   token_target_mode = "none",
-  token_response_scope_format = "space"
+  token_response_scope_format = "space",
+  userinfo_id_selector_policy_id = NA_character_
 )
 }
 \arguments{
@@ -477,6 +478,14 @@ separate from that full grant. See \code{vignette("token-targets")}.}
 responses are converted to standard space-separated scopes before grant
 validation and storage, for both login and refresh. Set this explicitly for
 custom providers with this response format; provider names do not select it.}
+
+\item{userinfo_id_selector_policy_id}{Optional non-empty policy identifier
+for \code{userinfo_id_selector}, or \code{NA_character_}. Set an immutable versioned
+identifier for custom selectors that capture settings or call configurable
+helpers, and change it whenever those settings or behavior change. Pending
+logins and retained credentials bind this identifier and the function's
+source; closure environments are never serialized. Keep captured settings
+immutable for the lifetime of a client.}
 }
 \value{
 \link{OAuthProvider} object

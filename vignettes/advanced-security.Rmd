@@ -150,6 +150,23 @@ token authentication settings unless explicitly overridden. `extra_token_headers
 now applies only to exchange and refresh: opt in through `extra_headers` at
 each other endpoint that should receive those headers, even on the same origin.
 
+## Policy identity across callbacks and retained credentials
+
+Pending logins and retained credentials bind versioned policy fingerprints.
+The v2 encoding preserves claim types, exact numeric values and container shape.
+Upgrading from the older encoding deliberately invalidates existing pending
+logins and retained credentials; users must sign in and connect again. Deploy
+the upgrade consistently across workers sharing keys and storage.
+
+For a custom `userinfo_id_selector` that captures configuration or calls
+configurable helpers, set `userinfo_id_selector_policy_id` on the provider to an
+immutable versioned identifier, for example `"application:subject-field:v2"`.
+Change that identifier whenever the captured settings or helper behavior change,
+and keep those settings immutable for each client's lifetime. Fingerprints bind
+the identifier and function source without serializing closure environments,
+which can contain secrets or process-specific objects. The Spotify helper binds
+its `allow_legacy_id` choice automatically.
+
 ## Issuer comparison and transport policy
 
 `compare_callback_issuer = TRUE` compares a supplied callback `iss` exactly

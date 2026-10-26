@@ -108,6 +108,14 @@
 #' `sub` claims are always compared. Helper constructors like [oauth_provider()]
 #' and [oauth_provider_oidc()] provide a default selector that extracts `sub`.
 #'
+#' @param userinfo_id_selector_policy_id Optional non-empty policy identifier
+#'   for `userinfo_id_selector`, or `NA_character_`. Set an immutable versioned
+#'   identifier for custom selectors that capture settings or call configurable
+#'   helpers, and change it whenever those settings or behavior change. Pending
+#'   logins and retained credentials bind this identifier and the function's
+#'   source; closure environments are never serialized. Keep captured settings
+#'   immutable for the lifetime of a client.
+#'
 #' @param userinfo_id_token_match Whether fetched userinfo requires a validated ID
 #'   token for comparison. When both are available, their actual `sub` values
 #'   are always compared. `TRUE` also stops login if the validated ID token is
@@ -435,6 +443,10 @@ OAuthProvider <- S7::new_class(
     userinfo_id_selector = S7::new_property(
       S7::class_any,
       default = quote(function(userinfo) userinfo[["sub"]])
+    ),
+    userinfo_id_selector_policy_id = S7::new_property(
+      S7::class_character,
+      default = NA_character_
     ),
     userinfo_id_token_match = S7::new_property(
       S7::class_logical,
@@ -814,7 +826,8 @@ oauth_provider <- function(
   allowed_algs = NULL,
   allow_missing_token_type = FALSE,
   token_target_mode = "none",
-  token_response_scope_format = "space"
+  token_response_scope_format = "space",
+  userinfo_id_selector_policy_id = NA_character_
 ) {
   allowed_algs <- resolve_argument_alias(
     id_token_allowed_algs,
@@ -1133,6 +1146,7 @@ oauth_provider <- function(
     userinfo_url = userinfo_url,
     userinfo_required = userinfo_required,
     userinfo_id_selector = userinfo_id_selector,
+    userinfo_id_selector_policy_id = userinfo_id_selector_policy_id,
     userinfo_id_token_match = userinfo_id_token_match,
     userinfo_signed_jwt_required = isTRUE(userinfo_signed_jwt_required),
     id_token_required = id_token_required,
@@ -2066,6 +2080,14 @@ oauth_provider_validate <- function(self) {
     }
   }
 
+  selector_id <- self@userinfo_id_selector_policy_id
+  if (
+    length(selector_id) != 1L ||
+      (!is.na(selector_id) && !is_valid_string(selector_id))
+  ) {
+    return("OAuthProvider: userinfo_id_selector_policy_id must be NA or a non-empty string")
+  }
+
   if (isTRUE(self@userinfo_id_token_match)) {
     if (!(isTRUE(self@id_token_validation) || isTRUE(self@use_nonce))) {
       return(
@@ -2176,7 +2198,7 @@ oauth_provider_check_host_field <- function(value, name, required = FALSE) {
 #' created and again when callback handling resumes.
 #'
 #' @param provider [OAuthProvider] instance to fingerprint.
-#' @return A length-1 character string in `sha256:<digest>` format.
+#' @return A length-1 character string in `sha256:v2:<digest>` format.
 #' @keywords internal
 #' @noRd
 provider_fingerprint <- function(provider) {
@@ -2202,6 +2224,9 @@ provider_fingerprint <- function(provider) {
     pkce_method = provider@pkce_method,
     userinfo_required = isTRUE(provider@userinfo_required),
     userinfo_id_selector = provider@userinfo_id_selector,
+    userinfo_id_selector_policy_id = provider_prop(
+      "userinfo_id_selector_policy_id", NA_character_
+    ),
     userinfo_id_token_match = isTRUE(provider@userinfo_id_token_match),
     userinfo_signed_jwt_required = isTRUE(
       provider@userinfo_signed_jwt_required

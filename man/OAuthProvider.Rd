@@ -57,6 +57,7 @@ OAuthProvider(
   leeway = getOption("shinyOAuth.leeway", 30),
   token_target_mode = "none",
   infer_oidc_from_issuer = TRUE,
+  userinfo_id_selector_policy_id = NA_character_,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
   token_response_scope_format = "space",
@@ -425,6 +426,14 @@ separate from that full grant. See \code{vignette("token-targets")}.}
 Default \code{TRUE}: helpers enable OIDC nonce/ID token defaults and the client
 adds the \code{openid} scope. Set \code{FALSE} for an OAuth-only server that has an
 issuer identifier but does not implement OIDC.}
+
+\item{userinfo_id_selector_policy_id}{Optional non-empty policy identifier
+for \code{userinfo_id_selector}, or \code{NA_character_}. Set an immutable versioned
+identifier for custom selectors that capture settings or call configurable
+helpers, and change it whenever those settings or behavior change. Pending
+logins and retained credentials bind this identifier and the function's
+source; closure environments are never serialized. Keep captured settings
+immutable for the lifetime of a client.}
 
 \item{jwks_uri}{Optional URL of the provider's public signing keys (JWKS).
 Normally these are located through OIDC discovery. Set this for manual

@@ -391,19 +391,26 @@ oauth_provider_spotify <- function(
     extra_token_headers = character(),
     token_auth_style = "header",
 
-    userinfo_id_selector = function(userinfo) {
+    userinfo_id_selector = if (allow_legacy_id) function(userinfo) {
       account_id <- userinfo[["account_id"]]
       if (is_valid_string(account_id)) {
         return(account_id)
       }
       if (
-        isTRUE(allow_legacy_id) &&
-          is.null(account_id) &&
+        is.null(account_id) &&
           is_valid_string(userinfo[["id"]])
       ) {
         return(userinfo[["id"]])
       }
       NA_character_
+    } else function(userinfo) {
+      account_id <- userinfo[["account_id"]]
+      if (is_valid_string(account_id)) account_id else NA_character_
+    },
+    userinfo_id_selector_policy_id = if (allow_legacy_id) {
+      "spotify:account-id-with-legacy:v1"
+    } else {
+      "spotify:account-id:v1"
     },
     userinfo_required = TRUE,
     userinfo_id_token_match = FALSE,
