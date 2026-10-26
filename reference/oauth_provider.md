@@ -75,7 +75,8 @@ userinfo[["sub"]]
   allowed_algs = NULL,
   allow_missing_token_type = FALSE,
   token_target_mode = "none",
-  token_response_scope_format = "space"
+  token_response_scope_format = "space",
+  userinfo_id_selector_policy_id = NA_character_
 )
 ```
 
@@ -495,15 +496,18 @@ userinfo[["sub"]]
   Defaults to
   `c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")`,
   which intentionally excludes HS\*. Each RSA verification key is bound
-  to one algorithm: its JWK `alg`, if supplied, or the sole RSA
-  algorithm in this allowlist. When several RSA algorithms are allowed,
-  an unlabelled key is bound to `RS256` (and rejected if `RS256` is
-  excluded). To use unlabelled keys with `RS384` or `RS512`, configure
-  only that RSA algorithm. EC curves already select one supported
-  algorithm; legacy `EdDSA` with an Ed25519 key uses the Ed25519
-  operation. Only include `HS*` if you are certain the `client_secret`
-  is stored strictly server-side and is never shipped to, or derivable
-  by, the browser or other untrusted environments.
+  by public-key material (RFC 7638 thumbprint), independently of `kid`.
+  Conflicting `alg` declarations for the same material reject the whole
+  JWKS, including pinned sets. An explicit declaration also binds
+  aliases that omit `alg`. With no declaration, the binding is the sole
+  RSA algorithm in this allowlist. When several RSA algorithms are
+  allowed, an unlabelled key is bound to `RS256` (and rejected if
+  `RS256` is excluded). To use unlabelled keys with `RS384` or `RS512`,
+  configure only that RSA algorithm. EC curves already select one
+  supported algorithm; legacy `EdDSA` with an Ed25519 key uses the
+  Ed25519 operation. Only include `HS*` if you are certain the
+  `client_secret` is stored strictly server-side and is never shipped
+  to, or derivable by, the browser or other untrusted environments.
 
 - allowed_token_types:
 
@@ -632,6 +636,16 @@ userinfo[["sub"]]
   and storage, for both login and refresh. Set this explicitly for
   custom providers with this response format; provider names do not
   select it.
+
+- userinfo_id_selector_policy_id:
+
+  Optional non-empty policy identifier for `userinfo_id_selector`, or
+  `NA_character_`. Set an immutable versioned identifier for custom
+  selectors that capture settings or call configurable helpers, and
+  change it whenever those settings or behavior change. Pending logins
+  and retained credentials bind this identifier and the function's
+  source; closure environments are never serialized. Keep captured
+  settings immutable for the lifetime of a client.
 
 ## Value
 

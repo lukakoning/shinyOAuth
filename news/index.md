@@ -2,6 +2,28 @@
 
 ## shinyOAuth (development version)
 
+- RSA algorithm binding follows public-key material rather than JWK
+  entries or `kid` values. JWKS validation rejects conflicting
+  declarations before pin/key filtering; unlabelled aliases inherit an
+  explicit material declaration. Outgoing assertions, JAR, DPoP and
+  endpoint overrides reject conflicting uses at construction and signing
+  time. Use distinct keys for different algorithms.
+
+- Policy fingerprints use a versioned typed encoding with exact numeric
+  values, UTF-8 text and explicit container semantics. Spotify
+  legacy-selector choices are bound separately; custom selectors can
+  bind captured configuration with `userinfo_id_selector_policy_id`.
+  Keep captured settings immutable and update that ID when they change.
+  This deliberately invalidates older pending logins and retained
+  credentials: users must sign in and connect again after upgrading.
+  Deploy the upgrade consistently across workers that share keys and
+  storage.
+
+- DPoP dot-segment normalization uses a preallocated stack with linear
+  allocation and constant-time removal. Generic resource requests reject
+  URLs over 8192 bytes before parsing/signing and after query shaping,
+  even with host checks off.
+
 - Base64url helper tests support openssl versions that error on invalid
   base64 instead of returning empty bytes. Existing JWT, JWK and
   sealed-state validation already handles decoding failures

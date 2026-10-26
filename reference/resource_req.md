@@ -35,7 +35,9 @@ resource_req(
 
 - url:
 
-  The absolute URL to call.
+  The absolute URL to call. Resource URLs must not exceed 8192 bytes,
+  including the query and fragment, both before and after applying
+  `query`. This limit also applies when `check_url = FALSE`.
 
 - method:
 

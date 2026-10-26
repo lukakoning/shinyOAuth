@@ -167,6 +167,25 @@ authentication settings unless explicitly overridden.
 through `extra_headers` at each other endpoint that should receive those
 headers, even on the same origin.
 
+## Policy identity across callbacks and retained credentials
+
+Pending logins and retained credentials bind versioned policy
+fingerprints. The v2 encoding preserves claim types, exact numeric
+values and container shape. Upgrading from the older encoding
+deliberately invalidates existing pending logins and retained
+credentials; users must sign in and connect again. Deploy the upgrade
+consistently across workers sharing keys and storage.
+
+For a custom `userinfo_id_selector` that captures configuration or calls
+configurable helpers, set `userinfo_id_selector_policy_id` on the
+provider to an immutable versioned identifier, for example
+`"application:subject-field:v2"`. Change that identifier whenever the
+captured settings or helper behavior change, and keep those settings
+immutable for each client’s lifetime. Fingerprints bind the identifier
+and function source without serializing closure environments, which can
+contain secrets or process-specific objects. The Spotify helper binds
+its `allow_legacy_id` choice automatically.
+
 ## Issuer comparison and transport policy
 
 `compare_callback_issuer = TRUE` compares a supplied callback `iss`
@@ -240,6 +259,24 @@ pinned. Mode `"all"` requires every RSA, EC, and OKP entry in the set to
 have a computable, configured thumbprint, including entries that would
 later be filtered out. Neither mode skips the whole-set structural
 checks or the selected key’s strength checks.
+
+RSA algorithm bindings use RFC 7638 public-key thumbprints. Entries with
+the same modulus and exponent cannot declare different algorithms, even
+with different `kid` values or valid pins. An alias without `alg`
+inherits an explicit declaration on the same material; keys with no
+declaration retain the documented allowlist default. These checks run
+before selecting candidates and on cached JWKS reuse.
+
+Outgoing client assertions, JAR, DPoP and endpoint overrides also
+require one signing algorithm per RSA key material, including inferred
+and metadata-selected defaults. Configure matching algorithms or
+separate keys. To migrate algorithms, rotate the key material and update
+all related profiles and pins consistently; changing only `kid` does not
+rotate a key. Changes to configured signing keys or algorithms change
+policy fingerprints and invalidate pending logins and retained
+credentials. Clear shared JWKS caches when deploying a coordinated
+provider key change if immediate adoption is required; otherwise normal
+cache freshness applies.
 
 ## Trusted ID-token audiences
 

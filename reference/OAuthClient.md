@@ -160,7 +160,9 @@ OAuthClient(
   token, JARM, JAR and endpoint assertion profiles (RFC 8725 section
   3.1). This includes inferred defaults and metadata-selected endpoint
   algorithms. Endpoint overrides using distinct secrets may select
-  different algorithms.
+  different algorithms. RSA signing keys are likewise bound by public
+  material across client assertions, JAR, DPoP and endpoint overrides;
+  different `kid` values or PEM spellings do not create distinct keys.
 
 - client_assertion_audience:
 

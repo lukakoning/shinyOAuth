@@ -82,7 +82,9 @@ send in one step, use <code><a href="perform_resource_req.html">perform_resource
 
 
 <dt id="arg-url">url<a class="anchor" aria-label="anchor" href="#arg-url"></a></dt>
-<dd><p>The absolute URL to call.</p></dd>
+<dd><p>The absolute URL to call. Resource URLs must not exceed 8192 bytes,
+including the query and fragment, both before and after applying <code>query</code>.
+This limit also applies when <code>check_url = FALSE</code>.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>

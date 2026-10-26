@@ -270,7 +270,10 @@ are not currently supported for outbound client assertions.
 A shared HMAC secret must use the same algorithm across enabled ID token,
 JARM, JAR and endpoint assertion profiles (RFC 8725 section 3.1). This includes
 inferred defaults and metadata-selected endpoint algorithms. Endpoint
-overrides using distinct secrets may select different algorithms.</p></dd>
+overrides using distinct secrets may select different algorithms.
+RSA signing keys are likewise bound by public material across client
+assertions, JAR, DPoP and endpoint overrides; different <code>kid</code> values or PEM
+spellings do not create distinct keys.</p></dd>
 
 
 <dt id="arg-client-assertion-audience">client_assertion_audience<a class="anchor" aria-label="anchor" href="#arg-client-assertion-audience"></a></dt>
