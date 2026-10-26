@@ -690,25 +690,30 @@ normalize_dpop_request_url <- function(url) {
   if (endsWith(path, "/")) {
     segments <- c(segments, "")
   }
-  normalized <- character()
+  # Reserve space once. Growing or slicing the stack on each push/pop copies
+  # progressively larger vectors for long paths with literal dot segments.
+  normalized <- character(length(segments) + 1L)
+  position <- 0L
   for (segment in segments) {
     if (identical(segment, ".")) {
       next
     }
     if (identical(segment, "..")) {
-      if (length(normalized) > 1L) {
-        normalized <- normalized[-length(normalized)]
+      if (position > 1L) {
+        position <- position - 1L
       }
     } else {
-      normalized <- c(normalized, segment)
+      position <- position + 1L
+      normalized[[position]] <- segment
     }
   }
   if (segments[[length(segments)]] %in% c(".", "..")) {
-    normalized <- c(normalized, "")
+    position <- position + 1L
+    normalized[[position]] <- ""
   }
   paste0(
     sub("^([A-Za-z][A-Za-z0-9+.-]*://[^/?#]*).*", "\\1", url),
-    paste(normalized, collapse = "/"),
+    paste(normalized[seq_len(position)], collapse = "/"),
     sub("^[^?#]*", "", url)
   )
 }

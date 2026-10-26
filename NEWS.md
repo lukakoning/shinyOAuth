@@ -1,5 +1,9 @@
 # shinyOAuth (development version)
 
+* DPoP dot-segment normalization uses a preallocated stack with linear allocation
+  and constant-time removal. Generic resource requests reject URLs over 8192
+  bytes before parsing/signing and after query shaping, even with host checks off.
+
 * Base64url helper tests support openssl versions that error on invalid base64
   instead of returning empty bytes. Existing JWT, JWK and sealed-state validation
   already handles decoding failures (#25).

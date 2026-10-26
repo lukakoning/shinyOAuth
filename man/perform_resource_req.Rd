@@ -24,6 +24,7 @@ perform_resource_req(
 \item{token}{Either an \link{OAuthToken} object or a raw access token string.}
 
 \item{url}{Either the absolute URL to call or an \code{\link[httr2:request]{httr2::request()}} object
+with a URL of at most 8192 bytes before and after applying \code{query}.
 to authorize and perform. When you pass a request object, shinyOAuth uses
 it as the base request, still applies token authentication and request
 defaults, and then layers any explicit \code{method}, \code{headers}, \code{query}, and

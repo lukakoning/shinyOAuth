@@ -22,7 +22,9 @@ client_bearer_req(
 \arguments{
 \item{token}{Either an \link{OAuthToken} object or a raw access token string.}
 
-\item{url}{The absolute URL to call.}
+\item{url}{The absolute URL to call. Resource URLs must not exceed 8192 bytes,
+including the query and fragment, both before and after applying \code{query}.
+This limit also applies when \code{check_url = FALSE}.}
 
 \item{method}{Optional HTTP method (character). Defaults to "GET". When
 the effective token type is \code{DPoP}, this must be the final request method

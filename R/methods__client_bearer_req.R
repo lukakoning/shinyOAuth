@@ -35,7 +35,9 @@
 #' the package's bounded transport and fresh authentication.
 #'
 #' @param token Either an [OAuthToken] object or a raw access token string.
-#' @param url The absolute URL to call.
+#' @param url The absolute URL to call. Resource URLs must not exceed 8192 bytes,
+#'   including the query and fragment, both before and after applying `query`.
+#'   This limit also applies when `check_url = FALSE`.
 #' @param method Optional HTTP method (character). Defaults to "GET". When
 #'   the effective token type is `DPoP`, this must be the final request method
 #'   because the proof is signed against it. `TRACE` and the nonstandard
@@ -221,6 +223,7 @@ client_bearer_req <- function(
 #'
 #' @inheritParams resource_req
 #' @param url Either the absolute URL to call or an [httr2::request()] object
+#'   with a URL of at most 8192 bytes before and after applying `query`.
 #'   to authorize and perform. When you pass a request object, shinyOAuth uses
 #'   it as the base request, still applies token authentication and request
 #'   defaults, and then layers any explicit `method`, `headers`, `query`, and
@@ -463,6 +466,7 @@ prepare_client_bearer_request <- function(
   )
 
   req <- apply_client_bearer_query(req %||% httr2::request(target_url), query)
+  validate_resource_url_size(req[["url"]])
   follow_redirect <- resolve_client_bearer_redirect_policy(follow_redirect)
   req <- httr2::req_options(
     req,
@@ -734,6 +738,18 @@ validate_client_bearer_sender_constraints <- function(
 
 # 2.2 Target URL validation ----------------------------------------------------
 
+# Bound input before URL parsing, normalization, or proof construction, even
+# when the caller opts out of host validation.
+validate_resource_url_size <- function(url) {
+  if (!is_valid_string(url)) {
+    err_input("url must be a non-empty string")
+  }
+  if (nchar(url, type = "bytes") > 8192L) {
+    err_input("Resource URL must not exceed 8192 bytes")
+  }
+  invisible(TRUE)
+}
+
 #' Validate the target URL for an authorized API request
 #'
 #' Used by [resource_req()] before credentials are attached to the request.
@@ -752,6 +768,7 @@ validate_client_bearer_url <- function(
   check_url = TRUE,
   resource_hosts = NULL
 ) {
+  validate_resource_url_size(url)
   if (!is.logical(check_url) || length(check_url) != 1L || is.na(check_url)) {
     err_input("check_url must be a single non-missing logical value")
   }
