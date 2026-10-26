@@ -245,8 +245,11 @@
 #'   assertions, including endpoint overrides that inherit or repeat the secret.
 #'   Defaults to `c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")`,
 #'   which intentionally excludes HS*.
-#'   Each RSA verification key is bound to one algorithm: its JWK `alg`, if
-#'   supplied, or the sole RSA algorithm in this allowlist. When several RSA
+#'   Each RSA verification key is bound by public-key material (RFC 7638
+#'   thumbprint), independently of `kid`. Conflicting `alg` declarations for the
+#'   same material reject the whole JWKS, including pinned sets. An explicit
+#'   declaration also binds aliases that omit `alg`. With no declaration, the
+#'   binding is the sole RSA algorithm in this allowlist. When several RSA
 #'   algorithms are allowed, an unlabelled key is bound to `RS256` (and rejected
 #'   if `RS256` is excluded). To use unlabelled keys with `RS384` or `RS512`,
 #'   configure only that RSA algorithm. EC curves already select one supported

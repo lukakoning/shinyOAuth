@@ -405,6 +405,12 @@ test_that("endpoint RSA defaults are stable as advertised algorithms expand", {
   client@provider@token_auth_style <- "private_key_jwt"
   client@provider@introspection_url <- "https://example.com/introspect"
   client@provider@revocation_url <- "https://example.com/revoke"
+  # Each endpoint can negotiate a different algorithm when its RSA material is
+  # independent of the token endpoint and the other endpoint's key.
+  client@endpoint_auth <- list(
+    introspection = list(client_assertion_private_key = openssl::rsa_keygen()),
+    revocation = list(client_assertion_private_key = openssl::rsa_keygen())
+  )
   for (endpoint in c("introspection", "revocation")) {
     for (algs in list(c("RS384", "RS256"), c("RS256", "RS384"), "RS384")) {
       client@provider@endpoint_auth_metadata <- setNames(
@@ -420,15 +426,12 @@ test_that("endpoint RSA defaults are stable as advertised algorithms expand", {
       expect_identical(parse_jwt_header(jwt)[["alg"]], expected)
       expect_true(is.na(client@client_assertion_alg))
     }
-    client@endpoint_auth <- setNames(
-      list(list(client_assertion_alg = "RS384")),
-      endpoint
-    )
+    client@endpoint_auth[[endpoint]][["client_assertion_alg"]] <- "RS384"
     expect_identical(
       endpoint_auth_client(client, endpoint)@client_assertion_alg,
       "RS384"
     )
-    client@endpoint_auth <- list()
+    client@endpoint_auth[[endpoint]][["client_assertion_alg"]] <- NULL
   }
 })
 

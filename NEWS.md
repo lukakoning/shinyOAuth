@@ -1,5 +1,11 @@
 # shinyOAuth (development version)
 
+* RSA algorithm binding follows public-key material rather than JWK entries or
+  `kid` values. JWKS validation rejects conflicting declarations before pin/key
+  filtering; unlabelled aliases inherit an explicit material declaration.
+  Outgoing assertions, JAR, DPoP and endpoint overrides reject conflicting uses
+  at construction and signing time. Use distinct keys for different algorithms.
+
 * Policy fingerprints use a versioned typed encoding with exact numeric values,
   UTF-8 text and explicit container semantics. Spotify legacy-selector choices
   are bound separately; custom selectors can bind captured configuration with

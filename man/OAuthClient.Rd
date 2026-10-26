@@ -131,7 +131,10 @@ are not currently supported for outbound client assertions.
 A shared HMAC secret must use the same algorithm across enabled ID token,
 JARM, JAR and endpoint assertion profiles (RFC 8725 section 3.1). This includes
 inferred defaults and metadata-selected endpoint algorithms. Endpoint
-overrides using distinct secrets may select different algorithms.}
+overrides using distinct secrets may select different algorithms.
+RSA signing keys are likewise bound by public material across client
+assertions, JAR, DPoP and endpoint overrides; different \code{kid} values or PEM
+spellings do not create distinct keys.}
 
 \item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
 JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth

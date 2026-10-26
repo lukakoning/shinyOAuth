@@ -193,8 +193,8 @@ run_strict_as <- function(alg) {
       if (jwt_profile) {
         profile <- if (grepl("oauth21", mode)) "oauth21" else "legacy"
         configured@provider@infer_oidc_from_issuer <- FALSE
-        configured@provider@token_auth_style <- "private_key_jwt"
         configured@client_assertion_alg <- alg
+        configured@provider@token_auth_style <- "private_key_jwt"
         configured@provider@token_endpoint_auth_signing_alg_values_supported <- alg
         configured@scopes <- paste0("jwt-", profile)
         configured@provider@introspection_url <- paste0(

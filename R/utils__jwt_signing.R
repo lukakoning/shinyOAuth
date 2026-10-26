@@ -161,6 +161,7 @@ build_client_assertion <- function(client, aud) {
 
   if (identical(style, "private_key_jwt")) {
     key <- normalize_private_key_input(client@client_assertion_private_key)
+    check_client_rsa_algorithm(client, key, alg, "client assertion signing")
     clm <- outbound_jwt_claim(claims)
     # Hard-fail impossible alg/key pairs before signing. jose::jwt_encode_sig()
     # can otherwise emit mismatched JOSE alg headers instead of rejecting them.
@@ -761,6 +762,7 @@ build_authorization_request_object <- function(client, params) {
     )
   } else {
     key <- normalize_private_key_input(client@client_assertion_private_key)
+    check_client_rsa_algorithm(client, key, alg, "JAR signing")
     if (!private_key_can_sign_jws_alg(key, alg, typ = "oauth-authz-req+jwt")) {
       err_config(
         c(

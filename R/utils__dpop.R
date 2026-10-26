@@ -778,6 +778,7 @@ build_dpop_proof <- function(
 
   key <- resolve_dpop_private_key(client)
   alg <- resolve_dpop_alg(client)
+  check_client_rsa_algorithm(client, key, alg, "DPoP signing")
   if (!private_key_can_sign_jws_alg(key, alg, typ = "dpop+jwt")) {
     err_config(
       c(

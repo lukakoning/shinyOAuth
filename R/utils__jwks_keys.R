@@ -119,6 +119,10 @@ select_candidate_jwks <- function(
     keys <- list()
   }
 
+  # Resolve identity before filtering by kid, use, algorithm or pins. An alias
+  # must not give the same RSA modulus/exponent a second algorithm.
+  keys <- bind_jwks_rsa_algorithms(keys)
+
   # Keep keys where use is missing or explicitly 'sig'
   keep_use <- vapply(
     keys,
@@ -228,17 +232,50 @@ select_candidate_jwks <- function(
   keys
 }
 
+# Resolve explicit RSA algorithm declarations across aliases of public material.
+bind_jwks_rsa_algorithms <- function(keys) {
+  identities <- rep(NA_character_, length(keys))
+  bindings <- list()
+  for (i in seq_along(keys)) {
+    key <- keys[[i]]
+    if (!is.list(key) || !identical(key[["kty"]], "RSA")) {
+      next
+    }
+    tp <- try(compute_jwk_thumbprint(key), silent = TRUE)
+    if (inherits(tp, "try-error")) {
+      # Structural validation reports malformed material separately. Candidate
+      # metadata helpers also accept incomplete keys that cannot be verified.
+      next
+    }
+    identities[[i]] <- tp
+    alg <- key[["alg"]]
+    if (!is_valid_string(alg)) {
+      next
+    }
+    bound <- bindings[[tp]]
+    if (!is.null(bound) && !identical(bound, alg)) {
+      err_parse("JWKS assigns conflicting algorithms to the same RSA key material")
+    }
+    bindings[[tp]] <- alg
+  }
+  for (i in which(!is.na(identities))) {
+    bound <- bindings[[identities[[i]]]]
+    if (!is.null(bound) && is.null(keys[[i]][["alg"]])) {
+      # An explicit material binding also applies to aliases without an alg.
+      keys[[i]][["alg"]] <- bound
+    }
+  }
+  keys
+}
+
 #' Filter candidate JWKs by JWT algorithm
 #'
-#' Keeps only keys whose key type, curve, and optional advertised `alg` are
-#' compatible with the JWT algorithm being verified. Used after candidate keys
-#' are selected from a JWKS.
-#'
+#' Keeps only keys whose key type, curve, and material-bound `alg` are compatible.
 #' @param keys Candidate JWK list.
 #' @param alg JWT algorithm name.
-#' @param allowed_algs Trusted algorithm policy for this token context. An
-#'   unlabelled RSA key uses the sole permitted RSA algorithm, or RS256 when
-#'   several are permitted. The JWT header never selects this binding.
+#' @param allowed_algs Trusted policy. Without an explicit declaration on any
+#'   alias, an unlabelled RSA key uses the sole permitted RSA algorithm, or RS256
+#'   when several are permitted. The JWT header never selects this binding.
 #' @return Filtered key list.
 #' @keywords internal
 #' @noRd
@@ -254,6 +291,7 @@ filter_jwks_for_alg <- function(
   if (!is_valid_string(alg)) {
     return(list())
   }
+  keys <- bind_jwks_rsa_algorithms(keys)
   keys <- Filter(function(k) jwk_is_compatible_with_alg(k, alg), keys)
 
   Filter(
@@ -752,6 +790,7 @@ validate_jwks <- function(
   if (supported_seen == 0L) {
     err_parse("JWKS contains no supported public keys (RSA/EC/OKP)")
   }
+  bind_jwks_rsa_algorithms(ks)
 
   # Enforce pinning if configured
   if (!is.null(pins) && length(pins) > 0) {

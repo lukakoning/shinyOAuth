@@ -337,6 +337,9 @@
 #'   JARM, JAR and endpoint assertion profiles (RFC 8725 section 3.1). This includes
 #'   inferred defaults and metadata-selected endpoint algorithms. Endpoint
 #'   overrides using distinct secrets may select different algorithms.
+#'   RSA signing keys are likewise bound by public material across client
+#'   assertions, JAR, DPoP and endpoint overrides; different `kid` values or PEM
+#'   spellings do not create distinct keys.
 #'
 #' @param client_assertion_audience Optional override for the `aud` claim used when building
 #'   JWT client assertions (`client_secret_jwt` / `private_key_jwt`). By default, shinyOAuth
@@ -3315,7 +3318,11 @@ oauth_client_validate <- function(self) {
     }
   }
 
-  client_hmac_algorithm_problem(self)
+  problem <- client_hmac_algorithm_problem(self)
+  if (!is.null(problem)) {
+    return(problem)
+  }
+  tryCatch(client_rsa_algorithm_problem(self), error = conditionMessage)
 }
 
 ## 3.2 Constructor warnings ----------------------------------------------------
