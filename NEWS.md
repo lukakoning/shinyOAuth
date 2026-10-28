@@ -36,6 +36,11 @@
     letter case. Ed25519 keys now work for signed login requests and self-signed
     mTLS registration.
 
+* Improved compatibility with upcoming S7 and openssl releases. Package loading
+  avoids S7 import and property-default warnings, and method registration uses
+  S7's lifecycle hooks when available (#23). Base64url tests now support
+  openssl's stricter decoder without relying on its invalid-input behavior (#25).
+
 * More reliable sign-in and connection management:
 
   - `oauth_module_server()` adds `reauthorize()`, and
