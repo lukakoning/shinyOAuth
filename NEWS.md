@@ -9,7 +9,8 @@
     such as showing an edit button only with write access.
     `$request(refresh = TRUE)` reduces failures from expired tokens by refreshing
     before an API call, without automatically replaying a failed call.
-  - See the [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+  - See `vignette("external-integrations", package = "shinyOAuth")`
+    ([online guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html))
     for examples. Exported tokens retain the provider's permissions, which can
     be broader than the app's local limits.
 
@@ -21,7 +22,8 @@
     `connection$access_token(target = "calendar")`.
   - With token targets, set `reauth_after_seconds` if your app needs a
     time-limited login; API token expiry alone need not end the local login.
-    See the [token targets guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html).
+    See `vignette("token-targets", package = "shinyOAuth")`
+    ([online guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)).
 
 * Provider helpers and compatibility improvements:
 

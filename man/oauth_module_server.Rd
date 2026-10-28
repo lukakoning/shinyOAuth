@@ -215,7 +215,8 @@ that require login. Your app must also enforce its own access rules.
 After login, \code{connection <- shiny::req(auth$connection())} gives your server
 access to the current credentials. Use \code{connection$request()} to call an API,
 or \code{connection$access_token()} for another R package. See
-the \href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{external integrations guide}
+\code{vignette("external-integrations", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{online guide})
 for examples.
 
 See the \href{https://lukakoning.github.io/shinyOAuth/articles/usage.html}{usage vignette} for a complete app and

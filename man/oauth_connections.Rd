@@ -80,7 +80,8 @@ manager outside \code{server()} with named clients from \code{\link[=oauth_clien
 \details{
 By default, connections last for one Shiny session. Optional browser or local
 account retention can restore them after navigation. See
-the \href{https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html}{multiple-authorizations guide}
+\code{vignette("multiple-authorizations", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html}{online guide})
 for a complete example.
 
 Configure the manager once and use its named clients to start logins.

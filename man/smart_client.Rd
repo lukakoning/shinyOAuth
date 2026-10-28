@@ -134,7 +134,8 @@ Choose \code{launch = "standalone"} when the user opens the app directly, or \co
 when an electronic health record opens it. Use separate registrations for the
 two flows. Patient context describes the patient being viewed; it does not
 identify the person signed in. Enable \code{identity} only when the app needs that
-identity too. See the \href{https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html}{SMART on FHIR guide}
+identity too. See \code{vignette("smart-on-fhir", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html}{online guide})
 for a complete app.
 }
 \section{Advanced SMART profile}{

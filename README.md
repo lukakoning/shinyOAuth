@@ -37,12 +37,15 @@ workers as described in [Asynchronous execution](https://lukakoning.github.io/sh
   configure a provider yourself.
 
 - Login protection: HTTPS enforcement, PKCE, browser-bound state and OIDC token
-  validation. DPoP, mTLS, JAR and PAR are available for providers that require them
-  (see [Authentication flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
+  validation. DPoP, mTLS, JAR and PAR are available for providers that require them.
+  See `vignette("authentication-flow", package = "shinyOAuth")`
+  ([online guide](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
 
 - Diagnostics: record login successes, failures and other events with audit hooks
-  or OpenTelemetry. See [Audit logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)
-  and [OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html).
+  or OpenTelemetry. See `vignette("audit-logging", package = "shinyOAuth")`
+  ([online guide](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
+  and `vignette("opentelemetry", package = "shinyOAuth")`
+  ([online guide](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)).
 
 ## Installation
 
@@ -64,8 +67,9 @@ remotes::install_github("lukakoning/shinyOAuth")
 
 ## Usage
 
-The [Usage guide](https://lukakoning.github.io/shinyOAuth/articles/usage.html)
-covers login buttons, authenticated API calls, configuration and a deployment checklist.
+See `vignette("usage", package = "shinyOAuth")`
+([online guide](https://lukakoning.github.io/shinyOAuth/articles/usage.html))
+for login buttons, authenticated API calls, configuration and a deployment checklist.
 
 ### Minimal example
 
@@ -138,9 +142,10 @@ runApp(
 Use audit hooks to record callbacks and login outcomes, or send logs and traces
 to a monitoring service through OpenTelemetry.
 
-See [Audit logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)
-for R hook examples and [OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)
-for exporter setup.
+For R hook examples, see `vignette("audit-logging", package = "shinyOAuth")`
+([online guide](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)).
+For exporter setup, see `vignette("opentelemetry", package = "shinyOAuth")`
+([online guide](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)).
 
 ## More information
 

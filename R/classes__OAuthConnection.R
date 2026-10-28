@@ -14,7 +14,8 @@
 #' Use `$access_token()` for another R package or database driver, `$request()` for
 #' an API in the client's `resource_bases`, and `$has_scopes()` to check permissions
 #' for optional app features. `$request(refresh = TRUE)` can refresh before
-#' sending. See the [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+#' sending. See `vignette("external-integrations", package = "shinyOAuth")`
+#' ([online guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html))
 #' for a complete example.
 #'
 #' @section Connection lifetime:
@@ -189,7 +190,8 @@ OAuthConnection <- R6::R6Class(
     #' `authorization_unavailable`, `insufficient_scope`, `refresh_pending`,
     #' `refresh_unavailable`, `interaction_required`, `lifetime_unavailable`,
     #' `unsupported_token_binding`, `unknown_target` and `unsupported_target`.
-    #' See the [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+    #' See `vignette("external-integrations", package = "shinyOAuth")`
+    #' ([online guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html))
     #' for error recovery and async examples.
     #'
     #' DPoP and mTLS-bound tokens require their signing key or certificate; use
@@ -294,8 +296,9 @@ OAuthConnection <- R6::R6Class(
     #' separate registration or change provider consent for a token with fewer permissions.
     #'
     #' OIDC clients that require a profile must retain `openid`. Include any further
-    #' profile permissions in client `required_scopes`. See the
-    #' [token targets guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
+    #' profile permissions in client `required_scopes`. See
+    #' `vignette("token-targets", package = "shinyOAuth")`
+    #' ([online guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
     #' for OIDC consent and provider-specific refresh rules.
     #' @return `TRUE` after a successful commit, or a promise resolving to `TRUE`
     #'   when the module uses async transport. Failure raises a redacted error.

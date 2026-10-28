@@ -30,7 +30,8 @@
 #'   `"none"` (default), `"rfc8707"`, or `"microsoft"`. Set this only when using
 #'   client `token_targets` and after checking provider support. The Microsoft
 #'   helper selects `"microsoft"` automatically; discovery does not enable
-#'   targets. See the [token targets guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
+#'   targets. See `vignette("token-targets", package = "shinyOAuth")`
+#'   ([online guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
 #'   for setup and permission rules.
 #'
 #' @param auth_url URL of the provider's login and permission page.

@@ -7,7 +7,8 @@
 #'
 #' By default, connections last for one Shiny session. Optional browser or local
 #' account retention can restore them after navigation. See
-#' the [multiple-authorizations guide](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html)
+#' `vignette("multiple-authorizations", package = "shinyOAuth")`
+#' ([online guide](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html))
 #' for a complete example.
 #'
 #' @param clients Non-empty named list of [OAuthClient] objects, at most 64.

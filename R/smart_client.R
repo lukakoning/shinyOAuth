@@ -14,7 +14,8 @@
 #' when an electronic health record opens it. Use separate registrations for the
 #' two flows. Patient context describes the patient being viewed; it does not
 #' identify the person signed in. Enable `identity` only when the app needs that
-#' identity too. See the [SMART on FHIR guide](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html)
+#' identity too. See `vignette("smart-on-fhir", package = "shinyOAuth")`
+#' ([online guide](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html))
 #' for a complete app.
 #'
 #' @param discovery A plain snapshot returned by [smart_discover()]. Its metadata

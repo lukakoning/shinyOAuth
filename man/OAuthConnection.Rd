@@ -17,7 +17,8 @@ login using \code{auth$connection(connection_id)}.
 Use \verb{$access_token()} for another R package or database driver, \verb{$request()} for
 an API in the client's \code{resource_bases}, and \verb{$has_scopes()} to check permissions
 for optional app features. \verb{$request(refresh = TRUE)} can refresh before
-sending. See the \href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{external integrations guide}
+sending. See \code{vignette("external-integrations", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{online guide})
 for a complete example.
 }
 \section{Connection lifetime}{
@@ -188,7 +189,8 @@ failed refresh, or an unsuitable token lifetime. Stable reason names include
 \code{authorization_unavailable}, \code{insufficient_scope}, \code{refresh_pending},
 \code{refresh_unavailable}, \code{interaction_required}, \code{lifetime_unavailable},
 \code{unsupported_token_binding}, \code{unknown_target} and \code{unsupported_target}.
-See the \href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{external integrations guide}
+See \code{vignette("external-integrations", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{online guide})
 for error recovery and async examples.
 
 DPoP and mTLS-bound tokens require their signing key or certificate; use
@@ -289,8 +291,9 @@ can include earlier consent. The call fails before sending with reason
 separate registration or change provider consent for a token with fewer permissions.
 
 OIDC clients that require a profile must retain \code{openid}. Include any further
-profile permissions in client \code{required_scopes}. See the
-\href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{token targets guide}
+profile permissions in client \code{required_scopes}. See
+\code{vignette("token-targets", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{online guide})
 for OIDC consent and provider-specific refresh rules.
   }
   \subsection{Returns}{

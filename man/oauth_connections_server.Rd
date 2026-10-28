@@ -75,9 +75,11 @@ the selected connection when another R package needs it.
 Use \code{auth$connections()} to populate a selection control, then
 \code{connection <- auth$connection(selected_id)} for the chosen account.
 \code{connection$request()} calls a configured API; \code{connection$access_token()}
-supplies a current token for another R package. See the
-\href{https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html}{multiple-authorizations guide}
-for a complete app and the \href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{external integrations guide}
+supplies a current token for another R package. See
+\code{vignette("multiple-authorizations", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html}{online guide})
+for a complete app and \code{vignette("external-integrations", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{online guide})
 for API client and database examples.
 }
 \section{Advanced lifetime and refresh behavior}{
@@ -99,8 +101,9 @@ uncertain authorizations count toward ambiguity; disconnected rows do not.
 Reactive expressions that read \code{connection()}, \verb{$access_token()} or
 \verb{$has_scopes()} do not rerun on token refresh alone if the login and permissions
 stay the same. Token acquisition never extends owner idle limits or replays
-application requests. See the
-\href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{external integrations guide}.
+application requests. See
+\code{vignette("external-integrations", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{online guide}).
 Resource requests and status reads never reset owner inactivity, including when
 reactive expressions rerun after automatic refresh. Call \code{touch()} from a user
 input event handler to count an application action as activity. Do not call it

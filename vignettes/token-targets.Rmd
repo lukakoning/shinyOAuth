@@ -329,4 +329,5 @@ the business request. `$access_token()` exports bearer tokens only; use
 `$request()` for DPoP or mTLS-bound tokens.
 
 For SDK callbacks, background tasks and checks before displaying results, see
-[External integrations](external-integrations.html).
+`vignette("external-integrations", package = "shinyOAuth")`
+([online guide](external-integrations.html)).
