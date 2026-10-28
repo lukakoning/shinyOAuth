@@ -11,8 +11,8 @@ vignette: >
 
 Use shinyOAuth to let users sign in with an existing service and let your app
 call that service's API with their permission. Your app does not collect the
-user's password. OAuth handles permission to use an API; OpenID Connect
-(OIDC) also provides a checked login identity.
+user's password. OAuth grants permission to call an API. OpenID Connect
+(OIDC) adds identity checks so your app can verify who signed in.
 
 In R, configure the service and your app registration, then add the Shiny UI
 wrapper and server module. The module manages login and tokens; `oauth_ui()`
@@ -412,20 +412,19 @@ making requests, and keep raw context out of logs and session summaries.
 
 ### Requests bound to a client and resource
 
-These optional helpers group the client, API address and current credentials
-used for a request. They are package API choices; OAuth and SMART on FHIR do not
-require these classes.
+Use a connection to keep the client settings, API address and current
+credentials together when making requests.
 
 | Object | What it represents | Example |
 | --- | --- | --- |
 | `OAuthClient` | Registration settings and optional approved API addresses | Hospital A's client ID, scopes and `https://a.example/fhir` |
 | `OAuthConnection` | Access to one Shiny session's current credentials through that configuration | This session's authorized requests to Hospital A |
 
-The client holds shared configuration, with no user's token. A connection reads
-the current token for each request. The object refers to credentials that
-can change instead of keeping a token copy. The existing reactive token already
-updates on refresh; the connection adds client selection, API-address restrictions
-and session checks. It does not implement refresh or retention by itself.
+The client holds shared settings without any user's tokens. A connection reads
+the module's current token for each request, checks the Shiny session and
+restricts requests to the configured API addresses. The module still manages
+refresh and logout; use the connection manager to keep credentials across
+navigation.
 
 Set `resource_bases` on `oauth_client()` outside `server()`, then create
 a connection for that client's module inside `server()`:
@@ -448,10 +447,10 @@ server <- function(input, output, session) {
 }
 ```
 
-The reference reads the latest token after refresh and becomes unusable after
-logout, token expiry, or session end. A reference from another Shiny session
-cannot read its summary or make requests. This adapter still uses the legacy
-module's lifecycle and does not retain credentials across navigation.
+The connection reads the latest token after refresh and becomes unusable after
+logout, token expiry, or session end. It can only be used in the Shiny session
+that created it, including for summary reads. This wrapper does not retain
+credentials across navigation.
 
 `resource_bases` restricts the token's destinations; it does not request an
 audience or prove an opaque token's audience. Wire the token expression to the

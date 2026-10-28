@@ -3,7 +3,7 @@
 \name{oauth_connections}
 \alias{oauth_connections}
 \alias{print.OAuthConnections}
-\title{Configure several independently managed OAuth connections}
+\title{Manage several OAuth connections in one Shiny app}
 \usage{
 oauth_connections(
   clients,
@@ -102,9 +102,8 @@ existing single-use OAuth state and browser binding, while existing grants are
 discarded with the old Shiny session. Browser/account mode additionally binds
 authorization to the initiating local owner and its session generation.
 
-These are optional package interfaces, not SMART protocol objects. This manager
-supports generic OAuth clients and the SMART discovery, scope and launch
-policies configured by \code{\link[=smart_client]{smart_client()}}.
+The manager supports generic OAuth clients and the SMART discovery, scope and
+launch policies configured by \code{\link[=smart_client]{smart_client()}}.
 }
 
 \examples{

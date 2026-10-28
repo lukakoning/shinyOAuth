@@ -220,11 +220,11 @@ its authorization flow, then load the patient. The helper reads the Patient
 identified by the accepted context using the same connection's credentials and
 configured FHIR base. It returns an `httr2` response.
 
-This teaching UI displays only the resource ID. A clinical application needs
-appropriate patient identification and must respect `need_patient_banner` when
-provided. Context and resource bodies contain sensitive data; keep them out of
-general connection tables and logs. Key patient-dependent caches by both
-connection ID and `context[["revision"]]`, and discard stale data when either changes.
+The example displays only the resource ID. A clinical app needs appropriate
+patient identification and must respect `need_patient_banner` when provided.
+Context and resource bodies contain sensitive data; keep them out of general
+connection tables and logs. Key patient-dependent caches by both connection ID
+and `context[["revision"]]`, and discard stale data when either changes.
 
 ## Search with the same connection
 
@@ -282,8 +282,9 @@ refresh scope cannot express that limit.
 ## Patient context and user identity are different
 
 `smart_context(connection)[["patient"]]` identifies the chart in context. A clinician
-can be the logged-in user while that patient is someone else. The browser owner
-used for local retention is a third, separate concept.
+can be the logged-in user while that patient is someone else. Browser retention
+groups saved connections for one browser; it does not verify either person's
+identity.
 
 Identity remains opt-in: the default `identity = "none"` does not enable OIDC.
 For a validated OIDC subject without a FHIR user reference, use

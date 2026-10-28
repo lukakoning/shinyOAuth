@@ -9,10 +9,9 @@ vignette: >
 
 ## Overview
 
-shinyOAuth emits structured audit events for authorization requests, callbacks,
-token operations, and changes to the authenticated session. Configure
-`shinyOAuth.audit_hook` with an R function to receive these events as named
-lists and send them to your application's logging system.
+Use audit events to record login attempts, token operations and session changes
+in your application's logs. Set `shinyOAuth.audit_hook` to an R function that
+receives each event as a named list.
 
 ## Receiving audit events
 
@@ -373,7 +372,7 @@ the native audit hook and OpenTelemetry. Existing module logout events remain.
 
 #### Event: `audit_userinfo`
 
-- When: `get_userinfo()` is called to retrieve user information (emitted on success and various failure modes)
+- When: during `get_userinfo()`, on successful retrieval or a reported failure
 - Context: `provider`, `issuer`, `client_id_digest`, `sub_digest`, `status`
 - `status` values:
 	- `"ok"` – userinfo successfully parsed

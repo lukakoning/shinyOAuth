@@ -202,11 +202,11 @@ serialize a connection into a worker or use it from another session. A connectio
 and its ID survive token refresh. Logout, replacement and session closure make
 old references unusable, even if the same account signs in again.
 
-Token refresh alone does not rerun consumers of `connection()`, `$access_token()`
-or `$has_scopes()` when the login and permissions stay the same. Status methods
-such as `$summary()` can update more often. In a connection manager, automatic
-reads do not extend owner inactivity limits; use `auth$touch()` for explicit user
-actions.
+Reactive expressions that read `connection()`, `$access_token()` or
+`$has_scopes()` do not rerun on token refresh alone if the login and permissions
+stay the same. Status methods such as `$summary()` can update more often. In a
+connection manager, automatic reads do not extend owner inactivity limits; use
+`auth$touch()` for explicit user actions.
 
 The service may issue a token with more permissions than your app allows locally.
 Connection methods enforce the app's limits, but an exported bearer token still
@@ -265,10 +265,10 @@ before its callback runs. The example therefore checks the current connection ID
 and permissions again before calling the SDK. Check them again before displaying
 results. Scope narrowing keeps the ID, so checking the ID alone is insufficient.
 
-An SDK that blocks R still needs its own asynchronous request mechanism.
-Concurrent async calls coordinate their
-refreshes. A synchronous call does not wait for an async refresh or return a
-promise.
+An SDK that blocks R still needs its own asynchronous request mechanism, even
+when token acquisition runs in the background. Concurrent async token calls
+coordinate their refreshes; a synchronous call does not wait for an async
+refresh or return a promise.
 
 If the provider asks the app to wait before trying another refresh, shinyOAuth
 honors a capped `Retry-After` delay. A cached token can still be used if it meets

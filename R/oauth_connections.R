@@ -1,4 +1,4 @@
-#' Configure several independently managed OAuth connections
+#' Manage several OAuth connections in one Shiny app
 #'
 #' Let users connect several services or accounts in one Shiny app. Create the
 #' manager outside `server()` with named clients from [oauth_client()] or
@@ -67,9 +67,8 @@
 #' discarded with the old Shiny session. Browser/account mode additionally binds
 #' authorization to the initiating local owner and its session generation.
 #'
-#' These are optional package interfaces, not SMART protocol objects. This manager
-#' supports generic OAuth clients and the SMART discovery, scope and launch
-#' policies configured by [smart_client()].
+#' The manager supports generic OAuth clients and the SMART discovery, scope and
+#' launch policies configured by [smart_client()].
 #' @seealso [oauth_connections_ui()], [oauth_connections_server()]
 #' @example inst/examples/oauth_connections.R
 #' @export

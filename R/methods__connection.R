@@ -1,24 +1,24 @@
 #' Wrap an existing reactive token as a connection
 #'
 #' Combine one module's reactive token with its client and approved API addresses
-#' configured on [oauth_client()]. Call `[["request"]]()` on the returned connection instead of
-#' assembling a token, client and URL for each request. It reads the reactive token
-#' again after refresh or logout and restricts requests to the configured APIs.
+#' configured on [oauth_client()]. Call `[["request"]]()` on the connection to send
+#' a request with the current token. It reads the reactive token again after
+#' refresh or logout and restricts requests to the configured APIs.
 #' This optional wrapper expires with its Shiny session; it does not implement
 #' refresh itself or retain credentials across redirects.
 #' Clients with `token_targets` must use the module's `connection()` factory,
 #' which retains the authorization's permission limits alongside its tokens.
 #'
-#' For new apps, prefer `auth$connection()` from [oauth_module_server()] or
-#' [oauth_connections_server()]. Those connections can obtain and refresh tokens
-#' for external packages. This wrapper is for existing reactive-token integrations.
+#' Use `auth$connection()` from [oauth_module_server()] or
+#' [oauth_connections_server()] to obtain and refresh tokens for external packages.
+#' Use this wrapper when integrating with an existing reactive token.
 #'
 #' @param client An [OAuthClient] with non-empty `resource_bases`, created by
 #'   [oauth_client()] or [smart_client()].
 #' @param token_reactive A Shiny reactive expression returning the current [OAuthToken]
 #'   or `NULL`, usually `shiny::reactive(auth[["token"]])`. It must come from the
-#'   module using `client`. Supplying that association is trusted server
-#'   application wiring; a resource policy cannot prove an opaque token's audience.
+#'   module using `client`. Your server code must keep the token and client matched;
+#'   API address restrictions cannot verify an opaque token's audience.
 #' @param session The owning Shiny session; defaults to the current session.
 #' @return An [OAuthConnection] with `[["id"]]`, `[["is_usable"]]()`, `[["summary"]]()` and
 #'   `[["request"]](resource_id, path = "", query = NULL, method = "GET",
@@ -39,9 +39,8 @@
 #' Use request-level `required_scopes` for optional operations. They must be
 #' included in the client's requested scopes and covered by the current grant.
 #' The package cannot infer arbitrary API permissions from an HTTP method/path.
-#' The legacy module continues to own refresh and logout. Retained connection
-#' storage and its independent lifecycle are available through
-#' [oauth_connections()] and [oauth_connections_server()].
+#' [oauth_module_server()] still manages refresh and logout. To retain credentials
+#' across Shiny sessions, use [oauth_connections()] and [oauth_connections_server()].
 #'
 #' @examples
 #' \dontrun{

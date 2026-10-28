@@ -54,13 +54,13 @@
 #' for a complete app and `vignette("external-integrations")` for SDK examples.
 #'
 #' @section Advanced lifetime and refresh behavior:
-#' References expire with this Shiny session even when their stored grants survive.
-#' A new session obtains new references after owner verification. The manager
-#' coordinates refresh across its connections. Refresh preserves the original
-#' authentication time and retention expiry.
+#' Each Shiny session needs its own connection references, even when the manager
+#' retains the saved authorizations. A new session obtains these after owner
+#' verification. The manager coordinates refresh across its connections without
+#' changing the original authentication time or retention expiry.
 #' Reactive connection reads also recheck expiry at `refresh_check_interval_ms`,
 #' including references used without `connections()` or `errors()`. These checks
-#' notify dependent expressions when lifecycle state changes; unchanged polling
+#' notify reactive expressions when connection status changes; unchanged polling
 #' does not rerun application requests or extend owner inactivity limits.
 #' Notifications to application code reflect only this owner's record changes.
 #' Without an ID, `connection()` returns NULL when no authorization remains,
@@ -68,9 +68,10 @@
 #' with reason `selection_required` when several remain. Expired, limited and
 #' uncertain authorizations count toward ambiguity; disconnected rows do not.
 #'
-#' The connection factory, `$access_token()` and `$has_scopes()` avoid rerunning
-#' consumers on unchanged token rotations. Acquisition never extends owner idle
-#' limits or replays application requests. See `vignette("external-integrations")`.
+#' Reactive expressions that read `connection()`, `$access_token()` or
+#' `$has_scopes()` do not rerun on token refresh alone if the login and permissions
+#' stay the same. Token acquisition never extends owner idle limits or replays
+#' application requests. See `vignette("external-integrations")`.
 #' Resource requests and status reads never reset owner inactivity, including when
 #' reactive expressions rerun after automatic refresh. Call `touch()` from a user
 #' input event handler to count an application action as activity. Do not call it

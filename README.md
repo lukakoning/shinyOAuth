@@ -17,10 +17,9 @@ the user's behalf. OIDC adds an ID token that the package validates to identify
 the user.
 
 The Shiny module handles redirects, protects the login exchange, validates OIDC
-tokens, fetches user information and refreshes tokens. It uses asynchronous
-requests so the Shiny worker can handle other work while waiting for the provider.
-Your server code reads login status, token details and user information as
-reactive values.
+tokens, fetches user information and refreshes tokens. To keep provider requests
+from blocking other sessions, enable `async = TRUE` and configure background
+workers as described in [Asynchronous execution](https://lukakoning.github.io/shinyOAuth/articles/usage.html#asynchronous-execution).
 
 ## Features
 
@@ -39,12 +38,11 @@ reactive values.
 
 - Login protection: HTTPS enforcement, PKCE, browser-bound state and OIDC token
   validation. DPoP, mTLS, JAR and PAR are available for providers that require them
-  (see `vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html))).
+  (see [Authentication flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
 
 - Diagnostics: record login successes, failures and other events with audit hooks
-  or OpenTelemetry
-  (see `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
-  and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)))
+  or OpenTelemetry. See [Audit logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)
+  and [OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html).
 
 ## Installation
 
@@ -66,8 +64,8 @@ remotes::install_github("lukakoning/shinyOAuth")
 
 ## Usage
 
-See `vignette("usage", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/usage.html))
-for login buttons, authenticated API calls, configuration and a deployment checklist.
+The [Usage guide](https://lukakoning.github.io/shinyOAuth/articles/usage.html)
+covers login buttons, authenticated API calls, configuration and a deployment checklist.
 
 ### Minimal example
 
@@ -140,24 +138,21 @@ runApp(
 Use audit hooks to record callbacks and login outcomes, or send logs and traces
 to a monitoring service through OpenTelemetry.
 
-See `vignette("audit-logging", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)) for audit event details,
-and `vignette("opentelemetry", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)) for OpenTelemetry details.
+See [Audit logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)
+for R hook examples and [OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)
+for exporter setup.
 
 ## More information
 
-### What happens during the authentication flow?
-
-For an in-depth step-by-step explanation of what happens during the authentication flow, see:
-`vignette("authentication-flow", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
-
-### What do I need to consider for production use?
-
-For a checklist of security considerations and best practices for production use, see:
-`vignette("usage", package = "shinyOAuth")` ([link](https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist)).
+[Authentication flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)
+explains login requests, callbacks and token checks. Before deployment, work
+through the [security checklist](https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist).
+You can also read these guides in R with `vignette("authentication-flow", package = "shinyOAuth")`
+and `vignette("usage", package = "shinyOAuth")`.
 
 ### For developers: tests & integration tests
 
-The package has a standard 'testthat' test suite under `tests/testthat/`.
-An additional set of integration tests against a local Keycloak instance (in Docker/Podman) is provided under `integration/keycloak/`.
-These integration tests also include browser-driven end-to-end tests using 'shinytest2' and 'chromote'.
-Finally, minimal demo app deployments are provided under `integration/gcp/` for Google Cloud Run and `integration/posit/` for Posit Connect Cloud.
+The 'testthat' tests are in `tests/testthat/`. Integration tests in
+`integration/keycloak/` use a local Keycloak instance in Docker or Podman and
+include browser tests with 'shinytest2' and 'chromote'. Demo deployments are in
+`integration/gcp/` for Google Cloud Run and `integration/posit/` for Posit Connect Cloud.

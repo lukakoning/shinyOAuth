@@ -35,16 +35,15 @@ is read-only, is not a credential and cannot be used to authorize a request.
 
 \section{Advanced lifecycle behavior}{
 
-\code{connection()}, \verb{$access_token()} and \verb{$has_scopes()} do not rerun consumers
-just because a token refreshes without changing login or permissions. Status
-reads such as \verb{$summary()} may update more often. Reads do not extend a managed
-owner's inactivity limit; record user actions with the manager's \code{touch()}
-method inside input event handlers.
+Reactive expressions that read \code{connection()}, \verb{$access_token()} or
+\verb{$has_scopes()} do not rerun on token refresh alone if the login and permissions
+stay the same. Status reads such as \verb{$summary()} may update more often. Reads
+do not extend a managed owner's inactivity limit; record user actions with
+the manager's \code{touch()} method inside input event handlers.
 
-The older \code{\link[=oauth_connection]{oauth_connection()}} wrapper follows its supplied token reactive
-across logins. It does not provide coordinated token acquisition or refresh,
-and does not support token targets. Module \code{connection()} methods are the
-recommended interface for new applications.
+Use the module's \code{connection()} for coordinated token acquisition, refresh
+and token targets. The \code{\link[=oauth_connection]{oauth_connection()}} wrapper follows a supplied token
+reactive across logins and does not support those features.
 }
 
 \examples{

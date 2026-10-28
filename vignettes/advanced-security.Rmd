@@ -23,9 +23,7 @@ necessary, and the provider must support the same settings.
 | Tokens usable only with your app's key | [DPoP](#demonstrating-proof-of-possession-dpop) |
 
 The examples extend an existing `provider` and `client`. Replace example
-addresses, credentials and key paths with your registered values. Each section
-explains the purpose before showing the settings. Browser, key-validation and
-deployment details follow the feature examples.
+addresses, credentials and key paths with your registered values.
 
 ## Provider metadata and OIDC discovery
 
@@ -45,9 +43,6 @@ An explicitly selected token authentication method must match discovery. If
 is `client_secret_basic` (`token_auth_style = "header"`). Public, POST, JWT,
 and mTLS methods therefore require an explicit advertisement. An empty method
 array is rejected as malformed metadata.
-
-The sections below show the extra settings you usually add on top of your normal
-`oauth_client()` setup.
 
 ## JWT client authentication
 
@@ -357,8 +352,8 @@ its digest is stored alongside the object in `client@state_store`. GET consumes
 it atomically; HEAD does not consume it. Retrieval expires at the earlier of the
 object expiry and 120 seconds after publication. Cache eviction can shorten
 availability; the store's retention policy controls physical cleanup.
-If the provider requires `request_uri` registration, update its permitted URLs
-to cover this app-root endpoint when migrating from the old `/session/` paths.
+If the provider requires `request_uri` registration, register this app-root
+endpoint with it.
 For multiple workers, use a shared state store with atomic `take()`; a memory
 store works only when publication and retrieval reach the same R process.
 
@@ -368,11 +363,9 @@ enable Request Object JWE encryption for claim confidentiality. See the
 [`custom_cache()` shared-store contract](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
 for record protection and expiry requirements.
 
-Earlier versions used Shiny's raw live session token in `registerDataObj()`
-URLs. Those URLs could disclose a capability also used by other session
-resources through browser, provider, or proxy logs. The new handles contain no
-session token. Still redact request URLs in logs and limit log retention:
-disclosing a live handle allows its holder to consume the pending object.
+Retrieval handles contain no Shiny session token, but anyone holding a live
+handle can consume the pending object. Redact request URLs in logs and limit
+log retention.
 Prefer PAR when supported to use a provider-issued reference and avoid a
 public app retrieval endpoint. OIDC signed requests retain outer `client_id`,
 `response_type`, and `scope` parameters. `authorization_request_front_channel_mode =

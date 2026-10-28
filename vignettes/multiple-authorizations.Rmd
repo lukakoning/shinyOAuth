@@ -300,11 +300,11 @@ observeEvent(input[["write"]], {
 The connection retains control of its destination, authentication and redirect
 policy. The write scope is optional for connecting, but required for this action.
 
-`OAuthConnection[["request"]]()` uses the existing `perform_resource_req()` transport.
-It adds selection of the current owned credentials and checks the approved API
-base and required permissions. Existing code using `perform_resource_req(token,
-url)` remains supported. For a single existing module, `oauth_connection(client,
-reactive(auth[["token"]]))` supplies the optional wrapper without adding retention.
+`OAuthConnection[["request"]]()` calls `perform_resource_req()` with the selected
+connection's current credentials, after checking the approved API base and
+required permissions. For a single module with an existing token reactive, use
+`oauth_connection(client, reactive(auth[["token"]]))` to add these checks without
+retaining credentials across navigation.
 
 `resource_bases` limits destinations, including absolute pagination links and
 their base paths. It does not automatically send OAuth's `resource` parameter
