@@ -916,6 +916,42 @@ jwe_compact_encrypt <- function(
   )
 }
 
+# Run native decryption in a disposable process. openssl's RSA/AES error
+# paths can raise an R error before freeing native allocations (including in
+# openssl 2.4.0 and 2.4.2). R-level error handling cannot release those objects.
+# Disable startup profiles and never reuse a session. Explicit finalization
+# removes callr's temporary transport files without waiting for R's GC.
+new_jwe_decryption_session <- function() {
+  worker <- callr::r_session$new(
+    options = callr::r_session_options(
+      libpath = .libPaths(),
+      system_profile = FALSE,
+      user_profile = FALSE,
+      error = "error",
+      supervise = TRUE
+    ),
+    wait = FALSE
+  )
+  ready <- FALSE
+  on.exit(if (!ready) close_jwe_decryption_session(worker), add = TRUE)
+  if (!identical(worker[["poll_process"]](3000), "ready")) {
+    stop("JWE decryption process did not start")
+  }
+  worker[["read"]]()
+  if (!identical(worker[["get_state"]](), "idle")) {
+    stop("JWE decryption process is unavailable")
+  }
+  ready <- TRUE
+  worker
+}
+
+close_jwe_decryption_session <- function(worker) {
+  tryCatch(
+    worker[["close"]](grace = 0),
+    finally = worker[["finalize"]]()
+  )
+}
+
 #' Decrypt a compact JWE using RSA-OAEP and AES-CBC-HMAC
 #'
 #' Used by inbound encrypted JARM validation and tests that need to inspect
@@ -946,12 +982,20 @@ jwe_compact_decrypt <- function(jwe, private_key) {
     arg_name = "request_object_encryption_private_key"
   )
   validate_jwe_rsa_key_strength(key, "compact JWE decryption key")
+  worker <- try(new_jwe_decryption_session(), silent = TRUE)
+  if (inherits(worker, "try-error")) {
+    err_parse(
+      "Compact JWE decryption failed",
+      context = list(compact_jwe_failure = "authenticated_decryption")
+    )
+  }
+  # This session is never shared or pooled, including after a native error.
+  on.exit(close_jwe_decryption_session(worker), add = TRUE)
   cek_failed <- FALSE
   cek_raw <- try(
-    openssl::rsa_decrypt(
-      parts[["encrypted_key_raw"]],
-      key = key,
-      oaep = TRUE
+    worker[["run"]](
+      function(data, key) openssl::rsa_decrypt(data, key = key, oaep = TRUE),
+      args = list(data = parts[["encrypted_key_raw"]], key = key)
     ),
     silent = TRUE
   )
@@ -980,10 +1024,13 @@ jwe_compact_decrypt <- function(jwe, private_key) {
   }
 
   plaintext_raw <- try(
-    openssl::aes_cbc_decrypt(
-      parts[["ciphertext_raw"]],
-      key = key_parts[["enc_key"]],
-      iv = parts[["iv_raw"]]
+    worker[["run"]](
+      function(data, key, iv) openssl::aes_cbc_decrypt(data, key = key, iv = iv),
+      args = list(
+        data = parts[["ciphertext_raw"]],
+        key = key_parts[["enc_key"]],
+        iv = parts[["iv_raw"]]
+      )
     ),
     silent = TRUE
   )

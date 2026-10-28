@@ -59,7 +59,7 @@ test_that("repeated connection reads recheck transport policy and key-file conte
           }
           if (change == "transport") {
             withr::with_options(
-              list(shinyOAuth.tls_min_version = "1.2"),
+              list(shinyOAuth.tls_min_version = "1.3"),
               check_rejected()
             )
           } else {

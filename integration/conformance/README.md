@@ -31,7 +31,7 @@ Assertions must have fresh IDs and valid signatures, lifetimes and client
 identifiers, with no competing client authentication. The newer configuration
 passes `check_oauth21()`'s mandatory configuration checks before exchange; the
 legacy profile remains usable while its audience receives a draft finding.
-Requests select the optional TLS 1.2 minimum and use a local custom CA.
+Requests explicitly select the default TLS 1.2 minimum and use a local custom CA.
 
 Each algorithm runs the full flow matrix with a separately pinned server
 registration. JARM responses and the server's public JWKS use the selected

@@ -8,9 +8,10 @@ test_that("SMART transport minima are request local and preserve stronger policy
   )
   ordinary <- make_test_client()
   req <- httr2::request("https://ehr.example/token")
-  expect_null(add_req_defaults(req, client = ordinary)[["options"]][[
-    "sslversion"
-  ]])
+  expect_identical(
+    add_req_defaults(req, client = ordinary)[["options"]][["sslversion"]],
+    6L
+  )
   secured <- add_req_defaults(req, client = smart)
   expect_identical(secured[["options"]][["sslversion"]], 6L)
   expect_identical(
@@ -196,7 +197,18 @@ for (response_kind in c("ID token", "UserInfo")) {
               body = charToRaw(jsonlite::toJSON(current, auto_unbox = TRUE))
             )
           })
+          # Ordinary and SMART clients now share the default TLS 1.2 floor.
+          # Use an explicit 1.3 floor for the ordinary client to keep checking
+          # that genuinely different policies isolate cache and throttle state.
+          select_policy <- function(client) {
+            options(shinyOAuth.tls_min_version = if (client_uses_smart(client)) {
+              NULL
+            } else {
+              "1.3"
+            })
+          }
           for (client in clients) {
+            select_policy(client)
             fetch_client_jwks(
               client,
               client@provider@issuer,
@@ -232,6 +244,7 @@ for (response_kind in c("ID token", "UserInfo")) {
             )
           }
           for (client in clients) {
+            select_policy(client)
             expect_identical(verify_response(client)[["sub"]], "user")
           }
           expect_length(requests, 4L)
@@ -243,10 +256,11 @@ for (response_kind in c("ID token", "UserInfo")) {
               },
               integer(1)
             ),
-            rep(if (smart_first) c(6L, 0L) else c(0L, 6L), 2L)
+            rep(if (smart_first) c(6L, 7L) else c(7L, 6L), 2L)
           )
           # Repeated rotation attempts within each partition are still throttled.
           for (client in clients) {
+            select_policy(client)
             expect_null(force_refresh_client_jwks(
               client,
               client@provider@issuer,

@@ -1,10 +1,11 @@
 # Resolve an additive transport policy without changing requests or runtime
 # state. Curl encodes the minimum in the low 16 bits and maximum in the high
-# 16 bits of sslversion. NULL retains the linked backend's existing defaults.
+# 16 bits of sslversion. An absent option requires TLS 1.2 or later.
 resolve_tls_policy <- function(
-  minimum = getOption("shinyOAuth.tls_min_version", NULL),
+  minimum = getOption("shinyOAuth.tls_min_version", "1.2"),
   request_options = list()
 ) {
+  minimum <- minimum %||% "1.2"
   problem <- NULL
   if (
     !is.null(minimum) &&

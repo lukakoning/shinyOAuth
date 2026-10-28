@@ -183,7 +183,7 @@ test_that("restoration rejects changed transport policy and sender keys", {
     connection_credentials_open(sealed, owner, id, replacement, key),
     "unavailable or incompatible"
   )
-  local_options(shinyOAuth.tls_min_version = "1.2")
+  local_options(shinyOAuth.tls_min_version = "1.3")
   expect_error(
     connection_credentials_open(sealed, owner, id, client, key),
     "unavailable or incompatible"

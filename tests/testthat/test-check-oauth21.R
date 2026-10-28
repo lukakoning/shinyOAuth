@@ -461,7 +461,7 @@ test_that("UserInfo assessment follows resource binding rather than token authen
   }
 })
 
-test_that("runtime TLS defaults are unknown unless the linked curl default is known", {
+test_that("the package TLS floor applies even with older linked curl defaults", {
   client <- oauth21_test_client()
   withr::local_options(list(shinyOAuth.tls_min_version = NULL))
   local_mocked_bindings(
@@ -470,7 +470,7 @@ test_that("runtime TLS defaults are unknown unless the linked curl default is kn
     },
     .package = "curl"
   )
-  expect_identical(check_oauth21(client)[["configuration_compliant"]], NA)
+  expect_true(check_oauth21(client)[["configuration_compliant"]])
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   expect_true(check_oauth21(client)[["configuration_compliant"]])
   withr::local_options(list(shinyOAuth.tls_min_version = "invalid"))

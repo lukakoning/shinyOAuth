@@ -1,7 +1,7 @@
-test_that("TLS defaults remain unchanged and explicit minima preserve stronger constraints", {
+test_that("TLS defaults require 1.2 and preserve stronger constraints", {
   req <- httr2::request("https://example.com")
   withr::local_options(list(shinyOAuth.tls_min_version = NULL))
-  expect_null(add_req_defaults(req)[["options"]][["sslversion"]])
+  expect_identical(add_req_defaults(req)[["options"]][["sslversion"]], 6L)
   withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
   expect_identical(add_req_defaults(req)[["options"]][["sslversion"]], 6L)
   stronger <- httr2::req_options(req, sslversion = 7L, cainfo = "custom-ca.pem")
@@ -87,7 +87,7 @@ test_that("TLS minimum is captured and absent settings clear stale worker policy
   })
   captured[["shinyOAuth.tls_min_version"]] <- NULL
   with_async_options(captured, {
-    expect_null(configured_tls_minimum())
+    expect_identical(configured_tls_minimum(), "1.2")
   })
   expect_identical(configured_tls_minimum(), "1.2")
 })
@@ -96,7 +96,7 @@ test_that("TLS policy changes invalidate the pending transaction policy", {
   client <- make_test_client(use_nonce = FALSE)
   withr::local_options(list(shinyOAuth.tls_min_version = NULL))
   before <- state_client_policy_fingerprint(client)
-  withr::local_options(list(shinyOAuth.tls_min_version = "1.2"))
+  withr::local_options(list(shinyOAuth.tls_min_version = "1.3"))
   expect_false(identical(before, state_client_policy_fingerprint(client)))
 })
 

@@ -31,11 +31,11 @@ test_that("SMART TLS assessment agrees with effective request policy", {
     expect_identical(getOption("shinyOAuth.tls_min_version"), minimum)
     expect_identical(
       finding(ordinary)[["status"]],
-      if (is.null(minimum)) "unknown" else "pass"
+      "pass"
     )
     expect_identical(
       finding(smart@provider)[["status"]],
-      if (is.null(minimum)) "unknown" else "pass"
+      "pass"
     )
   }
   local_options(shinyOAuth.tls_min_version = "1.1")

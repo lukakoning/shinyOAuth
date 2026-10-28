@@ -3,10 +3,11 @@ test_that("JWKS cache identity follows the combined global and local TLS floor",
   key <- function(minimum = NULL) {
     jwks_cache_key("https://ehr.example", tls_minimum = minimum)
   }
-  backend_default <- key()
+  package_default <- key()
   tls12 <- key("1.2")
   tls13 <- key("1.3")
-  expect_length(unique(c(backend_default, tls12, tls13)), 3L)
+  expect_identical(package_default, tls12)
+  expect_length(unique(c(package_default, tls12, tls13)), 2L)
   options(shinyOAuth.tls_min_version = "1.2")
   expect_identical(key(), tls12)
   expect_identical(key("1.2"), tls12)
