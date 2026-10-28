@@ -14,13 +14,6 @@ top tracks. It uses the same provider, client, and module setup as
 [Usage](usage.html), then calls Spotify's API with the access token.
 Spotify supplies profile data through its API rather than an OIDC ID token.
 
-The helper identifies accounts using immutable `account_id`, as specified in
-[Spotify's May 2026 changes](https://developer.spotify.com/documentation/web-api/references/changes/may-2026).
-Before upgrading an existing app, migrate stored `id` mappings and audit digests
-using both identifiers from an authenticated profile. Do not merge accounts by
-email or display name. `allow_legacy_id = TRUE` permits a temporary fallback only
-when `account_id` is missing; it does not preserve old mappings when both exist.
-
 ## Spotify app registration
 
 1. Create an app in the [Spotify developer dashboard](https://developer.spotify.com/dashboard).
@@ -37,7 +30,7 @@ when `account_id` is missing; it does not preserve old mappings when both exist.
 ## Shiny app example
 
 Save this as `app.R`, run it, and open `http://127.0.0.1:8100` in a regular
-browser. After connecting Spotify, click **Load top tracks**.
+browser. After connecting Spotify, click Load top tracks.
 
 ```{r spotify-app, eval = FALSE}
 library(shiny)
@@ -141,3 +134,12 @@ logic. It validates Spotify links and image URLs before rendering them and
 keeps table escaping enabled. Preserve those protections when adapting it;
 profile and track text can contain characters that would otherwise become HTML.
 Available data still depends on Spotify's API access rules for your app.
+
+## Existing apps: account identifiers
+
+The helper identifies accounts using immutable `account_id`, as specified in
+[Spotify's May 2026 changes](https://developer.spotify.com/documentation/web-api/references/changes/may-2026).
+Before upgrading an existing app, migrate stored `id` mappings and audit digests
+using both identifiers from an authenticated profile. Do not merge accounts by
+email or display name. `allow_legacy_id = TRUE` permits a temporary fallback only
+when `account_id` is missing; it does not preserve old mappings when both exist.

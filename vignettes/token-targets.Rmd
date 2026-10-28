@@ -1,8 +1,8 @@
 ---
-title: "Several API tokens from one authorization"
+title: "Use one login for several APIs"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Several API tokens from one authorization}
+  %\VignetteIndexEntry{Use one login for several APIs}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -12,28 +12,29 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(shinyOAuth)
 ```
 
-A token target names the resource and API scopes for one access token. Several
-targets can share a user's local authorization and refresh credential while
-keeping separate access-token responses. This differs from several independent
-authorizations, which continue to use `oauth_connections_server()` and separate
-connection IDs.
+An app may need to read a calendar and call a contacts API after the same user
+signs in. Those APIs can require different access tokens. Token targets let
+you name each API, declare the permissions it needs, and ask a connection for the
+right token without building a separate login flow for each API.
 
-The provider must explicitly support the acquisition protocol. A declaration is
-a request limit, not evidence of consent. The server can refuse a target or omit
-the refresh credential needed to acquire it. No target method starts sign-in,
-switches accounts or tenants, or implements token exchange/OBO.
+Your provider must support this: shinyOAuth supports RFC 8707 resource indicators
+and Microsoft's API-specific scopes. Check your provider's registration and
+consent requirements before enabling targets. The provider can still refuse an
+API or decline to issue a refresh token.
 
-When adding targets to an existing `oauth_module_server()` app, choose an explicit
-authentication lifetime. Target authorizations can keep `auth$authenticated`
-true after all access tokens expire, even without a refresh token and with
-`indefinite_session = FALSE`. The default `reauth_after_seconds = NULL` leaves
-that local login available for the remaining Shiny session. If local application
-data is protected with `req(auth$authenticated)`, set a finite
-`reauth_after_seconds` appropriate for the app, as in the example below.
-`indefinite_session = TRUE` ignores that age limit. Connection methods still
-enforce the selected access token's expiry and permissions.
+For separate accounts or independent logins, use
+[Multiple authorizations](multiple-authorizations.html) instead. For basic login
+setup, start with [Usage](usage.html).
 
-## Declare calendar and contacts targets
+## Configure two APIs
+
+This example uses a provider that supports RFC 8707. A resource identifies
+an API to the login provider; scopes name the permissions for that API.
+A resource identifier is not necessarily the address your R code calls.
+`resource_bases` lists the HTTP addresses a connection may use.
+
+Replace the example URLs and permissions with your provider's settings. For
+Microsoft, use the [Microsoft example](#microsoft-example) below.
 
 ```{r, eval=FALSE}
 # Use this mode only after confirming RFC 8707 support with your provider.
@@ -70,53 +71,18 @@ client <- oauth_client(
 )
 ```
 
-Several targets require an explicit default before sign-in. It determines code
-redemption and later default accessors. With one target, `oauth_client()` selects
-it automatically. Resource indicators and HTTP destinations are different
-concepts: `resource_ids` explicitly authorizes a target's use at a named
-`resource_bases` destination. Equal names never create an implicit association.
-Omit HTTP bases and associations if the application only exports bearer tokens
-to another library.
+`default_token_target` selects the API used when a connection method omits
+`target`. It is required for several targets; a single target is selected
+automatically. `resource_ids` connects each target to the named HTTP API addresses
+in `resource_bases`. You can omit HTTP addresses if you only export tokens to
+another package.
 
-Configure at most 16 targets. The complete authorization has a shared limit of
-128 distinct scope tokens and 8192 scope bytes, excluding separating spaces.
-OIDC scopes count toward these limits. Configuration, acquired permissions
-(including Microsoft `.default` expansion), restoration and reauthorization
-enforce the same aggregate limits. Reduce the declared permissions or use
-separate authorizations when the combined set would exceed them.
-Managed transaction contexts support this full budget, including repeated limits
-across targets, and are validated before reauthorization ends the current connection.
-The independent callback and encrypted-state size limits still apply; a large
-declaration can require larger state limits even when its scope count fits.
+## Choose a token when making a call
 
-RFC 8707 authorization requests carry all declared resources and the client's
-scopes. Code redemption and refresh carry one selected resource and its scopes.
-The server determines which permissions apply to each resource; scopes in RFC
-8707 are not independently paired with individual resources in the authorization
-request. See [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html).
-
-Declare OIDC scopes at client level, outside the targets' API scope lists.
-RFC 8707 mode recognizes `openid`, `profile`, `email`, `address`, `phone`, and
-`offline_access` when the provider uses OIDC or client `scopes` includes `openid`.
-For an OAuth-only provider without `openid`, these names are ordinary API scopes:
-declare them in the relevant target, including target `required_scopes` when
-needed. They are not automatically sent to sibling targets or retained as refresh
-consent. For OIDC clients, all except `offline_access` can also be client-level
-`required_scopes`. Request `offline_access` in client `scopes` for refresh
-consent; putting it in client or target `required_scopes` is a configuration
-error. A refresh token can be issued without this value appearing in the
-access-token scopes, and its presence in scopes does not establish that a
-usable refresh credential exists.
-See [OpenID Connect scope values](https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims).
-Microsoft mode keeps its provider-specific set: `openid`, `profile`, `email`,
-and `offline_access`. It does not treat bare `phone` or `address` as Microsoft
-OIDC scopes.
-
-## Use the same connection interface in either module
-
-Obtain target connections from the module's `connection()` factory. The legacy
-`oauth_connection(client, token_reactive)` wrapper rejects target clients because
-the token alone does not contain their retained permission limits.
+Obtain the connection from either module's `connection()` method. Pass `target`
+to choose an API; the app does not need to keep its own token cache.
+`existing_contacts_sdk()` below stands for the client constructor from your
+chosen contacts package; replace it with that package's actual function.
 
 ```{r, eval=FALSE}
 server <- function(input, output, session) {
@@ -149,97 +115,23 @@ server <- function(input, output, session) {
 }
 ```
 
-The first contacts access can acquire its token even though `$has_scopes()` was
-FALSE before that target had evidence. `$targets()` returns target names,
-acquisition status and granted scope evidence, never credentials. Operation
-`required_scopes` checks do not change the acquisition request. An explicitly
-partial response remains that target's ceiling on later refreshes.
+`$access_token()` obtains or refreshes the selected API's token when needed.
+`$has_scopes()` checks permissions already recorded for that API and does not
+fetch a token. It can therefore return `FALSE` before the first acquisition.
+`$targets()` lists API names, status and granted permissions without exposing
+tokens.
 
-`connection$identity()` returns selected fields from the last validated OIDC
-identity while the authorization remains available in the owning session. It
-can still succeed after the primary access token expires or its current scopes
-no longer include `openid`. This snapshot does not establish fresh user
-authentication or current API access. Use `has_scopes()` and `access_token()` or
-`request()` to check the selected target's permissions and token lifetime.
+`$request(refresh = TRUE)` refreshes before sending, but does not replay a failed
+API call. Run writes from explicit user actions and let the user decide whether
+to try again.
 
-Each ceiling includes the OIDC scopes granted to that target. Explicit refresh
-narrowing uses exactly the supplied scopes, so retain any OIDC permissions still
-needed, for example `scopes = c("calendar.read", "openid")`. Required scopes
-must remain present. Optional identity scopes such as `email` and `profile`
-are not added back on refresh or restoration. For OIDC and Microsoft clients,
-requested `offline_access` is
-retained separately from access-token permission evidence: providers can omit
-it from token scopes while issuing a refresh token. This preserves refresh
-capability on reauthorization without reporting `offline_access` as a granted
-access-token permission. Explicitly removing it from a refresh request removes
-it from that target's retained limit as well. Reauthorization
-requests the union of the retained target limits; an OIDC scope still retained
-by another target can therefore remain in that authorization request.
+Choose a login lifetime when enabling targets. Without `reauth_after_seconds`,
+`auth$authenticated` can remain true for the rest of the Shiny session even when
+all API tokens have expired. The example sets a one-hour local login limit.
+`indefinite_session = TRUE` ignores that limit. Connection methods still require
+a valid token and the permissions for the selected API.
 
-OIDC reauthorization always requests `openid` for the new validated login,
-including code redemption for the default target. This mandatory protocol scope
-is restored in that new target's request limit even if the previous access-token
-response omitted it or a refresh removed it. Removed API permissions and optional
-OIDC scopes (`profile`, `email`, `address`, `phone`, `offline_access`) remain
-excluded. Secondary targets keep their retained limits.
-
-For RFC 8707, `connection$refresh(scopes = "calendar.read", target = "calendar")`
-deliberately narrows calendar permissions. Acquiring contacts does not restore calendar
-write access. Module `reauthorize()` retains all target ceilings and replaces
-the connection ID; the manager takes an ID for this operation. To request a new
-authorization with the original configuration after deliberate narrowing, use
-the normal new-login flow rather than reauthorization of the restricted grant.
-
-Both modules check replacement state against the callback and encrypted-state
-limits before ending the current authorization. A local preflight rejection
-leaves the connection usable and creates no pending login. Once replacement
-starts, failure or cancellation does not restore the old authorization.
-
-The cache and refresh credential belong to one authorization. Async accessors
-for the same operation share work; different target acquisitions queue and read
-the most recently committed refresh credential. A synchronous caller reports
-`refresh_pending` while async work owns the credential. Safe target rejections
-leave other entries usable. An ambiguous shared refresh outcome can invalidate
-the whole authorization. Independent authorizations with equal refresh-token
-bytes still follow the manager's conservative alias-invalidation rules.
-
-With `indefinite_session = TRUE`, the single module retains cached target access
-tokens after an ambiguous refresh failure, but retires the shared refresh
-credential. A cached token can still be exported while it meets the operation's
-lifetime and scope requirements. Forced refresh, expired tokens, and targets
-not yet acquired require a new authorization; they cannot reuse the retired
-credential. `token_stale` flags the failed refresh even while cached tokens are
-usable. The manager has no indefinite-session exception.
-
-The single module keeps a target authorization available for acquisition when
-one access token expires. Its session and configured authorization-age limits
-still apply. Its `token_stale` flag reports an expired primary token, and
-refreshing a secondary target does not clear that flag. Its `authenticated`
-flag tracks that retained authorization;
-connection methods check the selected token's lifetime and permissions before
-use. Recoverable target failures are returned to the caller without changing
-the module's authentication or starting a new login. A successful token rotation
-preserves the connection ID; logout,
-replacement and session end invalidate old references and late completions.
-Targets are stored inside the manager's existing encrypted credential envelope.
-
-Single-module logout and configured session-end revocation remove local access
-before contacting the provider. Remote target cleanup is best effort, with a
-shared ten-second deadline and a two-second timeout per request without retries.
-The shared refresh credential is attempted first. With `async = TRUE`, one
-worker handles the batch; time spent waiting for a worker also counts toward
-the deadline. Targets remaining after the deadline are not attempted.
-
-`$request(refresh = TRUE)` is synchronous. It validates the destination, method,
-query and unauthenticated request before acquiring tokens. The `configure`
-function runs once; authorization is checked again before the request is sent.
-It disables generic HTTP retries for that call. It never refreshes or replays an
-application request after a resource error. DPoP nonce challenges retain the
-existing bound-transport handling. Export through `$access_token()` remains
-bearer-only; use `$request()` for DPoP/mTLS tokens. Writes belong in input-event
-handlers and require another user action after an error.
-
-## Microsoft configuration
+## Microsoft example
 
 ```{r, eval=FALSE}
 provider <- oauth_provider_microsoft(
@@ -268,86 +160,173 @@ client <- oauth_client(
 )
 ```
 
-The preset enables Microsoft's scope-based acquisition mode. Authorization
-requests include the declared consent scopes; token requests select one API's
-qualified scopes plus its retained OIDC scopes (initially the configured OIDC
-scopes), without an RFC 8707 `resource`
-parameter. Disabling UserInfo avoids calling Graph with another API's token and
-preserves ID-token validation. Microsoft resource identifiers can be absolute
-URIs or GUIDs, for example `499b84ac-1321-427f-aa17-267ca6975798` with scope
-`499b84ac-1321-427f-aa17-267ca6975798/.default`. RFC 8707 mode still requires
-absolute URIs. Resource identifiers are exact: where an
-identifier ends in `/`, appending `/.default` produces a double slash.
-Each API scope and required API scope must contain a permission name after the
-exact resource prefix and its separating slash. A bare prefix such as
-`api://resource/` is rejected during configuration.
-Distinct Microsoft resource identifiers must not have overlapping scope prefixes.
-For example, `https://api.example` and `https://api.example/reports` cannot be
-declared together: `reports/read` could be a permission of the first resource or
-`read` of the second. Configuration rejects this ambiguity before authorization.
-Targets may share the exact same resource identifier with separate scope limits.
-See the [Microsoft code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow).
+`oauth_provider_microsoft()` selects Microsoft's API-specific scope handling.
+Use the fully qualified permission names from your registration. Setting
+`userinfo_required = FALSE` avoids requesting a Graph profile with a token
+intended for another API; identity-token validation stays enabled.
 
-For static consent, declare `resource/.default` as the target's sole API scope,
-also in client `scopes`. Do not mix static and explicit API scope declarations.
-Target `required_scopes` must name actual API permissions; `.default` is a consent
-request, so it is rejected as a required access-token permission. Scope evidence
-from tokens, introspection, and restored credentials also rejects case variants
-such as `.DEFAULT`; configure static consent using the canonical `.default`.
-Microsoft static consent concerns the application's registered permissions for
-all APIs; shinyOAuth sends one static scope at authorization and selects the
-desired resource at token redemption. During reauthorization, the sealed target
-limits still constrain token acquisition even if static consent remains needed
-for an unacquired target.
+This example exports bearer tokens to another package. Add `resource_bases` and
+target `resource_ids` if you also want to use `$request()`.
 
-If a partial grant leaves a Microsoft target with only OIDC scopes, further
-acquisition fails with `insufficient_scope` before sending credentials. OIDC-only
-requests would select Graph/UserInfo instead of that API. Reauthorization also
-rejects an API-empty default target during preflight, preserving current access;
-use a new login to request the originally configured API permissions.
+## Refresh and sign in again
 
-`.default` is never treated as proof of individual permissions. Microsoft target
-responses must include `scope`; returned short permission names are qualified
-only within the selected Microsoft resource. The same normalization applies to
-scope checks when a custom introspection endpoint is configured, for both login
-and refresh. Public `introspect_token()` results retain the raw provider scope
-string. Short names containing `:` or `/`
-must match that target's declared scopes, required permissions, optional
-`scope_aliases`, or retained permissions from an earlier grant. For example,
-declare `scope_aliases = c("items/read", "read:items")` inside a target to
-recognize these optional `.default` or prior-consent permissions. Aliases are
-short names relative to that target's resource; they do not go into authorization
-or token requests, make a permission required, or establish consent. Only actual
-returned permissions can enter the grant, and existing operation limits still
-apply. Names with `://` and declared resource prefixes remain resource-qualified;
-unknown punctuated short names must be returned in fully qualified form.
-Token evidence records the actual
-returned permissions. Microsoft API permission comparisons ignore ASCII case
-(for example, `User.Read` and `user.read`); resource identifiers remain exact.
-Ordinary OAuth scopes remain case-sensitive. Local operation limits retain only permissions within the
-previous limit (expanding `.default` to its initial granted permissions), so a
-later response cannot restore a locally removed operation. See [Microsoft scopes and static consent](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc)
-and [refresh credentials](https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens).
+For RFC 8707 providers, you can reduce one API's permissions with, for example,
+`connection$refresh(scopes = "calendar.read", target = "calendar")`. The other
+API keeps its own permissions; requesting its token does not restore removed
+calendar permissions. Required scopes must remain present.
 
-Entra can return all previously consented API permissions for the resource,
-even when the request asks for fewer. Such responses are accepted without
-enlarging the local operation limit. `$has_scopes()`, `$request()` and operation
-requirements on `$access_token()` still enforce that limit, including during
-refresh and after restoration. `$targets()` reports actual granted scopes, which
-can therefore exceed the permissions available through these checks.
+`auth$reauthorize()` starts a replacement login with the reduced permissions.
+With a connection manager, pass the connection ID. Once replacement starts,
+cancelling or failing login does not restore the old connection. Use an ordinary
+new login when you intend to request the client's original permissions again.
+Microsoft's restrictions on narrowing are described below.
 
-An exported bearer token still carries its full provider-issued permissions;
-shinyOAuth cannot restrict what an external SDK does with it. Explicit Microsoft
-API narrowing through `$refresh(scopes = ...)` fails before sending credentials,
-with reason `unsupported_scope_narrowing`. The existing authorization stays
-usable. Use a separate app registration or change provider consent when you need
-a token with fewer API permissions. See [Microsoft consent lifetime](https://learn.microsoft.com/en-us/entra/msal/javascript/browser/resources-and-scopes#consent-lifetime).
+## Advanced: provider support and declaration limits
 
-These modes are covered by local HTTP contract tests, including rotation and
-scope selection. Those tests do not establish compatibility with every RFC 8707
-deployment or replace validation of your Microsoft registration and consent.
-Discovery alone does not enable targets. SMART target switching, provider
-plugins, distributed stores and incremental consent are outside this interface.
+Targets share one local login and refresh credential, while keeping separate
+access tokens and permission limits. Providers must explicitly enable
+`token_target_mode = "rfc8707"` or `"microsoft"`; discovery does not infer support.
+Targets require `userinfo_required = FALSE` and cannot be combined with the
+client's `resource` argument or SMART configuration. Put resource declarations
+in `token_targets`, not in provider extra parameters. The older
+`oauth_connection(client, token_reactive)` wrapper does not support targets;
+use a module's `connection()` method.
 
-For SDK callbacks, event-bound result ownership and background tasks, see
-`vignette("external-integrations")`.
+Up to 16 targets are supported. The complete login has a limit of 128 distinct
+scope names and 8192 scope bytes, excluding separating spaces. These totals
+include OIDC scopes and actual Microsoft permissions, including `.default`
+expansions. Declarations may use vectors or space-delimited strings. Callback
+and encrypted-state size limits still apply; very large declarations may need
+larger state limits.
+
+In RFC 8707 mode, authorization requests carry all declared resources and scopes.
+Token requests select one resource and its scopes. The provider decides which
+permissions apply to each resource; the authorization request does not pair
+individual scopes with resources. See [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html).
+
+### Identity and refresh-consent scopes
+
+For OIDC providers, declare `openid`, `profile`, `email`, `address`, `phone` and
+`offline_access` at client level rather than in an API's scope list. RFC 8707
+mode recognizes these as OIDC scopes when the provider uses OIDC or client scopes
+include `openid`. Otherwise they are ordinary API scopes and belong in targets.
+Microsoft recognizes only `openid`, `profile`, `email` and `offline_access` as
+its OIDC scopes.
+
+Client-level `required_scopes` may contain OIDC scopes only, except
+`offline_access`. Request `offline_access` in client `scopes` if you need refresh
+consent; it is not a required access-token permission and must not appear in
+client or target `required_scopes`. Its presence in a scope list does not prove
+that a refresh token was issued.
+
+When explicitly narrowing a target, retain any OIDC scopes it still needs,
+for example `scopes = c("calendar.read", "openid")`. Optional identity scopes
+are not added back by refresh. Refresh consent is tracked separately because
+providers may issue a refresh token without reporting `offline_access` in access
+token scopes. Explicitly removing that scope removes it from the target's later
+reauthorization request. Reauthorization combines the retained target limits,
+so an OIDC scope kept by another target may still be requested.
+
+An OIDC replacement always requests `openid` for its new identity check, including
+for the default target. Removed API permissions and optional OIDC scopes stay
+removed; secondary targets keep their own limits.
+
+`connection$identity()` returns selected claims from the last validated identity.
+With targets it can remain available after the primary API token expires or no
+longer includes `openid`. It does not establish fresh authentication or current
+API access; use the selected target's request or token methods for those checks.
+
+## Advanced: Microsoft permissions and consent
+
+Microsoft can return previously consented permissions beyond the ones your app
+requested for a particular operation. Connection permission checks still enforce
+the app's retained limits, while `$targets()` reports the actual provider grant.
+An exported bearer token carries that full grant; shinyOAuth cannot restrict
+what an SDK does with it.
+
+For this reason, explicit Microsoft API narrowing through `$refresh(scopes = ...)`
+is unsupported and fails with reason `unsupported_scope_narrowing` before sending
+a request. The existing login stays usable. Use a separate app registration or
+change provider consent if the token itself must have fewer API permissions.
+
+### Resource identifiers and scope names
+
+Microsoft resource identifiers may be absolute URIs or GUIDs. For example,
+`499b84ac-1321-427f-aa17-267ca6975798/.default` requests static permissions for
+that GUID resource. Resource identifiers match exactly, including a trailing
+slash; adding `/.default` to a slash-terminated resource produces a double slash.
+API scopes must name a permission after the exact resource prefix and slash.
+
+Distinct resources must not have overlapping prefixes. For example,
+`https://api.example` and `https://api.example/reports` make `reports/read`
+ambiguous. Targets may share the exact same resource with separate limits.
+
+Microsoft permission names are compared without ASCII case sensitivity;
+resource identifiers remain exact. Ordinary OAuth scopes remain case-sensitive.
+Microsoft token responses must include `scope`. Short permission names are
+qualified with the selected resource before connection checks, including checks
+on custom introspection results. Public `introspect_token()` results keep the raw
+provider scope string.
+
+### Static permissions and unusual short names
+
+Use `resource/.default` as a target's sole API scope for static consent, and
+include it in client `scopes`. Do not mix it with explicit API scope declarations.
+`required_scopes` must name actual API permissions; `.default` requests consent
+and is not evidence that any individual permission was granted. Use the exact
+lowercase `.default` spelling.
+
+For optional short permissions containing `:` or `/`, a target can declare
+`scope_aliases = c("items/read", "read:items")`. They identify response names that
+shinyOAuth may recognize; they do not request permissions, make them required,
+or expand the app's limits. Unknown punctuated short names must be returned in
+fully qualified form. Names containing `://` or a declared resource prefix are
+always treated as qualified names.
+
+If a partial grant leaves a target with no API permissions, acquisition fails
+with `insufficient_scope` rather than making an OIDC-only request for a different
+API. A replacement login with an API-empty default target is rejected before
+ending the current login. Start a new login to request the original permissions.
+
+See Microsoft's [authorization code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow),
+[scope and consent guidance](https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc),
+and [refresh token guidance](https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens).
+
+## Advanced: concurrent refreshes and failures
+
+Several target acquisitions may need the same refresh token. Async calls
+coordinate their work and use the latest refreshed credential. A synchronous
+call reports `refresh_pending` while async work owns it. A rejected request for
+one API can leave the other tokens usable, but a failure that might have consumed
+the shared refresh credential can make the entire login require reauthorization.
+
+With `indefinite_session = TRUE`, the single module may retain usable cached API
+tokens after such a failure, but retires the shared refresh credential. It cannot
+refresh expired tokens or acquire a new target without a new login. A connection
+manager has no indefinite-session exception. Separate managed logins sharing
+the same refresh credential also follow the manager's shared-credential rules.
+
+`token_stale` describes the primary token; refreshing a secondary API token does
+not clear it. `authenticated` describes the retained local login. Connection
+methods check the selected API token and permissions before use. Logout,
+replacement and session end invalidate old connections and late results.
+
+The modules check replacement state size before ending a current login. If this
+local preparation fails, the connection remains usable. Once replacement starts,
+a later failure or cancellation does not restore it.
+
+Logout removes local access before best-effort remote revocation. Target tokens
+are included in that cleanup, but the provider may be unavailable or reject a
+revocation request.
+
+### Request customization and background work
+
+`$request(refresh = TRUE)` is synchronous. It validates the destination and the
+prepared request before refreshing, runs `configure` once, and checks permission
+again before sending. It disables ordinary HTTP retries for that call. DPoP nonce
+handling remains available, but no API error triggers a new login or replay of
+the business request. `$access_token()` exports bearer tokens only; use
+`$request()` for DPoP or mTLS-bound tokens.
+
+For SDK callbacks, background tasks and checks before displaying results, see
+[External integrations](external-integrations.html).

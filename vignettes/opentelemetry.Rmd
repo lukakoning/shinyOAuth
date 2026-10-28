@@ -94,11 +94,10 @@ run that setup in each worker or recreate workers after changing it.
   `shinyOAuth.telemetry_path_scrubber` returning approved route templates.
   Opt-in detail has URL userinfo, query strings, fragments, and control
   characters removed and is limited to 512 UTF-8 bytes per field.
-- HTTP calls performed by shinyOAuth suppress httr2's automatic spans, which
-  otherwise include full request paths and query strings. Package HTTP spans
-  follow the URL privacy policy above. Direct calls to `httr2::req_perform()`
-  use httr2's own telemetry settings, including requests built with
-  `resource_req()` and then performed by application code.
+- Requests sent by shinyOAuth follow the URL privacy policy above, including
+  protection from automatic httr2 traces containing full URLs. If you send a
+  prepared request with `httr2::req_perform()`, httr2's own telemetry settings
+  apply. Use `perform_resource_req()` to keep shinyOAuth's request handling.
 - Tokens, authorization codes, state payloads, and browser tokens are not
   included as ordinary span attributes. Digest fields support correlation
   without the raw value. Keep debugging options off for production exports.
