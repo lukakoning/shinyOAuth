@@ -27,7 +27,7 @@ test_that("policy fingerprints preserve scalar types and numeric precision", {
 test_that("policy encoding preserves containers and normalizes UTF-8 and object order", {
   distinct <- list(NULL, list(), character(), list("read"), "read",
     c(a = "read"), matrix("read", 1), I("read"), as.Date("2026-01-01"),
-    list(a = "read", a = "write"), list(a = "read", a.1 = "write"))
+    setNames(list("read", "write"), c("a", "a")), list(a = "read", a.1 = "write"))
   expect_identical(anyDuplicated(vapply(distinct, state_policy_value_digest, "")), 0L)
   expect_identical(
     state_policy_value_digest(list(z = "write", a = "read")),
