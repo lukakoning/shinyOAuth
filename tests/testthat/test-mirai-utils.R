@@ -173,94 +173,57 @@ testthat::test_that("resolve_async_timeout enforces mirai's integer range", {
   )
 })
 
-testthat::test_that("async_dispatch passes explicit .timeout to mirai", {
-  testthat::skip_on_cran()
+testthat::test_that("async_dispatch forwards mirai timeout settings with explicit precedence", {
   testthat::skip_if_not_installed("mirai")
-
-  mirai::daemons(sync = TRUE)
-  withr::defer(mirai::daemons(0))
-
-  # Explicit .timeout argument
-
-  m <- shinyOAuth:::async_dispatch(
-    expr = quote(1 + 1),
-    args = list(),
-    .timeout = 5000
+  testthat::local_mocked_bindings(
+    mirai_daemons_active = function() TRUE,
+    .package = "shinyOAuth"
   )
-  testthat::expect_true(inherits(m, "mirai"))
+  seen <- "not dispatched"
+  result <- new.env(parent = emptyenv())
+  testthat::local_mocked_bindings(
+    mirai = function(..., .timeout) {
+      seen <<- .timeout
+      result
+    },
+    .package = "mirai"
+  )
+  cases <- list(
+    list(explicit = 5000, option = NULL, expected = 5000L),
+    list(explicit = NULL, option = 8000, expected = 8000L),
+    list(explicit = 5000, option = 99999, expected = 5000L),
+    list(explicit = NULL, option = NULL, expected = NULL)
+  )
+  for (case in cases) {
+    seen <- "not dispatched"
+    withr::local_options(list(shinyOAuth.async_timeout = case[["option"]]))
+    testthat::expect_identical(
+      shinyOAuth:::async_dispatch(quote(1 + 1), list(),
+        .timeout = case[["explicit"]]),
+      result
+    )
+    testthat::expect_identical(seen, case[["expected"]])
+  }
 })
 
-testthat::test_that("async_dispatch reads shinyOAuth.async_timeout option", {
-  testthat::skip_on_cran()
+testthat::test_that("async_dispatch rejects oversized mirai timeout options before dispatch", {
   testthat::skip_if_not_installed("mirai")
-
-  mirai::daemons(sync = TRUE)
-  withr::defer(mirai::daemons(0))
-
-  withr::local_options(list(shinyOAuth.async_timeout = 8000))
-
-  m <- shinyOAuth:::async_dispatch(
-    expr = quote(1 + 1),
-    args = list()
+  testthat::local_mocked_bindings(
+    mirai_daemons_active = function() TRUE,
+    .package = "shinyOAuth"
   )
-  testthat::expect_true(inherits(m, "mirai"))
-})
-
-testthat::test_that("async_dispatch rejects oversized mirai timeout options", {
-  testthat::skip_on_cran()
-  testthat::skip_if_not_installed("mirai")
-
-  mirai::daemons(sync = TRUE)
-  withr::defer(mirai::daemons(0))
+  testthat::local_mocked_bindings(
+    mirai = function(...) testthat::fail("Invalid timeout reached mirai"),
+    .package = "mirai"
+  )
   withr::local_options(list(
     shinyOAuth.async_timeout = as.double(.Machine[["integer.max"]]) + 1,
     warn = 2
   ))
-
   testthat::expect_error(
-    shinyOAuth:::async_dispatch(
-      expr = quote(1 + 1),
-      args = list()
-    ),
+    shinyOAuth:::async_dispatch(quote(1 + 1), list()),
     class = "shinyOAuth_config_error"
   )
-})
-
-testthat::test_that("async_dispatch explicit .timeout overrides option", {
-  testthat::skip_on_cran()
-  testthat::skip_if_not_installed("mirai")
-
-  mirai::daemons(sync = TRUE)
-  withr::defer(mirai::daemons(0))
-
-  withr::local_options(list(shinyOAuth.async_timeout = 99999))
-
-  # Explicit value should take precedence (we can't easily inspect the mirai
-
-  # object's timeout, but we verify it doesn't error and the explicit path
-  # is taken via the %||% logic: NULL %||% option, but 5000 is not NULL)
-  m <- shinyOAuth:::async_dispatch(
-    expr = quote(1 + 1),
-    args = list(),
-    .timeout = 5000
-  )
-  testthat::expect_true(inherits(m, "mirai"))
-})
-
-testthat::test_that("async_dispatch works without timeout (NULL default)", {
-  testthat::skip_on_cran()
-  testthat::skip_if_not_installed("mirai")
-
-  mirai::daemons(sync = TRUE)
-  withr::defer(mirai::daemons(0))
-
-  withr::local_options(list(shinyOAuth.async_timeout = NULL))
-
-  m <- shinyOAuth:::async_dispatch(
-    expr = quote(1 + 1),
-    args = list()
-  )
-  testthat::expect_true(inherits(m, "mirai"))
 })
 
 testthat::test_that("async_dispatch declares parallel-safe RNG for futures", {

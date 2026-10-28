@@ -12,7 +12,7 @@ test_that("real HTTP requests keep private URLs out of every telemetry scope", {
       traceparent = req[["get_header"]]("traceparent")
     ), auto_unbox = TRUE, null = "null"))
   })
-  app[["get"]]("/ordinary", function(req, res) res[["send"]]("ok"))
+  app[["get"]]("/ordinary/:phase", function(req, res) res[["send"]]("ok"))
   app[["get"]]("/Patient/synthetic-private-large", function(req, res) {
     res[["send"]](paste(rep("x", 2048L), collapse = ""))
   })
@@ -40,7 +40,7 @@ test_that("real HTTP requests keep private URLs out of every telemetry scope", {
         )
         perform <- httr2::req_perform
         ordinary <- httr2::req_timeout(
-          httr2::request(paste0(base, "/ordinary")), 5
+          httr2::request(paste0(base, "/ordinary/before")), 5
         )
         httr2::req_perform(ordinary)
         private_url <- paste0(base, "/Patient/synthetic-private-patient")
@@ -84,7 +84,9 @@ test_that("real HTTP requests keep private URLs out of every telemetry scope", {
         )
         # Ordinary app requests still use httr2's own instrumentation after
         # both successful requests and a transport/body-limit failure.
-        httr2::req_perform(ordinary)
+        httr2::req_perform(httr2::req_timeout(
+          httr2::request(paste0(base, "/ordinary/after")), 5
+        ))
         list(
           wire = lapply(responses, httr2::resp_body_json),
           failure = class(failure),
@@ -132,10 +134,14 @@ test_that("real HTTP requests keep private URLs out of every telemetry scope", {
     dependency_spans <- Filter(function(span) {
       identical(span[["instrumentation_scope"]][["name"]], "org.r-lib.httr2")
     }, traces)
-    expect_length(dependency_spans, 2L)
-    expect_true(all(vapply(dependency_spans, function(span) {
-      endsWith(span[["attributes"]][["url.full"]], "/ordinary")
-    }, logical(1))))
+    ordinary_urls <- vapply(dependency_spans, function(span) {
+      span[["attributes"]][["url.full"]] %||% NA_character_
+    }, character(1))
+    expected_urls <- paste0(
+      sub("/$", "", srv[["url"]]()),
+      c("/ordinary/before", "/ordinary/after")
+    )
+    expect_true(all(expected_urls %in% ordinary_urls))
   }
 })
 

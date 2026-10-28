@@ -327,19 +327,16 @@ test_that("configured account capacity includes logged-out generations", {
     )
   }
   auth[["login"]][["generation"]] <- "three"
-  expect_snapshot(
-    error = TRUE,
-    transform = function(lines) {
-      gsub("Trace ID: [A-Za-z0-9_-]+", "Trace ID: <redacted>", lines)
-    },
-    {
-      shiny::testServer(
-        oauth_connections_server,
-        args = list(id = "health", manager = f[["manager"]]),
-        session = manager_test_session(),
-        {}
-      )
-    }
+  expect_error(
+    shiny::testServer(
+      oauth_connections_server,
+      args = list(id = "health", manager = f[["manager"]]),
+      session = manager_test_session(),
+      {}
+    ),
+    "Owner session capacity reached",
+    fixed = TRUE,
+    class = "shinyOAuth_token_error"
   )
 })
 

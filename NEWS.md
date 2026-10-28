@@ -92,7 +92,8 @@
 
 * Reduced dependency-sensitive test assertions, including OpenSSL decoding
   diagnostics and private DT attributes, while retaining package validation and
-  signature interoperability checks. Removed unreliable wall-clock thresholds.
+  signature interoperability checks. Removed unreliable wall-clock thresholds,
+  duplicate expiry checks, and source-text checks of development tooling.
 
 # shinyOAuth 0.6.1
 
