@@ -40,13 +40,13 @@ The Shiny module fetches and stores this information during login when
 }
 \details{
 Pass the client and complete \link{OAuthToken} from login, for example
-\code{get_userinfo(client, auth$token)}. The provider needs a \code{userinfo_url}.
+\code{get_userinfo(client, auth[["token"]])}. The provider needs a \code{userinfo_url}.
 For OIDC, shinyOAuth checks that the returned profile belongs to the validated
 login. A raw access-token string cannot provide that identity check.
 
 \code{userinfo_required = FALSE} disables automatic profile retrieval, not the
-identity or signature checks on a manual call. Profile fields are returned as
-an R list; request and validate the fields your app actually needs.
+identity or signature checks on a manual call. Request and validate the
+fields your app needs.
 }
 \section{Advanced response validation}{
 

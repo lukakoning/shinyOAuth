@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods__login.R
 \name{handle_callback}
 \alias{handle_callback}
-\title{Handle OAuth 2.0 callback: verify state, swap code for token, verify token}
+\title{Validate an OAuth 2.0 callback and retrieve tokens}
 \usage{
 handle_callback(
   client,

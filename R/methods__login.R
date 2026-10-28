@@ -1270,7 +1270,7 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 
 ## 2.1 Entry point -------------------------------------------------------------
 
-#' Handle OAuth 2.0 callback: verify state, swap code for token, verify token
+#' Validate an OAuth 2.0 callback and retrieve tokens
 #'
 #' Check a returning login request and exchange the provider's temporary
 #' authorization code for an [OAuthToken] (OAuth 2.0 Authorization Code flow).

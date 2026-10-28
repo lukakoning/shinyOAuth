@@ -123,8 +123,8 @@
 #'
 #' @param info Function() -> list(max_age = seconds, ...). Optional
 #'
-#'   TTL information from `[["info"]]()` is used to align browser cookie max age in
-#'   [oauth_module_server()].
+#'   [oauth_module_server()] uses the returned `max_age` to align the browser
+#'   cookie's maximum age with the store's retention period.
 #'
 #' @param worker_safe Logical, default `FALSE`. Explicitly declares that this
 #'   backend can be serialized and used in another R process. Applies when the

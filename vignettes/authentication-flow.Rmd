@@ -28,10 +28,6 @@ identity assertion.
 
 ## What happens during the authentication flow?
 
-The steps below follow a login from the first page load through token refresh
-and logout. Each step describes the usual OAuth or OIDC behavior first, then
-the additional behavior for the relevant optional features.
-
 ### 1. First page load: set a browser token
 
 On first page load, the module asks the browser to create a random token in

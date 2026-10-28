@@ -18,9 +18,8 @@ In R, configure the service and your app registration, then add the Shiny UI
 wrapper and server module. The module manages login and tokens; `oauth_ui()`
 handles the browser's return to the app.
 
-This vignette covers provider and client configuration, manual login buttons,
-authenticated API calls, token refresh, and deployment. The examples use a
-GitHub OAuth App. Install shinyOAuth with `install.packages("shinyOAuth")`.
+The examples use a GitHub OAuth App. Install shinyOAuth with
+`install.packages("shinyOAuth")`.
 For the protocol flow and validation rules, see
 [Authentication flow](authentication-flow.html).
 
@@ -389,12 +388,11 @@ authorization-server identification (`multi_issuer`, using RFC 9207 or JARM);
 the static registry rejects multiple clients with the same issuer on one route.
 See [OAuth Security BCP section 4.4.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2).
 
-This pattern routes multiple modules; it does not retain their credentials
-across navigation. Following the authorization redirect for B can end the Shiny
-session holding A. A new session starts with empty module credentials even if
-the clients share a pending-state store. To preserve authorizations across
-navigation, use the separate connection manager with browser or account
-retention. See [Keep and use multiple OAuth authorizations](multiple-authorizations.html)
+Signing in to B can end the Shiny session holding A's credentials. Each new
+session starts with empty module credentials, even when the clients share a
+pending-state store. To keep both authorizations across navigation, use the
+connection manager with browser or account retention. See
+[Keep and use multiple OAuth authorizations](multiple-authorizations.html)
 for a complete two-service example.
 
 For healthcare APIs, [Use SMART on FHIR from Shiny](smart-on-fhir.html) shows

@@ -91,13 +91,13 @@ curl -fsSL http://localhost:8080/realms/shinyoauth/.well-known/openid-configurat
 
 ## Overview of tests
 
-Capability expectations are pinned to Keycloak **26.6.1**, the compose image.
+Capability expectations are pinned to Keycloak 26.6.1, the Compose image.
 DPoP+PAR must complete authorization, token issuance and protected UserInfo;
 an error is a regression, not an alternative passing outcome.
 
 The DPoP+JAR, mTLS+JAR and JAR+JARM rejection canaries record unsupported
-combinations in this fixture. The JAR-claims tests record **known server
-noncompliance**: wrong audience/issuer, expired Request Objects and repeated
+combinations in this fixture. The JAR-claims tests record known server
+noncompliance: wrong audience/issuer, expired Request Objects and repeated
 Request Objects are accepted. Local callback-state consumption does not prove
 server-side replay prevention. These tests must not be counted as successful
 interoperability or AS conformance.
@@ -113,40 +113,39 @@ not prove SameSite cookie handling, callback cleanup, or live redirect
 behavior. Those behaviors are covered by the `*_browser*.R` and `*_e2e.R`
 files listed below.
 
-- `test_integration_keycloak.R` — discovery and client_credentials + introspection
-- `test_integration_module_shiny.R` — headless protocol integration for the full authorization-code flow against Keycloak, driving `oauth_module_server()` inside a Shiny test server and posting credentials directly to the Keycloak login form (requires the R packages `xml2` and `rvest`)
-- `test_integration_module_shiny_browser.R` — end-to-end flow with a real headless browser (Chromium via {shinytest2}/{chromote}): clicks the Login button, completes the Keycloak login form, and verifies redirect back to the app and authenticated state.
-- `test_integration_module_shiny_browser_form_post.R` — end-to-end `response_mode=form_post` coverage with a real headless browser: confirms the built authorization URL requests `form_post`, routes the live POST callback through `oauth_form_post_ui()`, and verifies authenticated state plus callback-handle cleanup.
-- `test_integration_module_shiny_browser_form_post_unhappy.R` — real-browser `form_post` and `form_post.jwt` unhappy/attacker coverage: provider-error handling, issuer mismatch rejection, browser-token cookie tampering, swapped callbacks across apps, JARM `aud` rejection for wrong-app `form_post.jwt` callbacks, and cleanup of transient callback parameters after unhappy paths.
-- `test_integration_module_shiny_browser_request_uri.R` — end-to-end `request_uri` flow with a real Shiny app and headless browser, proving Keycloak can fetch the published Request Object through a public base-URL override while the browser still uses the local app URL; also covers real-browser request_uri browser-token tampering and swapped-callback rejection without consuming the rightful callbacks.
- - `test_integration_keycloak_auth_styles.R` — parametric introspection using different token endpoint client auth styles: header (client_secret_basic), body (client_secret_post), client_secret_jwt and private_key_jwt (pre-provisioned in realm).
- - `test_integration_keycloak_auth_styles_unhappy.R` — negative-path coverage: wrong client_secret for CSJWT, mismatched algorithm, wrong private key for PJWT (server rejection), and incompatible alg for the provided key (local config error).
-- `test_integration_keycloak_par.R` — PAR discovery and end-to-end code flow coverage, including the standard localhost HTTP host-policy path used by the local Keycloak setup.
-- `test_integration_keycloak_par_unhappy.R` — PAR unhappy-path coverage for request-body validation plus live Keycloak rejection of bad JWT client-assertion audiences, expired and consumed `request_uri` values, and `request_uri` replay under a different client_id, with module-level state-consumption assertions when Keycloak does or does not redirect back to the app.
-- `test_integration_keycloak_dpop.R` — RFC 9449 coverage for DPoP-bound authorization-code issuance, userinfo protection, refresh key binding, and successful DPoP+PAR interoperability.
-- `test_integration_keycloak_jar.R` — JAR happy-path coverage for private_key_jwt, HS256, and JAR+PAR end-to-end flows.
-- `test_integration_keycloak_jarm.R` — JARM signed/encrypted `response_mode=query.jwt` coverage, including replay rejection after state consumption, PKCE verifier tampering, PAR compatibility, the duplicate-`iss` interoperability workaround against live Keycloak responses, and the current Keycloak rejection of signed Request Object + `query.jwt` combinations before login.
-- `test_integration_keycloak_jar_unhappy.R` — JAR unhappy-path coverage against live Keycloak, exercising request-object signature rejection both at the authorization endpoint and through PAR.
-- `test_integration_keycloak_jar_claims.R` — live Request Object claim-tampering and replay coverage, recording current Keycloak behavior for wrong `aud`, wrong `iss`, expired `exp`, and replayed signed Request Objects.
-- `test_integration_keycloak_jwt_client_assertion_replay.R` — live JWT client-assertion replay coverage at the PAR and token endpoints for both `client_secret_jwt` and `private_key_jwt`, including fresh `jti` generation across repeated builds.
-- `test_integration_keycloak_mtls.R` — RFC 8705 mTLS coverage for authorization-code and client_credentials flows, including wrong/missing client certificate rejection, certificate-bound tokens without `tls_client_auth`, PAR over the mTLS alias with `client_secret_jwt`, wrong-certificate refresh rejection, certificate-bound userinfo protection, and refresh/introspection/revocation regressions that must reach the AS even when token cnf data is mismatched locally.
-- `test_integration_keycloak_mtls_jar.R` — live compatibility coverage recording that this Keycloak fixture rejects signed and encrypted mTLS+JAR authorization requests both directly and through PAR.
- - `test_integration_keycloak_pkce.R` — PKCE enforcement for public client `shiny-public`:
-   - Happy path: completes S256 PKCE code flow and authenticates
-   - Unhappy path (missing verifier): deletes `code_verifier` from the state store before callback → module rejects with a PKCE/code_verifier error before token exchange
-   - Unhappy path (wrong verifier): replaces `code_verifier` with a different valid value → server rejects the token exchange (invalid_grant), surfaced as a token/HTTP error
- - `test_integration_keycloak_revocation.R` — token revocation (RFC 7009) end-to-end: acquires a client_credentials token, verifies it is active via introspection, calls `revoke_token()`, and confirms the token is inactive; also exercises different auth styles for the revocation call
-- `test_integration_keycloak_resource_indicators.R` — RFC 8707 coverage for both stock Keycloak compatibility and the dedicated audience-mapped fixture client, including local protected-resource rejection of tokens that lack the configured audience.
-- `test_integration_keycloak_dpop_jar.R` — live compatibility coverage recording that `dpop_jkt` is emitted inside signed Request Objects, while this Keycloak fixture rejects DPoP+JAR and DPoP+JAR+PAR combinations.
-- `test_integration_attack_csrf_browser_token_e2e.R` — real browser cookie-boundary CSRF coverage: tampered browser token cookie causes callback rejection as `invalid_state` at the real callback boundary.
-- `test_integration_attack_callback_swap_browser_e2e.R` — real browser callback isolation across separate app deployments with different redirect URIs and state infrastructure; each app can still authenticate its own callback.
-- `test_integration_error_callback_browser_e2e.R` — real browser authorization-error callback coverage: live cookie metadata inspection, issuer mismatch before state consumption, valid provider-error surfacing after validation, replay blocking, and URL/title cleanup.
-- `test_integration_attack_login_csrf_browser_e2e.R` — real browser login-CSRF/account-substitution semantics: the browser flow authenticates the subject who actually logged in at Keycloak, and the app sees that verified subject for its own policy checks.
-- `test_integration_attack_dpop_resource.R` — DPoP protected-resource attack coverage: proof replay, wrong-key proof binding, bearer fallback rejection, and mirrored assertions against both package-backed and independent verification logic.
+Core login and token tests include:
+
+- `test_integration_keycloak.R`: discovery, client-credentials tokens and
+  introspection.
+- `test_integration_module_shiny.R`: authorization-code login inside a Shiny
+  test server, posting directly to Keycloak's login form. Requires `xml2` and
+  `rvest`.
+- `test_integration_module_shiny_browser.R`: Chromium clicks Login, completes
+  the Keycloak form, and checks the return to an authenticated app.
+- `test_integration_module_shiny_browser_request_uri.R`: Keycloak fetches the
+  hosted Request Object through a public base-URL override while the browser
+  uses the local app URL. Tampered browser markers and swapped callbacks must
+  fail without consuming the legitimate callbacks.
+- `test_integration_keycloak_auth_styles.R`: introspection with
+  `client_secret_basic`, `client_secret_post`, `client_secret_jwt` and
+  `private_key_jwt`.
+- `test_integration_keycloak_auth_styles_unhappy.R`: wrong secrets and
+  mismatched algorithms; Keycloak rejection of a wrong private key; local
+  rejection of a key incompatible with the chosen algorithm.
+- `test_integration_keycloak_par.R`: PAR discovery and authorization-code login
+  using the fixture's localhost HTTP exception.
+- `test_integration_keycloak_jar.R`: JAR login with `private_key_jwt` client
+  authentication, HS256-signed Request Objects, and JAR combined with PAR.
+- `test_integration_keycloak_jar_unhappy.R`: Request Object signature rejection
+  at the authorization endpoint and through PAR.
+- `test_integration_keycloak_pkce.R`: successful S256 login with `shiny-public`;
+  a missing verifier fails before token exchange, and a wrong verifier produces
+  `invalid_grant` at the token endpoint.
+- `test_integration_keycloak_revocation.R`: a client-credentials token is active
+  before `revoke_token()` and inactive afterward, across supported endpoint
+  authentication methods.
 
 ## Protocol test reference
-
-These tests exercise high-priority OAuth2/OIDC protocol behavior against the live Keycloak realm.
 
 | Test file | Feature | Coverage |
 |-----------|------------------|----------|
@@ -158,14 +157,14 @@ These tests exercise high-priority OAuth2/OIDC protocol behavior against the liv
 | `test_integration_keycloak_protocol_hardening.R` | RFC 8707, OIDC `max_age`, RFC 7662, UserInfo subject binding | Resource policy binding; `auth_time`; introspection `sub`/`client_id`/`scope`; client-id mix-up; cross-user UserInfo substitution |
 | `test_integration_keycloak_pkce_authorization_tamper.R` | RFC 7636 PKCE authorization request integrity | Missing challenge, `plain` downgrade, and malformed challenge rejected before code issuance |
 | `test_integration_keycloak_jwt_auth_unhappy_code_flow.R` | JWT client authentication in full auth-code flow | Wrong secret, wrong audience, wrong alg, and wrong private key fail at token exchange and consume state for both plain authorization-code callbacks and signed JARM `response_mode=query.jwt` callbacks |
-| `test_integration_keycloak_dpop.R` | RFC 9449 DPoP auth-code flow | DPoP token issuance, userinfo enforcement, strict guard against Bearer fallback, refresh key binding, and a DPoP+PAR compatibility canary |
+| `test_integration_keycloak_dpop.R` | RFC 9449 DPoP auth-code flow | DPoP token issuance, UserInfo enforcement, rejection of Bearer fallback, refresh key binding, and a successful DPoP+PAR flow |
 | `test_integration_keycloak_dpop_nonce_retry.R` | RFC 9449 protected-resource nonce challenge | First DPoP proof receives `use_dpop_nonce`; retry uses fresh `jti`, nonce, `ath`, `htm`, and `htu` |
 | `test_integration_keycloak_par_unhappy.R` | RFC 9126 PAR unhappy paths | Rejects caller-supplied `request_uri` in pushed params, bad JWT client-assertion audience at the PAR endpoint, expired and consumed `request_uri` reuse, and outer `client_id` changes that violate `request_uri` client binding, including module-level assertions for whether failed `request_uri` callbacks consume or preserve pending state |
 | `test_integration_keycloak_jwt_client_assertion_replay.R` | JWT client assertion replay at PAR and token endpoints | Proves live Keycloak rejects replayed `client_secret_jwt` and `private_key_jwt` assertions at both endpoints, and that shinyOAuth emits fresh `jti` values across repeated assertion builds |
 | `test_integration_keycloak_jar_par_confusion.R` | JAR/PAR outer-parameter behavior | PAR proves outer `redirect_uri`, `scope`, `state`, `nonce`, `resource`, and `code_challenge` do not override the pushed request; direct JAR proves the same for `redirect_uri`, `state`, `nonce`, and `code_challenge` once the OIDC-required outer `response_type` and `scope` are preserved on the browser URL; direct JAR and JAR+PAR also cover outer `client_id` confusion so no code is accepted and the legitimate flow state remains usable |
 | `test_integration_keycloak_jar_claims.R` | Signed Request Object claim validation | Records current Keycloak behavior for wrong `aud`, wrong `iss`, expired `exp`, and replayed signed Request Objects, and verifies shinyOAuth still rejects the second callback after state consumption |
 | `test_integration_keycloak_jarm.R` | JARM signed and encrypted authorization responses | Completes live signed and encrypted `response_mode=query.jwt` logins against Keycloak, verifies replay rejection after state consumption, exercises PKCE verifier tampering and PAR compatibility under JARM, confirms the callback arrives as a JWT/JWE response rather than plain `code/state` parameters, proves the live Keycloak callback still needs the duplicate-`iss` interoperability workaround, and records that this fixture currently rejects signed Request Object + `query.jwt` combinations before login. |
-| `test_integration_keycloak_mtls.R` | RFC 8705 mTLS sender constraints | mTLS client-auth flows, certificate-bound tokens without `tls_client_auth`, PAR over the mTLS alias with `client_secret_jwt`, wrong/missing certificate failures, wrong-certificate refresh rejection, and AS calls that must still proceed when local token `cnf` metadata is tampered |
+| `test_integration_keycloak_mtls.R` | RFC 8705 mTLS sender constraints | Authorization-code and client-credentials flows; certificate-bound tokens without `tls_client_auth`; PAR over the mTLS alias with `client_secret_jwt`; missing or wrong certificates; wrong-certificate refresh rejection; certificate-bound UserInfo; and AS calls that must proceed when local `cnf` metadata is tampered |
 | `test_integration_keycloak_mtls_jar.R` | RFC 8705 + JAR interoperability | Records that this Keycloak fixture rejects signed and encrypted mTLS+JAR combinations both directly and through PAR |
 | `test_integration_keycloak_dpop_jar.R` | RFC 9449 + JAR interoperability | Verifies `dpop_jkt` is embedded inside signed Request Objects and records that this Keycloak fixture rejects DPoP+JAR and DPoP+JAR+PAR combinations |
 | `test_integration_module_shiny_browser_callback_cleanup.R` | Browser callback leakage cleanup | Real browser login leaves no OAuth callback parameters in `window.location.href` or `document.title` |
@@ -198,20 +197,20 @@ Test users: `alice` / `alice` and `bob` / `bob` (for cross-user attacks).
 
 | Test file | Attack vector | Defense mechanism verified |
 |-----------|--------------|---------------------------|
-| `test_integration_attack_code_replay.R` | **Authorization code replay** — replaying an already-exchanged code | Single-use state store; Keycloak server-side code single-use (invalid_grant) |
-| `test_integration_attack_state_replay.R` | **State replay / CSRF** — reusing a consumed state parameter or injecting state from a different session | Single-use state store; per-session state isolation; AES-256-GCM key binding |
-| `test_integration_attack_state_tamper.R` | **State parameter tampering** — bit-flip, truncation, random substitution, appending/prepending garbage, wrong encryption key | AES-256-GCM authenticated encryption (integrity tag); input validation |
-| `test_integration_attack_code_injection.R` | **Cross-user flow substitution / login CSRF semantics** — Bob completes Alice's started flow, so the callback authenticates Bob, not Alice | Verified subject/claim surfaces remain app-visible for expected-user policy checks; independent state injection and wrong-verifier exchange fail closed |
-| `test_integration_attack_login_csrf_browser_e2e.R` | **Real browser login CSRF / account substitution semantics** — the browser completes the flow for the provider user who actually signs in, even if the app expected a different account | Verified subject and userinfo claims remain visible at the real browser boundary so the app can reject unexpected accounts with its own policy |
-| `test_integration_attack_nonce_mismatch.R` | **Nonce mismatch / replay** — tampered, missing, or replayed nonce in ID token validation | ID token nonce claim verification against state store |
-| `test_integration_attack_csrf_browser_token.R` | **Browser token callback validation** — mismatched, missing, or malformed browser token values passed directly into callback handling | constant_time_compare(); browser token format validation; skip-guard |
+| `test_integration_attack_code_replay.R` | Exchange an authorization code twice | Single-use state and Keycloak's rejection of a reused code with `invalid_grant` |
+| `test_integration_attack_state_replay.R` | Reuse consumed state or inject state from another session | Single-use state, session isolation and AES-256-GCM key binding |
+| `test_integration_attack_state_tamper.R` | Bit-flip, truncate or substitute state; prepend or append garbage; use the wrong encryption key | AES-256-GCM integrity checking and input validation |
+| `test_integration_attack_code_injection.R` | Bob completes a login started by Alice; the callback identifies Bob | The app receives verified claims for its expected-account checks. Independent state injection and a wrong PKCE verifier are rejected. |
+| `test_integration_attack_login_csrf_browser_e2e.R` | Complete the browser login with a different provider account than the app expected | The app receives the verified subject and UserInfo so it can reject an unexpected account. |
+| `test_integration_attack_nonce_mismatch.R` | Submit a tampered, missing or replayed ID-token nonce | Compare the nonce with the pending login's stored value |
+| `test_integration_attack_csrf_browser_token.R` | Pass mismatched, missing or malformed browser tokens directly to callback handling | `constant_time_compare()`, browser-token format validation and the skip guard |
 | `test_integration_attack_csrf_browser_token_e2e.R` | Browser marker tampering before the callback returns | The cookie marker must match the origin- and tab-scoped storage record; a mismatch raises `invalid_state` at the callback origin. See [browser attack coverage](browser-attack-coverage.md). |
-| `test_integration_attack_callback_swap_browser_e2e.R` | **Separate app callback isolation** — two deployments receive each other's callbacks | Foreign callback rejected with distinct redirect URIs and state infrastructure; rightful callbacks still authenticate their original sessions |
-| [`test_integration_cross_client_pkce.R`](test_integration_cross_client_pkce.R) | **Server-side client-ID binding** — redeeming a code under another client ID with the correct verifier and redirect URI | Both registrations have successful baseline exchanges; changing only `client_id` produces HTTP 400 `invalid_grant` without an access token |
-| `test_integration_attack_dpop_resource.R` | **DPoP protected-resource substitution/replay** — bearer fallback, mismatched proof key, or proof replay against a DPoP-bound access token | DPoP `cnf.jkt` binding, `ath`/`htu`/`htm` proof checks, nonce/replay defenses, and parity between package-backed and independent verifiers |
-| `test_integration_attack_expired_state.R` | **Expired state payload** — delayed callback after state max_age | issued_at freshness check in state_payload_decrypt_validate() |
-| `test_integration_attack_redirect_uri.R` | **Redirect URI manipulation** — attacker changes redirect_uri to steal authorization code | Keycloak redirect URI allowlist; state payload redirect_uri binding |
-| `test_integration_attack_concurrent_flows.R` | **Concurrent flow isolation** — multiple simultaneous flows and cross-session callback swaps | State store entry keying; per-session isolation; multi-user independence |
+| `test_integration_attack_callback_swap_browser_e2e.R` | Send each deployment the other app's callback | Distinct redirect URIs and state stores reject the swapped callbacks; each original callback still authenticates its own session. |
+| [`test_integration_cross_client_pkce.R`](test_integration_cross_client_pkce.R) | Redeem a code with a different client ID but the correct verifier and redirect URI | Both registrations first redeem their own codes successfully. Changing only `client_id` then produces HTTP 400 `invalid_grant` without an access token. |
+| `test_integration_attack_dpop_resource.R` | Use a DPoP-bound token as Bearer, with the wrong proof key, or with a replayed proof | `cnf.jkt`, `ath`, `htu`, `htm`, nonce and replay checks; matching results from package-backed and independent verifiers |
+| `test_integration_attack_expired_state.R` | Return a callback after the state's maximum age | The `issued_at` freshness check in `state_payload_decrypt_validate()` |
+| `test_integration_attack_redirect_uri.R` | Change `redirect_uri` to divert an authorization code | Keycloak's redirect allowlist and the redirect URI bound into state |
+| `test_integration_attack_concurrent_flows.R` | Start simultaneous logins and swap callbacks across sessions | State-store keys and session isolation keep users' logins separate. |
 
 Negative PKCE authorization assertions require a callback at the configured URI,
 the matching state, no code, and `invalid_request` identifying PKCE. Transport

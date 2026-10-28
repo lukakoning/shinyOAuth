@@ -40,8 +40,8 @@ by default when login state is consumed.}
 
 \item{info}{Function() -> list(max_age = seconds, ...). Optional
 
-TTL information from \verb{[["info"]]()} is used to align browser cookie max age in
-\code{\link[=oauth_module_server]{oauth_module_server()}}.}
+\code{\link[=oauth_module_server]{oauth_module_server()}} uses the returned \code{max_age} to align the browser
+cookie's maximum age with the store's retention period.}
 
 \item{set_if_absent}{A function(key, value, ttl = NULL) -> logical. Optional.
 

@@ -289,8 +289,8 @@ Token-acquisition errors inherit `shinyOAuth_access_error`. Inspect
 | `lifetime_unavailable` | The replacement token is too short-lived for the operation. |
 | `unsupported_token_binding` | Use `$request()` with the configured DPoP or mTLS transport. |
 
-Argument and configuration errors are separate. Accessors never navigate the
-browser automatically or repeat a business operation after an error.
+Argument and configuration errors are separate. Token methods never open a
+login page or repeat an SDK or database operation after an error.
 
 ## Advanced: background tasks and saved results
 
