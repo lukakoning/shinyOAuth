@@ -247,14 +247,17 @@ replacement has a new ID and records the old one as
 <code>replaces_connection_id</code> in <code>auth$connections()</code>.
 Other saved logins remain separate.</p>
 <p>If only one login is saved, <code>auth$connection()</code> can select
-it without an ID. With several, choose an ID explicitly. See <a href="multiple-authorizations.html">Multiple authorizations</a>.</p>
+it without an ID. With several, choose an ID explicitly. See
+<code><a href="../articles/multiple-authorizations.html">vignette("multiple-authorizations", package = "shinyOAuth")</a></code>
+(<a href="multiple-authorizations.html">online guide</a>).</p>
 <p>For Microsoft tokens intended for an API other than Graph, set
 <code>oauth_provider_microsoft(tenant = "organizations", userinfo_required = FALSE)</code>.
 This skips the Graph profile request while preserving identity-token
 checks. <code>connection$identity()</code> exposes the selected identity
 fields already validated by shinyOAuth. It does not fetch a new profile
 or prove that an API call is currently authorized.</p>
-<p>For one login with several API tokens, see <a href="token-targets.html">Token targets</a>.</p>
+<p>For one login with several API tokens, see
+<code><a href="../articles/token-targets.html">vignette("token-targets", package = "shinyOAuth")</a></code> (<a href="token-targets.html">online guide</a>).</p>
 </div>
 <div class="section level2">
 <h2 id="advanced-connection-lifetime-and-permissions">Advanced: connection lifetime and permissions<a class="anchor" aria-label="anchor" href="#advanced-connection-lifetime-and-permissions"></a>

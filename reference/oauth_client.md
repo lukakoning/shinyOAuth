@@ -437,7 +437,7 @@ oauth_client(
 
   Logical or `NULL`. When `TRUE` and `dpop_private_key` is configured,
   shinyOAuth requires the authorization server to return
-  `token_type = "DPoP"` for access tokens and fails fast otherwise,
+  `token_type = "DPoP"` for access tokens and rejects other token types,
   independently of the access token's representation. Observed binding
   data must match the configured key; requiring its presence is a
   separate policy (`dpop_require_observed_cnf`). In `oauth_client()`,
@@ -565,9 +565,8 @@ oauth_client(
   `options(shinyOAuth.access_token_cnf = "opaque")` to disable
   access-token decoding for both DPoP and mTLS; the compatibility
   default `"jwt"` inspects JWT `cnf` without treating it as signature
-  validation. Use this when high-assurance DPoP deployments must fail
-  closed on opaque access tokens that provide no observable binding.
-  Default is `FALSE`.
+  validation. Opaque tokens then need binding metadata in the token
+  response or introspection result. Default is `FALSE`.
 
 - jarm_signed_response_alg:
 
@@ -749,8 +748,10 @@ oauth_client(
   `resource_bases`. Optional Microsoft `scope_aliases` identify unusual
   short permission names in responses. Requires provider support and
   `userinfo_required = FALSE`; cannot be combined with `resource` or
-  SMART configuration. See the [token targets
-  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
+  SMART configuration. See
+  [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
+  ([online
+  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
   for examples, provider-specific permission rules and declaration
   limits.
 

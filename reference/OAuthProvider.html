@@ -548,7 +548,8 @@ overridden via option <code>shinyOAuth.leeway</code>.</p></dd>
 <code>"none"</code> (default), <code>"rfc8707"</code>, or <code>"microsoft"</code>. Set this only when using
 client <code>token_targets</code> and after checking provider support. The Microsoft
 helper selects <code>"microsoft"</code> automatically; discovery does not enable
-targets. See the <a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">token targets guide</a>
+targets. See <code><a href="../articles/token-targets.html">vignette("token-targets", package = "shinyOAuth")</a></code>
+(<a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">online guide</a>)
 for setup and permission rules.</p></dd>
 
 
@@ -618,11 +619,11 @@ JARM responses.</p></dd>
 <dt id="arg-jarm-tolerate-duplicate-top-level-iss">jarm_tolerate_duplicate_top_level_iss<a class="anchor" aria-label="anchor" href="#arg-jarm-tolerate-duplicate-top-level-iss"></a></dt>
 <dd><p>Logical. Whether shinyOAuth
 should tolerate repeated identical top-level <code>iss</code> members in signed JARM
-payloads for this provider. This is an interoperability escape hatch for
+payloads for this provider. This is a compatibility setting for
 providers that emit duplicate identical top-level <code>iss</code> claims. When
 <code>TRUE</code>, shinyOAuth collapses repeated identical top-level <code>iss</code> members
 before duplicate-member rejection. Conflicting duplicates and nested
-duplicate <code>iss</code> members still fail closed. Defaults to <code>FALSE</code>.</p></dd>
+duplicate <code>iss</code> members are rejected. Defaults to <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-endpoint-auth-metadata">endpoint_auth_metadata<a class="anchor" aria-label="anchor" href="#arg-endpoint-auth-metadata"></a></dt>

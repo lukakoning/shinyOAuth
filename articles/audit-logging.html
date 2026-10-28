@@ -624,11 +624,14 @@ and OpenTelemetry. Existing module logout events remain.</p>
 <code>refresh_failed_sync</code>, <code>reauth_window</code>,
 <code>token_expired</code>
 </li>
-<li>Note: <code>error_class</code> is present on refresh failure reasons
-(<code>refresh_failed_async</code>, <code>refresh_failed_sync</code>)
-but absent for <code>reauth_window</code> and
-<code>token_expired</code>; <code>mirai_error_type</code> is only
-present for async refresh-failure clears</li>
+<li>
+<code>error_class</code> is included for
+<code>refresh_failed_async</code> and <code>refresh_failed_sync</code>,
+and omitted for <code>reauth_window</code> and
+<code>token_expired</code>.</li>
+<li>
+<code>mirai_error_type</code> is included only when an async refresh
+failure clears the session.</li>
 </ul>
 </div>
 </div>

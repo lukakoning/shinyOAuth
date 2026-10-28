@@ -48,8 +48,7 @@ oauth_provider_keycloak(
 
   Logical. Defaults to `TRUE` for Keycloak because current Keycloak JARM
   responses may repeat an identical top-level `iss` claim. Set `FALSE`
-  to fail closed on duplicate top-level `iss` members instead of
-  applying this interoperability workaround.
+  to reject duplicate top-level `iss` members, including identical ones.
 
 ## Value
 

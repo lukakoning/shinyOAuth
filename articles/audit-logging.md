@@ -392,10 +392,11 @@ remain.
   `error_class`, `mirai_error_type`
 - Reasons include: `refresh_failed_async`, `refresh_failed_sync`,
   `reauth_window`, `token_expired`
-- Note: `error_class` is present on refresh failure reasons
-  (`refresh_failed_async`, `refresh_failed_sync`) but absent for
-  `reauth_window` and `token_expired`; `mirai_error_type` is only
-  present for async refresh-failure clears
+- `error_class` is included for `refresh_failed_async` and
+  `refresh_failed_sync`, and omitted for `reauth_window` and
+  `token_expired`.
+- `mirai_error_type` is included only when an async refresh failure
+  clears the session.
 
 ### Token revocation
 

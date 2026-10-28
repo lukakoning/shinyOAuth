@@ -400,8 +400,8 @@ defaults must be included in that set.</p></dd>
 <dt id="arg-dpop-require-access-token">dpop_require_access_token<a class="anchor" aria-label="anchor" href="#arg-dpop-require-access-token"></a></dt>
 <dd><p>Logical or <code>NULL</code>. When <code>TRUE</code> and
 <code>dpop_private_key</code> is configured, shinyOAuth requires the authorization
-server to return <code>token_type = "DPoP"</code> for access tokens and fails fast
-otherwise, independently of the access token's representation. Observed
+server to return <code>token_type = "DPoP"</code> for access tokens and rejects other
+token types, independently of the access token's representation. Observed
 binding data must match the configured key; requiring its presence is a
 separate policy (<code>dpop_require_observed_cnf</code>). In <code><a href="oauth_client.html">oauth_client()</a></code>, the default
 <code>NULL</code> resolves to <code>TRUE</code> when <code>dpop_private_key</code> is configured and to
@@ -583,7 +583,8 @@ minimum permissions; <code>resource_ids</code> associate it with named <code>res
 Optional Microsoft <code>scope_aliases</code> identify unusual short permission names
 in responses. Requires provider support and <code>userinfo_required = FALSE</code>;
 cannot be combined with <code>resource</code> or SMART configuration.
-See the <a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">token targets guide</a>
+See <code><a href="../articles/token-targets.html">vignette("token-targets", package = "shinyOAuth")</a></code>
+(<a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">online guide</a>)
 for examples, provider-specific permission rules and declaration limits.</p></dd>
 
 
@@ -628,8 +629,8 @@ locally, from the token response, introspection, or optional JWT access-token
 inspection. Set <code>options(shinyOAuth.access_token_cnf = "opaque")</code> to disable
 access-token decoding for both DPoP and mTLS; the compatibility default
 <code>"jwt"</code> inspects JWT <code>cnf</code> without treating it as signature validation.
-Use this when high-assurance DPoP deployments must
-fail closed on opaque access tokens that provide no observable binding.
+Opaque tokens then need binding metadata in the token response or
+introspection result.
 Default is <code>FALSE</code>.</p></dd>
 
 

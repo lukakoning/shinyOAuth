@@ -1,15 +1,16 @@
 # shinyOAuth
 
-[shinyOAuth](https://lukakoning.github.io/shinyOAuth/) adds OAuth 2.0
-authorization and OpenID Connect (OIDC) authentication to
-[Shiny](https://github.com/rstudio/shiny) apps.
+[shinyOAuth](https://lukakoning.github.io/shinyOAuth/) lets users sign
+in to [Shiny](https://github.com/rstudio/shiny) apps with existing
+accounts, and your app can call APIs with their permission. It supports
+OAuth 2.0 authorization and OpenID Connect (OIDC) authentication.
 
-Users sign in with an existing account, such as Google or Microsoft, a
-self-hosted provider such as Keycloak, or an identity service such as
-Auth0 or Okta. Your app redirects them to the provider, where they sign
-in, then exchanges the returned authorization code for tokens. An OAuth
-access token lets your app call APIs on the user’s behalf. OIDC adds an
-ID token that the package validates to identify the user.
+Users can sign in through Google, Microsoft, a self-hosted provider such
+as Keycloak, or an identity service such as Auth0 or Okta. Your app
+redirects them to the provider, where they sign in, then exchanges the
+returned authorization code for tokens. An OAuth access token lets your
+app call APIs on the user’s behalf. OIDC adds an ID token that the
+package validates to identify the user.
 
 The Shiny module handles redirects, protects the login exchange,
 validates OIDC tokens, fetches user information and refreshes tokens. To
@@ -43,14 +44,20 @@ execution](https://lukakoning.github.io/shinyOAuth/articles/usage.html#asynchron
 
 - Login protection: HTTPS enforcement, PKCE, browser-bound state and
   OIDC token validation. DPoP, mTLS, JAR and PAR are available for
-  providers that require them (see [Authentication
-  flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
+  providers that require them. See
+  [`vignette("authentication-flow", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
+  ([online
+  guide](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
 
 - Diagnostics: record login successes, failures and other events with
-  audit hooks or OpenTelemetry. See [Audit
-  logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)
+  audit hooks or OpenTelemetry. See
+  [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
+  ([online
+  guide](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
   and
-  [OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html).
+  [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
+  ([online
+  guide](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)).
 
 ## Installation
 
@@ -74,16 +81,22 @@ remotes::install_github("lukakoning/shinyOAuth")
 
 ## Usage
 
-The [Usage
-guide](https://lukakoning.github.io/shinyOAuth/articles/usage.html)
-covers login buttons, authenticated API calls, configuration and a
-deployment checklist.
+See
+[`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/usage.html)) for
+login buttons, authenticated API calls, configuration and a deployment
+checklist.
 
 ### Minimal example
 
 Register a GitHub OAuth app in your [GitHub Developer
-Settings](https://github.com/settings/developers), then use its client
-ID and secret in this example.
+Settings](https://github.com/settings/developers), using
+`http://127.0.0.1:8100` as the callback URL. Set
+`GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET` in your R
+environment before running the example. The [environment setup
+instructions](https://lukakoning.github.io/shinyOAuth/articles/usage.html#github-app-registration)
+show how to store these values in `.Renviron`.
 
 ``` r
 
@@ -153,11 +166,14 @@ runApp(
 Use audit hooks to record callbacks and login outcomes, or send logs and
 traces to a monitoring service through OpenTelemetry.
 
-See [Audit
-logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)
-for R hook examples and
-[OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)
-for exporter setup.
+For R hook examples, see
+[`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)).
+For exporter setup, see
+[`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)).
 
 ## More information
 

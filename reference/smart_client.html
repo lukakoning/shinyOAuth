@@ -115,14 +115,14 @@ access. Standalone patient scopes require <code>launch/patient</code>. EHR clien
 Each resource scope spelling must be advertised through
 <code>permission-v2</code> or, for v1 spellings, <code>permission-v1</code> with <code>allow_v1_scopes = TRUE</code>.
 A SMART scope comparison supports at most 256 distinct scopes on each side
-and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons fail
-closed, including during token acceptance and refresh.</p></dd>
+and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons are
+rejected, including during token acceptance and refresh.</p></dd>
 
 
 <dt id="arg-required-scopes">required_scopes<a class="anchor" aria-label="anchor" href="#arg-required-scopes"></a></dt>
 <dd><p>Minimum permissions, defaulting to <code>scopes</code>. Pass a
 subset to accept reduced grants as limited connections. Identity scopes are
-always required when identity is enabled. Unsupported comparisons fail closed.</p></dd>
+always required when identity is enabled. Unsupported comparisons are rejected.</p></dd>
 
 
 <dt id="arg-launch">launch<a class="anchor" aria-label="anchor" href="#arg-launch"></a></dt>
@@ -229,7 +229,8 @@ outside <code>server()</code>. Its <code>smart</code> property records the selec
 when an electronic health record opens it. Use separate registrations for the
 two flows. Patient context describes the patient being viewed; it does not
 identify the person signed in. Enable <code>identity</code> only when the app needs that
-identity too. See the <a href="https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html">SMART on FHIR guide</a>
+identity too. See <code><a href="../articles/smart-on-fhir.html">vignette("smart-on-fhir", package = "shinyOAuth")</a></code>
+(<a href="https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html">online guide</a>)
 for a complete app.</p>
     </div>
     <div class="section level2">

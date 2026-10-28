@@ -348,5 +348,7 @@ error triggers a new login or replay of the business request.
 or mTLS-bound tokens.
 
 For SDK callbacks, background tasks and checks before displaying
-results, see [External
-integrations](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md).
+results, see
+[`vignette("external-integrations", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)).

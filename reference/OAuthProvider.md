@@ -535,8 +535,10 @@ OAuthProvider(
   `"rfc8707"`, or `"microsoft"`. Set this only when using client
   `token_targets` and after checking provider support. The Microsoft
   helper selects `"microsoft"` automatically; discovery does not enable
-  targets. See the [token targets
-  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
+  targets. See
+  [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
+  ([online
+  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
   for setup and permission rules.
 
 - infer_oidc_from_issuer:
@@ -605,11 +607,11 @@ OAuthProvider(
 
   Logical. Whether shinyOAuth should tolerate repeated identical
   top-level `iss` members in signed JARM payloads for this provider.
-  This is an interoperability escape hatch for providers that emit
-  duplicate identical top-level `iss` claims. When `TRUE`, shinyOAuth
-  collapses repeated identical top-level `iss` members before
-  duplicate-member rejection. Conflicting duplicates and nested
-  duplicate `iss` members still fail closed. Defaults to `FALSE`.
+  This is a compatibility setting for providers that emit duplicate
+  identical top-level `iss` claims. When `TRUE`, shinyOAuth collapses
+  repeated identical top-level `iss` members before duplicate-member
+  rejection. Conflicting duplicates and nested duplicate `iss` members
+  are rejected. Defaults to `FALSE`.
 
 - endpoint_auth_metadata:
 

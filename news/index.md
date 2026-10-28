@@ -15,8 +15,10 @@
     `$request(refresh = TRUE)` reduces failures from expired tokens by
     refreshing before an API call, without automatically replaying a
     failed call.
-  - See the [external integrations
-    guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+  - See
+    [`vignette("external-integrations", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)
+    ([online
+    guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html))
     for examples. Exported tokens retain the provider’s permissions,
     which can be broader than the app’s local limits.
 
@@ -30,8 +32,10 @@
     for example, `connection$access_token(target = "calendar")`.
   - With token targets, set `reauth_after_seconds` if your app needs a
     time-limited login; API token expiry alone need not end the local
-    login. See the [token targets
-    guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html).
+    login. See
+    [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
+    ([online
+    guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)).
 
 - Provider helpers and compatibility improvements:
 
@@ -46,6 +50,10 @@
     configured OIDC issuer URLs, GitHub’s permission-response format,
     and Microsoft directory-ID letter case. Ed25519 keys now work for
     signed login requests and self-signed mTLS registration.
+  - Improved compatibility with upcoming S7 and openssl releases,
+    including fixes for S7 warnings at package load
+    ([\#23](https://github.com/lukakoning/shinyOAuth/issues/23),
+    [\#25](https://github.com/lukakoning/shinyOAuth/issues/25)).
 
 - More reliable sign-in and connection management:
 

@@ -65,7 +65,8 @@ login using <code>auth$connection(connection_id)</code>.</p>
 <p>Use <code>$access_token()</code> for another R package or database driver, <code>$request()</code> for
 an API in the client's <code>resource_bases</code>, and <code>$has_scopes()</code> to check permissions
 for optional app features. <code>$request(refresh = TRUE)</code> can refresh before
-sending. See the <a href="https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html">external integrations guide</a>
+sending. See <code><a href="../articles/external-integrations.html">vignette("external-integrations", package = "shinyOAuth")</a></code>
+(<a href="https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html">online guide</a>)
 for a complete example.</p>
     </div>
     <div class="section level2">
@@ -224,7 +225,8 @@ failed refresh, or an unsuitable token lifetime. Stable reason names include
 <code>authorization_unavailable</code>, <code>insufficient_scope</code>, <code>refresh_pending</code>,
 <code>refresh_unavailable</code>, <code>interaction_required</code>, <code>lifetime_unavailable</code>,
 <code>unsupported_token_binding</code>, <code>unknown_target</code> and <code>unsupported_target</code>.
-See the <a href="https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html">external integrations guide</a>
+See <code><a href="../articles/external-integrations.html">vignette("external-integrations", package = "shinyOAuth")</a></code>
+(<a href="https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html">online guide</a>)
 for error recovery and async examples.</p>
 <p>DPoP and mTLS-bound tokens require their signing key or certificate; use
 <code>$request()</code> instead of exporting a bearer string. Exported tokens retain all
@@ -317,8 +319,9 @@ can include earlier consent. The call fails before sending with reason
 <code>unsupported_scope_narrowing</code>, leaving the current login usable. Use a
 separate registration or change provider consent for a token with fewer permissions.</p>
 <p>OIDC clients that require a profile must retain <code>openid</code>. Include any further
-profile permissions in client <code>required_scopes</code>. See the
-<a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">token targets guide</a>
+profile permissions in client <code>required_scopes</code>. See
+<code><a href="../articles/token-targets.html">vignette("token-targets", package = "shinyOAuth")</a></code>
+(<a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">online guide</a>)
 for OIDC consent and provider-specific refresh rules.</p>
 </div><p></p><div class="section">
 <h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>

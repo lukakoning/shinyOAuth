@@ -52,18 +52,19 @@
 <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> now provides <code>connection()</code>. Connections from this module and <code><a href="../reference/oauth_connections_server.html">oauth_connections_server()</a></code> offer <code>$access_token()</code> to obtain a current bearer token, refreshing it when needed.</li>
 <li>
 <code>$has_scopes()</code> helps apps enable features based on available permissions, such as showing an edit button only with write access. <code>$request(refresh = TRUE)</code> reduces failures from expired tokens by refreshing before an API call, without automatically replaying a failed call.</li>
-<li>See the <a href="https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html">external integrations guide</a> for examples. Exported tokens retain the provider’s permissions, which can be broader than the app’s local limits.</li>
+<li>See <code><a href="../articles/external-integrations.html">vignette("external-integrations", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html">online guide</a>) for examples. Exported tokens retain the provider’s permissions, which can be broader than the app’s local limits.</li>
 </ul></li>
 <li>
 <p>Access several APIs, such as calendars and contacts, through one login:</p>
 <ul><li>Configure <code>token_targets</code> in <code><a href="../reference/oauth_client.html">oauth_client()</a></code> for providers supporting RFC 8707 resource indicators or Microsoft token acquisition. Each API can have its own token; select one with, for example, <code>connection$access_token(target = "calendar")</code>.</li>
-<li>With token targets, set <code>reauth_after_seconds</code> if your app needs a time-limited login; API token expiry alone need not end the local login. See the <a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">token targets guide</a>.</li>
+<li>With token targets, set <code>reauth_after_seconds</code> if your app needs a time-limited login; API token expiry alone need not end the local login. See <code><a href="../articles/token-targets.html">vignette("token-targets", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">online guide</a>).</li>
 </ul></li>
 <li>
 <p>Provider helpers and compatibility improvements:</p>
 <ul><li>Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth, Hugging Face, SURFconext, and authentik, reducing manual provider configuration.</li>
 <li>Microsoft sign-in can skip Graph profile retrieval with <code>oauth_provider_microsoft(userinfo_required = FALSE)</code> when the token is intended for another API. This avoids a failed profile request without disabling OIDC identity checks.</li>
 <li>Fixed validation failures with trailing slashes in manually configured OIDC issuer URLs, GitHub’s permission-response format, and Microsoft directory-ID letter case. Ed25519 keys now work for signed login requests and self-signed mTLS registration.</li>
+<li>Improved compatibility with upcoming S7 and openssl releases, including fixes for S7 warnings at package load (<a href="https://github.com/lukakoning/shinyOAuth/issues/23" class="external-link">#23</a>, <a href="https://github.com/lukakoning/shinyOAuth/issues/25" class="external-link">#25</a>).</li>
 </ul></li>
 <li>
 <p>More reliable sign-in and connection management:</p>

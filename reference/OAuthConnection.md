@@ -17,9 +17,10 @@ select a saved login using `auth$connection(connection_id)`.
 Use `$access_token()` for another R package or database driver,
 `$request()` for an API in the client's `resource_bases`, and
 `$has_scopes()` to check permissions for optional app features.
-`$request(refresh = TRUE)` can refresh before sending. See the [external
-integrations
-guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+`$request(refresh = TRUE)` can refresh before sending. See
+[`vignette("external-integrations", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html))
 for a complete example.
 
 ## Connection lifetime
@@ -211,8 +212,10 @@ pending or failed refresh, or an unsuitable token lifetime. Stable
 reason names include `authorization_unavailable`, `insufficient_scope`,
 `refresh_pending`, `refresh_unavailable`, `interaction_required`,
 `lifetime_unavailable`, `unsupported_token_binding`, `unknown_target`
-and `unsupported_target`. See the [external integrations
-guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+and `unsupported_target`. See
+[`vignette("external-integrations", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html))
 for error recovery and async examples.
 
 DPoP and mTLS-bound tokens require their signing key or certificate; use
@@ -321,9 +324,10 @@ Use a separate registration or change provider consent for a token with
 fewer permissions.
 
 OIDC clients that require a profile must retain `openid`. Include any
-further profile permissions in client `required_scopes`. See the [token
-targets
-guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
+further profile permissions in client `required_scopes`. See
+[`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
 for OIDC consent and provider-specific refresh rules.
 
 #### Returns

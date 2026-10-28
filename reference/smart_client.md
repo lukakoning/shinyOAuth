@@ -68,15 +68,15 @@ smart_client(
   `permission-v2` or, for v1 spellings, `permission-v1` with
   `allow_v1_scopes = TRUE`. A SMART scope comparison supports at most
   256 distinct scopes on each side and 64 KiB (65,536 bytes) of combined
-  scope text. Larger comparisons fail closed, including during token
+  scope text. Larger comparisons are rejected, including during token
   acceptance and refresh.
 
 - required_scopes:
 
   Minimum permissions, defaulting to `scopes`. Pass a subset to accept
   reduced grants as limited connections. Identity scopes are always
-  required when identity is enabled. Unsupported comparisons fail
-  closed.
+  required when identity is enabled. Unsupported comparisons are
+  rejected.
 
 - launch:
 
@@ -191,9 +191,10 @@ Choose `launch = "standalone"` when the user opens the app directly, or
 `"ehr"` when an electronic health record opens it. Use separate
 registrations for the two flows. Patient context describes the patient
 being viewed; it does not identify the person signed in. Enable
-`identity` only when the app needs that identity too. See the [SMART on
-FHIR
-guide](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html)
+`identity` only when the app needs that identity too. See
+[`vignette("smart-on-fhir", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html))
 for a complete app.
 
 ## Advanced SMART profile

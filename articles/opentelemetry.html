@@ -681,9 +681,9 @@ applicable</li>
 <h4 id="span-shinyoauth-userinfo">Span: <code>shinyOAuth.userinfo</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-userinfo"></a>
 </h4>
 <ul>
-<li>When: when <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> is called</li>
-<li>Represents: userinfo request orchestration, response parsing,
-JWT-vs-JSON handling, and userinfo-level validation/auditing</li>
+<li>When: <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> is called</li>
+<li>Represents: fetching UserInfo, parsing JSON or JWT responses, and
+validating and auditing the result</li>
 <li>Main attributes:
 <ul>
 <li>
@@ -848,11 +848,11 @@ token/session clear, browser-token reset, and logout audit emission</li>
 <h4 id="span-shinyoauth-session-end-revoke">Span: <code>shinyOAuth.session.end.revoke</code><a class="anchor" aria-label="anchor" href="#span-shinyoauth-session-end-revoke"></a>
 </h4>
 <ul>
-<li>When: when a Shiny session ends with
+<li>When: a Shiny session ends with
 <code>revoke_on_session_end = TRUE</code> and ‘shinyOAuth’ starts
 best-effort token revocation</li>
-<li>Represents: the session-end revocation orchestration span around the
-paired <code><a href="../reference/revoke_token.html">revoke_token()</a></code> calls</li>
+<li>Represents: calls to <code><a href="../reference/revoke_token.html">revoke_token()</a></code> for the access
+token and refresh token at session end</li>
 <li>Main attributes:
 <ul>
 <li>

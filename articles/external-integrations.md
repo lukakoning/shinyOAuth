@@ -190,8 +190,10 @@ has a new ID and records the old one as `replaces_connection_id` in
 `auth$connections()`. Other saved logins remain separate.
 
 If only one login is saved, `auth$connection()` can select it without an
-ID. With several, choose an ID explicitly. See [Multiple
-authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md).
+ID. With several, choose an ID explicitly. See
+[`vignette("multiple-authorizations", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md)).
 
 For Microsoft tokens intended for an API other than Graph, set
 `oauth_provider_microsoft(tenant = "organizations", userinfo_required = FALSE)`.
@@ -200,8 +202,10 @@ checks. `connection$identity()` exposes the selected identity fields
 already validated by shinyOAuth. It does not fetch a new profile or
 prove that an API call is currently authorized.
 
-For one login with several API tokens, see [Token
-targets](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md).
+For one login with several API tokens, see
+[`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)).
 
 ## Advanced: connection lifetime and permissions
 

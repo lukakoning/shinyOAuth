@@ -116,9 +116,10 @@ configuration and deployment keys and must never be sent to the browser.
 ## Details
 
 By default, connections last for one Shiny session. Optional browser or
-local account retention can restore them after navigation. See the
-[multiple-authorizations
-guide](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html)
+local account retention can restore them after navigation. See
+[`vignette("multiple-authorizations", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md)
+([online
+guide](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html))
 for a complete example.
 
 Configure the manager once and use its named clients to start logins.
@@ -136,8 +137,8 @@ grants.
 
 A manager is bound to one UI/server module ID and one public origin.
 Create another manager for another namespace. The memory store and owner
-registries survive Shiny sessions, not R restarts; copies in another R
-process fail closed.
+registries survive Shiny sessions, not R restarts. Copies in another R
+process are rejected.
 
 In session-only mode, a pending authorization survives navigation
 through the existing single-use OAuth state and browser binding, while

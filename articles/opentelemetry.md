@@ -394,11 +394,11 @@ differ between main-process and worker spans.
 
 #### Span: `shinyOAuth.userinfo`
 
-- When: when
+- When:
   [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   is called
-- Represents: userinfo request orchestration, response parsing,
-  JWT-vs-JSON handling, and userinfo-level validation/auditing
+- Represents: fetching UserInfo, parsing JSON or JWT responses, and
+  validating and auditing the result
 - Main attributes:
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
@@ -482,12 +482,11 @@ differ between main-process and worker spans.
 
 #### Span: `shinyOAuth.session.end.revoke`
 
-- When: when a Shiny session ends with `revoke_on_session_end = TRUE`
-  and ‘shinyOAuth’ starts best-effort token revocation
-- Represents: the session-end revocation orchestration span around the
-  paired
+- When: a Shiny session ends with `revoke_on_session_end = TRUE` and
+  ‘shinyOAuth’ starts best-effort token revocation
+- Represents: calls to
   [`revoke_token()`](https://lukakoning.github.io/shinyOAuth/reference/revoke_token.md)
-  calls
+  for the access token and refresh token at session end
 - Main attributes:
   - `oauth.provider.name`, `oauth.provider.issuer`
   - `oauth.client_id_digest`
