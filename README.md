@@ -6,22 +6,21 @@
 [![CRAN status](https://www.r-pkg.org/badges/version/shinyOAuth)](https://CRAN.R-project.org/package=shinyOAuth)
 <!-- badges: end -->
 
-[shinyOAuth](https://lukakoning.github.io/shinyOAuth/) lets users sign in to
-[Shiny](https://github.com/rstudio/shiny) apps with existing accounts, and your
-app can call APIs with their permission. It supports OAuth 2.0 authorization
-and OpenID Connect (OIDC) authentication.
+[shinyOAuth](https://lukakoning.github.io/shinyOAuth/) is an R package for
+OpenID Connect (OIDC) authentication and OAuth 2.0 authorization in
+[Shiny](https://github.com/rstudio/shiny) apps. Users can sign in with existing
+accounts and give your app permission to call APIs on their behalf.
 
-Users can sign in through Google, Microsoft, a self-hosted provider such as
-Keycloak, or an identity service such as Auth0 or Okta. Your app
-redirects them to the provider, where they sign in, then exchanges the returned
-authorization code for tokens. An OAuth access token lets your app call APIs on
-the user's behalf. OIDC adds an ID token that the package validates to identify
-the user.
+The package works across OAuth 2.0 and OIDC providers, including services such
+as Google, Microsoft, Auth0 and Okta, and self-hosted providers such as Keycloak.
+You can use built-in provider helpers, discover OIDC settings automatically, or
+connect to other providers by configuring their endpoints and authentication
+settings yourself.
 
-The Shiny module handles redirects, protects the login exchange, validates OIDC
-tokens, fetches user information and refreshes tokens. To keep provider requests
-from blocking other sessions, enable `async = TRUE` and configure background
-workers as described in [Asynchronous execution](https://lukakoning.github.io/shinyOAuth/articles/usage.html#asynchronous-execution).
+The Shiny module manages the sign-in process, from redirects and callbacks to
+OIDC token validation, user information and token refresh. Your server logic
+reads authentication status, tokens and user information as reactive values.
+You can also use the package's classes and functions to build custom integrations.
 
 ## Features
 
@@ -38,10 +37,17 @@ workers as described in [Asynchronous execution](https://lukakoning.github.io/sh
   and Auth0, discover OIDC settings with `oauth_provider_oidc_discover()`, or
   configure a provider yourself.
 
-- Login protection: HTTPS enforcement, PKCE, browser-bound state and OIDC token
-  validation. DPoP, mTLS, JAR and PAR are available for providers that require them.
+- Security: AES-GCM-encrypted state, single-use server-side state,
+  origin- and tab-scoped browser binding, HTTPS enforcement and PKCE (S256).
+  OIDC checks cover ID token signatures and claims, including nonce, and match
+  the UserInfo subject to the ID token. DPoP, mTLS, JAR and PAR are available
+  for providers that require them.
   See `vignette("authentication-flow", package = "shinyOAuth")`
   ([online guide](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
+
+- Asynchronous execution: provider requests can run in background workers to
+  keep other Shiny sessions responsive. See the
+  [setup instructions](https://lukakoning.github.io/shinyOAuth/articles/usage.html#asynchronous-execution).
 
 - Diagnostics: record login successes, failures and other events with audit hooks
   or OpenTelemetry. See `vignette("audit-logging", package = "shinyOAuth")`
