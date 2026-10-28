@@ -6,11 +6,13 @@
 [![CRAN status](https://www.r-pkg.org/badges/version/shinyOAuth)](https://CRAN.R-project.org/package=shinyOAuth)
 <!-- badges: end -->
 
-[shinyOAuth](https://lukakoning.github.io/shinyOAuth/) adds OAuth 2.0 authorization
-and OpenID Connect (OIDC) authentication to [Shiny](https://github.com/rstudio/shiny) apps.
+[shinyOAuth](https://lukakoning.github.io/shinyOAuth/) lets users sign in to
+[Shiny](https://github.com/rstudio/shiny) apps with existing accounts, and your
+app can call APIs with their permission. It supports OAuth 2.0 authorization
+and OpenID Connect (OIDC) authentication.
 
-Users sign in with an existing account, such as Google or Microsoft, a self-hosted
-provider such as Keycloak, or an identity service such as Auth0 or Okta. Your app
+Users can sign in through Google, Microsoft, a self-hosted provider such as
+Keycloak, or an identity service such as Auth0 or Okta. Your app
 redirects them to the provider, where they sign in, then exchanges the returned
 authorization code for tokens. An OAuth access token lets your app call APIs on
 the user's behalf. OIDC adds an ID token that the package validates to identify
@@ -74,7 +76,10 @@ for login buttons, authenticated API calls, configuration and a deployment check
 ### Minimal example
 
 Register a GitHub OAuth app in your [GitHub Developer Settings](https://github.com/settings/developers),
-then use its client ID and secret in this example.
+using `http://127.0.0.1:8100` as the callback URL. Set `GITHUB_OAUTH_CLIENT_ID`
+and `GITHUB_OAUTH_CLIENT_SECRET` in your R environment before running the
+example. The [environment setup instructions](https://lukakoning.github.io/shinyOAuth/articles/usage.html#github-app-registration)
+show how to store these values in `.Renviron`.
 
 ```r
 library(shiny)

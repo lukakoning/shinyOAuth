@@ -348,11 +348,11 @@
 #'   JARM responses.
 #' @param jarm_tolerate_duplicate_top_level_iss Logical. Whether shinyOAuth
 #'   should tolerate repeated identical top-level `iss` members in signed JARM
-#'   payloads for this provider. This is an interoperability escape hatch for
+#'   payloads for this provider. This is a compatibility setting for
 #'   providers that emit duplicate identical top-level `iss` claims. When
 #'   `TRUE`, shinyOAuth collapses repeated identical top-level `iss` members
 #'   before duplicate-member rejection. Conflicting duplicates and nested
-#'   duplicate `iss` members still fail closed. Defaults to `FALSE`.
+#'   duplicate `iss` members are rejected. Defaults to `FALSE`.
 #' @param token_endpoint_auth_signing_alg_values_supported Optional vector of
 #'   JWS algorithms that the provider advertises for JWT-based client
 #'   authentication (`client_secret_jwt` / `private_key_jwt`) at the token

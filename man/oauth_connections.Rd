@@ -97,7 +97,7 @@ permissions. Revocation can also affect related provider grants.
 
 A manager is bound to one UI/server module ID and one public origin. Create
 another manager for another namespace. The memory store and owner registries
-survive Shiny sessions, not R restarts; copies in another R process fail closed.
+survive Shiny sessions, not R restarts. Copies in another R process are rejected.
 
 In session-only mode, a pending authorization survives navigation through the
 existing single-use OAuth state and browser binding, while existing grants are

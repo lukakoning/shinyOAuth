@@ -399,8 +399,8 @@
 #'
 #' @param dpop_require_access_token Logical or `NULL`. When `TRUE` and
 #'   `dpop_private_key` is configured, shinyOAuth requires the authorization
-#'   server to return `token_type = "DPoP"` for access tokens and fails fast
-#'   otherwise, independently of the access token's representation. Observed
+#'   server to return `token_type = "DPoP"` for access tokens and rejects other
+#'   token types, independently of the access token's representation. Observed
 #'   binding data must match the configured key; requiring its presence is a
 #'   separate policy (`dpop_require_observed_cnf`). In [oauth_client()], the default
 #'   `NULL` resolves to `TRUE` when `dpop_private_key` is configured and to
@@ -414,8 +414,8 @@
 #'   inspection. Set `options(shinyOAuth.access_token_cnf = "opaque")` to disable
 #'   access-token decoding for both DPoP and mTLS; the compatibility default
 #'   `"jwt"` inspects JWT `cnf` without treating it as signature validation.
-#'   Use this when high-assurance DPoP deployments must
-#'   fail closed on opaque access tokens that provide no observable binding.
+#'   Opaque tokens then need binding metadata in the token response or
+#'   introspection result.
 #'   Default is `FALSE`.
 #'
 #' @param request_object_mode Controls how the authorization request is

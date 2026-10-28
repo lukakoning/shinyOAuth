@@ -44,12 +44,12 @@ access. Standalone patient scopes require \code{launch/patient}. EHR clients add
 Each resource scope spelling must be advertised through
 \code{permission-v2} or, for v1 spellings, \code{permission-v1} with \code{allow_v1_scopes = TRUE}.
 A SMART scope comparison supports at most 256 distinct scopes on each side
-and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons fail
-closed, including during token acceptance and refresh.}
+and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons are
+rejected, including during token acceptance and refresh.}
 
 \item{required_scopes}{Minimum permissions, defaulting to \code{scopes}. Pass a
 subset to accept reduced grants as limited connections. Identity scopes are
-always required when identity is enabled. Unsupported comparisons fail closed.}
+always required when identity is enabled. Unsupported comparisons are rejected.}
 
 \item{launch}{\code{"standalone"} or \code{"ehr"}, matching the registered app flow.}
 

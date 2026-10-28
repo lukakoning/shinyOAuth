@@ -489,9 +489,8 @@ oauth_provider_slack <- function(
 #'  provider's `token_endpoint_auth_methods_supported` metadata.
 #' @param jarm_tolerate_duplicate_top_level_iss Logical. Defaults to `TRUE`
 #'  for Keycloak because current Keycloak JARM responses may repeat an
-#'  identical top-level `iss` claim. Set `FALSE` to fail closed on duplicate
-#'  top-level `iss` members instead of applying this interoperability
-#'  workaround.
+#'  identical top-level `iss` claim. Set `FALSE` to reject duplicate top-level
+#'  `iss` members, including identical ones.
 #'
 #' @return [OAuthProvider] object configured for the specified Keycloak realm
 #'

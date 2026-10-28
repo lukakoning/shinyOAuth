@@ -419,11 +419,11 @@ JARM responses.}
 
 \item{jarm_tolerate_duplicate_top_level_iss}{Logical. Whether shinyOAuth
 should tolerate repeated identical top-level \code{iss} members in signed JARM
-payloads for this provider. This is an interoperability escape hatch for
+payloads for this provider. This is a compatibility setting for
 providers that emit duplicate identical top-level \code{iss} claims. When
 \code{TRUE}, shinyOAuth collapses repeated identical top-level \code{iss} members
 before duplicate-member rejection. Conflicting duplicates and nested
-duplicate \code{iss} members still fail closed. Defaults to \code{FALSE}.}
+duplicate \code{iss} members are rejected. Defaults to \code{FALSE}.}
 
 \item{endpoint_auth_metadata}{Named list of independent \code{introspection} and
 \code{revocation} authentication metadata. Each entry has \code{methods} and

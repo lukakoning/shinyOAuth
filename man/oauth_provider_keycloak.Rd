@@ -32,9 +32,8 @@ provider's \code{token_endpoint_auth_methods_supported} metadata.}
 
 \item{jarm_tolerate_duplicate_top_level_iss}{Logical. Defaults to \code{TRUE}
 for Keycloak because current Keycloak JARM responses may repeat an
-identical top-level \code{iss} claim. Set \code{FALSE} to fail closed on duplicate
-top-level \code{iss} members instead of applying this interoperability
-workaround.}
+identical top-level \code{iss} claim. Set \code{FALSE} to reject duplicate top-level
+\code{iss} members, including identical ones.}
 }
 \value{
 \link{OAuthProvider} object configured for the specified Keycloak realm

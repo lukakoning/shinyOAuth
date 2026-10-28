@@ -29,11 +29,11 @@
 #'   Each resource scope spelling must be advertised through
 #'   `permission-v2` or, for v1 spellings, `permission-v1` with `allow_v1_scopes = TRUE`.
 #'   A SMART scope comparison supports at most 256 distinct scopes on each side
-#'   and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons fail
-#'   closed, including during token acceptance and refresh.
+#'   and 64 KiB (65,536 bytes) of combined scope text. Larger comparisons are
+#'   rejected, including during token acceptance and refresh.
 #' @param required_scopes Minimum permissions, defaulting to `scopes`. Pass a
 #'   subset to accept reduced grants as limited connections. Identity scopes are
-#'   always required when identity is enabled. Unsupported comparisons fail closed.
+#'   always required when identity is enabled. Unsupported comparisons are rejected.
 #' @param token_auth_style Registration type: `"public"`, `"header"` for a
 #'   symmetric secret using HTTP Basic, or `"private_key_jwt"`. Selection must
 #'   agree with advertised capabilities. Confidential methods must also agree
