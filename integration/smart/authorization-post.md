@@ -1,4 +1,4 @@
-# Authorization POST for long requests (P7b)
+# Authorization POST for long requests
 
 An authorization request asks the provider to show its login/consent screen.
 GET puts that request's parameters in the address. POST puts them in an HTML
@@ -56,8 +56,8 @@ The SMART method also belongs to the client's checked discovery policy.
 POST changes the final browser serialization. It preserves fixed endpoint query
 bytes and the existing singleton-conflict checks. Ordinary OAuth/OIDC PAR,
 signed Request Objects, JARM, DPoP and mTLS retain their configured requirements;
-POST does not bypass them. SMART still rejects those optional compositions
-until P4c2 supplies its own profile policy and evidence.
+POST does not bypass them. These combinations remain unsupported by
+`smart_client()`.
 
 The form allows at most 256 fields and 128 KiB of encoded data. Newlines and
 the browser-reserved `_charset_` field are rejected because a browser would
@@ -101,9 +101,8 @@ default. `--quick --post` runs only three SMART scenarios and is diagnostic.
 The unmodified Docker sandbox still fails strict discovery because its
 asymmetric authentication advertisement omits the required algorithm list.
 An external POST app flow has consequently not run. Once a compatible deployment
-is available, P4e/P5b must repeat standalone/EHR and retained two-site scenarios
-using both outgoing methods; P4f must include POST in independent client
-verification. See [coverage and open external gates](coverage.md).
+is available, repeat standalone/EHR and retained two-site scenarios using both
+outgoing methods, including POST in independent client verification. See [coverage and open external gates](coverage.md).
 
 ## Protocol references checked during implementation
 

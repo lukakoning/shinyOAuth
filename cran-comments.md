@@ -1,17 +1,13 @@
-## R CMD check results
+These results are from the previous CRAN submission. Replace them with checks
+of the release candidate before submitting again.
+
+## Previous R CMD check results
 
 0 errors | 0 warnings | 1 note
 
-Days since last update: 1
+## Previous revdepcheck results
 
-## About 'Days since last update'
+Checked 1 reverse dependency against the CRAN and development versions:
 
-This is a patch release to fix an unforeseen bug in the last release.
-Sorry for the inconvenience.
-
-## revdepcheck results
-
-We checked 1 reverse dependencies, comparing R CMD check results across CRAN and dev versions of this package.
-
- * We saw 0 new problems
- * We failed to check 0 packages
+ * 0 new problems
+ * 0 packages could not be checked

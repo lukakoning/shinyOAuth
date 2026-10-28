@@ -1,5 +1,10 @@
 # Ordinary OIDC and SMART in the same browser app
 
+Test an ordinary OIDC login alongside saved SMART connections, using either
+`oauth_module_server()` or a managed OIDC connection. The scenarios check that
+each service uses its own credentials and identity during login, refresh and
+disconnect.
+
 Install the current checkout and run:
 
 ```sh

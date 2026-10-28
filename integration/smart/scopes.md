@@ -26,7 +26,7 @@ The implemented comparisons follow the
 An explicit compatibility policy can interpret v1 `.read`, `.write` and `.*`
 as `.rs`, `.cud` and `.cruds`. Otherwise they remain unsupported. The evaluator
 does not change request spelling. Invalid or unknown SMART resource syntax never
-establishes permission merely because both sides contain the same text.
+establishes permission, even when both sides contain the same text.
 
 Simple granular constraints such as `?category=http://example.org|laboratory`
 are compared byte for byte. An unconstrained grant covers a supported constrained
@@ -37,8 +37,7 @@ when their text matches. Checks that require coverage reject indeterminate
 results. The package does not run a FHIR search engine to prove query equivalence.
 Each side is limited to 256 distinct scopes and their combined text to 64 KiB.
 
-The app distinguishes permissions it **requires** from permissions it would
-**like**. A missing required permission rejects the SMART token result. Missing
+The app can declare required and optional permissions. A missing required permission rejects the SMART token result. Missing
 optional permissions produce a `limited` connection, which can still perform
 operations covered by its actual grant. Request-level checks use the same
 evaluator. A local check cannot replace the FHIR server's access controls.
@@ -57,9 +56,8 @@ An enabled introspection scope check follows the same rule and can narrow the
 effective grant. Rejected results do not update the previous token. SMART
 connections require explicit grant evidence before becoming usable.
 
-The policy is included in SMART client and client fingerprints, binding it to
-pending authorization and retained credentials. The default generic fingerprint
-format is unchanged. Tests in
+Client fingerprints include the SMART scope policy, tying pending logins and
+saved credentials to that policy. Tests in
 [test-smart-scopes.R](../../tests/testthat/test-smart-scopes.R) exercise comparisons,
 strict parsing, actual callback/refresh paths, introspection, and request checks;
 the existing generic scope tests remain regression gates. These are local

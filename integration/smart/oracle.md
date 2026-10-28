@@ -1,8 +1,9 @@
 # Optional Oracle Health interoperability validation
 
-Oracle registration is not available for the current validation work. No Oracle
-authorization, token exchange or retained-connection scenario has been executed.
-The local Inferno work has no dependency on an Oracle account.
+The validation recorded here did not include a registered Oracle application,
+so it contains no Oracle authorization, token-exchange or retained-connection
+result. Use this guide to plan those tests once a registration is available.
+The local Inferno tests do not require an Oracle account.
 
 ## What the open sandbox can establish
 

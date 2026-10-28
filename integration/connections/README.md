@@ -1,4 +1,9 @@
-# Retained-connection browser gates (P3d, P6 and P7a)
+# Retained-connection browser tests
+
+Test that saved OAuth connections survive browser navigation, stay private to
+their owner, and use the correct credentials after refresh. These suites run
+local provider fixtures and a real browser; they need no external account or
+Docker service.
 
 From the repository root, install the current checkout and run:
 
@@ -21,9 +26,9 @@ Requires Chrome/Chromium, the package's dependencies, and `testthat`, `webfakes`
 can be selected using `R_LIBS`. The app and mirai workers must load the same
 installed checkout. Missing prerequisites, failures and skips fail this gate.
 
-The original runner creates two loopback OAuth providers, a Shiny process and isolated
-Chrome browser contexts, then cleans up the processes it owns. It uses invented
-credentials only. No Docker service or external account is required.
+`run-tests.R` creates two loopback OAuth providers, a Shiny process and isolated
+Chrome browser contexts, then cleans up the processes it owns. All credentials
+are invented for the tests.
 
 The Shiny app and the SMART permissions fixture select browser-facing ports in
 the dynamic range 49152–65535. This avoids Chrome's blocked service ports, some
@@ -31,20 +36,21 @@ of which are missing from httpuv's exclusions and still pass an HTTP readiness
 probe. Browser timeout diagnostics include the document protocol and Shiny
 presence to distinguish error pages from an application that is still loading.
 
-The [P6 shared-callback gate](shared-callbacks.md) uses one authorization server,
+The [shared-callback suite](shared-callbacks.md) uses one authorization server,
 two registrations and two resource paths on the same origin. It checks pending
 logins in separate tabs through the same callback URL, resource isolation and
 the same query/form POST and sync/mirai matrix.
 
-The [P7a refresh-scope gate](refresh-scopes.md) narrows one connection from read
+The [refresh-scope suite](refresh-scopes.md) narrows one connection from read
 and write to read, then verifies the limit survives a new Shiny session and
 later refresh. Another connection retains its original permissions. It runs
 the same four transport combinations and checks actual resource access.
 
-The target gate checks initial redemption and secondary acquisition, destination
-isolation, scope-preserving replacement, cancellation, replacement during pending
-worker acquisition, and fresh login after logout. It runs query/form POST callbacks
-with synchronous transport and mirai workers against a synthetic RFC 8707 provider.
+The token-target suite checks initial redemption and secondary acquisition,
+destination isolation, scope-preserving replacement, cancellation, replacement
+during pending worker acquisition, and fresh login after logout. It runs
+query/form POST callbacks with synchronous transport and mirai workers against
+a synthetic RFC 8707 provider.
 It does not establish interoperability with Microsoft Entra.
 
 The matrix covers `query` and `form_post`, each with synchronous transport and
@@ -82,10 +88,11 @@ root. For a Shiny app mounted under a public directory, configure `app_base_path
 and place every registered callback inside that directory. Do not add a separate
 HTML base element. This follows the [HTML base element's ordering requirement](https://html.spec.whatwg.org/multipage/semantics.html#the-base-element).
 
-P4/P5 must repeat the applicable workflow against the [SMART Sandbox](../smart/sandbox.md)
-and [Inferno client suite](../smart/inferno.md), adding discovery, registration,
-FHIR scope/context and standalone/EHR launch assertions. A P3d pass does not
-establish SMART interoperability. See the [retention checkpoints](../smart/retention.md).
+SMART interoperability requires the corresponding checks against the
+[SMART Sandbox](../smart/sandbox.md) and [Inferno client suite](../smart/inferno.md),
+including discovery, registration, FHIR scopes/context and standalone/EHR launch.
+Passing these generic OAuth tests does not establish SMART interoperability.
+See the [retention implementation notes](../smart/retention.md).
 
 Implementation references: [webfakes handler and server lifecycle](https://webfakes.r-lib.org/reference/new_app.html),
 [Shiny session request](https://shiny.posit.co/r/reference/shiny/latest/session.html),

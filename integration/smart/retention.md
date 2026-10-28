@@ -1,8 +1,10 @@
 # Retained connection implementation checkpoints
 
-P3 is delivered in independently reviewable steps. The optional manager and the
-generic browser-retention gate are implemented for a single R process.
-`oauth_connection()` continues to follow a single module's session-scoped token.
+This note describes how the connection manager stores credentials and checks
+browser or account ownership in one R process. For app setup, use the
+[multiple-authorizations guide](../../vignettes/multiple-authorizations.Rmd).
+The milestones and validation records below document the implementation;
+`oauth_connection()` remains a wrapper for one module's session-scoped token.
 
 | Step | Deliverable | Status |
 | --- | --- | --- |
@@ -48,7 +50,7 @@ future work and must demonstrate equivalent atomicity, monotonic revisions and
 owner semantics. Encryption alone cannot protect against a backend replaying old
 valid ciphertext.
 
-`oauth_browser_owner()` and `oauth_account_owner()` now describe local ownership
+`oauth_browser_owner()` and `oauth_account_owner()` configure local ownership
 policy. They do not authenticate a user or enable retention by themselves. The
 internal browser registry issues random 43-character cookies, stores only a
 keyed digest for lookup, and checks a live server record on every resolution.

@@ -1,4 +1,8 @@
-# Coverage of the implemented SMART and connection roadmap
+# SMART and retained-connection test coverage
+
+Use this map to find the tests for a feature and the evidence they provide.
+The combined runner below runs local suites; the external-interoperability
+sections identify checks that still need an unmodified provider.
 
 Additional lifecycle and deployment gates are described in
 [extended coverage](extended-coverage.md).
@@ -217,8 +221,7 @@ Installed-dependency build-version warnings and Chrome teardown EOF messages
 were separate from assertion failures.
 
 Inferno used the documented simulator corrections and bounded one-year ID-token
-lifetime policy. Its verifier remains independent upstream code. This materially
-advances P2 but does not establish unmodified vendor interoperability, server-side
+lifetime policy. Its verifier remains independent upstream code. These results do not establish unmodified vendor interoperability, server-side
 permission enforcement, Inferno form-post callbacks or refresh-token rotation.
 
 ## Recorded client/connection refactor validation, 2026-09-11

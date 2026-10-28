@@ -1,13 +1,11 @@
 # Keycloak integration environment (Docker)
 
-This folder provides a minimal Keycloak setup to run local integration tests against shinyOAuth.
+Test shinyOAuth against a local Keycloak provider. The runner starts a
+disposable server, runs the integration tests, and stops it afterward.
+Its preconfigured accounts are for local testing only.
 
-Start here if you are contributing to the package and want to test login
-against a real provider. For adding login to your own app, use the
-[getting-started guide](../../vignettes/usage.Rmd).
-
-The runner starts a disposable local Keycloak server, runs the tests, and
-stops it afterward. The preconfigured accounts are for local testing only.
+For adding login to your own app, start with the
+[usage guide](../../vignettes/usage.Rmd).
 
 ## Prerequisites
 
@@ -26,10 +24,9 @@ installing dependencies, so install these prerequisites first.
 Client-hosted Request Objects use URLs at the app root with a
 `shinyOAuth_request_object` query handle. The JAR clients' `request.uris`
 registration therefore permits `https://host.docker.internal:18100/*`.
-Keycloak's path-wildcard matching does not constrain query values. The old
-`/session/*` registration rejects these URLs before retrieval. Recreate the
-disposable Keycloak container to import an updated realm fixture; restarting
-an existing realm does not replace its client registrations.
+Keycloak's path-wildcard matching does not constrain query values. Recreate
+the disposable container after changing the realm fixture; restarting an
+existing realm does not replace its client registrations.
 
 ## Run integration tests
 
@@ -208,7 +205,7 @@ Test users: `alice` / `alice` and `bob` / `bob` (for cross-user attacks).
 | `test_integration_attack_login_csrf_browser_e2e.R` | **Real browser login CSRF / account substitution semantics** — the browser completes the flow for the provider user who actually signs in, even if the app expected a different account | Verified subject and userinfo claims remain visible at the real browser boundary so the app can reject unexpected accounts with its own policy |
 | `test_integration_attack_nonce_mismatch.R` | **Nonce mismatch / replay** — tampered, missing, or replayed nonce in ID token validation | ID token nonce claim verification against state store |
 | `test_integration_attack_csrf_browser_token.R` | **Browser token callback validation** — mismatched, missing, or malformed browser token values passed directly into callback handling | constant_time_compare(); browser token format validation; skip-guard |
-| `test_integration_attack_csrf_browser_token_e2e.R` | **Browser token CSRF (double-submit cookie bypass)** — attacker tampers with the real app-origin browser token cookie before the callback returns | Cookie/header double-submit binding across the real browser boundary; invalid_state failure at the live callback origin |
+| `test_integration_attack_csrf_browser_token_e2e.R` | Browser marker tampering before the callback returns | The cookie marker must match the origin- and tab-scoped storage record; a mismatch raises `invalid_state` at the callback origin. See [browser attack coverage](browser-attack-coverage.md). |
 | `test_integration_attack_callback_swap_browser_e2e.R` | **Separate app callback isolation** — two deployments receive each other's callbacks | Foreign callback rejected with distinct redirect URIs and state infrastructure; rightful callbacks still authenticate their original sessions |
 | [`test_integration_cross_client_pkce.R`](test_integration_cross_client_pkce.R) | **Server-side client-ID binding** — redeeming a code under another client ID with the correct verifier and redirect URI | Both registrations have successful baseline exchanges; changing only `client_id` produces HTTP 400 `invalid_grant` without an access token |
 | `test_integration_attack_dpop_resource.R` | **DPoP protected-resource substitution/replay** — bearer fallback, mismatched proof key, or proof replay against a DPoP-bound access token | DPoP `cnf.jkt` binding, `ath`/`htu`/`htm` proof checks, nonce/replay defenses, and parity between package-backed and independent verifiers |

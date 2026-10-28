@@ -1,8 +1,8 @@
-# Requesting fewer permissions on refresh (P7a)
+# Requesting fewer permissions on refresh
 
 A managed connection can request a replacement access token with fewer
-permissions. This is ordinary OAuth functionality; SMART connections apply
-their existing semantic scope rules to the same operation.
+permissions. Generic OAuth compares scope names literally; SMART connections
+compare the permissions those scopes represent.
 
 ```r
 # Inside the Shiny session, using the result of oauth_connections_server():
@@ -82,8 +82,8 @@ refresh operation.
 Verified on 2026-09-11 with R 4.5.1, Chrome 152.0.7977.83, Shiny 1.13.0 and
 mirai 2.7.1: 85 focused package assertions and 64 browser assertions passed with
 no skips. The broader scope/refresh/connection regression run passed 1,785
-assertions (overlapping the focused tests). The original retention and P6 browser
-gates passed 104 and 68 assertions. `R CMD check --no-tests --no-manual
+assertions (overlapping the focused tests). The retention and shared-callback browser
+suites passed 104 and 68 assertions. `R CMD check --no-tests --no-manual
 --ignore-vignettes` reported zero errors, warnings or notes; tests ran separately.
 Unit runs reported only dependency build-version warnings. Browser teardown
 reported benign Chromote websocket EOF diagnostics.

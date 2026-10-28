@@ -1,13 +1,14 @@
 # Inferno SMART client conformance gate
 
 Use the [Inferno SMART App Launch test kit](https://inferno.healthit.gov/test-kits/smart-app-launch/)
-to evaluate requests from the real Shiny app. The [pinned local environment](inferno/README.md)
-builds and passes strict discovery plus simulator regressions using
-`Rscript integration/smart/run-inferno-preflight.R`. It explicitly patches two
-simulator compatibility defects while keeping upstream verification tests intact.
-The application driver is `Rscript integration/smart/run-inferno.R`; the preflight
-alone does not run an app. The existing
-`run-tests.R` command remains the separate [Launcher sandbox](sandbox.md) smoke gate.
+to verify requests sent by the Shiny app during login, API calls and refresh.
+`Rscript integration/smart/run-inferno.R` runs the application scenarios against
+the [pinned local environment](inferno/README.md), which has two documented
+simulator corrections and unchanged upstream verification tests.
+
+To check only environment setup and simulator regressions, run
+`Rscript integration/smart/run-inferno-preflight.R`. This does not run an app.
+`run-tests.R` runs the separate [Launcher sandbox](sandbox.md) smoke tests.
 
 ## Suite and version
 
@@ -39,15 +40,15 @@ upstream or hosted Inferno pass. Discovery, signatures, issuer, audience, nonce
 and expiry remain validated. See the
 [patch rationale and limits](inferno/README.md).
 
-## Required roadmap runs
+## Required client scenarios
 
-| Phase | Client profile and scenario | Evidence required |
-| --- | --- | --- |
-| P4 | Public client, standalone launch | Real app sends S256 and the discovered FHIR `aud`, completes the code exchange, reads the supplied Patient using the issued token, and refreshes. |
-| P4 | Confidential symmetric client, standalone launch | Same scenario with the registered secret and supported authentication method. |
-| P4 | Confidential asymmetric client, standalone launch | Same scenario with temporary RS384 and ES384 keys and registered public JWKS; both code and refresh requests exercise client assertions. Keep the existing independent Python signature tests. |
-| P5 | EHR launch for each supported App Launch client profile | Inferno initiates the real app's registered launch route. Browser evidence proves `iss`/`launch` entry and the correct context; finish Inferno's request-verification tests too. |
-| Future explicit backend-services work | Backend Services Confidential Asymmetric Client | Add a separate client-credentials scenario only when that SMART profile is implemented. It cannot substitute for the App Launch RS384 run. |
+| Client profile and scenario | Evidence required |
+| --- | --- |
+| Public client, standalone launch | Real app sends S256 and the discovered FHIR `aud`, completes the code exchange, reads the supplied Patient using the issued token, and refreshes. |
+| Confidential symmetric client, standalone launch | Same scenario with the registered secret and supported authentication method. |
+| Confidential asymmetric client, standalone launch | Same scenario with temporary RS384 and ES384 keys and registered public JWKS; both code and refresh requests exercise client assertions. Keep the existing independent Python signature tests. |
+| EHR launch for each supported App Launch client profile | Inferno initiates the real app's registered launch route. Browser evidence proves `iss`/`launch` entry and the correct context; finish Inferno's request-verification tests too. |
+| Backend Services Confidential Asymmetric Client (not implemented) | Add a separate client-credentials scenario only when that SMART profile is implemented. It cannot substitute for the App Launch RS384 run. |
 
 The complete driver runs 32 scenarios: public, HTTP Basic, RS384 and ES384,
 standalone and Inferno-initiated EHR launch, synchronous and real mirai token
@@ -76,7 +77,7 @@ and Compose v2 are required in addition to the runner's R dependencies.
    process; container `localhost` is not the host app. Record the actual transport.
 2. Create a fresh client-suite session and select the matrix row's profile.
    Register the app's exact redirect URI(s), a unique client ID, and either the
-   symmetric secret or public JWKS as applicable. P5 also registers the app's
+   symmetric secret or public JWKS as applicable. EHR runs also register the app's
    launch URL. Use temporary test credentials.
 3. Supply synthetic launch context, a Patient in **Available Resources**, and,
    for identity tests, a matching **FHIR User Relative Reference** and resource.

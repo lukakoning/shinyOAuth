@@ -1,5 +1,9 @@
 # Repeated authorization at one client
 
+Test two saved authorizations from the same client, including providers that
+return a shared refresh credential. Each connection must use its own account's
+data, and a rotated shared credential must not be reused.
+
 Install the current checkout, then run from the repository root:
 
 ```sh

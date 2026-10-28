@@ -1,28 +1,21 @@
 # Local SMART Dev Sandbox
 
-The [coverage map](coverage.md) connects this external diagnostic suite to the
-implemented package, cryptographic and browser tests. Its combined runner can
-require external acceptance and reports the current blockers explicitly.
-
 This is an R4-only setup using the official
 [SMART Dev Sandbox](https://github.com/smart-on-fhir/smart-dev-sandbox)
 components: HAPI FHIR with Synthea sample data and the patient browser, with the
 official [SMART Launcher v2](https://github.com/smart-on-fhir/smart-launcher-v2).
-It provides an external implementation for the SMART roadmap's
-integration tests. The current tests establish discovery, FHIR connectivity,
-sample data, required SMART 2.2 discovery fields, public signing keys and launcher
-configuration. P4a adds `smart_discover()` tests against the unmodified live
-metadata and real HTTP fixtures. It identified a missing algorithm advertisement:
-the pinned launcher currently fails strict discovery, as detailed below.
-The generic [P3 browser-retention gate](../connections/README.md)
-now passes with synthetic OAuth providers. SMART application authorization,
-the two-site sandbox repeat, and EHR launch remain the P4/P5 gates below.
+Use it to test FHIR connectivity, sample data and the launcher's advertised
+SMART configuration. The pinned launcher omits required signing-algorithm
+metadata, so `smart_discover()` rejects it and application flows cannot run
+against this stack. The diagnostic suite records that rejection; a diagnostic
+pass does not establish SMART interoperability. See the
+[coverage map](coverage.md) for application tests and remaining external checks.
 
 ## Run the smoke and discovery suites
 
 From the repository root, with Docker Engine running in Linux-container mode,
 Compose v2, and the package's R development dependencies installed. Install the
-current checkout first so the runner tests the new exported discovery API:
+current checkout before running the tests:
 
 ```sh
 R CMD INSTALL .

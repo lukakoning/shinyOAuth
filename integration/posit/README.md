@@ -11,14 +11,13 @@ repository available to the deployment. For local setup first, see
 
 ## Use the app's direct address
 
-**Test login outside the Connect Cloud dashboard's embedded app preview:**
-OAuth redirects may fail there. Copy the sharing URL from the content's
-**Settings > URL** page, such as
+Open the app in a new browser tab to test login; the dashboard's embedded
+preview can prevent OAuth redirects. Copy the sharing URL from the content's
+Settings > URL page, such as
 `https://<content-id>.share.connect.posit.cloud`, or a configured custom URL.
 See [Connect Cloud URL settings](https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url).
 The administrative content page at `connect.posit.cloud/.../content/...` is
-not your app's callback address. Paste the sharing URL into a new browser tab
-or window and start login there.
+not your app's callback address.
 
 In these examples, the direct app URL is also the registered `redirect_uri`.
 Apps with a dedicated callback path must register that full callback URL while
@@ -63,14 +62,20 @@ By default, the script temporarily installs the latest development version of `s
 SHINYOAUTH_GITHUB_REF=<branch-tag-or-sha> Rscript integration/posit/write-manifest.R
 ```
 
-Only one `manifest.json` can live in this folder at a time, so regenerate it for the app file you plan to publish. Also rerun it whenever app dependencies change or when you want to pin a different `shinyOAuth` GitHub revision. Push the package changes to GitHub first, then regenerate, commit, and push the manifest before redeploying.
+This folder holds one `manifest.json`, so generate it for the app you plan to
+publish. Regenerate it when app dependencies or the desired shinyOAuth revision
+change. Push package changes to GitHub before generating a manifest that uses
+them, then commit and push the manifest before redeploying.
 
-If startup reports `could not find function "oauth_ui"`, check the GitHub commit in the deployment log against `packages.shinyOAuth.description.RemoteSha` in the manifest. An older GitHub development build can have the same package version (`0.5.0.9000`) while missing newer functions. Regenerate the manifest to select the current development commit.
+If a deployed app reports a missing shinyOAuth function, compare the installed
+commit in the deployment log with `packages.shinyOAuth.description.RemoteSha`
+in the manifest. Development builds can share a version number while containing
+different code. Regenerate the manifest for the required commit.
 
 ## Deployment reference
 
-Keep `manifest.json` alongside the selected app file. Regenerate it when
-dependencies change. If callbacks can reach different R processes, configure
+Keep `manifest.json` alongside the selected app file. If callbacks can reach
+different R processes, configure
 shared state and a shared key as described in
 [Getting started](../../vignettes/usage.Rmd).
 

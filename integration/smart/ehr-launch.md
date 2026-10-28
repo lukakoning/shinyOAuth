@@ -1,13 +1,8 @@
 # EHR launch implementation and browser tests
 
-The [coverage map](coverage.md) adds a 24-scenario matrix for public, HTTP Basic
-and RS384 registrations in standalone and EHR modes, including signed identity
-and retained refresh narrowing. The concurrent-launch suite below remains a
-separate required check. Both use local fixtures; external SMART gates remain open.
-
-P5a adds top-level EHR launch to the browser-retained manager. A registered
-launch route accepts the EHR's `iss` and opaque `launch` parameters. It matches
-the exact FHIR base to an approved EHR client **before any network request**.
+An EHR can open the Shiny app with a patient already selected. A registered
+launch route accepts the EHR's `iss` and opaque `launch` parameters, then matches
+the exact FHIR base to an approved EHR client before making a network request.
 Discovery and registration happen during application setup, not from incoming
 URLs. The [SMART 2.2 launch specification](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#launch-app-ehr-launch)
 defines these two entry parameters and their authorization-request role.
@@ -67,6 +62,11 @@ refresh can change context without creating a new connection. General connection
 summaries deliberately omit patient and identity data.
 
 ## Run the local browser gate
+
+This suite tests concurrent launches in separate tabs. The broader
+[profile matrix](coverage.md#smart-profile-browser-matrix) tests registration
+types, standalone/EHR modes, identity and refresh narrowing. Both use local
+fixtures; external SMART interoperability checks remain separate.
 
 Install the current checkout and Chrome/Chromium, then run from the repository
 root:

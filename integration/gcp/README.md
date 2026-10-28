@@ -16,10 +16,12 @@ Cloud Run. Run the local app first using the
 
 The container runs a plain `shiny::runApp()` listening on `$PORT` and `0.0.0.0`.
 
-Environment variables used by the app:
+Set these environment variables for the app:
+
 - `GITHUB_OAUTH_CLIENT_ID`
-- `GITHUB_OAUTH_CLIENT_SECRET` 
-- `OAUTH_REDIRECT_URI` (must exactly match the URL configured in your GitHub OAuth app (typically your Cloud Run service URL))
+- `GITHUB_OAUTH_CLIENT_SECRET`
+- `OAUTH_REDIRECT_URI`, matching the GitHub app's registered callback URL exactly
+  (usually the Cloud Run service URL)
 
 ### Build and deploy to Cloud Run
 
@@ -29,11 +31,9 @@ Use the repository root (`.`) as the Docker build context and
 `integration/gcp/Dockerfile` as the Dockerfile path. This gives the build access
 to the package source as well as the example app.
 
-Two ways to do this:
-
-- Use the provided `integration/gcp/cloudbuild.yaml` as the build configuration in your trigger; it runs:
-  - docker build -f integration/gcp/Dockerfile .
-- Or, if using a Dockerfile trigger, set the Build Context/Root Directory to the repository root (.) and the Dockerfile location to integration/gcp/Dockerfile.
+Use `integration/gcp/cloudbuild.yaml` as the trigger's build configuration.
+For a Dockerfile trigger, set Build Context/Root Directory to `.` and Dockerfile
+location to `integration/gcp/Dockerfile`.
 
 ### Build & run locally (to test)
 
@@ -58,9 +58,9 @@ docker run --rm --name shinyoauth-demo \
   shinyoauth-demo:latest
 ```
 
-Notes:
-- A sample environment file is provided at `integration/gcp/.env.example`.
-- When deploying to Cloud Run, set these variables in the service configuration UI (Variables & Secrets) and ensure `OAUTH_REDIRECT_URI` matches your Cloud Run service URL exactly.
+Copy `integration/gcp/.env.example` to `integration/gcp/.env` for local testing.
+On Cloud Run, set the variables in the service's Variables & Secrets settings,
+using the exact service URL for `OAUTH_REDIRECT_URI`.
 
 ## Maintaining the image
 

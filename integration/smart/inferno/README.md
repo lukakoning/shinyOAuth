@@ -1,5 +1,9 @@
 # Pinned Inferno client-test environment
 
+Build the local Inferno simulator used by the [client tests](../inferno.md).
+The setup check verifies discovery and simulator behavior before you run a
+Shiny application scenario.
+
 `Rscript integration/smart/run-inferno-preflight.R` builds the pinned image,
 checks provenance, starts a private Compose project, verifies discovery over
 loopback HTTPS, runs the simulator regression specs, and removes its containers

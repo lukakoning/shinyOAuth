@@ -1,5 +1,10 @@
 # Independent FHIR permission enforcement
 
+Test that Microsoft FHIR Server enforces the permissions issued to the Shiny
+app: it must allow authorized Patient reads and deny requests outside the
+grant. The authorization server is our test fixture; Microsoft's unmodified
+FHIR server makes the resource-access decisions.
+
 Run `Rscript integration/smart/run-permissions.R` from the repository root after
 installing this checkout. Requires Linux containers, the existing R/browser
 integration dependencies, and enough Docker resources for SQL Server and the
@@ -34,10 +39,10 @@ those Patients. In both synchronous and mirai modes it must:
 - Restore the same retained connection in a new Shiny session and read again.
 
 The denial probes intentionally use the general connection request API without
-declaring an operation-specific scope requirement. This allows the requests to
-reach the resource server; the existing SMART helper/client scope checks are
-unchanged. Nine recorded resource exchanges per scenario must have the exact
-expected paths/statuses and use the current issued token generation. The fixture's
+declaring an operation-specific scope requirement, so the requests reach the
+resource server. SMART helper and client scope checks remain enabled. Nine
+recorded resource exchanges per scenario must have the exact expected paths
+and statuses and use the current issued token generation. The fixture's
 administrative credential never enters the Shiny app.
 
 The app and authorization server are exposed only on random loopback HTTPS

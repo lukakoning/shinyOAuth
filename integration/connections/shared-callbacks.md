@@ -1,9 +1,9 @@
-# Several clients using one callback URL (P6)
+# Several clients using one callback URL
 
-P6 is an optional convenience for the connection manager. Two API resources or
-app registrations can use the same authorization server and the same callback
-URL. Each resulting connection still belongs to its original client and owner.
-This works for generic OAuth/OIDC; it is not a new SMART protocol object.
+Two app registrations or API resources can share an authorization server and
+callback URL. Configure `callback_policy = "shared_routes"` on the connection
+manager; each connection stays bound to the client and owner that started it.
+This option supports generic OAuth/OIDC.
 
 | `callback_policy` | Client configuration | Routing |
 | --- | --- | --- |
@@ -91,6 +91,6 @@ run separately. Dependency build-version warnings in the unit run and Chromote
 websocket EOF messages during browser shutdown are environment diagnostics.
 
 This synthetic fixture does not establish independent SMART interoperability.
-SMART optional transport composition remains gated separately in P4c2. Continue
-the [sandbox](../smart/sandbox.md) and [Inferno](../smart/inferno.md) roadmap runs;
-P6 does not close those external gates.
+SMART combinations with optional protocol features need separate implementation
+and tests. The [sandbox](../smart/sandbox.md) and [Inferno](../smart/inferno.md)
+suites track that coverage and the remaining external interoperability checks.

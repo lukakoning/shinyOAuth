@@ -4,7 +4,7 @@ This directory contains test fixtures, runners and implementation notes for
 SMART App Launch STU 2.2 (2.2.0). For application setup, start with the
 [SMART on FHIR guide](../../vignettes/smart-on-fhir.Rmd) and
 [multiple-authorizations guide](../../vignettes/multiple-authorizations.Rmd).
-`playground/` contains runnable provider experiments.
+The [local experiments](../../playground/README.md) cover individual providers.
 
 The [SMART on FHIR CI job](../../.github/workflows/smart-fhir.yml) runs all the
 SMART suites below with one R and Chrome setup. Generic retained OAuth browser

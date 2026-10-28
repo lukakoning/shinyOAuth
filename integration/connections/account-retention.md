@@ -1,4 +1,7 @@
-# Account retention browser gate
+# Account retention browser tests
+
+Test that users can recover their saved connections after signing in again,
+while account switching and logout prevent access from an old session.
 
 Install the current checkout, then run `Rscript integration/connections/run-account.R`
 from the repository root. Requires the browser-test dependencies used by the
