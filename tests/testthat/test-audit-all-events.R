@@ -357,13 +357,10 @@ testthat::test_that("audit registry entries serialize and have documentation", {
   for (p in cand) {
     rmd <- try(readLines(p), silent = TRUE)
     if (!inherits(rmd, "try-error")) {
-      # Extract any backticked audit event names regardless of surrounding text
-      lines <- grep("`audit_[a-z0-9_]+`", rmd, value = TRUE)
-      cur <- unique(gsub(
-        ".*`(audit_[a-z0-9_]+)`.*",
-        "\\1",
-        lines
-      ))
+      # Collect every event name, including multiple names on the same line.
+      cur <- unique(unlist(regmatches(
+        rmd, gregexpr("\\baudit_[a-z0-9_]+\\b", rmd, perl = TRUE)
+      ), use.names = FALSE))
       doc_types <- unique(c(doc_types, cur))
     }
   }

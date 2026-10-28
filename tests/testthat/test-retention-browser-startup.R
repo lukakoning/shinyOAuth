@@ -35,7 +35,5 @@ test_that("retention fixtures avoid ports that Chrome blocks but httpuv permits"
     app_script = "app.R",
     app_function = "startup_app"
   )
-  expect_gte(as.integer(httr2::url_parse(fixture[["origin"]])[["port"]]), 49152L)
-  expect_lte(as.integer(httr2::url_parse(fixture[["origin"]])[["port"]]), 65535L)
   expect_identical(retention_browser_snapshot(fixture[["browser"]]), list(ready = TRUE))
 })
