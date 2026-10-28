@@ -98,17 +98,13 @@ Read properties with \code{@}, for example \code{auth[["token"]]@userinfo}. Prof
 depend on the provider. Keep access and refresh tokens out of the UI and logs.
 }
 \details{
-The \code{id_token_claims} property is a read-only computed property that returns
-the decoded JWT payload of the ID token as a named list. This surfaces all
-standard and optional OIDC claims (e.g., \code{sub}, \code{iss}, \code{aud}, \code{acr}, \code{amr},
-\code{auth_time}, \code{nonce}, \code{at_hash}, etc.) without requiring manual JWT
-decoding. Returns an empty list when no ID token is present or if the token
-cannot be decoded.
+Read \code{token@id_token_claims} for the decoded ID-token payload as a named list,
+including standard and optional OIDC claims such as \code{sub}, \code{iss}, \code{aud}, \code{acr},
+\code{amr}, \code{auth_time}, \code{nonce} and \code{at_hash}. This property is read-only and returns
+an empty list when the token is absent or cannot be decoded.
 
-Note: \code{id_token_claims} always decodes the JWT payload regardless
-of whether the ID token's signature was verified.
-Check the \code{id_token_validated} property to determine whether the claims
-were cryptographically validated.
+Decoding does not verify the signature. Check \code{id_token_validated} before
+using these claims as a validated identity.
 For validated Apple ID tokens, exact \code{"true"}/\code{"false"} strings in
 \code{email_verified} are returned as logical values, as during validation.
 The original signed \code{id_token} is retained unchanged.

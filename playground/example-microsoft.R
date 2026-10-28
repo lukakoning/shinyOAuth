@@ -101,11 +101,9 @@ server <- function(input, output, session) {
   })
 }
 
-# Need to open app in 'localhost:8100' to match with redirect_uri;
-#   needed for browser cookie. But Shiny only redirects to
-#   '127.0.0.1' & blocks process once running, so we use later::later()
-#   to open the browser with 'utils::browseURL()' to localhost:8100
-#   shortly after the app starts
+# Open localhost:8100 to match the registered redirect URI and keep browser
+# cookies on the same host. Schedule the browser launch before runApp()
+# starts blocking R.
 later::later(
   function() {
     utils::browseURL("http://localhost:8100")

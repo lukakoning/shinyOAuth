@@ -170,12 +170,9 @@ if (
     })
   }
 
-  # Need to open app in 'localhost:8100' to match with redirect_uri
-  # of the public Azure CLI app (above). Browser must use 'localhost'
-  # too to properly set the browser cookie. But Shiny only redirects to
-  # '127.0.0.1' & blocks process once it runs. So we disable browser
-  # launch by Shiny & then use 'later::later()' to open the browser
-  # ourselves a short moment after the app starts
+  # Open localhost:8100 to match the Azure CLI app's registered redirect URI
+  # and keep browser cookies on the same host. Schedule the browser launch
+  # before runApp() starts blocking R.
   later::later(
     function() {
       utils::browseURL("http://localhost:8100")

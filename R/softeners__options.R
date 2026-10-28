@@ -59,9 +59,9 @@
 #' @description
 #' `r lifecycle::badge("deprecated")`
 #'
-#' Deprecated helper that errors when a small subset of shinyOAuth's
-#' options that relax security checks or expose debugging details are enabled. Use explicit startup checks
-#' for the exact options your deployment permits or forbids instead.
+#' Raise an error if any of the debugging options listed below are enabled.
+#' This deprecated helper checks only those options. Add explicit startup checks
+#' for the settings your deployment permits or forbids.
 #'
 #' @details It only checks the following options:
 #' \itemize{

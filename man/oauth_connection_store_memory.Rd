@@ -32,10 +32,10 @@ A full store rejects creation instead of evicting another connection.}
 An \code{OAuthConnectionStore} adapter with the methods described below.
 }
 \description{
-Stores encrypted credential envelopes and coordinates their lifecycle across
-Shiny sessions in one R process. Create one store outside \code{server()}. This
-adapter does not survive process restarts and rejects use from a copied worker
-process. It is a connection-manager building block, not an authentication API.
+Create the in-memory storage used by \code{\link[=oauth_connections]{oauth_connections()}} to keep encrypted
+credentials across Shiny sessions. Create one store outside \code{server()} and
+enable browser or account retention on the manager. Records last only for
+the R process's lifetime; the store rejects use from a copied worker process.
 }
 \details{
 Methods are trusted server-side operations. The manager must validate the

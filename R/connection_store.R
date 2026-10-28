@@ -1,9 +1,9 @@
 #' Create a process-local store for retained OAuth connections
 #'
-#' Stores encrypted credential envelopes and coordinates their lifecycle across
-#' Shiny sessions in one R process. Create one store outside `server()`. This
-#' adapter does not survive process restarts and rejects use from a copied worker
-#' process. It is a connection-manager building block, not an authentication API.
+#' Create the in-memory storage used by [oauth_connections()] to keep encrypted
+#' credentials across Shiny sessions. Create one store outside `server()` and
+#' enable browser or account retention on the manager. Records last only for
+#' the R process's lifetime; the store rejects use from a copied worker process.
 #'
 #' @param max_age Maximum record and transaction-deduplication lifetime in seconds.
 #'   Each record must also supply an earlier or equal absolute expiry.

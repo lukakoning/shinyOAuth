@@ -15,9 +15,8 @@ setup_otel_tui <- function(
 ) {
   base_url <- sub("/+$", "", endpoint)
 
-  # Make the example robust after prior test/dev sessions that may have left
-  # noop providers or disabled shinyOAuth's own telemetry gates behind.
-  # Configure via environment so mirai workers inherit the same exporters.
+  # Reset exporter settings left by earlier test or development sessions.
+  # Environment variables also configure the exporters used by mirai workers.
   Sys.setenv(
     OTEL_R_TRACES_EXPORTER = "http",
     OTEL_R_LOGS_EXPORTER = "http",

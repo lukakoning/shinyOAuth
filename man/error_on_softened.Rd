@@ -13,9 +13,9 @@ error is thrown.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-Deprecated helper that errors when a small subset of shinyOAuth's
-options that relax security checks or expose debugging details are enabled. Use explicit startup checks
-for the exact options your deployment permits or forbids instead.
+Raise an error if any of the debugging options listed below are enabled.
+This deprecated helper checks only those options. Add explicit startup checks
+for the settings your deployment permits or forbids.
 }
 \details{
 It only checks the following options:
@@ -29,14 +29,13 @@ claim values in diagnostics
 }
 }
 \examples{
-# Note: error_on_softened() is deprecated because it only checks a narrow subset
-# of shinyOAuth's security-relaxing options
+# error_on_softened() is deprecated and checks only the options in its help page.
+# Use startup checks for the exact settings your deployment permits.
 
-# Throw an error if one of the options listed in ?error_on_softened is enabled.
-# Below call does not error if run with default options:
+# Default options pass this check:
 error_on_softened()
 
-# Below call would error (is therefore not run):
+# This call would raise an error:
 if (interactive()) {
   (function() {
     old <- options(shinyOAuth.skip_id_sig = TRUE)

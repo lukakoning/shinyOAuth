@@ -1,8 +1,7 @@
 # Example Shiny app using 'shinyOAuth' to connect to Spotify API
 #
-# This app demonstrates logging into Spotify with 'shinyOAuth' and fetching
-# various user statistics via the Spotify Web API. We then build a simple
-# dashboard to display this information
+# Sign in to Spotify and display the user's profile, top tracks and artists,
+# recent plays, and currently playing track in a Shiny dashboard.
 #
 # Requirements:
 # - Create a Spotify OAuth 2.0 application at https://developer.spotify.com
@@ -101,8 +100,7 @@ client <- oauth_client(
 
 # Spotify API helpers ----------------------------------------------------------
 
-# Small helpers to call Spotify API with the user's access token
-# We define a few specialized functions for common endpoints
+# Call Spotify endpoints with the signed-in user's access token.
 
 spotify_get <- function(token, path, query = list()) {
   url <- paste0("https://api.spotify.com", path)
@@ -364,7 +362,7 @@ spotify_theme <- bs_add_rules(
   )
 )
 
-# Subtle readability and responsive polish overrides
+# Adjust card widths, text contrast and spacing on narrow screens.
 spotify_theme <- bs_add_rules(
   spotify_theme,
   paste(

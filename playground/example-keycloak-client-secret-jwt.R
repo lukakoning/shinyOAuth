@@ -1,9 +1,8 @@
 # Keycloak: client_secret_jwt (HMAC) playground
 #
-# What this shows
-# - Using RFC 7523 client assertions signed with your Keycloak client's SECRET
-#   (token_auth_style = "client_secret_jwt").
-# - Runs a tiny Shiny app that performs the Authorization Code flow with PKCE.
+# Try Keycloak login with token_auth_style = "client_secret_jwt". The app signs
+# RFC 7523 client assertions with its registered secret to authenticate token
+# requests. It uses the authorization code flow with PKCE.
 #
 # 1) Start Keycloak locally (Docker)
 #    - Windows bash shell command:

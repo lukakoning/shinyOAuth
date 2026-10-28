@@ -1,9 +1,8 @@
 # Keycloak: private_key_jwt (asymmetric) playground
 #
-# What this shows
-# - Using RFC 7523 client assertions signed with YOUR client private key
-#   (token_auth_style = "private_key_jwt").
-# - Runs a tiny Shiny app that performs the Authorization Code flow with PKCE.
+# Try Keycloak login with token_auth_style = "private_key_jwt". The app signs
+# RFC 7523 client assertions with your private key to authenticate token requests.
+# It uses the authorization code flow with PKCE.
 #
 # 1) Start Keycloak locally (Docker)
 #    - Windows bash shell command:

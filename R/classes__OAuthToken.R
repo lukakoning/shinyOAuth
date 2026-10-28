@@ -67,17 +67,13 @@
 #'   Empty for ordinary OAuth tokens. Set by SMART token processing.
 #'
 #' @details
-#' The `id_token_claims` property is a read-only computed property that returns
-#' the decoded JWT payload of the ID token as a named list. This surfaces all
-#' standard and optional OIDC claims (e.g., `sub`, `iss`, `aud`, `acr`, `amr`,
-#' `auth_time`, `nonce`, `at_hash`, etc.) without requiring manual JWT
-#' decoding. Returns an empty list when no ID token is present or if the token
-#' cannot be decoded.
+#' Read `token@id_token_claims` for the decoded ID-token payload as a named list,
+#' including standard and optional OIDC claims such as `sub`, `iss`, `aud`, `acr`,
+#' `amr`, `auth_time`, `nonce` and `at_hash`. This property is read-only and returns
+#' an empty list when the token is absent or cannot be decoded.
 #'
-#' Note: `id_token_claims` always decodes the JWT payload regardless
-#' of whether the ID token's signature was verified.
-#' Check the `id_token_validated` property to determine whether the claims
-#' were cryptographically validated.
+#' Decoding does not verify the signature. Check `id_token_validated` before
+#' using these claims as a validated identity.
 #' For validated Apple ID tokens, exact `"true"`/`"false"` strings in
 #' `email_verified` are returned as logical values, as during validation.
 #' The original signed `id_token` is retained unchanged.

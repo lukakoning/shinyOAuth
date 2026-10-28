@@ -1,11 +1,10 @@
-# Note: error_on_softened() is deprecated because it only checks a narrow subset
-# of shinyOAuth's security-relaxing options
+# error_on_softened() is deprecated and checks only the options in its help page.
+# Use startup checks for the exact settings your deployment permits.
 
-# Throw an error if one of the options listed in ?error_on_softened is enabled.
-# Below call does not error if run with default options:
+# Default options pass this check:
 error_on_softened()
 
-# Below call would error (is therefore not run):
+# This call would raise an error:
 if (interactive()) {
   (function() {
     old <- options(shinyOAuth.skip_id_sig = TRUE)

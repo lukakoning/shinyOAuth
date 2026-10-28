@@ -20,7 +20,7 @@ client <- oauth_client(
 )
 
 # 'form_post.jwt' configured with a signed and encrypted response.
-# (Note: this also requires use of `oauth_form_post_ui()`)
+# Use oauth_form_post_ui() to receive the POST callback.
 # Register the matching public key with the provider before using this client.
 jarm_decryption_private_key <- openssl::rsa_keygen(bits = 2048)
 encrypted_client <- oauth_client(
