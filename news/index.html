@@ -64,7 +64,8 @@
 <ul><li>Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth, Hugging Face, SURFconext, and authentik, reducing manual provider configuration.</li>
 <li>Microsoft sign-in can skip Graph profile retrieval with <code>oauth_provider_microsoft(userinfo_required = FALSE)</code> when the token is intended for another API. This avoids a failed profile request without disabling OIDC identity checks.</li>
 <li>Fixed validation failures with trailing slashes in manually configured OIDC issuer URLs, GitHub’s permission-response format, and Microsoft directory-ID letter case. Ed25519 keys now work for signed login requests and self-signed mTLS registration.</li>
-<li>Improved compatibility with upcoming S7 and openssl releases, including fixes for S7 warnings at package load (<a href="https://github.com/lukakoning/shinyOAuth/issues/23" class="external-link">#23</a>, <a href="https://github.com/lukakoning/shinyOAuth/issues/25" class="external-link">#25</a>).</li>
+<li>Improved compatibility with upcoming S7 releases: avoided <code>:=</code> import conflicts with rlang and warnings about the signing-algorithm default. Package load, unload and build now use S7 lifecycle hooks when available, retaining support for older S7 releases.</li>
+<li>Updated base64url tests for upcoming openssl releases, which reject invalid base64 with an error instead of returning empty bytes. This fixes a test failure; existing JWT, JWK and encrypted-state validation already handles decoding failures.</li>
 </ul></li>
 <li>
 <p>More reliable sign-in and connection management:</p>

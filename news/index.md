@@ -50,10 +50,14 @@
     configured OIDC issuer URLs, GitHub’s permission-response format,
     and Microsoft directory-ID letter case. Ed25519 keys now work for
     signed login requests and self-signed mTLS registration.
-  - Improved compatibility with upcoming S7 and openssl releases,
-    including fixes for S7 warnings at package load
-    ([\#23](https://github.com/lukakoning/shinyOAuth/issues/23),
-    [\#25](https://github.com/lukakoning/shinyOAuth/issues/25)).
+  - Improved compatibility with upcoming S7 releases: avoided `:=`
+    import conflicts with rlang and warnings about the signing-algorithm
+    default. Package load, unload and build now use S7 lifecycle hooks
+    when available, retaining support for older S7 releases.
+  - Updated base64url tests for upcoming openssl releases, which reject
+    invalid base64 with an error instead of returning empty bytes. This
+    fixes a test failure; existing JWT, JWK and encrypted-state
+    validation already handles decoding failures.
 
 - More reliable sign-in and connection management:
 

@@ -14,9 +14,10 @@ configuring their endpoints and authentication settings yourself.
 
 The Shiny module manages the sign-in process, from redirects and
 callbacks to OIDC token validation, user information and token refresh.
-Your server logic reads authentication status, tokens and user
-information as reactive values. You can also use the package’s classes
-and functions to build custom integrations.
+Your Shiny app can use authentication status, tokens and user
+information as reactive values. You can also reuse the user’s sign-in
+with other R packages and database drivers that accept OAuth access
+tokens. shinyOAuth supplies a current token, refreshing it when needed.
 
 ## Features
 
