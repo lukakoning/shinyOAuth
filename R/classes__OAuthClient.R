@@ -57,8 +57,8 @@
 #'   Optional Microsoft `scope_aliases` identify unusual short permission names
 #'   in responses. Requires provider support and `userinfo_required = FALSE`;
 #'   cannot be combined with `resource` or SMART configuration.
-#'   See `vignette("token-targets")` for examples, provider-specific permission
-#'   rules and declaration limits.
+#'   See the [token targets guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
+#'   for examples, provider-specific permission rules and declaration limits.
 #' @param default_token_target Name of the API to use when a connection method
 #'   omits `target`. Required with several targets; the sole target is selected
 #'   automatically. Selecting a target for one call does not change this default.

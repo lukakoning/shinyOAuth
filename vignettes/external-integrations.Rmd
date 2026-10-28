@@ -31,7 +31,8 @@ below build on that login setup.
 
 ## A complete Shiny example
 
-This example uses `httr2` in place of an SDK so you can see where the token goes.
+This example uses `httr2` in place of an API client library (SDK) so you can see
+where the token goes.
 Replace the example URLs, scopes and registered callback URL with your service's
 settings, and set `OAUTH_CLIENT_ID` and `OAUTH_CLIENT_SECRET` in the environment.
 

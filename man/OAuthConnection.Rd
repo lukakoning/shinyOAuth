@@ -14,10 +14,11 @@ Inside reactive server code, obtain a connection with
 \code{\link[=oauth_module_server]{oauth_module_server()}}. With \code{\link[=oauth_connections_server]{oauth_connections_server()}}, select a saved
 login using \code{auth$connection(connection_id)}.
 
-Use \verb{$access_token()} for an external SDK or database driver, \verb{$request()} for
+Use \verb{$access_token()} for another R package or database driver, \verb{$request()} for
 an API in the client's \code{resource_bases}, and \verb{$has_scopes()} to check permissions
 for optional app features. \verb{$request(refresh = TRUE)} can refresh before
-sending. See \code{vignette("external-integrations")} for a complete example.
+sending. See the \href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{external integrations guide}
+for a complete example.
 }
 \section{Connection lifetime}{
 
@@ -187,7 +188,8 @@ failed refresh, or an unsuitable token lifetime. Stable reason names include
 \code{authorization_unavailable}, \code{insufficient_scope}, \code{refresh_pending},
 \code{refresh_unavailable}, \code{interaction_required}, \code{lifetime_unavailable},
 \code{unsupported_token_binding}, \code{unknown_target} and \code{unsupported_target}.
-See \code{vignette("external-integrations")} for recovery and async examples.
+See the \href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{external integrations guide}
+for error recovery and async examples.
 
 DPoP and mTLS-bound tokens require their signing key or certificate; use
 \verb{$request()} instead of exporting a bearer string. Exported tokens retain all
@@ -284,10 +286,11 @@ the requested scopes.
 Microsoft API targets do not support explicit narrowing because their tokens
 can include earlier consent. The call fails before sending with reason
 \code{unsupported_scope_narrowing}, leaving the current login usable. Use a
-separate registration or change provider consent for a less powerful token.
+separate registration or change provider consent for a token with fewer permissions.
 
 OIDC clients that require a profile must retain \code{openid}. Include any further
-profile permissions in client \code{required_scopes}. See \code{vignette("token-targets")}
+profile permissions in client \code{required_scopes}. See the
+\href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{token targets guide}
 for OIDC consent and provider-specific refresh rules.
   }
   \subsection{Returns}{

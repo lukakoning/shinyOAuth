@@ -9,8 +9,9 @@
     such as showing an edit button only with write access.
     `$request(refresh = TRUE)` reduces failures from expired tokens by refreshing
     before an API call, without automatically replaying a failed call.
-  - See `vignette("external-integrations")` for examples. Exported tokens retain
-    the provider's permissions, which can be broader than the app's local limits.
+  - See the [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+    for examples. Exported tokens retain the provider's permissions, which can
+    be broader than the app's local limits.
 
 * Access several APIs, such as calendars and contacts, through one login:
 
@@ -20,7 +21,7 @@
     `connection$access_token(target = "calendar")`.
   - With token targets, set `reauth_after_seconds` if your app needs a
     time-limited login; API token expiry alone need not end the local login.
-    See `vignette("token-targets")`.
+    See the [token targets guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html).
 
 * Provider helpers and compatibility improvements:
 
@@ -79,7 +80,7 @@
     so simultaneous callbacks cannot overwrite or reuse pending login records.
     Custom JWKS caches run synchronously unless declared safe for separate R
     processes with `worker_safe = TRUE`, avoiding reuse of process-specific
-    connections in workers. See `?custom_cache`.
+    connections in workers. See [custom_cache()](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html).
   - Unsupported SMART OIDC `reauth_after_seconds` limits now fail at startup.
     Use `NULL` when `indefinite_session = FALSE` to avoid a later login failure.
     `check_oauth21()` reports uninspected mTLS credentials as unresolved instead
@@ -89,11 +90,6 @@
     process startup time to these callbacks.
   - Requires `jsonlite >= 1.6` and `openssl >= 2.1.2`; the future async backend
     requires `promises >= 1.3.3`.
-
-* Reduced dependency-sensitive test assertions, including OpenSSL decoding
-  diagnostics and private DT attributes, while retaining package validation and
-  signature interoperability checks. Removed unreliable wall-clock thresholds,
-  duplicate expiry checks, and source-text checks of development tooling.
 
 # shinyOAuth 0.6.1
 

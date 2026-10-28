@@ -592,8 +592,8 @@ minimum permissions; \code{resource_ids} associate it with named \code{resource_
 Optional Microsoft \code{scope_aliases} identify unusual short permission names
 in responses. Requires provider support and \code{userinfo_required = FALSE};
 cannot be combined with \code{resource} or SMART configuration.
-See \code{vignette("token-targets")} for examples, provider-specific permission
-rules and declaration limits.}
+See the \href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{token targets guide}
+for examples, provider-specific permission rules and declaration limits.}
 
 \item{default_token_target}{Name of the API to use when a connection method
 omits \code{target}. Required with several targets; the sole target is selected

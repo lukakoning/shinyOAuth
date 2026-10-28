@@ -11,10 +11,11 @@
 #' [oauth_module_server()]. With [oauth_connections_server()], select a saved
 #' login using `auth$connection(connection_id)`.
 #'
-#' Use `$access_token()` for an external SDK or database driver, `$request()` for
+#' Use `$access_token()` for another R package or database driver, `$request()` for
 #' an API in the client's `resource_bases`, and `$has_scopes()` to check permissions
 #' for optional app features. `$request(refresh = TRUE)` can refresh before
-#' sending. See `vignette("external-integrations")` for a complete example.
+#' sending. See the [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+#' for a complete example.
 #'
 #' @section Connection lifetime:
 #' A connection belongs to one login and one Shiny session. Token refresh keeps
@@ -188,7 +189,8 @@ OAuthConnection <- R6::R6Class(
     #' `authorization_unavailable`, `insufficient_scope`, `refresh_pending`,
     #' `refresh_unavailable`, `interaction_required`, `lifetime_unavailable`,
     #' `unsupported_token_binding`, `unknown_target` and `unsupported_target`.
-    #' See `vignette("external-integrations")` for recovery and async examples.
+    #' See the [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+    #' for error recovery and async examples.
     #'
     #' DPoP and mTLS-bound tokens require their signing key or certificate; use
     #' `$request()` instead of exporting a bearer string. Exported tokens retain all
@@ -289,10 +291,11 @@ OAuthConnection <- R6::R6Class(
     #' Microsoft API targets do not support explicit narrowing because their tokens
     #' can include earlier consent. The call fails before sending with reason
     #' `unsupported_scope_narrowing`, leaving the current login usable. Use a
-    #' separate registration or change provider consent for a less powerful token.
+    #' separate registration or change provider consent for a token with fewer permissions.
     #'
     #' OIDC clients that require a profile must retain `openid`. Include any further
-    #' profile permissions in client `required_scopes`. See `vignette("token-targets")`
+    #' profile permissions in client `required_scopes`. See the
+    #' [token targets guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
     #' for OIDC consent and provider-specific refresh rules.
     #' @return `TRUE` after a successful commit, or a promise resolving to `TRUE`
     #'   when the module uses async transport. Failure raises a redacted error.

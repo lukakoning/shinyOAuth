@@ -31,7 +31,8 @@
 #' After login, `connection <- shiny::req(auth$connection())` gives your server
 #' access to the current credentials. Use `connection$request()` to call an API,
 #' or `connection$access_token()` for another R package. See
-#' `vignette("external-integrations")` for examples.
+#' the [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+#' for examples.
 #'
 #' See the [usage vignette](https://lukakoning.github.io/shinyOAuth/articles/usage.html) for a complete app and
 #' instructions for registration, API calls, and deployment.

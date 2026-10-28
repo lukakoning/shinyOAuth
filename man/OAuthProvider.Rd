@@ -396,7 +396,8 @@ overridden via option \code{shinyOAuth.leeway}.}
 \code{"none"} (default), \code{"rfc8707"}, or \code{"microsoft"}. Set this only when using
 client \code{token_targets} and after checking provider support. The Microsoft
 helper selects \code{"microsoft"} automatically; discovery does not enable
-targets. See \code{vignette("token-targets")} for setup and permission rules.}
+targets. See the \href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{token targets guide}
+for setup and permission rules.}
 
 \item{infer_oidc_from_issuer}{Whether setting \code{issuer} enables OpenID Connect behavior.
 Default \code{TRUE}: helpers enable OIDC nonce/ID token defaults and the client

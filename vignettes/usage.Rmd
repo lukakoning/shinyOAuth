@@ -341,7 +341,7 @@ if (is.na(assessment$configuration_compliant)) {
 S256 is the recommended PKCE choice. The advanced
 `context = list(nonce_exception = TRUE)` option records independently established
 server assurance for the draft's confidential-client nonce exception. It cannot
-supply missing settings or count as observed server evidence. See `?check_oauth21`
+supply missing settings or count as observed server evidence. See [check_oauth21()](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.html)
 and [advanced security](advanced-security.html) for the detailed requirements.
 
 ## Multiple authorization servers
@@ -568,7 +568,8 @@ for the backend contract.
 
 For POST callbacks, the shared store also needs atomic `set_if_absent` with
 expiry, so simultaneous responses cannot overwrite one another. See
-`?custom_cache` for the backend requirements.
+[custom_cache()](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
+for the backend requirements.
 
 Hosted Request Objects (`request_object_mode = "request_uri"`) also use this
 store, in separate records. Their JWT claims are readable when signed without

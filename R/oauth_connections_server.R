@@ -50,8 +50,10 @@
 #' Use `auth$connections()` to populate a selection control, then
 #' `connection <- auth$connection(selected_id)` for the chosen account.
 #' `connection$request()` calls a configured API; `connection$access_token()`
-#' supplies a current token for an SDK. See `vignette("multiple-authorizations")`
-#' for a complete app and `vignette("external-integrations")` for SDK examples.
+#' supplies a current token for another R package. See the
+#' [multiple-authorizations guide](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html)
+#' for a complete app and the [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+#' for API client and database examples.
 #'
 #' @section Advanced lifetime and refresh behavior:
 #' Each Shiny session needs its own connection references, even when the manager
@@ -71,7 +73,8 @@
 #' Reactive expressions that read `connection()`, `$access_token()` or
 #' `$has_scopes()` do not rerun on token refresh alone if the login and permissions
 #' stay the same. Token acquisition never extends owner idle limits or replays
-#' application requests. See `vignette("external-integrations")`.
+#' application requests. See the
+#' [external integrations guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html).
 #' Resource requests and status reads never reset owner inactivity, including when
 #' reactive expressions rerun after automatic refresh. Call `touch()` from a user
 #' input event handler to count an application action as activity. Do not call it

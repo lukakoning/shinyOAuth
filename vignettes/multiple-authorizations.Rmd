@@ -125,7 +125,8 @@ complete callback vector to each client, even though each uses its own
 `redirect_uri`. The manager verifies that each client's declared set includes
 all of its callback routes, comparing canonical origins and paths. Additional
 routes used elsewhere in the application may also be included. Shared
-callback routes are an advanced alternative documented in `?oauth_connections`.
+callback routes are an advanced alternative documented under
+[oauth_connections()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html).
 
 ### 2. Keep authorizations when the browser returns
 
@@ -163,7 +164,8 @@ expiry limits. Automatic refresh and API reads do not reset inactivity. Call
 `auth[["touch"]]()` from a user input event handler, as the Read handler below does,
 to count an application action as activity. Explicit refresh also counts as
 activity; the absolute expiry remains fixed. For an app with its own verified
-account login, see `?oauth_account_owner` and `retention = "account"`.
+account login, see [oauth_account_owner()](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html)
+and `retention = "account"`.
 
 Size the owner registry and credential store separately. Both owner factories
 accept `max_entries` (default 1,000) per manager. Retained browser entries count
@@ -265,7 +267,7 @@ distinguishes rows in this demo; use the opaque `connection_id` as the stable ke
 The UI wrapper handles callback pages; `uiPattern = ".*"` lets Shiny serve those
 paths. Use the same module ID (`"services"`) in UI and server. Deploying under a
 subpath or behind a proxy can also require `app_base_path` and a trusted
-`request_uri_resolver`; see `?oauth_connections_ui`.
+`request_uri_resolver`; see [oauth_connections_ui()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html).
 
 ## Requests, permissions and refresh
 
