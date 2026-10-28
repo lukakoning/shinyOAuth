@@ -47,8 +47,8 @@
 #'   headers to set on the request. Header names are case-insensitive.
 #'   Names must be unique HTTP field-name tokens, and values must not contain
 #'   prohibited control characters. DPoP requests reject `Host` overrides.
-#'   Any user-supplied `Authorization` or `DPoP` header is ignored to ensure
-#'   the token authentication set by this function is not overridden.
+#'   This function manages the `Authorization` and `DPoP` headers and ignores
+#'   user-supplied replacements.
 #' @param query Optional named list of query parameters to append to the URL.
 #' @param follow_redirect Logical or `NULL`. `FALSE` (the default) disables
 #'   HTTP redirects even when `shinyOAuth.allow_redirect` is enabled.

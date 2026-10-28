@@ -7,12 +7,10 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-shinyOAuth allows you to keep multiple OAuth authorizations in one Shiny app.
-Users can connect several services, choose which saved authorization to use for
-a request, and disconnect each one separately.
-
-This is useful for a dashboard that combines data from several APIs, or an app
-where users need access to several accounts at the same service.
+Users can connect several services or accounts in one Shiny app, choose which
+saved authorization to use for a request, and disconnect each one separately.
+A dashboard can combine data from several APIs, or let users work with several
+accounts at the same service.
 
 This vignette builds an app that connects to two services and reads data from
 either one. It uses browser retention to keep both authorizations available
@@ -154,7 +152,7 @@ Tokens stay encrypted in the R process. The cookie associates saved connections
 with this browser; it does not identify a person or log them into either service.
 
 Without `retention = "browser"`, the default is `"shiny"`: existing connections
-are discarded when that Shiny session ends. Merely configuring multiple clients
+are discarded when that Shiny session ends. Configuring multiple clients alone
 does not preserve A while the browser goes away to authorize B.
 
 Keep the manager, store and keys outside `server()` so returning Shiny sessions

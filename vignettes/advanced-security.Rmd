@@ -51,9 +51,9 @@ The sections below show the extra settings you usually add on top of your normal
 
 ## JWT client authentication
 
-Some providers require your app to sign a short statement proving its
-identity when requesting tokens. This client assertion is a JWT (JSON
-Web Token). It identifies the app, rather than the user signing in.
+Some providers require your app to authenticate by signing a JWT (JSON Web
+Token) when requesting tokens. This client assertion identifies the app
+requesting tokens.
 
 For a registered private key, select the method during provider setup and
 supply the key when creating your client:
@@ -646,10 +646,10 @@ establish and protect its own browser binding.
 ## Policy identity across callbacks and retained credentials
 
 Pending logins and saved connections remember the client and provider settings
-under which they were created. This prevents a login from continuing after
-important validation settings change. The updated policy encoding invalidates
-older records, so users must sign in and connect again after upgrading. Update
-workers sharing keys and storage together.
+under which they were created. A login cannot continue if its validation
+policy changes. The updated policy encoding invalidates older records, so
+users must sign in and connect again after upgrading. Update workers sharing
+keys and storage together.
 
 For a custom `userinfo_id_selector` that uses settings outside its function
 body, set `userinfo_id_selector_policy_id`, for example

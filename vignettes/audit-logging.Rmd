@@ -213,7 +213,7 @@ and nonce. Each stage emits either a success event or a failure event.
 - Context: `provider`, `issuer`, `client_id_digest`, `state_digest`, `phase`, `error_class` (+ `browser_token_digest` when phase is `browser_token_validation`)
 - Phases include: `payload_validation`, `browser_token_validation`, `pkce_verifier_validation`, `nonce_validation`, `form_post_request_validation`, `form_post_callback_lookup`, `form_post_callback_validation`
 - `handle_digest` is included when a form_post callback handle is missing, expired, or already consumed.
-- Note: Failures related to state store access (lookup/removal) are reported as their own events (see below) rather than using the `callback_validation_failed` event.
+- State store lookup and removal failures have their own events (see below).
 
 ### State store access
 
@@ -246,10 +246,9 @@ Digest differences: For `audit_callback_validation_failed` during payload decryp
 - When: token exchange fails
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`, `error_class`
 
-Detailed sender-constraint diagnostics such as DPoP token-type inference,
-DPoP nonce retries, and mTLS endpoint-alias selection are emitted on the
-OpenTelemetry spans documented in the [OpenTelemetry vignette](opentelemetry.html) rather than on
-the high-level audit events.
+OpenTelemetry spans record DPoP token-type inference, DPoP nonce retries and
+mTLS endpoint-alias selection. These details are omitted from high-level audit
+events. See the [OpenTelemetry vignette](opentelemetry.html).
 
 ### Token introspection
 

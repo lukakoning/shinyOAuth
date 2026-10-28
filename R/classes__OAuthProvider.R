@@ -204,9 +204,8 @@
 #'   TRUE when an `issuer` is provided and either `id_token_validation` or
 #'   `id_token_required` is TRUE (OIDC-like configuration). Set explicitly to
 #'   FALSE to opt out. For providers that legitimately publish JWKS on a
-#'   different host (for example Google), prefer setting
-#'   `jwks_host_allow_only` to the exact hostname rather than disabling this
-#'   check.
+#'   different host (for example Google), set `jwks_host_allow_only` to that
+#'   exact hostname to keep host validation enabled.
 #' @param jwks_host_allow_only Optional explicit hostname that the jwks_uri must match.
 #'   When provided, jwks_uri host must equal this value (exact match). You can
 #'   pass either just the host (e.g., "www.googleapis.com") or a full URL; only
@@ -239,7 +238,7 @@
 #'   defaults to `c("Bearer")`. When the [OAuthClient] is configured with
 #'   `dpop_private_key`, shinyOAuth also accepts `token_type = "DPoP"` and uses
 #'   DPoP proofs on supported token and downstream requests. Other non-Bearer
-#'   token types (for example `MAC`) still fail fast rather than being misused.
+#'   token types (for example `MAC`) are rejected.
 #'   Set `allowed_token_types = character()` explicitly only to disable the
 #'   value allowlist while still requiring `token_type` itself.
 #' @param token_response_scope_format Separator used for permissions in token
@@ -334,8 +333,8 @@
 #'   providers use the discovery metadata value, defaulting to `c("query",
 #'   "fragment")` when omitted per OIDC Discovery/RFC 8414. Generic providers
 #'   may leave this empty when capabilities are not known. Provider metadata may
-#'   include response modes that shinyOAuth does not implement; clients still
-#'   fail fast if they request one of those unsupported modes.
+#'   include response modes that shinyOAuth does not implement. Requesting an
+#'   unsupported mode raises an error.
 #' @param jarm_signing_alg_values_supported Optional vector of JWS
 #'   algorithms that the provider advertises for signed JWT Secured
 #'   Authorization Responses (JARM).

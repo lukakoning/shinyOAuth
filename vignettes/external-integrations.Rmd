@@ -139,16 +139,16 @@ sdk <- reactive({
 ```
 
 `example_sdk_client()` stands for your SDK's constructor. Its callback keeps the
-connection for the login that created it. Obtain a new connection after logout
-or another login, rather than reusing an old SDK client.
+connection for the login that created it. After logout or another login, create
+a new SDK client with the new connection.
 
 If a database driver accepts only a token string, get the token just before
 opening or updating the database connection. A copied token cannot refresh
 itself. Follow the driver's instructions for closing connections.
 
 Keep tokens, SDK clients and database connections in server-side session code,
-away from logs, URLs and browser output. You do not need `resource_bases` just to
-export a token. If you use shinyOAuth's `$request()` instead, configure the API
+away from logs, URLs and browser output. Token export does not require
+`resource_bases`. If you use shinyOAuth's `$request()`, configure the API
 addresses it may call.
 
 Run writes from explicit user actions, such as a button click. `$has_scopes()`
@@ -265,8 +265,8 @@ before its callback runs. The example therefore checks the current connection ID
 and permissions again before calling the SDK. Check them again before displaying
 results. Scope narrowing keeps the ID, so checking the ID alone is insufficient.
 
-This makes token acquisition asynchronous. An SDK that blocks R still needs its
-own asynchronous request mechanism. Concurrent async calls coordinate their
+An SDK that blocks R still needs its own asynchronous request mechanism.
+Concurrent async calls coordinate their
 refreshes. A synchronous call does not wait for an async refresh or return a
 promise.
 

@@ -36,8 +36,8 @@ reflected by the server and disclose credentials.}
 headers to set on the request. Header names are case-insensitive.
 Names must be unique HTTP field-name tokens, and values must not contain
 prohibited control characters. DPoP requests reject \code{Host} overrides.
-Any user-supplied \code{Authorization} or \code{DPoP} header is ignored to ensure
-the token authentication set by this function is not overridden.}
+This function manages the \code{Authorization} and \code{DPoP} headers and ignores
+user-supplied replacements.}
 
 \item{query}{Optional named list of query parameters to append to the URL.}
 

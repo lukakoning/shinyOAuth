@@ -222,8 +222,8 @@
 #'   signed JWT (`application/jwt`). Allowed values are `"exp"`, `"iat"`, and
 #'   `"nbf"`.
 #'
-#'   Default is `character(0)`, which means these claims are validated only when
-#'   present. Set, for example, `userinfo_jwt_required_time_claims = "exp"`
+#'   The default, `character(0)`, checks these claims only when present.
+#'   Set, for example, `userinfo_jwt_required_time_claims = "exp"`
 #'   to require an expiry on signed UserInfo JWTs, or pass multiple values to
 #'   require additional temporal claims. For security-sensitive deployments that
 #'   accept signed UserInfo JWTs, prefer requiring at least `"exp"`.
@@ -247,8 +247,7 @@
 #'     useful for sender-constrained deployments such as DPoP, where
 #'     introspection can authoritatively report `token_type = "DPoP"`.
 #'   Default is `character(0)`.
-#'   (Note that not all providers may return each of these fields in
-#'   introspection responses.)
+#'   Providers may omit these fields from introspection responses.
 #'
 #' @param state_store Storage for pending logins. The default
 #'   `cachem::cache_mem(max_age = 300)` is suitable for one R process.

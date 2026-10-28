@@ -51,9 +51,8 @@ unsupported or the response could not be parsed.
 }
 \description{
 Ask the provider to check an access or refresh token. This is called token
-introspection and requires a configured \code{introspection_url}. Use it when you
-need the provider's current token status rather than only a locally recorded
-expiry time: a token may have been revoked before its expiry. To require it
+introspection and requires a configured \code{introspection_url}. A token may be
+revoked before its expiry; introspection checks its current status. To require it
 automatically during login and refresh, set \code{introspect = TRUE} on
 \code{\link[=oauth_client]{oauth_client()}}.
 }

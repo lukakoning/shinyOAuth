@@ -187,8 +187,8 @@ auto-enable callback issuer enforcement when the caller leaves
 \code{response_mode} values advertised by the provider. Discovery-backed
 providers use the discovery metadata value, defaulting to \code{c("query", "fragment")} when omitted per OIDC Discovery/RFC 8414. Generic providers
 may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement; clients still
-fail fast if they request one of those unsupported modes.}
+include response modes that shinyOAuth does not implement. Requesting an
+unsupported mode raises an error.}
 
 \item{mtls_endpoint_aliases}{Optional named list of RFC 8705 mTLS endpoint
 aliases. Names should follow the metadata keys such as \code{token_endpoint},
@@ -347,9 +347,8 @@ The generic helper \code{\link[=oauth_provider]{oauth_provider()}} will also aut
 TRUE when an \code{issuer} is provided and either \code{id_token_validation} or
 \code{id_token_required} is TRUE (OIDC-like configuration). Set explicitly to
 FALSE to opt out. For providers that legitimately publish JWKS on a
-different host (for example Google), prefer setting
-\code{jwks_host_allow_only} to the exact hostname rather than disabling this
-check.}
+different host (for example Google), set \code{jwks_host_allow_only} to that
+exact hostname to keep host validation enabled.}
 
 \item{jwks_host_allow_only}{Optional explicit hostname that the jwks_uri must match.
 When provided, jwks_uri host must equal this value (exact match). You can
@@ -376,7 +375,7 @@ fails fast with a \code{shinyOAuth_token_error}. The \code{\link[=oauth_provider
 defaults to \code{c("Bearer")}. When the \link{OAuthClient} is configured with
 \code{dpop_private_key}, shinyOAuth also accepts \code{token_type = "DPoP"} and uses
 DPoP proofs on supported token and downstream requests. Other non-Bearer
-token types (for example \code{MAC}) still fail fast rather than being misused.
+token types (for example \code{MAC}) are rejected.
 Set \code{allowed_token_types = character()} explicitly only to disable the
 value allowlist while still requiring \code{token_type} itself.}
 

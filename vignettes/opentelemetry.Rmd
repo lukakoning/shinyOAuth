@@ -12,7 +12,7 @@ vignette: >
 shinyOAuth exports diagnostic logs and traces through OpenTelemetry (OTel),
 using the `otel` R package. Logs record events such as a failed token exchange.
 Traces group related operations into spans, which record their duration and
-outcome. This allows authentication diagnostics to be collected alongside other
+outcome. Send these records to the same monitoring service as your other
 application telemetry.
 
 An exporter sends the records to a console, file, or monitoring service.
@@ -190,7 +190,7 @@ main-process and worker spans.
     - `oauth.phase = "login.par"`
     - `http.response.status_code`, `http.response.content_type` after a response is available
   - Notes:
-    - this is used as a client span (`kind = "client"`)
+    - span kind: `client`
     - redirects are rejected before client credentials or PAR parameters can leak
 
 #### Span: `shinyOAuth.callback`
@@ -327,7 +327,7 @@ main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a response
     is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected before credentials can leak
 
 #### Span: `shinyOAuth.token.verify`
@@ -388,7 +388,7 @@ main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a response
     is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected to avoid bearer-token leakage
 
 #### Span: `shinyOAuth.refresh`
@@ -480,7 +480,7 @@ main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a response
     is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected to prevent credential leakage
 
 #### Span: `shinyOAuth.token.revoke.worker`
@@ -527,7 +527,7 @@ main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a response
     is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected to prevent credential leakage
 
 #### Span: `shinyOAuth.token.introspect.worker`

@@ -40,10 +40,9 @@ operations that remain synchronous.}
 \item{indefinite_session}{If TRUE, the module will not automatically clear
 the token due to access-token expiry or the \code{reauth_after_seconds} window,
 and it will not trigger automatic reauthentication when a token expires or
-a refresh fails. This effectively makes sessions "indefinite" from the
-module's perspective once a user has logged in. Note that your API calls
-may still fail once the provider considers the token expired; this option
-only affects the module's automatic clearing and redirect behavior.}
+a refresh fails. API calls may still fail once the provider considers the
+token expired. This option affects only the module's automatic clearing
+and redirect behavior.}
 
 \item{reauth_after_seconds}{Maximum local login age in seconds, or \code{NULL}
 (default) for no forced reauthentication. Refresh does not reset this timer;
@@ -235,7 +234,7 @@ Open the app's entry URL in a regular browser. Its configured callback URL
 must match the one registered with the provider. IDE viewers and embedded
 dashboard previews can prevent login.
 On Posit Connect or Connect Cloud, open the direct app URL in a new tab;
-on Connect Cloud it is available under \strong{Settings > URL}.
+on Connect Cloud it is available under Settings > URL.
 
 Complete login in the tab that started it. Cookies, session storage and Web
 Crypto must be enabled. Keep private browser tokens out of bookmarks, URLs

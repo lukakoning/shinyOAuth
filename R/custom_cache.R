@@ -20,8 +20,8 @@
 #'
 #' A shared state store is needed when a login can start on one R process and
 #' its callback can arrive at another, for example in a multi-worker deployment
-#' without sticky routing. A shared signing-key cache lets workers reuse keys
-#' fetched from the provider rather than maintaining separate caches.
+#' without sticky routing. With a shared signing-key cache, workers reuse keys
+#' fetched by other workers.
 #'
 #' @details
 #' This helper adapts your storage functions; it does not create a database,
@@ -40,7 +40,7 @@
 #' `GETDEL` and SQL `DELETE ... RETURNING` are examples of backend operations
 #' that can do this. Use the same `state_key` and matching provider/client
 #' settings on every worker. Separate reads and deletes, including those in
-#' [cachem::cache_disk()], cannot ensure single-use state under concurrent access.
+#' [cachem::cache_disk()], can let two workers consume the same state.
 #' See the [deployment guidance](https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes).
 #' For the `form_post` and `form_post.jwt` callback bridges, also implement
 #' `set_if_absent` to reserve callback slots without replacing pending responses.

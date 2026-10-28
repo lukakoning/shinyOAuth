@@ -40,7 +40,7 @@ Normally supplied by the module; leave \code{NULL} when calling directly.}
 \value{
 An updated \link{OAuthToken} object with refreshed credentials.
 
-\strong{What changes:}
+Updated fields:
 \itemize{
 \item \code{access_token}: Always updated to the fresh token
 \item \code{expires_at}: Computed from \code{expires_in} when provided; otherwise a
@@ -64,11 +64,11 @@ sender-constrained state is kept only when the new token or its
 introspection response supplies fresh \code{cnf}
 }
 
-\strong{Validation failures cause errors:} If the provider returns a new ID
-token that fails validation (wrong issuer, audience, expired, or subject
-mismatch with original), or if userinfo subject doesn't match the new ID
-token, the refresh fails with an error. In \code{oauth_module_server()}, this
-clears the session and sets \code{authenticated = FALSE}, unless
+Refresh fails if a new ID token fails validation, or if the UserInfo subject
+differs from the new ID token's subject. Validation includes issuer,
+audience, expiry and agreement with the original login's subject.
+In \code{oauth_module_server()}, this clears the session and sets
+\code{authenticated = FALSE}, unless
 \code{indefinite_session = TRUE} keeps it with \code{token_stale = TRUE}.
 }
 \description{

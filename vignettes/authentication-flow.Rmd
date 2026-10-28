@@ -176,8 +176,8 @@ in step 6.
 
 The provider handles authentication and asks the user to authorize the
 requested permissions. It may skip these prompts if the user already has an
-active session or has granted the requested access. The user's credentials
-are entered at the provider, rather than in the Shiny app.
+active session or has granted the requested access. Users enter their
+credentials at the provider.
 
 ### 6. Provider returns the browser to the app
 

@@ -17,8 +17,8 @@ signs in. Those APIs can require different access tokens. Token targets let
 you name each API, declare the permissions it needs, and ask a connection for the
 right token without building a separate login flow for each API.
 
-Your provider must support this: shinyOAuth supports RFC 8707 resource indicators
-and Microsoft's API-specific scopes. Check your provider's registration and
+Targets require a provider that supports RFC 8707 resource indicators or
+Microsoft's API-specific scopes. Check your provider's registration and
 consent requirements before enabling targets. The provider can still refuse an
 API or decline to issue a refresh token.
 
@@ -244,9 +244,9 @@ the app's retained limits, while `$targets()` reports the actual provider grant.
 An exported bearer token carries that full grant; shinyOAuth cannot restrict
 what an SDK does with it.
 
-For this reason, explicit Microsoft API narrowing through `$refresh(scopes = ...)`
-is unsupported and fails with reason `unsupported_scope_narrowing` before sending
-a request. The existing login stays usable. Use a separate app registration or
+Explicit Microsoft API narrowing through `$refresh(scopes = ...)` is unsupported
+and fails with reason `unsupported_scope_narrowing` before sending a request.
+The existing login stays usable. Use a separate app registration or
 change provider consent if the token itself must have fewer API permissions.
 
 ### Resource identifiers and scope names

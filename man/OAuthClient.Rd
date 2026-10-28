@@ -397,8 +397,8 @@ temporal JWT claims that must be present when the UserInfo response is a
 signed JWT (\code{application/jwt}). Allowed values are \code{"exp"}, \code{"iat"}, and
 \code{"nbf"}.
 
-Default is \code{character(0)}, which means these claims are validated only when
-present. Set, for example, \code{userinfo_jwt_required_time_claims = "exp"}
+The default, \code{character(0)}, checks these claims only when present.
+Set, for example, \code{userinfo_jwt_required_time_claims = "exp"}
 to require an expiry on signed UserInfo JWTs, or pass multiple values to
 require additional temporal claims. For security-sensitive deployments that
 accept signed UserInfo JWTs, prefer requiring at least \code{"exp"}.}
@@ -431,8 +431,7 @@ client id.
 useful for sender-constrained deployments such as DPoP, where
 introspection can authoritatively report \code{token_type = "DPoP"}.
 Default is \code{character(0)}.
-(Note that not all providers may return each of these fields in
-introspection responses.)
+Providers may omit these fields from introspection responses.
 }}
 
 \item{endpoint_auth}{Named list of authentication overrides for \code{par},

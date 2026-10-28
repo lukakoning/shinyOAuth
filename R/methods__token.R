@@ -315,9 +315,8 @@ revoke_token <- function(
 #'
 #' @description
 #' Ask the provider to check an access or refresh token. This is called token
-#' introspection and requires a configured `introspection_url`. Use it when you
-#' need the provider's current token status rather than only a locally recorded
-#' expiry time: a token may have been revoked before its expiry. To require it
+#' introspection and requires a configured `introspection_url`. A token may be
+#' revoked before its expiry; introspection checks its current status. To require it
 #' automatically during login and refresh, set `introspect = TRUE` on
 #' [oauth_client()].
 #'
@@ -798,7 +797,7 @@ introspect_token <- function(
 #'
 #' @return An updated [OAuthToken] object with refreshed credentials.
 #'
-#'   **What changes:**
+#'   Updated fields:
 #'   - `access_token`: Always updated to the fresh token
 #'   - `expires_at`: Computed from `expires_in` when provided; otherwise a
 #'     fallback lifetime set by `shinyOAuth.default_expires_in` (3600 seconds by default)
@@ -820,11 +819,11 @@ introspect_token <- function(
 #'     sender-constrained state is kept only when the new token or its
 #'     introspection response supplies fresh `cnf`
 #'
-#'   **Validation failures cause errors:** If the provider returns a new ID
-#'   token that fails validation (wrong issuer, audience, expired, or subject
-#'   mismatch with original), or if userinfo subject doesn't match the new ID
-#'   token, the refresh fails with an error. In `oauth_module_server()`, this
-#'   clears the session and sets `authenticated = FALSE`, unless
+#'   Refresh fails if a new ID token fails validation, or if the UserInfo subject
+#'   differs from the new ID token's subject. Validation includes issuer,
+#'   audience, expiry and agreement with the original login's subject.
+#'   In `oauth_module_server()`, this clears the session and sets
+#'   `authenticated = FALSE`, unless
 #'   `indefinite_session = TRUE` keeps it with `token_stale = TRUE`.
 #'
 #' @example inst/examples/token_methods.R

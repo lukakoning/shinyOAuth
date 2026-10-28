@@ -68,9 +68,9 @@ to this whitelist
   worker, including initial state validation with `async = TRUE`. The delay
   adds timing noise but does not provide constant-time validation.
 
-Note on `allowed_hosts`: patterns support globs (`*`, `?`).
-Using a catch‑all like `"*"` matches any host and effectively disables endpoint host restrictions (scheme rules still apply).
-Avoid this unless you truly intend to accept any host; prefer pinning to your domain(s), e.g., `c(".example.com")`.
+`allowed_hosts` patterns support globs (`*`, `?`). A catch-all such as `"*"`
+accepts any host; scheme restrictions still apply. Restrict access to your
+domains, for example `c(".example.com")`, unless you intend to accept any host.
 
 ## Advanced parameter overrides
 
@@ -82,8 +82,8 @@ authentication.
 
 Set the callback format with `oauth_client(response_mode = ...)`.
 
-If you have a specific, advanced use case where you need to override one of these blocked parameters,
-you can unblock them using the following options:
+To override a blocked parameter, use the options below. Some parameters cannot
+be unblocked.
 
 - `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows replacing the specified
   authorization URL parameters. Default blocked: `response_type`, `client_id`, `redirect_uri`, `state`,

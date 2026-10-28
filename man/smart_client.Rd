@@ -145,8 +145,8 @@ the user's FHIR reference. \code{"none"} does not enable OIDC automatically.
 
 Supported flows use direct authorization and query or form POST callbacks.
 Claims requests, remote authentication-freshness overrides, JAR, PAR, JARM,
-DPoP and mTLS are not supported by this constructor. EHR clients need a fresh
-registered launch transaction rather than a shared launch handle.
+DPoP and mTLS are not supported by this constructor. Each EHR launch needs a
+fresh registered launch transaction; do not reuse a shared launch handle.
 
 Tokens need a positive lifetime. Only an initial response may omit
 \code{expires_in}, and only with an explicit \code{initial_expires_in_fallback}.
