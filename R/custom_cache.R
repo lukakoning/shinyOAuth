@@ -45,22 +45,13 @@
 #' For the `form_post` and `form_post.jwt` callback bridges, also implement
 #' `set_if_absent` to reserve callback slots without replacing pending responses.
 #'
-#' Store values are small R lists; preserve them without interpreting fields.
-#' Pending login records in external stores are AES-GCM sealed with a distinct
-#' key derived from `state_key` and bound to the client, provider, and state key.
-#' The backend receives an opaque `sealed_state_record` string instead of the
-#' browser binding, PKCE verifier, and nonce. Existing unsealed external records
-#' are rejected; users with logins pending across an upgrade must restart login.
-#' The default process-local memory store keeps records within the R trust boundary.
-#' Encryption does not replace backend access controls, expiry, or atomic `take`:
-#' a backend able to restore consumed entries can still violate single-use state.
+#' Preserve the stored R values unchanged. Pending login records are encrypted,
+#' but the backend must still enforce access controls, expiry and atomic
+#' consumption. An upgrade can invalidate pending records; users then restart login.
 #'
-#' With `request_object_mode = "request_uri"`, hosted Request Objects are stored
-#' as separate records containing the signed or encrypted JWT and its expiry.
-#' These records do not use the pending-login `sealed_state_record` wrapper.
-#' A signed, unencrypted JWT has readable claims, including authorization request
-#' details. Configure Request Object JWE encryption when those claims need
-#' confidentiality, and apply backend access controls and expiry to these records.
+#' Hosted Request Objects (`request_object_mode = "request_uri"`) use separate
+#' records. Signed objects can contain readable authorization details; configure
+#' Request Object encryption if these details must be confidential in storage.
 #'
 #' For a state store, returning `max_age` in seconds from `info()` also lets
 #' [oauth_module_server()] align the browser cookie lifetime with the store.
@@ -98,32 +89,18 @@
 #'
 #' @param remove A function(key) -> any. Required.
 #'
-#'   Deletes the entry for `key`. When `[["take"]]()` is provided, `[["remove"]]()` serves
-#'   only as a best-effort cleanup and its return value is ignored. When
-#'   `[["take"]]()` is not provided, shinyOAuth falls back to
-#'   `[["get"]]()` + `[["remove"]]()` followed by a post-removal absence check via
-#'   `[["get"]](key, missing = NA)`. In this fallback path the return value of
-#'   `[["remove"]]()` is not relied upon; the post-check is authoritative.
+#'   Delete the entry for `key`. shinyOAuth does not depend on the return value.
+#'   State consumption uses atomic `take` where available; a process-local
+#'   fallback checks that removal succeeded.
 #'
 #' @param take A function(key, missing = NULL) -> value. Optional.
 #'
-#'   An atomic get-and-delete operation. When provided, shinyOAuth uses
-#'   `[["take"]]()` instead of separate `[["get"]]()` + `[["remove"]]()` calls to enforce
-#'   single-use state consumption. This prevents TOCTOU (time-of-check /
-#'   time-of-use) replay attacks in multi-worker deployments with shared state
-#'   stores.
-#'
-#'   Should return the stored value and atomically remove the entry, or
-#'   return the `missing` argument (default `NULL`) if the key is not present.
-#'
-#'   If your backend supports atomic get-and-delete natively
-#'   (e.g., Redis `GETDEL`, SQL `DELETE ... RETURNING`), wire it through this
-#'   parameter for replay-safe state stores.
-#'
-#'   When `take` is not provided and the state store is not a per-process cache
-#'   (like [cachem::cache_mem()]), shinyOAuth will **error** at state
-#'   consumption time because non-atomic `[["get"]]()` + `[["remove"]]()` cannot
-#'   guarantee single-use under concurrent access in shared stores.
+#'   Read and remove the entry as one indivisible operation, returning its value
+#'   or the `missing` argument when absent. Required for shared state stores:
+#'   separate reads and deletes can let two requests use the same login record.
+#'   Redis `GETDEL` and SQL `DELETE ... RETURNING` are examples. The process-local
+#'   memory store has a safe fallback; custom/shared stores without `take` fail
+#'   by default when login state is consumed.
 #'
 #' @param set_if_absent A function(key, value, ttl = NULL) -> logical. Optional.
 #'

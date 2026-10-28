@@ -2,7 +2,7 @@
 % Please edit documentation in R/methods__connection.R
 \name{oauth_connection}
 \alias{oauth_connection}
-\title{Make API requests with a Shiny session's current OAuth credentials}
+\title{Wrap an existing reactive token as a connection}
 \usage{
 oauth_connection(
   client,
@@ -38,6 +38,10 @@ Clients with \code{token_targets} must use the module's \code{connection()} fact
 which retains the authorization's permission limits alongside its tokens.
 }
 \details{
+For new apps, prefer \code{auth$connection()} from \code{\link[=oauth_module_server]{oauth_module_server()}} or
+\code{\link[=oauth_connections_server]{oauth_connections_server()}}. Those connections can obtain and refresh tokens
+for external packages. This wrapper is for existing reactive-token integrations.
+
 Create the reference once inside \code{server()}. Access it only in that session's
 reactive context. \verb{[["summary"]]()} excludes tokens, identity claims and extension
 context. \verb{[["is_usable"]]()} checks local presence, known expiry and required scopes;

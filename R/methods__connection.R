@@ -1,4 +1,4 @@
-#' Make API requests with a Shiny session's current OAuth credentials
+#' Wrap an existing reactive token as a connection
 #'
 #' Combine one module's reactive token with its client and approved API addresses
 #' configured on [oauth_client()]. Call `[["request"]]()` on the returned connection instead of
@@ -8,6 +8,10 @@
 #' refresh itself or retain credentials across redirects.
 #' Clients with `token_targets` must use the module's `connection()` factory,
 #' which retains the authorization's permission limits alongside its tokens.
+#'
+#' For new apps, prefer `auth$connection()` from [oauth_module_server()] or
+#' [oauth_connections_server()]. Those connections can obtain and refresh tokens
+#' for external packages. This wrapper is for existing reactive-token integrations.
 #'
 #' @param client An [OAuthClient] with non-empty `resource_bases`, created by
 #'   [oauth_client()] or [smart_client()].

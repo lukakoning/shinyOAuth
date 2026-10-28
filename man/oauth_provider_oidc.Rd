@@ -54,8 +54,8 @@ access tokens issued by this provider. Defaults to 'Bearer'}
 \code{\link[=oauth_provider]{oauth_provider()}}. Defaults to \code{"header"}.}
 
 \item{issuer}{Exact OIDC issuer identifier. Defaults to \code{base_url}, retaining
-any trailing slash. Endpoint URLs are joined using a separately normalized
-base. Supply this explicitly when the issuer differs from the endpoint base.}
+any trailing slash. Supply this explicitly when your provider identifies
+itself with a different URL from the one used to build endpoint addresses.}
 }
 \value{
 \link{OAuthProvider} object

@@ -2,7 +2,7 @@
 % Please edit documentation in R/providers__research_enterprise.R
 \name{oauth_provider_surfconext}
 \alias{oauth_provider_surfconext}
-\title{Create a SURFconext \link{OAuthProvider} (via OIDC discovery)}
+\title{Configure institutional sign-in with SURFconext}
 \usage{
 oauth_provider_surfconext(
   environment = c("production", "test"),

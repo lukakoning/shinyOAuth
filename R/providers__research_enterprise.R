@@ -1,11 +1,12 @@
 # Provider presets for research services and institutional deployments.
 # Discovery-backed helpers make a network request during app setup.
 
-#' Create an ORCID [OAuthProvider] (via OIDC discovery)
+#' Configure researcher sign-in with ORCID
 #'
 #' @description
-#' Configure researcher sign-in with ORCID. Discovery selects ORCID's
-#' `client_secret_post` authentication; pass a client secret to [oauth_client()].
+#' Let users sign in with their ORCID account. Register your app with ORCID,
+#' then pass this provider, the client ID and client secret to [oauth_client()]
+#' with `scopes = "openid"`.
 #'
 #' @details
 #' Request `scopes = "openid"` on the client. ORCID uses this instead of
@@ -14,9 +15,12 @@
 #' depend on whether you registered a Public or Member API client.
 #'
 #' Sandbox and production require separate credentials and user accounts.
-#' Production redirect URIs must use HTTPS. ORCID does not advertise PKCE in
-#' its discovery metadata, so this confidential-client preset uses client
-#' authentication and validated OIDC nonce without claiming PKCE protection.
+#' Production redirect URIs must use HTTPS.
+#'
+#' @section Advanced registration settings:
+#' This preset uses `client_secret_post` authentication. ORCID does not advertise
+#' PKCE, so the helper uses client authentication and OIDC nonce validation
+#' without PKCE. Supply the secret issued for this registration.
 #' See the [ORCID authentication guide](https://info.orcid.org/documentation/api-tutorials/api-tutorial-get-and-authenticated-orcid-id/).
 #'
 #' @param name Optional provider name (default `"orcid"`).
@@ -42,7 +46,7 @@ oauth_provider_orcid <- function(name = "orcid", sandbox = FALSE) {
   )
 }
 
-#' Create a GitLab [OAuthProvider] (via OIDC discovery)
+#' Configure sign-in with GitLab
 #'
 #' @description
 #' Configure OIDC sign-in with GitLab.com or a self-managed GitLab instance.
@@ -80,12 +84,13 @@ oauth_provider_gitlab <- function(
   )
 }
 
-#' Create an Amazon Cognito [OAuthProvider] (via OIDC discovery)
+#' Configure sign-in with an Amazon Cognito user pool
 #'
 #' @description
-#' Configure OIDC login for an Amazon Cognito user pool. Register an app client
-#' with the authorization code grant, configure a user pool login domain, and
-#' pass the app credentials to [oauth_client()] with the enabled OIDC scopes.
+#' Let users sign in through your Amazon Cognito user pool. Register an app
+#' client, enable the authorization code grant and a user pool login domain,
+#' then pass this provider and the app credentials to [oauth_client()].
+#' Request the login and profile scopes enabled for that registration.
 #'
 #' @details
 #' Use the exact user pool issuer, not the managed-login or custom domain.
@@ -121,20 +126,15 @@ oauth_provider_cognito <- function(
   )
 }
 
-#' Create a Globus Auth [OAuthProvider]
+#' Configure sign-in with Globus Auth
 #'
 #' @description
-#' Configure OIDC sign-in with Globus Auth using its published endpoints and
-#' RS512 ID token signatures. Register a confidential web application at
-#' <https://app.globus.org/settings/developers> and request
-#' `scopes = c("openid", "profile", "email")` on [oauth_client()].
+#' Let users sign in with Globus Auth. Register a web application with a client
+#' secret at <https://app.globus.org/settings/developers>, then pass this provider
+#' and the credentials to [oauth_client()] with
+#' `scopes = c("openid", "profile", "email")`.
 #'
 #' @details
-#' This preset does not make a discovery request. Globus currently advertises
-#' RS512 only, whereas generic OIDC discovery requires advertised RS256 support.
-#' The preset pins RS512 and the Globus JWKS URL, retaining signature, issuer,
-#' audience, nonce, UserInfo subject, and S256 PKCE validation.
-#'
 #' This helper supports OIDC login. Globus API grants can return separate
 #' credentials for several resource servers in `other_tokens`. Those fields
 #' are preserved in `token@extra_fields`, but shinyOAuth does not automatically
@@ -143,6 +143,12 @@ oauth_provider_cognito <- function(
 #' `offline_access`; use a separate Globus-aware integration for multi-resource
 #' API authorization. Never send the login access token to another resource
 #' server merely because a nested token granted access to it.
+#'
+#' @section Advanced provider settings:
+#' The preset uses Globus's published endpoints and RS512 identity-token
+#' signatures. It does not use generic discovery, which requires advertised
+#' RS256 support. Identity, nonce, profile-subject and S256 PKCE checks remain
+#' enabled.
 #'
 #' See the [Globus Auth guide](https://docs.globus.org/api/auth/developer-guide/).
 #'
@@ -167,7 +173,7 @@ oauth_provider_globus <- function(name = "globus") {
   )
 }
 
-#' Create a Hugging Face [OAuthProvider] (via OIDC discovery)
+#' Configure sign-in with Hugging Face
 #'
 #' @description
 #' Configure Sign in with Hugging Face. Register an OAuth application in your
@@ -195,7 +201,7 @@ oauth_provider_huggingface <- function(name = "huggingface") {
   )
 }
 
-#' Create a SURFconext [OAuthProvider] (via OIDC discovery)
+#' Configure institutional sign-in with SURFconext
 #'
 #' @description
 #' Configure institutional OIDC login through SURFconext. Register your service
@@ -237,7 +243,7 @@ oauth_provider_surfconext <- function(
   )
 }
 
-#' Create an authentik [OAuthProvider] (via OIDC discovery)
+#' Configure sign-in with authentik
 #'
 #' @description
 #' Configure login for an authentik OAuth2/OIDC application. Supply the

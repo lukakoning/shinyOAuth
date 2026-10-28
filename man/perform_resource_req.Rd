@@ -23,20 +23,11 @@ perform_resource_req(
 \arguments{
 \item{token}{Either an \link{OAuthToken} object or a raw access token string.}
 
-\item{url}{Either the absolute URL to call or an \code{\link[httr2:request]{httr2::request()}} object
-with a URL of at most 8192 bytes before and after applying \code{query}.
-to authorize and perform. When you pass a request object, shinyOAuth uses
-it as the base request, still applies token authentication and request
-defaults, and then layers any explicit \code{method}, \code{headers}, \code{query}, and
-\code{follow_redirect} overrides on top.
-Inherited httr2 authentication, caching, and retry policies, and curl
-authentication, method-changing, or \code{request_target} options are rejected. Use
-\code{\link[httr2:req_method]{httr2::req_method()}} and httr2 body helpers to configure the request.
-HEAD requests with bodies are rejected because httr2 can transmit them
-as POST despite the explicit method.
-Authenticated response caching is
-unsupported. shinyOAuth owns retries; configure them with \code{idempotent}
-and the \verb{shinyOAuth.retry_*} options.}
+\item{url}{The absolute API URL, or a prepared \code{\link[httr2:request]{httr2::request()}} object.
+The URL must be at most 8192 bytes before and after adding \code{query}.
+The helper adds current authentication and defaults to a prepared request,
+then applies explicit \code{method}, \code{headers}, \code{query} and redirect overrides.
+See Prepared requests for customization restrictions.}
 
 \item{method}{Optional HTTP method (character). Defaults to "GET". When
 the effective token type is \code{DPoP}, this must be the final request method
@@ -69,12 +60,9 @@ Without an allowlist this performs HTTPS and URL-syntax validation only
 Set to \code{FALSE} only if you have already validated the URL and understand
 the security implications.}
 
-\item{client}{Optional \link{OAuthClient}. Required when the effective
-token type is \code{DPoP}, because the client carries the configured DPoP proof
-key, and also when using sender-constrained mTLS / certificate-bound
-tokens so shinyOAuth can attach the configured client certificate and
-validate any \code{cnf} thumbprint from an \link{OAuthToken} and observe any \code{cnf}
-thumbprint carried on a raw JWT access-token string.}
+\item{client}{Optional \link{OAuthClient}; required for DPoP or mTLS-bound tokens
+so the request can use the matching signing key or certificate and check
+any token-binding information.}
 
 \item{token_type}{Optional override for the access token type when \code{token}
 is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.
@@ -117,11 +105,19 @@ and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
 also supply \code{client} so the request uses the matching key or
 certificate.
 
-This performer enforces \code{shinyOAuth.max_body_bytes} on encoded downloads and
-decoded gzip bodies before full accumulation, independently of libcurl's
-decompression limit support. Other content encodings are rejected. Use this
-path for prepared httr2 requests as well as URL strings.
+The helper applies \code{shinyOAuth.max_body_bytes} to response bodies, including
+gzip decompression. Use it for both URL strings and prepared httr2 requests.
 }
+\section{Prepared requests}{
+
+Use \code{\link[httr2:req_method]{httr2::req_method()}} and body helpers to prepare a request, then let
+shinyOAuth manage authentication and retries. Existing httr2 authentication,
+caching and retry policies, and curl authentication, method-changing or
+\code{request_target} options are rejected. HEAD requests cannot have bodies,
+because httr2 may send those as POST. Authenticated response caching is
+unsupported. Configure retries with \code{idempotent} and \verb{shinyOAuth.retry_*}.
+}
+
 \examples{
 # Make request using OAuthToken object
 # (code is not run because it requires a real token from user interaction)
@@ -144,7 +140,7 @@ if (interactive()) {
   )
 
   # Inspect request settings without printing authentication headers.
-  # Keep bounded encoded/decoded response handling when sending it.
+  # Keep the package's response-size limits when sending it.
   response <- perform_resource_req(token, request)
 
   # Or start from your own httr2 request and still let shinyOAuth perform it

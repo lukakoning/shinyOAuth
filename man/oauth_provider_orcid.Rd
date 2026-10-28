@@ -2,7 +2,7 @@
 % Please edit documentation in R/providers__research_enterprise.R
 \name{oauth_provider_orcid}
 \alias{oauth_provider_orcid}
-\title{Create an ORCID \link{OAuthProvider} (via OIDC discovery)}
+\title{Configure researcher sign-in with ORCID}
 \usage{
 oauth_provider_orcid(name = "orcid", sandbox = FALSE)
 }
@@ -15,8 +15,9 @@ oauth_provider_orcid(name = "orcid", sandbox = FALSE)
 \link{OAuthProvider} object configured for ORCID.
 }
 \description{
-Configure researcher sign-in with ORCID. Discovery selects ORCID's
-\code{client_secret_post} authentication; pass a client secret to \code{\link[=oauth_client]{oauth_client()}}.
+Let users sign in with their ORCID account. Register your app with ORCID,
+then pass this provider, the client ID and client secret to \code{\link[=oauth_client]{oauth_client()}}
+with \code{scopes = "openid"}.
 }
 \details{
 Request \code{scopes = "openid"} on the client. ORCID uses this instead of
@@ -25,11 +26,16 @@ not advertise \code{profile} or \code{email} scopes. Additional record permissio
 depend on whether you registered a Public or Member API client.
 
 Sandbox and production require separate credentials and user accounts.
-Production redirect URIs must use HTTPS. ORCID does not advertise PKCE in
-its discovery metadata, so this confidential-client preset uses client
-authentication and validated OIDC nonce without claiming PKCE protection.
+Production redirect URIs must use HTTPS.
+}
+\section{Advanced registration settings}{
+
+This preset uses \code{client_secret_post} authentication. ORCID does not advertise
+PKCE, so the helper uses client authentication and OIDC nonce validation
+without PKCE. Supply the secret issued for this registration.
 See the \href{https://info.orcid.org/documentation/api-tutorials/api-tutorial-get-and-authenticated-orcid-id/}{ORCID authentication guide}.
 }
+
 \examples{
 \dontrun{
 oauth_provider_orcid()

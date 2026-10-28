@@ -86,8 +86,7 @@ oauth_client(
 It is required for \code{token_auth_style = "header"}. With \code{"body"} and PKCE,
 an empty secret is omitted. With \code{"public"} (alias \code{"none"}), it is never
 sent for client authentication. HMAC-signed ID token validation still
-requires a non-empty secret, regardless of the client authentication method.
-HMAC key-length checks measure the UTF-8 bytes used for signing and verification.}
+requires a non-empty secret, regardless of the client authentication method.}
 
 \item{redirect_uri}{The URL where users return after login. It must match the
 callback URL registered with your provider, including scheme, host, port,
@@ -123,17 +122,10 @@ Default \code{NULL} sends no request. Supply a list with \code{userinfo} and/or
 \code{list(userinfo = list(email = list(essential = TRUE)))}.
 Use \code{claims_validation = "strict"} if an unmet request must stop login.
 
-Lists are JSON-encoded with \code{auto_unbox = TRUE}. Use \code{NULL} for an
-unconstrained claim, \code{value} for one required value, or \code{values} for a set.
-\code{values} vectors are always encoded as JSON arrays, including single-element
-vectors. A pre-encoded JSON string is also accepted. Object member names must
-be unique; targets must be objects, claim entries must be \code{NULL} or objects,
-and \code{essential} must be a Boolean. Pre-encoded \code{values} must be non-empty
-arrays. Malformed requests are rejected even with \code{claims_validation = "none"}.
-Numeric constraints use R's binary64 precision and must be finite and within
-\verb{+/- (2^53 - 1)}. Use strings for larger identifiers or values requiring
-decimal precision beyond R's numeric representation.
-Your provider must support the OIDC claims parameter.}
+Use \code{NULL} to request a claim without a constraint, \code{value} for one acceptable
+value, or \code{values} for several. Lists are converted to JSON for the provider;
+a pre-encoded JSON object is also accepted. The provider must support claims
+requests. See Claims requests below for validation and numeric limits.}
 
 \item{state_store}{Storage for pending logins. The default
 \code{cachem::cache_mem(max_age = 300)} is suitable for one R process.
@@ -185,13 +177,9 @@ Supported values are \code{HS256}, \code{HS384}, \code{HS512} for client_secret_
 supported for outbound signing (\code{RS256}, \code{RS384}, \code{ES256}, \code{ES384}, \code{ES512}, and
 \code{Ed25519} or legacy \code{EdDSA} with Ed25519 keys) for private keys. \code{RS512}, \code{PS256}, \code{PS384}, and \code{PS512}
 are not currently supported for outbound client assertions.
-A shared HMAC secret must use the same algorithm across enabled ID token,
-JARM, JAR and endpoint assertion profiles (RFC 8725 section 3.1). This includes
-inferred defaults and metadata-selected endpoint algorithms. Endpoint
-overrides using distinct secrets may select different algorithms.
-RSA signing keys are likewise bound by public material across client
-assertions, JAR, DPoP and endpoint overrides; different \code{kid} values or PEM
-spellings do not create distinct keys.}
+Reusing an RSA key or HMAC secret requires the same signing algorithm across
+enabled profiles and endpoint overrides. Use separate keys or secrets when
+algorithms differ; see the advanced security vignette.}
 
 \item{client_assertion_audience}{Optional override for the \code{aud} claim used when building
 JWT client assertions (\code{client_secret_jwt} / \code{private_key_jwt}). By default, shinyOAuth
@@ -598,44 +586,19 @@ compatibility.}
 
 \item{introspect_elements}{Compatibility alias for \code{introspection_checks}. Supply only one spelling.}
 
-\item{token_targets}{Optional named list of API token declarations. Each
-entry has \code{resource} (an absolute URI, or a GUID in Microsoft mode)
-and \code{scopes} (API scopes also present
-in the client's \code{scopes}). Optional \code{required_scopes} apply only to this
-target; optional \code{resource_ids} explicitly associate approved HTTP
-\code{resource_bases} with this target. Requires a provider with a supported
-\code{token_target_mode}, \code{userinfo_required = FALSE}, and no \code{resource} or
-SMART configuration. Provider \code{extra_auth_params} and \code{extra_token_params}
-must not contain \code{resource}; declare resources only in \code{token_targets}.
-RFC 8707 mode reserves OIDC scope names only for an OIDC provider or when
-client \code{scopes} includes \code{openid}; otherwise these names are ordinary API
-scopes declared in targets. Microsoft always uses its OIDC scope set.
-Client-level \code{required_scopes} can contain OIDC scopes only, except
-\code{offline_access}: request refresh consent in client \code{scopes}, never in
-client or target \code{required_scopes}. Access-token scopes cannot establish
-whether a usable refresh credential exists.
-Targets share one local authorization and refresh credential,
-while their access tokens and retained permission limits remain separate.
-Microsoft limits constrain local operation checks, while the actual token
-can include previously consented scopes for the selected resource. Explicit
-API scope narrowing is unsupported for Microsoft targets.
-Distinct Microsoft target resources must not have overlapping scope
-prefixes; nested resources are ambiguous with slash-containing permissions.
-Optional Microsoft \code{scope_aliases} lists short permission names (for example,
-\code{c("items/read", "read:items")}) accepted in token responses. These aliases
-support optional \code{.default} and prior-consent permissions without requesting
-or requiring them. Aliases never establish a grant or widen operation limits;
-URI names with \verb{://} and declared resource prefixes remain reserved.
-At most 16 targets are supported. The complete authorization, including
-OIDC scopes and actual permissions returned by Microsoft, is
-limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
-Scope declarations may be vectors or space-delimited strings.
-See \code{vignette("token-targets")} for provider rules and examples.}
+\item{token_targets}{Optional named list for obtaining tokens for several APIs
+through one login. Each entry needs a \code{resource} identifier and \code{scopes}
+(also included in client \code{scopes}). Optional \code{required_scopes} set that API's
+minimum permissions; \code{resource_ids} associate it with named \code{resource_bases}.
+Optional Microsoft \code{scope_aliases} identify unusual short permission names
+in responses. Requires provider support and \code{userinfo_required = FALSE};
+cannot be combined with \code{resource} or SMART configuration.
+See \code{vignette("token-targets")} for examples, provider-specific permission
+rules and declaration limits.}
 
-\item{default_token_target}{Name of the initial code-redemption target and
-the default for connection methods. Required with multiple targets;
-\code{\link[=oauth_client]{oauth_client()}} selects the sole target automatically. A method's \code{target}
-argument overrides only that call, never the configured default.}
+\item{default_token_target}{Name of the API to use when a connection method
+omits \code{target}. Required with several targets; the sole target is selected
+automatically. Selecting a target for one call does not change this default.}
 }
 \value{
 \link{OAuthClient} object
@@ -654,6 +617,21 @@ workers, and validation arguments to require particular scopes, claims, or
 authentication context. See the \href{https://lukakoning.github.io/shinyOAuth/articles/usage.html}{usage vignette} for a complete app, or
 the \href{https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html}{advanced security vignette} for certificate and signed-request settings.
 }
+\section{Claims requests}{
+
+Use an R list for most applications. \code{values} vectors become JSON arrays,
+including single-element vectors. Each claim entry is \code{NULL} or a named list;
+\code{essential} must be logical, and \code{value} and \code{values} cannot be combined.
+Pre-encoded JSON must use unique member names, object-valued target sections
+and nonempty arrays for \code{values}. Invalid requests are rejected even when
+\code{claims_validation = "none"} disables checking returned values.
+
+Numbers use R's numeric precision and must be finite and within
+\verb{+/- (2^53 - 1)}. Use strings for larger exact identifiers or decimal values
+that R cannot represent accurately. UserInfo claim checks require automatic
+profile retrieval and a configured UserInfo endpoint.
+}
+
 \examples{
 # Register an app with GitHub and store its credentials in your environment.
 # This creates the configuration; it does not start login or contact GitHub.

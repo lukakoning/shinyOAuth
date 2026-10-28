@@ -34,10 +34,9 @@ activity. Must be at least \code{idle_timeout}.}
 
 \item{same_site}{Owner-cookie policy, \code{"Lax"} for top-level authorization
 navigation or \code{"Strict"}. Embedded cross-site ownership is not supported.
-With \code{"Strict"}, \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} serves an intermediate same-origin
-document on external entry and after validating a callback, before checking
-the existing owner. Ordinary entry recovery requires same-origin Fetch
-Metadata or a same-origin \code{Referer} or \code{Origin} header from the browser.}
+With \code{"Strict"}, \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} may show a brief intermediate page
+when returning from another site, so the browser can restore the saved
+session. See Deployment details below if a proxy changes browser headers.}
 
 \item{allow_http_loopback}{Explicit development-only exception for HTTP on
 localhost or a loopback address. Default \code{FALSE} requires HTTPS. The exception
@@ -88,12 +87,22 @@ and a \verb{__Host-} name on HTTPS. It contains no OAuth token or patient data. 
 idle and absolute limits are authoritative. A cookie is never accepted as an
 owner without a matching live server record for this application origin.
 
-Cookies are shared across ports on the same host, even with HttpOnly, Secure
-and a \verb{__Host-} name (\href{https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5}{RFC 6265 section 8.5}).
-All HTTPS services on that host that receive the owner cookie must be trusted,
-because they can read and replay it. The origin hash in the cookie name
-distinguishes applications but does not isolate the cookie from other ports.
-Use separate hostnames for mutually untrusted services.
+Account retention requires finite idle, absolute and local reauthentication
+lifetimes. The internal session registry re-runs \code{resolver} when resolving or
+validating an owner and checks the intended subject/session generation.
+Expiry or logout retires that generation until a fresh local authentication
+session is supplied. A resolver error fails closed with a redacted error.
+The application remains responsible for validating its local session, including
+signature, expiry, revocation and account changes. Supplying this configuration
+is not proof that an arbitrary user ID is authenticated.
+}
+\section{Deployment details}{
+
+Host the app separately from untrusted services. Browser cookies are shared
+across ports on a hostname, so another HTTPS service receiving the owner
+cookie could reuse it. Different cookie names do not isolate those services.
+With \code{same_site = "Strict"}, external-entry recovery needs same-origin Fetch
+Metadata, \code{Referer} or \code{Origin} headers; a proxy must preserve that information.
 
 Cookie rotation invalidates the previous session generation immediately and
 preserves the original absolute lifetime. Local logout removes the live owner
@@ -107,16 +116,8 @@ sessions or retirement records. Browser session end does not release ownership; 
 idle/absolute expiry does. Account logout retains its retired generation until
 \code{authenticated_at + reauth_after_seconds} so it cannot be enrolled again.
 Size \code{max_entries} for that entire window, not only simultaneous Shiny sessions.
-
-Account retention requires finite idle, absolute and local reauthentication
-lifetimes. The internal session registry re-runs \code{resolver} when resolving or
-validating an owner and checks the intended subject/session generation.
-Expiry or logout retires that generation until a fresh local authentication
-session is supplied. A resolver error fails closed with a redacted error.
-The application remains responsible for validating its local session, including
-signature, expiry, revocation and account changes. Supplying this configuration
-is not proof that an arbitrary user ID is authenticated.
 }
+
 \examples{
 # Browser connections expire after 15 minutes idle or 8 hours in total.
 oauth_browser_owner(idle_timeout = 15 * 60, absolute_timeout = 8 * 3600)

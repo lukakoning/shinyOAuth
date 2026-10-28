@@ -107,16 +107,20 @@ copied into the provider when present. Discovering an introspection endpoint
 does not itself require token introspection; set \code{introspect = TRUE} on
 \code{\link[=oauth_client]{oauth_client()}} when login and refresh must perform that check.
 
-Discovery describes what a service supports. Your app's registration may
-require a particular \code{token_auth_style}, secret, or key; configure those to
-match the registration. Automatic selection prefers \code{"header"}, then \code{"body"},
-then \code{"public"} when \code{none} is advertised and PKCE is enabled. For a public
-client registration, set \code{token_auth_style = "public"} explicitly. JWT and
-mTLS methods must also be selected explicitly.
-Explicit choices must match the discovery metadata. If
-\code{token_endpoint_auth_methods_supported} is omitted, the OIDC default is
-\code{client_secret_basic} (\code{"header"}); other methods must be advertised.
+Discovery describes the service, not your app registration. Use the client ID
+and secret or key issued for your app. If the registration is public (no
+secret), explicitly select \code{token_auth_style = "public"}. Other authentication
+choices and metadata restrictions are described below.
 }
+\section{Advanced authentication selection}{
+
+Automatic selection prefers \code{"header"}, then \code{"body"}, then \code{"public"} when
+\code{none} is advertised and PKCE is enabled. JWT and mTLS methods require an
+explicit choice. Selected methods must match the advertised metadata.
+If \code{token_endpoint_auth_methods_supported} is absent, only the OIDC default
+\code{client_secret_basic} (\code{"header"}) is assumed.
+}
+
 \section{Discovery validation}{
 
 The discovered issuer must match the requested identifier by default.

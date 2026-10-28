@@ -25,32 +25,18 @@ Should store the value under the given key.}
 
 \item{remove}{A function(key) -> any. Required.
 
-Deletes the entry for \code{key}. When \verb{[["take"]]()} is provided, \verb{[["remove"]]()} serves
-only as a best-effort cleanup and its return value is ignored. When
-\verb{[["take"]]()} is not provided, shinyOAuth falls back to
-\verb{[["get"]]()} + \verb{[["remove"]]()} followed by a post-removal absence check via
-\verb{[["get"]](key, missing = NA)}. In this fallback path the return value of
-\verb{[["remove"]]()} is not relied upon; the post-check is authoritative.}
+Delete the entry for \code{key}. shinyOAuth does not depend on the return value.
+State consumption uses atomic \code{take} where available; a process-local
+fallback checks that removal succeeded.}
 
 \item{take}{A function(key, missing = NULL) -> value. Optional.
 
-An atomic get-and-delete operation. When provided, shinyOAuth uses
-\verb{[["take"]]()} instead of separate \verb{[["get"]]()} + \verb{[["remove"]]()} calls to enforce
-single-use state consumption. This prevents TOCTOU (time-of-check /
-time-of-use) replay attacks in multi-worker deployments with shared state
-stores.
-
-Should return the stored value and atomically remove the entry, or
-return the \code{missing} argument (default \code{NULL}) if the key is not present.
-
-If your backend supports atomic get-and-delete natively
-(e.g., Redis \code{GETDEL}, SQL \verb{DELETE ... RETURNING}), wire it through this
-parameter for replay-safe state stores.
-
-When \code{take} is not provided and the state store is not a per-process cache
-(like \code{\link[cachem:cache_mem]{cachem::cache_mem()}}), shinyOAuth will \strong{error} at state
-consumption time because non-atomic \verb{[["get"]]()} + \verb{[["remove"]]()} cannot
-guarantee single-use under concurrent access in shared stores.}
+Read and remove the entry as one indivisible operation, returning its value
+or the \code{missing} argument when absent. Required for shared state stores:
+separate reads and deletes can let two requests use the same login record.
+Redis \code{GETDEL} and SQL \verb{DELETE ... RETURNING} are examples. The process-local
+memory store has a safe fallback; custom/shared stores without \code{take} fail
+by default when login state is consumed.}
 
 \item{info}{Function() -> list(max_age = seconds, ...). Optional
 
@@ -118,22 +104,13 @@ See the \href{https://lukakoning.github.io/shinyOAuth/articles/usage.html#multip
 For the \code{form_post} and \code{form_post.jwt} callback bridges, also implement
 \code{set_if_absent} to reserve callback slots without replacing pending responses.
 
-Store values are small R lists; preserve them without interpreting fields.
-Pending login records in external stores are AES-GCM sealed with a distinct
-key derived from \code{state_key} and bound to the client, provider, and state key.
-The backend receives an opaque \code{sealed_state_record} string instead of the
-browser binding, PKCE verifier, and nonce. Existing unsealed external records
-are rejected; users with logins pending across an upgrade must restart login.
-The default process-local memory store keeps records within the R trust boundary.
-Encryption does not replace backend access controls, expiry, or atomic \code{take}:
-a backend able to restore consumed entries can still violate single-use state.
+Preserve the stored R values unchanged. Pending login records are encrypted,
+but the backend must still enforce access controls, expiry and atomic
+consumption. An upgrade can invalidate pending records; users then restart login.
 
-With \code{request_object_mode = "request_uri"}, hosted Request Objects are stored
-as separate records containing the signed or encrypted JWT and its expiry.
-These records do not use the pending-login \code{sealed_state_record} wrapper.
-A signed, unencrypted JWT has readable claims, including authorization request
-details. Configure Request Object JWE encryption when those claims need
-confidentiality, and apply backend access controls and expiry to these records.
+Hosted Request Objects (\code{request_object_mode = "request_uri"}) use separate
+records. Signed objects can contain readable authorization details; configure
+Request Object encryption if these details must be confidential in storage.
 
 For a state store, returning \code{max_age} in seconds from \code{info()} also lets
 \code{\link[=oauth_module_server]{oauth_module_server()}} align the browser cookie lifetime with the store.

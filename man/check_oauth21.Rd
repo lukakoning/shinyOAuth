@@ -2,74 +2,74 @@
 % Please edit documentation in R/check_oauth21.R
 \name{check_oauth21}
 \alias{check_oauth21}
-\title{Assess an OAuth configuration against a pinned OAuth 2.1 draft}
+\title{Review an OAuth client configuration before deployment}
 \usage{
 check_oauth21(config, context = list(), draft = "draft-ietf-oauth-v2-1-16")
 }
 \arguments{
-\item{config}{An \link{OAuthClient} or \link{OAuthProvider}. Provider-only assessments
-are partial and cannot establish missing client settings.}
+\item{config}{An \link{OAuthClient} or \link{OAuthProvider}. A provider-only report is
+partial because it cannot check your client registration settings.}
 
-\item{context}{Optional named list with \code{operations}, a character vector
-selecting additional \code{"userinfo"}, \code{"introspection"} or \code{"revocation"}
-operations, and \code{nonce_exception}, a scalar logical declaration. Setting
-\code{nonce_exception = TRUE} declares that the authorization server has the
-assurance required by draft section 7.5.1.1 for this confidential deployment
-and specific request's correct OIDC nonce use. It does not supply observed
-evidence or excuse missing local prerequisites. Prefer S256 PKCE.}
+\item{context}{Optional list. \code{operations} selects additional \code{"userinfo"},
+\code{"introspection"} or \code{"revocation"} checks. The advanced \code{nonce_exception}
+declaration is described below; most apps should leave it unset.}
 
-\item{draft}{Implemented target revision. Currently only
-\code{"draft-ietf-oauth-v2-1-16"} is supported (an Internet-Draft, not an RFC).}
+\item{draft}{Target specification revision. Currently only
+\code{"draft-ietf-oauth-v2-1-16"} is supported; this is an Internet-Draft, not an RFC.}
 }
 \value{
-A \code{shinyOAuth_oauth21_assessment} list with \code{configuration_compliant},
-\code{checks}, \code{draft}, \code{ruleset_version}, \code{package_version}, \code{assessed_at},
-\code{assessment_scope}, and \code{operations}. \code{checks} is a data frame with stable
-\code{id}, \code{scope}, \code{status} (\code{pass}, \code{fail}, \code{warn}, \code{unknown}, \code{not_applicable}),
-\code{requirement} (\code{MUST}, \code{SHOULD}, \code{info}), \code{message}, \code{remediation}, \code{reference},
-\code{evidence_source}, \code{requirement_source}, and logical \code{affects_verdict} columns. Only rows with
-\code{affects_verdict = TRUE} enter aggregation; unknown external obligations
-remain visible separately. \code{warn} records a compatibility warning, such as
-accepting a missing token type, and does not by itself fail the verdict.
+A \code{shinyOAuth_oauth21_assessment} list. \code{checks} is a data frame with
+\code{id}, \code{scope}, \code{status}, \code{requirement}, \code{message}, \code{remediation}, \code{reference},
+\code{evidence_source}, \code{requirement_source} and \code{affects_verdict} columns.
+Statuses are \code{pass}, \code{fail}, \code{warn}, \code{unknown} and \code{not_applicable}.
+Only rows with \code{affects_verdict = TRUE} affect \code{configuration_compliant}.
+A compatibility \code{warn} does not by itself fail the verdict.
+The report also records \code{draft}, \code{ruleset_version}, \code{package_version},
+\code{assessed_at}, \code{assessment_scope} and \code{operations}.
 }
 \description{
-This function inspects a configured \link{OAuthClient} and its \link{OAuthProvider} for
-compliance with the OAuth 2.1 draft 16 (ruleset \verb{1.1.1}) specification. It
-reports configuration gaps, unresolved external prerequisites, and recommendations
-without changing the configuration or making requests.
+Check a configured \link{OAuthClient} for missing settings and recommendations.
+The result includes a table of findings and suggested fixes. The check is
+read-only: it does not make requests, start login or change the configuration.
 }
 \details{
-Ruleset \verb{1.1.1} covers code/refresh, enabled PAR, required UserInfo and
-introspection, and the additional operations selected in \code{context}. Signing
-and encryption key retrieval is included when applicable. Future resource URLs, arbitrary
-request customization, browser/proxy TLS, registered redirect matching, secret
-custody, and authorization/resource server behavior require separate evidence.
-Optional DPoP, mTLS, PAR, JAR and JARM are not required as a bundle.
-File-backed mTLS credential usability is unresolved: assessment does not load
-certificate or private-key files or establish their correspondence. Applicable
-\code{mtls.credentials.*} checks remain unknown even when both paths are configured;
-missing required paths fail. Runtime validates the current files before each
-mTLS request, including after rotation.
+Call \code{assessment <- check_oauth21(client)}, then read \code{assessment$checks}.
+\code{assessment$configuration_compliant} is \code{FALSE} for a known mandatory failure,
+\code{NA} for unresolved mandatory settings, and \code{TRUE} when the applicable mandatory
+configuration checks pass. Recommendations and unknown external behavior do not
+change that result.
 
-\code{configuration_compliant} is \code{FALSE} if an applicable mandatory configuration
-check fails; otherwise \code{NA} if a mandatory configuration check is unresolved;
-otherwise \code{TRUE} when a nonempty set of applicable mandatory checks passes.
-Recommendations and external unknowns do not change that verdict. In
-particular, the legacy assertion type \code{JWT} is a recommendation finding;
-the assertion audience is a separate mandatory check for JWT authentication.
-\code{requirement_source} distinguishes OAuth core, OIDC, extension specifications,
-security guidance and local package/application policy. Callback capacity
-thresholds are package recommendations, not draft-defined numeric minima;
-complete encoded requests still need deployment testing. OAuth 2.1 assessment
-is opt-in and does not change existing OAuth 2.0 configuration or requests.
-
-A positive verdict applies only to the recorded scope and ruleset, with the
-current configuration, options, runtime and declared context. It is not
-certification or a test of a live deployment. Rerun after policy changes.
-Reports contain no client/provider objects, credentials, keys or endpoint
-URLs. No caches or state stores are read or changed; their method contracts
-are inspected without invoking them.
+This assessment uses OAuth 2.1 draft 16, ruleset \verb{1.1.1}. It is not certification
+or a test of your running provider. Rerun it after changing configuration.
 }
+\section{Advanced assessment scope}{
+
+Checks cover code exchange, refresh, enabled PAR, required UserInfo and
+introspection, selected extra operations and applicable signing-key retrieval.
+Optional DPoP, mTLS, PAR, JAR and JARM are not required together.
+Provider enforcement, registered redirects, secret storage, browser/proxy TLS
+and future API requests need separate deployment checks.
+
+mTLS file paths do not establish that a certificate and key are readable and
+match. The checker does not open them, so applicable \verb{mtls.credentials.*} checks
+remain \code{unknown} when paths are present; missing required paths fail.
+Actual requests validate the current files.
+
+\code{requirement_source} distinguishes protocol requirements from security guidance
+and package policy. Callback capacity thresholds are package recommendations,
+not numeric limits from the draft. Reports exclude credentials, keys, endpoint
+URLs and the configuration objects. Cache and state-store methods are not run.
+}
+
+\section{Advanced PKCE exception}{
+
+\code{context = list(nonce_exception = TRUE)} declares independently established
+server assurance for the draft's confidential-client nonce exception
+(section 7.5.1.1). It does not supply observed evidence or bypass missing local
+requirements. Prefer S256 PKCE. Assertion audience checks are mandatory for JWT
+authentication; advice about the legacy \code{JWT} assertion type is a recommendation.
+}
+
 \examples{
 provider <- oauth_provider(
   name = "Example",

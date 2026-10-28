@@ -57,12 +57,9 @@ Without an allowlist this performs HTTPS and URL-syntax validation only
 Set to \code{FALSE} only if you have already validated the URL and understand
 the security implications.}
 
-\item{client}{Optional \link{OAuthClient}. Required when the effective
-token type is \code{DPoP}, because the client carries the configured DPoP proof
-key, and also when using sender-constrained mTLS / certificate-bound
-tokens so shinyOAuth can attach the configured client certificate and
-validate any \code{cnf} thumbprint from an \link{OAuthToken} and observe any \code{cnf}
-thumbprint carried on a raw JWT access-token string.}
+\item{client}{Optional \link{OAuthClient}; required for DPoP or mTLS-bound tokens
+so the request can use the matching signing key or certificate and check
+any token-binding information.}
 
 \item{token_type}{Optional override for the access token type when \code{token}
 is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.

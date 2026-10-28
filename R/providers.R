@@ -29,8 +29,8 @@
 #' @param token_auth_style Token endpoint client authentication style passed to
 #'   [oauth_provider()]. Defaults to `"header"`.
 #' @param issuer Exact OIDC issuer identifier. Defaults to `base_url`, retaining
-#'   any trailing slash. Endpoint URLs are joined using a separately normalized
-#'   base. Supply this explicitly when the issuer differs from the endpoint base.
+#'   any trailing slash. Supply this explicitly when your provider identifies
+#'   itself with a different URL from the one used to build endpoint addresses.
 #' @param jwks_host_issuer_match When TRUE (default), enforce that the JWKS host
 #'   discovered from the provider matches the issuer host exactly. For
 #'   providers that serve JWKS from a different host (e.g., Google), set
@@ -93,8 +93,7 @@ oauth_provider_oidc <- function(
 #' Create the provider configuration for a GitHub OAuth App, then pass it with
 #' your app credentials to [oauth_client()]. This configures profile retrieval
 #' from GitHub's API; GitHub does not return an OIDC ID token.
-#' GitHub's comma-separated token response scopes are normalized before granted
-#' permissions are validated and stored, including when `name` is customized.
+#' The helper handles GitHub's permission-response format automatically.
 #'
 #' @details
 #' You can register a new GitHub OAuth 2.0 app in your
@@ -202,13 +201,16 @@ oauth_provider_google <- function(name = "google") {
 #' accounts, and `"common"` allows both. Your app registration and app access
 #' rules must also permit the intended accounts.
 #'
+#' Profiles are fetched from Microsoft Graph by default. Set
+#' `userinfo_required = FALSE` for an API token that cannot call Graph;
+#' `connection$identity()` still provides the validated login identity.
+#'
+#' @section Advanced identity settings:
 #' ID token validation is enabled for these tenant choices. For a directory ID,
 #' the issuer must match that directory. `"common"` and `"organizations"` use
 #' Microsoft's tenant-independent issuer template and signing-key issuer rules.
 #' `"consumers"` uses the consumer tenant issuer. The helper restricts ID token
-#' algorithms to RS256 and fetches UserInfo from Microsoft Graph by default.
-#' Set `userinfo_required = FALSE` when using an API token that cannot call Graph;
-#' validated ID-token claims remain available through `connection$identity()`.
+#' algorithms to RS256.
 #'
 #' Setting `id_token_validation = FALSE` disables ID token and nonce checks and
 #' leaves OAuth plus any configured profile retrieval. Keep the default for OIDC

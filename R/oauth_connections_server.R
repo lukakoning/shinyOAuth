@@ -1,9 +1,10 @@
 #' Connect, restore and use several OAuth authorizations in a Shiny session
 #'
-#' Call once inside `server()` with the manager and ID used by
-#' [oauth_connections_ui()]. The returned methods select stored connections by
-#' opaque IDs and recheck the local owner for every operation. Tokens are kept
-#' on the server and are not returned by summaries.
+#' Let users connect several accounts or services, choose a saved connection,
+#' and call its API from your Shiny server. Call this once inside `server()` with
+#' the manager and ID used by [oauth_connections_ui()]. Connection summaries show
+#' status without exposing tokens; server code can obtain a current token from
+#' the selected connection when another R package needs it.
 #'
 #' @param id Module ID shared with [oauth_connections_ui()].
 #' @param manager Configuration from [oauth_connections()].
@@ -35,17 +36,24 @@
 #'     Call from an input event handler; returns `TRUE` invisibly.
 #'   * `disconnect(connection_id, revoke = TRUE)`: remove local usability first,
 #'     then return separate `local` and `remote` revocation results.
-#'     `remote$access` aggregates the primary and acquired target tokens, with
-#'     precedence `failed`, `not_attempted`, `unsupported`, `accepted`, `missing`.
+#'     For token targets, `remote$access` summarizes all acquired API tokens;
+#'     incomplete or failed cleanup takes priority over successful cleanup.
 #'   * `disconnect_all(revoke = TRUE)`: cancel pending authorizations and disconnect
 #'     this owner's stored connections; return a list of results.
-#'   * `logout(revoke = TRUE, reload = TRUE)`: invalidate the local owner/session
-#'     generation first, disconnect its connections, and normally reload the UI.
+#'   * `logout(revoke = TRUE, reload = TRUE)`: end the local owner session,
+#'     disconnect its connections, and normally reload the UI.
 #'     This does not log the user out of the external OAuth provider or the app's
 #'     own account authentication system.
 #'   * `errors()`: reactive list of per-client module error codes, with no raw
 #'     provider text. An ended owner is reported as `owner_unavailable`.
 #' @details
+#' Use `auth$connections()` to populate a selection control, then
+#' `connection <- auth$connection(selected_id)` for the chosen account.
+#' `connection$request()` calls a configured API; `connection$access_token()`
+#' supplies a current token for an SDK. See `vignette("multiple-authorizations")`
+#' for a complete app and `vignette("external-integrations")` for SDK examples.
+#'
+#' @section Advanced lifetime and refresh behavior:
 #' References expire with this Shiny session even when their stored grants survive.
 #' A new session obtains new references after owner verification. The manager
 #' coordinates refresh across its connections. Refresh preserves the original

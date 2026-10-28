@@ -30,10 +30,9 @@ ID, mutually exclusive with \code{id} and \code{client}.}
 A UI function to use as the \code{ui} argument to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
 }
 \description{
-Wrap your complete UI in \code{oauth_ui()} when using \code{\link[=oauth_module_server]{oauth_module_server()}}.
-It adds the browser code needed for login and protects callback responses
-from caching and referrer disclosure. Supply \code{id} and \code{client} to accept
-query callbacks before rendering any application UI or scripts.
+Wrap your complete UI when using \code{\link[=oauth_module_server]{oauth_module_server()}}. This adds the browser
+setup for login and handles the provider's return before showing your app.
+Supply the same \code{id} and \code{client} as the server module.
 }
 \details{
 Build the page as usual, for example with \code{fluidPage()}, then use
@@ -42,44 +41,42 @@ ID and client as the server. Pass the result to \code{\link[shiny:shinyApp]{shin
 are supported too, including functions accepting the Shiny request.
 This is the recommended setup for ordinary query-callback apps. It includes
 \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} setup; do not add a separate call inside the wrapped UI.
-With \code{client}, it also serves client-hosted Request Objects at the app root
-using independent, single-use handles. Shared-worker apps need a shared
-\code{client@state_store} with atomic \code{take()}; a memory store supports one process.
-
-For \code{response_mode = "form_post"} or \code{"form_post.jwt"}, use
-\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} instead; it includes this setup and accepts POST
-callbacks.
-
-GET callbacks are validated and sealed into short-lived, single-use bridge
-handles in the client's state store, then redirected to a clean URL before
-application HTML is rendered. Logical state is consumed only after the
-Shiny module verifies browser binding. The storage requirements and quotas
-are the same as \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}. Register any fixed application query
-parameters in \code{client@redirect_uri}; other inbound parameters are discarded.
-For non-root callback paths use \code{uiPattern = ".*"} in \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
-
-For multiple providers, supply \code{clients = list(auth_a = client_a, auth_b = client_b)} instead of \code{id} and \code{client}. Names are the server module
-IDs. The registry accepts query and form-post callbacks on configured routes.
-Each client must select a multi-server defense. Shared routes require
-\code{authorization_server_mode = "multi_issuer"} and distinct trusted issuers.
-An RFC 9207 \code{iss} or signed JARM issuer selects the configured client; the
-complete callback is then verified before a bridge handle is stored.
-Encrypted JARM on a shared route requires an outer \code{iss} identifying one
-distinct configured issuer. The decrypted, signed response must match it.
-Do not nest wrappers to route multiple providers.
-
-Without \code{id} and \code{client}, ordinary pages still render, but raw OAuth GET
-callbacks fail closed with a setup error. Earlier \code{oauth_ui(ui)} query-flow
-applications must add those arguments. When integrating \code{\link[=use_shinyOAuth]{use_shinyOAuth()}}
-directly, provide an equivalent dedicated callback endpoint: third-party or
-application scripts must not execute on an unsanitized callback page.
-
-HTML responses include \code{Cache-Control: no-store}, \code{Pragma: no-cache}, and
-\code{Referrer-Policy: no-referrer}. The browser reads these headers
-before loading page resources. The meta tag from \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} takes
-effect only once the browser reads that tag, so it may miss early resource
-requests. You can also set the same HTTP header at your web server.
+For POST login returns (\code{response_mode = "form_post"} or \code{"form_post.jwt"}),
+use \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} instead. For callback paths below the app root,
+pass \code{uiPattern = ".*"} to \code{\link[shiny:shinyApp]{shiny::shinyApp()}}.
 }
+\section{Several login modules}{
+
+Supply \code{clients = list(auth_a = client_a, auth_b = client_b)} instead of \code{id}
+and \code{client}. Names must match server module IDs. The wrapper handles each
+configured query or POST route; do not nest several wrappers.
+}
+
+\section{Advanced routing and storage}{
+
+Each client in a registry must select a multi-server defense. Shared routes
+require \code{authorization_server_mode = "multi_issuer"} and distinct trusted
+issuers. An RFC 9207 \code{iss} or signed JARM issuer selects the configured client;
+the callback is then fully verified. Encrypted JARM on a shared route needs an
+outer \code{iss} identifying one configured issuer, which the inner signed response
+must match.
+
+Callbacks use short-lived, single-use state-store records and a clean
+continuation URL before application HTML or scripts load. Shared workers need
+a shared state store with atomic consumption; see \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} and
+\code{\link[=custom_cache]{custom_cache()}}. Register fixed application query parameters in \code{redirect_uri};
+other incoming parameters are discarded. Client-hosted Request Objects also
+use this store and are served at the app root.
+
+Without \code{id} and \code{client}, ordinary pages render but raw login callbacks are
+rejected. A custom \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} integration must provide equivalent
+callback handling; application scripts must not run on raw callback pages.
+
+The wrapper sets no-store cache headers and \code{Referrer-Policy: no-referrer}
+before page resources load. A meta tag alone may be read too late to protect
+early requests. A web server may set the same headers.
+}
+
 \examples{
 base_ui <- shiny::fluidPage(
   shiny::h2("My app"),

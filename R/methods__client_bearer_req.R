@@ -19,20 +19,20 @@
 #' also supply `client` so the request uses the matching key or
 #' certificate.
 #'
-#' Managed Authorization credentials cannot be combined with an `access_token`
-#' query parameter or form field. Inspection covers URL/query inputs and prebuilt
-#' httr2 form, raw and string bodies labelled `application/x-www-form-urlencoded`.
-#' JSON business fields are unaffected. File, multipart and streaming bodies are
-#' not parsed; callers must ensure these contain no additional OAuth credential
-#' transport. Later request changes outside these helpers require a new check.
+#' Use [perform_resource_req()] to send the prepared request with the package's
+#' response-size limits. Sending it through [httr2::req_perform()] instead uses
+#' httr2's transport settings. Keep tokens on the server and away from logs.
 #'
-#' Response body limits require [perform_resource_req()], which bounds both
-#' encoded downloads and decoded gzip data before accumulating the full body.
-#' Performing this builder's result with [httr2::req_perform()] uses httr2's
-#' transport instead: shinyOAuth's decoded-body guarantee does not apply, and
-#' curl's size option depends on the installed libcurl version. Pass a prepared
-#' request to `perform_resource_req(token, request, client = client)` to retain
-#' the package's bounded transport and fresh authentication.
+#' @section Advanced request restrictions:
+#' Do not combine the managed Authorization header with an `access_token` query
+#' parameter or form field. The helper checks ordinary URL and form inputs, but
+#' does not inspect file, multipart or streaming bodies. You are responsible for
+#' avoiding additional credential fields there and after later request changes.
+#'
+#' [perform_resource_req()] limits both downloaded bytes and decoded gzip data.
+#' Direct httr2 execution does not provide shinyOAuth's decoded-response limit;
+#' its curl limit depends on the installed libcurl version. Prepared requests can
+#' be sent with `perform_resource_req(token, request, client = client)`.
 #'
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param url The absolute URL to call. Resource URLs must not exceed 8192 bytes,
@@ -70,12 +70,10 @@
 #'   is `FALSE`. Use exact hostnames for URLs derived from lower-trust input.
 #'   It constrains the initial URL, not redirect destinations or resolved IPs;
 #'   retain `follow_redirect = FALSE`. `NULL` adds no resource-specific policy.
-#' @param client Optional [OAuthClient]. Required when the effective
-#'   token type is `DPoP`, because the client carries the configured DPoP proof
-#'   key, and also when using sender-constrained mTLS / certificate-bound
-#'   tokens so shinyOAuth can attach the configured client certificate and
-#'   validate any `cnf` thumbprint from an [OAuthToken] and observe any `cnf`
-#'   thumbprint carried on a raw JWT access-token string.
+#' @param client Optional [OAuthClient]; required for DPoP or mTLS-bound tokens
+#'   so the request can use the matching signing key or certificate and check
+#'   any token-binding information.
+#'
 #' @param token_type Optional override for the access token type when `token`
 #'   is supplied as a raw string. Supported values are `Bearer` and `DPoP`.
 #'   Invalid or multi-valued inputs are rejected. When omitted, shinyOAuth
@@ -216,26 +214,23 @@ client_bearer_req <- function(
 #' also supply `client` so the request uses the matching key or
 #' certificate.
 #'
-#' This performer enforces `shinyOAuth.max_body_bytes` on encoded downloads and
-#' decoded gzip bodies before full accumulation, independently of libcurl's
-#' decompression limit support. Other content encodings are rejected. Use this
-#' path for prepared httr2 requests as well as URL strings.
+#' The helper applies `shinyOAuth.max_body_bytes` to response bodies, including
+#' gzip decompression. Use it for both URL strings and prepared httr2 requests.
 #'
 #' @inheritParams resource_req
-#' @param url Either the absolute URL to call or an [httr2::request()] object
-#'   with a URL of at most 8192 bytes before and after applying `query`.
-#'   to authorize and perform. When you pass a request object, shinyOAuth uses
-#'   it as the base request, still applies token authentication and request
-#'   defaults, and then layers any explicit `method`, `headers`, `query`, and
-#'   `follow_redirect` overrides on top.
-#'   Inherited httr2 authentication, caching, and retry policies, and curl
-#'   authentication, method-changing, or `request_target` options are rejected. Use
-#'   [httr2::req_method()] and httr2 body helpers to configure the request.
-#'   HEAD requests with bodies are rejected because httr2 can transmit them
-#'   as POST despite the explicit method.
-#'   Authenticated response caching is
-#'   unsupported. shinyOAuth owns retries; configure them with `idempotent`
-#'   and the `shinyOAuth.retry_*` options.
+#' @param url The absolute API URL, or a prepared [httr2::request()] object.
+#'   The URL must be at most 8192 bytes before and after adding `query`.
+#'   The helper adds current authentication and defaults to a prepared request,
+#'   then applies explicit `method`, `headers`, `query` and redirect overrides.
+#'   See Prepared requests for customization restrictions.
+#' @section Prepared requests:
+#' Use [httr2::req_method()] and body helpers to prepare a request, then let
+#' shinyOAuth manage authentication and retries. Existing httr2 authentication,
+#' caching and retry policies, and curl authentication, method-changing or
+#' `request_target` options are rejected. HEAD requests cannot have bodies,
+#' because httr2 may send those as POST. Authenticated response caching is
+#' unsupported. Configure retries with `idempotent` and `shinyOAuth.retry_*`.
+#'
 #' @param idempotent Whether ordinary network/HTTP failures may be
 #'   retried safely. `NULL` (default) infers this from the final HTTP method:
 #'   GET, HEAD, OPTIONS, PUT, and DELETE permit retries. Set it explicitly if

@@ -13,10 +13,9 @@
 #'   activity. Must be at least `idle_timeout`.
 #' @param same_site Owner-cookie policy, `"Lax"` for top-level authorization
 #'   navigation or `"Strict"`. Embedded cross-site ownership is not supported.
-#'   With `"Strict"`, [oauth_connections_ui()] serves an intermediate same-origin
-#'   document on external entry and after validating a callback, before checking
-#'   the existing owner. Ordinary entry recovery requires same-origin Fetch
-#'   Metadata or a same-origin `Referer` or `Origin` header from the browser.
+#'   With `"Strict"`, [oauth_connections_ui()] may show a brief intermediate page
+#'   when returning from another site, so the browser can restore the saved
+#'   session. See Deployment details below if a proxy changes browser headers.
 #' @param allow_http_loopback Explicit development-only exception for HTTP on
 #'   localhost or a loopback address. Default `FALSE` requires HTTPS. The exception
 #'   cannot provide a Secure, host-prefixed owner cookie.
@@ -39,12 +38,12 @@
 #' idle and absolute limits are authoritative. A cookie is never accepted as an
 #' owner without a matching live server record for this application origin.
 #'
-#' Cookies are shared across ports on the same host, even with HttpOnly, Secure
-#' and a `__Host-` name ([RFC 6265 section 8.5](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5)).
-#' All HTTPS services on that host that receive the owner cookie must be trusted,
-#' because they can read and replay it. The origin hash in the cookie name
-#' distinguishes applications but does not isolate the cookie from other ports.
-#' Use separate hostnames for mutually untrusted services.
+#' @section Deployment details:
+#' Host the app separately from untrusted services. Browser cookies are shared
+#' across ports on a hostname, so another HTTPS service receiving the owner
+#' cookie could reuse it. Different cookie names do not isolate those services.
+#' With `same_site = "Strict"`, external-entry recovery needs same-origin Fetch
+#' Metadata, `Referer` or `Origin` headers; a proxy must preserve that information.
 #'
 #' Cookie rotation invalidates the previous session generation immediately and
 #' preserves the original absolute lifetime. Local logout removes the live owner

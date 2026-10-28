@@ -2,7 +2,7 @@
 % Please edit documentation in R/providers__research_enterprise.R
 \name{oauth_provider_authentik}
 \alias{oauth_provider_authentik}
-\title{Create an authentik \link{OAuthProvider} (via OIDC discovery)}
+\title{Configure sign-in with authentik}
 \usage{
 oauth_provider_authentik(
   base_url,

@@ -57,12 +57,9 @@ Without an allowlist this performs HTTPS and URL-syntax validation only
 Set to \code{FALSE} only if you have already validated the URL and understand
 the security implications.}
 
-\item{client}{Optional \link{OAuthClient}. Required when the effective
-token type is \code{DPoP}, because the client carries the configured DPoP proof
-key, and also when using sender-constrained mTLS / certificate-bound
-tokens so shinyOAuth can attach the configured client certificate and
-validate any \code{cnf} thumbprint from an \link{OAuthToken} and observe any \code{cnf}
-thumbprint carried on a raw JWT access-token string.}
+\item{client}{Optional \link{OAuthClient}; required for DPoP or mTLS-bound tokens
+so the request can use the matching signing key or certificate and check
+any token-binding information.}
 
 \item{token_type}{Optional override for the access token type when \code{token}
 is supplied as a raw string. Supported values are \code{Bearer} and \code{DPoP}.
@@ -103,21 +100,23 @@ and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
 also supply \code{client} so the request uses the matching key or
 certificate.
 
-Managed Authorization credentials cannot be combined with an \code{access_token}
-query parameter or form field. Inspection covers URL/query inputs and prebuilt
-httr2 form, raw and string bodies labelled \code{application/x-www-form-urlencoded}.
-JSON business fields are unaffected. File, multipart and streaming bodies are
-not parsed; callers must ensure these contain no additional OAuth credential
-transport. Later request changes outside these helpers require a new check.
-
-Response body limits require \code{\link[=perform_resource_req]{perform_resource_req()}}, which bounds both
-encoded downloads and decoded gzip data before accumulating the full body.
-Performing this builder's result with \code{\link[httr2:req_perform]{httr2::req_perform()}} uses httr2's
-transport instead: shinyOAuth's decoded-body guarantee does not apply, and
-curl's size option depends on the installed libcurl version. Pass a prepared
-request to \code{perform_resource_req(token, request, client = client)} to retain
-the package's bounded transport and fresh authentication.
+Use \code{\link[=perform_resource_req]{perform_resource_req()}} to send the prepared request with the package's
+response-size limits. Sending it through \code{\link[httr2:req_perform]{httr2::req_perform()}} instead uses
+httr2's transport settings. Keep tokens on the server and away from logs.
 }
+\section{Advanced request restrictions}{
+
+Do not combine the managed Authorization header with an \code{access_token} query
+parameter or form field. The helper checks ordinary URL and form inputs, but
+does not inspect file, multipart or streaming bodies. You are responsible for
+avoiding additional credential fields there and after later request changes.
+
+\code{\link[=perform_resource_req]{perform_resource_req()}} limits both downloaded bytes and decoded gzip data.
+Direct httr2 execution does not provide shinyOAuth's decoded-response limit;
+its curl limit depends on the installed libcurl version. Prepared requests can
+be sent with \code{perform_resource_req(token, request, client = client)}.
+}
+
 \section{DPoP note}{
 
 DPoP proofs bind the current HTTP method and target URI (without query or
@@ -152,7 +151,7 @@ if (interactive()) {
   )
 
   # Inspect request settings without printing authentication headers.
-  # Keep bounded encoded/decoded response handling when sending it.
+  # Keep the package's response-size limits when sending it.
   response <- perform_resource_req(token, request)
 
   # Or start from your own httr2 request and still let shinyOAuth perform it

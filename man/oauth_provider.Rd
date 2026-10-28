@@ -241,23 +241,19 @@ The result is stored in \code{token@userinfo}; a failed required fetch stops
 login. In \code{\link[=oauth_provider]{oauth_provider()}}, this defaults to \code{TRUE} when \code{userinfo_url}
 is supplied and \code{FALSE} otherwise.}
 
-\item{userinfo_id_token_match}{Whether fetched userinfo requires a validated ID
-token for comparison. When both are available, their actual \code{sub} values
-are always compared. \code{TRUE} also stops login if the validated ID token is
-absent. Requires a valid \code{userinfo_url} and either \code{id_token_validation} or
-\code{use_nonce}. Both constructors enable this by default when those requirements
-are met, including when \code{userinfo_required = FALSE} and UserInfo is fetched
-manually. Set an explicit \code{FALSE} only to permit profile retrieval without
-a validated identity; an available validated ID token is always compared.}
+\item{userinfo_id_token_match}{Require the fetched profile to belong to the
+validated login identity. Defaults to \code{TRUE} when a UserInfo URL and ID-token
+or nonce validation are enabled, including for manual \code{\link[=get_userinfo]{get_userinfo()}} calls.
+Pass the complete \link{OAuthToken} for this check. An explicit \code{FALSE} permits
+profile retrieval without a validated identity; when both are available,
+their actual \code{sub} values must still match.}
 
-\item{userinfo_signed_jwt_required}{Whether to require the user profile to arrive
-as a signed JWT (\code{application/jwt}). Default \code{FALSE}; ordinary JSON
-userinfo is accepted. When \code{TRUE}, requires a valid \code{userinfo_url} and
-\code{issuer}, including for manual retrieval; the signature must validate with
-an asymmetric algorithm from \code{userinfo_allowed_algs}. Unsigned, HMAC-signed,
-and encrypted userinfo JWTs are not accepted by the normal configuration. Discovery does not
-enable this automatically: provider support does not mean your app's
-registration requests signed userinfo.}
+\item{userinfo_signed_jwt_required}{Require a profile signed by the provider.
+Default \code{FALSE} accepts ordinary JSON profiles. When \code{TRUE}, configure a
+UserInfo URL and issuer, and arrange signed responses with the provider.
+Signatures use \code{userinfo_allowed_algs}; unsigned, HMAC-signed and encrypted
+profiles are not accepted by normal configuration. This requirement also
+applies to manual retrieval when \code{userinfo_required = FALSE}.}
 
 \item{userinfo_id_selector}{A function that extracts the user ID from the userinfo response.
 Should take a single argument (the userinfo list) and return the user ID
@@ -363,32 +359,14 @@ literal, pass a full URL (e.g., \verb{https://[::1]:8443}) - the port is ignored
 and only the hostname part is used for matching. Takes precedence over
 \code{jwks_host_issuer_match}.}
 
-\item{id_token_allowed_algs}{Optional vector of allowed JWT algorithms for ID tokens.
-Use to restrict acceptable \code{alg} values on a per-provider basis. Supported
-asymmetric algorithms include \code{RS256}, \code{RS384}, \code{RS512}, \code{ES256},
-\code{ES384}, \code{ES512}, and \code{Ed25519} or legacy \code{EdDSA} with Ed25519 OKP keys (including \code{at_hash}
-validation). Ed448 verification is unsupported and fails closed.
-Symmetric HMAC algorithms \code{HS256}, \code{HS384}, \code{HS512} are also supported but
-require that you supply a \code{client_secret} and explicitly enable HMAC
-verification via the option \code{options(shinyOAuth.allow_hs = TRUE)}.
-Configure exactly one HS algorithm for ID-token validation: the client's
-shared secret must be bound to one algorithm (RFC 8725 section 3.1).
-The same secret must also use that algorithm for JARM, JAR and JWT client
-assertions, including endpoint overrides that inherit or repeat the secret.
-Defaults to \code{c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")},
-which intentionally excludes HS*.
-Each RSA verification key is bound by public-key material (RFC 7638
-thumbprint), independently of \code{kid}. Conflicting \code{alg} declarations for the
-same material reject the whole JWKS, including pinned sets. An explicit
-declaration also binds aliases that omit \code{alg}. With no declaration, the
-binding is the sole RSA algorithm in this allowlist. When several RSA
-algorithms are allowed, an unlabelled key is bound to \code{RS256} (and rejected
-if \code{RS256} is excluded). To use unlabelled keys with \code{RS384} or \code{RS512},
-configure only that RSA algorithm. EC curves already select one supported
-algorithm; legacy \code{EdDSA} with an Ed25519 key uses the Ed25519 operation.
-Only include \verb{HS*} if you are certain the \code{client_secret} is stored strictly
-server-side and is never shipped to, or derivable by, the browser or other
-untrusted environments.}
+\item{id_token_allowed_algs}{Signing algorithms accepted for ID tokens.
+Defaults to \code{c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519", "EdDSA")}; Ed448 and unsupported algorithms are rejected.
+Use a narrower set to match your provider registration.
+HMAC (\code{HS256}, \code{HS384}, \code{HS512}) requires a server-only client secret,
+\code{options(shinyOAuth.allow_hs = TRUE)}, and exactly one HS algorithm.
+Reused keys or secrets must not have conflicting algorithm settings.
+For RSA key metadata, defaults and rotation, see
+\href{https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#provider-key-set-validation}{signing-key validation}.}
 
 \item{allowed_token_types}{Character vector of acceptable OAuth token types
 returned by the token endpoint (case-insensitive). Successful token
@@ -466,29 +444,21 @@ token responses, contrary to OAuth 2.0. When \code{TRUE}, login and refresh assu
 unsupported values still fail validation. The fallback never applies to
 clients configured with DPoP; other token and binding checks remain enforced.}
 
-\item{token_target_mode}{Explicit acquisition protocol for clients declaring
-\code{token_targets}: \code{"none"} (default), \code{"rfc8707"}, or \code{"microsoft"}.
-Discovery never infers support. The Microsoft preset selects \code{"microsoft"}.
-This has no acquisition effect on clients without target declarations.
-RFC 8707 sends declared resource indicators; Microsoft uses qualified API
-scopes, requires explicit scope evidence and handles static \code{.default}
-consent in its provider policy. Microsoft responses may include previously
-consented scopes for the selected resource; local operation limits remain
-separate from that full grant. See \code{vignette("token-targets")}.}
+\item{token_target_mode}{How this provider obtains API-specific tokens:
+\code{"none"} (default), \code{"rfc8707"}, or \code{"microsoft"}. Set this only when using
+client \code{token_targets} and after checking provider support. The Microsoft
+helper selects \code{"microsoft"} automatically; discovery does not enable
+targets. See \code{vignette("token-targets")} for setup and permission rules.}
 
-\item{token_response_scope_format}{Token response scope separator, \code{"space"}
-(standard OAuth, the default) or \code{"comma"} (GitHub). Comma-separated
-responses are converted to standard space-separated scopes before grant
-validation and storage, for both login and refresh. Set this explicitly for
-custom providers with this response format; provider names do not select it.}
+\item{token_response_scope_format}{Separator used for permissions in token
+responses: \code{"space"} (default) or \code{"comma"}. The GitHub helper sets \code{"comma"}
+automatically. Set it explicitly for a custom provider using that format.}
 
-\item{userinfo_id_selector_policy_id}{Optional non-empty policy identifier
-for \code{userinfo_id_selector}, or \code{NA_character_}. Set an immutable versioned
-identifier for custom selectors that capture settings or call configurable
-helpers, and change it whenever those settings or behavior change. Pending
-logins and retained credentials bind this identifier and the function's
-source; closure environments are never serialized. Keep captured settings
-immutable for the lifetime of a client.}
+\item{userinfo_id_selector_policy_id}{Optional version name for a custom
+\code{userinfo_id_selector}, or \code{NA_character_}. If the function uses settings
+outside its body, keep them unchanged for the client's lifetime and change
+this ID when those settings or helper behavior change. This lets pending
+logins and saved connections detect the change.}
 }
 \value{
 \link{OAuthProvider} object

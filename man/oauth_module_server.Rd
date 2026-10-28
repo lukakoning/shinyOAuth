@@ -45,26 +45,13 @@ module's perspective once a user has logged in. Note that your API calls
 may still fail once the provider considers the token expired; this option
 only affects the module's automatic clearing and redirect behavior.}
 
-\item{reauth_after_seconds}{Optional maximum interactive-authentication age
-in seconds. If set, the module removes the token (and thus sets
-\code{authenticated} to FALSE) after this many seconds. Token refresh does not
-reset the timer. For OIDC providers, reauthentication requests send
-\code{max_age=0}; the returned ID token must contain a valid \code{auth_time}, which
-is used as the next authentication start. OAuth-only providers have no
-standard way to require active user authentication, so for them this is a
-hard local session lifetime followed by an ordinary authorization request.
-That new authorization requests the configured scopes again, including
-permissions removed by local refresh narrowing. Explicit \code{auth$reauthorize()}
-instead carries forward the previous authorization's retained scope limits.
-By default this is \code{NULL} (no forced reauthentication).
-With token targets, that default can keep \code{authenticated = TRUE} for the
-remaining Shiny session after all access tokens expire, even without a
-refresh credential and with \code{indefinite_session = FALSE}. Set a finite age
-if local application access relies on \code{authenticated} and requires a bounded
-login lifetime. \code{indefinite_session = TRUE} ignores this age limit.
-SMART clients with OIDC identity enabled do not support remote freshness
-overrides and require \code{reauth_after_seconds = NULL} unless
-\code{indefinite_session = TRUE}.}
+\item{reauth_after_seconds}{Maximum local login age in seconds, or \code{NULL}
+(default) for no forced reauthentication. Refresh does not reset this timer;
+\code{indefinite_session = TRUE} ignores it. When the limit is reached, local
+access is cleared and a new login is required.
+With token targets, choose a finite limit if the app needs one: token expiry
+alone need not end the local login. SMART clients using OIDC require \code{NULL}
+unless \code{indefinite_session = TRUE}. See Session lifetime for provider behavior.}
 
 \item{refresh_proactively}{If \code{TRUE}, obtain a replacement access token before
 expiry when a refresh token is available. Default \code{FALSE}. The module
@@ -81,18 +68,12 @@ expiry and refresh (default 10000). Known expiry times are scheduled
 directly; this interval is used as a safety check or when expiry is unknown
 or infinite.}
 
-\item{revoke_on_session_end}{If TRUE, automatically revokes provider tokens
-when the Shiny session ends (e.g., browser tab closed, session timeout).
-Also attempts revocation when access-token expiry, maximum authentication
-age, or refresh failure automatically clears the session, before losing its
-credentials. A retained session keeps its provider grant.
-This is a best-effort operation. Revocation runs asynchronously only when
-the module is configured with \code{async = TRUE} (otherwise it runs
-synchronously).
-Requires the provider to have a \code{revocation_url} configured. Default is
-FALSE. Note that session-end revocation may not always succeed (e.g.,
-network issues, provider unavailable), so combine with appropriate token
-lifetimes on the provider side.}
+\item{revoke_on_session_end}{If \code{TRUE}, attempt to revoke provider tokens
+when the Shiny session ends or the module clears the login after expiry,
+the maximum login age or a refresh failure. A retained login keeps its grant.
+Default \code{FALSE}. Requires a provider \code{revocation_url}. Revocation is best
+effort and runs in the background only with \code{async = TRUE}; local cleanup
+still happens if the provider is unavailable.}
 
 \item{tab_title_cleaning}{If TRUE (default), removes any query string suffix
 from the browser tab title after the OAuth callback, so titles like
@@ -223,14 +204,19 @@ same module ID and client. Use \code{\link[=oauth_form_post_ui]{oauth_form_post_
 These wrappers include the browser dependency; no separate
 \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} call is needed.
 
-This uses the OAuth 2.0 Authorization Code flow, with OpenID Connect (OIDC)
-identity checks when configured for an OIDC provider.
+With an OpenID Connect (OIDC) provider, it also validates the signed-in user's
+identity. Your app still decides what that user may do.
 }
 \details{
 Login starts automatically by default. Use \code{auto_redirect = FALSE} and
 \code{auth[["request_login"]]()} to start it from a button. Read \code{auth[["authenticated"]]}
 in reactive code, and use \code{req(auth[["authenticated"]])} before server operations
 that require login. Your app must also enforce its own access rules.
+
+After login, \code{connection <- shiny::req(auth$connection())} gives your server
+access to the current credentials. Use \code{connection$request()} to call an API,
+or \code{connection$access_token()} for another R package. See
+\code{vignette("external-integrations")} for examples.
 
 See the \href{https://lukakoning.github.io/shinyOAuth/articles/usage.html}{usage vignette} for a complete app and
 instructions for registration, API calls, and deployment.
@@ -241,42 +227,44 @@ With \code{async = TRUE}, configure \code{\link[mirai:daemons]{mirai::daemons()}
 \code{\link[future:plan]{future::plan()}} before starting the app. Slow provider requests can then
 run outside the main R process. Without this, network waits can delay all
 Shiny sessions sharing that process.
-
-Advanced operations sent to workers include PAR, signed Request Object
-preparation, and query JARM verification. State-store operations and Shiny
-Request Object publication stay in the main process. Discovery during app
-setup, standalone \code{\link[=prepare_call]{prepare_call()}}, and JARM verification in
-\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} remain synchronous. Use timeouts on those network
-and storage operations; see the \href{https://lukakoning.github.io/shinyOAuth/articles/package-options.html}{package options reference}.
 }
 
 \section{Browser setup}{
 
-Open the app at its registered return address in a regular browser with
-cookies, session storage, and Web Crypto enabled. Embedded IDE viewers may
-prevent login. On Posit Connect or Connect Cloud, open the direct app URL in
-a new browser tab rather than using the dashboard's embedded preview. In
-Connect Cloud, copy the sharing URL from \strong{Settings > URL}. Register the
-exact public callback URL with your provider, including any callback path.
-The module emits a reminder once per R process when Posit's deployment
-environment markers are present; it does not detect whether a page is embedded.
-The binding token stays in origin- and tab-scoped session storage; the
-cookie contains an independent marker, which must match the stored record.
-The temporary browser cookie follows the state store's \code{max_age}, with a
-300-second fallback when that lifetime is unavailable. The separate
-\code{state_payload_max_age} client setting limits the age of the login request.
-Each new login uses a fresh server-selected browser binding and its own marker
-cookie. Application callback routes and module namespaces identify the storage
-record. Separate tabs can complete logins independently; complete a login in
-the tab that started it. Starting another login in the same tab and module
-replaces that tab's pending binding. Pending logins must be restarted after
-upgrading from versions that used local storage.
-Private browser-binding inputs are excluded from Shiny bookmarks. Do not
-copy \code{auth[["browser_token"]]} into custom bookmark values, URLs, or logs.
-Treat the entire hostname as a trust boundary: cookies are shared across
-ports, even with \verb{__Host-}, \code{Secure}, or \code{HttpOnly}. Use a dedicated hostname
-when other services are not trusted. The origin-scoped check prevents cookie
-adoption across ports, but co-hosted services can still disrupt cookies.
+Open the app's entry URL in a regular browser. Its configured callback URL
+must match the one registered with the provider. IDE viewers and embedded
+dashboard previews can prevent login.
+On Posit Connect or Connect Cloud, open the direct app URL in a new tab;
+on Connect Cloud it is available under \strong{Settings > URL}.
+
+Complete login in the tab that started it. Cookies, session storage and Web
+Crypto must be enabled. Keep private browser tokens out of bookmarks, URLs
+and logs. Use a separate hostname from untrusted services, because browser
+cookies are shared across ports. See the advanced security vignette for
+browser-binding and deployment details.
+}
+
+\section{Session lifetime}{
+
+Token refresh does not extend the configured maximum login age. A new login
+after that age expires requests the client's configured permissions again;
+explicit \code{auth$reauthorize()} keeps any previously reduced permissions.
+
+For OIDC, age-based reauthentication requests \code{max_age = 0} and requires a
+valid \code{auth_time} in the returned identity token. OAuth-only providers cannot
+guarantee an active provider login, so the age limit ends local access and
+starts ordinary authorization. With token targets, \code{authenticated} describes
+the retained login, while connection methods check the selected API token.
+}
+
+\section{Advanced worker behavior}{
+
+Signed-request preparation, pushed authorization requests (PAR) and query
+JARM verification can run in workers. State-store access and publication of
+hosted Request Objects stay in the main process. Setup-time discovery,
+standalone \code{\link[=prepare_call]{prepare_call()}} and JARM verification in \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}
+remain synchronous. Configure timeouts for those operations; see the
+\href{https://lukakoning.github.io/shinyOAuth/articles/package-options.html}{package options reference}.
 }
 
 \examples{

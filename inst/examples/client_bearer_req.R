@@ -19,7 +19,7 @@ if (interactive()) {
   )
 
   # Inspect request settings without printing authentication headers.
-  # Keep bounded encoded/decoded response handling when sending it.
+  # Keep the package's response-size limits when sending it.
   response <- perform_resource_req(token, request)
 
   # Or start from your own httr2 request and still let shinyOAuth perform it

@@ -3,29 +3,18 @@
 #' @description
 #' `r lifecycle::badge("experimental")`
 #'
-#' Combine a reviewed [smart_discover()] snapshot with an existing app
-#' registration. The result is an [OAuthClient] for [oauth_connections()], with
-#' the resource ID `"fhir"`. Discovery does not register the app or grant access.
+#' Configure your Shiny app to access a hospital's FHIR API. Start with
+#' [smart_discover()], then supply the app registration and requested permissions.
+#' The result is an [OAuthClient] for [oauth_module_server()] or
+#' [oauth_connections()], with an approved API named `"fhir"`.
+#' Discovery does not register your app or grant access.
 #'
 #' @details
-#' This constructor selects SMART 2.2 scope rules, S256 PKCE and the exact FHIR
-#' base as the authorization request's `aud`. Identity is opt-in: `"openid"`
-#' requests and requires `openid`, signed ID-token validation and nonce binding.
-#' `"fhirUser"` additionally requests and requires the `fhirUser` scope and claim.
-#' `"none"` does not enable OIDC because an issuer happens to be present.
-#' A patient in context is independent of the authenticated user and local owner.
-#'
-#' Only direct authorization requests and query/form POST callbacks are supported.
-#' Claims requests (including `auth_time`), JAR, PAR, JARM, DPoP, mTLS and remote
-#' freshness requirements are not supported by this constructor.
-#' EHR clients require a fresh registered launch transaction.
-#' Configure standalone and EHR registrations as separate clients when both are
-#' needed. No launch handle is stored in shared provider configuration.
-#' Local usability policy requires a positive lifetime. An initial response may
-#' omit `expires_in` only when `initial_expires_in_fallback` is configured explicitly;
-#' refresh responses must include it. The generic assumed lifetime is not used.
-#' SMART back-channel and resource requests require TLS 1.2 or newer. A stronger
-#' configured TLS minimum is preserved; ordinary clients keep their defaults.
+#' Choose `launch = "standalone"` when the user opens the app directly, or `"ehr"`
+#' when an electronic health record opens it. Use separate registrations for the
+#' two flows. Patient context describes the patient being viewed; it does not
+#' identify the person signed in. Enable `identity` only when the app needs that
+#' identity too. See `vignette("smart-on-fhir")` for a complete app.
 #'
 #' @param discovery A plain snapshot returned by [smart_discover()]. Its metadata
 #'   and endpoint policy are revalidated locally; this performs no network calls.
@@ -92,11 +81,27 @@
 #'   when `online_access` is optional. Explicitly requesting `offline_access`
 #'   also authorizes offline persistence. Granted scopes retain their actual
 #'   spelling; refresh responses cannot escalate an existing online grant.
-#' @return An [OAuthClient], usable by the existing module or the separate
-#'   connection manager. `@resource_bases` contains the approved `fhir` base;
-#'   `@required_scopes` and `@label` use the ordinary client properties. `@smart`
-#'   describes the selected profile. The client contains registration settings,
-#'   never a user's token or launch context. Configure it outside `server()`.
+#' @section Advanced SMART profile:
+#' The constructor applies SMART App Launch 2.2 permission rules, S256 PKCE and
+#' the exact FHIR base as the authorization request's `aud`. `identity = "openid"`
+#' requires signed identity-token and nonce checks; `"fhirUser"` also requires
+#' the user's FHIR reference. `"none"` does not enable OIDC automatically.
+#'
+#' Supported flows use direct authorization and query or form POST callbacks.
+#' Claims requests, remote authentication-freshness overrides, JAR, PAR, JARM,
+#' DPoP and mTLS are not supported by this constructor. EHR clients need a fresh
+#' registered launch transaction rather than a shared launch handle.
+#'
+#' Tokens need a positive lifetime. Only an initial response may omit
+#' `expires_in`, and only with an explicit `initial_expires_in_fallback`.
+#' Refresh responses must supply a lifetime. Requests require TLS 1.2 or newer;
+#' a stronger configured minimum is preserved. Ordinary clients also default
+#' to TLS 1.2.
+#'
+#' @return An [OAuthClient] for the module or connection manager. Its
+#' `resource_bases` contains the approved `fhir` API. The object holds app
+#' registration settings, not a user's token or patient context; create it
+#' outside `server()`. Its `smart` property records the selected profile.
 #' @references
 #' [SMART 2.2 launch](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html)
 #' and [client authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html).

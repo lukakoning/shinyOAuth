@@ -26,15 +26,11 @@
 #' @param name Provider name (e.g., "github", "google"). Cosmetic
 #' only; used in logging and audit events
 #'
-#' @param token_target_mode Explicit acquisition protocol for clients declaring
-#'   `token_targets`: `"none"` (default), `"rfc8707"`, or `"microsoft"`.
-#'   Discovery never infers support. The Microsoft preset selects `"microsoft"`.
-#'   This has no acquisition effect on clients without target declarations.
-#'   RFC 8707 sends declared resource indicators; Microsoft uses qualified API
-#'   scopes, requires explicit scope evidence and handles static `.default`
-#'   consent in its provider policy. Microsoft responses may include previously
-#'   consented scopes for the selected resource; local operation limits remain
-#'   separate from that full grant. See `vignette("token-targets")`.
+#' @param token_target_mode How this provider obtains API-specific tokens:
+#'   `"none"` (default), `"rfc8707"`, or `"microsoft"`. Set this only when using
+#'   client `token_targets` and after checking provider support. The Microsoft
+#'   helper selects `"microsoft"` automatically; discovery does not enable
+#'   targets. See `vignette("token-targets")` for setup and permission rules.
 #'
 #' @param auth_url URL of the provider's login and permission page.
 #'
@@ -108,31 +104,25 @@
 #' `sub` claims are always compared. Helper constructors like [oauth_provider()]
 #' and [oauth_provider_oidc()] provide a default selector that extracts `sub`.
 #'
-#' @param userinfo_id_selector_policy_id Optional non-empty policy identifier
-#'   for `userinfo_id_selector`, or `NA_character_`. Set an immutable versioned
-#'   identifier for custom selectors that capture settings or call configurable
-#'   helpers, and change it whenever those settings or behavior change. Pending
-#'   logins and retained credentials bind this identifier and the function's
-#'   source; closure environments are never serialized. Keep captured settings
-#'   immutable for the lifetime of a client.
+#' @param userinfo_id_selector_policy_id Optional version name for a custom
+#'   `userinfo_id_selector`, or `NA_character_`. If the function uses settings
+#'   outside its body, keep them unchanged for the client's lifetime and change
+#'   this ID when those settings or helper behavior change. This lets pending
+#'   logins and saved connections detect the change.
 #'
-#' @param userinfo_id_token_match Whether fetched userinfo requires a validated ID
-#'   token for comparison. When both are available, their actual `sub` values
-#'   are always compared. `TRUE` also stops login if the validated ID token is
-#'   absent. Requires a valid `userinfo_url` and either `id_token_validation` or
-#'   `use_nonce`. Both constructors enable this by default when those requirements
-#'   are met, including when `userinfo_required = FALSE` and UserInfo is fetched
-#'   manually. Set an explicit `FALSE` only to permit profile retrieval without
-#'   a validated identity; an available validated ID token is always compared.
+#' @param userinfo_id_token_match Require the fetched profile to belong to the
+#'   validated login identity. Defaults to `TRUE` when a UserInfo URL and ID-token
+#'   or nonce validation are enabled, including for manual [get_userinfo()] calls.
+#'   Pass the complete [OAuthToken] for this check. An explicit `FALSE` permits
+#'   profile retrieval without a validated identity; when both are available,
+#'   their actual `sub` values must still match.
 #'
-#' @param userinfo_signed_jwt_required Whether to require the user profile to arrive
-#'   as a signed JWT (`application/jwt`). Default `FALSE`; ordinary JSON
-#'   userinfo is accepted. When `TRUE`, requires a valid `userinfo_url` and
-#'   `issuer`, including for manual retrieval; the signature must validate with
-#'   an asymmetric algorithm from `userinfo_allowed_algs`. Unsigned, HMAC-signed,
-#'   and encrypted userinfo JWTs are not accepted by the normal configuration. Discovery does not
-#'   enable this automatically: provider support does not mean your app's
-#'   registration requests signed userinfo.
+#' @param userinfo_signed_jwt_required Require a profile signed by the provider.
+#'   Default `FALSE` accepts ordinary JSON profiles. When `TRUE`, configure a
+#'   UserInfo URL and issuer, and arrange signed responses with the provider.
+#'   Signatures use `userinfo_allowed_algs`; unsigned, HMAC-signed and encrypted
+#'   profiles are not accepted by normal configuration. This requirement also
+#'   applies to manual retrieval when `userinfo_required = FALSE`.
 #'
 #' @param id_token_required Whether to require an ID token to be returned
 #' during token exchange. If no ID token is returned, the token exchange
@@ -231,32 +221,16 @@
 #'   single algorithm to enforce the client's registered UserInfo signing choice.
 #'   An empty vector rejects all signed UserInfo algorithms.
 #'   Unlabelled RSA keys follow the same binding policy as `id_token_allowed_algs`.
-#' @param id_token_allowed_algs Optional vector of allowed JWT algorithms for ID tokens.
-#'   Use to restrict acceptable `alg` values on a per-provider basis. Supported
-#'   asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
-#'   `ES384`, `ES512`, and `Ed25519` or legacy `EdDSA` with Ed25519 OKP keys (including `at_hash`
-#'   validation). Ed448 verification is unsupported and fails closed.
-#'   Symmetric HMAC algorithms `HS256`, `HS384`, `HS512` are also supported but
-#'   require that you supply a `client_secret` and explicitly enable HMAC
-#'   verification via the option `options(shinyOAuth.allow_hs = TRUE)`.
-#'   Configure exactly one HS algorithm for ID-token validation: the client's
-#'   shared secret must be bound to one algorithm (RFC 8725 section 3.1).
-#'   The same secret must also use that algorithm for JARM, JAR and JWT client
-#'   assertions, including endpoint overrides that inherit or repeat the secret.
-#'   Defaults to `c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")`,
-#'   which intentionally excludes HS*.
-#'   Each RSA verification key is bound by public-key material (RFC 7638
-#'   thumbprint), independently of `kid`. Conflicting `alg` declarations for the
-#'   same material reject the whole JWKS, including pinned sets. An explicit
-#'   declaration also binds aliases that omit `alg`. With no declaration, the
-#'   binding is the sole RSA algorithm in this allowlist. When several RSA
-#'   algorithms are allowed, an unlabelled key is bound to `RS256` (and rejected
-#'   if `RS256` is excluded). To use unlabelled keys with `RS384` or `RS512`,
-#'   configure only that RSA algorithm. EC curves already select one supported
-#'   algorithm; legacy `EdDSA` with an Ed25519 key uses the Ed25519 operation.
-#'   Only include `HS*` if you are certain the `client_secret` is stored strictly
-#'   server-side and is never shipped to, or derivable by, the browser or other
-#'   untrusted environments.
+#' @param id_token_allowed_algs Signing algorithms accepted for ID tokens.
+#'   Defaults to `c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512",
+#'   "Ed25519", "EdDSA")`; Ed448 and unsupported algorithms are rejected.
+#'   Use a narrower set to match your provider registration.
+#'   HMAC (`HS256`, `HS384`, `HS512`) requires a server-only client secret,
+#'   `options(shinyOAuth.allow_hs = TRUE)`, and exactly one HS algorithm.
+#'   Reused keys or secrets must not have conflicting algorithm settings.
+#'   For RSA key metadata, defaults and rotation, see
+#'   [signing-key validation](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#provider-key-set-validation).
+#'
 #' @param allowed_token_types Character vector of acceptable OAuth token types
 #'   returned by the token endpoint (case-insensitive). Successful token
 #'   responses must include `token_type` by default; when `allowed_token_types` is
@@ -268,11 +242,10 @@
 #'   token types (for example `MAC`) still fail fast rather than being misused.
 #'   Set `allowed_token_types = character()` explicitly only to disable the
 #'   value allowlist while still requiring `token_type` itself.
-#' @param token_response_scope_format Token response scope separator, `"space"`
-#'   (standard OAuth, the default) or `"comma"` (GitHub). Comma-separated
-#'   responses are converted to standard space-separated scopes before grant
-#'   validation and storage, for both login and refresh. Set this explicitly for
-#'   custom providers with this response format; provider names do not select it.
+#' @param token_response_scope_format Separator used for permissions in token
+#'   responses: `"space"` (default) or `"comma"`. The GitHub helper sets `"comma"`
+#'   automatically. Set it explicitly for a custom provider using that format.
+#'
 #' @param allow_missing_token_type Logical, default `FALSE`. Opt in only for a
 #'   provider known to issue Bearer tokens while omitting `token_type` from its
 #'   token responses, contrary to OAuth 2.0. When `TRUE`, login and refresh assume

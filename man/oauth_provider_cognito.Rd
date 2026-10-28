@@ -2,7 +2,7 @@
 % Please edit documentation in R/providers__research_enterprise.R
 \name{oauth_provider_cognito}
 \alias{oauth_provider_cognito}
-\title{Create an Amazon Cognito \link{OAuthProvider} (via OIDC discovery)}
+\title{Configure sign-in with an Amazon Cognito user pool}
 \usage{
 oauth_provider_cognito(issuer, name = "cognito", token_auth_style = NULL)
 }
@@ -28,9 +28,10 @@ client registration. JWT methods (\code{"client_secret_jwt"},
 \link{OAuthProvider} object configured for a Cognito user pool.
 }
 \description{
-Configure OIDC login for an Amazon Cognito user pool. Register an app client
-with the authorization code grant, configure a user pool login domain, and
-pass the app credentials to \code{\link[=oauth_client]{oauth_client()}} with the enabled OIDC scopes.
+Let users sign in through your Amazon Cognito user pool. Register an app
+client, enable the authorization code grant and a user pool login domain,
+then pass this provider and the app credentials to \code{\link[=oauth_client]{oauth_client()}}.
+Request the login and profile scopes enabled for that registration.
 }
 \details{
 Use the exact user pool issuer, not the managed-login or custom domain.

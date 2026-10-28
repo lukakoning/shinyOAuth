@@ -44,13 +44,17 @@ allows work or school accounts, \code{"consumers"} allows personal Microsoft
 accounts, and \code{"common"} allows both. Your app registration and app access
 rules must also permit the intended accounts.
 
+Profiles are fetched from Microsoft Graph by default. Set
+\code{userinfo_required = FALSE} for an API token that cannot call Graph;
+\code{connection$identity()} still provides the validated login identity.
+}
+\section{Advanced identity settings}{
+
 ID token validation is enabled for these tenant choices. For a directory ID,
 the issuer must match that directory. \code{"common"} and \code{"organizations"} use
 Microsoft's tenant-independent issuer template and signing-key issuer rules.
 \code{"consumers"} uses the consumer tenant issuer. The helper restricts ID token
-algorithms to RS256 and fetches UserInfo from Microsoft Graph by default.
-Set \code{userinfo_required = FALSE} when using an API token that cannot call Graph;
-validated ID-token claims remain available through \code{connection$identity()}.
+algorithms to RS256.
 
 Setting \code{id_token_validation = FALSE} disables ID token and nonce checks and
 leaves OAuth plus any configured profile retrieval. Keep the default for OIDC
@@ -58,6 +62,7 @@ sign-in.
 Tenant domains and other unrecognized tenant identifiers require this
 explicit opt-out; otherwise use the directory GUID to retain OIDC validation.
 }
+
 \examples{
 if (
   # Example requires configured Microsoft Entra ID (Azure AD) tenant:

@@ -2,7 +2,7 @@
 % Please edit documentation in R/providers__research_enterprise.R
 \name{oauth_provider_globus}
 \alias{oauth_provider_globus}
-\title{Create a Globus Auth \link{OAuthProvider}}
+\title{Configure sign-in with Globus Auth}
 \usage{
 oauth_provider_globus(name = "globus")
 }
@@ -13,17 +13,12 @@ oauth_provider_globus(name = "globus")
 \link{OAuthProvider} object configured for Globus Auth login.
 }
 \description{
-Configure OIDC sign-in with Globus Auth using its published endpoints and
-RS512 ID token signatures. Register a confidential web application at
-\url{https://app.globus.org/settings/developers} and request
-\code{scopes = c("openid", "profile", "email")} on \code{\link[=oauth_client]{oauth_client()}}.
+Let users sign in with Globus Auth. Register a web application with a client
+secret at \url{https://app.globus.org/settings/developers}, then pass this provider
+and the credentials to \code{\link[=oauth_client]{oauth_client()}} with
+\code{scopes = c("openid", "profile", "email")}.
 }
 \details{
-This preset does not make a discovery request. Globus currently advertises
-RS512 only, whereas generic OIDC discovery requires advertised RS256 support.
-The preset pins RS512 and the Globus JWKS URL, retaining signature, issuer,
-audience, nonce, UserInfo subject, and S256 PKCE validation.
-
 This helper supports OIDC login. Globus API grants can return separate
 credentials for several resource servers in \code{other_tokens}. Those fields
 are preserved in \code{token@extra_fields}, but shinyOAuth does not automatically
@@ -32,9 +27,17 @@ scopes limited to \code{openid}, \code{profile}, \code{email}, and optionally
 \code{offline_access}; use a separate Globus-aware integration for multi-resource
 API authorization. Never send the login access token to another resource
 server merely because a nested token granted access to it.
+}
+\section{Advanced provider settings}{
+
+The preset uses Globus's published endpoints and RS512 identity-token
+signatures. It does not use generic discovery, which requires advertised
+RS256 support. Identity, nonce, profile-subject and S256 PKCE checks remain
+enabled.
 
 See the \href{https://docs.globus.org/api/auth/developer-guide/}{Globus Auth guide}.
 }
+
 \examples{
 oauth_provider_globus()
 }

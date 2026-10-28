@@ -1,63 +1,61 @@
-#' Assess an OAuth configuration against a pinned OAuth 2.1 draft
+#' Review an OAuth client configuration before deployment
 #'
-#' This function inspects a configured [OAuthClient] and its [OAuthProvider] for
-#' compliance with the OAuth 2.1 draft 16 (ruleset `1.1.1`) specification. It
-#' reports configuration gaps, unresolved external prerequisites, and recommendations
-#' without changing the configuration or making requests.
-#'
-#' @param config An [OAuthClient] or [OAuthProvider]. Provider-only assessments
-#'   are partial and cannot establish missing client settings.
-#' @param draft Implemented target revision. Currently only
-#'   `"draft-ietf-oauth-v2-1-16"` is supported (an Internet-Draft, not an RFC).
-#' @param context Optional named list with `operations`, a character vector
-#'   selecting additional `"userinfo"`, `"introspection"` or `"revocation"`
-#'   operations, and `nonce_exception`, a scalar logical declaration. Setting
-#'   `nonce_exception = TRUE` declares that the authorization server has the
-#'   assurance required by draft section 7.5.1.1 for this confidential deployment
-#'   and specific request's correct OIDC nonce use. It does not supply observed
-#'   evidence or excuse missing local prerequisites. Prefer S256 PKCE.
+#' @description
+#' Check a configured [OAuthClient] for missing settings and recommendations.
+#' The result includes a table of findings and suggested fixes. The check is
+#' read-only: it does not make requests, start login or change the configuration.
 #'
 #' @details
-#' Ruleset `1.1.1` covers code/refresh, enabled PAR, required UserInfo and
-#' introspection, and the additional operations selected in `context`. Signing
-#' and encryption key retrieval is included when applicable. Future resource URLs, arbitrary
-#' request customization, browser/proxy TLS, registered redirect matching, secret
-#' custody, and authorization/resource server behavior require separate evidence.
-#' Optional DPoP, mTLS, PAR, JAR and JARM are not required as a bundle.
-#' File-backed mTLS credential usability is unresolved: assessment does not load
-#' certificate or private-key files or establish their correspondence. Applicable
-#' `mtls.credentials.*` checks remain unknown even when both paths are configured;
-#' missing required paths fail. Runtime validates the current files before each
-#' mTLS request, including after rotation.
+#' Call `assessment <- check_oauth21(client)`, then read `assessment$checks`.
+#' `assessment$configuration_compliant` is `FALSE` for a known mandatory failure,
+#' `NA` for unresolved mandatory settings, and `TRUE` when the applicable mandatory
+#' configuration checks pass. Recommendations and unknown external behavior do not
+#' change that result.
 #'
-#' `configuration_compliant` is `FALSE` if an applicable mandatory configuration
-#' check fails; otherwise `NA` if a mandatory configuration check is unresolved;
-#' otherwise `TRUE` when a nonempty set of applicable mandatory checks passes.
-#' Recommendations and external unknowns do not change that verdict. In
-#' particular, the legacy assertion type `JWT` is a recommendation finding;
-#' the assertion audience is a separate mandatory check for JWT authentication.
-#' `requirement_source` distinguishes OAuth core, OIDC, extension specifications,
-#' security guidance and local package/application policy. Callback capacity
-#' thresholds are package recommendations, not draft-defined numeric minima;
-#' complete encoded requests still need deployment testing. OAuth 2.1 assessment
-#' is opt-in and does not change existing OAuth 2.0 configuration or requests.
+#' This assessment uses OAuth 2.1 draft 16, ruleset `1.1.1`. It is not certification
+#' or a test of your running provider. Rerun it after changing configuration.
 #'
-#' A positive verdict applies only to the recorded scope and ruleset, with the
-#' current configuration, options, runtime and declared context. It is not
-#' certification or a test of a live deployment. Rerun after policy changes.
-#' Reports contain no client/provider objects, credentials, keys or endpoint
-#' URLs. No caches or state stores are read or changed; their method contracts
-#' are inspected without invoking them.
+#' @param config An [OAuthClient] or [OAuthProvider]. A provider-only report is
+#'   partial because it cannot check your client registration settings.
+#' @param draft Target specification revision. Currently only
+#'   `"draft-ietf-oauth-v2-1-16"` is supported; this is an Internet-Draft, not an RFC.
+#' @param context Optional list. `operations` selects additional `"userinfo"`,
+#'   `"introspection"` or `"revocation"` checks. The advanced `nonce_exception`
+#'   declaration is described below; most apps should leave it unset.
 #'
-#' @return A `shinyOAuth_oauth21_assessment` list with `configuration_compliant`,
-#'   `checks`, `draft`, `ruleset_version`, `package_version`, `assessed_at`,
-#'   `assessment_scope`, and `operations`. `checks` is a data frame with stable
-#'   `id`, `scope`, `status` (`pass`, `fail`, `warn`, `unknown`, `not_applicable`),
-#'   `requirement` (`MUST`, `SHOULD`, `info`), `message`, `remediation`, `reference`,
-#'   `evidence_source`, `requirement_source`, and logical `affects_verdict` columns. Only rows with
-#'   `affects_verdict = TRUE` enter aggregation; unknown external obligations
-#'   remain visible separately. `warn` records a compatibility warning, such as
-#'   accepting a missing token type, and does not by itself fail the verdict.
+#' @return A `shinyOAuth_oauth21_assessment` list. `checks` is a data frame with
+#'   `id`, `scope`, `status`, `requirement`, `message`, `remediation`, `reference`,
+#'   `evidence_source`, `requirement_source` and `affects_verdict` columns.
+#'   Statuses are `pass`, `fail`, `warn`, `unknown` and `not_applicable`.
+#'   Only rows with `affects_verdict = TRUE` affect `configuration_compliant`.
+#'   A compatibility `warn` does not by itself fail the verdict.
+#'   The report also records `draft`, `ruleset_version`, `package_version`,
+#'   `assessed_at`, `assessment_scope` and `operations`.
+#'
+#' @section Advanced assessment scope:
+#' Checks cover code exchange, refresh, enabled PAR, required UserInfo and
+#' introspection, selected extra operations and applicable signing-key retrieval.
+#' Optional DPoP, mTLS, PAR, JAR and JARM are not required together.
+#' Provider enforcement, registered redirects, secret storage, browser/proxy TLS
+#' and future API requests need separate deployment checks.
+#'
+#' mTLS file paths do not establish that a certificate and key are readable and
+#' match. The checker does not open them, so applicable `mtls.credentials.*` checks
+#' remain `unknown` when paths are present; missing required paths fail.
+#' Actual requests validate the current files.
+#'
+#' `requirement_source` distinguishes protocol requirements from security guidance
+#' and package policy. Callback capacity thresholds are package recommendations,
+#' not numeric limits from the draft. Reports exclude credentials, keys, endpoint
+#' URLs and the configuration objects. Cache and state-store methods are not run.
+#'
+#' @section Advanced PKCE exception:
+#' `context = list(nonce_exception = TRUE)` declares independently established
+#' server assurance for the draft's confidential-client nonce exception
+#' (section 7.5.1.1). It does not supply observed evidence or bypass missing local
+#' requirements. Prefer S256 PKCE. Assertion audience checks are mandatory for JWT
+#' authentication; advice about the legacy `JWT` assertion type is a recommendation.
+#'
 #' @references
 #' \url{https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16}
 #'

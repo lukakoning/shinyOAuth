@@ -115,39 +115,46 @@ This does not apply to refresh responses or change ordinary OAuth defaults.}
 \item{state_store, state_key, state_payload_max_age}{See \code{\link[=oauth_client]{oauth_client()}}.}
 }
 \value{
-An \link{OAuthClient}, usable by the existing module or the separate
-connection manager. \verb{@resource_bases} contains the approved \code{fhir} base;
-\verb{@required_scopes} and \verb{@label} use the ordinary client properties. \verb{@smart}
-describes the selected profile. The client contains registration settings,
-never a user's token or launch context. Configure it outside \code{server()}.
+An \link{OAuthClient} for the module or connection manager. Its
+\code{resource_bases} contains the approved \code{fhir} API. The object holds app
+registration settings, not a user's token or patient context; create it
+outside \code{server()}. Its \code{smart} property records the selected profile.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-Combine a reviewed \code{\link[=smart_discover]{smart_discover()}} snapshot with an existing app
-registration. The result is an \link{OAuthClient} for \code{\link[=oauth_connections]{oauth_connections()}}, with
-the resource ID \code{"fhir"}. Discovery does not register the app or grant access.
+Configure your Shiny app to access a hospital's FHIR API. Start with
+\code{\link[=smart_discover]{smart_discover()}}, then supply the app registration and requested permissions.
+The result is an \link{OAuthClient} for \code{\link[=oauth_module_server]{oauth_module_server()}} or
+\code{\link[=oauth_connections]{oauth_connections()}}, with an approved API named \code{"fhir"}.
+Discovery does not register your app or grant access.
 }
 \details{
-This constructor selects SMART 2.2 scope rules, S256 PKCE and the exact FHIR
-base as the authorization request's \code{aud}. Identity is opt-in: \code{"openid"}
-requests and requires \code{openid}, signed ID-token validation and nonce binding.
-\code{"fhirUser"} additionally requests and requires the \code{fhirUser} scope and claim.
-\code{"none"} does not enable OIDC because an issuer happens to be present.
-A patient in context is independent of the authenticated user and local owner.
-
-Only direct authorization requests and query/form POST callbacks are supported.
-Claims requests (including \code{auth_time}), JAR, PAR, JARM, DPoP, mTLS and remote
-freshness requirements are not supported by this constructor.
-EHR clients require a fresh registered launch transaction.
-Configure standalone and EHR registrations as separate clients when both are
-needed. No launch handle is stored in shared provider configuration.
-Local usability policy requires a positive lifetime. An initial response may
-omit \code{expires_in} only when \code{initial_expires_in_fallback} is configured explicitly;
-refresh responses must include it. The generic assumed lifetime is not used.
-SMART back-channel and resource requests require TLS 1.2 or newer. A stronger
-configured TLS minimum is preserved; ordinary clients keep their defaults.
+Choose \code{launch = "standalone"} when the user opens the app directly, or \code{"ehr"}
+when an electronic health record opens it. Use separate registrations for the
+two flows. Patient context describes the patient being viewed; it does not
+identify the person signed in. Enable \code{identity} only when the app needs that
+identity too. See \code{vignette("smart-on-fhir")} for a complete app.
 }
+\section{Advanced SMART profile}{
+
+The constructor applies SMART App Launch 2.2 permission rules, S256 PKCE and
+the exact FHIR base as the authorization request's \code{aud}. \code{identity = "openid"}
+requires signed identity-token and nonce checks; \code{"fhirUser"} also requires
+the user's FHIR reference. \code{"none"} does not enable OIDC automatically.
+
+Supported flows use direct authorization and query or form POST callbacks.
+Claims requests, remote authentication-freshness overrides, JAR, PAR, JARM,
+DPoP and mTLS are not supported by this constructor. EHR clients need a fresh
+registered launch transaction rather than a shared launch handle.
+
+Tokens need a positive lifetime. Only an initial response may omit
+\code{expires_in}, and only with an explicit \code{initial_expires_in_fallback}.
+Refresh responses must supply a lifetime. Requests require TLS 1.2 or newer;
+a stronger configured minimum is preserved. Ordinary clients also default
+to TLS 1.2.
+}
+
 \examples{
 \dontrun{
 site <- smart_discover("https://ehr.example/fhir/R4")
