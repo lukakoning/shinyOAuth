@@ -46,7 +46,7 @@ test_that("RSA signing keys are rejected below 2048 bits at construction", {
         }
         configured[[field]] <- strong
         client <- do.call(constructor, configured)
-        expect_s3_class(client, "shinyOAuth::OAuthClient")
+        expect_true(S7::S7_inherits(client, shinyOAuth::OAuthClient))
         expect_error(
           {
             S7::prop(client, field) <- weak

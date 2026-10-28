@@ -84,7 +84,7 @@ test_that("login and refresh reject ineligible introspection before UserInfo", {
         error = identity
       )
       if (case == "valid") {
-        expect_s3_class(result, "shinyOAuth::OAuthToken")
+        expect_true(S7::S7_inherits(result, shinyOAuth::OAuthToken))
       } else {
         expect_s3_class(result, "shinyOAuth_token_error")
       }

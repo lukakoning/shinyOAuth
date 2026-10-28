@@ -454,7 +454,7 @@ test_that("request mode remains available when PAR carries the request object", 
     )
   )
 
-  testthat::expect_s3_class(cli, "shinyOAuth::OAuthClient")
+  testthat::expect_true(S7::S7_inherits(cli, shinyOAuth::OAuthClient))
 })
 
 test_that("discovery blocks request mode when request transport is unsupported and PAR is absent", {

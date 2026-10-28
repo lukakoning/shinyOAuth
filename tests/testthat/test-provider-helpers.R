@@ -51,7 +51,7 @@ mock_apple_discovery <- function(
 test_that("oauth_provider_github returns valid OAuthProvider with expected defaults", {
   p <- oauth_provider_github()
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "github")
   expect_match(p@auth_url, "github\\.com/login/oauth/authorize")
   expect_match(p@token_url, "github\\.com/login/oauth/access_token")
@@ -89,7 +89,7 @@ test_that("oauth_provider_apple returns valid OAuthProvider with expected defaul
 
   p <- oauth_provider_apple()
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "apple")
   expect_identical(p@auth_url, "https://appleid.apple.com/auth/authorize")
   expect_identical(p@token_url, "https://appleid.apple.com/auth/token")
@@ -183,7 +183,7 @@ test_that("oauth_provider_apple allows custom name", {
 test_that("oauth_provider_google returns valid OAuthProvider with expected defaults", {
   p <- oauth_provider_google()
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "google")
   expect_match(p@auth_url, "accounts\\.google\\.com")
   expect_match(p@token_url, "googleapis\\.com/token")
@@ -208,7 +208,7 @@ test_that("oauth_provider_google allows custom name", {
 test_that("oauth_provider_spotify returns valid OAuthProvider with expected defaults", {
   p <- oauth_provider_spotify()
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "spotify")
   expect_match(p@auth_url, "accounts\\.spotify\\.com/authorize")
   expect_match(p@token_url, "accounts\\.spotify\\.com/api/token")
@@ -239,7 +239,7 @@ test_that("oauth_provider_spotify returns valid OAuthProvider with expected defa
 test_that("oauth_provider_microsoft with common tenant has correct defaults", {
   p <- oauth_provider_microsoft(tenant = "common")
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "microsoft")
   expect_match(p@auth_url, "login\\.microsoftonline\\.com/common")
   expect_match(p@token_url, "login\\.microsoftonline\\.com/common")
@@ -422,7 +422,7 @@ test_that("oauth_provider_oidc builds correct endpoint URLs from base_url", {
     base_url = "https://auth.example.com"
   )
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "test-oidc")
   expect_identical(p@auth_url, "https://auth.example.com/authorize")
   expect_identical(p@token_url, "https://auth.example.com/token")
@@ -634,7 +634,7 @@ test_that("oauth_provider_keycloak constructs correct issuer from base_url + rea
     realm = "myrealm"
   )
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "keycloak-myrealm")
   expect_identical(p@issuer, issuer)
   expect_identical(p@token_auth_style, "body")
@@ -692,7 +692,7 @@ test_that("oauth_provider_okta constructs correct issuer from domain + auth_serv
     auth_server = "default"
   )
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "okta")
   expect_identical(p@issuer, issuer)
 })
@@ -718,7 +718,7 @@ test_that("oauth_provider_okta can target the org authorization server", {
     auth_server = NULL
   )
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "okta")
   expect_identical(p@issuer, issuer)
 })
@@ -741,7 +741,7 @@ test_that("oauth_provider_auth0 constructs correct issuer from domain", {
 
   p <- oauth_provider_auth0(domain = "my-domain.auth0.com")
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "auth0")
   expect_identical(p@issuer, issuer)
 })
@@ -814,7 +814,7 @@ test_that("oauth_provider_slack constructs correct issuer", {
 
   p <- oauth_provider_slack()
 
-  expect_s3_class(p, "shinyOAuth::OAuthProvider")
+  expect_true(S7::S7_inherits(p, shinyOAuth::OAuthProvider))
   expect_identical(p@name, "slack")
   expect_identical(p@issuer, issuer)
 })

@@ -903,7 +903,7 @@ test_that("oauth_client enforces provider-advertised DPoP signing algs", {
     dpop_signing_alg = "ES256"
   )
 
-  testthat::expect_s3_class(cli, "shinyOAuth::OAuthClient")
+  testthat::expect_true(S7::S7_inherits(cli, shinyOAuth::OAuthClient))
 })
 
 test_that("build_dpop_proof rejects incompatible resolved algs", {

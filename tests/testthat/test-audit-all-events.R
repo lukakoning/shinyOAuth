@@ -102,7 +102,6 @@ testthat::test_that("representative real producers emit required audit events", 
         handle_callback(cli, code = "ok", state = enc, browser_token = btok)
       }
     )
-    testthat::expect_s3_class(tok, "S7_object")
     testthat::expect_true(S7::S7_inherits(tok, OAuthToken))
   }
 

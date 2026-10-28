@@ -33,6 +33,6 @@ test_that("NA optional fields yield clean validator errors", {
     oauth_provider,
     c(prov_base, list(pkce_method = NA_character_))
   )
-  expect_s3_class(prov, "S7_object")
+  expect_true(S7::S7_inherits(prov, shinyOAuth::OAuthProvider))
   expect_identical(prov@pkce_method, "S256")
 })

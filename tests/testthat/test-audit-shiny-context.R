@@ -19,10 +19,7 @@ testthat::test_that("session_started audit event is emitted and enriched", {
       auto_redirect = FALSE,
       indefinite_session = TRUE
     ),
-    expr = {
-      # no-op: starting the server is enough to emit session_started
-      testthat::expect_true(TRUE)
-    }
+    expr = {}
   )
 
   # Extract types and find session_started
@@ -77,9 +74,7 @@ testthat::test_that("shinyOAuth.audit_include_http = FALSE excludes http from ev
       auto_redirect = FALSE,
       indefinite_session = TRUE
     ),
-    expr = {
-      testthat::expect_true(TRUE)
-    }
+    expr = {}
   )
 
   # Find session_started event

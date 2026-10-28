@@ -72,7 +72,7 @@ test_that("handle_callback respects client@introspect setting (no introspect by 
         state = enc,
         browser_token = tok
       )
-      testthat::expect_s3_class(tok_ok, "shinyOAuth::OAuthToken")
+      testthat::expect_true(S7::S7_inherits(tok_ok, shinyOAuth::OAuthToken))
     }
   )
 })
@@ -229,7 +229,7 @@ test_that("handle_callback with introspect=TRUE succeeds when token is active", 
         state = enc,
         browser_token = tok
       )
-      testthat::expect_s3_class(tok_obj, "shinyOAuth::OAuthToken")
+      testthat::expect_true(S7::S7_inherits(tok_obj, shinyOAuth::OAuthToken))
       testthat::expect_equal(tok_obj@access_token, "at")
     }
   )
@@ -1281,7 +1281,7 @@ test_that("handle_callback forwards shiny_session to introspect_token", {
         browser_token = tok,
         shiny_session = shiny_session
       )
-      testthat::expect_s3_class(tok_obj, "shinyOAuth::OAuthToken")
+      testthat::expect_true(S7::S7_inherits(tok_obj, shinyOAuth::OAuthToken))
     }
   )
 

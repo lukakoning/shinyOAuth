@@ -93,7 +93,7 @@ testthat::test_that("proactive async refresh may trigger multiple attempts but s
 
       # Assertions: refresh happened at least once, token updated and valid
       testthat::expect_true(calls >= 1)
-      testthat::expect_s3_class(token_after, "S7_object")
+      testthat::expect_true(S7::S7_inherits(token_after, shinyOAuth::OAuthToken))
       testthat::expect_true(startsWith(token_after@access_token, "new-"))
       # No error should be latched in indefinite_session mode
       testthat::expect_null(values[["error"]])
@@ -214,7 +214,7 @@ testthat::test_that("expiry watcher defers clearing token while refresh is in pr
       # 1. Refresh was attempted at least once
       testthat::expect_true(result[["calls"]] >= 1)
       # 2. Token was successfully refreshed (not cleared by expiry watcher)
-      testthat::expect_s3_class(result[["token"]], "S7_object")
+      testthat::expect_true(S7::S7_inherits(result[["token"]], shinyOAuth::OAuthToken))
       testthat::expect_true(startsWith(
         result[["token"]]@access_token,
         "refreshed-"

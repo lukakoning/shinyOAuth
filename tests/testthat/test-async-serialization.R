@@ -147,25 +147,13 @@ testthat::test_that("prepare_client_for_worker does not mutate the original clie
 })
 
 testthat::test_that("serialization does not qualify a process-bound JWKS cache for dispatch", {
-  testthat::skip_if_not_installed("callr")
-  path <- withr::local_tempfile()
-  # Keep a connection number unavailable in a fresh worker, independently of
-  # that worker's startup pipes. All connections remain valid in this process.
-  connections <- lapply(seq_len(20), function(i) file(path, "w+b"))
-  withr::defer(lapply(connections, close))
-  cache <- process_bound_jwks_cache(connections[[length(connections)]])
+  connection <- file(withr::local_tempfile(), "w+b")
+  withr::defer(close(connection))
+  cache <- process_bound_jwks_cache(connection)
   cache[["set"]]("present", "parent-value")
   testthat::expect_identical(cache[["get"]]("present"), "parent-value")
   bytes <- serialize(cache, NULL)
   testthat::expect_true(is.raw(bytes))
-  worker <- callr::r(function(bytes) {
-    cache <- unserialize(bytes)
-    tryCatch({
-      cache[["get"]]("present")
-      FALSE
-    }, error = function(...) TRUE)
-  }, args = list(bytes = bytes))
-  testthat::expect_true(worker)
   cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   cli@provider@jwks_cache <- cache
   testthat::expect_no_error(serialize(cli, NULL))

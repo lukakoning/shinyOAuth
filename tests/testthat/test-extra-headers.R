@@ -1,7 +1,7 @@
 test_that("extra_token_headers must be a named character vector", {
   # Valid
   prov <- oauth_provider_github()
-  expect_s3_class(prov, "S7_object")
+  expect_true(S7::S7_inherits(prov, shinyOAuth::OAuthProvider))
 
   # Invalid: unnamed character vector
   expect_error(

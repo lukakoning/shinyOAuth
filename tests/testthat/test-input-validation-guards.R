@@ -34,14 +34,8 @@ test_that("oauth_client rejects multi-element client_assertion_alg", {
   )
 })
 
-test_that("oauth_client rejects NA client_assertion_alg when explicitly provided", {
-  # NA_character_ is valid as the default (NULL maps to it), but passing
-
-  # an explicit NA via the constructor property should be caught.
+test_that("oauth_client accepts NULL client_assertion_alg as unconfigured", {
   prov <- make_test_provider()
-  # When passed through oauth_client(), NULL maps to NA_character_ which is
-  # the "not provided" sentinel; explicit NA should still pass (it means
-  # "not configured"). This test verifies no crash occurs.
   cli <- oauth_client(
     provider = prov,
     client_id = "abc",
@@ -49,7 +43,7 @@ test_that("oauth_client rejects NA client_assertion_alg when explicitly provided
     redirect_uri = "http://localhost:8100",
     client_assertion_alg = NULL
   )
-  expect_s3_class(cli, "shinyOAuth::OAuthClient")
+  expect_true(S7::S7_inherits(cli, shinyOAuth::OAuthClient))
 })
 
 # ── OAuthClient: client_assertion_audience ───────────────────────────────────
@@ -105,7 +99,7 @@ test_that("oauth_client accepts NULL client_assertion_audience (sentinel path)",
     redirect_uri = "http://localhost:8100",
     client_assertion_audience = NULL
   )
-  expect_s3_class(cli, "shinyOAuth::OAuthClient")
+  expect_true(S7::S7_inherits(cli, shinyOAuth::OAuthClient))
 })
 
 # ── OAuthProvider: pkce_method ───────────────────────────────────────────────

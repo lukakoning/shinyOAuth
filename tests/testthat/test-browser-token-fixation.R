@@ -21,7 +21,7 @@ testthat::test_that("pre-set browser token works only for that session (fixation
       browser_token = tok_fixed
     )
   )
-  testthat::expect_s3_class(t1, "S7_object")
+  testthat::expect_true(S7::S7_inherits(t1, shinyOAuth::OAuthToken))
   testthat::expect_true(
     is.character(t1@access_token) && nzchar(t1@access_token)
   )

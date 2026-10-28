@@ -34,7 +34,7 @@ testthat::test_that("discovery allows loopback HTTP with development opt-in", {
   testthat::expect_no_error({
     prov <- oauth_provider_oidc_discover(issuer = issuer)
   })
-  testthat::expect_s3_class(prov, "S7_object")
+  testthat::expect_true(S7::S7_inherits(prov, shinyOAuth::OAuthProvider))
   testthat::expect_true(grepl("^http://127.0.0.1/token", prov@token_url))
 
   # Relative endpoint should be rejected
@@ -361,7 +361,7 @@ testthat::test_that("allowed_hosts option allows cross-host endpoints", {
     issuer = issuer,
     jwks_host_allow_only = "api.example.com"
   )
-  testthat::expect_s3_class(prov, "S7_object")
+  testthat::expect_true(S7::S7_inherits(prov, shinyOAuth::OAuthProvider))
   testthat::expect_true(grepl("^https://api.example.com/token", prov@token_url))
 })
 

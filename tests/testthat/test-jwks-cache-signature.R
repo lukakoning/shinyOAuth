@@ -92,6 +92,6 @@ test_that("OAuthProvider validator does not probe-call jwks_cache$get", {
     jwks_cache = cache
   )
 
-  expect_s3_class(prov, "S7_object")
+  expect_true(S7::S7_inherits(prov, shinyOAuth::OAuthProvider))
   expect_identical(calls, 0L)
 })

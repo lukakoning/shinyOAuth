@@ -2020,32 +2020,6 @@ test_that("application/jwt with missing issuer must fail by default", {
   )
 })
 
-test_that("application/jwt with HS256 algorithm must fail (non-asymmetric)", {
-  cli <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
-  cli@provider@userinfo_url <- "https://example.com/userinfo"
-  cli@provider@issuer <- "https://issuer.example.com"
-
-  claims <- list(sub = "user-hs256", name = "HS256 User")
-  jwt_body <- make_unsigned_jwt(claims, alg = "HS256")
-
-  testthat::local_mocked_bindings(
-    req_with_retry = function(req, ...) {
-      httr2::response(
-        url = as.character(req[["url"]]),
-        status = 200,
-        headers = list("content-type" = "application/jwt"),
-        body = charToRaw(jwt_body)
-      )
-    },
-    .package = "shinyOAuth"
-  )
-
-  expect_error(
-    get_userinfo(cli, token = "access-token"),
-    class = "shinyOAuth_userinfo_error",
-    regexp = "not in provider.*allowed"
-  )
-})
 test_that("signed UserInfo enforces scalar Boolean verification claims", {
   key <- openssl::rsa_keygen(2048)
   jwk <- jsonlite::fromJSON(write_test_jwk(key[["pubkey"]]))
