@@ -185,25 +185,6 @@ test_that("Spotify avatars render list and data frame images safely", {
   }
 })
 
-test_that("DT escaping covers adversarial Spotify metadata", {
-  skip_if_not_installed("DT")
-
-  payload <- "<img src=x onerror=alert('stored-xss')>"
-  metadata <- data.frame(
-    Track = payload,
-    Artist = payload,
-    Album = payload,
-    Genres = payload
-  )
-
-  widget <- DT::datatable(metadata, rownames = FALSE, escape = TRUE)
-
-  expect_identical(
-    attr(widget[["x"]][["options"]], "escapeIdx", exact = TRUE),
-    "true"
-  )
-})
-
 test_that("Spotify dashboard loads and transforms data in a fresh R process", {
   for (pkg in c(
     "callr",

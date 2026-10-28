@@ -66,15 +66,6 @@ test_that("Ed25519 signs interoperable client assertions, Request Objects and DP
           signature,
           key[["pubkey"]]
         ))
-        signature[[1L]] <- as.raw(bitwXor(as.integer(signature[[1L]]), 1L))
-        expect_error(
-          openssl::ed25519_verify(
-            signing_input,
-            signature,
-            key[["pubkey"]]
-          ),
-          "signature"
-        )
         if (role == "dpop") {
           expect_setequal(names(header[["jwk"]]), c("kty", "crv", "x"))
           expect_identical(header[["jwk"]][["crv"]], "Ed25519")

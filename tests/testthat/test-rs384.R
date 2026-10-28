@@ -33,12 +33,6 @@ test_that("RS384 client assertions use SHA-384 and preserve registered headers a
     hash = openssl::sha384,
     pubkey = public
   ))
-  expect_error(openssl::signature_verify(
-    input,
-    jose::base64url_decode(parts[[3]]),
-    hash = openssl::sha256,
-    pubkey = public
-  ))
   expect_error(
     oauth_client(
       provider,

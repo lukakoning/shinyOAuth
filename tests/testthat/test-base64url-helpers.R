@@ -60,24 +60,8 @@ test_that("empty input decodes to empty raw and text values", {
   expect_identical(shinyOAuth:::base64url_decode(""), "")
 })
 
-test_that("invalid base64url input follows openssl's decoding behavior", {
-  # openssl 2.4.3 changed invalid-input handling from raw() to an error.
-  for (input in c("!@#", "***", "A")) {
-    if (utils::packageVersion("openssl") >= "2.4.3") {
-      expect_error(
-        shinyOAuth:::base64url_decode_raw(input),
-        "Failed to decode base64 string"
-      )
-      expect_error(
-        shinyOAuth:::base64url_decode(input),
-        "Failed to decode base64 string"
-      )
-    } else {
-      expect_identical(shinyOAuth:::base64url_decode_raw(input), raw())
-      expect_identical(shinyOAuth:::base64url_decode(input), "")
-    }
-  }
-})
+# Invalid-input behavior belongs to openssl. JWT, JWK and encrypted-state tests
+# check that shinyOAuth rejects malformed input regardless of decoder behavior.
 
 test_that("base64url_decode rejects embedded NUL bytes", {
   # Encode a raw vector containing a NUL byte

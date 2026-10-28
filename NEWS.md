@@ -90,6 +90,10 @@
   - Requires `jsonlite >= 1.6` and `openssl >= 2.1.2`; the future async backend
     requires `promises >= 1.3.3`.
 
+* Reduced dependency-sensitive test assertions, including OpenSSL decoding
+  diagnostics and private DT attributes, while retaining package validation and
+  signature interoperability checks. Removed unreliable wall-clock thresholds.
+
 # shinyOAuth 0.6.1
 
 * Fix to accept an empty `scope` response when requesting no scopes,

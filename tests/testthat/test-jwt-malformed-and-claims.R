@@ -57,26 +57,19 @@ mk_client <- function() {
 test_that("Malformed JWTs are rejected with parse errors", {
   client <- mk_client()
 
-  # Construct with two segments but header is not JSON
+  # Malformed JSON in the header or payload must be rejected by the package.
   bad1 <- paste(enc_b64url("not-json"), enc_b64url("{}"), "", sep = ".")
   # Ensure jsonlite::fromJSON sees a string (not a path) and fails to parse JSON
   bad2 <- paste(enc_b64url("{not json}"), enc_b64url("{}"), "", sep = ".")
-  bad3 <- paste(enc_b64url("{}"), enc_b64url("not-json"), "", sep = ".")
+  bad3 <- paste(enc_b64url('{"alg":"RS256"}'), enc_b64url("not-json"), "", sep = ".")
 
   withr::with_options(list(shinyOAuth.skip_id_sig = TRUE), {
-    # Accept either package-level parse errors or jsonlite parse errors
-    expect_error(
-      shinyOAuth:::validate_id_token(client, bad1),
-      regexp = "Invalid JWT format|parse|lexical error"
-    )
-    expect_error(
-      shinyOAuth:::validate_id_token(client, bad2),
-      regexp = "parse|Failed|invalid"
-    )
-    expect_error(
-      shinyOAuth:::validate_id_token(client, bad3),
-      regexp = "parse|Failed|invalid|missing alg"
-    )
+    for (jwt in c(bad1, bad2, bad3)) {
+      expect_error(
+        shinyOAuth:::validate_id_token(client, jwt),
+        class = "shinyOAuth_id_token_error"
+      )
+    }
   })
 })
 

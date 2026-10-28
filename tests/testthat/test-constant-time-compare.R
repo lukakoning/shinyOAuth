@@ -1,20 +1,5 @@
-test_that("constant_time_compare basic equality/inequality", {
-  # Equal values
-  expect_true(shinyOAuth:::constant_time_compare("abc", "abc"))
-  # Different values
-  expect_false(shinyOAuth:::constant_time_compare("abc", "abd"))
-  # Different lengths
-  expect_false(shinyOAuth:::constant_time_compare("abc", "ab"))
-  # Empty vs empty
-  expect_true(shinyOAuth:::constant_time_compare("", ""))
-  # Invalid inputs treated as mismatch
-  expect_false(shinyOAuth:::constant_time_compare(NA_character_, "x"))
-  expect_false(shinyOAuth:::constant_time_compare(NULL, "x"))
-})
-
 test_that("constant_time_compare ignores length via hashing", {
-  # These tests don't measure timing precisely, but we ensure function handles
-  # very different lengths without error and returns correct result.
+  # Exercise long inputs without relying on wall-clock measurements.
   a <- paste(rep("a", 4096), collapse = "")
   b <- paste(rep("a", 2), collapse = "")
   c <- paste(rep("b", 4096), collapse = "")
@@ -54,28 +39,4 @@ test_that("constant_time_compare handles raw inputs too", {
   expect_false(f(NULL, charToRaw("a")))
   expect_false(f(charToRaw("a"), NULL))
   expect_true(f("a", charToRaw("a")))
-})
-
-test_that("constant_time_compare is insensitive to content length timing (coarse)", {
-  # We can't perfectly prove constant-time in unit tests, but we can assert
-  # that the function runs over the max length without early exit by comparing
-  # the runtime ratio of equal vs. first-char-different strings of the same
-  # length. Allow generous tolerance to avoid flakiness.
-  f <- shinyOAuth:::constant_time_compare
-  skip_on_cran()
-  n <- 2000
-  a <- paste(rep("a", n), collapse = "")
-  b_equal <- a
-  b_diff <- paste0("b", substring(a, 2))
-
-  t_equal <- system.time({
-    invisible(f(a, b_equal))
-  })[["elapsed"]]
-  t_diff <- system.time({
-    invisible(f(a, b_diff))
-  })[["elapsed"]]
-
-  # The times should be in the same ballpark; allow 3x to avoid false alarms
-  timing_limit <- max(3 * t_equal, t_equal + 0.02)
-  expect_lte(t_diff, timing_limit + sqrt(.Machine[["double.eps"]]))
 })

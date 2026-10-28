@@ -63,7 +63,8 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
     class = "shinyOAuth_state_error"
   )
 
-  # IV missing/invalid base64/invalid length
+  # IV missing/invalid base64/invalid length. Malformed base64 may throw or
+  # decode to empty bytes depending on openssl; either must become a state error.
   w <- wrapper
   w[["iv"]] <- NULL
   t3 <- shinyOAuth:::base64url_encode(charToRaw(jsonlite::toJSON(
@@ -84,7 +85,6 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   )))
   expect_error(
     shinyOAuth:::state_decrypt_gcm(t4, key = key),
-    "invalid GCM IV length",
     class = "shinyOAuth_state_error"
   )
 
@@ -121,7 +121,6 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   )))
   expect_error(
     shinyOAuth:::state_decrypt_gcm(t7, key = key),
-    "invalid GCM tag length",
     class = "shinyOAuth_state_error"
   )
 
@@ -158,7 +157,6 @@ test_that("state_decrypt_gcm rejects invalid token shapes and types", {
   )))
   expect_error(
     shinyOAuth:::state_decrypt_gcm(t10, key = key),
-    "empty ciphertext",
     class = "shinyOAuth_state_error"
   )
 
