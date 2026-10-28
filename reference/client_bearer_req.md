@@ -54,9 +54,9 @@ client_bearer_req(
   Optional named list or named character vector of extra headers to set
   on the request. Header names are case-insensitive. Names must be
   unique HTTP field-name tokens, and values must not contain prohibited
-  control characters. DPoP requests reject `Host` overrides. Any
-  user-supplied `Authorization` or `DPoP` header is ignored to ensure
-  the token authentication set by this function is not overridden.
+  control characters. DPoP requests reject `Host` overrides. This
+  function manages the `Authorization` and `DPoP` headers and ignores
+  user-supplied replacements.
 
 - query:
 
@@ -86,15 +86,10 @@ client_bearer_req(
 - client:
 
   Optional
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md).
-  Required when the effective token type is `DPoP`, because the client
-  carries the configured DPoP proof key, and also when using
-  sender-constrained mTLS / certificate-bound tokens so shinyOAuth can
-  attach the configured client certificate and validate any `cnf`
-  thumbprint from an
-  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  and observe any `cnf` thumbprint carried on a raw JWT access-token
-  string.
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md);
+  required for DPoP or mTLS-bound tokens so the request can use the
+  matching signing key or certificate and check any token-binding
+  information.
 
 - token_type:
 

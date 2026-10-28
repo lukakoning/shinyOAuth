@@ -55,41 +55,36 @@ possible. Signed JWT responses retain arrays as lists.
 
 ## Details
 
-The provider must have a `userinfo_url`: the OpenID Connect (OIDC)
-UserInfo endpoint, or an OAuth provider's profile API. With OIDC, this
-function checks that userinfo belongs to the same user as a validated ID
-token. Pass the complete
-[OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md),
-which carries the validated ID token needed for this check. OIDC
-providers with a UserInfo endpoint require this baseline by default,
-including when `userinfo_required = FALSE` disables automatic retrieval.
-Raw access tokens and unvalidated ID tokens then cause an error. An
-explicit `userinfo_id_token_match = FALSE` permits profile retrieval
-without a validated identity; when one is available, its subject is
-always compared.
+Pass the client and complete
+[OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
+from login, for example `get_userinfo(client, auth[["token"]])`. The
+provider needs a `userinfo_url`. For OIDC, shinyOAuth checks that the
+returned profile belongs to the validated login. A raw access-token
+string cannot provide that identity check.
 
-Ordinary JSON profiles and signed JWT UserInfo responses are supported.
-Signed responses are verified using the provider's signing keys and
-`userinfo_allowed_algs`; encrypted UserInfo is not supported. Set
-`userinfo_signed_jwt_required` on the provider to require a signed
-response, including when fetching manually with
-`userinfo_required = FALSE`, and `userinfo_jwt_required_time_claims` on
-the client to require time claims such as `exp`. Present time claims are
-checked even when not required.
+`userinfo_required = FALSE` disables automatic profile retrieval, not
+the identity or signature checks on a manual call. Request and validate
+the fields your app needs.
 
-Standard OIDC profile claims in ID tokens and UserInfo are checked
-against their JSON types, including strings for names and email, a
-number for `updated_at`, and an `address` object with string-valued
-standard members. Applications should validate formats and policies for
-the claim values they use, and supply schemas for custom extension
-claims.
+## Advanced response validation
 
-For certificate-bound tokens (mTLS) and key-bound tokens (DPoP), the
-helper uses the client's certificate or signing key and checks the token
-binding. It handles one DPoP nonce challenge with a fresh-proof retry.
-See the [advanced security
+Normal JSON profiles and signed JWT profiles are supported; encrypted
+UserInfo is not. `userinfo_signed_jwt_required` requires a signed
+response using `userinfo_allowed_algs`.
+`userinfo_jwt_required_time_claims` can require expiry and other time
+claims; present time claims are always checked.
+
+By default, OIDC providers with a UserInfo endpoint require a validated
+identity token, including for manual retrieval. Explicit
+`userinfo_id_token_match = FALSE` allows retrieval without one, but when
+both are available their `sub` values must always match. Standard
+profile fields are checked for the expected JSON types; validate
+application-specific values and extension fields yourself.
+
+For DPoP or mTLS-bound tokens, the client supplies the matching signing
+key or certificate. See the [advanced security
 vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html)
-for configuration.
+for those configurations.
 
 ## Examples
 

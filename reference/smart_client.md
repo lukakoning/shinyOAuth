@@ -2,14 +2,17 @@
 
 **\[experimental\]**
 
-Combine a reviewed
-[`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md)
-snapshot with an existing app registration. The result is an
+Configure your Shiny app to access a hospital's FHIR API. Start with
+[`smart_discover()`](https://lukakoning.github.io/shinyOAuth/reference/smart_discover.md),
+then supply the app registration and requested permissions. The result
+is an
 [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
 for
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+or
 [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md),
-with the resource ID `"fhir"`. Discovery does not register the app or
-grant access.
+with an approved API named `"fhir"`. Discovery does not register your
+app or grant access.
 
 ## Usage
 
@@ -176,35 +179,42 @@ smart_client(
 ## Value
 
 An
-[OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md),
-usable by the existing module or the separate connection manager.
-`@resource_bases` contains the approved `fhir` base; `@required_scopes`
-and `@label` use the ordinary client properties. `@smart` describes the
-selected profile. The client contains registration settings, never a
-user's token or launch context. Configure it outside `server()`.
+[OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md)
+for the module or connection manager. Its `resource_bases` contains the
+approved `fhir` API. The object holds app registration settings, not a
+user's token or patient context; create it outside `server()`. Its
+`smart` property records the selected profile.
 
 ## Details
 
-This constructor selects SMART 2.2 scope rules, S256 PKCE and the exact
-FHIR base as the authorization request's `aud`. Identity is opt-in:
-`"openid"` requests and requires `openid`, signed ID-token validation
-and nonce binding. `"fhirUser"` additionally requests and requires the
-`fhirUser` scope and claim. `"none"` does not enable OIDC because an
-issuer happens to be present. A patient in context is independent of the
-authenticated user and local owner.
+Choose `launch = "standalone"` when the user opens the app directly, or
+`"ehr"` when an electronic health record opens it. Use separate
+registrations for the two flows. Patient context describes the patient
+being viewed; it does not identify the person signed in. Enable
+`identity` only when the app needs that identity too. See the [SMART on
+FHIR
+guide](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html)
+for a complete app.
 
-Only direct authorization requests and query/form POST callbacks are
-supported. Claims requests (including `auth_time`), JAR, PAR, JARM,
-DPoP, mTLS and remote freshness requirements are not supported by this
-constructor. EHR clients require a fresh registered launch transaction.
-Configure standalone and EHR registrations as separate clients when both
-are needed. No launch handle is stored in shared provider configuration.
-Local usability policy requires a positive lifetime. An initial response
-may omit `expires_in` only when `initial_expires_in_fallback` is
-configured explicitly; refresh responses must include it. The generic
-assumed lifetime is not used. SMART back-channel and resource requests
-require TLS 1.2 or newer. A stronger configured TLS minimum is
-preserved; ordinary clients keep their defaults.
+## Advanced SMART profile
+
+The constructor applies SMART App Launch 2.2 permission rules, S256 PKCE
+and the exact FHIR base as the authorization request's `aud`.
+`identity = "openid"` requires signed identity-token and nonce checks;
+`"fhirUser"` also requires the user's FHIR reference. `"none"` does not
+enable OIDC automatically.
+
+Supported flows use direct authorization and query or form POST
+callbacks. Claims requests, remote authentication-freshness overrides,
+JAR, PAR, JARM, DPoP and mTLS are not supported by this constructor.
+Each EHR launch needs a fresh registered launch transaction; do not
+reuse a shared launch handle.
+
+Tokens need a positive lifetime. Only an initial response may omit
+`expires_in`, and only with an explicit `initial_expires_in_fallback`.
+Refresh responses must supply a lifetime. Requests require TLS 1.2 or
+newer; a stronger configured minimum is preserved. Ordinary clients also
+default to TLS 1.2.
 
 ## References
 

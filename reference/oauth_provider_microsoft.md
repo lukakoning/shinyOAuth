@@ -59,14 +59,17 @@ personal Microsoft accounts, and `"common"` allows both. Your app
 registration and app access rules must also permit the intended
 accounts.
 
+Profiles are fetched from Microsoft Graph by default. Set
+`userinfo_required = FALSE` for an API token that cannot call Graph;
+`connection$identity()` still provides the validated login identity.
+
+## Advanced identity settings
+
 ID token validation is enabled for these tenant choices. For a directory
 ID, the issuer must match that directory. `"common"` and
 `"organizations"` use Microsoft's tenant-independent issuer template and
 signing-key issuer rules. `"consumers"` uses the consumer tenant issuer.
-The helper restricts ID token algorithms to RS256 and fetches UserInfo
-from Microsoft Graph by default. Set `userinfo_required = FALSE` when
-using an API token that cannot call Graph; validated ID-token claims
-remain available through `connection$identity()`.
+The helper restricts ID token algorithms to RS256.
 
 Setting `id_token_validation = FALSE` disables ID token and nonce checks
 and leaves OAuth plus any configured profile retrieval. Keep the default
@@ -183,12 +186,9 @@ if (
     })
   }
 
-  # Need to open app in 'localhost:8100' to match with redirect_uri
-  # of the public Azure CLI app (above). Browser must use 'localhost'
-  # too to properly set the browser cookie. But Shiny only redirects to
-  # '127.0.0.1' & blocks process once it runs. So we disable browser
-  # launch by Shiny & then use 'later::later()' to open the browser
-  # ourselves a short moment after the app starts
+  # Open localhost:8100 to match the Azure CLI app's registered redirect URI
+  # and keep browser cookies on the same host. Schedule the browser launch
+  # before runApp() starts blocking R.
   later::later(
     function() {
       utils::browseURL("http://localhost:8100")

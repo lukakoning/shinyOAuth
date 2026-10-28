@@ -23,8 +23,8 @@ credentials to oauth_client()."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -105,13 +105,19 @@ Manual <code><a href="get_userinfo.html">get_userinfo()</a></code> calls still r
 allows work or school accounts, <code>"consumers"</code> allows personal Microsoft
 accounts, and <code>"common"</code> allows both. Your app registration and app access
 rules must also permit the intended accounts.</p>
+<p>Profiles are fetched from Microsoft Graph by default. Set
+<code>userinfo_required = FALSE</code> for an API token that cannot call Graph;
+<code>connection$identity()</code> still provides the validated login identity.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="advanced-identity-settings">Advanced identity settings<a class="anchor" aria-label="anchor" href="#advanced-identity-settings"></a></h2>
+
+
 <p>ID token validation is enabled for these tenant choices. For a directory ID,
 the issuer must match that directory. <code>"common"</code> and <code>"organizations"</code> use
 Microsoft's tenant-independent issuer template and signing-key issuer rules.
 <code>"consumers"</code> uses the consumer tenant issuer. The helper restricts ID token
-algorithms to RS256 and fetches UserInfo from Microsoft Graph by default.
-Set <code>userinfo_required = FALSE</code> when using an API token that cannot call Graph;
-validated ID-token claims remain available through <code>connection$identity()</code>.</p>
+algorithms to RS256.</p>
 <p>Setting <code>id_token_validation = FALSE</code> disables ID token and nonce checks and
 leaves OAuth plus any configured profile retrieval. Keep the default for OIDC
 sign-in.
@@ -227,12 +233,9 @@ explicit opt-out; otherwise use the directory GUID to retain OIDC validation.</p
 <span class="r-in"><span>    <span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Need to open app in 'localhost:8100' to match with redirect_uri</span></span></span>
-<span class="r-in"><span>  <span class="co"># of the public Azure CLI app (above). Browser must use 'localhost'</span></span></span>
-<span class="r-in"><span>  <span class="co"># too to properly set the browser cookie. But Shiny only redirects to</span></span></span>
-<span class="r-in"><span>  <span class="co"># '127.0.0.1' &amp; blocks process once it runs. So we disable browser</span></span></span>
-<span class="r-in"><span>  <span class="co"># launch by Shiny &amp; then use 'later::later()' to open the browser</span></span></span>
-<span class="r-in"><span>  <span class="co"># ourselves a short moment after the app starts</span></span></span>
+<span class="r-in"><span>  <span class="co"># Open localhost:8100 to match the Azure CLI app's registered redirect URI</span></span></span>
+<span class="r-in"><span>  <span class="co"># and keep browser cookies on the same host. Schedule the browser launch</span></span></span>
+<span class="r-in"><span>  <span class="co"># before runApp() starts blocking R.</span></span></span>
 <span class="r-in"><span>  <span class="fu">later</span><span class="fu">::</span><span class="fu"><a href="https://later.r-lib.org/reference/later.html" class="external-link">later</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>      <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/browseURL.html" class="external-link">browseURL</a></span><span class="op">(</span><span class="st">"http://localhost:8100"</span><span class="op">)</span></span></span>

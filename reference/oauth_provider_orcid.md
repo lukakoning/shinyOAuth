@@ -1,8 +1,9 @@
-# Create an ORCID [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md) (via OIDC discovery)
+# Configure researcher sign-in with ORCID
 
-Configure researcher sign-in with ORCID. Discovery selects ORCID's
-`client_secret_post` authentication; pass a client secret to
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+Let users sign in with their ORCID account. Register your app with
+ORCID, then pass this provider, the client ID and client secret to
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+with `scopes = "openid"`.
 
 ## Usage
 
@@ -34,10 +35,14 @@ permissions depend on whether you registered a Public or Member API
 client.
 
 Sandbox and production require separate credentials and user accounts.
-Production redirect URIs must use HTTPS. ORCID does not advertise PKCE
-in its discovery metadata, so this confidential-client preset uses
-client authentication and validated OIDC nonce without claiming PKCE
-protection. See the [ORCID authentication
+Production redirect URIs must use HTTPS.
+
+## Advanced registration settings
+
+This preset uses `client_secret_post` authentication. ORCID does not
+advertise PKCE, so the helper uses client authentication and OIDC nonce
+validation without PKCE. Supply the secret issued for this registration.
+See the [ORCID authentication
 guide](https://info.orcid.org/documentation/api-tutorials/api-tutorial-get-and-authenticated-orcid-id/).
 
 ## Examples

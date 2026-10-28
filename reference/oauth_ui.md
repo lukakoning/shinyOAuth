@@ -1,11 +1,10 @@
 # Set up a Shiny UI for shinyOAuth
 
-Wrap your complete UI in `oauth_ui()` when using
+Wrap your complete UI when using
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-It adds the browser code needed for login and protects callback
-responses from caching and referrer disclosure. Supply `id` and `client`
-to accept query callbacks before rendering any application UI or
-scripts.
+This adds the browser setup for login and handles the provider's return
+before showing your app. Supply the same `id` and `client` as the server
+module.
 
 ## Usage
 
@@ -65,54 +64,48 @@ functions are supported too, including functions accepting the Shiny
 request. This is the recommended setup for ordinary query-callback apps.
 It includes
 [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-setup; do not add a separate call inside the wrapped UI. With `client`,
-it also serves client-hosted Request Objects at the app root using
-independent, single-use handles. Shared-worker apps need a shared
-`client@state_store` with atomic `take()`; a memory store supports one
-process.
-
-For `response_mode = "form_post"` or `"form_post.jwt"`, use
+setup; do not add a separate call inside the wrapped UI. For POST login
+returns (`response_mode = "form_post"` or `"form_post.jwt"`), use
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-instead; it includes this setup and accepts POST callbacks.
+instead. For callback paths below the app root, pass `uiPattern = ".*"`
+to [`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html).
 
-GET callbacks are validated and sealed into short-lived, single-use
-bridge handles in the client's state store, then redirected to a clean
-URL before application HTML is rendered. Logical state is consumed only
-after the Shiny module verifies browser binding. The storage
-requirements and quotas are the same as
-[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
-Register any fixed application query parameters in
-`client@redirect_uri`; other inbound parameters are discarded. For
-non-root callback paths use `uiPattern = ".*"` in
-[`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html).
+## Several login modules
 
-For multiple providers, supply
-`clients = list(auth_a = client_a, auth_b = client_b)` instead of `id`
-and `client`. Names are the server module IDs. The registry accepts
-query and form-post callbacks on configured routes. Each client must
-select a multi-server defense. Shared routes require
-`authorization_server_mode = "multi_issuer"` and distinct trusted
-issuers. An RFC 9207 `iss` or signed JARM issuer selects the configured
-client; the complete callback is then verified before a bridge handle is
-stored. Encrypted JARM on a shared route requires an outer `iss`
-identifying one distinct configured issuer. The decrypted, signed
-response must match it. Do not nest wrappers to route multiple
-providers.
+Supply `clients = list(auth_a = client_a, auth_b = client_b)` instead of
+`id` and `client`. Names must match server module IDs. The wrapper
+handles each configured query or POST route; do not nest several
+wrappers.
 
-Without `id` and `client`, ordinary pages still render, but raw OAuth
-GET callbacks fail closed with a setup error. Earlier `oauth_ui(ui)`
-query-flow applications must add those arguments. When integrating
+## Advanced routing and storage
+
+Each client in a registry must select a multi-server defense. Shared
+routes require `authorization_server_mode = "multi_issuer"` and distinct
+trusted issuers. An RFC 9207 `iss` or signed JARM issuer selects the
+configured client; the callback is then fully verified. Encrypted JARM
+on a shared route needs an outer `iss` identifying one configured
+issuer, which the inner signed response must match.
+
+Callbacks use short-lived, single-use state-store records and a clean
+continuation URL before application HTML or scripts load. Shared workers
+need a shared state store with atomic consumption; see
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+and
+[`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md).
+Register fixed application query parameters in `redirect_uri`; other
+incoming parameters are discarded. Client-hosted Request Objects also
+use this store and are served at the app root.
+
+Without `id` and `client`, ordinary pages render but raw login callbacks
+are rejected. A custom
 [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-directly, provide an equivalent dedicated callback endpoint: third-party
-or application scripts must not execute on an unsanitized callback page.
+integration must provide equivalent callback handling; application
+scripts must not run on raw callback pages.
 
-HTML responses include `Cache-Control: no-store`, `Pragma: no-cache`,
-and `Referrer-Policy: no-referrer`. The browser reads these headers
-before loading page resources. The meta tag from
-[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-takes effect only once the browser reads that tag, so it may miss early
-resource requests. You can also set the same HTTP header at your web
-server.
+The wrapper sets no-store cache headers and
+`Referrer-Policy: no-referrer` before page resources load. A meta tag
+alone may be read too late to protect early requests. A web server may
+set the same headers.
 
 ## See also
 

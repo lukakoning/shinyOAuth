@@ -1,10 +1,10 @@
-# Create an Amazon Cognito [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md) (via OIDC discovery)
+# Configure sign-in with an Amazon Cognito user pool
 
-Configure OIDC login for an Amazon Cognito user pool. Register an app
-client with the authorization code grant, configure a user pool login
-domain, and pass the app credentials to
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-with the enabled OIDC scopes.
+Let users sign in through your Amazon Cognito user pool. Register an app
+client, enable the authorization code grant and a user pool login
+domain, then pass this provider and the app credentials to
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+Request the login and profile scopes enabled for that registration.
 
 ## Usage
 

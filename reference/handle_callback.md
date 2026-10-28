@@ -1,4 +1,4 @@
-# Handle OAuth 2.0 callback: verify state, swap code for token, verify token
+# Validate an OAuth 2.0 callback and retrieve tokens
 
 Check a returning login request and exchange the provider's temporary
 authorization code for an

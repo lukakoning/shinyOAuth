@@ -1,4 +1,4 @@
-# Create a Hugging Face [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md) (via OIDC discovery)
+# Configure sign-in with Hugging Face
 
 Configure Sign in with Hugging Face. Register an OAuth application in
 your Hugging Face settings, then pass its credentials to

@@ -102,8 +102,7 @@ oauth_client(
   PKCE, an empty secret is omitted. With `"public"` (alias `"none"`), it
   is never sent for client authentication. HMAC-signed ID token
   validation still requires a non-empty secret, regardless of the client
-  authentication method. HMAC key-length checks measure the UTF-8 bytes
-  used for signing and verification.
+  authentication method.
 
 - redirect_uri:
 
@@ -150,18 +149,11 @@ oauth_client(
   `list(userinfo = list(email = list(essential = TRUE)))`. Use
   `claims_validation = "strict"` if an unmet request must stop login.
 
-  Lists are JSON-encoded with `auto_unbox = TRUE`. Use `NULL` for an
-  unconstrained claim, `value` for one required value, or `values` for a
-  set. `values` vectors are always encoded as JSON arrays, including
-  single-element vectors. A pre-encoded JSON string is also accepted.
-  Object member names must be unique; targets must be objects, claim
-  entries must be `NULL` or objects, and `essential` must be a Boolean.
-  Pre-encoded `values` must be non-empty arrays. Malformed requests are
-  rejected even with `claims_validation = "none"`. Numeric constraints
-  use R's binary64 precision and must be finite and within
-  `+/- (2^53 - 1)`. Use strings for larger identifiers or values
-  requiring decimal precision beyond R's numeric representation. Your
-  provider must support the OIDC claims parameter.
+  Use `NULL` to request a claim without a constraint, `value` for one
+  acceptable value, or `values` for several. Lists are converted to JSON
+  for the provider; a pre-encoded JSON object is also accepted. The
+  provider must support claims requests. See Claims requests below for
+  validation and numeric limits.
 
 - state_store:
 
@@ -233,14 +225,10 @@ oauth_client(
   and asymmetric algorithms supported for outbound signing (`RS256`,
   `RS384`, `ES256`, `ES384`, `ES512`, and `Ed25519` or legacy `EdDSA`
   with Ed25519 keys) for private keys. `RS512`, `PS256`, `PS384`, and
-  `PS512` are not currently supported for outbound client assertions. A
-  shared HMAC secret must use the same algorithm across enabled ID
-  token, JARM, JAR and endpoint assertion profiles (RFC 8725 section
-  3.1). This includes inferred defaults and metadata-selected endpoint
-  algorithms. Endpoint overrides using distinct secrets may select
-  different algorithms. RSA signing keys are likewise bound by public
-  material across client assertions, JAR, DPoP and endpoint overrides;
-  different `kid` values or PEM spellings do not create distinct keys.
+  `PS512` are not currently supported for outbound client assertions.
+  Reusing an RSA key or HMAC secret requires the same signing algorithm
+  across enabled profiles and endpoint overrides. Use separate keys or
+  secrets when algorithms differ; see the advanced security vignette.
 
 - client_assertion_audience:
 
@@ -493,12 +481,11 @@ oauth_client(
   when the UserInfo response is a signed JWT (`application/jwt`).
   Allowed values are `"exp"`, `"iat"`, and `"nbf"`.
 
-  Default is `character(0)`, which means these claims are validated only
-  when present. Set, for example,
-  `userinfo_jwt_required_time_claims = "exp"` to require an expiry on
-  signed UserInfo JWTs, or pass multiple values to require additional
-  temporal claims. For security-sensitive deployments that accept signed
-  UserInfo JWTs, prefer requiring at least `"exp"`.
+  The default, `character(0)`, checks these claims only when present.
+  Set, for example, `userinfo_jwt_required_time_claims = "exp"` to
+  require an expiry on signed UserInfo JWTs, or pass multiple values to
+  require additional temporal claims. For security-sensitive deployments
+  that accept signed UserInfo JWTs, prefer requiring at least `"exp"`.
 
 - required_acr_values:
 
@@ -535,8 +522,8 @@ oauth_client(
   - `"token_type"`: require introspection to return `token_type`. This
     is useful for sender-constrained deployments such as DPoP, where
     introspection can authoritatively report `token_type = "DPoP"`.
-    Default is `character(0)`. (Note that not all providers may return
-    each of these fields in introspection responses.)
+    Default is `character(0)`. Providers may omit these fields from
+    introspection responses.
 
 - authorization_server_mode:
 
@@ -755,48 +742,24 @@ oauth_client(
 
 - token_targets:
 
-  Optional named list of API token declarations. Each entry has
-  `resource` (an absolute URI, or a GUID in Microsoft mode) and `scopes`
-  (API scopes also present in the client's `scopes`). Optional
-  `required_scopes` apply only to this target; optional `resource_ids`
-  explicitly associate approved HTTP `resource_bases` with this target.
-  Requires a provider with a supported `token_target_mode`,
-  `userinfo_required = FALSE`, and no `resource` or SMART configuration.
-  Provider `extra_auth_params` and `extra_token_params` must not contain
-  `resource`; declare resources only in `token_targets`. RFC 8707 mode
-  reserves OIDC scope names only for an OIDC provider or when client
-  `scopes` includes `openid`; otherwise these names are ordinary API
-  scopes declared in targets. Microsoft always uses its OIDC scope set.
-  Client-level `required_scopes` can contain OIDC scopes only, except
-  `offline_access`: request refresh consent in client `scopes`, never in
-  client or target `required_scopes`. Access-token scopes cannot
-  establish whether a usable refresh credential exists. Targets share
-  one local authorization and refresh credential, while their access
-  tokens and retained permission limits remain separate. Microsoft
-  limits constrain local operation checks, while the actual token can
-  include previously consented scopes for the selected resource.
-  Explicit API scope narrowing is unsupported for Microsoft targets.
-  Distinct Microsoft target resources must not have overlapping scope
-  prefixes; nested resources are ambiguous with slash-containing
-  permissions. Optional Microsoft `scope_aliases` lists short permission
-  names (for example, `c("items/read", "read:items")`) accepted in token
-  responses. These aliases support optional `.default` and prior-consent
-  permissions without requesting or requiring them. Aliases never
-  establish a grant or widen operation limits; URI names with `://` and
-  declared resource prefixes remain reserved. At most 16 targets are
-  supported. The complete authorization, including OIDC scopes and
-  actual permissions returned by Microsoft, is limited to 128 distinct
-  scope tokens and 8192 scope bytes (excluding spaces). Scope
-  declarations may be vectors or space-delimited strings. See
-  [`vignette("token-targets")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
-  for provider rules and examples.
+  Optional named list for obtaining tokens for several APIs through one
+  login. Each entry needs a `resource` identifier and `scopes` (also
+  included in client `scopes`). Optional `required_scopes` set that
+  API's minimum permissions; `resource_ids` associate it with named
+  `resource_bases`. Optional Microsoft `scope_aliases` identify unusual
+  short permission names in responses. Requires provider support and
+  `userinfo_required = FALSE`; cannot be combined with `resource` or
+  SMART configuration. See the [token targets
+  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
+  for examples, provider-specific permission rules and declaration
+  limits.
 
 - default_token_target:
 
-  Name of the initial code-redemption target and the default for
-  connection methods. Required with multiple targets; `oauth_client()`
-  selects the sole target automatically. A method's `target` argument
-  overrides only that call, never the configured default.
+  Name of the API to use when a connection method omits `target`.
+  Required with several targets; the sole target is selected
+  automatically. Selecting a target for one call does not change this
+  default.
 
 ## Value
 
@@ -815,6 +778,21 @@ vignette](https://lukakoning.github.io/shinyOAuth/articles/usage.html)
 for a complete app, or the [advanced security
 vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html)
 for certificate and signed-request settings.
+
+## Claims requests
+
+Use an R list for most applications. `values` vectors become JSON
+arrays, including single-element vectors. Each claim entry is `NULL` or
+a named list; `essential` must be logical, and `value` and `values`
+cannot be combined. Pre-encoded JSON must use unique member names,
+object-valued target sections and nonempty arrays for `values`. Invalid
+requests are rejected even when `claims_validation = "none"` disables
+checking returned values.
+
+Numbers use R's numeric precision and must be finite and within
+`+/- (2^53 - 1)`. Use strings for larger exact identifiers or decimal
+values that R cannot represent accurately. UserInfo claim checks require
+automatic profile retrieval and a configured UserInfo endpoint.
 
 ## Examples
 

@@ -2,35 +2,25 @@
 
 ## Overview
 
-shinyOAuth provides a Shiny module for OAuth 2.0 authorization and
-OpenID Connect (OIDC) authentication.
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-manages redirects, callback validation, token exchange, and session
-state.
+Use shinyOAuth to let users sign in with an existing service and let
+your app call that service’s API with their permission. Your app does
+not collect the user’s password. OAuth grants permission to call an API.
+OpenID Connect (OIDC) adds identity checks so your app can verify who
+signed in.
+
+In R, configure the service and your app registration, then add the
+Shiny UI wrapper and server module. The module manages login and tokens;
 [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
-supplies the browser setup required by the module.
+handles the browser’s return to the app.
 
-For ordinary apps, use `oauth_ui(ui, id = "auth", client = client)` with
-the same module ID and client as the server. Use
-[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-for POST callbacks, or
-[`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
-with a connection manager. These wrappers include the browser
-dependency; you do not need a separate
-[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-call. That lower-level helper is for custom integrations providing
-equivalent callback handling and response headers.
-
-This vignette covers provider and client configuration, manual login
-buttons, authenticated API calls, token refresh, and deployment. The
-examples use a GitHub OAuth App. Install shinyOAuth with
+The examples use a GitHub OAuth App. Install shinyOAuth with
 `install.packages("shinyOAuth")`. For the protocol flow and validation
 rules, see [Authentication
 flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md).
 
 ## GitHub app registration
 
-1.  Register an **OAuth App** in [GitHub’s developer
+1.  Register an OAuth App in [GitHub’s developer
     settings](https://github.com/settings/developers). Set both the
     homepage URL and authorization callback URL to
     `http://127.0.0.1:8100` for this local example.
@@ -54,9 +44,9 @@ Save the following code as `app.R` and run it. Open
 address; switching between `localhost` and `127.0.0.1` can interrupt
 login.
 
-> **Deploying to Posit Connect or Connect Cloud?** Test login at the
-> direct app URL in a new browser tab or window. The dashboard’s
-> embedded preview can prevent OAuth redirects. See [Posit deployment
+> Deploying to Posit Connect or Connect Cloud? Test login at the direct
+> app URL in a new browser tab or window. The dashboard’s embedded
+> preview can prevent OAuth redirects. See [Posit deployment
 > instructions](#posit-connect-and-connect-cloud).
 
 ``` r
@@ -107,9 +97,9 @@ holds your app’s credentials, redirect URI, and requested scopes. After
 authentication, the module returns an `OAuthToken` as `auth[["token"]]`,
 containing tokens and available user information.
 
-The **redirect URI**, also called the callback URL, is the address where
-the provider sends the browser back. Register it with the provider and
-use the same value in
+The redirect URI, also called the callback URL, is the address where the
+provider sends the browser back. Register it with the provider and use
+the same value in
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
 including scheme, host, port, path, and fixed query parameters. Fixed
 query names must not use OAuth/OIDC response fields such as `state`,
@@ -118,7 +108,7 @@ query names must not use OAuth/OIDC response fields such as `state`,
 the `shinyOAuth_request_object` retrieval field. These names are
 reserved for callback processing and are rejected when configuring the
 client. Application parameters such as `tenant=one&tag=a&tag=b` are
-supported. **Scopes** are named permissions, such as `read:user`; the
+supported. Scopes are named permissions, such as `read:user`; the
 provider defines which names are available.
 
 Create your provider and client outside `server()` so they remain
@@ -218,14 +208,12 @@ output[["repositories"]] <- renderTable({
 Only send tokens to an API you intend to authorize. The example requests
 one page of results; fetching more pages depends on the API. Use
 [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-to build an `httr2` request without sending it, or pass a prepared
-`httr2` request to
+to prepare a request without sending it, then use
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-to retain encoded and decoded response-size limits. Sending the
-builder’s output directly with
+to send it with shinyOAuth’s response-size limits. Sending it directly
+through
 [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
-uses httr2’s transport and has no shinyOAuth decoded-size guarantee. See
-the [Spotify
+uses httr2’s own transport settings instead. See the [Spotify
 example](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md)
 for another complete app.
 
@@ -298,18 +286,18 @@ client <- oauth_client(
 ```
 
 Replace the example URLs and credentials with your own registration. An
-**issuer** is the provider’s identifier URL; copy it from the provider’s
+issuer is the provider’s identifier URL; copy it from the provider’s
 configuration. Discovery makes a network request, so run it during app
 setup. If your registration specifies a client authentication method,
 supply the matching `token_auth_style` to the provider helper; discovery
 describes the service’s capabilities, not the settings of your
 individual registration.
 
-OpenID Connect (OIDC) is a login protocol: it supplies a signed **ID
-token** that shinyOAuth checks to identify the user. OAuth 2.0 grants
-permission to call APIs using an **access token**. GitHub and Spotify
-use OAuth without OIDC; their helpers fetch profile information through
-their own APIs. With OIDC, read validated identity details from
+OpenID Connect (OIDC) is a login protocol: it supplies a signed ID token
+that shinyOAuth checks to identify the user. OAuth 2.0 grants permission
+to call APIs using an access token. GitHub and Spotify use OAuth without
+OIDC; their helpers fetch profile information through their own APIs.
+With OIDC, read validated identity details from
 `auth[["token"]]@id_token_claims` and check
 `auth[["token"]]@id_token_validated`. An access token alone is not proof
 of identity. The [authentication
@@ -333,68 +321,42 @@ not relax OIDC discovery.
 
 ## Assessing OAuth 2.1 configuration
 
-shinyOAuth supports configurable OAuth 2.0 behavior and an optional
-assessment of the authorization-code/refresh client role against [OAuth
-2.1 draft
-16](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16),
-published 3 September 2026. This is an Internet-Draft, not a published
-RFC.
+Use
 [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-currently implements only that revision, with ruleset `1.1.1`. It does
-not load mTLS certificate/key files, so their usability remains an
-unknown mandatory check even when both paths are configured. Runtime
-validates the current certificate/key pair before each mTLS request. It
-makes no network requests, creates no login state and never enables
-automatic enforcement. Existing provider examples and applications
-remain usable.
-
-This example constructs an OAuth-only public client with S256 PKCE and
-HTTPS:
+to review a client before deployment. It returns findings and suggested
+fixes without contacting the provider or changing the client:
 
 ``` r
 
-options(shinyOAuth.tls_min_version = "1.2") # Set before discovery or login.
-provider <- oauth_provider(
-  name = "Example authorization server",
-  auth_url = "https://auth.example/authorize",
-  token_url = "https://auth.example/token",
-  token_auth_style = "public",
-  use_pkce = TRUE,
-  pkce_method = "S256"
-)
-client <- oauth_client(
-  provider,
-  client_id = "registered-client",
-  redirect_uri = "https://app.example/callback",
-  scopes = "read"
-)
 assessment <- check_oauth21(client)
-assessment[["configuration_compliant"]]
-assessment[["checks"]]
+assessment$configuration_compliant
+assessment$checks[, c("status", "message", "remediation")]
 ```
 
-Choose credentials and endpoints to match your actual registration.
-Basic and body-secret authentication remain available; JWT
-authentication also supports the issuer-audience configuration described
-in [advanced
-security](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#jwt-client-authentication).
-The checker does not require optional DPoP, mTLS, PAR, JAR and JARM
-together, nor does it require OIDC metadata for an OAuth-only provider.
-
-The result records the draft, ruleset, package version, assessment time
-and operation scope. Its verdict has three meanings:
+The overall result has three meanings:
 
 | `configuration_compliant` | Meaning |
 |----|----|
-| `FALSE` | At least one applicable mandatory configuration check failed. This takes precedence over unknown findings. |
-| `NA` | No known mandatory failure, but at least one mandatory configuration prerequisite is unresolved. Provider-only assessments are partial. |
-| `TRUE` | Applicable mandatory checks in the recorded configuration scope passed. External behavior remains unverified. |
+| `FALSE` | At least one mandatory configuration check failed. |
+| `NA` | No known mandatory failure, but something required is unresolved. |
+| `TRUE` | The applicable mandatory configuration checks passed. Live server behavior still needs testing. |
 
-Every finding has a stable ID, status, requirement strength, evidence
-source, remediation, reference and `affects_verdict` flag. Unmet
-recommendations do not turn the verdict into `FALSE`. Code and refresh,
-enabled PAR, required UserInfo and enabled introspection are included.
-Include optional operations explicitly:
+Read the individual findings even when the result is `TRUE`:
+recommendations and unverified external behavior remain separate. This
+is an optional configuration review, not certification of the app or
+provider. Rerun it after changing options, client settings or the
+runtime.
+
+### Advanced assessment scope
+
+The current ruleset is `1.1.1`, based on [OAuth 2.1 draft
+16](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16).
+This is an Internet-Draft, not a final RFC. The report records the
+specification revision, package version, time and operations checked.
+
+The checker covers code exchange and refresh plus enabled provider
+features. It does not require optional DPoP, mTLS, JAR, PAR and JARM
+together. Add optional operations when you want them assessed:
 
 ``` r
 
@@ -404,38 +366,34 @@ assessment <- check_oauth21(
 )
 ```
 
-The checker does not contact a server to establish PKCE enforcement,
-refresh rotation/replay protection, secret custody, registered redirect
-matching or browser/proxy TLS. It cannot assess future resource URLs or
-later arbitrary request mutations. Actual application scope enforcement
-and estimated token expiry also require review. A positive report is a
-bounded configuration result, not certification. Rerun it after changing
-options, objects or the runtime.
+The checker does not open mTLS certificate or key files; configured
+paths do not prove that those files are usable. Those checks remain
+unresolved until verified separately. Actual mTLS requests validate the
+current pair. Provider enforcement, registered redirect URLs, secret
+storage and browser/proxy TLS also require deployment checks.
 
-Applications choose how to use the result. For example, a deployment
-script may decide to block a known failure and separately flag
+Your deployment script can handle known failures separately from
 unresolved prerequisites:
 
 ``` r
 
-if (identical(assessment[["configuration_compliant"]], FALSE)) {
+if (identical(assessment$configuration_compliant, FALSE)) {
   stop("Resolve the mandatory configuration findings before deployment.")
 }
-if (is.na(assessment[["configuration_compliant"]])) {
+if (is.na(assessment$configuration_compliant)) {
   message("Review unresolved configuration prerequisites before deployment.")
 }
 ```
 
-S256 is the straightforward PKCE choice. Legacy `plain` remains
-constructible but fails this draft assessment. Omitting PKCE has a
-narrow exception under draft section 7.5.1.1: confidential client
-authentication, correct OIDC nonce validation, and server assurance for
-the particular deployment and request. Missing local prerequisites fail;
-unestablished server assurance is unresolved.
-`context = list(nonce_exception = TRUE)` records an explicit declaration
-of that assurance after it has been established. It cannot supply
-missing local settings and is never treated as observed server evidence.
-S256 remains recommended.
+S256 is the recommended PKCE choice. The advanced
+`context = list(nonce_exception = TRUE)` option records independently
+established server assurance for the draft’s confidential-client nonce
+exception. It cannot supply missing settings or count as observed server
+evidence. See
+[check_oauth21()](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.html)
+and [advanced
+security](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.md)
+for the detailed requirements.
 
 ## Multiple authorization servers
 
@@ -484,13 +442,11 @@ using RFC 9207 or JARM); the static registry rejects multiple clients
 with the same issuer on one route. See [OAuth Security BCP section
 4.4.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2).
 
-This pattern routes multiple modules; it does not retain their
-credentials across navigation. Following the authorization redirect for
-B can end the Shiny session holding A. A new session starts with empty
-module credentials even if the clients share a pending-state store. To
-preserve authorizations across navigation, use the separate connection
-manager with browser or account retention. See [Keep and use multiple
-OAuth
+Signing in to B can end the Shiny session holding A’s credentials. Each
+new session starts with empty module credentials, even when the clients
+share a pending-state store. To keep both authorizations across
+navigation, use the connection manager with browser or account
+retention. See [Keep and use multiple OAuth
 authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md)
 for a complete two-service example.
 
@@ -511,21 +467,19 @@ making requests, and keep raw context out of logs and session summaries.
 
 ### Requests bound to a client and resource
 
-These optional helpers group the client, API address and current
-credentials used for a request. They are package API choices; OAuth and
-SMART on FHIR do not require these classes.
+Use a connection to keep the client settings, API address and current
+credentials together when making requests.
 
 | Object | What it represents | Example |
 |----|----|----|
 | `OAuthClient` | Registration settings and optional approved API addresses | Hospital A’s client ID, scopes and `https://a.example/fhir` |
 | `OAuthConnection` | Access to one Shiny session’s current credentials through that configuration | This session’s authorized requests to Hospital A |
 
-The client holds shared configuration, with no user’s token. A
-connection reads the current token for each request. The object refers
-to credentials that can change instead of keeping a token copy. The
-existing reactive token already updates on refresh; the connection adds
-client selection, API-address restrictions and session checks. It does
-not implement refresh or retention by itself.
+The client holds shared settings without any user’s tokens. A connection
+reads the module’s current token for each request, checks the Shiny
+session and restricts requests to the configured API addresses. The
+module still manages refresh and logout; use the connection manager to
+keep credentials across navigation.
 
 Set `resource_bases` on
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
@@ -551,11 +505,10 @@ server <- function(input, output, session) {
 }
 ```
 
-The reference reads the latest token after refresh and becomes unusable
-after logout, token expiry, or session end. A reference from another
-Shiny session cannot read its summary or make requests. This adapter
-still uses the legacy module’s lifecycle and does not retain credentials
-across navigation.
+The connection reads the latest token after refresh and becomes unusable
+after logout, token expiry, or session end. It can only be used in the
+Shiny session that created it, including for summary reads. This wrapper
+does not retain credentials across navigation.
 
 `resource_bases` restricts the token’s destinations; it does not request
 an audience or prove an opaque token’s audience. Wire the token
@@ -653,12 +606,12 @@ login.
 
 ### Posit Connect and Connect Cloud
 
-**Test OAuth login in a new browser tab or window, outside the
-dashboard’s embedded app preview.**
+Test OAuth login in a new browser tab or window, outside the dashboard’s
+embedded app preview.
 
-1.  On Connect Cloud, copy the app’s sharing URL from **Settings \>
-    URL**, such as `https://<content-id>.share.connect.posit.cloud`, or
-    your configured custom URL. See the [URL settings
+1.  On Connect Cloud, copy the app’s sharing URL from Settings \> URL,
+    such as `https://<content-id>.share.connect.posit.cloud`, or your
+    configured custom URL. See the [URL settings
     guide](https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url).
     On Posit Connect, use the app’s direct content URL.
 2.  Paste that URL into a new browser tab or window and start login
@@ -670,12 +623,9 @@ dashboard’s embedded app preview.**
     dedicated route such as `/callback`, retain that callback path in
     the registration, but open the app’s entry URL to start login.
 
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-prints a console/log warning once per R process when `POSIT_PRODUCT` is
-`CONNECT` or `CONNECT_CLOUD`, or the legacy `RSTUDIO_PRODUCT` is
-`CONNECT`. This is a hosting reminder, not detection of an embedded
-browser; it also appears when you open the app correctly. If these
-markers are absent, the module retains its general browser reminder.
+The module may print a hosting reminder even when you opened the app
+correctly. It does not test whether the browser is showing an embedded
+preview.
 
 ### Multiple R processes
 
@@ -700,11 +650,10 @@ can let two requests use the same entry. See
 [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
 for the backend contract.
 
-For `form_post` and `form_post.jwt`, also provide atomic `set_if_absent`
-with expiry to reserve callback slots without overwriting another
-pending response. Each transaction can retain two candidates; overflow
-is rejected until a slot is consumed or expires. The default
-process-local memory store also preserves unexpired candidates.
+For POST callbacks, the shared store also needs atomic `set_if_absent`
+with expiry, so simultaneous responses cannot overwrite one another. See
+[custom_cache()](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
+for the backend requirements.
 
 Hosted Request Objects (`request_object_mode = "request_uri"`) also use
 this store, in separate records. Their JWT claims are readable when
@@ -758,18 +707,18 @@ Use [audit
 logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
 to identify the failing operation. Common configuration issues include:
 
-- **Rejected redirect URI:** check that the registered callback URL and
+- Rejected redirect URI: check that the registered callback URL and
   `redirect_uri` match, including scheme, host, port, and path.
-- **Callback validation failure:** use the registered app address in a
+- Callback validation failure: use the registered app address in a
   regular browser and create the client outside `server()`. For multiple
   R processes, check the shared state store and key.
-- **Rejected client credentials:** check the environment variables after
+- Rejected client credentials: check the environment variables after
   restarting R and match `token_auth_style` to the app registration.
-- **Missing profile fields:** check requested scopes and the provider’s
+- Missing profile fields: check requested scopes and the provider’s
   profile format. Some providers return identity information only in ID
   token claims.
-- **Rejected API request:** check permissions, token expiry, and whether
-  the API accepts tokens from the configured provider.
+- Rejected API request: check permissions, token expiry, and whether the
+  API accepts tokens from the configured provider.
 
 Keep token and callback validation enabled while diagnosing
 configuration errors.

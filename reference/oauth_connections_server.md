@@ -1,10 +1,12 @@
 # Connect, restore and use several OAuth authorizations in a Shiny session
 
-Call once inside `server()` with the manager and ID used by
+Let users connect several accounts or services, choose a saved
+connection, and call its API from your Shiny server. Call this once
+inside `server()` with the manager and ID used by
 [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md).
-The returned methods select stored connections by opaque IDs and recheck
-the local owner for every operation. Tokens are kept on the server and
-are not returned by summaries.
+Connection summaries show status without exposing tokens; server code
+can obtain a current token from the selected connection when another R
+package needs it.
 
 ## Usage
 
@@ -85,31 +87,42 @@ A server-side list with:
 
 - `disconnect(connection_id, revoke = TRUE)`: remove local usability
   first, then return separate `local` and `remote` revocation results.
-  `remote$access` aggregates the primary and acquired target tokens,
-  with precedence `failed`, `not_attempted`, `unsupported`, `accepted`,
-  `missing`.
+  For token targets, `remote$access` summarizes all acquired API tokens;
+  incomplete or failed cleanup takes priority over successful cleanup.
 
 - `disconnect_all(revoke = TRUE)`: cancel pending authorizations and
   disconnect this owner's stored connections; return a list of results.
 
-- `logout(revoke = TRUE, reload = TRUE)`: invalidate the local
-  owner/session generation first, disconnect its connections, and
-  normally reload the UI. This does not log the user out of the external
-  OAuth provider or the app's own account authentication system.
+- `logout(revoke = TRUE, reload = TRUE)`: end the local owner session,
+  disconnect its connections, and normally reload the UI. This does not
+  log the user out of the external OAuth provider or the app's own
+  account authentication system.
 
 - `errors()`: reactive list of per-client module error codes, with no
   raw provider text. An ended owner is reported as `owner_unavailable`.
 
 ## Details
 
-References expire with this Shiny session even when their stored grants
-survive. A new session obtains new references after owner verification.
-The manager coordinates refresh across its connections. Refresh
-preserves the original authentication time and retention expiry.
-Reactive connection reads also recheck expiry at
+Use `auth$connections()` to populate a selection control, then
+`connection <- auth$connection(selected_id)` for the chosen account.
+`connection$request()` calls a configured API;
+`connection$access_token()` supplies a current token for another R
+package. See the [multiple-authorizations
+guide](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html)
+for a complete app and the [external integrations
+guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)
+for API client and database examples.
+
+## Advanced lifetime and refresh behavior
+
+Each Shiny session needs its own connection references, even when the
+manager retains the saved authorizations. A new session obtains these
+after owner verification. The manager coordinates refresh across its
+connections without changing the original authentication time or
+retention expiry. Reactive connection reads also recheck expiry at
 `refresh_check_interval_ms`, including references used without
-`connections()` or `errors()`. These checks notify dependent expressions
-when lifecycle state changes; unchanged polling does not rerun
+`connections()` or `errors()`. These checks notify reactive expressions
+when connection status changes; unchanged polling does not rerun
 application requests or extend owner inactivity limits. Notifications to
 application code reflect only this owner's record changes. Without an
 ID, `connection()` returns NULL when no authorization remains, selects
@@ -118,10 +131,11 @@ with reason `selection_required` when several remain. Expired, limited
 and uncertain authorizations count toward ambiguity; disconnected rows
 do not.
 
-The connection factory, `$access_token()` and `$has_scopes()` avoid
-rerunning consumers on unchanged token rotations. Acquisition never
-extends owner idle limits or replays application requests. See
-[`vignette("external-integrations")`](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md).
+Reactive expressions that read `connection()`, `$access_token()` or
+`$has_scopes()` do not rerun on token refresh alone if the login and
+permissions stay the same. Token acquisition never extends owner idle
+limits or replays application requests. See the [external integrations
+guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html).
 Resource requests and status reads never reset owner inactivity,
 including when reactive expressions rerun after automatic refresh. Call
 `touch()` from a user input event handler to count an application action

@@ -1,4 +1,4 @@
-# Create an authentik [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md) (via OIDC discovery)
+# Configure sign-in with authentik
 
 Configure login for an authentik OAuth2/OIDC application. Supply the
 instance URL and application slug, then pass the registered credentials

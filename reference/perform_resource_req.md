@@ -36,22 +36,13 @@ perform_resource_req(
 
 - url:
 
-  Either the absolute URL to call or an
+  The absolute API URL, or a prepared
   [`httr2::request()`](https://httr2.r-lib.org/reference/request.html)
-  object with a URL of at most 8192 bytes before and after applying
-  `query`. to authorize and perform. When you pass a request object,
-  shinyOAuth uses it as the base request, still applies token
-  authentication and request defaults, and then layers any explicit
-  `method`, `headers`, `query`, and `follow_redirect` overrides on top.
-  Inherited httr2 authentication, caching, and retry policies, and curl
-  authentication, method-changing, or `request_target` options are
-  rejected. Use
-  [`httr2::req_method()`](https://httr2.r-lib.org/reference/req_method.html)
-  and httr2 body helpers to configure the request. HEAD requests with
-  bodies are rejected because httr2 can transmit them as POST despite
-  the explicit method. Authenticated response caching is unsupported.
-  shinyOAuth owns retries; configure them with `idempotent` and the
-  `shinyOAuth.retry_*` options.
+  object. The URL must be at most 8192 bytes before and after adding
+  `query`. The helper adds current authentication and defaults to a
+  prepared request, then applies explicit `method`, `headers`, `query`
+  and redirect overrides. See Prepared requests for customization
+  restrictions.
 
 - method:
 
@@ -66,9 +57,9 @@ perform_resource_req(
   Optional named list or named character vector of extra headers to set
   on the request. Header names are case-insensitive. Names must be
   unique HTTP field-name tokens, and values must not contain prohibited
-  control characters. DPoP requests reject `Host` overrides. Any
-  user-supplied `Authorization` or `DPoP` header is ignored to ensure
-  the token authentication set by this function is not overridden.
+  control characters. DPoP requests reject `Host` overrides. This
+  function manages the `Authorization` and `DPoP` headers and ignores
+  user-supplied replacements.
 
 - query:
 
@@ -98,15 +89,10 @@ perform_resource_req(
 - client:
 
   Optional
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md).
-  Required when the effective token type is `DPoP`, because the client
-  carries the configured DPoP proof key, and also when using
-  sender-constrained mTLS / certificate-bound tokens so shinyOAuth can
-  attach the configured client certificate and validate any `cnf`
-  thumbprint from an
-  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  and observe any `cnf` thumbprint carried on a raw JWT access-token
-  string.
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md);
+  required for DPoP or mTLS-bound tokens so the request can use the
+  matching signing key or certificate and check any token-binding
+  information.
 
 - token_type:
 
@@ -158,11 +144,21 @@ authentication and tokens tied to a key (DPoP) or certificate (mTLS).
 For DPoP or mTLS, also supply `client` so the request uses the matching
 key or certificate.
 
-This performer enforces `shinyOAuth.max_body_bytes` on encoded downloads
-and decoded gzip bodies before full accumulation, independently of
-libcurl's decompression limit support. Other content encodings are
-rejected. Use this path for prepared httr2 requests as well as URL
-strings.
+The helper applies `shinyOAuth.max_body_bytes` to response bodies,
+including gzip decompression. Use it for both URL strings and prepared
+httr2 requests.
+
+## Prepared requests
+
+Use
+[`httr2::req_method()`](https://httr2.r-lib.org/reference/req_method.html)
+and body helpers to prepare a request, then let shinyOAuth manage
+authentication and retries. Existing httr2 authentication, caching and
+retry policies, and curl authentication, method-changing or
+`request_target` options are rejected. HEAD requests cannot have bodies,
+because httr2 may send those as POST. Authenticated response caching is
+unsupported. Configure retries with `idempotent` and
+`shinyOAuth.retry_*`.
 
 ## Examples
 
@@ -188,7 +184,7 @@ if (interactive()) {
   )
 
   # Inspect request settings without printing authentication headers.
-  # Keep bounded encoded/decoded response handling when sending it.
+  # Keep the package's response-size limits when sending it.
   response <- perform_resource_req(token, request)
 
   # Or start from your own httr2 request and still let shinyOAuth perform it

@@ -29,8 +29,8 @@ default paths must match the service you are using."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -145,8 +145,8 @@ access tokens issued by this provider. Defaults to 'Bearer'</p></dd>
 
 <dt id="arg-issuer">issuer<a class="anchor" aria-label="anchor" href="#arg-issuer"></a></dt>
 <dd><p>Exact OIDC issuer identifier. Defaults to <code>base_url</code>, retaining
-any trailing slash. Endpoint URLs are joined using a separately normalized
-base. Supply this explicitly when the issuer differs from the endpoint base.</p></dd>
+any trailing slash. Supply this explicitly when your provider identifies
+itself with a different URL from the one used to build endpoint addresses.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -172,7 +172,7 @@ base. Supply this explicitly when the issuer differs from the endpoint base.</p>
 <span class="r-in"><span>  base_url <span class="op">=</span> <span class="st">"https://my-issuer.example.com"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Configure a OIDC provider via OIDC discovery</span></span></span>
+<span class="r-in"><span><span class="co"># Look up an OIDC provider's settings with discovery</span></span></span>
 <span class="r-in"><span><span class="co"># (requires network access)</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="co"># Using Auth0 sample issuer as an example</span></span></span>

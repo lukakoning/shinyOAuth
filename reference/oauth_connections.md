@@ -1,31 +1,15 @@
-# Configure several independently managed OAuth connections
+# Manage several OAuth connections in one Shiny app
 
-Create one manager outside `server()` for a named set of client/API
-configurations from
+Let users connect several services or accounts in one Shiny app. Create
+the manager outside `server()` with named clients from
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
 or
-[`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md).
-Use
+[`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md),
+then use
 [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
-to handle callbacks and
+and
 [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
-for each Shiny session. Each successful authorization creates a separate
-connection, including repeated authorizations at the same client.
-Connections are independent local records. Providers may reuse an
-upstream grant, so revoking one can invalidate tokens held by other
-connections. Within a manager, refreshes sharing one credential are
-serialized. Rotation or an uncertain refresh invalidates other records
-holding the same credential; authorize those records again. Their
-identity and permissions are never replaced by another connection's
-response. Successful revocation also invalidates known copies of that
-credential. Distinct tokens may still share an upstream grant whose
-revocation effects the manager cannot predict. Retired credential
-digests survive connection replacement and expiry for at least the
-store's maximum age and the longest client state lifetime. A separate
-registry holds at most 10,000 digests or pending reservations. A full
-registry rejects refresh or skips remote revocation before sending
-credentials; it does not evict retirement evidence. Existing unrelated
-access remains usable.
+to display and use their saved connections.
 
 ## Usage
 
@@ -131,6 +115,25 @@ configuration and deployment keys and must never be sent to the browser.
 
 ## Details
 
+By default, connections last for one Shiny session. Optional browser or
+local account retention can restore them after navigation. See the
+[multiple-authorizations
+guide](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html)
+for a complete example.
+
+Configure the manager once and use its named clients to start logins.
+Connections are separate local records, but the provider may reuse one
+grant; revoking a connection can therefore affect other tokens from that
+grant.
+
+## Advanced deployment and shared credentials
+
+Refreshes using one shared credential are coordinated. Rotation or an
+uncertain refresh can require other connections sharing that credential
+to reconnect; one connection's response never replaces another's
+identity or permissions. Revocation can also affect related provider
+grants.
+
 A manager is bound to one UI/server module ID and one public origin.
 Create another manager for another namespace. The memory store and owner
 registries survive Shiny sessions, not R restarts; copies in another R
@@ -142,9 +145,8 @@ existing grants are discarded with the old Shiny session.
 Browser/account mode additionally binds authorization to the initiating
 local owner and its session generation.
 
-These are optional package interfaces, not SMART protocol objects. This
-manager supports generic OAuth clients and the SMART discovery, scope
-and launch policies configured by
+The manager supports generic OAuth clients and the SMART discovery,
+scope and launch policies configured by
 [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md).
 
 ## See also

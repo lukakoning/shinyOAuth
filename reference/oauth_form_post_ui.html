@@ -29,8 +29,8 @@ available to the server module. For query-string callbacks, use oauth_ui()."></h
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -130,27 +130,21 @@ the same <code>id</code> and <code>client</code> in <code><a href="oauth_module_
 the browser setup and privacy header supplied by <code><a href="oauth_ui.html">oauth_ui()</a></code>.
 For a callback path below the app root, pass <code>uiPattern = ".*"</code> to
 <code><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shiny::shinyApp()</a></code> so Shiny routes the callback to this wrapper.</p>
-<p>The wrapper checks the incoming address and login state, stores the callback
-temporarily, and redirects the browser to a normal Shiny page with a
-single-use handle. Raw callback values do not appear in that redirected URL.
-For <code>"form_post.jwt"</code>, it also validates the signed response using
-JWT Secured Authorization Response Mode (JARM).
-Every accepted POST receives its own random handle. Handles expire after
-120 seconds or the smaller of <code>state_payload_max_age</code> and the state store lifetime.
-The module still verifies the browser binding before consuming login state.
-Each client/provider/module namespace has a separate bounded pool in the
-state store: 1024 partitions of two slots, with each login assigned to one
-partition. A full partition rejects new callbacks until a slot is consumed
-or expires; a POST never evicts an unexpired response. Hash collisions can
-share capacity, but repeating one callback cannot displace another login's
-pending response. An expired handle fails validation and cannot select a
-later response stored in the same slot. Completed
-logins invalidate their remaining candidates. The process-local memory store
-also removes sibling candidates; shared stores retain them until expiry to
-avoid deleting a new occupant during cleanup. Shared stores require atomic
-<code>take</code> and <code>set_if_absent</code>; slots are claimed atomically with a short TTL.
-The process-local memory store reuses only consumed or expired slots. Pending
-form-post handles issued by an older version must be restarted after upgrading.</p>
+<p>The wrapper receives the login result before the Shiny session starts,
+then sends the browser to a clean app URL. Raw callback values stay out of
+that URL. The server module completes the usual login checks.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="advanced-callback-storage">Advanced callback storage<a class="anchor" aria-label="anchor" href="#advanced-callback-storage"></a></h2>
+
+
+<p>Responses are held briefly in the client's state store under single-use
+handles. They expire after at most 120 seconds, or sooner if the state policy
+requires it. Pending responses are not replaced to make room for new ones;
+a full callback pool rejects additional responses until space becomes available.
+Shared stores need atomic <code>take</code> and <code>set_if_absent</code>; see <code><a href="custom_cache.html">custom_cache()</a></code>.
+Pending callbacks created by an older version must be restarted after upgrading.
+<code>form_post.jwt</code> also verifies the signed authorization response (JARM).</p>
     </div>
     <div class="section level2">
     <h2 id="deployment-behind-a-proxy">Deployment behind a proxy<a class="anchor" aria-label="anchor" href="#deployment-behind-a-proxy"></a></h2>

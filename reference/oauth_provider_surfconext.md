@@ -1,4 +1,4 @@
-# Create a SURFconext [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md) (via OIDC discovery)
+# Configure institutional sign-in with SURFconext
 
 Configure institutional OIDC login through SURFconext. Register your
 service with SURFconext before using its client credentials with
@@ -50,9 +50,8 @@ object configured for SURFconext.
 Request the `"openid"` scope. Additional claims depend on your service's
 agreed attribute release policy; requesting `"email"` or `"profile"`
 does not guarantee those attributes will be released. Use the validated
-issuer and `sub` to identify a user, rather than assuming email is
-present. Test and production environments require their own service
-configuration. See [SURFconext for service
+issuer and `sub` to identify a user. Test and production environments
+require their own service configuration. See [SURFconext for service
 providers](https://servicedesk.surf.nl/wiki/spaces/IAM/pages/128909810/SURFconext+for+Service+Providers).
 
 ## Examples

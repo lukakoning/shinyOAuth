@@ -33,8 +33,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -72,30 +72,27 @@
 
     
     
-<p>shinyOAuth allows your Shiny app to request access to a FHIR server
-using SMART on FHIR, read data for the selected patient, and keep
-separate authorizations for different healthcare providers.</p>
-<p>This is useful for a patient dashboard that reads records from a
-hospital, or a clinical app that opens from an electronic health record
-(EHR) with a patient already selected.</p>
+<p>Use SMART on FHIR to request access to healthcare data from a Shiny
+app. Your app can read records from a hospital, open from an electronic
+health record (EHR) with a patient already selected, and keep separate
+authorizations for different healthcare providers.</p>
 <p>This vignette builds an app that connects to a hospital and reads a
 Patient resource. It also shows how to search for Observations, identify
 the logged-in user, and configure the app to launch from an EHR.</p>
 <div class="section level2">
 <h2 id="fhir-and-smart-on-fhir">FHIR and SMART on FHIR<a class="anchor" aria-label="anchor" href="#fhir-and-smart-on-fhir"></a>
 </h2>
-<p><strong>FHIR</strong> defines healthcare data structures and ways to
-exchange them. A <code>Patient</code> resource describes a patient; an
+<p>FHIR defines healthcare data structures and ways to exchange them. A
+<code>Patient</code> resource describes a patient; an
 <code>Observation</code> can describe a clinical measurement. An address
 such as <code>https://ehr.example/fhir/R4</code> is the base of a FHIR
 API. See the <a href="https://hl7.org/fhir/R4/overview.html" class="external-link">FHIR
 overview</a>.</p>
-<p><strong>OAuth</strong> lets an app obtain permission to call an API.
-<strong>SMART on FHIR</strong> specifies how to use OAuth with FHIR:
-discover authorization endpoints, request healthcare permissions,
-identify the intended FHIR server, and obtain launch context such as the
-selected patient. The EHR can open the app, or the person can open it
-independently. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html" class="external-link">SMART
+<p>OAuth lets an app obtain permission to call an API. SMART on FHIR
+specifies how to use OAuth with FHIR: discover authorization endpoints,
+request healthcare permissions, identify the intended FHIR server, and
+obtain launch context such as the selected patient. The EHR can open the
+app, or the person can open it independently. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html" class="external-link">SMART
 App Launch</a>.</p>
 <p>The example below uses <code><a href="../reference/smart_discover.html">smart_discover()</a></code> to read the
 server’s SMART metadata and <code><a href="../reference/smart_client.html">smart_client()</a></code> to configure
@@ -111,10 +108,9 @@ authorizations</a>.</p>
 </h2>
 <p>Register the app with the chosen server. Obtain its exact FHIR base,
 client ID, authentication method, and permitted scopes. This example
-uses a <strong>standalone confidential client with a shared
-secret</strong> (<code>token_auth_style = "header"</code>). A
-server-side Shiny deployment can keep that secret outside the
-browser.</p>
+uses a standalone confidential client with a shared secret
+(<code>token_auth_style = "header"</code>). A server-side Shiny
+deployment can keep that secret outside the browser.</p>
 <p>The example’s <code>.example</code> endpoints are placeholders, not a
 running sandbox. Replace them with your approved server’s addresses.
 Register <code>http://127.0.0.1:8100/callback/fhir</code> for local
@@ -124,20 +120,13 @@ your R environment. Use HTTPS and matching registered URLs for
 deployment, and omit both <code>allow_http_loopback</code> exceptions
 shown below.</p>
 <blockquote>
-<p><strong>Posit Connect / Connect Cloud:</strong> Open the standalone
-app’s direct URL in a new browser tab or window. The dashboard’s
-embedded preview can prevent OAuth redirects. On Connect Cloud, copy the
-sharing URL from <strong>Settings &gt; URL</strong>. Keep
-<code>/callback/fhir</code> in the registered <code>redirect_uri</code>
-for this example, but open the app’s entry URL to start login. For EHR
-launch, start from the EHR using top-level browser navigation and the
-required launch parameters. See <a href="usage.html#posit-connect-and-connect-cloud">deployment
+<p>Posit Connect / Connect Cloud: Test login at the direct app URL in a
+new browser tab, rather than the dashboard preview. See the <a href="usage.html#posit-connect-and-connect-cloud">deployment
 instructions</a>.</p>
 </blockquote>
-<p>This package validates a SMART App Launch STU 2.2 profile, including
-advertised launch, authentication and scope capabilities. Discovery does
-not register your app or guarantee that the server will grant its
-requested access.</p>
+<p>shinyOAuth checks the server’s advertised SMART App Launch STU 2.2
+support. You still need to register the app and obtain the permissions
+from that server.</p>
 <p>Copy the next three code blocks, in order, into
 <code>app.R</code>.</p>
 <div class="section level3">
@@ -235,9 +224,9 @@ Identity and offline access are not requested by this example.</p>
 <p><code>hospital</code> is your local configuration name; it is
 unrelated to the registered client ID or the patient’s ID. Browser
 retention lets the app restore saved grants after authorization
-redirects. It uses an HttpOnly owner cookie and encrypted storage in
-<strong>one R process</strong>. Records disappear when that process
-restarts; independent workers do not share this store. The <a href="multiple-authorizations.html#keep-authorizations-when-the-browser-returns">multiple-authorizations
+redirects. It uses an HttpOnly owner cookie and encrypted storage in one
+R process. Records disappear when that process restarts; independent
+workers do not share this store. The <a href="multiple-authorizations.html#keep-authorizations-when-the-browser-returns">multiple-authorizations
 vignette</a> explains ownership, expiry and deployment constraints.</p>
 </div>
 <div class="section level3">
@@ -319,8 +308,8 @@ the hospital, complete its authorization flow, then load the patient.
 The helper reads the Patient identified by the accepted context using
 the same connection’s credentials and configured FHIR base. It returns
 an <code>httr2</code> response.</p>
-<p>This teaching UI displays only the resource ID. A clinical
-application needs appropriate patient identification and must respect
+<p>The example displays only the resource ID. A clinical app needs
+appropriate patient identification and must respect
 <code>need_patient_banner</code> when provided. Context and resource
 bodies contain sensitive data; keep them out of general connection
 tables and logs. Key patient-dependent caches by both connection ID and
@@ -388,8 +377,8 @@ scope cannot express that limit.</p>
 </h2>
 <p><code>smart_context(connection)[["patient"]]</code> identifies the
 chart in context. A clinician can be the logged-in user while that
-patient is someone else. The browser owner used for local retention is a
-third, separate concept.</p>
+patient is someone else. Browser retention groups saved connections for
+one browser; it does not verify either person’s identity.</p>
 <p>Identity remains opt-in: the default <code>identity = "none"</code>
 does not enable OIDC. For a validated OIDC subject without a FHIR user
 reference, use <code>identity = "openid"</code>. This requests and
@@ -470,11 +459,11 @@ client, and callers can obtain additional owners, so these quotas do not
 replace those deployment controls. Use the proxy’s verified client
 address for rate limits and size the owner registry for the admitted
 traffic.</p>
-<p>EHR launch requires <strong>top-level browser navigation, browser
-retention with a Lax owner cookie, and one R process</strong>. Embedded
-iframe launch is not supported. A route can allow multiple named clients
-with distinct FHIR bases. Separate registrations for the same base need
-separate entry routes.</p>
+<p>EHR launch requires top-level browser navigation, browser retention
+with a Lax owner cookie, and one R process. Embedded iframe launch is
+not supported. A route can allow multiple named clients with distinct
+FHIR bases. Separate registrations for the same base need separate entry
+routes.</p>
 </div>
 <div class="section level2">
 <h2 id="more-than-one-hospital">More than one hospital<a class="anchor" aria-label="anchor" href="#more-than-one-hospital"></a>

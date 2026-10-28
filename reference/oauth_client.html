@@ -23,8 +23,8 @@ to oauth_module_server()."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -147,8 +147,7 @@ to <code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p
 <p>It is required for <code>token_auth_style = "header"</code>. With <code>"body"</code> and PKCE,
 an empty secret is omitted. With <code>"public"</code> (alias <code>"none"</code>), it is never
 sent for client authentication. HMAC-signed ID token validation still
-requires a non-empty secret, regardless of the client authentication method.
-HMAC key-length checks measure the UTF-8 bytes used for signing and verification.</p></dd>
+requires a non-empty secret, regardless of the client authentication method.</p></dd>
 
 
 <dt id="arg-redirect-uri">redirect_uri<a class="anchor" aria-label="anchor" href="#arg-redirect-uri"></a></dt>
@@ -192,17 +191,10 @@ Default <code>NULL</code> sends no request. Supply a list with <code>userinfo</c
 <code>id_token</code> members, for example
 <code>list(userinfo = list(email = list(essential = TRUE)))</code>.
 Use <code>claims_validation = "strict"</code> if an unmet request must stop login.</p>
-<p>Lists are JSON-encoded with <code>auto_unbox = TRUE</code>. Use <code>NULL</code> for an
-unconstrained claim, <code>value</code> for one required value, or <code>values</code> for a set.
-<code>values</code> vectors are always encoded as JSON arrays, including single-element
-vectors. A pre-encoded JSON string is also accepted. Object member names must
-be unique; targets must be objects, claim entries must be <code>NULL</code> or objects,
-and <code>essential</code> must be a Boolean. Pre-encoded <code>values</code> must be non-empty
-arrays. Malformed requests are rejected even with <code>claims_validation = "none"</code>.
-Numeric constraints use R's binary64 precision and must be finite and within
-<code>+/- (2^53 - 1)</code>. Use strings for larger identifiers or values requiring
-decimal precision beyond R's numeric representation.
-Your provider must support the OIDC claims parameter.</p></dd>
+<p>Use <code>NULL</code> to request a claim without a constraint, <code>value</code> for one acceptable
+value, or <code>values</code> for several. Lists are converted to JSON for the provider;
+a pre-encoded JSON object is also accepted. The provider must support claims
+requests. See Claims requests below for validation and numeric limits.</p></dd>
 
 
 <dt id="arg-state-store">state_store<a class="anchor" aria-label="anchor" href="#arg-state-store"></a></dt>
@@ -267,13 +259,9 @@ Supported values are <code>HS256</code>, <code>HS384</code>, <code>HS512</code> 
 supported for outbound signing (<code>RS256</code>, <code>RS384</code>, <code>ES256</code>, <code>ES384</code>, <code>ES512</code>, and
 <code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 keys) for private keys. <code>RS512</code>, <code>PS256</code>, <code>PS384</code>, and <code>PS512</code>
 are not currently supported for outbound client assertions.
-A shared HMAC secret must use the same algorithm across enabled ID token,
-JARM, JAR and endpoint assertion profiles (RFC 8725 section 3.1). This includes
-inferred defaults and metadata-selected endpoint algorithms. Endpoint
-overrides using distinct secrets may select different algorithms.
-RSA signing keys are likewise bound by public material across client
-assertions, JAR, DPoP and endpoint overrides; different <code>kid</code> values or PEM
-spellings do not create distinct keys.</p></dd>
+Reusing an RSA key or HMAC secret requires the same signing algorithm across
+enabled profiles and endpoint overrides. Use separate keys or secrets when
+algorithms differ; see the advanced security vignette.</p></dd>
 
 
 <dt id="arg-client-assertion-audience">client_assertion_audience<a class="anchor" aria-label="anchor" href="#arg-client-assertion-audience"></a></dt>
@@ -511,8 +499,8 @@ a configured UserInfo endpoint on the provider.</p></dd>
 temporal JWT claims that must be present when the UserInfo response is a
 signed JWT (<code>application/jwt</code>). Allowed values are <code>"exp"</code>, <code>"iat"</code>, and
 <code>"nbf"</code>.</p>
-<p>Default is <code>character(0)</code>, which means these claims are validated only when
-present. Set, for example, <code>userinfo_jwt_required_time_claims = "exp"</code>
+<p>The default, <code>character(0)</code>, checks these claims only when present.
+Set, for example, <code>userinfo_jwt_required_time_claims = "exp"</code>
 to require an expiry on signed UserInfo JWTs, or pass multiple values to
 require additional temporal claims. For security-sensitive deployments that
 accept signed UserInfo JWTs, prefer requiring at least <code>"exp"</code>.</p></dd>
@@ -549,8 +537,7 @@ client id.</p></li>
 useful for sender-constrained deployments such as DPoP, where
 introspection can authoritatively report <code>token_type = "DPoP"</code>.
 Default is <code>character(0)</code>.
-(Note that not all providers may return each of these fields in
-introspection responses.)</p></li>
+Providers may omit these fields from introspection responses.</p></li>
 </ul></dd>
 
 
@@ -757,46 +744,21 @@ compatibility.</p></dd>
 
 
 <dt id="arg-token-targets">token_targets<a class="anchor" aria-label="anchor" href="#arg-token-targets"></a></dt>
-<dd><p>Optional named list of API token declarations. Each
-entry has <code>resource</code> (an absolute URI, or a GUID in Microsoft mode)
-and <code>scopes</code> (API scopes also present
-in the client's <code>scopes</code>). Optional <code>required_scopes</code> apply only to this
-target; optional <code>resource_ids</code> explicitly associate approved HTTP
-<code>resource_bases</code> with this target. Requires a provider with a supported
-<code>token_target_mode</code>, <code>userinfo_required = FALSE</code>, and no <code>resource</code> or
-SMART configuration. Provider <code>extra_auth_params</code> and <code>extra_token_params</code>
-must not contain <code>resource</code>; declare resources only in <code>token_targets</code>.
-RFC 8707 mode reserves OIDC scope names only for an OIDC provider or when
-client <code>scopes</code> includes <code>openid</code>; otherwise these names are ordinary API
-scopes declared in targets. Microsoft always uses its OIDC scope set.
-Client-level <code>required_scopes</code> can contain OIDC scopes only, except
-<code>offline_access</code>: request refresh consent in client <code>scopes</code>, never in
-client or target <code>required_scopes</code>. Access-token scopes cannot establish
-whether a usable refresh credential exists.
-Targets share one local authorization and refresh credential,
-while their access tokens and retained permission limits remain separate.
-Microsoft limits constrain local operation checks, while the actual token
-can include previously consented scopes for the selected resource. Explicit
-API scope narrowing is unsupported for Microsoft targets.
-Distinct Microsoft target resources must not have overlapping scope
-prefixes; nested resources are ambiguous with slash-containing permissions.
-Optional Microsoft <code>scope_aliases</code> lists short permission names (for example,
-<code>c("items/read", "read:items")</code>) accepted in token responses. These aliases
-support optional <code>.default</code> and prior-consent permissions without requesting
-or requiring them. Aliases never establish a grant or widen operation limits;
-URI names with <code>://</code> and declared resource prefixes remain reserved.
-At most 16 targets are supported. The complete authorization, including
-OIDC scopes and actual permissions returned by Microsoft, is
-limited to 128 distinct scope tokens and 8192 scope bytes (excluding spaces).
-Scope declarations may be vectors or space-delimited strings.
-See <code><a href="../articles/token-targets.html">vignette("token-targets")</a></code> for provider rules and examples.</p></dd>
+<dd><p>Optional named list for obtaining tokens for several APIs
+through one login. Each entry needs a <code>resource</code> identifier and <code>scopes</code>
+(also included in client <code>scopes</code>). Optional <code>required_scopes</code> set that API's
+minimum permissions; <code>resource_ids</code> associate it with named <code>resource_bases</code>.
+Optional Microsoft <code>scope_aliases</code> identify unusual short permission names
+in responses. Requires provider support and <code>userinfo_required = FALSE</code>;
+cannot be combined with <code>resource</code> or SMART configuration.
+See the <a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">token targets guide</a>
+for examples, provider-specific permission rules and declaration limits.</p></dd>
 
 
 <dt id="arg-default-token-target">default_token_target<a class="anchor" aria-label="anchor" href="#arg-default-token-target"></a></dt>
-<dd><p>Name of the initial code-redemption target and
-the default for connection methods. Required with multiple targets;
-<code>oauth_client()</code> selects the sole target automatically. A method's <code>target</code>
-argument overrides only that call, never the configured default.</p></dd>
+<dd><p>Name of the API to use when a connection method
+omits <code>target</code>. Required with several targets; the sole target is selected
+automatically. Selecting a target for one call does not change this default.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -812,6 +774,21 @@ registration. Use <code>state_store</code> and <code>state_key</code> for shared
 workers, and validation arguments to require particular scopes, claims, or
 authentication context. See the <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html">usage vignette</a> for a complete app, or
 the <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a> for certificate and signed-request settings.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="claims-requests">Claims requests<a class="anchor" aria-label="anchor" href="#claims-requests"></a></h2>
+
+
+<p>Use an R list for most applications. <code>values</code> vectors become JSON arrays,
+including single-element vectors. Each claim entry is <code>NULL</code> or a named list;
+<code>essential</code> must be logical, and <code>value</code> and <code>values</code> cannot be combined.
+Pre-encoded JSON must use unique member names, object-valued target sections
+and nonempty arrays for <code>values</code>. Invalid requests are rejected even when
+<code>claims_validation = "none"</code> disables checking returned values.</p>
+<p>Numbers use R's numeric precision and must be finite and within
+<code>+/- (2^53 - 1)</code>. Use strings for larger exact identifiers or decimal values
+that R cannot represent accurately. UserInfo claim checks require automatic
+profile retrieval and a configured UserInfo endpoint.</p>
     </div>
 
     <div class="section level2">

@@ -33,8 +33,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -72,13 +72,10 @@
 
     
     
-<p>shinyOAuth allows you to keep multiple OAuth authorizations in one
-Shiny app. Users can connect several services, choose which saved
-authorization to use for a request, and disconnect each one
-separately.</p>
-<p>This is useful for a dashboard that combines data from several APIs,
-or an app where users need access to several accounts at the same
-service.</p>
+<p>Users can connect several services or accounts in one Shiny app,
+choose which saved authorization to use for a request, and disconnect
+each one separately. A dashboard can combine data from several APIs, or
+let users work with several accounts at the same service.</p>
 <p>This vignette builds an app that connects to two services and reads
 data from either one. It uses browser retention to keep both
 authorizations available when the user returns from a provider’s login
@@ -200,13 +197,12 @@ names an approved resource within each client. For connection A,
 <code>[["request"]]("api", "records")</code> means
 <code>https://api.a.example/v1/records</code>.</p>
 <p>The default callback policy gives each client a distinct route.
-Supply the <strong>complete callback vector to each client</strong>,
-even though each uses its own <code>redirect_uri</code>. The manager
-verifies that each client’s declared set includes all of its callback
-routes, comparing canonical origins and paths. Additional routes used
-elsewhere in the application may also be included. Shared callback
-routes are an advanced alternative documented in
-<code><a href="../reference/oauth_connections.html">?oauth_connections</a></code>.</p>
+Supply the complete callback vector to each client, even though each
+uses its own <code>redirect_uri</code>. The manager verifies that each
+client’s declared set includes all of its callback routes, comparing
+canonical origins and paths. Additional routes used elsewhere in the
+application may also be included. Shared callback routes are an advanced
+alternative documented under <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html">oauth_connections()</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="keep-authorizations-when-the-browser-returns">2. Keep authorizations when the browser returns<a class="anchor" aria-label="anchor" href="#keep-authorizations-when-the-browser-returns"></a>
@@ -231,29 +227,21 @@ routes are an advanced alternative documented in
 owner ID. Tokens stay encrypted in the R process. The cookie associates
 saved connections with this browser; it does not identify a person or
 log them into either service.</p>
-<p>Cookies are shared across ports on the same host, even with HttpOnly,
-Secure and a <code>__Host-</code> name (<a href="https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5" class="external-link">RFC 6265
-section 8.5</a>). All HTTPS services on that host that receive the owner
-cookie must be trusted, because they can read and replay it. The origin
-hash in the cookie name distinguishes applications but does not isolate
-the cookie from other ports. Use separate hostnames for mutually
-untrusted services.</p>
 <p>Without <code>retention = "browser"</code>, the default is
 <code>"shiny"</code>: existing connections are discarded when that Shiny
-session ends. Merely configuring multiple clients does not preserve A
+session ends. Configuring multiple clients alone does not preserve A
 while the browser goes away to authorize B.</p>
 <p>Keep the manager, store and keys outside <code>server()</code> so
 returning Shiny sessions use the same configuration. This memory store
-supports <strong>one R process</strong> and does not survive an R
-restart. Stable keys alone do not make it persistent or share records
-between workers. Browser ownership also has idle and absolute expiry
-limits. Automatic refresh and API reads do not reset inactivity. Call
+supports one R process and does not survive an R restart. Stable keys
+alone do not make it persistent or share records between workers.
+Browser ownership also has idle and absolute expiry limits. Automatic
+refresh and API reads do not reset inactivity. Call
 <code>auth[["touch"]]()</code> from a user input event handler, as the
 Read handler below does, to count an application action as activity.
 Explicit refresh also counts as activity; the absolute expiry remains
-fixed. For an app with its own verified account login, see
-<code><a href="../reference/oauth_browser_owner.html">?oauth_account_owner</a></code> and
-<code>retention = "account"</code>.</p>
+fixed. For an app with its own verified account login, see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html">oauth_account_owner()</a>
+and <code>retention = "account"</code>.</p>
 <p>Size the owner registry and credential store separately. Both owner
 factories accept <code>max_entries</code> (default 1,000) per manager.
 Retained browser entries count browsers that successfully authorize a
@@ -357,8 +345,7 @@ stable key.</p>
 lets Shiny serve those paths. Use the same module ID
 (<code>"services"</code>) in UI and server. Deploying under a subpath or
 behind a proxy can also require <code>app_base_path</code> and a trusted
-<code>request_uri_resolver</code>; see
-<code><a href="../reference/oauth_connections_ui.html">?oauth_connections_ui</a></code>.</p>
+<code>request_uri_resolver</code>; see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html">oauth_connections_ui()</a>.</p>
 </div>
 </div>
 <div class="section level2">
@@ -395,14 +382,12 @@ unauthenticated request; <code><a href="https://httr2.r-lib.org/reference/req_bo
 retains control of its destination, authentication and redirect policy.
 The write scope is optional for connecting, but required for this
 action.</p>
-<p><code>OAuthConnection[["request"]]()</code> uses the existing
-<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> transport. It adds selection of the
-current owned credentials and checks the approved API base and required
-permissions. Existing code using
-<code>perform_resource_req(token, url)</code> remains supported. For a
-single existing module,
-<code>oauth_connection(client, reactive(auth[["token"]]))</code>
-supplies the optional wrapper without adding retention.</p>
+<p><code>OAuthConnection[["request"]]()</code> calls
+<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> with the selected connection’s
+current credentials, after checking the approved API base and required
+permissions. For a single module with an existing token reactive, use
+<code>oauth_connection(client, reactive(auth[["token"]]))</code> to add
+these checks without retaining credentials across navigation.</p>
 <p><code>resource_bases</code> limits destinations, including absolute
 pagination links and their base paths. It does not automatically send
 OAuth’s <code>resource</code> parameter or prove the audience of an
@@ -457,6 +442,15 @@ revocation. Choose this deliberately using the provider’s documented
 behavior. Sibling connections can still report <code>active</code>
 locally after remote revocation: always handle API authorization
 failures and offer a new authorization.</p>
+</div>
+<div class="section level2">
+<h2 id="deployment-notes">Deployment notes<a class="anchor" aria-label="anchor" href="#deployment-notes"></a>
+</h2>
+<p>Keep this app on a separate hostname from untrusted services. Browser
+cookies are shared across ports on a hostname, so another service
+receiving the owner cookie could reuse it. Separate cookie names do not
+isolate those services. See <a href="advanced-security.html#browser-binding-and-deployment-boundary">advanced
+security</a> for the browser and hosting requirements.</p>
 </div>
 <div class="section level2">
 <h2 id="keep-an-ordinary-oidc-login-alongside-smart-connections">Keep an ordinary OIDC login alongside SMART connections<a class="anchor" aria-label="anchor" href="#keep-an-ordinary-oidc-login-alongside-smart-connections"></a>

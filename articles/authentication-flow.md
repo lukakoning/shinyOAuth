@@ -23,10 +23,6 @@ alone is not an identity assertion.
 
 ## What happens during the authentication flow?
 
-The steps below follow a login from the first page load through token
-refresh and logout. Each step describes the usual OAuth or OIDC behavior
-first, then the additional behavior for the relevant optional features.
-
 ### 1. First page load: set a browser token
 
 On first page load, the module asks the browser to create a random token
@@ -89,26 +85,21 @@ The module constructs an authorization URL from the provider’s
 `scope`. For OIDC, the scopes include `openid`. The module also creates
 values that link this request to the callback and token exchange:
 
-- **State and a browser cookie** link the callback to the pending login
-  and its initiating browser. State is encrypted and protected against
+- State and a browser cookie link the callback to the pending login and
+  its initiating browser. State is encrypted and protected against
   changes.
-- **Proof Key for Code Exchange (PKCE)** uses a secret `code_verifier`
-  and matching `code_challenge` to bind the authorization request to the
+- Proof Key for Code Exchange (PKCE) uses a secret `code_verifier` and
+  matching `code_challenge` to bind the authorization request to the
   later token exchange; the state and browser token provide the
   browser-session binding.
-- **Nonce (OIDC)** is a random value checked in the returned ID token to
-  tie that token to the login request.
+- Nonce (OIDC) is a random value checked in the returned ID token to tie
+  that token to the login request.
 
-The module creates and checks these values automatically when enabled.
-[`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
-and
-[`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-enable PKCE and nonce by default. Provider presets can choose different
-PKCE settings to match their registration requirements. ORCID and
-Slack’s default confidential profile use client authentication and
-validated OIDC nonce without PKCE; see their provider helper
-documentation for the applicable settings. Public clients must use PKCE,
-and `S256` is the default PKCE method.
+The module creates and checks these values for you. The generic OIDC
+helpers enable PKCE and nonce by default; named provider helpers can use
+other settings to match that service’s registration requirements. Follow
+the helper’s setup guidance. Public clients must use PKCE; `S256` is the
+default method.
 
 Fixed routing queries on the authorization endpoint are preserved. Put
 protocol policy parameters such as `prompt` and `max_age` in
@@ -202,8 +193,8 @@ callback described in step 6.
 
 The provider handles authentication and asks the user to authorize the
 requested permissions. It may skip these prompts if the user already has
-an active session or has granted the requested access. The user’s
-credentials are entered at the provider, rather than in the Shiny app.
+an active session or has granted the requested access. Users enter their
+credentials at the provider.
 
 ### 6. Provider returns the browser to the app
 
@@ -342,11 +333,11 @@ and the credentials required by the app’s registration.
 `token_auth_style` determines how the client identifies itself, for
 example with a client secret or a private key.
 
-The provider returns an **access token**, which authorizes API requests
-on the user’s behalf. It may also return a **refresh token**, allowing
-the app to obtain a replacement access token without another browser
-redirect. An OIDC response includes an **ID token**, which is checked in
-the next step.
+The provider returns an access token, which authorizes API requests on
+the user’s behalf. It may also return a refresh token, allowing the app
+to obtain a replacement access token without another browser redirect.
+An OIDC response includes an ID token, which is checked in the next
+step.
 
 The response must contain an access token and its `token_type`.
 Malformed responses or unsupported token types stop login. If the
@@ -423,10 +414,9 @@ before fetching userinfo or marking login complete. It checks that the
 provider signed it, that it was issued for this client, that it is still
 valid, and that it belongs to the login request.
 
-The provider publishes public signing keys as a **JSON Web Key Set
-(JWKS)**. shinyOAuth fetches and caches these keys using the provider’s
-configured `issuer` and key settings; provider helpers supply the usual
-defaults.
+The provider publishes public signing keys as a JSON Web Key Set (JWKS).
+shinyOAuth fetches and caches these keys using the provider’s configured
+`issuer` and key settings; provider helpers supply the usual defaults.
 
 #### Signature and claim checks
 
@@ -650,13 +640,11 @@ refresh. The provider may still reject API calls with that token.
 access and refresh tokens if the provider supports it. It does not end
 the user’s login session at the provider. `revoke_on_session_end = TRUE`
 also attempts revocation when the Shiny session ends and requires a
-configured `revocation_url`. With this option enabled, automatic expiry
-or maximum authentication age also attempts revocation as soon as it
-clears the session, including secondary resource tokens. The retiring
-credentials are cleaned up before a later login can replace them.
-Revocation can fail, for example if the provider is unavailable; local
-cleanup still happens. These requests run in the background only with
-`async = TRUE`.
+configured `revocation_url`. This also applies when token expiry or the
+configured maximum login age clears the local login, including any
+additional API tokens. Revocation can fail, for example if the provider
+is unavailable; local cleanup still happens. These requests run in the
+background only with `async = TRUE`.
 
 The module also clears and renews the browser token for subsequent
 logins. For direct token management,

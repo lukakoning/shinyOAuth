@@ -33,8 +33,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -78,16 +78,7 @@
 <p>This example lets a user connect their Spotify account and displays
 their top tracks. It uses the same provider, client, and module setup as
 <a href="usage.html">Usage</a>, then calls Spotify’s API with the access
-token. Spotify supplies profile data through its API rather than an OIDC
-ID token.</p>
-<p>The helper identifies accounts using immutable
-<code>account_id</code>, as specified in <a href="https://developer.spotify.com/documentation/web-api/references/changes/may-2026" class="external-link">Spotify’s
-May 2026 changes</a>. Before upgrading an existing app, migrate stored
-<code>id</code> mappings and audit digests using both identifiers from
-an authenticated profile. Do not merge accounts by email or display
-name. <code>allow_legacy_id = TRUE</code> permits a temporary fallback
-only when <code>account_id</code> is missing; it does not preserve old
-mappings when both exist.</p>
+token.</p>
 </div>
 <div class="section level2">
 <h2 id="spotify-app-registration">Spotify app registration<a class="anchor" aria-label="anchor" href="#spotify-app-registration"></a>
@@ -113,7 +104,7 @@ Premium, and test users need to be on the app’s allowlist.</li>
 </h2>
 <p>Save this as <code>app.R</code>, run it, and open
 <code>http://127.0.0.1:8100</code> in a regular browser. After
-connecting Spotify, click <strong>Load top tracks</strong>.</p>
+connecting Spotify, click Load top tracks.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
@@ -188,10 +179,9 @@ short-term range. The module obtains and stores the access token. The
 connection checks the operation’s scope and approved API address,
 refreshing the token if needed before the request.
 <code><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent()</a></code> loads the data when the button is clicked,
-and <code><a href="https://rdrr.io/pkg/shiny/man/renderTable.html" class="external-link">renderTable()</a></code> displays the result only for the current
-authorization with <code>user-top-read</code>. The observer clears
-cached results on logout, authorization replacement or permission loss,
-so regaining permission does not redisplay old data.</p>
+and <code><a href="https://rdrr.io/pkg/shiny/man/renderTable.html" class="external-link">renderTable()</a></code> displays it for the current login. Cached
+tracks are cleared on logout, a new login, or loss of permission to read
+them.</p>
 <p>For other data, choose the API URL and requested scopes together. A
 successful login does not mean every API is available to the app. Empty
 results can be normal for accounts without listening history; API errors
@@ -212,12 +202,8 @@ example above.</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/file.show.html" class="external-link">file.show</a></span><span class="op">(</span><span class="va">dashboard_file</span><span class="op">)</span>  <span class="co"># Read or copy the complete source.</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="va">dashboard_file</span><span class="op">)</span>    <span class="co"># Run after setting your Spotify credentials.</span></span></code></pre></div>
-<p>The source groups the code into client setup, API helpers, UI, and
-server logic. It validates Spotify links and image URLs before rendering
-them and keeps table escaping enabled. Preserve those protections when
-adapting it; profile and track text can contain characters that would
-otherwise become HTML. Available data still depends on Spotify’s API
-access rules for your app.</p>
+<p>When adapting the dashboard’s HTML output, keep its URL checks and
+text escaping for data fetched from Spotify.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

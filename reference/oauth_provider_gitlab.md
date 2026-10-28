@@ -1,4 +1,4 @@
-# Create a GitLab [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md) (via OIDC discovery)
+# Configure sign-in with GitLab
 
 Configure OIDC sign-in with GitLab.com or a self-managed GitLab
 instance. Register an OAuth application on that instance, then pass its

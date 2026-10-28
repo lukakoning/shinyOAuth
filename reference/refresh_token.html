@@ -29,8 +29,8 @@ refresh_proactively = TRUE when a refresh token is available."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -118,7 +118,7 @@ Normally supplied by the module; leave <code>NULL</code> when calling directly.<
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An updated <a href="OAuthToken.html">OAuthToken</a> object with refreshed credentials.</p>
-<p><strong>What changes:</strong></p><ul><li><p><code>access_token</code>: Always updated to the fresh token</p></li>
+<p>Updated fields:</p><ul><li><p><code>access_token</code>: Always updated to the fresh token</p></li>
 <li><p><code>expires_at</code>: Computed from <code>expires_in</code> when provided; otherwise a
 fallback lifetime set by <code>shinyOAuth.default_expires_in</code> (3600 seconds by default)</p></li>
 <li><p><code>refresh_token</code>: Updated if the provider rotates it; otherwise preserved</p></li>
@@ -138,11 +138,11 @@ refresh response omits new observable <code>cnf</code>, shinyOAuth does not carr
 forward a prior <code>x5t#S256</code> thumbprint onto the refreshed token; mTLS
 sender-constrained state is kept only when the new token or its
 introspection response supplies fresh <code>cnf</code></p></li>
-</ul><p><strong>Validation failures cause errors:</strong> If the provider returns a new ID
-token that fails validation (wrong issuer, audience, expired, or subject
-mismatch with original), or if userinfo subject doesn't match the new ID
-token, the refresh fails with an error. In <code><a href="oauth_module_server.html">oauth_module_server()</a></code>, this
-clears the session and sets <code>authenticated = FALSE</code>, unless
+</ul><p>Refresh fails if a new ID token fails validation, or if the UserInfo subject
+differs from the new ID token's subject. Validation includes issuer,
+audience, expiry and agreement with the original login's subject.
+In <code><a href="oauth_module_server.html">oauth_module_server()</a></code>, this clears the session and sets
+<code>authenticated = FALSE</code>, unless
 <code>indefinite_session = TRUE</code> keeps it with <code>token_stale = TRUE</code>.</p>
     </div>
     <div class="section level2">

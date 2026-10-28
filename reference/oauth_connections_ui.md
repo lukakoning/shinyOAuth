@@ -1,12 +1,9 @@
 # Handle callbacks and establish the connection owner's browser session
 
-Wrap the application's UI with the same manager and module ID used by
+Wrap your app's UI to handle login returns and restore the user's saved
+connections. Use the same manager and module ID as
 [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md).
-Browser retention establishes its HttpOnly owner cookie on an ordinary
-page request before Shiny starts. OAuth callbacks use the existing
-validated callback bridge and clean continuation. This wrapper also
-includes the browser dependency and response headers; do not add a
-separate
+The wrapper includes the required browser setup; do not add a separate
 [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
 call or nest
 [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
@@ -82,25 +79,29 @@ A request UI function for `shinyApp(..., uiPattern = ".*")`.
 
 ## Details
 
-Raw GET and form POST callbacks never create or rotate an owner. A POST
-may lack a SameSite owner cookie. With Strict owner cookies, a validated
-callback first serves an inert same-origin document that navigates to
-the clean continuation, allowing the browser to send its existing
-cookie. The document does not establish an owner or exchange
-credentials. A managed continuation must carry a still-valid owner
-before credentials can be exchanged. Ordinary entry without a Strict
-cookie also uses a bounded same-origin navigation before creating an
-empty owner. Browsers must supply same-origin Fetch Metadata or a
-same-origin `Referer` or `Origin` header on that request. The
-`shinyOAuth_owner_recovery` query parameter is reserved for this
-navigation. A validated ordinary callback for `additional_clients` can
-establish a new empty manager owner independently. An invalid cookie on
-an ordinary page is cleared using an HTTP response and a same-origin
-redirect; the next request establishes a new empty browser owner.
+Pass the result to `shinyApp(..., uiPattern = ".*")` so the app's
+callback paths reach the wrapper. With browser retention, a cookie lets
+the returning browser find its saved connections; tokens remain on the
+server. Account and session-only retention do not add that owner cookie.
 
-The cookie is scoped to its host. Separate applications on that host
-must be trusted; different ports or paths do not isolate their cookies.
-The wrapper adds no owner cookie for session-only or account retention.
+## Advanced browser and proxy requirements
+
+With Strict cookies, returning from another site may briefly show an
+intermediate page before Shiny starts. This lets the browser send its
+existing cookie; it does not create a new owner or exchange credentials.
+Proxies must preserve same-origin Fetch Metadata, `Referer` or `Origin`
+information for recovery. The `shinyOAuth_owner_recovery` query
+parameter is reserved for this flow.
+
+A managed login return must still belong to a valid local owner. An
+ordinary entry or an independently validated `additional_clients`
+callback can create an empty browser owner, but cannot recover someone
+else's connections. Invalid cookies are cleared before a fresh owner is
+created.
+
+Host the app separately from untrusted services. Cookies are shared
+across ports and paths on the same hostname; those boundaries do not
+isolate apps.
 
 ## See also
 

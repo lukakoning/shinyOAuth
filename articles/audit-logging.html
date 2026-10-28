@@ -33,8 +33,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -75,11 +75,10 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>shinyOAuth emits structured audit events for authorization requests,
-callbacks, token operations, and changes to the authenticated session.
-Configure <code>shinyOAuth.audit_hook</code> with an R function to
-receive these events as named lists and send them to your application’s
-logging system.</p>
+<p>Use audit events to record login attempts, token operations and
+session changes in your application’s logs. Set
+<code>shinyOAuth.audit_hook</code> to an R function that receives each
+event as a named list.</p>
 </div>
 <div class="section level2">
 <h2 id="receiving-audit-events">Receiving audit events<a class="anchor" aria-label="anchor" href="#receiving-audit-events"></a>
@@ -389,9 +388,8 @@ checks</li>
 <li>
 <code>handle_digest</code> is included when a form_post callback
 handle is missing, expired, or already consumed.</li>
-<li>Note: Failures related to state store access (lookup/removal) are
-reported as their own events (see below) rather than using the
-<code>callback_validation_failed</code> event.</li>
+<li>State store lookup and removal failures have their own events (see
+below).</li>
 </ul>
 </div>
 </div>
@@ -468,10 +466,9 @@ value and the package used the configured fallback token lifetime</li>
 <code>error_class</code>
 </li>
 </ul>
-<p>Detailed sender-constraint diagnostics such as DPoP token-type
-inference, DPoP nonce retries, and mTLS endpoint-alias selection are
-emitted on the OpenTelemetry spans documented in the <a href="opentelemetry.html">OpenTelemetry vignette</a> rather than on the
-high-level audit events.</p>
+<p>OpenTelemetry spans record DPoP token-type inference, DPoP nonce
+retries and mTLS endpoint-alias selection. These details are omitted
+from high-level audit events. See the <a href="opentelemetry.html">OpenTelemetry vignette</a>.</p>
 </div>
 </div>
 <div class="section level3">
@@ -593,12 +590,13 @@ or fails. Context includes <code>owner_digest</code>,
 <code>session_end</code>. Identifiers use the configured audit digest
 policy; credentials and raw identities are excluded. Remote outcomes
 describe the revocation attempt, not proof that the authorization server
-previously recognized a token. For token targets,
-<code>remote_access_outcome</code> covers all acquired access tokens. An
-incomplete result takes precedence over acceptance: <code>failed</code>,
-<code>not_attempted</code>, <code>unsupported</code>,
-<code>accepted</code>, then <code>missing</code> (no credential to
-revoke).</p>
+previously recognized a token. With token targets,
+<code>remote_access_outcome</code> summarizes cleanup for all acquired
+API tokens. It reports a problem or incomplete cleanup even if another
+token was revoked successfully. The outcome priority is
+<code>failed</code>, <code>not_attempted</code>,
+<code>unsupported</code>, <code>accepted</code>, then
+<code>missing</code> (no credential to revoke).</p>
 </div>
 <div class="section level4">
 <h4 id="event-audit_connections_disconnected">Event: <code>audit_connections_disconnected</code><a class="anchor" aria-label="anchor" href="#event-audit_connections_disconnected"></a>
@@ -685,9 +683,8 @@ to clear the session (i.e., <code>indefinite_session = TRUE</code> in
 </li>
 <li>
 <code>mirai_error_type</code> is only present on async refresh
-failures. Its value is <code>NA</code> when the failure is not
-recognizable as a mirai error, including worker errors converted to
-ordinary R conditions by promise handling.</li>
+failures. It is <code>NA</code> when the error cannot be identified as a
+mirai error.</li>
 </ul>
 </div>
 </div>
@@ -755,8 +752,8 @@ fallback token lifetime</li>
 <h4 id="event-audit_userinfo">Event: <code>audit_userinfo</code><a class="anchor" aria-label="anchor" href="#event-audit_userinfo"></a>
 </h4>
 <ul>
-<li>When: <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> is called to retrieve user
-information (emitted on success and various failure modes)</li>
+<li>When: during <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code>, on successful retrieval or
+a reported failure</li>
 <li>Context: <code>provider</code>, <code>issuer</code>,
 <code>client_id_digest</code>, <code>sub_digest</code>,
 <code>status</code>

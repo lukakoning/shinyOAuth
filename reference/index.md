@@ -42,19 +42,19 @@
 - [`oauth_provider_auth0()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_auth0.md)
   : Create an Auth0 OAuthProvider (via OIDC discovery)
 - [`oauth_provider_authentik()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_authentik.md)
-  : Create an authentik OAuthProvider (via OIDC discovery)
+  : Configure sign-in with authentik
 - [`oauth_provider_cognito()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_cognito.md)
-  : Create an Amazon Cognito OAuthProvider (via OIDC discovery)
+  : Configure sign-in with an Amazon Cognito user pool
 - [`oauth_provider_github()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.md)
   : Create a GitHub OAuthProvider
 - [`oauth_provider_gitlab()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_gitlab.md)
-  : Create a GitLab OAuthProvider (via OIDC discovery)
+  : Configure sign-in with GitLab
 - [`oauth_provider_globus()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_globus.md)
-  : Create a Globus Auth OAuthProvider
+  : Configure sign-in with Globus Auth
 - [`oauth_provider_google()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_google.md)
   : Create a Google OAuthProvider
 - [`oauth_provider_huggingface()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_huggingface.md)
-  : Create a Hugging Face OAuthProvider (via OIDC discovery)
+  : Configure sign-in with Hugging Face
 - [`oauth_provider_keycloak()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_keycloak.md)
   : Create a Keycloak OAuthProvider (via OIDC discovery)
 - [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
@@ -62,13 +62,13 @@
 - [`oauth_provider_okta()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.md)
   : Create an Okta OAuthProvider (via OIDC discovery)
 - [`oauth_provider_orcid()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_orcid.md)
-  : Create an ORCID OAuthProvider (via OIDC discovery)
+  : Configure researcher sign-in with ORCID
 - [`oauth_provider_slack()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_slack.md)
   : Create a Slack OAuthProvider (via OIDC discovery)
 - [`oauth_provider_spotify()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.md)
   : Create a Spotify OAuthProvider
 - [`oauth_provider_surfconext()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_surfconext.md)
-  : Create a SURFconext OAuthProvider (via OIDC discovery)
+  : Configure institutional sign-in with SURFconext
 
 ## Provider-specific client settings
 
@@ -86,13 +86,12 @@
 - [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md)
   : Prepare a browser authorization request using GET or POST
 - [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
-  : Handle OAuth 2.0 callback: verify state, swap code for token, verify
-  token
+  : Validate an OAuth 2.0 callback and retrieve tokens
 
 ## Tokens and API requests
 
 - [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
-  : Make API requests with a Shiny session's current OAuth credentials
+  : Wrap an existing reactive token as a connection
 
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   : Fetch a user's profile (UserInfo)
@@ -127,7 +126,7 @@
 ## Deployment helpers
 
 - [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-  : Assess an OAuth configuration against a pinned OAuth 2.1 draft
+  : Review an OAuth client configuration before deployment
 - [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
   : Check a URL against the package's host policy
 - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
@@ -139,7 +138,7 @@
 
 - [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
   [`print(`*`<OAuthConnections>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
-  : Configure several independently managed OAuth connections
+  : Manage several OAuth connections in one Shiny app
 - [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
   : Handle callbacks and establish the connection owner's browser
   session

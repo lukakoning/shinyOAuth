@@ -4,9 +4,8 @@ Create the provider configuration for a GitHub OAuth App, then pass it
 with your app credentials to
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
 This configures profile retrieval from GitHub's API; GitHub does not
-return an OIDC ID token. GitHub's comma-separated token response scopes
-are normalized before granted permissions are validated and stored,
-including when `name` is customized.
+return an OIDC ID token. The helper handles GitHub's permission-response
+format automatically.
 
 ## Usage
 

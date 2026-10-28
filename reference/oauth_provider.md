@@ -241,8 +241,8 @@ userinfo[["sub"]]
   discovery metadata value, defaulting to `c("query", "fragment")` when
   omitted per OIDC Discovery/RFC 8414. Generic providers may leave this
   empty when capabilities are not known. Provider metadata may include
-  response modes that shinyOAuth does not implement; clients still fail
-  fast if they request one of those unsupported modes.
+  response modes that shinyOAuth does not implement. Requesting an
+  unsupported mode raises an error.
 
 - mtls_endpoint_aliases:
 
@@ -314,27 +314,24 @@ userinfo[["sub"]]
 
 - userinfo_id_token_match:
 
-  Whether fetched userinfo requires a validated ID token for comparison.
-  When both are available, their actual `sub` values are always
-  compared. `TRUE` also stops login if the validated ID token is absent.
-  Requires a valid `userinfo_url` and either `id_token_validation` or
-  `use_nonce`. Both constructors enable this by default when those
-  requirements are met, including when `userinfo_required = FALSE` and
-  UserInfo is fetched manually. Set an explicit `FALSE` only to permit
-  profile retrieval without a validated identity; an available validated
-  ID token is always compared.
+  Require the fetched profile to belong to the validated login identity.
+  Defaults to `TRUE` when a UserInfo URL and ID-token or nonce
+  validation are enabled, including for manual
+  [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
+  calls. Pass the complete
+  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
+  for this check. An explicit `FALSE` permits profile retrieval without
+  a validated identity; when both are available, their actual `sub`
+  values must still match.
 
 - userinfo_signed_jwt_required:
 
-  Whether to require the user profile to arrive as a signed JWT
-  (`application/jwt`). Default `FALSE`; ordinary JSON userinfo is
-  accepted. When `TRUE`, requires a valid `userinfo_url` and `issuer`,
-  including for manual retrieval; the signature must validate with an
-  asymmetric algorithm from `userinfo_allowed_algs`. Unsigned,
-  HMAC-signed, and encrypted userinfo JWTs are not accepted by the
-  normal configuration. Discovery does not enable this automatically:
-  provider support does not mean your app's registration requests signed
-  userinfo.
+  Require a profile signed by the provider. Default `FALSE` accepts
+  ordinary JSON profiles. When `TRUE`, configure a UserInfo URL and
+  issuer, and arrange signed responses with the provider. Signatures use
+  `userinfo_allowed_algs`; unsigned, HMAC-signed and encrypted profiles
+  are not accepted by normal configuration. This requirement also
+  applies to manual retrieval when `userinfo_required = FALSE`.
 
 - userinfo_id_selector:
 
@@ -464,9 +461,8 @@ userinfo[["sub"]]
   `issuer` is provided and either `id_token_validation` or
   `id_token_required` is TRUE (OIDC-like configuration). Set explicitly
   to FALSE to opt out. For providers that legitimately publish JWKS on a
-  different host (for example Google), prefer setting
-  `jwks_host_allow_only` to the exact hostname rather than disabling
-  this check.
+  different host (for example Google), set `jwks_host_allow_only` to
+  that exact hostname to keep host validation enabled.
 
 - jwks_host_allow_only:
 
@@ -480,34 +476,15 @@ userinfo[["sub"]]
 
 - id_token_allowed_algs:
 
-  Optional vector of allowed JWT algorithms for ID tokens. Use to
-  restrict acceptable `alg` values on a per-provider basis. Supported
-  asymmetric algorithms include `RS256`, `RS384`, `RS512`, `ES256`,
-  `ES384`, `ES512`, and `Ed25519` or legacy `EdDSA` with Ed25519 OKP
-  keys (including `at_hash` validation). Ed448 verification is
-  unsupported and fails closed. Symmetric HMAC algorithms `HS256`,
-  `HS384`, `HS512` are also supported but require that you supply a
-  `client_secret` and explicitly enable HMAC verification via the option
-  `options(shinyOAuth.allow_hs = TRUE)`. Configure exactly one HS
-  algorithm for ID-token validation: the client's shared secret must be
-  bound to one algorithm (RFC 8725 section 3.1). The same secret must
-  also use that algorithm for JARM, JAR and JWT client assertions,
-  including endpoint overrides that inherit or repeat the secret.
-  Defaults to
-  `c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")`,
-  which intentionally excludes HS\*. Each RSA verification key is bound
-  by public-key material (RFC 7638 thumbprint), independently of `kid`.
-  Conflicting `alg` declarations for the same material reject the whole
-  JWKS, including pinned sets. An explicit declaration also binds
-  aliases that omit `alg`. With no declaration, the binding is the sole
-  RSA algorithm in this allowlist. When several RSA algorithms are
-  allowed, an unlabelled key is bound to `RS256` (and rejected if
-  `RS256` is excluded). To use unlabelled keys with `RS384` or `RS512`,
-  configure only that RSA algorithm. EC curves already select one
-  supported algorithm; legacy `EdDSA` with an Ed25519 key uses the
-  Ed25519 operation. Only include `HS*` if you are certain the
-  `client_secret` is stored strictly server-side and is never shipped
-  to, or derivable by, the browser or other untrusted environments.
+  Signing algorithms accepted for ID tokens. Defaults to
+  `c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519", "EdDSA")`;
+  Ed448 and unsupported algorithms are rejected. Use a narrower set to
+  match your provider registration. HMAC (`HS256`, `HS384`, `HS512`)
+  requires a server-only client secret,
+  `options(shinyOAuth.allow_hs = TRUE)`, and exactly one HS algorithm.
+  Reused keys or secrets must not have conflicting algorithm settings.
+  For RSA key metadata, defaults and rotation, see [signing-key
+  validation](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#provider-key-set-validation).
 
 - allowed_token_types:
 
@@ -521,9 +498,9 @@ userinfo[["sub"]]
   is configured with `dpop_private_key`, shinyOAuth also accepts
   `token_type = "DPoP"` and uses DPoP proofs on supported token and
   downstream requests. Other non-Bearer token types (for example `MAC`)
-  still fail fast rather than being misused. Set
-  `allowed_token_types = character()` explicitly only to disable the
-  value allowlist while still requiring `token_type` itself.
+  are rejected. Set `allowed_token_types = character()` explicitly only
+  to disable the value allowlist while still requiring `token_type`
+  itself.
 
 - leeway:
 
@@ -617,35 +594,27 @@ userinfo[["sub"]]
 
 - token_target_mode:
 
-  Explicit acquisition protocol for clients declaring `token_targets`:
-  `"none"` (default), `"rfc8707"`, or `"microsoft"`. Discovery never
-  infers support. The Microsoft preset selects `"microsoft"`. This has
-  no acquisition effect on clients without target declarations. RFC 8707
-  sends declared resource indicators; Microsoft uses qualified API
-  scopes, requires explicit scope evidence and handles static `.default`
-  consent in its provider policy. Microsoft responses may include
-  previously consented scopes for the selected resource; local operation
-  limits remain separate from that full grant. See
-  [`vignette("token-targets")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md).
+  How this provider obtains API-specific tokens: `"none"` (default),
+  `"rfc8707"`, or `"microsoft"`. Set this only when using client
+  `token_targets` and after checking provider support. The Microsoft
+  helper selects `"microsoft"` automatically; discovery does not enable
+  targets. See the [token targets
+  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html)
+  for setup and permission rules.
 
 - token_response_scope_format:
 
-  Token response scope separator, `"space"` (standard OAuth, the
-  default) or `"comma"` (GitHub). Comma-separated responses are
-  converted to standard space-separated scopes before grant validation
-  and storage, for both login and refresh. Set this explicitly for
-  custom providers with this response format; provider names do not
-  select it.
+  Separator used for permissions in token responses: `"space"` (default)
+  or `"comma"`. The GitHub helper sets `"comma"` automatically. Set it
+  explicitly for a custom provider using that format.
 
 - userinfo_id_selector_policy_id:
 
-  Optional non-empty policy identifier for `userinfo_id_selector`, or
-  `NA_character_`. Set an immutable versioned identifier for custom
-  selectors that capture settings or call configurable helpers, and
-  change it whenever those settings or behavior change. Pending logins
-  and retained credentials bind this identifier and the function's
-  source; closure environments are never serialized. Keep captured
-  settings immutable for the lifetime of a client.
+  Optional version name for a custom `userinfo_id_selector`, or
+  `NA_character_`. If the function uses settings outside its body, keep
+  them unchanged for the client's lifetime and change this ID when those
+  settings or helper behavior change. This lets pending logins and saved
+  connections detect the change.
 
 ## Value
 
@@ -680,7 +649,7 @@ generic_oidc_provider <- oauth_provider_oidc(
   base_url = "https://my-issuer.example.com"
 )
 
-# Configure a OIDC provider via OIDC discovery
+# Look up an OIDC provider's settings with discovery
 # (requires network access)
 if (interactive()) {
   # Using Auth0 sample issuer as an example

@@ -2,60 +2,23 @@
 
 ## Overview
 
-This vignette documents the configuration of OAuth 2.0 and OpenID
-Connect extensions supported by shinyOAuth: JWT client authentication,
-mutual TLS (mTLS), signed authorization requests (JAR), pushed
-authorization requests (PAR), Form Post responses, signed authorization
-responses (JARM), and tokens bound to a private key (DPoP).
+Most apps can start with the defaults in
+[Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md). This
+guide is for cases where your login provider or deployment needs
+additional protection. Choose the feature your provider requires;
+enabling every extension is not necessary, and the provider must support
+the same settings.
 
-These features require corresponding support and configuration at the
-provider. The examples extend the provider and client setup in the
-[usage
-vignette](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
-Replace placeholder domains, credentials, and key paths with your
-registered values. Each example shows the settings for the feature being
-discussed.
+| If your provider asks for… | Read… |
+|----|----|
+| A signed proof that identifies your app | [JWT client authentication](#jwt-client-authentication) |
+| A client certificate | [Mutual TLS](#mutual-tls-mtls) |
+| Signed or server-pushed login requests | [JAR](#jwt-secured-authorization-request-jar) or [PAR](#pushed-authorization-requests-par) |
+| Login results returned by POST or as a signed token | [Form Post](#form-post-response-mode) or [JARM](#jwt-secured-authorization-response-mode-jarm) |
+| Tokens usable only with your app’s key | [DPoP](#demonstrating-proof-of-possession-dpop) |
 
-## Browser binding and deployment boundary
-
-Use HTTPS and treat every service on the same hostname as trusted,
-including services on other ports. Cookie scope does not include the
-port, as specified in [RFC 6265 section
-8.5](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5). The
-`__Host-` prefix prevents sibling-domain cookie injection; it does not
-isolate ports. Signed or `HttpOnly` cookies still reach same-host
-services in HTTP requests. Use a dedicated hostname when those services
-are untrusted.
-
-shinyOAuth keeps the actual browser-binding token in origin- and
-tab-scoped session storage, accompanied by an independent random cookie
-marker. It restores the binding only when the cookie matches an
-unexpired local record. Reading or planting a cookie on another port
-cannot establish that record. Cookie disruption can still abort login;
-pages and scripts on the same origin can access session storage, so XSS
-prevention remains necessary. Cookies, session storage, and Web Crypto
-must be available, and pending logins from older cookie-only or
-local-storage versions must be restarted after upgrading.
-
-Each new authorization request gets a fresh server-selected binding and
-a distinct marker cookie. Idle predecessor markers are removed when the
-new binding is ready. Predecessors associated with pending transactions
-(or older records whose transaction status is unknown) remain until
-their original TTL expires, so a cloned tab cannot invalidate the
-original tab’s pending login. A verified error callback consumes its
-transaction and removes its binding, just as a successful login does;
-repeated denied logins therefore do not accumulate marker cookies.
-Application callback routes and tabs have independent records; complete
-login in the tab that started it. Private module inputs are excluded
-from both URL and disk bookmarks. Avoid copying browser tokens into
-custom bookmark values or logs. The acknowledgment is a delivery check,
-not independent server verification of HTTP cookie possession. The
-standalone
-[`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
-and
-[`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
-APIs still require the caller to establish and protect their own browser
-binding.
+The examples extend an existing `provider` and `client`. Replace example
+addresses, credentials and key paths with your registered values.
 
 ## Provider metadata and OIDC discovery
 
@@ -78,17 +41,11 @@ is `client_secret_basic` (`token_auth_style = "header"`). Public, POST,
 JWT, and mTLS methods therefore require an explicit advertisement. An
 empty method array is rejected as malformed metadata.
 
-The sections below show the extra settings you usually add on top of
-your normal
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-setup.
-
 ## JWT client authentication
 
-Some providers require your app to sign a short statement proving its
-identity when requesting tokens. This **client assertion** is a JWT
-(JSON Web Token). It identifies the app, rather than the user signing
-in.
+Some providers require your app to authenticate by signing a JWT (JSON
+Web Token) when requesting tokens. This client assertion identifies the
+app requesting tokens.
 
 For a registered private key, select the method during provider setup
 and supply the key when creating your client:
@@ -166,130 +123,6 @@ authentication settings unless explicitly overridden.
 `extra_token_headers` now applies only to exchange and refresh: opt in
 through `extra_headers` at each other endpoint that should receive those
 headers, even on the same origin.
-
-## Policy identity across callbacks and retained credentials
-
-Pending logins and retained credentials bind versioned policy
-fingerprints. The v2 encoding preserves claim types, exact numeric
-values and container shape. Upgrading from the older encoding
-deliberately invalidates existing pending logins and retained
-credentials; users must sign in and connect again. Deploy the upgrade
-consistently across workers sharing keys and storage.
-
-For a custom `userinfo_id_selector` that captures configuration or calls
-configurable helpers, set `userinfo_id_selector_policy_id` on the
-provider to an immutable versioned identifier, for example
-`"application:subject-field:v2"`. Change that identifier whenever the
-captured settings or helper behavior change, and keep those settings
-immutable for each client’s lifetime. Fingerprints bind the identifier
-and function source without serializing closure environments, which can
-contain secrets or process-specific objects. The Spotify helper binds
-its `allow_legacy_id` choice automatically.
-
-## Issuer comparison and transport policy
-
-`compare_callback_issuer = TRUE` compares a supplied callback `iss`
-exactly against `provider@issuer`. Pair it with
-`enforce_callback_issuer = FALSE` when absence is permitted for your
-older provider. Required presence always implies comparison. An
-explicitly supplied legacy `enforce_callback_issuer = FALSE` retains
-complete opt-out unless comparison is explicitly enabled. Otherwise,
-issuer-configured clients enable comparison automatically.
-
-Participating clients require `iss` when the provider advertises RFC
-9207 support. Validated JARM supplies its own issuer and does not
-require a redundant outer value. Multi-server applications must retain
-their selected issuer or distinct-route defense. The expected issuer
-comes from trusted configuration; it is not inferred from a token URL or
-normalized before comparison. See [RFC 9207 section
-2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4).
-
-`options(shinyOAuth.tls_min_version = "1.2")` requires TLS 1.2 or later
-on package HTTPS requests; `"1.3"` selects a higher minimum and `NULL`
-preserves runtime defaults. Configure it before discovery or login. The
-policy preserves stronger supplied minima, compatible maxima and custom
-CA roots. It also applies in async workers and participates in
-pending-login policy checks. An absent option is insufficient evidence
-about an actual handshake; the checker reports older unresolved backend
-defaults as unknown. Browser/proxy hops and future resource requests
-need separate validation. Details and constraints are in [package
-options](https://lukakoning.github.io/shinyOAuth/articles/package-options.html#http-settings-timeout-retries-user-agent).
-
-## Callback pages and application scripts
-
-Use `oauth_ui(ui, id = "auth", client = client)` for query and
-query-JARM responses. The ID and client must match
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-The wrapper validates callbacks and stores sealed, short-lived
-responses, then redirects to a one-time bridge URL before invoking the
-application UI. State remains single-use and browser-bound. Missing
-bridge configuration rejects raw callbacks; existing `oauth_ui(ui)`
-setups must add `id` and `client`.
-
-Callback and HTML responses send `Cache-Control: no-store`,
-`Pragma: no-cache`, and `Referrer-Policy: no-referrer`. These do not
-remove upstream access logs: configure proxies and hosting logs to omit
-callback queries. Keep third-party scripts off any unsanitized callback
-page, including when using
-[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-with a custom HTTP integration. Register fixed tenant or routing query
-parameters in the redirect URI; unregistered inbound parameters are
-discarded on continuation. For trusted HTTPS-terminating proxies, use
-`request_uri_resolver` with the same trust checks as
-[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
-
-## Provider key-set validation
-
-shinyOAuth validates the whole fetched JWKS before selecting a key by
-`kid`, usage, operations, or algorithm. A malformed RSA, EC, or OKP
-public entry can therefore reject the set even when another entry would
-validate the token. This is a deliberately stricter availability policy
-than the recommendation to ignore individual unusable keys in [RFC 7517
-section 5](https://www.rfc-editor.org/rfc/rfc7517.html#section-5).
-Providers must publish structurally valid public entries throughout key
-rotation; an unrelated broken entry can interrupt login, signed
-UserInfo, JARM, or Request Object encryption until the provider repairs
-its JWKS.
-
-Unknown key types are ignored for selection after common structural
-checks. Malformed set structure, duplicate JSON members, and secret key
-material are rejected. With pinning mode `"any"`, at least one supported
-public key must match a configured thumbprint, and selected keys must be
-pinned. Mode `"all"` requires every RSA, EC, and OKP entry in the set to
-have a computable, configured thumbprint, including entries that would
-later be filtered out. Neither mode skips the whole-set structural
-checks or the selected key’s strength checks.
-
-RSA algorithm bindings use RFC 7638 public-key thumbprints. Entries with
-the same modulus and exponent cannot declare different algorithms, even
-with different `kid` values or valid pins. An alias without `alg`
-inherits an explicit declaration on the same material; keys with no
-declaration retain the documented allowlist default. These checks run
-before selecting candidates and on cached JWKS reuse.
-
-Outgoing client assertions, JAR, DPoP and endpoint overrides also
-require one signing algorithm per RSA key material, including inferred
-and metadata-selected defaults. Configure matching algorithms or
-separate keys. To migrate algorithms, rotate the key material and update
-all related profiles and pins consistently; changing only `kid` does not
-rotate a key. Changes to configured signing keys or algorithms change
-policy fingerprints and invalidate pending logins and retained
-credentials. Clear shared JWKS caches when deploying a coordinated
-provider key change if immediate adoption is required; otherwise normal
-cache freshness applies.
-
-## Trusted ID-token audiences
-
-ID tokens with multiple audiences remain rejected by default. If an
-issuer legitimately includes another trusted audience, configure
-`trusted_id_token_audiences = c("trusted-service")` on
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
-The token must still include this client’s ID in `aud`, and `azp` must
-equal this client’s ID when present. Trusted multiple audiences do not
-require an `azp` claim under [OIDC Core section
-3.1.3.7](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
-Other audiences, incorrect authorized parties, and invalid signatures
-are rejected.
 
 ## Mutual TLS (mTLS)
 
@@ -546,11 +379,10 @@ is stored alongside the object in `client@state_store`. GET consumes it
 atomically; HEAD does not consume it. Retrieval expires at the earlier
 of the object expiry and 120 seconds after publication. Cache eviction
 can shorten availability; the store’s retention policy controls physical
-cleanup. If the provider requires `request_uri` registration, update its
-permitted URLs to cover this app-root endpoint when migrating from the
-old `/session/` paths. For multiple workers, use a shared state store
-with atomic `take()`; a memory store works only when publication and
-retrieval reach the same R process.
+cleanup. If the provider requires `request_uri` registration, register
+this app-root endpoint with it. For multiple workers, use a shared state
+store with atomic `take()`; a memory store works only when publication
+and retrieval reach the same R process.
 
 The hosted JWT and its expiry occupy a separate store record, outside
 the pending-login record’s `state_key` sealing. Signing leaves JWT
@@ -559,15 +391,12 @@ confidentiality. See the [`custom_cache()` shared-store
 contract](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
 for record protection and expiry requirements.
 
-Earlier versions used Shiny’s raw live session token in
-`registerDataObj()` URLs. Those URLs could disclose a capability also
-used by other session resources through browser, provider, or proxy
-logs. The new handles contain no session token. Still redact request
-URLs in logs and limit log retention: disclosing a live handle allows
-its holder to consume the pending object. Prefer PAR when supported to
-use a provider-issued reference and avoid a public app retrieval
-endpoint. OIDC signed requests retain outer `client_id`,
-`response_type`, and `scope` parameters.
+Retrieval handles contain no Shiny session token, but anyone holding a
+live handle can consume the pending object. Redact request URLs in logs
+and limit log retention. Prefer PAR when supported to use a
+provider-issued reference and avoid a public app retrieval endpoint.
+OIDC signed requests retain outer `client_id`, `response_type`, and
+`scope` parameters.
 `authorization_request_front_channel_mode = "minimal"` is available for
 compatible PAR providers, but is rejected for OIDC inline or
 client-published signed requests.
@@ -730,6 +559,12 @@ JARM is currently intended for
 If you use `response_mode = "form_post.jwt"`, wrap your UI with
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
 
+Encrypted JARM callbacks decrypt in a temporary local R process to limit
+memory growth after decryption failures. The deployment must allow local
+R processes; each encrypted callback also incurs process startup time.
+Signed-only JARM does not need this process. Decryption does not replace
+the inner response’s signature and login-state checks.
+
 ## Demonstrating proof-of-possession (DPoP)
 
 DPoP binds tokens to a client key. The client signs a proof for each
@@ -790,11 +625,7 @@ needs fresh binding data from the new token or its introspection
 response; the old certificate thumbprint is not carried forward when the
 response omits it.
 
-Observed `cnf` values must be JSON objects, and `jkt` and `x5t#S256`
-must be scalar strings containing canonical base64url SHA-256
-thumbprints. Arrays are rejected even when they contain a single object
-or string. These checks apply to token responses, JWT access-token
-payloads, and introspection results.
+Malformed token-binding data is rejected automatically.
 
 Binding data read from a JWT access token is observed payload data;
 shinyOAuth does not independently verify that access token’s signature.
@@ -826,13 +657,6 @@ RFC itself sets no maximum length. Configure
 issuing larger nonces (supported range: 1–65536 bytes). A response above
 the configured limit raises an explicit error without logging its nonce.
 
-DPoP authentication challenges are parsed with bounded work. A
-`WWW-Authenticate` response header exceeding 65,536 bytes or 256
-comma-separated challenge/parameter parts is rejected explicitly. Commas
-inside quoted values do not count as separators. These local limits also
-apply when the response body is empty; HTTP timeouts do not bound
-subsequent header parsing.
-
 [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
 only builds the request. A DPoP proof is tied to its HTTP method and
 base URL, so do not change those after construction. Literal `.` and
@@ -847,6 +671,147 @@ transport and does not provide shinyOAuth’s decoded-size guarantee;
 older libcurl versions limit only the encoded transfer. Prepared
 requests can be sent with
 `perform_resource_req(token, request, client = client)`.
+
+## Browser binding and deployment boundary
+
+Use HTTPS, complete login in the browser tab that started it, and keep
+the app on a separate hostname from untrusted services. Cookies are
+shared across ports on a hostname; cookie flags do not isolate those
+services. See [RFC 6265 section
+8.5](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5).
+
+shinyOAuth links each login to browser session storage and a temporary
+cookie. These are managed automatically and keep a callback tied to the
+browser that started it. Cookies, session storage and Web Crypto must
+remain available. Untrusted scripts running on the app’s own origin can
+access session storage, so normal protection against cross-site
+scripting is still needed.
+
+Private browser inputs are excluded from Shiny bookmarks. Do not copy
+them into custom bookmark values, URLs or logs. If you use
+[`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md)
+and
+[`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
+directly instead of the Shiny module, your integration must establish
+and protect its own browser binding.
+
+## Policy identity across callbacks and retained credentials
+
+Pending logins and saved connections remember the client and provider
+settings under which they were created. A login cannot continue if its
+validation policy changes. The updated policy encoding invalidates older
+records, so users must sign in and connect again after upgrading. Update
+workers sharing keys and storage together.
+
+For a custom `userinfo_id_selector` that uses settings outside its
+function body, set `userinfo_id_selector_policy_id`, for example
+`"application:subject-field:v2"`. Keep those settings unchanged while a
+client is in use, and change the ID when the settings or helper behavior
+change. The Spotify helper records its `allow_legacy_id` choice
+automatically.
+
+## Issuer comparison and transport policy
+
+`compare_callback_issuer = TRUE` compares a supplied callback `iss`
+exactly against `provider@issuer`. Pair it with
+`enforce_callback_issuer = FALSE` when absence is permitted for your
+older provider. Required presence always implies comparison. An
+explicitly supplied legacy `enforce_callback_issuer = FALSE` retains
+complete opt-out unless comparison is explicitly enabled. Otherwise,
+issuer-configured clients enable comparison automatically.
+
+Participating clients require `iss` when the provider advertises RFC
+9207 support. Validated JARM supplies its own issuer and does not
+require a redundant outer value. Multi-server applications must retain
+their selected issuer or distinct-route defense. The expected issuer
+comes from trusted configuration; it is not inferred from a token URL or
+normalized before comparison. See [RFC 9207 section
+2.4](https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4).
+
+Package HTTPS requests require TLS 1.2 or later by default.
+`options(shinyOAuth.tls_min_version = "1.3")` selects a higher minimum;
+`"1.2"` or `NULL` restores the default. Configure it before discovery or
+login. The policy preserves stronger supplied minima, compatible maxima
+and custom CA roots. It also applies in async workers and participates
+in pending-login policy checks. The checker assesses this policy and
+backend support, without observing an actual handshake. Browser/proxy
+hops and future resource requests need separate validation. Details and
+constraints are in [package
+options](https://lukakoning.github.io/shinyOAuth/articles/package-options.html#http-settings-timeout-retries-user-agent).
+
+## Callback pages and application scripts
+
+Use `oauth_ui(ui, id = "auth", client = client)` for query and
+query-JARM responses. The ID and client must match
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+The wrapper validates callbacks and stores sealed, short-lived
+responses, then redirects to a one-time bridge URL before invoking the
+application UI. State remains single-use and browser-bound. Missing
+bridge configuration rejects raw callbacks; existing `oauth_ui(ui)`
+setups must add `id` and `client`.
+
+Callback and HTML responses send `Cache-Control: no-store`,
+`Pragma: no-cache`, and `Referrer-Policy: no-referrer`. These do not
+remove upstream access logs: configure proxies and hosting logs to omit
+callback queries. Keep third-party scripts off any unsanitized callback
+page, including when using
+[`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
+with a custom HTTP integration. Register fixed tenant or routing query
+parameters in the redirect URI; unregistered inbound parameters are
+discarded on continuation. For trusted HTTPS-terminating proxies, use
+`request_uri_resolver` with the same trust checks as
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md).
+
+## Provider key-set validation
+
+shinyOAuth validates the whole fetched JWKS before selecting a key by
+`kid`, usage, operations, or algorithm. A malformed RSA, EC, or OKP
+public entry can therefore reject the set even when another entry would
+validate the token. This is a deliberately stricter availability policy
+than the recommendation to ignore individual unusable keys in [RFC 7517
+section 5](https://www.rfc-editor.org/rfc/rfc7517.html#section-5).
+Providers must publish structurally valid public entries throughout key
+rotation; an unrelated broken entry can interrupt login, signed
+UserInfo, JARM, or Request Object encryption until the provider repairs
+its JWKS.
+
+Unknown key types are ignored for selection after common structural
+checks. Malformed set structure, duplicate JSON members, and secret key
+material are rejected. With pinning mode `"any"`, at least one supported
+public key must match a configured thumbprint, and selected keys must be
+pinned. Mode `"all"` requires every RSA, EC, and OKP entry in the set to
+have a computable, configured thumbprint, including entries that would
+later be filtered out. Neither mode skips the whole-set structural
+checks or the selected key’s strength checks.
+
+Each RSA key must use one verification algorithm, even if the provider
+publishes it under several key IDs (`kid`). Conflicting declarations
+reject the key set before selection, including pinned sets. An alias
+without `alg` follows an explicit declaration for the same public key.
+With no declaration, the only allowed RSA algorithm is used; if several
+are allowed, the default is `RS256`. To use an unlabelled key with
+`RS384` or `RS512`, configure only that RSA algorithm.
+
+The same rule applies to reused RSA signing keys for client
+authentication, JAR, DPoP and endpoint overrides. Use matching
+algorithms or separate keys. For an algorithm migration, rotate the key
+and update related settings and pins; changing only `kid` does not
+change the key. Changed signing settings invalidate pending logins and
+saved connections. Shared key caches follow their normal expiry; clear
+them during a coordinated key change if immediate adoption is needed.
+
+## Trusted ID-token audiences
+
+ID tokens with multiple audiences remain rejected by default. If an
+issuer legitimately includes another trusted audience, configure
+`trusted_id_token_audiences = c("trusted-service")` on
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+The token must still include this client’s ID in `aud`, and `azp` must
+equal this client’s ID when present. Trusted multiple audiences do not
+require an `azp` claim under [OIDC Core section
+3.1.3.7](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
+Other audiences, incorrect authorized parties, and invalid signatures
+are rejected.
 
 ## Signature and encryption support
 

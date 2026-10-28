@@ -5,17 +5,7 @@
 This example lets a user connect their Spotify account and displays
 their top tracks. It uses the same provider, client, and module setup as
 [Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md), then
-calls Spotify’s API with the access token. Spotify supplies profile data
-through its API rather than an OIDC ID token.
-
-The helper identifies accounts using immutable `account_id`, as
-specified in [Spotify’s May 2026
-changes](https://developer.spotify.com/documentation/web-api/references/changes/may-2026).
-Before upgrading an existing app, migrate stored `id` mappings and audit
-digests using both identifiers from an authenticated profile. Do not
-merge accounts by email or display name. `allow_legacy_id = TRUE`
-permits a temporary fallback only when `account_id` is missing; it does
-not preserve old mappings when both exist.
+calls Spotify’s API with the access token.
 
 ## Spotify app registration
 
@@ -38,7 +28,7 @@ not preserve old mappings when both exist.
 ## Shiny app example
 
 Save this as `app.R`, run it, and open `http://127.0.0.1:8100` in a
-regular browser. After connecting Spotify, click **Load top tracks**.
+regular browser. After connecting Spotify, click Load top tracks.
 
 ``` r
 
@@ -117,10 +107,8 @@ needed before the request.
 [`observeEvent()`](https://rdrr.io/pkg/shiny/man/observeEvent.html)
 loads the data when the button is clicked, and
 [`renderTable()`](https://rdrr.io/pkg/shiny/man/renderTable.html)
-displays the result only for the current authorization with
-`user-top-read`. The observer clears cached results on logout,
-authorization replacement or permission loss, so regaining permission
-does not redisplay old data.
+displays it for the current login. Cached tracks are cleared on logout,
+a new login, or loss of permission to read them.
 
 For other data, choose the API URL and requested scopes together. A
 successful login does not mean every API is available to the app. Empty
@@ -145,9 +133,5 @@ file.show(dashboard_file)  # Read or copy the complete source.
 source(dashboard_file)    # Run after setting your Spotify credentials.
 ```
 
-The source groups the code into client setup, API helpers, UI, and
-server logic. It validates Spotify links and image URLs before rendering
-them and keeps table escaping enabled. Preserve those protections when
-adapting it; profile and track text can contain characters that would
-otherwise become HTML. Available data still depends on Spotify’s API
-access rules for your app.
+When adapting the dashboard’s HTML output, keep its URL checks and text
+escaping for data fetched from Spotify.

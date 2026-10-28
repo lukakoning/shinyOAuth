@@ -33,8 +33,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -80,29 +80,11 @@ option is unset.</p>
 request:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.timeout <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
-<p>Times are in <strong>seconds</strong> unless a setting explicitly
-says milliseconds. Options affect the R process; use
-<code><a href="../reference/oauth_client.html">oauth_client()</a></code> and <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>
-arguments for settings that belong to one client or module. See <a href="usage.html">Usage</a> for app setup.</p>
-<p><code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> is an opt-in, read-only assessment
-pinned to OAuth 2.1 draft 16. Ruleset <code>1.1.1</code> reports
-requirement sources: OAuth core, OIDC, extensions, security guidance,
-and package or application policy. Recommendations do not change the
-mandatory configuration verdict. Existing OAuth 2.0 authentication
-methods and callback choices remain available. For example, Basic/body
-client authentication can pass while receiving advice to consider
-asymmetric methods. Distinct callback routes remain valid when issuer
-identification is unavailable, and <code>localhost</code> callbacks
-remain supported with advice to prefer a loopback IP.</p>
-<p>Callback capacity advice uses local field defaults and an 8000-byte
-minimum envelope as package thresholds, not numeric OAuth 2.1
-requirements. Test the complete encoded query or form body against
-package, proxy and browser limits: include parameter names, separators,
-fixed application parameters, percent encoding, state, issuer and JARM.
-An aggregate floor cannot guarantee that all decoded fields fit
-simultaneously. Back-channel redirect blocking is package policy
-motivated by credential confidentiality; the draft’s browser redirect
-rules are a separate requirement.</p>
+<p>Times are in seconds unless a setting explicitly says milliseconds.
+Options affect the R process; use <code><a href="../reference/oauth_client.html">oauth_client()</a></code> and
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> arguments for settings that belong to
+one client or module. See <a href="usage.html">Usage</a> for app
+setup.</p>
 <div class="section level2">
 <h2 id="logging">Logging<a class="anchor" aria-label="anchor" href="#logging"></a>
 </h2>
@@ -153,9 +135,9 @@ disable ‘shinyOAuth’ OpenTelemetry log emission. Default:
 Default: <code>FALSE</code> (counts only). These fields may be sensitive
 and have high cardinality.</li>
 </ul>
-<p>See the <a href="audit-logging.html">audit logging vignette</a> for
-details about audit hooks, and the <a href="opentelemetry.html">OpenTelemetry vignette</a> for more details
-about logs and traces via OpenTelemetry.</p>
+<p>See <a href="audit-logging.html">Audit logging</a> for R hook
+examples and <a href="opentelemetry.html">OpenTelemetry</a> for log and
+trace exporter setup.</p>
 </div>
 <div class="section level2">
 <h2 id="validation-and-url-policy">Validation and URL policy<a class="anchor" aria-label="anchor" href="#validation-and-url-policy"></a>
@@ -209,12 +191,11 @@ including initial state validation with <code>async = TRUE</code>. The
 delay adds timing noise but does not provide constant-time
 validation.</p></li>
 </ul>
-<p>Note on <code>allowed_hosts</code>: patterns support globs
-(<code>*</code>, <code>?</code>). Using a catch‑all like
-<code>"*"</code> matches any host and effectively disables endpoint host
-restrictions (scheme rules still apply). Avoid this unless you truly
-intend to accept any host; prefer pinning to your domain(s), e.g.,
-<code>c(".example.com")</code>.</p>
+<p><code>allowed_hosts</code> patterns support globs (<code>*</code>,
+<code>?</code>). A catch-all such as <code>"*"</code> accepts any host;
+scheme restrictions still apply. Restrict access to your domains, for
+example <code>c(".example.com")</code>, unless you intend to accept any
+host.</p>
 </div>
 <div class="section level2">
 <h2 id="advanced-parameter-overrides">Advanced parameter overrides<a class="anchor" aria-label="anchor" href="#advanced-parameter-overrides"></a>
@@ -226,9 +207,8 @@ This helps prevent accidental misconfiguration that could break state
 binding, PKCE, or client authentication.</p>
 <p>Set the callback format with
 <code>oauth_client(response_mode = ...)</code>.</p>
-<p>If you have a specific, advanced use case where you need to override
-one of these blocked parameters, you can unblock them using the
-following options:</p>
+<p>To override a blocked parameter, use the options below. Some
+parameters cannot be unblocked.</p>
 <ul>
 <li>
 <code>options(shinyOAuth.unblock_auth_params = c("redirect_uri"))</code>
@@ -305,20 +285,11 @@ fallback token lifetime (in seconds) when the provider omits
 </h2>
 <ul>
 <li><p><code>options(shinyOAuth.tls_min_version = "1.2")</code> -
-optionally require TLS 1.2 or later on package-owned HTTPS requests.
-<code>"1.3"</code> requires TLS 1.3 or later; <code>NULL</code>
-(default) retains the linked curl/TLS backend’s defaults. Applies before
-discovery and to token, PAR, JWKS, UserInfo and resource requests,
-including async workers. A stronger supplied minimum and a compatible
-supplied maximum survive; a conflicting maximum or disabled
-certificate/hostname verification raises an error when a minimum is
-selected. Custom CA settings remain usable. The setting is bound to
-pending login transactions, so change it before initiating login. It
-does not configure browser/proxy TLS or disallow HTTP development
-endpoints. Older wolfSSL backends require curl 8.10.0 or later to apply
-minimum-version semantics. Actual negotiated connections remain runtime
-evidence; an absent option alone says nothing about their TLS
-version.</p></li>
+require TLS 1.2 or later for package HTTPS requests (the default). Use
+<code>"1.3"</code> for a higher minimum; an absent option or
+<code>NULL</code> restores TLS 1.2. Set this before discovery or login.
+It applies to async workers too; browser and reverse-proxy TLS must be
+configured separately.</p></li>
 <li><p><code>options(shinyOAuth.timeout = 5)</code> – default HTTP
 timeout (seconds) applied to all outbound requests (discovery, JWKS,
 token exchange, userinfo). Increase if your provider/network is slow.
@@ -357,20 +328,29 @@ authorization codes, tokens, and PKCE verifiers from leaking to redirect
 targets. Set to <code>TRUE</code> only when you deliberately accept that
 redirect-following risk for a specific deployment; this opt-in is
 honored in all sessions</p></li>
-<li><p><code>options(shinyOAuth.max_body_bytes = 1048576)</code> –
-maximum response body size (bytes, default 1 MiB) accepted by
-shinyOAuth’s performer for OAuth endpoints,
-<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> and connection requests. Both
-encoded downloads and decoded gzip data are bounded before the full body
-is accumulated; other content encodings are rejected. Increase this if
-an API legitimately returns larger payloads. Values above R’s supported
-binary-read size are capped. <code><a href="../reference/resource_req.html">resource_req()</a></code> only builds a
-request: sending it through <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> does not
-use shinyOAuth’s bounded performer, and the curl size option alone does
-not limit decoded data on libcurl before 8.20.0. Prefer
-<code>perform_resource_req(token, request)</code> for prepared requests
-too, supplying <code>client</code> for DPoP or mTLS.</p></li>
+<li><p><code>options(shinyOAuth.max_body_bytes = 1048576)</code> -
+maximum response size (default 1 MiB) for package requests and
+connection calls. Increase it if an API legitimately returns more data.
+Use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> for prepared requests as well as
+URLs to retain this limit.</p></li>
 </ul>
+<div class="section level3">
+<h3 id="advanced-transport-constraints">Advanced transport constraints<a class="anchor" aria-label="anchor" href="#advanced-transport-constraints"></a>
+</h3>
+<p>The TLS policy preserves stronger supplied minima, compatible maxima
+and custom CA settings. Conflicting maxima or disabled
+certificate/hostname checks raise an error. Older wolfSSL backends
+require curl 8.10.0 or newer for minimum version support. This setting
+does not enable HTTP development exceptions or verify the TLS
+configuration of your browser and proxy.</p>
+<p>Response limits cover both downloaded bytes and decoded gzip data;
+other content encodings are rejected. Oversized configured limits are
+capped at R’s supported binary-read size. <code><a href="../reference/resource_req.html">resource_req()</a></code>
+only builds a request. If you send it directly with
+<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code>, shinyOAuth’s decoded-size limit does
+not apply. Use <code>perform_resource_req(token, request)</code>, adding
+<code>client</code> for DPoP or mTLS.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="state-store">State store<a class="anchor" aria-label="anchor" href="#state-store"></a>
@@ -477,6 +457,15 @@ logins with many scopes or other state metadata.
 login state, publishing a Request Object, or sending PAR. Increasing
 only one limit does not override the other.</p>
 </div>
+</div>
+<div class="section level2">
+<h2 id="configuration-assessments">Configuration assessments<a class="anchor" aria-label="anchor" href="#configuration-assessments"></a>
+</h2>
+<p>Use <code>check_oauth21(client)</code> to review settings without
+making requests or changing the app. The report separates configuration
+problems, recommendations and things that need deployment testing. See
+<a href="usage.html#assessing-oauth-2.1-configuration">Usage</a> for an
+example and the specification revision assessed.</p>
 </div>
 <div class="section level2">
 <h2 id="local-debugging">Local debugging<a class="anchor" aria-label="anchor" href="#local-debugging"></a>

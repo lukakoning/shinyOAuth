@@ -29,8 +29,8 @@ endpoint and validation settings."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -297,8 +297,8 @@ auto-enable callback issuer enforcement when the caller leaves
 <code>response_mode</code> values advertised by the provider. Discovery-backed
 providers use the discovery metadata value, defaulting to <code>c("query", "fragment")</code> when omitted per OIDC Discovery/RFC 8414. Generic providers
 may leave this empty when capabilities are not known. Provider metadata may
-include response modes that shinyOAuth does not implement; clients still
-fail fast if they request one of those unsupported modes.</p></dd>
+include response modes that shinyOAuth does not implement. Requesting an
+unsupported mode raises an error.</p></dd>
 
 
 <dt id="arg-issuer">issuer<a class="anchor" aria-label="anchor" href="#arg-issuer"></a></dt>
@@ -358,25 +358,21 @@ and <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> pr
 
 
 <dt id="arg-userinfo-id-token-match">userinfo_id_token_match<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-token-match"></a></dt>
-<dd><p>Whether fetched userinfo requires a validated ID
-token for comparison. When both are available, their actual <code>sub</code> values
-are always compared. <code>TRUE</code> also stops login if the validated ID token is
-absent. Requires a valid <code>userinfo_url</code> and either <code>id_token_validation</code> or
-<code>use_nonce</code>. Both constructors enable this by default when those requirements
-are met, including when <code>userinfo_required = FALSE</code> and UserInfo is fetched
-manually. Set an explicit <code>FALSE</code> only to permit profile retrieval without
-a validated identity; an available validated ID token is always compared.</p></dd>
+<dd><p>Require the fetched profile to belong to the
+validated login identity. Defaults to <code>TRUE</code> when a UserInfo URL and ID-token
+or nonce validation are enabled, including for manual <code><a href="get_userinfo.html">get_userinfo()</a></code> calls.
+Pass the complete <a href="OAuthToken.html">OAuthToken</a> for this check. An explicit <code>FALSE</code> permits
+profile retrieval without a validated identity; when both are available,
+their actual <code>sub</code> values must still match.</p></dd>
 
 
 <dt id="arg-userinfo-signed-jwt-required">userinfo_signed_jwt_required<a class="anchor" aria-label="anchor" href="#arg-userinfo-signed-jwt-required"></a></dt>
-<dd><p>Whether to require the user profile to arrive
-as a signed JWT (<code>application/jwt</code>). Default <code>FALSE</code>; ordinary JSON
-userinfo is accepted. When <code>TRUE</code>, requires a valid <code>userinfo_url</code> and
-<code>issuer</code>, including for manual retrieval; the signature must validate with
-an asymmetric algorithm from <code>userinfo_allowed_algs</code>. Unsigned, HMAC-signed,
-and encrypted userinfo JWTs are not accepted by the normal configuration. Discovery does not
-enable this automatically: provider support does not mean your app's
-registration requests signed userinfo.</p></dd>
+<dd><p>Require a profile signed by the provider.
+Default <code>FALSE</code> accepts ordinary JSON profiles. When <code>TRUE</code>, configure a
+UserInfo URL and issuer, and arrange signed responses with the provider.
+Signatures use <code>userinfo_allowed_algs</code>; unsigned, HMAC-signed and encrypted
+profiles are not accepted by normal configuration. This requirement also
+applies to manual retrieval when <code>userinfo_required = FALSE</code>.</p></dd>
 
 
 <dt id="arg-id-token-required">id_token_required<a class="anchor" aria-label="anchor" href="#arg-id-token-required"></a></dt>
@@ -502,9 +498,8 @@ The generic helper <code><a href="oauth_provider.html">oauth_provider()</a></cod
 TRUE when an <code>issuer</code> is provided and either <code>id_token_validation</code> or
 <code>id_token_required</code> is TRUE (OIDC-like configuration). Set explicitly to
 FALSE to opt out. For providers that legitimately publish JWKS on a
-different host (for example Google), prefer setting
-<code>jwks_host_allow_only</code> to the exact hostname rather than disabling this
-check.</p></dd>
+different host (for example Google), set <code>jwks_host_allow_only</code> to that
+exact hostname to keep host validation enabled.</p></dd>
 
 
 <dt id="arg-jwks-host-allow-only">jwks_host_allow_only<a class="anchor" aria-label="anchor" href="#arg-jwks-host-allow-only"></a></dt>
@@ -518,32 +513,14 @@ and only the hostname part is used for matching. Takes precedence over
 
 
 <dt id="arg-id-token-allowed-algs">id_token_allowed_algs<a class="anchor" aria-label="anchor" href="#arg-id-token-allowed-algs"></a></dt>
-<dd><p>Optional vector of allowed JWT algorithms for ID tokens.
-Use to restrict acceptable <code>alg</code> values on a per-provider basis. Supported
-asymmetric algorithms include <code>RS256</code>, <code>RS384</code>, <code>RS512</code>, <code>ES256</code>,
-<code>ES384</code>, <code>ES512</code>, and <code>Ed25519</code> or legacy <code>EdDSA</code> with Ed25519 OKP keys (including <code>at_hash</code>
-validation). Ed448 verification is unsupported and fails closed.
-Symmetric HMAC algorithms <code>HS256</code>, <code>HS384</code>, <code>HS512</code> are also supported but
-require that you supply a <code>client_secret</code> and explicitly enable HMAC
-verification via the option <code>options(shinyOAuth.allow_hs = TRUE)</code>.
-Configure exactly one HS algorithm for ID-token validation: the client's
-shared secret must be bound to one algorithm (RFC 8725 section 3.1).
-The same secret must also use that algorithm for JARM, JAR and JWT client
-assertions, including endpoint overrides that inherit or repeat the secret.
-Defaults to <code>c("RS256","RS384","RS512","ES256","ES384","ES512","Ed25519","EdDSA")</code>,
-which intentionally excludes HS*.
-Each RSA verification key is bound by public-key material (RFC 7638
-thumbprint), independently of <code>kid</code>. Conflicting <code>alg</code> declarations for the
-same material reject the whole JWKS, including pinned sets. An explicit
-declaration also binds aliases that omit <code>alg</code>. With no declaration, the
-binding is the sole RSA algorithm in this allowlist. When several RSA
-algorithms are allowed, an unlabelled key is bound to <code>RS256</code> (and rejected
-if <code>RS256</code> is excluded). To use unlabelled keys with <code>RS384</code> or <code>RS512</code>,
-configure only that RSA algorithm. EC curves already select one supported
-algorithm; legacy <code>EdDSA</code> with an Ed25519 key uses the Ed25519 operation.
-Only include <code>HS*</code> if you are certain the <code>client_secret</code> is stored strictly
-server-side and is never shipped to, or derivable by, the browser or other
-untrusted environments.</p></dd>
+<dd><p>Signing algorithms accepted for ID tokens.
+Defaults to <code>c("RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "Ed25519", "EdDSA")</code>; Ed448 and unsupported algorithms are rejected.
+Use a narrower set to match your provider registration.
+HMAC (<code>HS256</code>, <code>HS384</code>, <code>HS512</code>) requires a server-only client secret,
+<code>options(shinyOAuth.allow_hs = TRUE)</code>, and exactly one HS algorithm.
+Reused keys or secrets must not have conflicting algorithm settings.
+For RSA key metadata, defaults and rotation, see
+<a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#provider-key-set-validation">signing-key validation</a>.</p></dd>
 
 
 <dt id="arg-allowed-token-types">allowed_token_types<a class="anchor" aria-label="anchor" href="#arg-allowed-token-types"></a></dt>
@@ -555,7 +532,7 @@ fails fast with a <code>shinyOAuth_token_error</code>. The <code><a href="oauth_
 defaults to <code>c("Bearer")</code>. When the <a href="OAuthClient.html">OAuthClient</a> is configured with
 <code>dpop_private_key</code>, shinyOAuth also accepts <code>token_type = "DPoP"</code> and uses
 DPoP proofs on supported token and downstream requests. Other non-Bearer
-token types (for example <code>MAC</code>) still fail fast rather than being misused.
+token types (for example <code>MAC</code>) are rejected.
 Set <code>allowed_token_types = character()</code> explicitly only to disable the
 value allowlist while still requiring <code>token_type</code> itself.</p></dd>
 
@@ -567,15 +544,12 @@ overridden via option <code>shinyOAuth.leeway</code>.</p></dd>
 
 
 <dt id="arg-token-target-mode">token_target_mode<a class="anchor" aria-label="anchor" href="#arg-token-target-mode"></a></dt>
-<dd><p>Explicit acquisition protocol for clients declaring
-<code>token_targets</code>: <code>"none"</code> (default), <code>"rfc8707"</code>, or <code>"microsoft"</code>.
-Discovery never infers support. The Microsoft preset selects <code>"microsoft"</code>.
-This has no acquisition effect on clients without target declarations.
-RFC 8707 sends declared resource indicators; Microsoft uses qualified API
-scopes, requires explicit scope evidence and handles static <code>.default</code>
-consent in its provider policy. Microsoft responses may include previously
-consented scopes for the selected resource; local operation limits remain
-separate from that full grant. See <code><a href="../articles/token-targets.html">vignette("token-targets")</a></code>.</p></dd>
+<dd><p>How this provider obtains API-specific tokens:
+<code>"none"</code> (default), <code>"rfc8707"</code>, or <code>"microsoft"</code>. Set this only when using
+client <code>token_targets</code> and after checking provider support. The Microsoft
+helper selects <code>"microsoft"</code> automatically; discovery does not enable
+targets. See the <a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">token targets guide</a>
+for setup and permission rules.</p></dd>
 
 
 <dt id="arg-infer-oidc-from-issuer">infer_oidc_from_issuer<a class="anchor" aria-label="anchor" href="#arg-infer-oidc-from-issuer"></a></dt>
@@ -586,13 +560,11 @@ issuer identifier but does not implement OIDC.</p></dd>
 
 
 <dt id="arg-userinfo-id-selector-policy-id">userinfo_id_selector_policy_id<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-selector-policy-id"></a></dt>
-<dd><p>Optional non-empty policy identifier
-for <code>userinfo_id_selector</code>, or <code>NA_character_</code>. Set an immutable versioned
-identifier for custom selectors that capture settings or call configurable
-helpers, and change it whenever those settings or behavior change. Pending
-logins and retained credentials bind this identifier and the function's
-source; closure environments are never serialized. Keep captured settings
-immutable for the lifetime of a client.</p></dd>
+<dd><p>Optional version name for a custom
+<code>userinfo_id_selector</code>, or <code>NA_character_</code>. If the function uses settings
+outside its body, keep them unchanged for the client's lifetime and change
+this ID when those settings or helper behavior change. This lets pending
+logins and saved connections detect the change.</p></dd>
 
 
 <dt id="arg-jwks-uri">jwks_uri<a class="anchor" aria-label="anchor" href="#arg-jwks-uri"></a></dt>
@@ -611,11 +583,9 @@ Unlabelled RSA keys follow the same binding policy as <code>id_token_allowed_alg
 
 
 <dt id="arg-token-response-scope-format">token_response_scope_format<a class="anchor" aria-label="anchor" href="#arg-token-response-scope-format"></a></dt>
-<dd><p>Token response scope separator, <code>"space"</code>
-(standard OAuth, the default) or <code>"comma"</code> (GitHub). Comma-separated
-responses are converted to standard space-separated scopes before grant
-validation and storage, for both login and refresh. Set this explicitly for
-custom providers with this response format; provider names do not select it.</p></dd>
+<dd><p>Separator used for permissions in token
+responses: <code>"space"</code> (default) or <code>"comma"</code>. The GitHub helper sets <code>"comma"</code>
+automatically. Set it explicitly for a custom provider using that format.</p></dd>
 
 
 <dt id="arg-allow-missing-token-type">allow_missing_token_type<a class="anchor" aria-label="anchor" href="#arg-allow-missing-token-type"></a></dt>
@@ -720,7 +690,7 @@ See the <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html">us
 <span class="r-wrn co"><span class="r-pr">#&gt;</span>   vignette</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #555555;">This warning is displayed once per session.</span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Configure a OIDC provider via OIDC discovery</span></span></span>
+<span class="r-in"><span><span class="co"># Look up an OIDC provider's settings with discovery</span></span></span>
 <span class="r-in"><span><span class="co"># (requires network access)</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="co"># Using Auth0 sample issuer as an example</span></span></span>

@@ -1,11 +1,9 @@
 # Keep and use multiple OAuth authorizations
 
-shinyOAuth allows you to keep multiple OAuth authorizations in one Shiny
-app. Users can connect several services, choose which saved
-authorization to use for a request, and disconnect each one separately.
-
-This is useful for a dashboard that combines data from several APIs, or
-an app where users need access to several accounts at the same service.
+Users can connect several services or accounts in one Shiny app, choose
+which saved authorization to use for a request, and disconnect each one
+separately. A dashboard can combine data from several APIs, or let users
+work with several accounts at the same service.
 
 This vignette builds an app that connects to two services and reads data
 from either one. It uses browser retention to keep both authorizations
@@ -126,13 +124,13 @@ connection A, `[["request"]]("api", "records")` means
 `https://api.a.example/v1/records`.
 
 The default callback policy gives each client a distinct route. Supply
-the **complete callback vector to each client**, even though each uses
-its own `redirect_uri`. The manager verifies that each client’s declared
-set includes all of its callback routes, comparing canonical origins and
+the complete callback vector to each client, even though each uses its
+own `redirect_uri`. The manager verifies that each client’s declared set
+includes all of its callback routes, comparing canonical origins and
 paths. Additional routes used elsewhere in the application may also be
 included. Shared callback routes are an advanced alternative documented
-in
-[`?oauth_connections`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md).
+under
+[oauth_connections()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html).
 
 ### 2. Keep authorizations when the browser returns
 
@@ -160,31 +158,22 @@ owner ID. Tokens stay encrypted in the R process. The cookie associates
 saved connections with this browser; it does not identify a person or
 log them into either service.
 
-Cookies are shared across ports on the same host, even with HttpOnly,
-Secure and a `__Host-` name ([RFC 6265 section
-8.5](https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5)). All
-HTTPS services on that host that receive the owner cookie must be
-trusted, because they can read and replay it. The origin hash in the
-cookie name distinguishes applications but does not isolate the cookie
-from other ports. Use separate hostnames for mutually untrusted
-services.
-
 Without `retention = "browser"`, the default is `"shiny"`: existing
-connections are discarded when that Shiny session ends. Merely
-configuring multiple clients does not preserve A while the browser goes
-away to authorize B.
+connections are discarded when that Shiny session ends. Configuring
+multiple clients alone does not preserve A while the browser goes away
+to authorize B.
 
 Keep the manager, store and keys outside `server()` so returning Shiny
-sessions use the same configuration. This memory store supports **one R
-process** and does not survive an R restart. Stable keys alone do not
-make it persistent or share records between workers. Browser ownership
-also has idle and absolute expiry limits. Automatic refresh and API
-reads do not reset inactivity. Call `auth[["touch"]]()` from a user
-input event handler, as the Read handler below does, to count an
-application action as activity. Explicit refresh also counts as
-activity; the absolute expiry remains fixed. For an app with its own
-verified account login, see
-[`?oauth_account_owner`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+sessions use the same configuration. This memory store supports one R
+process and does not survive an R restart. Stable keys alone do not make
+it persistent or share records between workers. Browser ownership also
+has idle and absolute expiry limits. Automatic refresh and API reads do
+not reset inactivity. Call `auth[["touch"]]()` from a user input event
+handler, as the Read handler below does, to count an application action
+as activity. Explicit refresh also counts as activity; the absolute
+expiry remains fixed. For an app with its own verified account login,
+see
+[oauth_account_owner()](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html)
 and `retention = "account"`.
 
 Size the owner registry and credential store separately. Both owner
@@ -291,7 +280,7 @@ The UI wrapper handles callback pages; `uiPattern = ".*"` lets Shiny
 serve those paths. Use the same module ID (`"services"`) in UI and
 server. Deploying under a subpath or behind a proxy can also require
 `app_base_path` and a trusted `request_uri_resolver`; see
-[`?oauth_connections_ui`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md).
+[oauth_connections_ui()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html).
 
 ## Requests, permissions and refresh
 
@@ -332,13 +321,13 @@ are also supported. The connection retains control of its destination,
 authentication and redirect policy. The write scope is optional for
 connecting, but required for this action.
 
-`OAuthConnection[["request"]]()` uses the existing
+`OAuthConnection[["request"]]()` calls
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-transport. It adds selection of the current owned credentials and checks
-the approved API base and required permissions. Existing code using
-`perform_resource_req(token, url)` remains supported. For a single
-existing module, `oauth_connection(client, reactive(auth[["token"]]))`
-supplies the optional wrapper without adding retention.
+with the selected connection’s current credentials, after checking the
+approved API base and required permissions. For a single module with an
+existing token reactive, use
+`oauth_connection(client, reactive(auth[["token"]]))` to add these
+checks without retaining credentials across navigation.
 
 `resource_bases` limits destinations, including absolute pagination
 links and their base paths. It does not automatically send OAuth’s
@@ -405,6 +394,15 @@ remain valid remotely until expiry or provider-side revocation. Choose
 this deliberately using the provider’s documented behavior. Sibling
 connections can still report `active` locally after remote revocation:
 always handle API authorization failures and offer a new authorization.
+
+## Deployment notes
+
+Keep this app on a separate hostname from untrusted services. Browser
+cookies are shared across ports on a hostname, so another service
+receiving the owner cookie could reuse it. Separate cookie names do not
+isolate those services. See [advanced
+security](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#browser-binding-and-deployment-boundary)
+for the browser and hosting requirements.
 
 ## Keep an ordinary OIDC login alongside SMART connections
 

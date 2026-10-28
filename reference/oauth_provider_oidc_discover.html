@@ -25,8 +25,8 @@ Pass the result to oauth_client()."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -181,15 +181,20 @@ including any trailing slash. A full discovery-document URL is also accepted.</p
 copied into the provider when present. Discovering an introspection endpoint
 does not itself require token introspection; set <code>introspect = TRUE</code> on
 <code><a href="oauth_client.html">oauth_client()</a></code> when login and refresh must perform that check.</p>
-<p>Discovery describes what a service supports. Your app's registration may
-require a particular <code>token_auth_style</code>, secret, or key; configure those to
-match the registration. Automatic selection prefers <code>"header"</code>, then <code>"body"</code>,
-then <code>"public"</code> when <code>none</code> is advertised and PKCE is enabled. For a public
-client registration, set <code>token_auth_style = "public"</code> explicitly. JWT and
-mTLS methods must also be selected explicitly.
-Explicit choices must match the discovery metadata. If
-<code>token_endpoint_auth_methods_supported</code> is omitted, the OIDC default is
-<code>client_secret_basic</code> (<code>"header"</code>); other methods must be advertised.</p>
+<p>Discovery describes the service, not your app registration. Use the client ID
+and secret or key issued for your app. If the registration is public (no
+secret), explicitly select <code>token_auth_style = "public"</code>. Other authentication
+choices and metadata restrictions are described below.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="advanced-authentication-selection">Advanced authentication selection<a class="anchor" aria-label="anchor" href="#advanced-authentication-selection"></a></h2>
+
+
+<p>Automatic selection prefers <code>"header"</code>, then <code>"body"</code>, then <code>"public"</code> when
+<code>none</code> is advertised and PKCE is enabled. JWT and mTLS methods require an
+explicit choice. Selected methods must match the advertised metadata.
+If <code>token_endpoint_auth_methods_supported</code> is absent, only the OIDC default
+<code>client_secret_basic</code> (<code>"header"</code>) is assumed.</p>
     </div>
     <div class="section level2">
     <h2 id="discovery-validation">Discovery validation<a class="anchor" aria-label="anchor" href="#discovery-validation"></a></h2>
@@ -244,7 +249,7 @@ registration.</p>
 <span class="r-in"><span>  base_url <span class="op">=</span> <span class="st">"https://my-issuer.example.com"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Configure a OIDC provider via OIDC discovery</span></span></span>
+<span class="r-in"><span><span class="co"># Look up an OIDC provider's settings with discovery</span></span></span>
 <span class="r-in"><span><span class="co"># (requires network access)</span></span></span>
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/interactive.html" class="external-link">interactive</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="co"># Using Auth0 sample issuer as an example</span></span></span>

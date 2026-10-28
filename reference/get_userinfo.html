@@ -27,8 +27,8 @@ userinfo_required = TRUE; that result is available as auth[[&quot;token&quot;]]@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -107,32 +107,31 @@ possible. Signed JWT responses retain arrays as lists.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The provider must have a <code>userinfo_url</code>: the OpenID Connect (OIDC) UserInfo
-endpoint, or an OAuth provider's profile API. With OIDC, this function checks that
-userinfo belongs to the same user as a validated ID token. Pass the complete
-<a href="OAuthToken.html">OAuthToken</a>, which carries the validated ID token needed for this check.
-OIDC providers with a UserInfo endpoint require this baseline by default,
-including when <code>userinfo_required = FALSE</code> disables automatic retrieval.
-Raw access tokens and unvalidated ID tokens then cause an error. An explicit
-<code>userinfo_id_token_match = FALSE</code> permits profile retrieval without a validated
-identity; when one is available, its subject is always compared.</p>
-<p>Ordinary JSON profiles and signed JWT UserInfo responses are supported.
-Signed responses are verified using the provider's signing keys and
-<code>userinfo_allowed_algs</code>; encrypted UserInfo is not supported. Set
-<code>userinfo_signed_jwt_required</code> on the provider to require a signed response,
-including when fetching manually with <code>userinfo_required = FALSE</code>,
-and <code>userinfo_jwt_required_time_claims</code> on the client to require time claims
-such as <code>exp</code>. Present time claims are checked even when not required.</p>
-<p>Standard OIDC profile claims in ID tokens and UserInfo are checked against
-their JSON types, including strings for names and email, a number for
-<code>updated_at</code>, and an <code>address</code> object with string-valued standard members.
-Applications should validate formats and policies for the claim values they
-use, and supply schemas for custom extension claims.</p>
-<p>For certificate-bound tokens (mTLS) and key-bound tokens (DPoP), the helper
-uses the client's certificate or signing key and checks the token binding.
-It handles one DPoP nonce challenge with a fresh-proof retry. See the
+    <p>Pass the client and complete <a href="OAuthToken.html">OAuthToken</a> from login, for example
+<code>get_userinfo(client, auth[["token"]])</code>. The provider needs a <code>userinfo_url</code>.
+For OIDC, shinyOAuth checks that the returned profile belongs to the validated
+login. A raw access-token string cannot provide that identity check.</p>
+<p><code>userinfo_required = FALSE</code> disables automatic profile retrieval, not the
+identity or signature checks on a manual call. Request and validate the
+fields your app needs.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="advanced-response-validation">Advanced response validation<a class="anchor" aria-label="anchor" href="#advanced-response-validation"></a></h2>
+
+
+<p>Normal JSON profiles and signed JWT profiles are supported; encrypted UserInfo
+is not. <code>userinfo_signed_jwt_required</code> requires a signed response using
+<code>userinfo_allowed_algs</code>. <code>userinfo_jwt_required_time_claims</code> can require expiry
+and other time claims; present time claims are always checked.</p>
+<p>By default, OIDC providers with a UserInfo endpoint require a validated identity
+token, including for manual retrieval. Explicit <code>userinfo_id_token_match = FALSE</code>
+allows retrieval without one, but when both are available their <code>sub</code> values
+must always match. Standard profile fields are checked for the expected JSON
+types; validate application-specific values and extension fields yourself.</p>
+<p>For DPoP or mTLS-bound tokens, the client supplies the matching signing key or
+certificate. See the
 <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a>
-for configuration.</p>
+for those configurations.</p>
     </div>
 
     <div class="section level2">

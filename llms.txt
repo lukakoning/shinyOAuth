@@ -1,71 +1,56 @@
 # shinyOAuth
 
-‘[shinyOAuth](https://lukakoning.github.io/shinyOAuth/)’ is an R package
-implementing provider‑agnostic OpenID Connect (OIDC) authentication and
-OAuth 2.0 authorization for [Shiny](https://github.com/rstudio/shiny)
-apps. It is built with modern S7 classes and security in mind.
+[shinyOAuth](https://lukakoning.github.io/shinyOAuth/) adds OAuth 2.0
+authorization and OpenID Connect (OIDC) authentication to
+[Shiny](https://github.com/rstudio/shiny) apps.
 
-OAuth 2.0 and OIDC let users log in to your app with accounts they
-already have (for example, Google or Microsoft), with a self-hosted
-identity provider such as Keycloak, or with an identity service such as
-Auth0 or Okta. To achieve this, your app redirects your users to the
-identity provider, they authenticate there, and are redirected back to
-your app with an authorization code. Your app then exchanges this code
-for tokens. In OAuth flows, an access token is obtained to authorize API
-calls, and you may get the user’s profile information from the
-provider’s userinfo endpoint. In OIDC flows, a validated ID token
-authenticates the user.
+Users sign in with an existing account, such as Google or Microsoft, a
+self-hosted provider such as Keycloak, or an identity service such as
+Auth0 or Okta. Your app redirects them to the provider, where they sign
+in, then exchanges the returned authorization code for tokens. An OAuth
+access token lets your app call APIs on the user’s behalf. OIDC adds an
+ID token that the package validates to identify the user.
 
-This package streamlines this flow for Shiny applications, enabling
-developers to add OAuth 2.0 and OIDC authorization/authentication to
-their apps with minimal code. The provided Shiny module handles
-redirecting unauthenticated users, managing state/PKCE/nonce for secure
-code-token exchange, verifying OIDC tokens, automatically fetching user
-info and performing token refresh, using asynchronous execution, and
-more. The package is highly configurable and works with various
-providers and protocol features.
+The Shiny module handles redirects, protects the login exchange,
+validates OIDC tokens, fetches user information and refreshes tokens. To
+keep provider requests from blocking other sessions, enable
+`async = TRUE` and configure background workers as described in
+[Asynchronous
+execution](https://lukakoning.github.io/shinyOAuth/articles/usage.html#asynchronous-execution).
 
 ## Features
 
 - Shiny module:
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-  gives you a ready‑to‑use OIDC authentication and OAuth authorization
-  flow with secure defaults. Easily read authentication status, token
-  details, & user info as reactive values in your Shiny server logic
+  manages login, callbacks and token refresh. It returns reactive values
+  for login status, tokens and user information.
 
-- S7 classes: `OAuthProvider`, `OAuthClient`, `OAuthToken`, for a
-  structured representation of key elements of the OAuth 2.0/OIDC flow
+- S7 classes: `OAuthProvider`, `OAuthClient` and `OAuthToken` describe
+  the provider, your app’s registration and the tokens it receives.
 
-- Functions:
+- Functions for custom integrations: use
   [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md),
   [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md),
-  [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md),
-  [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md),
-  and more, should you wish to manually implement parts of the OAuth
-  2.0/OIDC flow
-
-- Provider helpers: you can configure your own OAuth 2.0/OIDC providers,
-  but the package also includes an
-  [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md)
-  function for quick OIDC setup, and contains built-in configurations
-  for popular providers (e.g., GitHub, Google, Microsoft, Keycloak,
-  Auth0).
-
-- Security best practices: AES-GCM–sealed state payloads (AEAD),
-  server-side state validation coupled with origin-scoped browser
-  binding, HTTPS enforcement, PKCE (S256), ID token signature/claims
-  validation (including nonce), userinfo subject match, support for
-  DPoP, mTLS, JAR, PAR, and more (see
-  [`vignette("authentication-flow", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
-  ([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)))
-
-- Provides hooks for auditing & logging key events, like login successes
-  or failures; also supports emitting OpenTelemetry signals (see
-  [`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
-  ([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
+  [`introspect_token()`](https://lukakoning.github.io/shinyOAuth/reference/introspect_token.md)
   and
-  [`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
-  ([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)))
+  [`refresh_token()`](https://lukakoning.github.io/shinyOAuth/reference/refresh_token.md)
+  to manage the flow yourself.
+
+- Provider setup: use built-in helpers for GitHub, Google, Microsoft,
+  Keycloak and Auth0, discover OIDC settings with
+  [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md),
+  or configure a provider yourself.
+
+- Login protection: HTTPS enforcement, PKCE, browser-bound state and
+  OIDC token validation. DPoP, mTLS, JAR and PAR are available for
+  providers that require them (see [Authentication
+  flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
+
+- Diagnostics: record login successes, failures and other events with
+  audit hooks or OpenTelemetry. See [Audit
+  logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)
+  and
+  [OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html).
 
 ## Installation
 
@@ -89,17 +74,16 @@ remotes::install_github("lukakoning/shinyOAuth")
 
 ## Usage
 
-For complete usage documentation (i.e., making a manual login button,
-making authenticated API calls, setting various options, and a security
-checklist) see:
-[`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md)
-([link](https://lukakoning.github.io/shinyOAuth/articles/usage.html)).
+The [Usage
+guide](https://lukakoning.github.io/shinyOAuth/articles/usage.html)
+covers login buttons, authenticated API calls, configuration and a
+deployment checklist.
 
 ### Minimal example
 
-Below is a minimal example using a GitHub OAuth 2.0 app. If you want to
-try this example yourself, you can register an app at your [GitHub
-Developer Settings](https://github.com/settings/developers).
+Register a GitHub OAuth app in your [GitHub Developer
+Settings](https://github.com/settings/developers), then use its client
+ID and secret in this example.
 
 ``` r
 
@@ -157,53 +141,43 @@ runApp(
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
-> **Deploying to Posit Connect or Connect Cloud?** Open the direct app
-> URL in a new browser tab or window to test login. The dashboard’s
-> embedded preview can prevent OAuth redirects. On Connect Cloud, copy
-> the sharing URL from **Settings \> URL**. Register the exact public
-> callback URL with your provider. See [deployment
+> On Posit Connect or Connect Cloud, open the direct app URL in a new
+> browser tab or window to test login. The dashboard’s embedded preview
+> can prevent OAuth redirects. On Connect Cloud, copy the sharing URL
+> from Settings \> URL. Register the exact public callback URL with your
+> provider. See [deployment
 > instructions](https://lukakoning.github.io/shinyOAuth/articles/usage.html#posit-connect-and-connect-cloud).
 
 ### Logging/auditing
 
-The package provides hooks for logging/auditing crucial events (e.g.,
-callbacks issued & received, login success/failures). It can also emit
-signals via OpenTelemetry.
+Use audit hooks to record callbacks and login outcomes, or send logs and
+traces to a monitoring service through OpenTelemetry.
 
-See
-[`vignette("audit-logging", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
-([link](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html))
-for audit event details, and
-[`vignette("opentelemetry", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
-([link](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html))
-for OpenTelemetry details.
+See [Audit
+logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.html)
+for R hook examples and
+[OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.html)
+for exporter setup.
 
 ## More information
 
-### What happens during the authentication flow?
-
-For an in-depth step-by-step explanation of what happens during the
-authentication flow, see:
+[Authentication
+flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)
+explains login requests, callbacks and token checks. Before deployment,
+work through the [security
+checklist](https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist).
+You can also read these guides in R with
 [`vignette("authentication-flow", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
-([link](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)).
-
-### What do I need to consider for production use?
-
-For a checklist of security considerations and best practices for
-production use, see:
-[`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md)
-([link](https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist)).
+and
+[`vignette("usage", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
 
 ### For developers: tests & integration tests
 
-The package has a standard ‘testthat’ test suite under
-`tests/testthat/`. An additional set of integration tests against a
-local Keycloak instance (in Docker/Podman) is provided under
-`integration/keycloak/`. These integration tests also include
-browser-driven end-to-end tests using ‘shinytest2’ and ‘chromote’.
-Finally, minimal demo app deployments are provided under
-`integration/gcp/` for Google Cloud Run and `integration/posit/` for
-Posit Connect Cloud.
+The ‘testthat’ tests are in `tests/testthat/`. Integration tests in
+`integration/keycloak/` use a local Keycloak instance in Docker or
+Podman and include browser tests with ‘shinytest2’ and ‘chromote’. Demo
+deployments are in `integration/gcp/` for Google Cloud Run and
+`integration/posit/` for Posit Connect Cloud.
 
 # Package index
 
@@ -249,19 +223,19 @@ Posit Connect Cloud.
 - [`oauth_provider_auth0()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_auth0.md)
   : Create an Auth0 OAuthProvider (via OIDC discovery)
 - [`oauth_provider_authentik()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_authentik.md)
-  : Create an authentik OAuthProvider (via OIDC discovery)
+  : Configure sign-in with authentik
 - [`oauth_provider_cognito()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_cognito.md)
-  : Create an Amazon Cognito OAuthProvider (via OIDC discovery)
+  : Configure sign-in with an Amazon Cognito user pool
 - [`oauth_provider_github()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.md)
   : Create a GitHub OAuthProvider
 - [`oauth_provider_gitlab()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_gitlab.md)
-  : Create a GitLab OAuthProvider (via OIDC discovery)
+  : Configure sign-in with GitLab
 - [`oauth_provider_globus()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_globus.md)
-  : Create a Globus Auth OAuthProvider
+  : Configure sign-in with Globus Auth
 - [`oauth_provider_google()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_google.md)
   : Create a Google OAuthProvider
 - [`oauth_provider_huggingface()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_huggingface.md)
-  : Create a Hugging Face OAuthProvider (via OIDC discovery)
+  : Configure sign-in with Hugging Face
 - [`oauth_provider_keycloak()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_keycloak.md)
   : Create a Keycloak OAuthProvider (via OIDC discovery)
 - [`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md)
@@ -269,13 +243,13 @@ Posit Connect Cloud.
 - [`oauth_provider_okta()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_okta.md)
   : Create an Okta OAuthProvider (via OIDC discovery)
 - [`oauth_provider_orcid()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_orcid.md)
-  : Create an ORCID OAuthProvider (via OIDC discovery)
+  : Configure researcher sign-in with ORCID
 - [`oauth_provider_slack()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_slack.md)
   : Create a Slack OAuthProvider (via OIDC discovery)
 - [`oauth_provider_spotify()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_spotify.md)
   : Create a Spotify OAuthProvider
 - [`oauth_provider_surfconext()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_surfconext.md)
-  : Create a SURFconext OAuthProvider (via OIDC discovery)
+  : Configure institutional sign-in with SURFconext
 
 ## Provider-specific client settings
 
@@ -293,13 +267,12 @@ Posit Connect Cloud.
 - [`prepare_authorization_request()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_authorization_request.md)
   : Prepare a browser authorization request using GET or POST
 - [`handle_callback()`](https://lukakoning.github.io/shinyOAuth/reference/handle_callback.md)
-  : Handle OAuth 2.0 callback: verify state, swap code for token, verify
-  token
+  : Validate an OAuth 2.0 callback and retrieve tokens
 
 ## Tokens and API requests
 
 - [`oauth_connection()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connection.md)
-  : Make API requests with a Shiny session's current OAuth credentials
+  : Wrap an existing reactive token as a connection
 
 - [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
   : Fetch a user's profile (UserInfo)
@@ -334,7 +307,7 @@ Posit Connect Cloud.
 ## Deployment helpers
 
 - [`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-  : Assess an OAuth configuration against a pinned OAuth 2.1 draft
+  : Review an OAuth client configuration before deployment
 - [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
   : Check a URL against the package's host policy
 - [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
@@ -346,7 +319,7 @@ Posit Connect Cloud.
 
 - [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
   [`print(`*`<OAuthConnections>`*`)`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
-  : Configure several independently managed OAuth connections
+  : Manage several OAuth connections in one Shiny app
 - [`oauth_connections_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.md)
   : Handle callbacks and establish the connection owner's browser
   session
@@ -379,10 +352,10 @@ Posit Connect Cloud.
 ### Usage and authentication
 
 - [Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md):
-- [External SDKs and database
-  drivers](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md):
-- [Several API tokens from one
-  authorization](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md):
+- [Use your Shiny login with other R
+  packages](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md):
+- [Use one login for several
+  APIs](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md):
 - [Keep and use multiple OAuth
   authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md):
 - [Use SMART on FHIR from

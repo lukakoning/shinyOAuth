@@ -1,15 +1,15 @@
-# Make API requests with a Shiny session's current OAuth credentials
+# Wrap an existing reactive token as a connection
 
 Combine one module's reactive token with its client and approved API
 addresses configured on
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
-Call `[["request"]]()` on the returned connection instead of assembling
-a token, client and URL for each request. It reads the reactive token
-again after refresh or logout and restricts requests to the configured
-APIs. This optional wrapper expires with its Shiny session; it does not
-implement refresh itself or retain credentials across redirects. Clients
-with `token_targets` must use the module's `connection()` factory, which
-retains the authorization's permission limits alongside its tokens.
+Call `[["request"]]()` on the connection to send a request with the
+current token. It reads the reactive token again after refresh or logout
+and restricts requests to the configured APIs. This optional wrapper
+expires with its Shiny session; it does not implement refresh itself or
+retain credentials across redirects. Clients with `token_targets` must
+use the module's `connection()` factory, which retains the
+authorization's permission limits alongside its tokens.
 
 ## Usage
 
@@ -37,8 +37,8 @@ oauth_connection(
   A Shiny reactive expression returning the current
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   or `NULL`, usually `shiny::reactive(auth[["token"]])`. It must come
-  from the module using `client`. Supplying that association is trusted
-  server application wiring; a resource policy cannot prove an opaque
+  from the module using `client`. Your server code must keep the token
+  and client matched; API address restrictions cannot verify an opaque
   token's audience.
 
 - session:
@@ -59,6 +59,13 @@ for its contract.
 
 ## Details
 
+Use `auth$connection()` from
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+or
+[`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
+to obtain and refresh tokens for external packages. Use this wrapper
+when integrating with an existing reactive token.
+
 Create the reference once inside `server()`. Access it only in that
 session's reactive context. `[["summary"]]()` excludes tokens, identity
 claims and extension context. `[["is_usable"]]()` checks local presence,
@@ -74,9 +81,10 @@ transport and the configured client.
 Use request-level `required_scopes` for optional operations. They must
 be included in the client's requested scopes and covered by the current
 grant. The package cannot infer arbitrary API permissions from an HTTP
-method/path. The legacy module continues to own refresh and logout.
-Retained connection storage and its independent lifecycle are available
-through
+method/path.
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+still manages refresh and logout. To retain credentials across Shiny
+sessions, use
 [`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md)
 and
 [`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md).

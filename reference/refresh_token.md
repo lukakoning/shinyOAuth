@@ -68,7 +68,7 @@ An updated
 [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
 object with refreshed credentials.
 
-**What changes:**
+Updated fields:
 
 - `access_token`: Always updated to the fresh token
 
@@ -103,10 +103,10 @@ object with refreshed credentials.
   sender-constrained state is kept only when the new token or its
   introspection response supplies fresh `cnf`
 
-**Validation failures cause errors:** If the provider returns a new ID
-token that fails validation (wrong issuer, audience, expired, or subject
-mismatch with original), or if userinfo subject doesn't match the new ID
-token, the refresh fails with an error. In
+Refresh fails if a new ID token fails validation, or if the UserInfo
+subject differs from the new ID token's subject. Validation includes
+issuer, audience, expiry and agreement with the original login's
+subject. In
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md),
 this clears the session and sets `authenticated = FALSE`, unless
 `indefinite_session = TRUE` keeps it with `token_stale = TRUE`.

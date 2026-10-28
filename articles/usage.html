@@ -33,8 +33,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -75,23 +75,15 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>shinyOAuth provides a Shiny module for OAuth 2.0 authorization and
-OpenID Connect (OIDC) authentication. <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>
-manages redirects, callback validation, token exchange, and session
-state. <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> supplies the browser setup required by
-the module.</p>
-<p>For ordinary apps, use
-<code>oauth_ui(ui, id = "auth", client = client)</code> with the same
-module ID and client as the server. Use
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> for POST callbacks, or
-<code><a href="../reference/oauth_connections_ui.html">oauth_connections_ui()</a></code> with a connection manager. These
-wrappers include the browser dependency; you do not need a separate
-<code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> call. That lower-level helper is for
-custom integrations providing equivalent callback handling and response
-headers.</p>
-<p>This vignette covers provider and client configuration, manual login
-buttons, authenticated API calls, token refresh, and deployment. The
-examples use a GitHub OAuth App. Install shinyOAuth with
+<p>Use shinyOAuth to let users sign in with an existing service and let
+your app call that service’s API with their permission. Your app does
+not collect the user’s password. OAuth grants permission to call an API.
+OpenID Connect (OIDC) adds identity checks so your app can verify who
+signed in.</p>
+<p>In R, configure the service and your app registration, then add the
+Shiny UI wrapper and server module. The module manages login and tokens;
+<code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> handles the browser’s return to the app.</p>
+<p>The examples use a GitHub OAuth App. Install shinyOAuth with
 <code>install.packages("shinyOAuth")</code>. For the protocol flow and
 validation rules, see <a href="authentication-flow.html">Authentication
 flow</a>.</p>
@@ -100,7 +92,7 @@ flow</a>.</p>
 <h2 id="github-app-registration">GitHub app registration<a class="anchor" aria-label="anchor" href="#github-app-registration"></a>
 </h2>
 <ol style="list-style-type: decimal">
-<li><p>Register an <strong>OAuth App</strong> in <a href="https://github.com/settings/developers" class="external-link">GitHub’s developer
+<li><p>Register an OAuth App in <a href="https://github.com/settings/developers" class="external-link">GitHub’s developer
 settings</a>. Set both the homepage URL and authorization callback URL
 to <code>http://127.0.0.1:8100</code> for this local example.</p></li>
 <li>
@@ -122,9 +114,9 @@ Git.</p>
 registered address; switching between <code>localhost</code> and
 <code>127.0.0.1</code> can interrupt login.</p>
 <blockquote>
-<p><strong>Deploying to Posit Connect or Connect Cloud?</strong> Test
-login at the direct app URL in a new browser tab or window. The
-dashboard’s embedded preview can prevent OAuth redirects. See <a href="#posit-connect-and-connect-cloud">Posit deployment
+<p>Deploying to Posit Connect or Connect Cloud? Test login at the direct
+app URL in a new browser tab or window. The dashboard’s embedded preview
+can prevent OAuth redirects. See <a href="#posit-connect-and-connect-cloud">Posit deployment
 instructions</a>.</p>
 </blockquote>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
@@ -172,22 +164,21 @@ holds your app’s credentials, redirect URI, and requested scopes. After
 authentication, the module returns an <code>OAuthToken</code> as
 <code>auth[["token"]]</code>, containing tokens and available user
 information.</p>
-<p>The <strong>redirect URI</strong>, also called the callback URL, is
-the address where the provider sends the browser back. Register it with
-the provider and use the same value in <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
-including scheme, host, port, path, and fixed query parameters. Fixed
-query names must not use OAuth/OIDC response fields such as
-<code>state</code>, <code>code</code>, <code>error</code>,
-<code>iss</code>, <code>response</code>, <code>scope</code>, token
-fields, or the <code>shinyOAuth_form_post</code> and
+<p>The redirect URI, also called the callback URL, is the address where
+the provider sends the browser back. Register it with the provider and
+use the same value in <code><a href="../reference/oauth_client.html">oauth_client()</a></code>, including scheme,
+host, port, path, and fixed query parameters. Fixed query names must not
+use OAuth/OIDC response fields such as <code>state</code>,
+<code>code</code>, <code>error</code>, <code>iss</code>,
+<code>response</code>, <code>scope</code>, token fields, or the
+<code>shinyOAuth_form_post</code> and
 <code>shinyOAuth_form_post_id</code> bridge fields, or the
 <code>shinyOAuth_request_object</code> retrieval field. These names are
 reserved for callback processing and are rejected when configuring the
 client. Application parameters such as
-<code>tenant=one&amp;tag=a&amp;tag=b</code> are supported.
-<strong>Scopes</strong> are named permissions, such as
-<code>read:user</code>; the provider defines which names are
-available.</p>
+<code>tenant=one&amp;tag=a&amp;tag=b</code> are supported. Scopes are
+named permissions, such as <code>read:user</code>; the provider defines
+which names are available.</p>
 <p>Create your provider and client outside <code>server()</code> so they
 remain available when the browser returns from login. Create the module
 inside <code>server()</code> so each user has their own login state.</p>
@@ -282,13 +273,12 @@ the authenticated user’s access token. For example, add
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>Only send tokens to an API you intend to authorize. The example
 requests one page of results; fetching more pages depends on the API.
-Use <code><a href="../reference/resource_req.html">resource_req()</a></code> to build an <code>httr2</code> request
-without sending it, or pass a prepared <code>httr2</code> request to
-<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to retain encoded and decoded
-response-size limits. Sending the builder’s output directly with
-<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> uses httr2’s transport and has no
-shinyOAuth decoded-size guarantee. See the <a href="example-spotify.html">Spotify example</a> for another complete
-app.</p>
+Use <code><a href="../reference/resource_req.html">resource_req()</a></code> to prepare a request without sending it,
+then use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to send it with
+shinyOAuth’s response-size limits. Sending it directly through
+<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> uses httr2’s own transport settings
+instead. See the <a href="example-spotify.html">Spotify example</a> for
+another complete app.</p>
 <div class="section level3">
 <h3 id="additional-token-response-fields">Additional token response fields<a class="anchor" aria-label="anchor" href="#additional-token-response-fields"></a>
 </h3>
@@ -347,18 +337,17 @@ you can let shinyOAuth look up the service’s settings:</p>
 <span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"email"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Replace the example URLs and credentials with your own registration.
-An <strong>issuer</strong> is the provider’s identifier URL; copy it
-from the provider’s configuration. Discovery makes a network request, so
-run it during app setup. If your registration specifies a client
-authentication method, supply the matching <code>token_auth_style</code>
-to the provider helper; discovery describes the service’s capabilities,
-not the settings of your individual registration.</p>
-<p>OpenID Connect (OIDC) is a login protocol: it supplies a signed
-<strong>ID token</strong> that shinyOAuth checks to identify the user.
-OAuth 2.0 grants permission to call APIs using an <strong>access
-token</strong>. GitHub and Spotify use OAuth without OIDC; their helpers
-fetch profile information through their own APIs. With OIDC, read
-validated identity details from
+An issuer is the provider’s identifier URL; copy it from the provider’s
+configuration. Discovery makes a network request, so run it during app
+setup. If your registration specifies a client authentication method,
+supply the matching <code>token_auth_style</code> to the provider
+helper; discovery describes the service’s capabilities, not the settings
+of your individual registration.</p>
+<p>OpenID Connect (OIDC) is a login protocol: it supplies a signed ID
+token that shinyOAuth checks to identify the user. OAuth 2.0 grants
+permission to call APIs using an access token. GitHub and Spotify use
+OAuth without OIDC; their helpers fetch profile information through
+their own APIs. With OIDC, read validated identity details from
 <code>auth[["token"]]@id_token_claims</code> and check
 <code>auth[["token"]]@id_token_validated</code>. An access token alone
 is not proof of identity. The <a href="authentication-flow.html">authentication guide</a> explains
@@ -377,47 +366,14 @@ does not relax OIDC discovery.</p>
 <div class="section level2">
 <h2 id="assessing-oauth-2-1-configuration">Assessing OAuth 2.1 configuration<a class="anchor" aria-label="anchor" href="#assessing-oauth-2-1-configuration"></a>
 </h2>
-<p>shinyOAuth supports configurable OAuth 2.0 behavior and an optional
-assessment of the authorization-code/refresh client role against <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16" class="external-link">OAuth
-2.1 draft 16</a>, published 3 September 2026. This is an Internet-Draft,
-not a published RFC. <code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> currently implements
-only that revision, with ruleset <code>1.1.1</code>. It does not load
-mTLS certificate/key files, so their usability remains an unknown
-mandatory check even when both paths are configured. Runtime validates
-the current certificate/key pair before each mTLS request. It makes no
-network requests, creates no login state and never enables automatic
-enforcement. Existing provider examples and applications remain
-usable.</p>
-<p>This example constructs an OAuth-only public client with S256 PKCE
-and HTTPS:</p>
+<p>Use <code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> to review a client before
+deployment. It returns findings and suggested fixes without contacting
+the provider or changing the client:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.tls_min_version <span class="op">=</span> <span class="st">"1.2"</span><span class="op">)</span> <span class="co"># Set before discovery or login.</span></span>
-<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"Example authorization server"</span>,</span>
-<span>  auth_url <span class="op">=</span> <span class="st">"https://auth.example/authorize"</span>,</span>
-<span>  token_url <span class="op">=</span> <span class="st">"https://auth.example/token"</span>,</span>
-<span>  token_auth_style <span class="op">=</span> <span class="st">"public"</span>,</span>
-<span>  use_pkce <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  pkce_method <span class="op">=</span> <span class="st">"S256"</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="st">"registered-client"</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example/callback"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="st">"read"</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
-<span><span class="va">assessment</span><span class="op">[[</span><span class="st">"configuration_compliant"</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="va">assessment</span><span class="op">[[</span><span class="st">"checks"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
-<p>Choose credentials and endpoints to match your actual registration.
-Basic and body-secret authentication remain available; JWT
-authentication also supports the issuer-audience configuration described
-in <a href="advanced-security.html#jwt-client-authentication">advanced
-security</a>. The checker does not require optional DPoP, mTLS, PAR, JAR
-and JARM together, nor does it require OIDC metadata for an OAuth-only
-provider.</p>
-<p>The result records the draft, ruleset, package version, assessment
-time and operation scope. Its verdict has three meanings:</p>
+<code class="sourceCode R"><span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
+<span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span></span>
+<span><span class="va">assessment</span><span class="op">$</span><span class="va">checks</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"message"</span>, <span class="st">"remediation"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>The overall result has three meanings:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -430,58 +386,62 @@ time and operation scope. Its verdict has three meanings:</p>
 <tbody>
 <tr class="odd">
 <td><code>FALSE</code></td>
-<td>At least one applicable mandatory configuration check failed. This
-takes precedence over unknown findings.</td>
+<td>At least one mandatory configuration check failed.</td>
 </tr>
 <tr class="even">
 <td><code>NA</code></td>
-<td>No known mandatory failure, but at least one mandatory configuration
-prerequisite is unresolved. Provider-only assessments are partial.</td>
+<td>No known mandatory failure, but something required is
+unresolved.</td>
 </tr>
 <tr class="odd">
 <td><code>TRUE</code></td>
-<td>Applicable mandatory checks in the recorded configuration scope
-passed. External behavior remains unverified.</td>
+<td>The applicable mandatory configuration checks passed. Live server
+behavior still needs testing.</td>
 </tr>
 </tbody>
 </table>
-<p>Every finding has a stable ID, status, requirement strength, evidence
-source, remediation, reference and <code>affects_verdict</code> flag.
-Unmet recommendations do not turn the verdict into <code>FALSE</code>.
-Code and refresh, enabled PAR, required UserInfo and enabled
-introspection are included. Include optional operations explicitly:</p>
+<p>Read the individual findings even when the result is
+<code>TRUE</code>: recommendations and unverified external behavior
+remain separate. This is an optional configuration review, not
+certification of the app or provider. Rerun it after changing options,
+client settings or the runtime.</p>
+<div class="section level3">
+<h3 id="advanced-assessment-scope">Advanced assessment scope<a class="anchor" aria-label="anchor" href="#advanced-assessment-scope"></a>
+</h3>
+<p>The current ruleset is <code>1.1.1</code>, based on <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16" class="external-link">OAuth
+2.1 draft 16</a>. This is an Internet-Draft, not a final RFC. The report
+records the specification revision, package version, time and operations
+checked.</p>
+<p>The checker covers code exchange and refresh plus enabled provider
+features. It does not require optional DPoP, mTLS, JAR, PAR and JARM
+together. Add optional operations when you want them assessed:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>operations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"introspection"</span>, <span class="st">"revocation"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The checker does not contact a server to establish PKCE enforcement,
-refresh rotation/replay protection, secret custody, registered redirect
-matching or browser/proxy TLS. It cannot assess future resource URLs or
-later arbitrary request mutations. Actual application scope enforcement
-and estimated token expiry also require review. A positive report is a
-bounded configuration result, not certification. Rerun it after changing
-options, objects or the runtime.</p>
-<p>Applications choose how to use the result. For example, a deployment
-script may decide to block a known failure and separately flag
+<p>The checker does not open mTLS certificate or key files; configured
+paths do not prove that those files are usable. Those checks remain
+unresolved until verified separately. Actual mTLS requests validate the
+current pair. Provider enforcement, registered redirect URLs, secret
+storage and browser/proxy TLS also require deployment checks.</p>
+<p>Your deployment script can handle known failures separately from
 unresolved prerequisites:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">[[</span><span class="st">"configuration_compliant"</span><span class="op">]</span><span class="op">]</span>, <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span>, <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Resolve the mandatory configuration findings before deployment."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">[[</span><span class="st">"configuration_compliant"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Review unresolved configuration prerequisites before deployment."</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>S256 is the straightforward PKCE choice. Legacy <code>plain</code>
-remains constructible but fails this draft assessment. Omitting PKCE has
-a narrow exception under draft section 7.5.1.1: confidential client
-authentication, correct OIDC nonce validation, and server assurance for
-the particular deployment and request. Missing local prerequisites fail;
-unestablished server assurance is unresolved.
-<code>context = list(nonce_exception = TRUE)</code> records an explicit
-declaration of that assurance after it has been established. It cannot
-supply missing local settings and is never treated as observed server
-evidence. S256 remains recommended.</p>
+<p>S256 is the recommended PKCE choice. The advanced
+<code>context = list(nonce_exception = TRUE)</code> option records
+independently established server assurance for the draft’s
+confidential-client nonce exception. It cannot supply missing settings
+or count as observed server evidence. See <a href="https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.html">check_oauth21()</a>
+and <a href="advanced-security.html">advanced security</a> for the
+detailed requirements.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="multiple-authorization-servers">Multiple authorization servers<a class="anchor" aria-label="anchor" href="#multiple-authorization-servers"></a>
@@ -526,13 +486,13 @@ require independent authorization-server identification
 (<code>multi_issuer</code>, using RFC 9207 or JARM); the static registry
 rejects multiple clients with the same issuer on one route. See <a href="https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2" class="external-link">OAuth
 Security BCP section 4.4.2</a>.</p>
-<p>This pattern routes multiple modules; it does not retain their
-credentials across navigation. Following the authorization redirect for
-B can end the Shiny session holding A. A new session starts with empty
-module credentials even if the clients share a pending-state store. To
-preserve authorizations across navigation, use the separate connection
-manager with browser or account retention. See <a href="multiple-authorizations.html">Keep and use multiple OAuth
-authorizations</a> for a complete two-service example.</p>
+<p>Signing in to B can end the Shiny session holding A’s credentials.
+Each new session starts with empty module credentials, even when the
+clients share a pending-state store. To keep both authorizations across
+navigation, use the connection manager with browser or account
+retention. See <a href="multiple-authorizations.html">Keep and use
+multiple OAuth authorizations</a> for a complete two-service
+example.</p>
 <p>For healthcare APIs, <a href="smart-on-fhir.html">Use SMART on FHIR
 from Shiny</a> shows discovery, client registration settings, patient
 requests and EHR launch using the same manager.</p>
@@ -550,9 +510,8 @@ summaries.</p>
 <div class="section level3">
 <h3 id="requests-bound-to-a-client-and-resource">Requests bound to a client and resource<a class="anchor" aria-label="anchor" href="#requests-bound-to-a-client-and-resource"></a>
 </h3>
-<p>These optional helpers group the client, API address and current
-credentials used for a request. They are package API choices; OAuth and
-SMART on FHIR do not require these classes.</p>
+<p>Use a connection to keep the client settings, API address and current
+credentials together when making requests.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -580,12 +539,11 @@ configuration</td>
 </tr>
 </tbody>
 </table>
-<p>The client holds shared configuration, with no user’s token. A
-connection reads the current token for each request. The object refers
-to credentials that can change instead of keeping a token copy. The
-existing reactive token already updates on refresh; the connection adds
-client selection, API-address restrictions and session checks. It does
-not implement refresh or retention by itself.</p>
+<p>The client holds shared settings without any user’s tokens. A
+connection reads the module’s current token for each request, checks the
+Shiny session and restricts requests to the configured API addresses.
+The module still manages refresh and logout; use the connection manager
+to keep credentials across navigation.</p>
 <p>Set <code>resource_bases</code> on <code><a href="../reference/oauth_client.html">oauth_client()</a></code>
 outside <code>server()</code>, then create a connection for that
 client’s module inside <code>server()</code>:</p>
@@ -605,11 +563,10 @@ client’s module inside <code>server()</code>:</p>
 <span>      <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>The reference reads the latest token after refresh and becomes
-unusable after logout, token expiry, or session end. A reference from
-another Shiny session cannot read its summary or make requests. This
-adapter still uses the legacy module’s lifecycle and does not retain
-credentials across navigation.</p>
+<p>The connection reads the latest token after refresh and becomes
+unusable after logout, token expiry, or session end. It can only be used
+in the Shiny session that created it, including for summary reads. This
+wrapper does not retain credentials across navigation.</p>
 <p><code>resource_bases</code> restricts the token’s destinations; it
 does not request an audience or prove an opaque token’s audience. Wire
 the token expression to the module using <code>client</code>. Resource
@@ -697,11 +654,11 @@ login.</p>
 <div class="section level3">
 <h3 id="posit-connect-and-connect-cloud">Posit Connect and Connect Cloud<a class="anchor" aria-label="anchor" href="#posit-connect-and-connect-cloud"></a>
 </h3>
-<p><strong>Test OAuth login in a new browser tab or window, outside the
-dashboard’s embedded app preview.</strong></p>
+<p>Test OAuth login in a new browser tab or window, outside the
+dashboard’s embedded app preview.</p>
 <ol style="list-style-type: decimal">
-<li>On Connect Cloud, copy the app’s sharing URL from <strong>Settings
-&gt; URL</strong>, such as
+<li>On Connect Cloud, copy the app’s sharing URL from Settings &gt; URL,
+such as
 <code>https://&lt;content-id&gt;.share.connect.posit.cloud</code>, or
 your configured custom URL. See the <a href="https://docs.posit.co/connect-cloud/user/manage/content_settings.html#url" class="external-link">URL
 settings guide</a>. On Posit Connect, use the app’s direct content
@@ -716,13 +673,9 @@ URL. With a dedicated route such as <code>/callback</code>, retain that
 callback path in the registration, but open the app’s entry URL to start
 login.</li>
 </ol>
-<p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> prints a console/log warning once
-per R process when <code>POSIT_PRODUCT</code> is <code>CONNECT</code> or
-<code>CONNECT_CLOUD</code>, or the legacy <code>RSTUDIO_PRODUCT</code>
-is <code>CONNECT</code>. This is a hosting reminder, not detection of an
-embedded browser; it also appears when you open the app correctly. If
-these markers are absent, the module retains its general browser
-reminder.</p>
+<p>The module may print a hosting reminder even when you opened the app
+correctly. It does not test whether the browser is showing an embedded
+preview.</p>
 </div>
 <div class="section level3">
 <h3 id="multiple-r-processes">Multiple R processes<a class="anchor" aria-label="anchor" href="#multiple-r-processes"></a>
@@ -744,12 +697,10 @@ store. Plain <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" 
 login state because separate reads and deletes can let two requests use
 the same entry. See <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html"><code>custom_cache()</code></a>
 for the backend contract.</p>
-<p>For <code>form_post</code> and <code>form_post.jwt</code>, also
-provide atomic <code>set_if_absent</code> with expiry to reserve
-callback slots without overwriting another pending response. Each
-transaction can retain two candidates; overflow is rejected until a slot
-is consumed or expires. The default process-local memory store also
-preserves unexpired candidates.</p>
+<p>For POST callbacks, the shared store also needs atomic
+<code>set_if_absent</code> with expiry, so simultaneous responses cannot
+overwrite one another. See <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html">custom_cache()</a>
+for the backend requirements.</p>
 <p>Hosted Request Objects
 (<code>request_object_mode = "request_uri"</code>) also use this store,
 in separate records. Their JWT claims are readable when signed without
@@ -801,27 +752,20 @@ tab. Same-origin scripts can still access session storage.</p>
 <p>Use <a href="audit-logging.html">audit logging</a> to identify the
 failing operation. Common configuration issues include:</p>
 <ul>
-<li>
-<strong>Rejected redirect URI:</strong> check that the registered
-callback URL and <code>redirect_uri</code> match, including scheme,
-host, port, and path.</li>
-<li>
-<strong>Callback validation failure:</strong> use the registered app
-address in a regular browser and create the client outside
-<code>server()</code>. For multiple R processes, check the shared state
-store and key.</li>
-<li>
-<strong>Rejected client credentials:</strong> check the environment
-variables after restarting R and match <code>token_auth_style</code> to
-the app registration.</li>
-<li>
-<strong>Missing profile fields:</strong> check requested scopes and
-the provider’s profile format. Some providers return identity
-information only in ID token claims.</li>
-<li>
-<strong>Rejected API request:</strong> check permissions, token
-expiry, and whether the API accepts tokens from the configured
-provider.</li>
+<li>Rejected redirect URI: check that the registered callback URL and
+<code>redirect_uri</code> match, including scheme, host, port, and
+path.</li>
+<li>Callback validation failure: use the registered app address in a
+regular browser and create the client outside <code>server()</code>. For
+multiple R processes, check the shared state store and key.</li>
+<li>Rejected client credentials: check the environment variables after
+restarting R and match <code>token_auth_style</code> to the app
+registration.</li>
+<li>Missing profile fields: check requested scopes and the provider’s
+profile format. Some providers return identity information only in ID
+token claims.</li>
+<li>Rejected API request: check permissions, token expiry, and whether
+the API accepts tokens from the configured provider.</li>
 </ul>
 <p>Keep token and callback validation enabled while diagnosing
 configuration errors.</p>

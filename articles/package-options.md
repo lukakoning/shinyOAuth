@@ -11,7 +11,7 @@ For example, allow a slow provider up to ten seconds per HTTP request:
 options(shinyOAuth.timeout = 10)
 ```
 
-Times are in **seconds** unless a setting explicitly says milliseconds.
+Times are in seconds unless a setting explicitly says milliseconds.
 Options affect the R process; use
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
 and
@@ -19,27 +19,6 @@ and
 arguments for settings that belong to one client or module. See
 [Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md) for
 app setup.
-
-[`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-is an opt-in, read-only assessment pinned to OAuth 2.1 draft 16. Ruleset
-`1.1.1` reports requirement sources: OAuth core, OIDC, extensions,
-security guidance, and package or application policy. Recommendations do
-not change the mandatory configuration verdict. Existing OAuth 2.0
-authentication methods and callback choices remain available. For
-example, Basic/body client authentication can pass while receiving
-advice to consider asymmetric methods. Distinct callback routes remain
-valid when issuer identification is unavailable, and `localhost`
-callbacks remain supported with advice to prefer a loopback IP.
-
-Callback capacity advice uses local field defaults and an 8000-byte
-minimum envelope as package thresholds, not numeric OAuth 2.1
-requirements. Test the complete encoded query or form body against
-package, proxy and browser limits: include parameter names, separators,
-fixed application parameters, percent encoding, state, issuer and JARM.
-An aggregate floor cannot guarantee that all decoded fields fit
-simultaneously. Back-channel redirect blocking is package policy
-motivated by credential confidentiality; the draft’s browser redirect
-rules are a separate requirement.
 
 ## Logging
 
@@ -73,11 +52,11 @@ rules are a separate requirement.
   Default: `FALSE` (counts only). These fields may be sensitive and have
   high cardinality.
 
-See the [audit logging
-vignette](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
-for details about audit hooks, and the [OpenTelemetry
-vignette](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
-for more details about logs and traces via OpenTelemetry.
+See [Audit
+logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
+for R hook examples and
+[OpenTelemetry](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
+for log and trace exporter setup.
 
 ## Validation and URL policy
 
@@ -132,11 +111,10 @@ for more details about logs and traces via OpenTelemetry.
   validation with `async = TRUE`. The delay adds timing noise but does
   not provide constant-time validation.
 
-Note on `allowed_hosts`: patterns support globs (`*`, `?`). Using a
-catch‑all like `"*"` matches any host and effectively disables endpoint
-host restrictions (scheme rules still apply). Avoid this unless you
-truly intend to accept any host; prefer pinning to your domain(s), e.g.,
-`c(".example.com")`.
+`allowed_hosts` patterns support globs (`*`, `?`). A catch-all such as
+`"*"` accepts any host; scheme restrictions still apply. Restrict access
+to your domains, for example `c(".example.com")`, unless you intend to
+accept any host.
 
 ## Advanced parameter overrides
 
@@ -147,9 +125,8 @@ that could break state binding, PKCE, or client authentication.
 
 Set the callback format with `oauth_client(response_mode = ...)`.
 
-If you have a specific, advanced use case where you need to override one
-of these blocked parameters, you can unblock them using the following
-options:
+To override a blocked parameter, use the options below. Some parameters
+cannot be unblocked.
 
 - `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allows
   replacing the specified authorization URL parameters. Default blocked:
@@ -195,20 +172,11 @@ options:
 
 ## HTTP settings (timeout, retries, user agent)
 
-- `options(shinyOAuth.tls_min_version = "1.2")` - optionally require TLS
-  1.2 or later on package-owned HTTPS requests. `"1.3"` requires TLS 1.3
-  or later; `NULL` (default) retains the linked curl/TLS backend’s
-  defaults. Applies before discovery and to token, PAR, JWKS, UserInfo
-  and resource requests, including async workers. A stronger supplied
-  minimum and a compatible supplied maximum survive; a conflicting
-  maximum or disabled certificate/hostname verification raises an error
-  when a minimum is selected. Custom CA settings remain usable. The
-  setting is bound to pending login transactions, so change it before
-  initiating login. It does not configure browser/proxy TLS or disallow
-  HTTP development endpoints. Older wolfSSL backends require curl 8.10.0
-  or later to apply minimum-version semantics. Actual negotiated
-  connections remain runtime evidence; an absent option alone says
-  nothing about their TLS version.
+- `options(shinyOAuth.tls_min_version = "1.2")` - require TLS 1.2 or
+  later for package HTTPS requests (the default). Use `"1.3"` for a
+  higher minimum; an absent option or `NULL` restores TLS 1.2. Set this
+  before discovery or login. It applies to async workers too; browser
+  and reverse-proxy TLS must be configured separately.
 
 - `options(shinyOAuth.timeout = 5)` – default HTTP timeout (seconds)
   applied to all outbound requests (discovery, JWKS, token exchange,
@@ -254,22 +222,30 @@ options:
   only when you deliberately accept that redirect-following risk for a
   specific deployment; this opt-in is honored in all sessions
 
-- `options(shinyOAuth.max_body_bytes = 1048576)` – maximum response body
-  size (bytes, default 1 MiB) accepted by shinyOAuth’s performer for
-  OAuth endpoints,
+- `options(shinyOAuth.max_body_bytes = 1048576)` - maximum response size
+  (default 1 MiB) for package requests and connection calls. Increase it
+  if an API legitimately returns more data. Use
   [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-  and connection requests. Both encoded downloads and decoded gzip data
-  are bounded before the full body is accumulated; other content
-  encodings are rejected. Increase this if an API legitimately returns
-  larger payloads. Values above R’s supported binary-read size are
-  capped.
-  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-  only builds a request: sending it through
-  [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
-  does not use shinyOAuth’s bounded performer, and the curl size option
-  alone does not limit decoded data on libcurl before 8.20.0. Prefer
-  `perform_resource_req(token, request)` for prepared requests too,
-  supplying `client` for DPoP or mTLS.
+  for prepared requests as well as URLs to retain this limit.
+
+### Advanced transport constraints
+
+The TLS policy preserves stronger supplied minima, compatible maxima and
+custom CA settings. Conflicting maxima or disabled certificate/hostname
+checks raise an error. Older wolfSSL backends require curl 8.10.0 or
+newer for minimum version support. This setting does not enable HTTP
+development exceptions or verify the TLS configuration of your browser
+and proxy.
+
+Response limits cover both downloaded bytes and decoded gzip data; other
+content encodings are rejected. Oversized configured limits are capped
+at R’s supported binary-read size.
+[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
+only builds a request. If you send it directly with
+[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html),
+shinyOAuth’s decoded-size limit does not apply. Use
+`perform_resource_req(token, request)`, adding `client` for DPoP or
+mTLS.
 
 ## State store
 
@@ -343,6 +319,14 @@ scopes or other state metadata.
 checks both budgets before storing pending login state, publishing a
 Request Object, or sending PAR. Increasing only one limit does not
 override the other.
+
+## Configuration assessments
+
+Use `check_oauth21(client)` to review settings without making requests
+or changing the app. The report separates configuration problems,
+recommendations and things that need deployment testing. See
+[Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.html#assessing-oauth-2.1-configuration)
+for an example and the specification revision assessed.
 
 ## Local debugging
 

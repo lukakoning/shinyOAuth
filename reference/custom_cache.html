@@ -5,15 +5,15 @@ state_store in oauth_client() to share pending login state, or as
 jwks_cache in oauth_provider() to share provider signing keys (JWKS).
 A shared state store is needed when a login can start on one R process and
 its callback can arrive at another, for example in a multi-worker deployment
-without sticky routing. A shared signing-key cache lets workers reuse keys
-fetched from the provider rather than maintaining separate caches."><meta property="og:description" content="Connect shinyOAuth to a shared storage backend, such as Redis or a database,
+without sticky routing. With a shared signing-key cache, workers reuse keys
+fetched by other workers."><meta property="og:description" content="Connect shinyOAuth to a shared storage backend, such as Redis or a database,
 by wrapping your R functions in a cachem-like interface. Use the result as
 state_store in oauth_client() to share pending login state, or as
 jwks_cache in oauth_provider() to share provider signing keys (JWKS).
 A shared state store is needed when a login can start on one R process and
 its callback can arrive at another, for example in a multi-worker deployment
-without sticky routing. A shared signing-key cache lets workers reuse keys
-fetched from the provider rather than maintaining separate caches."></head><body>
+without sticky routing. With a shared signing-key cache, workers reuse keys
+fetched by other workers."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -33,8 +33,8 @@ fetched from the provider rather than maintaining separate caches."></head><body
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -66,8 +66,8 @@ by wrapping your R functions in a cachem-like interface. Use the result as
 <code>jwks_cache</code> in <code><a href="oauth_provider.html">oauth_provider()</a></code> to share provider signing keys (JWKS).</p>
 <p>A shared state store is needed when a login can start on one R process and
 its callback can arrive at another, for example in a multi-worker deployment
-without sticky routing. A shared signing-key cache lets workers reuse keys
-fetched from the provider rather than maintaining separate caches.</p>
+without sticky routing. With a shared signing-key cache, workers reuse keys
+fetched by other workers.</p>
     </div>
 
     <div class="section level2">
@@ -101,36 +101,25 @@ Should store the value under the given key.</p></dd>
 
 <dt id="arg-remove">remove<a class="anchor" aria-label="anchor" href="#arg-remove"></a></dt>
 <dd><p>A function(key) -&gt; any. Required.</p>
-<p>Deletes the entry for <code>key</code>. When <code>[["take"]]()</code> is provided, <code>[["remove"]]()</code> serves
-only as a best-effort cleanup and its return value is ignored. When
-<code>[["take"]]()</code> is not provided, shinyOAuth falls back to
-<code>[["get"]]()</code> + <code>[["remove"]]()</code> followed by a post-removal absence check via
-<code>[["get"]](key, missing = NA)</code>. In this fallback path the return value of
-<code>[["remove"]]()</code> is not relied upon; the post-check is authoritative.</p></dd>
+<p>Delete the entry for <code>key</code>. shinyOAuth does not depend on the return value.
+State consumption uses atomic <code>take</code> where available; a process-local
+fallback checks that removal succeeded.</p></dd>
 
 
 <dt id="arg-take">take<a class="anchor" aria-label="anchor" href="#arg-take"></a></dt>
 <dd><p>A function(key, missing = NULL) -&gt; value. Optional.</p>
-<p>An atomic get-and-delete operation. When provided, shinyOAuth uses
-<code>[["take"]]()</code> instead of separate <code>[["get"]]()</code> + <code>[["remove"]]()</code> calls to enforce
-single-use state consumption. This prevents TOCTOU (time-of-check /
-time-of-use) replay attacks in multi-worker deployments with shared state
-stores.</p>
-<p>Should return the stored value and atomically remove the entry, or
-return the <code>missing</code> argument (default <code>NULL</code>) if the key is not present.</p>
-<p>If your backend supports atomic get-and-delete natively
-(e.g., Redis <code>GETDEL</code>, SQL <code>DELETE ... RETURNING</code>), wire it through this
-parameter for replay-safe state stores.</p>
-<p>When <code>take</code> is not provided and the state store is not a per-process cache
-(like <code><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cachem::cache_mem()</a></code>), shinyOAuth will <strong>error</strong> at state
-consumption time because non-atomic <code>[["get"]]()</code> + <code>[["remove"]]()</code> cannot
-guarantee single-use under concurrent access in shared stores.</p></dd>
+<p>Read and remove the entry as one indivisible operation, returning its value
+or the <code>missing</code> argument when absent. Required for shared state stores:
+separate reads and deletes can let two requests use the same login record.
+Redis <code>GETDEL</code> and SQL <code>DELETE ... RETURNING</code> are examples. The process-local
+memory store has a safe fallback; custom/shared stores without <code>take</code> fail
+by default when login state is consumed.</p></dd>
 
 
 <dt id="arg-info">info<a class="anchor" aria-label="anchor" href="#arg-info"></a></dt>
 <dd><p>Function() -&gt; list(max_age = seconds, ...). Optional</p>
-<p>TTL information from <code>[["info"]]()</code> is used to align browser cookie max age in
-<code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p></dd>
+<p><code><a href="oauth_module_server.html">oauth_module_server()</a></code> uses the returned <code>max_age</code> to align the browser
+cookie's maximum age with the store's retention period.</p></dd>
 
 
 <dt id="arg-set-if-absent">set_if_absent<a class="anchor" aria-label="anchor" href="#arg-set-if-absent"></a></dt>
@@ -184,25 +173,16 @@ login as one indivisible operation, so two requests cannot use it. Redis
 <code>GETDEL</code> and SQL <code>DELETE ... RETURNING</code> are examples of backend operations
 that can do this. Use the same <code>state_key</code> and matching provider/client
 settings on every worker. Separate reads and deletes, including those in
-<code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code>, cannot ensure single-use state under concurrent access.
+<code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code>, can let two workers consume the same state.
 See the <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes">deployment guidance</a>.
 For the <code>form_post</code> and <code>form_post.jwt</code> callback bridges, also implement
 <code>set_if_absent</code> to reserve callback slots without replacing pending responses.</p>
-<p>Store values are small R lists; preserve them without interpreting fields.
-Pending login records in external stores are AES-GCM sealed with a distinct
-key derived from <code>state_key</code> and bound to the client, provider, and state key.
-The backend receives an opaque <code>sealed_state_record</code> string instead of the
-browser binding, PKCE verifier, and nonce. Existing unsealed external records
-are rejected; users with logins pending across an upgrade must restart login.
-The default process-local memory store keeps records within the R trust boundary.
-Encryption does not replace backend access controls, expiry, or atomic <code>take</code>:
-a backend able to restore consumed entries can still violate single-use state.</p>
-<p>With <code>request_object_mode = "request_uri"</code>, hosted Request Objects are stored
-as separate records containing the signed or encrypted JWT and its expiry.
-These records do not use the pending-login <code>sealed_state_record</code> wrapper.
-A signed, unencrypted JWT has readable claims, including authorization request
-details. Configure Request Object JWE encryption when those claims need
-confidentiality, and apply backend access controls and expiry to these records.</p>
+<p>Preserve the stored R values unchanged. Pending login records are encrypted,
+but the backend must still enforce access controls, expiry and atomic
+consumption. An upgrade can invalidate pending records; users then restart login.</p>
+<p>Hosted Request Objects (<code>request_object_mode = "request_uri"</code>) use separate
+records. Signed objects can contain readable authorization details; configure
+Request Object encryption if these details must be confidential in storage.</p>
 <p>For a state store, returning <code>max_age</code> in seconds from <code>info()</code> also lets
 <code><a href="oauth_module_server.html">oauth_module_server()</a></code> align the browser cookie lifetime with the store.
 Reporting this value does not expire entries; your backend must enforce it.</p>

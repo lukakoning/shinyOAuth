@@ -2,11 +2,9 @@
 
 ## Overview
 
-shinyOAuth emits structured audit events for authorization requests,
-callbacks, token operations, and changes to the authenticated session.
-Configure `shinyOAuth.audit_hook` with an R function to receive these
-events as named lists and send them to your application’s logging
-system.
+Use audit events to record login attempts, token operations and session
+changes in your application’s logs. Set `shinyOAuth.audit_hook` to an R
+function that receives each event as a named list.
 
 ## Receiving audit events
 
@@ -248,9 +246,8 @@ failure event.
   `form_post_callback_validation`
 - `handle_digest` is included when a form_post callback handle is
   missing, expired, or already consumed.
-- Note: Failures related to state store access (lookup/removal) are
-  reported as their own events (see below) rather than using the
-  `callback_validation_failed` event.
+- State store lookup and removal failures have their own events (see
+  below).
 
 ### State store access
 
@@ -300,11 +297,10 @@ For state store events the digest reflects the plaintext state string.
 - Context: `provider`, `issuer`, `client_id_digest`, `code_digest`,
   `error_class`
 
-Detailed sender-constraint diagnostics such as DPoP token-type
-inference, DPoP nonce retries, and mTLS endpoint-alias selection are
-emitted on the OpenTelemetry spans documented in the [OpenTelemetry
-vignette](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md)
-rather than on the high-level audit events.
+OpenTelemetry spans record DPoP token-type inference, DPoP nonce retries
+and mTLS endpoint-alias selection. These details are omitted from
+high-level audit events. See the [OpenTelemetry
+vignette](https://lukakoning.github.io/shinyOAuth/articles/opentelemetry.md).
 
 ### Token introspection
 
@@ -371,9 +367,10 @@ and `remote_access_outcome`. Reasons are `disconnect`, `disconnect_all`,
 `logout`, or `session_end`. Identifiers use the configured audit digest
 policy; credentials and raw identities are excluded. Remote outcomes
 describe the revocation attempt, not proof that the authorization server
-previously recognized a token. For token targets,
-`remote_access_outcome` covers all acquired access tokens. An incomplete
-result takes precedence over acceptance: `failed`, `not_attempted`,
+previously recognized a token. With token targets,
+`remote_access_outcome` summarizes cleanup for all acquired API tokens.
+It reports a problem or incomplete cleanup even if another token was
+revoked successfully. The outcome priority is `failed`, `not_attempted`,
 `unsupported`, `accepted`, then `missing` (no credential to revoke).
 
 #### Event: `audit_connections_disconnected`
@@ -425,10 +422,8 @@ remain.
 - Context: `provider`, `issuer`, `client_id_digest`, `reason`
   (`refresh_failed_async`\|`refresh_failed_sync`), `kept_token` (TRUE),
   `error_class`, `mirai_error_type`
-- `mirai_error_type` is only present on async refresh failures. Its
-  value is `NA` when the failure is not recognizable as a mirai error,
-  including worker errors converted to ordinary R conditions by promise
-  handling.
+- `mirai_error_type` is only present on async refresh failures. It is
+  `NA` when the error cannot be identified as a mirai error.
 
 ### Browser cookie/WebCrypto error
 
@@ -468,10 +463,9 @@ remain.
 
 #### Event: `audit_userinfo`
 
-- When:
-  [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
-  is called to retrieve user information (emitted on success and various
-  failure modes)
+- When: during
+  [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md),
+  on successful retrieval or a reported failure
 - Context: `provider`, `issuer`, `client_id_digest`, `sub_digest`,
   `status`
 - `status` values:

@@ -92,9 +92,9 @@ oauth_provider_oidc(
 - issuer:
 
   Exact OIDC issuer identifier. Defaults to `base_url`, retaining any
-  trailing slash. Endpoint URLs are joined using a separately normalized
-  base. Supply this explicitly when the issuer differs from the endpoint
-  base.
+  trailing slash. Supply this explicitly when your provider identifies
+  itself with a different URL from the one used to build endpoint
+  addresses.
 
 ## Value
 
@@ -120,7 +120,7 @@ generic_oidc_provider <- oauth_provider_oidc(
   base_url = "https://my-issuer.example.com"
 )
 
-# Configure a OIDC provider via OIDC discovery
+# Look up an OIDC provider's settings with discovery
 # (requires network access)
 if (interactive()) {
   # Using Auth0 sample issuer as an example

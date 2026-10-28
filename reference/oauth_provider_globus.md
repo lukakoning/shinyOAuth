@@ -1,10 +1,10 @@
-# Create a Globus Auth [OAuthProvider](https://lukakoning.github.io/shinyOAuth/reference/OAuthProvider.md)
+# Configure sign-in with Globus Auth
 
-Configure OIDC sign-in with Globus Auth using its published endpoints
-and RS512 ID token signatures. Register a confidential web application
-at <https://app.globus.org/settings/developers> and request
-`scopes = c("openid", "profile", "email")` on
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+Let users sign in with Globus Auth. Register a web application with a
+client secret at <https://app.globus.org/settings/developers>, then pass
+this provider and the credentials to
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
+with `scopes = c("openid", "profile", "email")`.
 
 ## Usage
 
@@ -25,12 +25,6 @@ object configured for Globus Auth login.
 
 ## Details
 
-This preset does not make a discovery request. Globus currently
-advertises RS512 only, whereas generic OIDC discovery requires
-advertised RS256 support. The preset pins RS512 and the Globus JWKS URL,
-retaining signature, issuer, audience, nonce, UserInfo subject, and S256
-PKCE validation.
-
 This helper supports OIDC login. Globus API grants can return separate
 credentials for several resource servers in `other_tokens`. Those fields
 are preserved in `token@extra_fields`, but shinyOAuth does not
@@ -40,6 +34,13 @@ optionally `offline_access`; use a separate Globus-aware integration for
 multi-resource API authorization. Never send the login access token to
 another resource server merely because a nested token granted access to
 it.
+
+## Advanced provider settings
+
+The preset uses Globus's published endpoints and RS512 identity-token
+signatures. It does not use generic discovery, which requires advertised
+RS256 support. Identity, nonce, profile-subject and S256 PKCE checks
+remain enabled.
 
 See the [Globus Auth
 guide](https://docs.globus.org/api/auth/developer-guide/).

@@ -5,8 +5,8 @@
 shinyOAuth exports diagnostic logs and traces through OpenTelemetry
 (OTel), using the `otel` R package. Logs record events such as a failed
 token exchange. Traces group related operations into spans, which record
-their duration and outcome. This allows authentication diagnostics to be
-collected alongside other application telemetry.
+their duration and outcome. Send these records to the same monitoring
+service as your other application telemetry.
 
 An exporter sends the records to a console, file, or monitoring service.
 The `otel` package is a dependency of shinyOAuth; install `otelsdk` for
@@ -101,13 +101,13 @@ workers after changing it.
   templates. Opt-in detail has URL userinfo, query strings, fragments,
   and control characters removed and is limited to 512 UTF-8 bytes per
   field.
-- HTTP calls performed by shinyOAuth suppress httr2’s automatic spans,
-  which otherwise include full request paths and query strings. Package
-  HTTP spans follow the URL privacy policy above. Direct calls to
-  [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
-  use httr2’s own telemetry settings, including requests built with
-  [`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-  and then performed by application code.
+- Requests sent by shinyOAuth follow the URL privacy policy above,
+  including protection from automatic httr2 traces containing full URLs.
+  If you send a prepared request with
+  [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html),
+  httr2’s own telemetry settings apply. Use
+  [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+  to keep shinyOAuth’s request handling.
 - Tokens, authorization codes, state payloads, and browser tokens are
   not included as ordinary span attributes. Digest fields support
   correlation without the raw value. Keep debugging options off for
@@ -210,7 +210,7 @@ differ between main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a
     response is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected before client credentials or PAR parameters
     can leak
 
@@ -359,7 +359,7 @@ differ between main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a
     response is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected before credentials can leak
 
 #### Span: `shinyOAuth.token.verify`
@@ -425,7 +425,7 @@ differ between main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a
     response is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected to avoid bearer-token leakage
 
 #### Span: `shinyOAuth.refresh`
@@ -527,7 +527,7 @@ differ between main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a
     response is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected to prevent credential leakage
 
 #### Span: `shinyOAuth.token.revoke.worker`
@@ -578,7 +578,7 @@ differ between main-process and worker spans.
   - `http.response.status_code`, `http.response.content_type` after a
     response is available
 - Notes:
-  - this is used as a client span (`kind = "client"`)
+  - span kind: `client`
   - redirects are rejected to prevent credential leakage
 
 #### Span: `shinyOAuth.token.introspect.worker`

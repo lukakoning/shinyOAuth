@@ -33,8 +33,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -78,8 +78,8 @@
 <p>shinyOAuth exports diagnostic logs and traces through OpenTelemetry
 (OTel), using the <code>otel</code> R package. Logs record events such
 as a failed token exchange. Traces group related operations into spans,
-which record their duration and outcome. This allows authentication
-diagnostics to be collected alongside other application telemetry.</p>
+which record their duration and outcome. Send these records to the same
+monitoring service as your other application telemetry.</p>
 <p>An exporter sends the records to a console, file, or monitoring
 service. The <code>otel</code> package is a dependency of shinyOAuth;
 install <code>otelsdk</code> for its exporters. For R callbacks that
@@ -168,12 +168,12 @@ authority by default; paths require an explicit
 templates. Opt-in detail has URL userinfo, query strings, fragments, and
 control characters removed and is limited to 512 UTF-8 bytes per
 field.</li>
-<li>HTTP calls performed by shinyOAuth suppress httr2’s automatic spans,
-which otherwise include full request paths and query strings. Package
-HTTP spans follow the URL privacy policy above. Direct calls to
-<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> use httr2’s own telemetry settings,
-including requests built with <code><a href="../reference/resource_req.html">resource_req()</a></code> and then
-performed by application code.</li>
+<li>Requests sent by shinyOAuth follow the URL privacy policy above,
+including protection from automatic httr2 traces containing full URLs.
+If you send a prepared request with <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code>,
+httr2’s own telemetry settings apply. Use
+<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to keep shinyOAuth’s request
+handling.</li>
 <li>Tokens, authorization codes, state payloads, and browser tokens are
 not included as ordinary span attributes. Digest fields support
 correlation without the raw value. Keep debugging options off for
@@ -330,7 +330,8 @@ available</li>
 </li>
 <li>Notes:
 <ul>
-<li>this is used as a client span (<code>kind = "client"</code>)</li>
+<li>span kind: <code>client</code>
+</li>
 <li>redirects are rejected before client credentials or PAR parameters
 can leak</li>
 </ul>
@@ -606,7 +607,8 @@ available</li>
 </li>
 <li>Notes:
 <ul>
-<li>this is used as a client span (<code>kind = "client"</code>)</li>
+<li>span kind: <code>client</code>
+</li>
 <li>redirects are rejected before credentials can leak</li>
 </ul>
 </li>
@@ -734,7 +736,8 @@ available</li>
 </li>
 <li>Notes:
 <ul>
-<li>this is used as a client span (<code>kind = "client"</code>)</li>
+<li>span kind: <code>client</code>
+</li>
 <li>redirects are rejected to avoid bearer-token leakage</li>
 </ul>
 </li>
@@ -921,7 +924,8 @@ available</li>
 </li>
 <li>Notes:
 <ul>
-<li>this is used as a client span (<code>kind = "client"</code>)</li>
+<li>span kind: <code>client</code>
+</li>
 <li>redirects are rejected to prevent credential leakage</li>
 </ul>
 </li>
@@ -1015,7 +1019,8 @@ available</li>
 </li>
 <li>Notes:
 <ul>
-<li>this is used as a client span (<code>kind = "client"</code>)</li>
+<li>span kind: <code>client</code>
+</li>
 <li>redirects are rejected to prevent credential leakage</li>
 </ul>
 </li>

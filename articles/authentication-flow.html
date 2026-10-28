@@ -33,8 +33,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -95,10 +95,6 @@ alone is not an identity assertion.</p>
 <div class="section level2">
 <h2 id="what-happens-during-the-authentication-flow">What happens during the authentication flow?<a class="anchor" aria-label="anchor" href="#what-happens-during-the-authentication-flow"></a>
 </h2>
-<p>The steps below follow a login from the first page load through token
-refresh and logout. Each step describes the usual OAuth or OIDC behavior
-first, then the additional behavior for the relevant optional
-features.</p>
 <div class="section level3">
 <h3 id="first-page-load-set-a-browser-token">1. First page load: set a browser token<a class="anchor" aria-label="anchor" href="#first-page-load-set-a-browser-token"></a>
 </h3>
@@ -160,28 +156,21 @@ includes <code>response_type=code</code>, <code>client_id</code>,
 OIDC, the scopes include <code>openid</code>. The module also creates
 values that link this request to the callback and token exchange:</p>
 <ul>
-<li>
-<strong>State and a browser cookie</strong> link the callback to the
-pending login and its initiating browser. State is encrypted and
-protected against changes.</li>
-<li>
-<strong>Proof Key for Code Exchange (PKCE)</strong> uses a secret
+<li>State and a browser cookie link the callback to the pending login
+and its initiating browser. State is encrypted and protected against
+changes.</li>
+<li>Proof Key for Code Exchange (PKCE) uses a secret
 <code>code_verifier</code> and matching <code>code_challenge</code> to
 bind the authorization request to the later token exchange; the state
 and browser token provide the browser-session binding.</li>
-<li>
-<strong>Nonce (OIDC)</strong> is a random value checked in the
-returned ID token to tie that token to the login request.</li>
+<li>Nonce (OIDC) is a random value checked in the returned ID token to
+tie that token to the login request.</li>
 </ul>
-<p>The module creates and checks these values automatically when
-enabled. <code><a href="../reference/oauth_provider_oidc.html">oauth_provider_oidc()</a></code> and
-<code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> enable PKCE and nonce by
-default. Provider presets can choose different PKCE settings to match
-their registration requirements. ORCID and Slack’s default confidential
-profile use client authentication and validated OIDC nonce without PKCE;
-see their provider helper documentation for the applicable settings.
-Public clients must use PKCE, and <code>S256</code> is the default PKCE
-method.</p>
+<p>The module creates and checks these values for you. The generic OIDC
+helpers enable PKCE and nonce by default; named provider helpers can use
+other settings to match that service’s registration requirements. Follow
+the helper’s setup guidance. Public clients must use PKCE;
+<code>S256</code> is the default method.</p>
 <p>Fixed routing queries on the authorization endpoint are preserved.
 Put protocol policy parameters such as <code>prompt</code> and
 <code>max_age</code> in <code>extra_auth_params</code>, and use the
@@ -266,9 +255,8 @@ query-string callback described in step 6.</p>
 </h3>
 <p>The provider handles authentication and asks the user to authorize
 the requested permissions. It may skip these prompts if the user already
-has an active session or has granted the requested access. The user’s
-credentials are entered at the provider, rather than in the Shiny
-app.</p>
+has an active session or has granted the requested access. Users enter
+their credentials at the provider.</p>
 </div>
 <div class="section level3">
 <h3 id="provider-returns-the-browser-to-the-app">6. Provider returns the browser to the app<a class="anchor" aria-label="anchor" href="#provider-returns-the-browser-to-the-app"></a>
@@ -410,11 +398,11 @@ authorization code, <code>redirect_uri</code>, the PKCE verifier when
 enabled, and the credentials required by the app’s registration.
 <code>token_auth_style</code> determines how the client identifies
 itself, for example with a client secret or a private key.</p>
-<p>The provider returns an <strong>access token</strong>, which
-authorizes API requests on the user’s behalf. It may also return a
-<strong>refresh token</strong>, allowing the app to obtain a replacement
-access token without another browser redirect. An OIDC response includes
-an <strong>ID token</strong>, which is checked in the next step.</p>
+<p>The provider returns an access token, which authorizes API requests
+on the user’s behalf. It may also return a refresh token, allowing the
+app to obtain a replacement access token without another browser
+redirect. An OIDC response includes an ID token, which is checked in the
+next step.</p>
 <p>The response must contain an access token and its
 <code>token_type</code>. Malformed responses or unsupported token types
 stop login. If the response reports fewer scopes than requested,
@@ -488,10 +476,10 @@ fields does not verify the token’s authenticity.</p>
 token before fetching userinfo or marking login complete. It checks that
 the provider signed it, that it was issued for this client, that it is
 still valid, and that it belongs to the login request.</p>
-<p>The provider publishes public signing keys as a <strong>JSON Web Key
-Set (JWKS)</strong>. shinyOAuth fetches and caches these keys using the
-provider’s configured <code>issuer</code> and key settings; provider
-helpers supply the usual defaults.</p>
+<p>The provider publishes public signing keys as a JSON Web Key Set
+(JWKS). shinyOAuth fetches and caches these keys using the provider’s
+configured <code>issuer</code> and key settings; provider helpers supply
+the usual defaults.</p>
 <div class="section level4">
 <h4 id="signature-and-claim-checks">Signature and claim checks<a class="anchor" aria-label="anchor" href="#signature-and-claim-checks"></a>
 </h4>
@@ -751,13 +739,11 @@ to revoke both access and refresh tokens if the provider supports it. It
 does not end the user’s login session at the provider.
 <code>revoke_on_session_end = TRUE</code> also attempts revocation when
 the Shiny session ends and requires a configured
-<code>revocation_url</code>. With this option enabled, automatic expiry
-or maximum authentication age also attempts revocation as soon as it
-clears the session, including secondary resource tokens. The retiring
-credentials are cleaned up before a later login can replace them.
-Revocation can fail, for example if the provider is unavailable; local
-cleanup still happens. These requests run in the background only with
-<code>async = TRUE</code>.</p>
+<code>revocation_url</code>. This also applies when token expiry or the
+configured maximum login age clears the local login, including any
+additional API tokens. Revocation can fail, for example if the provider
+is unavailable; local cleanup still happens. These requests run in the
+background only with <code>async = TRUE</code>.</p>
 <p>The module also clears and renews the browser token for subsequent
 logins. For direct token management, <a href="https://lukakoning.github.io/shinyOAuth/reference/revoke_token.html"><code>revoke_token()</code></a>
 lets you request revocation of an access or refresh token.</p>

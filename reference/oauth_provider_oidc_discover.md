@@ -148,15 +148,19 @@ endpoint does not itself require token introspection; set
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
 when login and refresh must perform that check.
 
-Discovery describes what a service supports. Your app's registration may
-require a particular `token_auth_style`, secret, or key; configure those
-to match the registration. Automatic selection prefers `"header"`, then
-`"body"`, then `"public"` when `none` is advertised and PKCE is enabled.
-For a public client registration, set `token_auth_style = "public"`
-explicitly. JWT and mTLS methods must also be selected explicitly.
-Explicit choices must match the discovery metadata. If
-`token_endpoint_auth_methods_supported` is omitted, the OIDC default is
-`client_secret_basic` (`"header"`); other methods must be advertised.
+Discovery describes the service, not your app registration. Use the
+client ID and secret or key issued for your app. If the registration is
+public (no secret), explicitly select `token_auth_style = "public"`.
+Other authentication choices and metadata restrictions are described
+below.
+
+## Advanced authentication selection
+
+Automatic selection prefers `"header"`, then `"body"`, then `"public"`
+when `none` is advertised and PKCE is enabled. JWT and mTLS methods
+require an explicit choice. Selected methods must match the advertised
+metadata. If `token_endpoint_auth_methods_supported` is absent, only the
+OIDC default `client_secret_basic` (`"header"`) is assumed.
 
 ## Discovery validation
 
@@ -215,7 +219,7 @@ generic_oidc_provider <- oauth_provider_oidc(
   base_url = "https://my-issuer.example.com"
 )
 
-# Configure a OIDC provider via OIDC discovery
+# Look up an OIDC provider's settings with discovery
 # (requires network access)
 if (interactive()) {
   # Using Auth0 sample issuer as an example

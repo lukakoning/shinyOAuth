@@ -52,9 +52,9 @@ resource_req(
   Optional named list or named character vector of extra headers to set
   on the request. Header names are case-insensitive. Names must be
   unique HTTP field-name tokens, and values must not contain prohibited
-  control characters. DPoP requests reject `Host` overrides. Any
-  user-supplied `Authorization` or `DPoP` header is ignored to ensure
-  the token authentication set by this function is not overridden.
+  control characters. DPoP requests reject `Host` overrides. This
+  function manages the `Authorization` and `DPoP` headers and ignores
+  user-supplied replacements.
 
 - query:
 
@@ -84,15 +84,10 @@ resource_req(
 - client:
 
   Optional
-  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md).
-  Required when the effective token type is `DPoP`, because the client
-  carries the configured DPoP proof key, and also when using
-  sender-constrained mTLS / certificate-bound tokens so shinyOAuth can
-  attach the configured client certificate and validate any `cnf`
-  thumbprint from an
-  [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
-  and observe any `cnf` thumbprint carried on a raw JWT access-token
-  string.
+  [OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md);
+  required for DPoP or mTLS-bound tokens so the request can use the
+  matching signing key or certificate and check any token-binding
+  information.
 
 - token_type:
 
@@ -141,24 +136,27 @@ authentication and tokens tied to a key (DPoP) or certificate (mTLS).
 For DPoP or mTLS, also supply `client` so the request uses the matching
 key or certificate.
 
-Managed Authorization credentials cannot be combined with an
-`access_token` query parameter or form field. Inspection covers
-URL/query inputs and prebuilt httr2 form, raw and string bodies labelled
-`application/x-www-form-urlencoded`. JSON business fields are
-unaffected. File, multipart and streaming bodies are not parsed; callers
-must ensure these contain no additional OAuth credential transport.
-Later request changes outside these helpers require a new check.
-
-Response body limits require
-[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md),
-which bounds both encoded downloads and decoded gzip data before
-accumulating the full body. Performing this builder's result with
+Use
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+to send the prepared request with the package's response-size limits.
+Sending it through
 [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
-uses httr2's transport instead: shinyOAuth's decoded-body guarantee does
-not apply, and curl's size option depends on the installed libcurl
-version. Pass a prepared request to
-`perform_resource_req(token, request, client = client)` to retain the
-package's bounded transport and fresh authentication.
+instead uses httr2's transport settings. Keep tokens on the server and
+away from logs.
+
+## Advanced request restrictions
+
+Do not combine the managed Authorization header with an `access_token`
+query parameter or form field. The helper checks ordinary URL and form
+inputs, but does not inspect file, multipart or streaming bodies. You
+are responsible for avoiding additional credential fields there and
+after later request changes.
+
+[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
+limits both downloaded bytes and decoded gzip data. Direct httr2
+execution does not provide shinyOAuth's decoded-response limit; its curl
+limit depends on the installed libcurl version. Prepared requests can be
+sent with `perform_resource_req(token, request, client = client)`.
 
 ## DPoP note
 
@@ -195,7 +193,7 @@ if (interactive()) {
   )
 
   # Inspect request settings without printing authentication headers.
-  # Keep bounded encoded/decoded response handling when sending it.
+  # Keep the package's response-size limits when sending it.
   response <- perform_resource_req(token, request)
 
   # Or start from your own httr2 request and still let shinyOAuth perform it

@@ -23,8 +23,8 @@ Use resource_req() for Bearer, DPoP, and mTLS-protected resource requests instea
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/usage.html">Usage</a></li>
-    <li><a class="dropdown-item" href="../articles/external-integrations.html">External SDKs and database drivers</a></li>
-    <li><a class="dropdown-item" href="../articles/token-targets.html">Several API tokens from one authorization</a></li>
+    <li><a class="dropdown-item" href="../articles/external-integrations.html">Use your Shiny login with other R packages</a></li>
+    <li><a class="dropdown-item" href="../articles/token-targets.html">Use one login for several APIs</a></li>
     <li><a class="dropdown-item" href="../articles/multiple-authorizations.html">Keep and use multiple OAuth authorizations</a></li>
     <li><a class="dropdown-item" href="../articles/smart-on-fhir.html">Use SMART on FHIR from Shiny</a></li>
     <li><a class="dropdown-item" href="../articles/example-spotify.html">Example: Spotify login to display listening data</a></li>
@@ -100,8 +100,8 @@ reflected by the server and disclose credentials.</p></dd>
 headers to set on the request. Header names are case-insensitive.
 Names must be unique HTTP field-name tokens, and values must not contain
 prohibited control characters. DPoP requests reject <code>Host</code> overrides.
-Any user-supplied <code>Authorization</code> or <code>DPoP</code> header is ignored to ensure
-the token authentication set by this function is not overridden.</p></dd>
+This function manages the <code>Authorization</code> and <code>DPoP</code> headers and ignores
+user-supplied replacements.</p></dd>
 
 
 <dt id="arg-query">query<a class="anchor" aria-label="anchor" href="#arg-query"></a></dt>
@@ -129,12 +129,9 @@ the security implications.</p></dd>
 
 
 <dt id="arg-client">client<a class="anchor" aria-label="anchor" href="#arg-client"></a></dt>
-<dd><p>Optional <a href="OAuthClient.html">OAuthClient</a>. Required when the effective
-token type is <code>DPoP</code>, because the client carries the configured DPoP proof
-key, and also when using sender-constrained mTLS / certificate-bound
-tokens so shinyOAuth can attach the configured client certificate and
-validate any <code>cnf</code> thumbprint from an <a href="OAuthToken.html">OAuthToken</a> and observe any <code>cnf</code>
-thumbprint carried on a raw JWT access-token string.</p></dd>
+<dd><p>Optional <a href="OAuthClient.html">OAuthClient</a>; required for DPoP or mTLS-bound tokens
+so the request can use the matching signing key or certificate and check
+any token-binding information.</p></dd>
 
 
 <dt id="arg-token-type">token_type<a class="anchor" aria-label="anchor" href="#arg-token-type"></a></dt>
