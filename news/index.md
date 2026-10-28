@@ -82,6 +82,11 @@
 
   - Package HTTPS requests now require TLS 1.2 or later by default,
     providing the same minimum across R installations.
+  - Protocol JSON now uses
+    [`jsonlite::parse_json()`](https://jeroen.r-universe.dev/jsonlite/reference/read_json.html)
+    instead of `fromJSON()`. Responses and state envelopes are parsed as
+    literal JSON, preventing URL-like or file-path input from triggering
+    server-side request forgery (SSRF) or unintended local-file reads.
   - Stricter checks catch malformed provider responses and configuration
     mistakes. Numeric claim requirements are no longer rounded before
     reaching the provider. Reusing a key or secret with conflicting
@@ -123,8 +128,11 @@
     memory growth after decryption failures. This requires
     `callr >= 3.7.6` at runtime and adds process startup time to these
     callbacks.
-  - Requires `jsonlite >= 1.6` and `openssl >= 2.1.2`; the future async
-    backend requires `promises >= 1.3.3`.
+  - Requires `jsonlite >= 1.6` for literal-text `parse_json()` parsing
+    and `openssl >= 2.1.2` for the RSA-OAEP encryption/decryption used
+    by encrypted authorization requests (JAR) and responses (JARM). The
+    future async backend requires `promises >= 1.3.3` so
+    `future_promise()` can dispatch work with newer versions of future.
 
 ## shinyOAuth 0.6.1
 

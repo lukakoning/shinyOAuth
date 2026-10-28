@@ -78,6 +78,7 @@
 <li>
 <p>Safer API requests and identity checks:</p>
 <ul><li>Package HTTPS requests now require TLS 1.2 or later by default, providing the same minimum across R installations.</li>
+<li>Protocol JSON now uses <code><a href="https://jeroen.r-universe.dev/jsonlite/reference/read_json.html" class="external-link">jsonlite::parse_json()</a></code> instead of <code>fromJSON()</code>. Responses and state envelopes are parsed as literal JSON, preventing URL-like or file-path input from triggering server-side request forgery (SSRF) or unintended local-file reads.</li>
 <li>Stricter checks catch malformed provider responses and configuration mistakes. Numeric claim requirements are no longer rounded before reaching the provider. Reusing a key or secret with conflicting signing algorithms is rejected; use separate keys or secrets when different algorithms are required.</li>
 <li>Manual <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code> calls apply configured identity and signature checks even when automatic retrieval is disabled. Pass the complete <code>OAuthToken</code> so the profile can be checked against the signed-in user.</li>
 <li>DPoP signing now matches the URL actually sent, fixing failures with internationalized URLs and normalized paths. Unsafe request overrides are rejected, and resource URL inputs are limited to 8192 bytes, including query parameters. Input limits and leaner parsing reduce worker slowdowns from oversized or malformed callbacks and provider responses.</li>
@@ -89,7 +90,7 @@
 <li>Custom form-post stores need atomic <code>set_if_absent</code> and <code>take</code> operations so simultaneous callbacks cannot overwrite or reuse pending login records. Custom JWKS caches run synchronously unless declared safe for separate R processes with <code>worker_safe = TRUE</code>, avoiding reuse of process-specific connections in workers. See <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html">custom_cache()</a>.</li>
 <li>Unsupported SMART OIDC <code>reauth_after_seconds</code> limits now fail at startup. Use <code>NULL</code> when <code>indefinite_session = FALSE</code> to avoid a later login failure. <code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> reports uninspected mTLS credentials as unresolved instead of assuming configured files are usable.</li>
 <li>Encrypted JARM callbacks now use a temporary R process to limit memory growth after decryption failures. This requires <code>callr &gt;= 3.7.6</code> at runtime and adds process startup time to these callbacks.</li>
-<li>Requires <code>jsonlite &gt;= 1.6</code> and <code>openssl &gt;= 2.1.2</code>; the future async backend requires <code>promises &gt;= 1.3.3</code>.</li>
+<li>Requires <code>jsonlite &gt;= 1.6</code> for literal-text <code>parse_json()</code> parsing and <code>openssl &gt;= 2.1.2</code> for the RSA-OAEP encryption/decryption used by encrypted authorization requests (JAR) and responses (JARM). The future async backend requires <code>promises &gt;= 1.3.3</code> so <code>future_promise()</code> can dispatch work with newer versions of future.</li>
 </ul></li>
 </ul></div>
     <div class="section level2">
