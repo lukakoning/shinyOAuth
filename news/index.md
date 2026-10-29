@@ -2,8 +2,7 @@
 
 ## shinyOAuth (development version)
 
-- Use your Shiny login with external R packages, SDKs, and database
-  drivers:
+- Use your Shiny login with other R packages:
 
   - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
     now provides `connection()`. Connections from this module and
@@ -13,8 +12,8 @@
   - `$has_scopes()` helps apps enable features based on available
     permissions, such as showing an edit button only with write access.
     `$request(refresh = TRUE)` reduces failures from expired tokens by
-    refreshing before an API call, without automatically replaying a
-    failed call.
+    refreshing before an API call, without replaying it after a
+    token-expiry error.
   - See
     [`vignette("external-integrations", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)
     ([online
@@ -46,10 +45,15 @@
     `oauth_provider_microsoft(userinfo_required = FALSE)` when the token
     is intended for another API. This avoids a failed profile request
     without disabling OIDC identity checks.
-  - Fixed validation failures with trailing slashes in manually
-    configured OIDC issuer URLs, GitHub’s permission-response format,
-    and Microsoft directory-ID letter case. Ed25519 keys now work for
-    signed login requests and self-signed mTLS registration.
+  - [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
+    preserves exact issuer URLs, including trailing slashes, and accepts
+    a separate `issuer` when it differs from the endpoint base URL.
+    Fixed GitHub’s permission-response format and Microsoft directory-ID
+    letter case. Ed25519 keys now work for signed login requests and
+    self-signed mTLS registration.
+  - Fixed introspection and revocation calls with credentials or
+    authentication settings that differ from those used for token
+    exchange.
   - Improved compatibility with upcoming S7 releases: avoided `:=`
     import conflicts with rlang and warnings about the signing-algorithm
     default. Package load, unload and build now use S7 lifecycle hooks
@@ -85,24 +89,28 @@
   - Protocol JSON now uses
     [`jsonlite::parse_json()`](https://jeroen.r-universe.dev/jsonlite/reference/read_json.html)
     instead of `fromJSON()`. Responses and state envelopes are parsed as
-    literal JSON, preventing URL-like or file-path input from triggering
-    server-side request forgery (SSRF) or unintended local-file reads.
+    literal JSON text, preventing URL-like or file-path input from
+    triggering server-side request forgery (SSRF) or unintended
+    local-file reads.
   - Stricter checks catch malformed provider responses and configuration
-    mistakes. Numeric claim requirements are no longer rounded before
-    reaching the provider. Reusing a key or secret with conflicting
-    signing algorithms is rejected; use separate keys or secrets when
-    different algorithms are required.
+    mistakes. Reusing an RSA key or HMAC secret with conflicting signing
+    algorithms is rejected; use separate keys or secrets when different
+    algorithms are required.
+  - Numeric OIDC claim requirements are no longer rounded before
+    reaching the provider, including in signed authorization requests.
+    Single-element `values` vectors remain JSON arrays automatically.
+    Invalid claims requests are rejected when configuring the client.
   - Manual
     [`get_userinfo()`](https://lukakoning.github.io/shinyOAuth/reference/get_userinfo.md)
     calls apply configured identity and signature checks even when
     automatic retrieval is disabled. Pass the complete `OAuthToken` so
     the profile can be checked against the signed-in user.
   - DPoP signing now matches the URL actually sent, fixing failures with
-    internationalized URLs and normalized paths. Unsafe request
-    overrides are rejected, and resource URL inputs are limited to 8192
-    bytes, including query parameters. Input limits and leaner parsing
-    reduce worker slowdowns from oversized or malformed callbacks and
-    provider responses.
+    internationalized URLs and normalized paths. DPoP requests reject
+    automatic redirects, and unsafe request overrides are rejected.
+    Resource URL inputs are limited to 8192 bytes, including query
+    parameters. Input limits and leaner parsing reduce worker slowdowns
+    from oversized or malformed callbacks and provider responses.
   - Improved log and trace redaction reduces exposure of private URL
     paths, query parameters, and sensitive provider diagnostics.
 
@@ -111,10 +119,22 @@
   - More precise configuration checks help prevent logins and saved
     connections from resuming under changed login policies. Older
     records are invalidated: users must sign in and connect again after
-    upgrading. Update workers sharing keys and storage together.
-  - Custom form-post stores need atomic `set_if_absent` and `take`
-    operations so simultaneous callbacks cannot overwrite or reuse
-    pending login records. Custom JWKS caches run synchronously unless
+    upgrading. Update workers sharing keys and storage together. For a
+    custom `userinfo_id_selector` that uses settings outside its
+    function body, set `userinfo_id_selector_policy_id` and update it
+    when those settings change.
+  - Discovery checks client authentication against the provider’s
+    metadata. If authentication methods are omitted, only HTTP Basic
+    (`token_auth_style = "header"`) is assumed. Use manual provider
+    configuration for services that require a different method without
+    declaring it.
+  - Enforcing UserInfo claim requirements now requires automatic profile
+    retrieval: set `userinfo_required = TRUE` and configure
+    `userinfo_url` on the provider. This prevents login from silently
+    skipping the requested profile checks.
+  - Custom form-post stores now require atomic `set_if_absent` in
+    addition to `take`, so simultaneous callbacks cannot overwrite or
+    reuse pending records. Custom JWKS caches run synchronously unless
     declared safe for separate R processes with `worker_safe = TRUE`,
     avoiding reuse of process-specific connections in workers. See
     [custom_cache()](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html).
@@ -125,9 +145,9 @@
     reports uninspected mTLS credentials as unresolved instead of
     assuming configured files are usable.
   - Encrypted JARM callbacks now use a temporary R process to limit
-    memory growth after decryption failures. This requires
-    `callr >= 3.7.6` at runtime and adds process startup time to these
-    callbacks.
+    memory growth after decryption failures. Deployments need
+    `callr >= 3.7.6` and must allow R subprocesses; these callbacks
+    incur process startup time.
   - Requires `jsonlite >= 1.6` for literal-text `parse_json()` parsing
     and `openssl >= 2.1.2` for the RSA-OAEP encryption/decryption used
     by encrypted authorization requests (JAR) and responses (JARM). The
