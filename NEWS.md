@@ -16,6 +16,9 @@
 
 * Access several APIs, such as calendars and contacts, through one login:
 
+  - Client constructors infer API scopes from `token_targets` when `scopes` is
+    omitted, avoiding duplicate declarations. Explicit scopes remain a limit
+    and must cover every target; identity and refresh-consent rules still apply.
   - Connection `$is_usable()` and `$summary()` now accept `target` to inspect
     another API's token without acquiring or refreshing it.
   - Configure `token_targets` in `oauth_client()` for providers supporting

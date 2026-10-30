@@ -50,7 +50,6 @@ client <- oauth_client(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri = "https://app.example/callback",
-  scopes = c("calendar.read", "calendar.write", "contacts.read"),
   token_targets = list(
     calendar = list(
       resource = "https://calendar.example/",
@@ -73,6 +72,11 @@ client <- oauth_client(
 ```
 
 `token_target_default` chooses the API when a call omits `target`.
+Omitting client `scopes` uses the union of API permissions declared by the targets.
+If you supply `scopes`, include every target's permissions: that explicit list
+remains the limit and is never expanded automatically. Identity and refresh
+consent, such as `profile` or `offline_access`, still need an explicit request;
+OIDC continues to add `openid` when needed.
 `resource_ids` connects each target to its named API address in `resource_bases`.
 You can omit those addresses when only exporting tokens to another package.
 

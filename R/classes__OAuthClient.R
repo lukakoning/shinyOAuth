@@ -49,10 +49,15 @@
 #'   the available names. For OIDC (`issuer` set and `infer_oidc_from_issuer = TRUE`),
 #'   shinyOAuth adds `"openid"` automatically if absent. The resulting set is
 #'   used in the request and subsequent scope checks.
+#'   When omitted with `token_targets`, API scopes are inferred from those
+#'   declarations. Explicit `scopes` must include every target's API scopes;
+#'   they are never expanded from declarations. With no targets, the default
+#'   requests no API scopes. OIDC adds `"openid"`; request further identity and
+#'   refresh-consent scopes explicitly.
 #'
 #' @param token_targets Optional named list for obtaining tokens for several APIs
 #'   through one login. Each entry needs a `resource` identifier and `scopes`
-#'   (also included in client `scopes`). Optional `required_scopes` set that API's
+#'   (also included in explicit client `scopes`). Optional `required_scopes` set that API's
 #'   minimum permissions; `resource_ids` associate it with named `resource_bases`.
 #'   Optional Microsoft `scope_aliases` identify unusual short permission names
 #'   in responses. Requires provider support and `userinfo_required = FALSE`;
@@ -558,7 +563,10 @@ OAuthClient <- S7::new_class(
     client_secret = S7::class_character,
     endpoint_auth = S7::new_property(S7::class_list, default = list()),
     redirect_uri = S7::class_character,
-    scopes = S7::class_character,
+    scopes = S7::new_property(
+      S7::class_character,
+      default = quote(token_target_default_scopes(token_targets, provider))
+    ),
     token_targets = S7::new_property(S7::class_list, default = list()),
     token_target_default = S7::new_property(
       S7::class_character,
@@ -913,7 +921,7 @@ oauth_client <- function(
   client_secret = character(0),
   redirect_uri,
   enforce_callback_issuer = NULL,
-  scopes = character(0),
+  scopes = token_target_default_scopes(token_targets, provider),
   resource = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),

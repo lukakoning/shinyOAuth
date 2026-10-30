@@ -14,6 +14,27 @@ token_target_oidc_scopes <- function(client) {
 
 token_targets_configured <- function(client) length(client@token_targets) > 0L
 
+token_target_default_scopes <- function(targets, provider) {
+  if (!is.list(targets) || length(targets) > 16L) {
+    err_config("token_targets must be a list of at most 16 targets")
+  }
+  if (!length(targets)) {
+    return(character())
+  }
+  scopes <- lapply(targets, function(target) {
+    if (!is.list(target) || is.null(target[["scopes"]])) {
+      err_config("Each token target needs resource and scopes")
+    }
+    connection_scope_arguments(target[["scopes"]])
+  })
+  scopes <- unique(unlist(scopes, use.names = FALSE)) %||% character()
+  scopes <- ensure_openid_scope(scopes, provider, warn = FALSE)
+  if (!authorization_scopes_bounded(scopes)) {
+    err_config("Token target authorizations allow at most 128 distinct scopes and 8192 scope bytes in total")
+  }
+  scopes
+}
+
 token_target_name <- function(client, target = NULL) {
   if (!token_targets_configured(client)) {
     if (!is.null(target)) {

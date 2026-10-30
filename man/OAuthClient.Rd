@@ -32,7 +32,7 @@ OAuthClient(
   dpop_require_access_token = !is.null(dpop_private_key),
   redirect_uri = character(0),
   enforce_callback_issuer = FALSE,
-  scopes = character(0),
+  scopes = token_target_default_scopes(token_targets, provider),
   resource = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
@@ -322,7 +322,12 @@ support. Set \code{FALSE} to opt out explicitly.}
 \item{scopes}{Character vector of permissions to request. The provider defines
 the available names. For OIDC (\code{issuer} set and \code{infer_oidc_from_issuer = TRUE}),
 shinyOAuth adds \code{"openid"} automatically if absent. The resulting set is
-used in the request and subsequent scope checks.}
+used in the request and subsequent scope checks.
+When omitted with \code{token_targets}, API scopes are inferred from those
+declarations. Explicit \code{scopes} must include every target's API scopes;
+they are never expanded from declarations. With no targets, the default
+requests no API scopes. OIDC adds \code{"openid"}; request further identity and
+refresh-consent scopes explicitly.}
 
 \item{resource}{Optional RFC 8707 resource indicator(s). Supply a character
 vector of absolute URIs to request audience-restricted tokens for one or
@@ -623,7 +628,7 @@ empty for ordinary clients. This is not an argument to \code{\link[=oauth_client
 
 \item{token_targets}{Optional named list for obtaining tokens for several APIs
 through one login. Each entry needs a \code{resource} identifier and \code{scopes}
-(also included in client \code{scopes}). Optional \code{required_scopes} set that API's
+(also included in explicit client \code{scopes}). Optional \code{required_scopes} set that API's
 minimum permissions; \code{resource_ids} associate it with named \code{resource_bases}.
 Optional Microsoft \code{scope_aliases} identify unusual short permission names
 in responses. Requires provider support and \code{userinfo_required = FALSE};
