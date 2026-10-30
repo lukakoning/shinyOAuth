@@ -59,7 +59,7 @@ test_that("secondary acquisition cannot postpone primary proactive renewal", {
       .accept_login_token(token, NULL)
       current <- values[["connection"]]()
       expect_identical(
-        current[["access_token"]](target = "secondary", min_valid_for = 0),
+        current[["access_token"]](target = "secondary", min_valid_for_seconds = 0),
         "access-1"
       )
       session[["flushReact"]]()
@@ -69,7 +69,7 @@ test_that("secondary acquisition cannot postpone primary proactive renewal", {
       expect_error(
         current[["access_token"]](
           target = "secondary",
-          min_valid_for = 0,
+          min_valid_for_seconds = 0,
           force_refresh = TRUE
         ),
         class = "shinyOAuth_access_error"
@@ -143,7 +143,7 @@ test_that("secondary success preserves primary cooldown and failure backoff", {
         current <- values[["connection"]]()
         session[["flushReact"]]()
         expect_identical(primary_calls, 1L)
-        current[["access_token"]](target = "secondary", min_valid_for = 0)
+        current[["access_token"]](target = "secondary", min_valid_for_seconds = 0)
         session[["flushReact"]]()
         expect_identical(primary_calls, 1L)
         now <<- now + if (fail_primary) 1.5 else 6
@@ -165,7 +165,7 @@ test_that("secondary success preserves primary cooldown and failure backoff", {
         }
         expect_identical(current[["summary"]]()[["status"]], "active")
         expect_identical(
-          current[["access_token"]](min_valid_for = 0),
+          current[["access_token"]](min_valid_for_seconds = 0),
           paste0("access-", length(calls))
         )
       }

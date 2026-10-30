@@ -237,7 +237,7 @@ test_that("clearing an expired target authorization resets its stale status", {
         expect_false(values[["token_stale"]])
         expect_false(current[["is_usable"]]())
         expect_error(
-          current[["access_token"]](min_valid_for = 0),
+          current[["access_token"]](min_valid_for_seconds = 0),
           class = "shinyOAuth_access_error"
         )
       }

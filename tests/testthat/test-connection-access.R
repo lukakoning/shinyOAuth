@@ -78,13 +78,13 @@ test_that("scope checks do not require fresh tokens and acquisition is bounded",
       expect_identical(connection[["has_scopes"]]("read"), TRUE)
       expect_identical(connection[["is_usable"]](), FALSE)
       error <- tryCatch(
-        connection[["access_token"]](min_valid_for = 60),
+        connection[["access_token"]](min_valid_for_seconds = 60),
         error = identity
       )
       expect_identical(error[["context"]][["reason"]], "lifetime_unavailable")
       expect_identical(calls, 1L)
       expect_identical(
-        connection[["access_token"]](min_valid_for = 0),
+        connection[["access_token"]](min_valid_for_seconds = 0),
         "synthetic-access"
       )
       token <- values[["token"]]

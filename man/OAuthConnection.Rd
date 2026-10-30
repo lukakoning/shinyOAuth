@@ -156,7 +156,7 @@ requesting new permissions or retrying the SDK operation.
     \preformatted{OAuthConnection$access_token(
   required_scopes = character(),
   target = NULL,
-  min_valid_for = 60,
+  min_valid_for_seconds = 60,
   force_refresh = FALSE,
   async = FALSE
 )}
@@ -169,7 +169,7 @@ requesting new permissions or retrying the SDK operation.
 client requirements.}
       \item{\code{target}}{Optional API name from \code{token_targets}. \code{NULL} selects the
 client's default. Its token is acquired when needed.}
-      \item{\code{min_valid_for}}{Minimum remaining lifetime in seconds (default 60).
+      \item{\code{min_valid_for_seconds}}{Minimum remaining lifetime in seconds (default 60).
 Allow time for the operation and clock differences. Unknown or insufficient
 expiry triggers refresh; an unusable replacement raises an error.}
       \item{\code{force_refresh}}{Require a new token even if a cached one is usable.}
@@ -423,7 +423,7 @@ must cover any scopes required for this operation.
   configure = NULL,
   target = NULL,
   refresh = FALSE,
-  min_valid_for = 60
+  min_valid_for_seconds = 60
 )}
     \if{html}{\out{</div>}}
   }
@@ -458,7 +458,7 @@ for an async refresh. Failed API calls are not refreshed or replayed;
 ordinary HTTP retries are disabled for this call. DPoP nonce handling
 remains available. The destination and \code{configure} result are checked
 before refresh, and permission is checked again before sending.}
-      \item{\code{min_valid_for}}{Minimum remaining lifetime when \code{refresh = TRUE},
+      \item{\code{min_valid_for_seconds}}{Minimum remaining lifetime when \code{refresh = TRUE},
 in seconds. Has the same meaning as on \verb{$access_token()}.}
     }
     \if{html}{\out{</div>}}

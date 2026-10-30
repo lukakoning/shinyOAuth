@@ -132,7 +132,7 @@ connection_export_token <- function(
   resolve,
   acquire,
   required_scopes,
-  min_valid_for,
+  min_valid_for_seconds,
   force_refresh,
   async,
   export_bearer = TRUE
@@ -141,12 +141,12 @@ connection_export_token <- function(
   connection_manager_flag(force_refresh, "force_refresh")
   connection_manager_flag(async, "async")
   if (
-    !is.numeric(min_valid_for) ||
-      length(min_valid_for) != 1L ||
-      !is.finite(min_valid_for) ||
-      min_valid_for < 0
+    !is.numeric(min_valid_for_seconds) ||
+      length(min_valid_for_seconds) != 1L ||
+      !is.finite(min_valid_for_seconds) ||
+      min_valid_for_seconds < 0
   ) {
-    err_input("min_valid_for must be a finite, non-negative number of seconds")
+    err_input("min_valid_for_seconds must be a finite, non-negative number of seconds")
   }
   if (!is.function(acquire)) {
     err_config(
@@ -217,7 +217,7 @@ connection_export_token <- function(
       connection_access_error("insufficient_scope")
     }
     !is.na(token@expires_at) &&
-      token@expires_at > as.numeric(Sys.time()) + min_valid_for
+      token@expires_at > as.numeric(Sys.time()) + min_valid_for_seconds
   }
   deliver <- function(...) {
     record <- read()

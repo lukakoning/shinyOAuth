@@ -171,7 +171,7 @@ OAuthConnection <- R6::R6Class(
     #'   client requirements.
     #' @param target Optional API name from `token_targets`. `NULL` selects the
     #'   client's default. Its token is acquired when needed.
-    #' @param min_valid_for Minimum remaining lifetime in seconds (default 60).
+    #' @param min_valid_for_seconds Minimum remaining lifetime in seconds (default 60).
     #'   Allow time for the operation and clock differences. Unknown or insufficient
     #'   expiry triggers refresh; an unusable replacement raises an error.
     #' @param force_refresh Require a new token even if a cached one is usable.
@@ -200,7 +200,7 @@ OAuthConnection <- R6::R6Class(
     access_token = function(
       required_scopes = character(),
       target = NULL,
-      min_valid_for = 60,
+      min_valid_for_seconds = 60,
       force_refresh = FALSE,
       async = FALSE
     ) {
@@ -220,7 +220,7 @@ OAuthConnection <- R6::R6Class(
         function() private[["integration_record"]](target),
         acquire,
         required_scopes,
-        min_valid_for,
+        min_valid_for_seconds,
         force_refresh,
         async
       )
@@ -466,7 +466,7 @@ OAuthConnection <- R6::R6Class(
     #'   ordinary HTTP retries are disabled for this call. DPoP nonce handling
     #'   remains available. The destination and `configure` result are checked
     #'   before refresh, and permission is checked again before sending.
-    #' @param min_valid_for Minimum remaining lifetime when `refresh = TRUE`,
+    #' @param min_valid_for_seconds Minimum remaining lifetime when `refresh = TRUE`,
     #'   in seconds. Has the same meaning as on `$access_token()`.
     #' @return An [httr2] response object. Invalid resources, unusable connections,
     #'   insufficient scopes and transport failures raise errors.
@@ -485,7 +485,7 @@ OAuthConnection <- R6::R6Class(
       configure = NULL,
       target = NULL,
       refresh = FALSE,
-      min_valid_for = 60
+      min_valid_for_seconds = 60
     ) {
       connection_manager_flag(refresh, "refresh")
       target <- token_target_name(private[[".client"]], target)
@@ -518,7 +518,7 @@ OAuthConnection <- R6::R6Class(
           function() private[["integration_record"]](target),
           acquire,
           required_scopes,
-          min_valid_for,
+          min_valid_for_seconds,
           FALSE,
           FALSE,
           export_bearer = FALSE

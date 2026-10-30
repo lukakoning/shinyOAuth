@@ -2,6 +2,9 @@
 
 * Use your Shiny login with other R packages:
 
+  - The new connection lifetime argument is named `min_valid_for_seconds` in
+    `$access_token()` and `$request()`, making its units explicit. This replaces
+    the unreleased name `min_valid_for`.
   - `oauth_module_server()` now provides `connection()`. Connections from this
     module and `oauth_connections_server()` offer `$access_token()` to obtain
     a current bearer token, refreshing it when needed.
@@ -39,8 +42,8 @@
     select a sole target automatically. New S7 constructor arguments follow all
     arguments from 0.6.1, preserving their positional meaning.
   - Connection `$access_token()` places `target` after `required_scopes`, and
-    `$request()` keeps `refresh` next to `min_valid_for`. The new ORCID helper
-    takes `sandbox` before the optional provider `name`.
+    `$request()` keeps `refresh` next to `min_valid_for_seconds`. The new ORCID
+    helper takes `sandbox` before the optional provider `name`.
   - Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth, Hugging Face,
     SURFconext, and authentik, reducing manual provider configuration.
   - Microsoft sign-in can skip Graph profile retrieval with

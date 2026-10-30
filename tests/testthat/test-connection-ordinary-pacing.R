@@ -51,9 +51,9 @@ test_that("ordinary managed refresh pacing follows token lifetime after success"
           {
             current <- connection(manager_test_accept(controller))
             session[["flushReact"]]()
-            acquire <- function(min_valid_for = 0, force_refresh = FALSE) {
+            acquire <- function(min_valid_for_seconds = 0, force_refresh = FALSE) {
               result <- current[["access_token"]](
-                min_valid_for = min_valid_for,
+                min_valid_for_seconds = min_valid_for_seconds,
                 force_refresh = force_refresh,
                 async = async
               )
@@ -93,9 +93,9 @@ test_that("ordinary managed refresh pacing follows token lifetime after success"
             # Refresh before expiry to satisfy the default lifetime buffer.
             lifetime <<- 70
             now <<- now + 11
-            expect_identical(acquire(min_valid_for = 60), "access-3")
+            expect_identical(acquire(min_valid_for_seconds = 60), "access-3")
             now <<- now + 11
-            expect_identical(acquire(min_valid_for = 60), "access-4")
+            expect_identical(acquire(min_valid_for_seconds = 60), "access-4")
             expect_identical(calls, 4L)
           }
         )
@@ -127,7 +127,7 @@ test_that("ordinary managed success pacing respects the configured refresh lead"
       current <- connection(manager_test_accept(controller))
       for (i in 1:2) {
         expect_identical(
-          current[["access_token"]](min_valid_for = 0, force_refresh = TRUE),
+          current[["access_token"]](min_valid_for_seconds = 0, force_refresh = TRUE),
           "synthetic-access"
         )
       }

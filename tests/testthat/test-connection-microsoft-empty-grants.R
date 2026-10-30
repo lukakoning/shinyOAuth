@@ -125,7 +125,7 @@ test_that("Microsoft API-empty grants cannot acquire a token for another resourc
               class = "shinyOAuth_access_error"
             )
             expect_error(
-              current[["request"]]("api", refresh = TRUE, min_valid_for = 7200),
+              current[["request"]]("api", refresh = TRUE, min_valid_for_seconds = 7200),
               class = "shinyOAuth_access_error"
             )
             expect_identical(length(f[["state"]][["requests"]]), before)
@@ -146,7 +146,7 @@ test_that("Microsoft API-empty grants cannot acquire a token for another resourc
             }
             expect_identical(length(f[["state"]][["requests"]]), before)
             expect_type(
-              current[["access_token"]](min_valid_for = 0),
+              current[["access_token"]](min_valid_for_seconds = 0),
               "character"
             )
             expect_identical(

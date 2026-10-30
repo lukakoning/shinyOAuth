@@ -59,7 +59,7 @@ test_that("target acquisition can renew short-lived primary and secondary tokens
           expect_identical(
             current[["access_token"]](
               target = target,
-              min_valid_for = 0,
+              min_valid_for_seconds = 0,
               force_refresh = TRUE
             ),
             "access-1"
@@ -71,7 +71,7 @@ test_that("target acquisition can renew short-lived primary and secondary tokens
           early <- tryCatch(
             current[["access_token"]](
               target = target,
-              min_valid_for = 0,
+              min_valid_for_seconds = 0,
               force_refresh = TRUE
             ),
             error = identity
@@ -84,7 +84,7 @@ test_that("target acquisition can renew short-lived primary and secondary tokens
           now <<- now + 11
           session[["elapse"]](11000)
           expect_identical(
-            current[["access_token"]](target = target, min_valid_for = 0),
+            current[["access_token"]](target = target, min_valid_for_seconds = 0),
             "access-2"
           )
           expect_identical(calls, 2L)
@@ -187,10 +187,10 @@ test_that("managed target pacing follows lifetime with stable and rotating crede
             {
               current <- connection(manager_test_accept(controller))
               session[["flushReact"]]()
-              acquire <- function(min_valid_for = 0, force_refresh = FALSE) {
+              acquire <- function(min_valid_for_seconds = 0, force_refresh = FALSE) {
                 result <- current[["access_token"]](
                   target = target,
-                  min_valid_for = min_valid_for,
+                  min_valid_for_seconds = min_valid_for_seconds,
                   force_refresh = force_refresh,
                   async = async
                 )
@@ -229,9 +229,9 @@ test_that("managed target pacing follows lifetime with stable and rotating crede
               # A lifetime buffer must trigger renewal before access-token expiry.
               lifetime <<- 70
               now <<- now + 11
-              expect_identical(acquire(min_valid_for = 60), "access-3")
+              expect_identical(acquire(min_valid_for_seconds = 60), "access-3")
               now <<- now + 11
-              expect_identical(acquire(min_valid_for = 60), "access-4")
+              expect_identical(acquire(min_valid_for_seconds = 60), "access-4")
               expect_identical(calls, 4L)
 
               # Rotating the shared credential for another target must not
@@ -242,7 +242,7 @@ test_that("managed target pacing follows lifetime with stable and rotating crede
               expect_identical(
                 current[["access_token"]](
                   target = other,
-                  min_valid_for = 0,
+                  min_valid_for_seconds = 0,
                   force_refresh = TRUE
                 ),
                 "access-6"
@@ -296,7 +296,7 @@ test_that("managed target success pacing uses the configured refresh lead", {
       current <- connection(manager_test_accept(controller))
       for (i in 1:2) {
         expect_identical(
-          current[["access_token"]](min_valid_for = 0, force_refresh = TRUE),
+          current[["access_token"]](min_valid_for_seconds = 0, force_refresh = TRUE),
           "synthetic-access"
         )
       }
