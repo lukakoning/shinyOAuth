@@ -3,6 +3,7 @@
 ^\.Rprofile$
 ^\.Rproj\.user$
 ^\.venv$
+^\.codex-review$
 ^LICENSE\.md$
 ^README\.Rmd$
 ^_pkgdown\.yml$
