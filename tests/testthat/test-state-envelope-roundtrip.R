@@ -48,3 +48,42 @@ test_that("state_encrypt_gcm <-> state_decrypt_gcm roundtrip and properties", {
     class = "shinyOAuth_state_error"
   )
 })
+
+test_that("Unicode state roundtrips under the C locale", {
+  payload <- list(
+    state = "s-unicode",
+    provider = paste0("provider-", intToUtf8(c(0xE9, 0x1F30D))),
+    scopes = c("openid", paste0("scope:", intToUtf8(0xE9))),
+    extras = setNames(
+      list(list(label = intToUtf8(c(0x4E2D, 0x1F600)))),
+      intToUtf8(0xE9)
+    )
+  )
+  key <- strrep("k", 64)
+  token <- shinyOAuth:::state_encrypt_gcm(payload, key)
+
+  withr::local_locale(c(LC_CTYPE = "C"))
+  expect_identical(shinyOAuth:::state_decrypt_gcm(token, key), payload)
+})
+
+test_that("decrypted state rejects malformed UTF-8 without parser warnings", {
+  withr::local_locale(c(LC_CTYPE = "C"))
+  withr::local_options(shinyOAuth.state_fail_delay_ms = 0)
+  key <- strrep("k", 64)
+  token <- shinyOAuth:::state_encrypt_gcm(list(state = "valid"), key)
+  decrypted <- raw()
+  testthat::local_mocked_bindings(
+    aes_gcm_decrypt = function(...) decrypted,
+    .package = "openssl"
+  )
+
+  for (bytes in list(0x80, 0xFF, c(0xC3, 0x28), c(0xED, 0xA0, 0x80))) {
+    decrypted <- c(
+      charToRaw('{"state":"'), as.raw(bytes), charToRaw('"}')
+    )
+    expect_warning(expect_error(
+      shinyOAuth:::state_decrypt_gcm(token, key),
+      class = "shinyOAuth_state_error"
+    ), NA)
+  }
+})

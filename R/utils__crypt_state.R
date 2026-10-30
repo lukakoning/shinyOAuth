@@ -580,6 +580,10 @@ state_decrypt_gcm <- function(
   parsed <- try(
     {
       payload_json <- rawToChar(res)
+      if (!isTRUE(validUTF8(payload_json))) {
+        err_parse("Decrypted state JSON contains invalid UTF-8")
+      }
+      Encoding(payload_json) <- "UTF-8"
       reject_duplicate_json_object_members(payload_json, "Decrypted state JSON")
       jsonlite::parse_json(payload_json, simplifyVector = FALSE)
     },

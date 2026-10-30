@@ -62,6 +62,8 @@
   - Improved cleanup after rejected logins and refreshes.
     `revoke_on_session_end = TRUE` also attempts provider revocation when expiry
     or the maximum login age ends local access, reducing tokens left active.
+  - Encrypted login state now preserves Unicode text in non-UTF-8 locales and
+    rejects malformed UTF-8 before JSON parsing.
   - Connection polling and SMART permission checks avoid repeated work,
     reducing background overhead in apps with many saved connections.
 
