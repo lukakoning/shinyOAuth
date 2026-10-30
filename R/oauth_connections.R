@@ -33,8 +33,7 @@
 #'   distinct routes. Routing never substitutes for callback authentication.
 #' @param retention `"shiny"` (default) discards connections at Shiny session end.
 #'   `"browser"` restores the browser owner's connections after navigation;
-#'   `"account"` uses a trusted local application login. Retention does not request
-#'   refresh tokens or extend provider authorization.
+#'   `"account"` uses a trusted local application login.
 #' @param store A store from [oauth_connection_store_memory()]. Required for
 #'   retained modes; session-only mode creates a memory store by default. Only
 #'   the supplied memory store in one R process is supported.

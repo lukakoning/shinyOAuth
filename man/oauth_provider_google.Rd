@@ -24,7 +24,7 @@ This preset uses a restricted Google OIDC profile: ID tokens must have
 \code{iss = "https://accounts.google.com"}, matching Google's discovery issuer.
 Google's \href{https://developers.google.com/identity/openid-connect/openid-connect#validatinganidtoken}{ID token validation guidance}
 also permits \code{"accounts.google.com"}; this alternate issuer is not accepted
-by this preset. Issuer comparison remains exact, as for other OIDC providers.
+by this preset.
 }
 \examples{
 oauth_provider_google()

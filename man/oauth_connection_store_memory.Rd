@@ -60,7 +60,7 @@ envelope and mark the record \code{"uncertain"}. Returns the record or \code{NUL
 then returns \code{list(record, previous)} for bounded remote cleanup. Conflicts
 return \code{NULL}; the caller must reload before retrying.
 \item \verb{[["disconnect_owner"]](owner)} tombstones all of that owner's records and returns
-the previous records for bounded cleanup. Other owners are unaffected.
+the previous records for bounded cleanup.
 }
 
 Reads expire abandoned refresh claims before returning data. Tombstones and

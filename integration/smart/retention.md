@@ -15,8 +15,7 @@ The milestones and validation records below document the implementation;
 
 The memory store is constructed outside `server()` with
 `oauth_connection_store_memory()`. Its low-level methods accept only sealed
-credential envelopes; callers must already have verified the owner. The factory
-does not establish a browser session or enable retention on existing modules.
+credential envelopes; callers must already have verified the owner.
 `oauth_connections()` connects these operations to verified local ownership.
 
 The credential codec uses the package's AES-GCM envelope with a separate
@@ -92,8 +91,7 @@ owner validation, credential acceptance, cancellation and cleanup. Managed code
 and error callbacks verify the existing browser proof and the authenticated
 transaction context before consuming logical state. Async dispatch carries only
 the original context JSON, and accepted results recheck the owner before commit.
-Accepted managed tokens never enter the legacy module's token slot. The module's
-public arguments and ordinary lifecycle remain unchanged. The hook regression
+Accepted managed tokens never enter the legacy module's token slot. The hook regression
 run passes 809 assertions, including 57 managed-hook assertions, with no skips;
 two warnings reflect locally installed Shiny/future packages built under newer
 R patch versions. This does not establish real-browser retention.

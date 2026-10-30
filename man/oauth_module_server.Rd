@@ -40,9 +40,7 @@ operations that remain synchronous.}
 \item{indefinite_session}{If TRUE, the module will not automatically clear
 the token due to access-token expiry or the \code{reauth_after_seconds} window,
 and it will not trigger automatic reauthentication when a token expires or
-a refresh fails. API calls may still fail once the provider considers the
-token expired. This option affects only the module's automatic clearing
-and redirect behavior.}
+a refresh fails.}
 
 \item{reauth_after_seconds}{Maximum local login age in seconds, or \code{NULL}
 (default) for no forced reauthentication. Refresh does not reset this timer;
@@ -152,8 +150,7 @@ or after the module clears the authorization. The reference and its \verb{$id}
 survive refresh; logout, reauthorization and session closure invalidate it.
 Use \code{connection <- shiny::req(auth$connection())} inside reactive code,
 then \code{connection$access_token()} for a server-side SDK or database driver.
-Accessor-triggered refresh works without \code{refresh_proactively = TRUE};
-the module's configured expiry/session-clearing policy still applies.
+Accessor-triggered refresh works without \code{refresh_proactively = TRUE}.
 \item \code{auth$reauthorize()}: invalidate the current local authorization and begin
 replacement with its retained scope limit, without upstream revocation.
 Local state preparation is checked first; rejection preserves current access.
@@ -184,7 +181,7 @@ independently of authentication state. The normal login methods manage
 browser setup automatically.
 \item \code{auth[["set_browser_token"]]()}: asks the browser to establish its binding
 when missing. The token becomes available after the browser reports it
-back to Shiny. An existing token is left unchanged.
+back to Shiny.
 \item \code{auth[["clear_browser_token"]]()}: clears the browser binding.
 \code{request_login()} manages cookie setup automatically, and \code{logout()}
 handles cookie rotation when ending a session.

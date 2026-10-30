@@ -24,9 +24,8 @@
 #' fetched by other workers.
 #'
 #' @details
-#' This helper adapts your storage functions; it does not create a database,
-#' open connections, or make process-local storage shared. Your backend must
-#' preserve stored R values and expire entries after their configured lifetime.
+#' Backend functions must preserve stored R values and expire entries after
+#' their configured lifetime.
 #'
 #' @section Shared login state in multi-worker deployments:
 #' The default [cachem::cache_mem()] state store belongs to one R process.

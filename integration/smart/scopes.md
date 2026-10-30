@@ -1,15 +1,14 @@
 # How SMART permission checks work
 
 This note describes the scope evaluator and its login, refresh, introspection
-and connection checks. `smart_client()` selects these rules explicitly; an
-ordinary `oauth_client()` still uses ordinary OAuth rules. For application
+and connection checks. `smart_client()` selects these rules. For application
 setup, see the [SMART on FHIR guide](../../vignettes/smart-on-fhir.Rmd).
 
 A scope is a permission requested from the server. In ordinary OAuth, it is a
 name: `read` only matches `read`. SMART gives some scope names a defined meaning.
 For example, `patient/Observation.rs` means reading and searching observations
 for the patient selected by the server. The scope itself does not identify that
-patient, and it does not guarantee that the server will return every record.
+patient.
 
 The implemented comparisons follow the
 [SMART 2.2 scope specification](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html):

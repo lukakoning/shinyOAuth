@@ -236,15 +236,14 @@ requests a fresh provider login and checks its time. OAuth-only providers
 can only be given an ordinary authorization request.
 
 `indefinite_session = TRUE` retains local login state after token expiry or
-refresh failure, and disables the `reauth_after_seconds` limit. The provider
-can still reject an expired token.
+refresh failure, and disables the `reauth_after_seconds` limit.
 
 ## Provider configuration and OIDC discovery
 
 Use a built-in helper when available, such as `oauth_provider_google()`,
 `oauth_provider_microsoft()`, or `oauth_provider_keycloak()`. Each helper's
 help page describes its setup. For an OpenID Connect service,
-discovery reads its published settings so you do not have to copy each endpoint:
+discovery reads its published settings:
 
 ```{r, eval = FALSE}
 provider <- oauth_provider_oidc_discover(
@@ -303,9 +302,6 @@ embedded app preview.
    provider. In the minimal example this is the app URL. With a dedicated route
    such as `/callback`, retain that callback path in the registration, but
    open the app's entry URL to start login.
-
-The module may print a hosting reminder even when you opened the app correctly.
-It does not test whether the browser is showing an embedded preview.
 
 ### Multiple R processes
 

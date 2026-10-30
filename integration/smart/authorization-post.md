@@ -32,7 +32,7 @@ The current SMART deployment still requires top-level navigation.
 
 `response_mode = "form_post"` is a separate choice: it controls the provider's
 return trip to the app. Authorization POST works with query or form POST
-callbacks. The latter still needs the normal callback UI/route wrapper.
+callbacks.
 
 For a custom application that drives its own browser and callback,
 `prepare_authorization_request(client, browser_token)` returns a plain list
@@ -44,19 +44,11 @@ session. The [generated API help](../../man/prepare_authorization_request.Rd)
 describes the return values. `prepare_call()` and `auth[["build_auth_url"]]()` remain
 URL-only helpers and reject a POST client before creating login state.
 
-## What stays bound to the login attempt
+## Transaction binding
 
-The common builder still creates state, PKCE and an OIDC nonce where required.
-The selected method enters the client policy fingerprint; changing it cannot
-reuse an earlier transaction. Managed owner, client, generation, callback and
-one-use EHR launch checks use the existing preparation and acceptance paths.
-The SMART method also belongs to the client's checked discovery policy.
-
-POST changes the final browser serialization. It preserves fixed endpoint query
-bytes and the existing singleton-conflict checks. Ordinary OAuth/OIDC PAR,
-signed Request Objects, JARM, DPoP and mTLS retain their configured requirements;
-POST does not bypass them. These combinations remain unsupported by
-`smart_client()`.
+The selected method enters the client policy fingerprint; changing it requires
+a new transaction. The SMART method also belongs to the client's checked
+discovery policy. POST preserves the authorization endpoint's fixed query bytes.
 
 The form allows at most 256 fields and 128 KiB of encoded data. Newlines and
 the browser-reserved `_charset_` field are rejected because a browser would

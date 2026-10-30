@@ -25,9 +25,8 @@ signing-key validation rules; \code{consumers} uses the stable consumer tenant
 issuer}
 
 \item{userinfo_required}{Retrieve profile information from Microsoft Graph.
-Set FALSE for an API token with a different audience. ID-token validation
-and nonce checks remain enabled according to \code{id_token_validation}.
-Manual \code{get_userinfo()} calls still require the complete validated
+Set FALSE for an API token with a different audience.
+Manual \code{get_userinfo()} calls require the complete validated
 \link{OAuthToken} when OIDC validation is enabled.}
 }
 \value{
@@ -45,8 +44,7 @@ accounts, and \code{"common"} allows both. Your app registration and app access
 rules must also permit the intended accounts.
 
 Profiles are fetched from Microsoft Graph by default. Set
-\code{userinfo_required = FALSE} for an API token that cannot call Graph;
-\code{connection$identity()} still provides the validated login identity.
+\code{userinfo_required = FALSE} for an API token that cannot call Graph.
 }
 \section{Advanced identity settings}{
 

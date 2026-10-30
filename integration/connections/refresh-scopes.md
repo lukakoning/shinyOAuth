@@ -54,8 +54,6 @@ regaining broader permissions through the manager requires a new authorization.
 The response fallback follows [RFC 6749 section 5.1](https://www.rfc-editor.org/rfc/rfc6749.html#section-5.1).
 SMART comparison and explicit grant evidence follow
 [SMART STU 2.2 scopes](https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html).
-The method does not add patient-chart synchronization or change launch context
-rules; existing context continuity checks still run during refresh.
 
 ## Verification
 

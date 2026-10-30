@@ -15,7 +15,7 @@ For the two opt-in policies, direct responses require an explicitly configured
 issuer, advertised RFC 9207 response support and issuer enforcement. Signed JARM
 can instead supply issuer identification. Knowing the issuer through OIDC alone
 does not prove RFC 9207 support. Configure these settings on the clients before
-creating their manager; the manager does not rewrite client policies.
+creating their manager.
 
 ```r
 # a and b are OAuthClient configurations with resource_bases that explicitly

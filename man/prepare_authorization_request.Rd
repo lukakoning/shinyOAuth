@@ -47,14 +47,12 @@ The client selects \code{authorization_method = "POST"} explicitly; support
 depends on the provider.
 \code{\link[=smart_client]{smart_client()}} additionally requires the \code{authorize-post} capability.
 The outgoing method is independent of the callback \code{response_mode}.
-Configured PAR and Request Object requirements still apply. Each result
-belongs to one login attempt with single-use state.
+Each result belongs to one login attempt with single-use state.
 
 POST preserves the authorization endpoint's fixed query and sends newly
 composed fields in the body. It permits up to 256 fields and 128 KiB of
 encoded form data; CR/LF and the browser-reserved \verb{_charset_} field are
-rejected to prevent the browser changing field values. Existing state and
-callback size limits also apply. Configure
+rejected to prevent the browser changing field values. Configure
 your app's Content Security Policy \code{form-action} to allow the authorization
 endpoint. Custom callers must preserve browser binding and callback handling.
 }

@@ -107,18 +107,16 @@ modes, when present, must allow the selection.}
 \item{initial_expires_in_fallback}{Optional positive lifetime in seconds, supplied by
 the authorization server out of band for initial access tokens. Used only
 when an initial response omits \code{expires_in}; an explicit response value
-takes precedence. Default \code{NULL} requires the response to include a lifetime.
-This does not apply to refresh responses or change ordinary OAuth defaults.}
+takes precedence. Default \code{NULL} requires the response to include a lifetime.}
 
-\item{label}{Display label, default \code{"FHIR server"}; no credentials or context.}
+\item{label}{Display label, default \code{"FHIR server"}.}
 
 \item{state_store, state_key, state_payload_max_age}{See \code{\link[=oauth_client]{oauth_client()}}.}
 }
 \value{
 An \link{OAuthClient} for the module or connection manager. Its
-\code{resource_bases} contains the approved \code{fhir} API. The object holds app
-registration settings, not a user's token or patient context; create it
-outside \code{server()}. Its \code{smart} property records the selected profile.
+\code{resource_bases} contains the approved \code{fhir} API; its \code{smart} property
+records the selected profile.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -127,7 +125,6 @@ Configure your Shiny app to access a hospital's FHIR API. Start with
 \code{\link[=smart_discover]{smart_discover()}}, then supply the app registration and requested permissions.
 The result is an \link{OAuthClient} for \code{\link[=oauth_module_server]{oauth_module_server()}} or
 \code{\link[=oauth_connections]{oauth_connections()}}, with an approved API named \code{"fhir"}.
-Discovery does not register your app or grant access.
 }
 \details{
 \code{launch = "standalone"} describes an app opened directly; \code{"ehr"} describes
@@ -143,7 +140,7 @@ for a complete app.
 The constructor applies SMART App Launch 2.2 permission rules, S256 PKCE and
 the exact FHIR base as the authorization request's \code{aud}. \code{identity = "openid"}
 requires signed identity-token and nonce checks; \code{"fhirUser"} also requires
-the user's FHIR reference. \code{"none"} does not enable OIDC automatically.
+the user's FHIR reference.
 
 Supported flows use direct authorization and query or form POST callbacks.
 Claims requests, remote authentication-freshness overrides, JAR, PAR, JARM,
@@ -152,9 +149,7 @@ a fresh registered transaction for each EHR launch; launch handles are single-us
 
 Tokens need a positive lifetime. Only an initial response may omit
 \code{expires_in}, and only with an explicit \code{initial_expires_in_fallback}.
-Refresh responses must supply a lifetime. Requests require TLS 1.2 or newer;
-a stronger configured minimum is preserved. Ordinary clients also default
-to TLS 1.2.
+Refresh responses must supply a lifetime. Requests require TLS 1.2 or newer.
 }
 
 \examples{

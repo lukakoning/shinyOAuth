@@ -45,9 +45,7 @@
 #'
 #' The HTTP response uses no-store and no-referrer policy and redirects to an
 #' opaque, owner-bound continuation. The package's external JavaScript removes that ticket from browser
-#' history before Shiny connects. The ticket alone cannot authorize a connection.
-#' No inline script permission or additional CSP nonce is needed for the handoff.
-#' Normal callback issuer checks and single-use browser/state checks still apply.
+#' history before Shiny connects.
 #' @seealso [smart_client()], [oauth_connections_ui()]
 #' @references
 #' [SMART EHR launch](https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#launch-app-ehr-launch)

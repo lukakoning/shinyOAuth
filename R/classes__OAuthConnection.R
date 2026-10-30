@@ -27,8 +27,6 @@
 #'
 #' Methods check the owning Shiny session. `$is_usable()` returns `FALSE` when
 #' access is unavailable; request and token methods raise errors.
-#' Permission checks do not prove the API will accept a request. The connection ID
-#' is read-only, is not a credential and cannot be used to authorize a request.
 #'
 #' @section Advanced lifecycle behavior:
 #' Reactive expressions that read `connection()`, `$access_token()` or
@@ -113,7 +111,7 @@ OAuthConnection <- R6::R6Class(
     #'   A single module preserves it across refresh and replaces it on login.
     #'   A manager uses the stored grant's ID across sessions and refreshes;
     #'   [oauth_connection()] generates an ID lasting only for that reference.
-    #'   The ID is never an access token and does not authorize access by itself.
+    #'
     id = function(value) {
       if (!missing(value)) {
         err_input("Connection IDs are read-only")
@@ -170,12 +168,12 @@ OAuthConnection <- R6::R6Class(
     #' The method refreshes credentials when needed, without starting login,
     #' requesting new permissions or retrying the SDK operation.
     #' @param required_scopes Permissions needed for this operation, in addition to
-    #'   client requirements. This checks permissions without changing the grant.
+    #'   client requirements.
     #' @param min_valid_for Minimum remaining lifetime in seconds (default 60).
     #'   Allow time for the operation and clock differences. Unknown or insufficient
     #'   expiry triggers refresh; an unusable replacement raises an error.
     #' @param force_refresh Require a new token even if a cached one is usable.
-    #'   Refresh coordination and provider retry delays still apply.
+    #'
     #' @param async If `TRUE`, return a promise, including for a cached token.
     #'   If `FALSE`, return a string or raise an error; a synchronous call cannot
     #'   wait for an already running async refresh.
@@ -198,7 +196,7 @@ OAuthConnection <- R6::R6Class(
     #' `$request()` instead of exporting a bearer string. Exported tokens retain all
     #' provider-issued permissions, which may exceed the app's local operation limits.
     #' Recheck the current login and permissions before using an async token snapshot.
-    #' Acquiring a token does not extend a managed owner's inactivity limit.
+    #'
     access_token = function(
       required_scopes = character(),
       min_valid_for = 60,
@@ -228,9 +226,8 @@ OAuthConnection <- R6::R6Class(
       )
     },
     #' @description
-    #' Check recorded operation permissions without refreshing or requiring an
-    #' unexpired access token. This is suitable for optional-feature UI; the
-    #' actual operation must still check scopes and remote resource permissions.
+    #' Check recorded operation permissions for optional-feature UI, without
+    #' refreshing or requiring an unexpired access token.
     #' @param scopes Character vector of operation scopes to check.
     #' @param target Optional declared token-target name; defaults to the client's
     #'   primary target. An unacquired target returns FALSE, without acquisition.
@@ -258,8 +255,7 @@ OAuthConnection <- R6::R6Class(
     #' @description
     #' Check whether the current token is locally usable. This checks token
     #' presence, known unexpired lifetime and the client's required scopes.
-    #' It does not refresh the token, contact the provider or guarantee remote
-    #' authorization. Request-specific scopes are checked by `[["request"]]()`.
+    #' Request-specific scopes are checked by `[["request"]]()`.
     #' @return A single logical value: `TRUE` for an `active` or `limited`
     #'   connection, otherwise `FALSE`, including when resolution fails.
     is_usable = function() {
@@ -360,7 +356,7 @@ OAuthConnection <- R6::R6Class(
     #' @description
     #' Read explicitly selected fields from the authorization's cryptographically
     #' validated OIDC identity.
-    #' This method never returns raw tokens or fetches profile data.
+    #'
     #' @param claims Character vector of ID-token claim names, defaulting to
     #'   `c("iss", "sub")`. Use `character()` to select none.
     #' @param userinfo Character vector of previously fetched UserInfo field
@@ -369,24 +365,17 @@ OAuthConnection <- R6::R6Class(
     #' @return A list with `id_token_claims` and `userinfo`, each containing only
     #'   selected fields that exist. Missing fields are omitted.
     #' @details
-    #' Call inside the owning session's reactive context. The result contains
-    #' sensitive identity data: select only what the application needs and keep
-    #' it out of logs and generic status displays. `[["summary"]]()` and printing
-    #' continue to omit identity. Ordinary OAuth connections without validated
-    #' OIDC identity cannot use this accessor.
+    #' Available inside the owning session's reactive context for connections
+    #' with validated OIDC identity.
     #'
     #' Ordinary connections require a usable access token with `openid` currently
     #' granted. Target connections retain their validated identity while the
     #' authorization remains available in the owning session, even when the
     #' primary access token expires or its current scopes no longer include
-    #' `openid`. Identity availability does not establish permission to call an
-    #' API; use `$has_scopes()` and `$access_token()` or `$request()` to check the
-    #' selected target's current permissions and token lifetime.
+    #' `openid`.
     #'
     #' These are the last validated identity/profile snapshots; an OAuth refresh
-    #' can retain earlier ID-token claims and does not establish fresh user
-    #' authentication. This accessor does not log the user into your application
-    #' or establish an account-retention owner. It does not count as owner activity.
+    #' can retain earlier ID-token claims.
     identity = function(claims = c("iss", "sub"), userinfo = character()) {
       record <- private[["record"]]()
       token <- record[["token"]]
@@ -598,7 +587,7 @@ OAuthConnection <- R6::R6Class(
     },
     #' @description
     #' Print the class name and session-binding description, with credentials
-    #' redacted. This does not resolve the current token.
+    #' redacted.
     #' @param ... Unused; accepted for compatibility with [base::print()].
     #' @return This reference, invisibly.
     print = function(...) {

@@ -45,9 +45,8 @@ scope checks and server-side \verb{$access_token()} retrieval for external SDKs.
 replacement with the retained scope limit, without upstream revocation.
 Local state preparation is checked first; rejection preserves current access.
 The replacement summary includes \code{replaces_connection_id}. Failed/cancelled
-replacement leaves the old reference invalid. Unrelated authorizations
-remain usable; shared-credential protections still apply. EHR-only clients
-require a fresh EHR launch instead.
+replacement leaves the old reference invalid. EHR-only clients require a
+fresh EHR launch instead.
 \item \code{touch()}: record explicit user activity after checking the current owner;
 returns \code{TRUE} invisibly.
 \item \code{disconnect(connection_id, revoke = TRUE)}: remove local usability first,

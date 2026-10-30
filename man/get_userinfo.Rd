@@ -44,8 +44,7 @@ Pass the client and complete \link{OAuthToken} from login, for example
 For OIDC, shinyOAuth checks that the returned profile belongs to the validated
 login. A raw access-token string cannot provide that identity check.
 
-\code{userinfo_required = FALSE} disables automatic profile retrieval. Identity
-and signature checks still apply to manual calls.
+\code{userinfo_required = FALSE} disables automatic profile retrieval.
 }
 \section{Advanced response validation}{
 

@@ -248,7 +248,7 @@
 #'   When `TRUE`, login and refresh assume
 #'   `"Bearer"` only when the field is absent. Explicit null, empty, invalid, or
 #'   unsupported values still fail validation. The fallback never applies to
-#'   clients configured with DPoP; other token and binding checks remain enforced.
+#'   clients configured with DPoP.
 #'
 #' @param leeway Clock skew leeway (seconds) applied to ID token `exp`/`iat`/`nbf` checks
 #'   and state payload `issued_at` future check. Default 30. Can be globally

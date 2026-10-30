@@ -166,7 +166,6 @@ the provider advertises that capability. Default is \code{FALSE}.
 When \code{TRUE}, authorization-server requests prefer discovered
 \code{mtls_endpoint_aliases}, even when \code{token_auth_style} is not an mTLS auth
 style. Token and protected-resource requests present the certificate.
-Certificate/key configuration alone does not enable this mode.
 
 Requires \code{mtls_client_cert_file} and \code{mtls_client_key_file}, and the
 provider must be configured with
@@ -454,7 +453,7 @@ for examples, provider-specific permission rules and declaration limits.}
 
 \item{default_token_target}{Name of the API to use when a connection method
 omits \code{target}. Required with several targets; the sole target is selected
-automatically. Selecting a target for one call does not change this default.}
+automatically.}
 
 \item{authorization_server_mode}{Declares whether this client is part of an
 application that can interact with more than one authorization server,
@@ -537,12 +536,9 @@ remaining \code{exp} window at validation time. Applies only when
 \item{mtls_require_observed_cnf}{Logical, default \code{TRUE}. When
 \code{mtls_certificate_bound_access_tokens = TRUE}, require \code{cnf[["x5t#S256"]]}
 in the token response, JWT access token, or introspection and verify that
-it matches the configured certificate. The default preserves strict
-local assurance. Set \code{FALSE} for server-enforced opaque bindings that
-the client cannot observe; this does not disable certificate presentation
-or mTLS endpoint selection. Missing confirmation is then allowed, but
-any observed confirmation is still validated, including mismatches and
-conflicting claims. This flag does not independently enable mTLS.}
+it matches the configured certificate. \code{FALSE} allows missing confirmation
+for server-enforced opaque bindings. Observed confirmation is validated;
+mismatches and conflicting claims are rejected.}
 
 \item{trusted_id_token_audiences}{Character vector of additional ID-token
 audiences explicitly trusted by this client. Defaults to \code{character(0)},
@@ -565,16 +561,12 @@ its own issuer protection without requiring a redundant outer \code{iss}.}
 \item{client_assertion_typ}{JWT header \code{typ} for client authentication.
 Defaults to \code{"JWT"} for existing providers. Use
 \code{"client-authentication+jwt"} with \code{client_assertion_audience} set to the
-provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.
-The explicit type is recommended; it does not replace audience validation.
-This setting does not change JAR, JARM, ID token or DPoP types, or the
-OAuth form parameter \code{client_assertion_type}.}
+provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.}
 
 \item{resource_bases}{Optional named character vector of approved API base
-URLs for \code{\link[=oauth_connection]{oauth_connection()}} and \code{\link[=oauth_connections]{oauth_connections()}}. The default
-\code{character()} leaves the existing token/request APIs unchanged. Each resource
-ID starts with a letter and contains letters, digits, \verb{_} or \code{-} (at most
-64 bytes). Up to 64 bases are supported. HTTPS is required except for
+URLs for \code{\link[=oauth_connection]{oauth_connection()}} and \code{\link[=oauth_connections]{oauth_connections()}}, default \code{character()}.
+Each resource ID starts with a letter and contains letters, digits, \verb{_} or
+\code{-} (at most 64 bytes). Up to 64 bases are supported. HTTPS is required except for
 loopback development URLs. Requests through a connection stay within the
 exact scheme, host, effective port and base path; redirects are disabled.
 Bases exclude user information, query strings, fragments, dot segments,
@@ -599,8 +591,7 @@ patient context.}
 request: \code{"GET"} (default) or provider-supported \code{"POST"}. POST submits form
 fields instead of a URL query.
 Use the module's \code{request_login()} or \code{\link[=prepare_authorization_request]{prepare_authorization_request()}}; URL-only
-helpers reject POST. This does not select the callback \code{response_mode} or
-replace a provider's PAR or signed Request Object requirements.}
+helpers reject POST.}
 
 \item{scope_policy}{Internal versioned scope policy, installed by SMART
 adapters. Ordinary OAuth clients use the default policy. SMART permission

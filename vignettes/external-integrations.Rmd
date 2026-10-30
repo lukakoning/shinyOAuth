@@ -153,7 +153,7 @@ expression builds a client for the current connection and rebuilds it when
 login changes; its callback remains bound to that connection.
 
 If a database driver only accepts a token string, acquire it just before opening
-or updating the database connection. A copied string cannot refresh itself.
+or updating the database connection.
 
 Exported bearer tokens carry the provider's full grant, even when the app applies
 narrower local permission checks. `$access_token()` rejects DPoP and
@@ -171,9 +171,8 @@ For one login with separate tokens for several APIs, see
 [Token targets](token-targets.html).
 
 For Microsoft APIs other than Graph, configure `userinfo_required = FALSE` on
-the provider to skip the Graph profile request. Identity-token checks remain
-enabled; `connection$identity()` reads selected previously validated identity
-fields without fetching a new profile.
+the provider to skip the Graph profile request. `connection$identity()` reads
+selected previously validated identity fields.
 
 ## Advanced: connection lifetime and permissions
 
@@ -190,14 +189,13 @@ status, and `auth$touch()` to record explicit user activity for a retained login
 
 `$refresh(scopes = ...)` can reduce permissions while preserving required scopes.
 Later refreshes and reauthorization keep that reduction. `required_scopes` on
-`$access_token()` checks permissions without changing them. A provider can reject
+`$access_token()` specifies the permissions needed for that operation. A provider can reject
 narrowing; [Microsoft targets](token-targets.html#advanced-microsoft-permissions-and-consent)
 do not support explicit API narrowing.
 
 For OIDC, include `offline_access` when explicitly narrowing if later
 reauthorization should still request refresh consent. Automatic refresh does
-not remove that request just because the response omits it. Refresh cannot add
-consent that was never granted or has been removed.
+not remove that request just because the response omits it.
 
 Standalone SMART replacements keep requested patient and encounter context.
 Narrowing can remove optional encounter context, while retained patient

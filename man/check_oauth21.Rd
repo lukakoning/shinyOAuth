@@ -23,14 +23,13 @@ A \code{shinyOAuth_oauth21_assessment} list. \code{checks} is a data frame with
 \code{evidence_source}, \code{requirement_source} and \code{affects_verdict} columns.
 Statuses are \code{pass}, \code{fail}, \code{warn}, \code{unknown} and \code{not_applicable}.
 Only rows with \code{affects_verdict = TRUE} affect \code{configuration_compliant}.
-A compatibility \code{warn} does not by itself fail the verdict.
+
 The report also records \code{draft}, \code{ruleset_version}, \code{package_version},
 \code{assessed_at}, \code{assessment_scope} and \code{operations}.
 }
 \description{
 Check a configured \link{OAuthClient} for missing settings and recommendations.
-The result includes a table of findings and suggested fixes. The check is
-read-only: it does not make requests, start login or change the configuration.
+The result includes a table of findings and suggested fixes.
 }
 \details{
 The returned \code{checks} table contains individual findings.
@@ -50,10 +49,8 @@ Optional DPoP, mTLS, PAR, JAR and JARM are not required together.
 Provider enforcement, registered redirects, secret storage, browser/proxy TLS
 and future API requests need separate deployment checks.
 
-mTLS file paths do not establish that a certificate and key are readable and
-match. The checker does not open them, so applicable \verb{mtls.credentials.*} checks
-remain \code{unknown} when paths are present; missing required paths fail.
-Actual requests validate the current files.
+The checker does not open mTLS files, so applicable \verb{mtls.credentials.*}
+checks report \code{unknown} when paths are present; missing required paths fail.
 
 \code{requirement_source} distinguishes protocol requirements from security guidance
 and package policy. Callback capacity thresholds are package recommendations,
@@ -65,9 +62,7 @@ URLs and the configuration objects. Cache and state-store methods are not run.
 
 \code{context = list(nonce_exception = TRUE)} declares independently established
 server assurance for the draft's confidential-client nonce exception
-(section 7.5.1.1). It does not supply observed evidence or bypass missing local
-requirements. S256 PKCE is the default. Assertion audience checks are mandatory for JWT
-authentication; advice about the legacy \code{JWT} assertion type is a recommendation.
+(section 7.5.1.1).
 }
 
 \examples{

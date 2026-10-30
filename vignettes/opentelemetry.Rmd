@@ -105,14 +105,10 @@ sanitized diagnostic text during debugging. That text can still contain
 private provider data. URLs omit paths unless an approved path scrubber supplies a route
 label. Tokens, codes and raw login state stay out of ordinary span attributes.
 
-These protections cover records emitted through shinyOAuth. Direct SDK calls
-and requests sent with `httr2::req_perform()` follow their own telemetry settings.
-`perform_resource_req()` applies shinyOAuth's request handling.
-
 ## Span catalog
 
-HTTP spans time network calls; worker spans identify background processing. Attributes appear only when
-relevant and available. Useful fields include `oauth.phase`, `server.address`
+HTTP spans time network calls; worker spans identify background processing.
+Useful fields include `oauth.phase`, `server.address`
 and `http.response.status_code`, alongside provider and session digests.
 
 | Name | What it tells you |

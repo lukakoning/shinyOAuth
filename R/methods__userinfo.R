@@ -23,8 +23,7 @@
 #' For OIDC, shinyOAuth checks that the returned profile belongs to the validated
 #' login. A raw access-token string cannot provide that identity check.
 #'
-#' `userinfo_required = FALSE` disables automatic profile retrieval. Identity
-#' and signature checks still apply to manual calls.
+#' `userinfo_required = FALSE` disables automatic profile retrieval.
 #'
 #' @section Advanced response validation:
 #' Normal JSON profiles and signed JWT profiles are supported; encrypted UserInfo

@@ -62,14 +62,13 @@
 #'   for examples, provider-specific permission rules and declaration limits.
 #' @param default_token_target Name of the API to use when a connection method
 #'   omits `target`. Required with several targets; the sole target is selected
-#'   automatically. Selecting a target for one call does not change this default.
+#'   automatically.
 #'
 #' @param authorization_method Browser method for sending the authorization
 #'   request: `"GET"` (default) or provider-supported `"POST"`. POST submits form
 #'   fields instead of a URL query.
 #'   Use the module's `request_login()` or [prepare_authorization_request()]; URL-only
-#'   helpers reject POST. This does not select the callback `response_mode` or
-#'   replace a provider's PAR or signed Request Object requirements.
+#'   helpers reject POST.
 #' @param response_mode How the provider returns the login result. `NULL`
 #'   (default) omits the parameter, using the provider's normal query callback.
 #'   `"query"` explicitly requests URL parameters; `"form_post"` requests an HTTP POST.
@@ -171,10 +170,9 @@
 #'   empty for ordinary clients. This is not an argument to [oauth_client()].
 #'
 #' @param resource_bases Optional named character vector of approved API base
-#'   URLs for [oauth_connection()] and [oauth_connections()]. The default
-#'   `character()` leaves the existing token/request APIs unchanged. Each resource
-#'   ID starts with a letter and contains letters, digits, `_` or `-` (at most
-#'   64 bytes). Up to 64 bases are supported. HTTPS is required except for
+#'   URLs for [oauth_connection()] and [oauth_connections()], default `character()`.
+#'   Each resource ID starts with a letter and contains letters, digits, `_` or
+#'   `-` (at most 64 bytes). Up to 64 bases are supported. HTTPS is required except for
 #'   loopback development URLs. Requests through a connection stay within the
 #'   exact scheme, host, effective port and base path; redirects are disabled.
 #'   Bases exclude user information, query strings, fragments, dot segments,
@@ -322,9 +320,7 @@
 #'   Defaults to `"JWT"` for existing providers. Use
 #'   `"client-authentication+jwt"` with `client_assertion_audience` set to the
 #'   provider's trusted issuer identifier for RFC7523bis-11 / OAuth 2.1 draft 16.
-#'   The explicit type is recommended; it does not replace audience validation.
-#'   This setting does not change JAR, JARM, ID token or DPoP types, or the
-#'   OAuth form parameter `client_assertion_type`.
+#'
 #' @param mtls_client_cert_file Optional path to the PEM-encoded client
 #'   certificate (or certificate chain) used for RFC 8705 mutual TLS (mTLS) client
 #'   authentication and certificate-bound protected-resource requests. Required
@@ -349,7 +345,6 @@
 #'   When `TRUE`, authorization-server requests prefer discovered
 #'   `mtls_endpoint_aliases`, even when `token_auth_style` is not an mTLS auth
 #'   style. Token and protected-resource requests present the certificate.
-#'   Certificate/key configuration alone does not enable this mode.
 #'
 #'   Requires `mtls_client_cert_file` and `mtls_client_key_file`, and the
 #'   provider must be configured with
@@ -362,12 +357,9 @@
 #' @param mtls_require_observed_cnf Logical, default `TRUE`. When
 #'   `mtls_certificate_bound_access_tokens = TRUE`, require `cnf[["x5t#S256"]]`
 #'   in the token response, JWT access token, or introspection and verify that
-#'   it matches the configured certificate. The default preserves strict
-#'   local assurance. Set `FALSE` for server-enforced opaque bindings that
-#'   the client cannot observe; this does not disable certificate presentation
-#'   or mTLS endpoint selection. Missing confirmation is then allowed, but
-#'   any observed confirmation is still validated, including mismatches and
-#'   conflicting claims. This flag does not independently enable mTLS.
+#'   it matches the configured certificate. `FALSE` allows missing confirmation
+#'   for server-enforced opaque bindings. Observed confirmation is validated;
+#'   mismatches and conflicting claims are rejected.
 #'
 #' @param dpop_private_key Private key for tying tokens to this app's requests
 #'   using Demonstrating Proof of Possession (DPoP). Only needed when your

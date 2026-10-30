@@ -146,8 +146,7 @@ oauth_provider_cognito <- function(
 #' @section Advanced provider settings:
 #' The preset uses Globus's published endpoints and RS512 identity-token
 #' signatures. It does not use generic discovery, which requires advertised
-#' RS256 support. Identity, nonce, profile-subject and S256 PKCE checks remain
-#' enabled.
+#' RS256 support.
 #'
 #' See the [Globus Auth guide](https://docs.globus.org/api/auth/developer-guide/).
 #'

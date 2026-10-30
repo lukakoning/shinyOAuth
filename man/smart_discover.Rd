@@ -17,16 +17,14 @@ Hostnames are case-insensitive. Wildcards, URLs, and ports are not accepted.}
 
 \item{allow_http_loopback}{Logical, default \code{FALSE}. Explicit development
 exception permitting HTTP only at \code{localhost}, \verb{127.0.0.1}, or \verb{::1}.
-This applies to the base and metadata URLs and does not change global
-options. It does not establish production TLS interoperability.}
+Applies to the base and metadata URLs.}
 }
 \value{
 A plain named list with \code{fhir_base} (the supplied identifier),
 \code{discovery_url} (the requested URL), \code{smart_version} (\code{"2.2.0"}, the
 validation baseline, not a detected server version), \code{metadata} (the parsed
 document, with JSON arrays as lists), \code{endpoint_hosts} (the normalized
-policy), and \code{allow_http_loopback}. No client, token, or live cache is stored
-in the result. Invalid input or endpoint policy raises a
+policy), and \code{allow_http_loopback}. Invalid input or endpoint policy raises a
 \code{shinyOAuth_config_error}; malformed metadata raises a
 \code{shinyOAuth_parse_error}; failed HTTP requests raise a
 \code{shinyOAuth_http_error}.
@@ -35,14 +33,13 @@ in the result. Invalid input or endpoint policy raises a
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
 Read and validate the SMART App Launch STU 2.2 discovery document for a
-configured FHIR server. This returns server metadata for application setup;
-it does not register an app, choose client credentials, or start authorization.
+configured FHIR server. Returns server metadata for application setup.
 }
 \details{
 Call once during application setup, outside \code{server()}. The request appends
 \verb{/.well-known/smart-configuration} to the full FHIR base, removing its terminal
 slash first. The supplied base and returned endpoint/issuer strings are
-retained exactly, so discovery does not change protocol identifiers.
+retained exactly.
 
 This is separate from \code{\link[=oauth_provider_oidc_discover]{oauth_provider_oidc_discover()}}. OAuth-only SMART
 metadata need not contain OIDC issuer or signing-key information. Advertised
@@ -75,16 +72,14 @@ present: \code{authorization_endpoint}, \code{token_endpoint}, \code{jwks_uri},
 port. This is a discovery policy; it does not authorize resource requests.
 The generic \code{shinyOAuth.allowed_hosts} option can further restrict these URLs.
 
-The request carries no OAuth credentials. Redirects are refused even when
-the generic redirect option is enabled. Existing package TLS, timeout,
-response-size, and retry protections apply. JSON must be an object with no
-duplicate members; arrays and recognized URL fields have bounded validation.
+Redirects are refused even when the generic redirect option is enabled.
+JSON must be an object with no duplicate members; arrays and recognized URL
+fields have bounded validation.
 Errors do not include response bodies or returned metadata values.
 
 Unknown extensions, including \code{associated_endpoints}, are retained as data
 only. Their URLs are not fetched or approved for credential use. Each call
-reads a fresh snapshot. Existing clients and retained grants remain bound to
-the configuration with which they were created.
+reads a fresh snapshot.
 }
 
 \examples{

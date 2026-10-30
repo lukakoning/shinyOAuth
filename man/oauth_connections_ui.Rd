@@ -55,14 +55,13 @@ Browser setup from \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} is included.
 \details{
 With \code{shinyApp(..., uiPattern = ".*")}, callback paths reach the wrapper.
 With browser retention, a cookie lets the returning browser
-find its saved connections; tokens remain on the server. Account and session-only
-retention do not add that owner cookie.
+find its saved connections.
 }
 \section{Advanced browser and proxy requirements}{
 
 With Strict cookies, returning from another site may briefly show an intermediate
-page before Shiny starts. This lets the browser send its existing cookie; it
-does not create a new owner or exchange credentials. Proxies must preserve
+page before Shiny starts. This lets the browser send its existing cookie.
+Proxies must preserve
 same-origin Fetch Metadata, \code{Referer} or \code{Origin} information for recovery.
 The \code{shinyOAuth_owner_recovery} query parameter is reserved for this flow.
 

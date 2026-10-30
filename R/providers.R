@@ -151,7 +151,7 @@ oauth_provider_github <- function(name = "github") {
 #' `iss = "https://accounts.google.com"`, matching Google's discovery issuer.
 #' Google's [ID token validation guidance](https://developers.google.com/identity/openid-connect/openid-connect#validatinganidtoken)
 #' also permits `"accounts.google.com"`; this alternate issuer is not accepted
-#' by this preset. Issuer comparison remains exact, as for other OIDC providers.
+#' by this preset.
 #'
 #' @examples
 #' oauth_provider_google()
@@ -199,8 +199,7 @@ oauth_provider_google <- function(name = "google") {
 #' rules must also permit the intended accounts.
 #'
 #' Profiles are fetched from Microsoft Graph by default. Set
-#' `userinfo_required = FALSE` for an API token that cannot call Graph;
-#' `connection$identity()` still provides the validated login identity.
+#' `userinfo_required = FALSE` for an API token that cannot call Graph.
 #'
 #' @section Advanced identity settings:
 #' ID token validation is enabled for these tenant choices. For a directory ID,
@@ -224,9 +223,8 @@ oauth_provider_google <- function(name = "google") {
 #'   signing-key validation rules; `consumers` uses the stable consumer tenant
 #'   issuer
 #' @param userinfo_required Retrieve profile information from Microsoft Graph.
-#'   Set FALSE for an API token with a different audience. ID-token validation
-#'   and nonce checks remain enabled according to `id_token_validation`.
-#'   Manual `get_userinfo()` calls still require the complete validated
+#'   Set FALSE for an API token with a different audience.
+#'   Manual `get_userinfo()` calls require the complete validated
 #'   [OAuthToken] when OIDC validation is enabled.
 #'
 #' @return [OAuthProvider] object configured for Microsoft identity platform

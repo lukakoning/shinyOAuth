@@ -434,7 +434,7 @@ providers that issue Bearer tokens without the OAuth-required \code{token_type}.
 When \code{TRUE}, login and refresh assume
 \code{"Bearer"} only when the field is absent. Explicit null, empty, invalid, or
 unsupported values still fail validation. The fallback never applies to
-clients configured with DPoP; other token and binding checks remain enforced.}
+clients configured with DPoP.}
 
 \item{token_target_mode}{How this provider obtains API-specific tokens:
 \code{"none"} (default), \code{"rfc8707"}, or \code{"microsoft"}. This applies to client

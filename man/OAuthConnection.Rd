@@ -31,8 +31,6 @@ own connection reference.
 
 Methods check the owning Shiny session. \verb{$is_usable()} returns \code{FALSE} when
 access is unavailable; request and token methods raise errors.
-Permission checks do not prove the API will accept a request. The connection ID
-is read-only, is not a credential and cannot be used to authorize a request.
 }
 
 \section{Advanced lifecycle behavior}{
@@ -82,8 +80,7 @@ server <- function(input, output, session) {
     \item{\code{id}}{Read-only opaque character string identifying this reference.
 A single module preserves it across refresh and replaces it on login.
 A manager uses the stored grant's ID across sessions and refreshes;
-\code{\link[=oauth_connection]{oauth_connection()}} generates an ID lasting only for that reference.
-The ID is never an access token and does not authorize access by itself.}
+\code{\link[=oauth_connection]{oauth_connection()}} generates an ID lasting only for that reference.}
   }
   \if{html}{\out{</div>}}
 }
@@ -169,12 +166,11 @@ requesting new permissions or retrying the SDK operation.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{required_scopes}}{Permissions needed for this operation, in addition to
-client requirements. This checks permissions without changing the grant.}
+client requirements.}
       \item{\code{min_valid_for}}{Minimum remaining lifetime in seconds (default 60).
 Allow time for the operation and clock differences. Unknown or insufficient
 expiry triggers refresh; an unusable replacement raises an error.}
-      \item{\code{force_refresh}}{Require a new token even if a cached one is usable.
-Refresh coordination and provider retry delays still apply.}
+      \item{\code{force_refresh}}{Require a new token even if a cached one is usable.}
       \item{\code{async}}{If \code{TRUE}, return a promise, including for a cached token.
 If \code{FALSE}, return a string or raise an error; a synchronous call cannot
 wait for an already running async refresh.}
@@ -197,7 +193,6 @@ DPoP and mTLS-bound tokens require their signing key or certificate; use
 \verb{$request()} instead of exporting a bearer string. Exported tokens retain all
 provider-issued permissions, which may exceed the app's local operation limits.
 Recheck the current login and permissions before using an async token snapshot.
-Acquiring a token does not extend a managed owner's inactivity limit.
   }
   \subsection{Returns}{
     A bearer-token string, or a promise resolving to one. Token failures
@@ -210,9 +205,8 @@ Argument and configuration errors can occur before a promise is returned.
 \if{html}{\out{<a id="method-OAuthConnection-has_scopes"></a>}}
 \if{latex}{\out{\hypertarget{method-OAuthConnection-has_scopes}{}}}
 \subsection{\code{OAuthConnection$has_scopes()}}{
-  Check recorded operation permissions without refreshing or requiring an
-unexpired access token. This is suitable for optional-feature UI; the
-actual operation must still check scopes and remote resource permissions.
+  Check recorded operation permissions for optional-feature UI, without
+refreshing or requiring an unexpired access token.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$has_scopes(scopes, target = NULL)}
@@ -239,8 +233,7 @@ otherwise FALSE. Malformed arguments raise input errors.
 \subsection{\code{OAuthConnection$is_usable()}}{
   Check whether the current token is locally usable. This checks token
 presence, known unexpired lifetime and the client's required scopes.
-It does not refresh the token, contact the provider or guarantee remote
-authorization. Request-specific scopes are checked by \verb{[["request"]]()}.
+Request-specific scopes are checked by \verb{[["request"]]()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$is_usable()}
@@ -359,7 +352,6 @@ identifies the locally ended connection passed to \code{reauthorize()}.
 \subsection{\code{OAuthConnection$identity()}}{
   Read explicitly selected fields from the authorization's cryptographically
 validated OIDC identity.
-This method never returns raw tokens or fetches profile data.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$identity(claims = c("iss", "sub"), userinfo = character())}
@@ -377,24 +369,17 @@ the validated ID token before any requested profile fields are returned.}
     \if{html}{\out{</div>}}
   }
   \subsection{Details}{
-    Call inside the owning session's reactive context. The result contains
-sensitive identity data: select only what the application needs and keep
-it out of logs and generic status displays. \verb{[["summary"]]()} and printing
-continue to omit identity. Ordinary OAuth connections without validated
-OIDC identity cannot use this accessor.
+    Available inside the owning session's reactive context for connections
+with validated OIDC identity.
 
 Ordinary connections require a usable access token with \code{openid} currently
 granted. Target connections retain their validated identity while the
 authorization remains available in the owning session, even when the
 primary access token expires or its current scopes no longer include
-\code{openid}. Identity availability does not establish permission to call an
-API; use \verb{$has_scopes()} and \verb{$access_token()} or \verb{$request()} to check the
-selected target's current permissions and token lifetime.
+\code{openid}.
 
 These are the last validated identity/profile snapshots; an OAuth refresh
-can retain earlier ID-token claims and does not establish fresh user
-authentication. This accessor does not log the user into your application
-or establish an account-retention owner. It does not count as owner activity.
+can retain earlier ID-token claims.
   }
   \subsection{Returns}{
     A list with \code{id_token_claims} and \code{userinfo}, each containing only
@@ -538,7 +523,7 @@ raises an error before an authenticated request is sent.
 \if{latex}{\out{\hypertarget{method-OAuthConnection-print}{}}}
 \subsection{\code{OAuthConnection$print()}}{
   Print the class name and session-binding description, with credentials
-redacted. This does not resolve the current token.
+redacted.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$print(...)}

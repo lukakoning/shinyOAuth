@@ -31,8 +31,7 @@ HTTP loopback exception. Session-only development also permits loopback HTTP.}
 
 \item{retention}{\code{"shiny"} (default) discards connections at Shiny session end.
 \code{"browser"} restores the browser owner's connections after navigation;
-\code{"account"} uses a trusted local application login. Retention does not request
-refresh tokens or extend provider authorization.}
+\code{"account"} uses a trusted local application login.}
 
 \item{retention_seconds}{Maximum lifetime of each stored grant, in seconds.
 Positive and finite, no larger than the store's \code{max_age}. Refresh never

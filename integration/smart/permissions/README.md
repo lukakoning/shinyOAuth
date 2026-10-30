@@ -40,8 +40,8 @@ those Patients. In both synchronous and mirai modes it must:
 
 The denial probes intentionally use the general connection request API without
 declaring an operation-specific scope requirement, so the requests reach the
-resource server. SMART helper and client scope checks remain enabled. Nine
-recorded resource exchanges per scenario must have the exact expected paths
+resource server. Nine recorded resource exchanges per scenario must have the
+exact expected paths
 and statuses and use the current issued token generation. The fixture's
 administrative credential never enters the Shiny app.
 
