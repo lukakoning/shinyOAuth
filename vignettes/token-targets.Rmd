@@ -117,6 +117,11 @@ server <- function(input, output, session) {
 before that target's first token acquisition. `$targets()` lists target status
 without exposing credentials.
 
+Use `$is_usable(target = "contacts")` to check whether that API's current token
+is usable, or `$summary(target = "contacts")` to inspect its status and expiry.
+These reads never acquire or refresh a token; an unacquired target has status
+`"not_acquired"` and is not usable.
+
 The example limits login to one hour with `reauth_after_seconds`. Without a
 limit, local authentication can outlast every API token;
 `indefinite_session = TRUE` disables that limit.

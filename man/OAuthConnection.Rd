@@ -236,7 +236,15 @@ presence, known unexpired lifetime and the client's required scopes.
 Request-specific scopes are checked by \verb{[["request"]]()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{OAuthConnection$is_usable()}
+    \preformatted{OAuthConnection$is_usable(target = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{target}}{Optional API name from \code{token_targets}. \code{NULL} selects the
+client's default. This check never acquires or refreshes a token.}
+    }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
@@ -304,7 +312,16 @@ credentials, identity claims or token extension fields. Raises an error
 when called outside the owning session or after that session closes.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{OAuthConnection$summary()}
+    \preformatted{OAuthConnection$summary(target = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{target}}{Optional API name from \code{token_targets}. \code{NULL} selects the
+client's default. Status and expiry describe that API's current token;
+this read never acquires or refreshes it.}
+    }
     \if{html}{\out{</div>}}
   }
   \subsection{Details}{
@@ -314,6 +331,7 @@ ambiguous refresh outcome, \code{disconnected} means local access was removed,
 and \code{unavailable} means the stored credentials could not be restored.
 Otherwise token status is evaluated in this order:
 \itemize{
+\item \code{not_acquired}: the selected target has no token yet.
 \item \code{disconnected}: there is no current token.
 \item \code{expiry_unknown}: the token's expiry is unknown.
 \item \code{expired}: the token has reached its expiry time.

@@ -16,6 +16,8 @@
 
 * Access several APIs, such as calendars and contacts, through one login:
 
+  - Connection `$is_usable()` and `$summary()` now accept `target` to inspect
+    another API's token without acquiring or refreshing it.
   - Configure `token_targets` in `oauth_client()` for providers supporting
     RFC 8707 resource indicators or Microsoft token acquisition. Each API can
     have its own token; select one with, for example,

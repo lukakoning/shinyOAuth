@@ -256,13 +256,14 @@ OAuthConnection <- R6::R6Class(
     #' Check whether the current token is locally usable. This checks token
     #' presence, known unexpired lifetime and the client's required scopes.
     #' Request-specific scopes are checked by `[["request"]]()`.
+    #' @param target Optional API name from `token_targets`. `NULL` selects the
+    #'   client's default. This check never acquires or refreshes a token.
     #' @return A single logical value: `TRUE` for an `active` or `limited`
     #'   connection, otherwise `FALSE`, including when resolution fails.
-    is_usable = function() {
+    is_usable = function(target = NULL) {
+      target <- token_target_name(private[[".client"]], target)
       tryCatch(
-        connection_record_status(token_target_select(private[[
-          "record"
-        ]]())) %in%
+        connection_record_status(token_target_select(private[["record"]](), target)) %in%
           c("active", "limited"),
         error = function(...) FALSE
       )
@@ -317,6 +318,9 @@ OAuthConnection <- R6::R6Class(
     #' Resolve the current connection and return status information without
     #' credentials, identity claims or token extension fields. Raises an error
     #' when called outside the owning session or after that session closes.
+    #' @param target Optional API name from `token_targets`. `NULL` selects the
+    #'   client's default. Status and expiry describe that API's current token;
+    #'   this read never acquires or refreshes it.
     #' @return A named list with the following entries:
     #'   * `connection_id`: the reference's character ID.
     #'   * `client_label`: the client's application-defined character label.
@@ -333,6 +337,7 @@ OAuthConnection <- R6::R6Class(
     #' ambiguous refresh outcome, `disconnected` means local access was removed,
     #' and `unavailable` means the stored credentials could not be restored.
     #' Otherwise token status is evaluated in this order:
+    #' * `not_acquired`: the selected target has no token yet.
     #' * `disconnected`: there is no current token.
     #' * `expiry_unknown`: the token's expiry is unknown.
     #' * `expired`: the token has reached its expiry time.
@@ -347,9 +352,9 @@ OAuthConnection <- R6::R6Class(
     #' information. SMART clients require explicit evidence and use semantic
     #' coverage for both connection and operation permissions.
     #' See [OAuthToken] for the distinction from verified scope evidence.
-    summary = function() {
+    summary = function(target = NULL) {
       connection_record_summary(
-        token_target_select(private[["record"]]()),
+        token_target_select(private[["record"]](), target),
         private[[".id"]]
       )
     },

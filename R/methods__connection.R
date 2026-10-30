@@ -127,7 +127,14 @@ connection_record_summary <- function(record, id) {
   result <- list(
     connection_id = id,
     client_label = record[["client"]]@label,
-    status = connection_record_status(record),
+    status = if (
+      !is.null(record[["target"]]) && is.null(record[["token"]]) &&
+        identical(record[["status"]], "active")
+    ) {
+      "not_acquired"
+    } else {
+      connection_record_status(record)
+    },
     expires_at = if (is.null(record[["token"]])) {
       NA_real_
     } else {
