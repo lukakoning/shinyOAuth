@@ -18,6 +18,30 @@ The examples use a GitHub OAuth App. Install shinyOAuth with
 rules, see [Authentication
 flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md).
 
+## Provider, client, and token objects
+
+shinyOAuth represents the flow with three S7 classes. An `OAuthProvider`
+holds the service’s endpoint URLs and protocol settings; a provider
+helper such as
+[`oauth_provider_github()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.md)
+creates it. An `OAuthClient`, created with
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
+holds your app’s credentials, redirect URI, and requested scopes. After
+authentication, the module returns an `OAuthToken` as `auth[["token"]]`,
+containing tokens and available user information.
+
+The redirect URI, also called the callback URL, is the address where the
+provider sends the browser back. Register it with the provider and use
+the same value in
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
+including scheme, host, port, path, and fixed query parameters. Scopes
+are named permissions, such as `read:user`; the provider defines which
+names are available.
+
+Create your provider and client outside `server()` so they remain
+available when the browser returns from login. Create the module inside
+`server()` so each user has their own login state.
+
 ## GitHub app registration
 
 1.  Register an OAuth App in [GitHub’s developer
@@ -84,36 +108,6 @@ runApp(shinyApp(ui, server), port = 8100, launch.browser = FALSE)
 The browser opens GitHub’s login or permission page, then returns to
 your app and displays your GitHub username. Use a regular browser: IDE
 viewers may prevent the redirects needed for login.
-
-## Provider, client, and token objects
-
-shinyOAuth represents the flow with three S7 classes. An `OAuthProvider`
-holds the service’s endpoint URLs and protocol settings; a provider
-helper such as
-[`oauth_provider_github()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.md)
-creates it. An `OAuthClient`, created with
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-holds your app’s credentials, redirect URI, and requested scopes. After
-authentication, the module returns an `OAuthToken` as `auth[["token"]]`,
-containing tokens and available user information.
-
-The redirect URI, also called the callback URL, is the address where the
-provider sends the browser back. Register it with the provider and use
-the same value in
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-including scheme, host, port, path, and fixed query parameters. Fixed
-query names must not use OAuth/OIDC response fields such as `state`,
-`code`, `error`, `iss`, `response`, `scope`, token fields, or the
-`shinyOAuth_form_post` and `shinyOAuth_form_post_id` bridge fields, or
-the `shinyOAuth_request_object` retrieval field. These names are
-reserved for callback processing and are rejected when configuring the
-client. Application parameters such as `tenant=one&tag=a&tag=b` are
-supported. Scopes are named permissions, such as `read:user`; the
-provider defines which names are available.
-
-Create your provider and client outside `server()` so they remain
-available when the browser returns from login. Create the module inside
-`server()` so each user has their own login state.
 
 ## Authentication state and user information
 
@@ -217,321 +211,6 @@ uses httr2’s own transport settings instead. See the [Spotify
 example](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md)
 for another complete app.
 
-### Additional token response fields
-
-Some providers return extra parameters alongside the access and ID
-tokens. Read these through `auth[["token"]]@extra_fields`, using the
-field names documented by your provider.
-
-`extra_fields` contains only the additional parameters from the latest
-successful token response. A successful refresh replaces the entire
-list, even if the provider returns no extra parameters. The separate
-`initial_extra_fields` list preserves the initial successful
-code-exchange response’s extra parameters across refreshes. A new login
-starts a new snapshot; clearing the session removes both lists with the
-token.
-
-For a provider that returns a parameter named `custom_field`:
-
-``` r
-
-# Inside reactive server code, after a successful login:
-token <- auth[["token"]]
-token@extra_fields[["custom_field"]]
-token@initial_extra_fields[["custom_field"]]
-
-# Distinguish an absent field from one explicitly returned as null.
-"custom_field" %in% names(token@extra_fields)
-```
-
-The package preserves additional parameters without merging or
-interpreting them, or fetching resources automatically. Nested JSON
-objects, arrays, and explicit `null` entries remain available;
-form-encoded values remain strings. Use your provider’s documentation to
-decide how to handle omitted or changed fields after refresh. The
-initial snapshot is historical response data, not proof of current
-access permissions.
-
-These parameters are separate from ID token claims. The
-`id_token_validated` flag applies to the ID token, not these response
-fields. Keep the complete lists out of logs and UI output because they
-can contain sensitive data. Normal
-[`print()`](https://rdrr.io/r/base/print.html) and
-[`format()`](https://rdrr.io/r/base/format.html) output redacts both
-lists.
-
-## Provider configuration and OIDC discovery
-
-Use a built-in helper when available, such as
-[`oauth_provider_google()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_google.md),
-[`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md),
-or
-[`oauth_provider_keycloak()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_keycloak.md).
-Each helper’s help page describes its setup. For an OpenID Connect
-service with a discovery URL, you can let shinyOAuth look up the
-service’s settings:
-
-``` r
-
-provider <- oauth_provider_oidc_discover(
-  issuer = "https://login.example.com"
-)
-client <- oauth_client(
-  provider = provider,
-  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
-  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
-  redirect_uri = "https://my-app.example.com",
-  scopes = c("openid", "profile", "email")
-)
-```
-
-Replace the example URLs and credentials with your own registration. An
-issuer is the provider’s identifier URL; copy it from the provider’s
-configuration. Discovery makes a network request, so run it during app
-setup. If your registration specifies a client authentication method,
-supply the matching `token_auth_style` to the provider helper; discovery
-describes the service’s capabilities, not the settings of your
-individual registration.
-
-OpenID Connect (OIDC) is a login protocol: it supplies a signed ID token
-that shinyOAuth checks to identify the user. OAuth 2.0 grants permission
-to call APIs using an access token. GitHub and Spotify use OAuth without
-OIDC; their helpers fetch profile information through their own APIs.
-With OIDC, read validated identity details from
-`auth[["token"]]@id_token_claims` and check
-`auth[["token"]]@id_token_validated`. An access token alone is not proof
-of identity. The [authentication
-guide](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
-explains more.
-
-For a local Keycloak server using HTTP, opt in before creating the
-provider:
-
-``` r
-
-options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
-provider <- oauth_provider_keycloak(
-  base_url = "http://localhost:8080", realm = "shinyoauth"
-)
-```
-
-This option is for local development only. Production provider URLs need
-HTTPS. The ordinary HTTP host option allows local app addresses; it does
-not relax OIDC discovery.
-
-## Assessing OAuth 2.1 configuration
-
-Use
-[`check_oauth21()`](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.md)
-to review a client before deployment. It returns findings and suggested
-fixes without contacting the provider or changing the client:
-
-``` r
-
-assessment <- check_oauth21(client)
-assessment$configuration_compliant
-assessment$checks[, c("status", "message", "remediation")]
-```
-
-The overall result has three meanings:
-
-| `configuration_compliant` | Meaning |
-|----|----|
-| `FALSE` | At least one mandatory configuration check failed. |
-| `NA` | No known mandatory failure, but something required is unresolved. |
-| `TRUE` | The applicable mandatory configuration checks passed. Live server behavior still needs testing. |
-
-Read the individual findings even when the result is `TRUE`:
-recommendations and unverified external behavior remain separate. This
-is an optional configuration review, not certification of the app or
-provider. Rerun it after changing options, client settings or the
-runtime.
-
-### Advanced assessment scope
-
-The current ruleset is `1.1.1`, based on [OAuth 2.1 draft
-16](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16).
-This is an Internet-Draft, not a final RFC. The report records the
-specification revision, package version, time and operations checked.
-
-The checker covers code exchange and refresh plus enabled provider
-features. It does not require optional DPoP, mTLS, JAR, PAR and JARM
-together. Add optional operations when you want them assessed:
-
-``` r
-
-assessment <- check_oauth21(
-  client,
-  context = list(operations = c("introspection", "revocation"))
-)
-```
-
-The checker does not open mTLS certificate or key files; configured
-paths do not prove that those files are usable. Those checks remain
-unresolved until verified separately. Actual mTLS requests validate the
-current pair. Provider enforcement, registered redirect URLs, secret
-storage and browser/proxy TLS also require deployment checks.
-
-Your deployment script can handle known failures separately from
-unresolved prerequisites:
-
-``` r
-
-if (identical(assessment$configuration_compliant, FALSE)) {
-  stop("Resolve the mandatory configuration findings before deployment.")
-}
-if (is.na(assessment$configuration_compliant)) {
-  message("Review unresolved configuration prerequisites before deployment.")
-}
-```
-
-S256 is the recommended PKCE choice. The advanced
-`context = list(nonce_exception = TRUE)` option records independently
-established server assurance for the draft’s confidential-client nonce
-exception. It cannot supply missing settings or count as observed server
-evidence. See
-[check_oauth21()](https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.html)
-and [advanced
-security](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.md)
-for the detailed requirements.
-
-## Multiple authorization servers
-
-Create one client and module for each registration. Give each
-authorization server a distinct registered callback path and list the
-same clients in the UI wrapper. Module IDs alone do not distinguish
-browser callback routes.
-
-``` r
-
-redirects <- c("https://app.example/oauth/a", "https://app.example/oauth/b")
-# provider_a and provider_b are independently configured OAuth/OIDC providers.
-clients <- list(
-  auth_a = oauth_client(
-    provider_a, client_id = Sys.getenv("SITE_A_CLIENT_ID"),
-    client_secret = Sys.getenv("SITE_A_CLIENT_SECRET"),
-    redirect_uri = redirects[[1]], scopes = c("read"),
-    authorization_server_mode = "multi_redirect_uri",
-    authorization_server_redirect_uris = redirects
-  ),
-  auth_b = oauth_client(
-    provider_b, client_id = Sys.getenv("SITE_B_CLIENT_ID"),
-    client_secret = Sys.getenv("SITE_B_CLIENT_SECRET"),
-    redirect_uri = redirects[[2]], scopes = c("read"),
-    authorization_server_mode = "multi_redirect_uri",
-    authorization_server_redirect_uris = redirects
-  )
-)
-ui <- oauth_ui(fluidPage(
-  actionButton("connect_a", "Connect A"),
-  actionButton("connect_b", "Connect B")
-), clients = clients)
-server <- function(input, output, session) {
-  a <- oauth_module_server("auth_a", clients[["auth_a"]], auto_redirect = FALSE)
-  b <- oauth_module_server("auth_b", clients[["auth_b"]], auto_redirect = FALSE)
-  observeEvent(input[["connect_a"]], a[["request_login"]]())
-  observeEvent(input[["connect_b"]], b[["request_login"]]())
-}
-shinyApp(ui, server, uiPattern = ".*")
-```
-
-Register those exact redirect URIs with the respective services and
-configure the web host to serve the app at both paths. Shared routes
-require independent authorization-server identification (`multi_issuer`,
-using RFC 9207 or JARM); the static registry rejects multiple clients
-with the same issuer on one route. See [OAuth Security BCP section
-4.4.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2).
-
-Signing in to B can end the Shiny session holding A’s credentials. Each
-new session starts with empty module credentials, even when the clients
-share a pending-state store. To keep both authorizations across
-navigation, use the connection manager with browser or account
-retention. See [Keep and use multiple OAuth
-authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md)
-for a complete two-service example.
-
-For healthcare APIs, [Use SMART on FHIR from
-Shiny](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.md)
-shows discovery, client registration settings, patient requests and EHR
-launch using the same manager.
-
-Additional token fields are already available server-side. For example,
-`a[["token"]]@initial_extra_fields[["patient"]]` reads an initial SMART
-patient value, while `a[["token"]]@extra_fields` contains only the
-latest successful response’s extras. Refresh may omit `patient`. Neither
-list is validated identity data or evidence of permission to read a
-resource. Ordinary clients do not infer SMART discovery, launch
-handling, scope equivalence, or a FHIR destination from these fields.
-Keep the matching client, token and approved resource together when
-making requests, and keep raw context out of logs and session summaries.
-
-### Requests bound to a client and resource
-
-Use a connection to keep the client settings, API address and current
-credentials together when making requests.
-
-| Object | What it represents | Example |
-|----|----|----|
-| `OAuthClient` | Registration settings and optional approved API addresses | Hospital A’s client ID, scopes and `https://a.example/fhir` |
-| `OAuthConnection` | Access to one Shiny session’s current credentials through that configuration | This session’s authorized requests to Hospital A |
-
-The client holds shared settings without any user’s tokens. A connection
-reads the module’s current token for each request, checks the Shiny
-session and restricts requests to the configured API addresses. The
-module still manages refresh and logout; use the connection manager to
-keep credentials across navigation.
-
-Set `resource_bases` on
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-outside `server()`, then create a connection for that client’s module
-inside `server()`:
-
-``` r
-
-client <- oauth_client(
-  provider, client_id = "registered-app",
-  redirect_uri = "https://app.example/callback", scopes = "read",
-  resource_bases = c(records = "https://api.example/v1"),
-  required_scopes = "read" # A subset of the requested scopes.
-)
-server <- function(input, output, session) {
-  auth <- oauth_module_server("auth", client)
-  connection <- oauth_connection(client, reactive(auth[["token"]]))
-  records <- reactive({
-    req(connection[["is_usable"]]())
-    connection[["request"]]("records", "records", query = list(limit = 20)) |>
-      httr2::resp_body_json()
-  })
-}
-```
-
-The connection reads the latest token after refresh and becomes unusable
-after logout, token expiry, or session end. It can only be used in the
-Shiny session that created it, including for summary reads. This wrapper
-does not retain credentials across navigation.
-
-`resource_bases` restricts the token’s destinations; it does not request
-an audience or prove an opaque token’s audience. Wire the token
-expression to the module using `client`. Resource indicators remain an
-explicit client setting ([RFC
-8707](https://www.rfc-editor.org/rfc/rfc8707.html)).
-
-Each request selects a resource ID and resolves a path against its full
-base. An absolute pagination or resource reference must stay within that
-base too. For example, `/v1-other` is outside `/v1`, even on the same
-hostname. Ambiguous path syntax is rejected before URL normalization,
-and redirects are disabled. General URL options cannot relax this
-policy. These comparisons use URI origin and path rules from [RFC
-3986](https://www.rfc-editor.org/rfc/rfc3986.html).
-
-Optional permissions can produce a limited connection. Declare an
-operation’s extra permissions with
-`[["request"]](..., required_scopes = "write")`; the current grant must
-cover them. No generic mapping from API paths to OAuth scopes is
-assumed. `[["summary"]]()` contains the opaque connection ID, client
-label, local status, expiry, and resource IDs. It excludes credentials
-and raw context.
-
 ## Asynchronous execution
 
 By default, network work runs in the app’s R process. A slow provider
@@ -597,12 +276,98 @@ session to continue with an expired token or after refresh fails.
 Setting it to `TRUE` also disables the `reauth_after_seconds` limit; it
 does not extend the token’s validity at the provider.
 
+## Provider configuration and OIDC discovery
+
+Use a built-in helper when available, such as
+[`oauth_provider_google()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_google.md),
+[`oauth_provider_microsoft()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_microsoft.md),
+or
+[`oauth_provider_keycloak()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_keycloak.md).
+Each helper’s help page describes its setup. For an OpenID Connect
+service with a discovery URL, you can let shinyOAuth look up the
+service’s settings:
+
+``` r
+
+provider <- oauth_provider_oidc_discover(
+  issuer = "https://login.example.com"
+)
+client <- oauth_client(
+  provider = provider,
+  client_id = Sys.getenv("OAUTH_CLIENT_ID"),
+  client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
+  redirect_uri = "https://my-app.example.com",
+  scopes = c("openid", "profile", "email")
+)
+```
+
+Replace the example URLs and credentials with your own registration. An
+issuer is the provider’s identifier URL; copy it from the provider’s
+configuration. Discovery makes a network request, so run it during app
+setup. If your registration specifies a client authentication method,
+supply the matching `token_auth_style` to the provider helper; discovery
+describes the service’s capabilities, not the settings of your
+individual registration.
+
+OpenID Connect (OIDC) is a login protocol: it supplies a signed ID token
+that shinyOAuth checks to identify the user. OAuth 2.0 grants permission
+to call APIs using an access token. GitHub and Spotify use OAuth without
+OIDC; their helpers fetch profile information through their own APIs.
+With OIDC, read validated identity details from
+`auth[["token"]]@id_token_claims` and check
+`auth[["token"]]@id_token_validated`. An access token alone is not proof
+of identity. The [authentication
+guide](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
+explains more.
+
 ## Deployment
 
 Replace the local callback URL with the app’s public HTTPS URL, and
 register that same URL with the provider. Open the app directly in a
 browser tab. An app embedded in another page may not be able to complete
 login.
+
+### Security checklist
+
+- Use HTTPS in production and keep credentials on the server.
+- Request only the scopes your app needs.
+- Check login and app-specific access rules in server code before using
+  private data.
+- Keep tokens, complete login URLs, and detailed provider errors out of
+  the UI and logs.
+- Render untrusted text through Shiny’s ordinary text/tag functions. Do
+  not pass it to
+  [`HTML()`](https://rstudio.github.io/htmltools/reference/HTML.html) as
+  markup; keep table escaping enabled.
+- Wrap the UI with
+  [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+  (or
+  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+  when required). These send a browser privacy header that keeps
+  callback URLs out of referrers.
+- If repeated login requests affect responsiveness, your hosting
+  provider can help with optional rate limiting.
+- Keep the provider’s validation defaults and choose any extra
+  protections to match your provider and deployment requirements.
+
+The module links a returning login to the browser using an origin-scoped
+token in tab-scoped session storage and an independent, short-lived
+cookie marker. Each transaction has its own marker. Cookies and session
+storage must both be available; complete login in the tab that started
+it. JavaScript reads this binding, so preventing injected scripts
+(cross-site scripting, or XSS) in your app matters. This link cannot
+establish which account you expected to sign in: check that account
+yourself when your app has such a requirement.
+
+Treat the entire hostname as a trust boundary and use a dedicated
+hostname if other services are untrusted. Cookies are shared across
+ports, even with `__Host-`, `Secure`, or `HttpOnly`. The session-storage
+check prevents another port from adopting a cookie as a binding, but
+cannot prevent cookie disruption. Application callback routes
+distinguish records within a tab. Same-origin scripts can still access
+session storage.
+
+## Advanced deployment
 
 ### Posit Connect and Connect Cloud
 
@@ -661,67 +426,22 @@ signed without JWE encryption; the pending-login record’s `state_key`
 sealing does not cover them. Apply the store’s access controls and
 expiry to both record types.
 
-### Security checklist
+## Local Keycloak development
 
-- Use HTTPS in production and keep credentials on the server.
-- Request only the scopes your app needs.
-- Check login and app-specific access rules in server code before using
-  private data.
-- Keep tokens, complete login URLs, and detailed provider errors out of
-  the UI and logs.
-- Render untrusted text through Shiny’s ordinary text/tag functions. Do
-  not pass it to
-  [`HTML()`](https://rstudio.github.io/htmltools/reference/HTML.html) as
-  markup; keep table escaping enabled.
-- Wrap the UI with
-  [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
-  (or
-  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-  when required). These send a browser privacy header that keeps
-  callback URLs out of referrers.
-- If repeated login requests affect responsiveness, your hosting
-  provider can help with optional rate limiting.
-- Keep the provider’s validation defaults and choose any extra
-  protections to match your provider and deployment requirements.
+For a local Keycloak server using HTTP, opt in before creating the
+provider:
 
-The module links a returning login to the browser using an origin-scoped
-token in tab-scoped session storage and an independent, short-lived
-cookie marker. Each transaction has its own marker. Cookies and session
-storage must both be available; complete login in the tab that started
-it. JavaScript reads this binding, so preventing injected scripts
-(cross-site scripting, or XSS) in your app matters. This link cannot
-establish which account you expected to sign in: check that account
-yourself when your app has such a requirement.
+``` r
 
-Treat the entire hostname as a trust boundary and use a dedicated
-hostname if other services are untrusted. Cookies are shared across
-ports, even with `__Host-`, `Secure`, or `HttpOnly`. The session-storage
-check prevents another port from adopting a cookie as a binding, but
-cannot prevent cookie disruption. Application callback routes
-distinguish records within a tab. Same-origin scripts can still access
-session storage.
+options(shinyOAuth.allow_insecure_oidc_loopback = TRUE)
+provider <- oauth_provider_keycloak(
+  base_url = "http://localhost:8080", realm = "shinyoauth"
+)
+```
 
-## Troubleshooting
-
-Use [audit
-logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
-to identify the failing operation. Common configuration issues include:
-
-- Rejected redirect URI: check that the registered callback URL and
-  `redirect_uri` match, including scheme, host, port, and path.
-- Callback validation failure: use the registered app address in a
-  regular browser and create the client outside `server()`. For multiple
-  R processes, check the shared state store and key.
-- Rejected client credentials: check the environment variables after
-  restarting R and match `token_auth_style` to the app registration.
-- Missing profile fields: check requested scopes and the provider’s
-  profile format. Some providers return identity information only in ID
-  token claims.
-- Rejected API request: check permissions, token expiry, and whether the
-  API accepts tokens from the configured provider.
-
-Keep token and callback validation enabled while diagnosing
-configuration errors.
+This option is for local development only. Production provider URLs need
+HTTPS. The ordinary HTTP host option allows local app addresses; it does
+not relax OIDC discovery.
 
 ## Further configuration
 

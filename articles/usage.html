@@ -89,6 +89,28 @@ validation rules, see <a href="authentication-flow.html">Authentication
 flow</a>.</p>
 </div>
 <div class="section level2">
+<h2 id="provider-client-and-token-objects">Provider, client, and token objects<a class="anchor" aria-label="anchor" href="#provider-client-and-token-objects"></a>
+</h2>
+<p>shinyOAuth represents the flow with three S7 classes. An
+<code>OAuthProvider</code> holds the service’s endpoint URLs and
+protocol settings; a provider helper such as
+<code><a href="../reference/oauth_provider_github.html">oauth_provider_github()</a></code> creates it. An
+<code>OAuthClient</code>, created with <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
+holds your app’s credentials, redirect URI, and requested scopes. After
+authentication, the module returns an <code>OAuthToken</code> as
+<code>auth[["token"]]</code>, containing tokens and available user
+information.</p>
+<p>The redirect URI, also called the callback URL, is the address where
+the provider sends the browser back. Register it with the provider and
+use the same value in <code><a href="../reference/oauth_client.html">oauth_client()</a></code>, including scheme,
+host, port, path, and fixed query parameters. Scopes are named
+permissions, such as <code>read:user</code>; the provider defines which
+names are available.</p>
+<p>Create your provider and client outside <code>server()</code> so they
+remain available when the browser returns from login. Create the module
+inside <code>server()</code> so each user has their own login state.</p>
+</div>
+<div class="section level2">
 <h2 id="github-app-registration">GitHub app registration<a class="anchor" aria-label="anchor" href="#github-app-registration"></a>
 </h2>
 <ol style="list-style-type: decimal">
@@ -151,37 +173,6 @@ instructions</a>.</p>
 <p>The browser opens GitHub’s login or permission page, then returns to
 your app and displays your GitHub username. Use a regular browser: IDE
 viewers may prevent the redirects needed for login.</p>
-</div>
-<div class="section level2">
-<h2 id="provider-client-and-token-objects">Provider, client, and token objects<a class="anchor" aria-label="anchor" href="#provider-client-and-token-objects"></a>
-</h2>
-<p>shinyOAuth represents the flow with three S7 classes. An
-<code>OAuthProvider</code> holds the service’s endpoint URLs and
-protocol settings; a provider helper such as
-<code><a href="../reference/oauth_provider_github.html">oauth_provider_github()</a></code> creates it. An
-<code>OAuthClient</code>, created with <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
-holds your app’s credentials, redirect URI, and requested scopes. After
-authentication, the module returns an <code>OAuthToken</code> as
-<code>auth[["token"]]</code>, containing tokens and available user
-information.</p>
-<p>The redirect URI, also called the callback URL, is the address where
-the provider sends the browser back. Register it with the provider and
-use the same value in <code><a href="../reference/oauth_client.html">oauth_client()</a></code>, including scheme,
-host, port, path, and fixed query parameters. Fixed query names must not
-use OAuth/OIDC response fields such as <code>state</code>,
-<code>code</code>, <code>error</code>, <code>iss</code>,
-<code>response</code>, <code>scope</code>, token fields, or the
-<code>shinyOAuth_form_post</code> and
-<code>shinyOAuth_form_post_id</code> bridge fields, or the
-<code>shinyOAuth_request_object</code> retrieval field. These names are
-reserved for callback processing and are rejected when configuring the
-client. Application parameters such as
-<code>tenant=one&amp;tag=a&amp;tag=b</code> are supported. Scopes are
-named permissions, such as <code>read:user</code>; the provider defines
-which names are available.</p>
-<p>Create your provider and client outside <code>server()</code> so they
-remain available when the browser returns from login. Create the module
-inside <code>server()</code> so each user has their own login state.</p>
 </div>
 <div class="section level2">
 <h2 id="authentication-state-and-user-information">Authentication state and user information<a class="anchor" aria-label="anchor" href="#authentication-state-and-user-information"></a>
@@ -279,313 +270,6 @@ shinyOAuth’s response-size limits. Sending it directly through
 <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> uses httr2’s own transport settings
 instead. See the <a href="example-spotify.html">Spotify example</a> for
 another complete app.</p>
-<div class="section level3">
-<h3 id="additional-token-response-fields">Additional token response fields<a class="anchor" aria-label="anchor" href="#additional-token-response-fields"></a>
-</h3>
-<p>Some providers return extra parameters alongside the access and ID
-tokens. Read these through <code>auth[["token"]]@extra_fields</code>,
-using the field names documented by your provider.</p>
-<p><code>extra_fields</code> contains only the additional parameters
-from the latest successful token response. A successful refresh replaces
-the entire list, even if the provider returns no extra parameters. The
-separate <code>initial_extra_fields</code> list preserves the initial
-successful code-exchange response’s extra parameters across refreshes. A
-new login starts a new snapshot; clearing the session removes both lists
-with the token.</p>
-<p>For a provider that returns a parameter named
-<code>custom_field</code>:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Inside reactive server code, after a successful login:</span></span>
-<span><span class="va">token</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="va">token</span><span class="op">@</span><span class="va">extra_fields</span><span class="op">[[</span><span class="st">"custom_field"</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="va">token</span><span class="op">@</span><span class="va">initial_extra_fields</span><span class="op">[[</span><span class="st">"custom_field"</span><span class="op">]</span><span class="op">]</span></span>
-<span></span>
-<span><span class="co"># Distinguish an absent field from one explicitly returned as null.</span></span>
-<span><span class="st">"custom_field"</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">token</span><span class="op">@</span><span class="va">extra_fields</span><span class="op">)</span></span></code></pre></div>
-<p>The package preserves additional parameters without merging or
-interpreting them, or fetching resources automatically. Nested JSON
-objects, arrays, and explicit <code>null</code> entries remain
-available; form-encoded values remain strings. Use your provider’s
-documentation to decide how to handle omitted or changed fields after
-refresh. The initial snapshot is historical response data, not proof of
-current access permissions.</p>
-<p>These parameters are separate from ID token claims. The
-<code>id_token_validated</code> flag applies to the ID token, not these
-response fields. Keep the complete lists out of logs and UI output
-because they can contain sensitive data. Normal <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and
-<code><a href="https://rdrr.io/r/base/format.html" class="external-link">format()</a></code> output redacts both lists.</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="provider-configuration-and-oidc-discovery">Provider configuration and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-configuration-and-oidc-discovery"></a>
-</h2>
-<p>Use a built-in helper when available, such as
-<code><a href="../reference/oauth_provider_google.html">oauth_provider_google()</a></code>,
-<code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code>, or
-<code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code>. Each helper’s help page
-describes its setup. For an OpenID Connect service with a discovery URL,
-you can let shinyOAuth look up the service’s settings:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
-<span>  issuer <span class="op">=</span> <span class="st">"https://login.example.com"</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"https://my-app.example.com"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"email"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Replace the example URLs and credentials with your own registration.
-An issuer is the provider’s identifier URL; copy it from the provider’s
-configuration. Discovery makes a network request, so run it during app
-setup. If your registration specifies a client authentication method,
-supply the matching <code>token_auth_style</code> to the provider
-helper; discovery describes the service’s capabilities, not the settings
-of your individual registration.</p>
-<p>OpenID Connect (OIDC) is a login protocol: it supplies a signed ID
-token that shinyOAuth checks to identify the user. OAuth 2.0 grants
-permission to call APIs using an access token. GitHub and Spotify use
-OAuth without OIDC; their helpers fetch profile information through
-their own APIs. With OIDC, read validated identity details from
-<code>auth[["token"]]@id_token_claims</code> and check
-<code>auth[["token"]]@id_token_validated</code>. An access token alone
-is not proof of identity. The <a href="authentication-flow.html">authentication guide</a> explains
-more.</p>
-<p>For a local Keycloak server using HTTP, opt in before creating the
-provider:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.allow_insecure_oidc_loopback <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span></span>
-<span>  base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>, realm <span class="op">=</span> <span class="st">"shinyoauth"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>This option is for local development only. Production provider URLs
-need HTTPS. The ordinary HTTP host option allows local app addresses; it
-does not relax OIDC discovery.</p>
-</div>
-<div class="section level2">
-<h2 id="assessing-oauth-2-1-configuration">Assessing OAuth 2.1 configuration<a class="anchor" aria-label="anchor" href="#assessing-oauth-2-1-configuration"></a>
-</h2>
-<p>Use <code><a href="../reference/check_oauth21.html">check_oauth21()</a></code> to review a client before
-deployment. It returns findings and suggested fixes without contacting
-the provider or changing the client:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
-<span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span></span>
-<span><span class="va">assessment</span><span class="op">$</span><span class="va">checks</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"status"</span>, <span class="st">"message"</span>, <span class="st">"remediation"</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
-<p>The overall result has three meanings:</p>
-<table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
-<thead><tr class="header">
-<th><code>configuration_compliant</code></th>
-<th>Meaning</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td><code>FALSE</code></td>
-<td>At least one mandatory configuration check failed.</td>
-</tr>
-<tr class="even">
-<td><code>NA</code></td>
-<td>No known mandatory failure, but something required is
-unresolved.</td>
-</tr>
-<tr class="odd">
-<td><code>TRUE</code></td>
-<td>The applicable mandatory configuration checks passed. Live server
-behavior still needs testing.</td>
-</tr>
-</tbody>
-</table>
-<p>Read the individual findings even when the result is
-<code>TRUE</code>: recommendations and unverified external behavior
-remain separate. This is an optional configuration review, not
-certification of the app or provider. Rerun it after changing options,
-client settings or the runtime.</p>
-<div class="section level3">
-<h3 id="advanced-assessment-scope">Advanced assessment scope<a class="anchor" aria-label="anchor" href="#advanced-assessment-scope"></a>
-</h3>
-<p>The current ruleset is <code>1.1.1</code>, based on <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-16" class="external-link">OAuth
-2.1 draft 16</a>. This is an Internet-Draft, not a final RFC. The report
-records the specification revision, package version, time and operations
-checked.</p>
-<p>The checker covers code exchange and refresh plus enabled provider
-features. It does not require optional DPoP, mTLS, JAR, PAR and JARM
-together. Add optional operations when you want them assessed:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">assessment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/check_oauth21.html">check_oauth21</a></span><span class="op">(</span></span>
-<span>  <span class="va">client</span>,</span>
-<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>operations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"introspection"</span>, <span class="st">"revocation"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>The checker does not open mTLS certificate or key files; configured
-paths do not prove that those files are usable. Those checks remain
-unresolved until verified separately. Actual mTLS requests validate the
-current pair. Provider enforcement, registered redirect URLs, secret
-storage and browser/proxy TLS also require deployment checks.</p>
-<p>Your deployment script can handle known failures separately from
-unresolved prerequisites:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span>, <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Resolve the mandatory configuration findings before deployment."</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">$</span><span class="va">configuration_compliant</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">message</a></span><span class="op">(</span><span class="st">"Review unresolved configuration prerequisites before deployment."</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<p>S256 is the recommended PKCE choice. The advanced
-<code>context = list(nonce_exception = TRUE)</code> option records
-independently established server assurance for the draft’s
-confidential-client nonce exception. It cannot supply missing settings
-or count as observed server evidence. See <a href="https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.html">check_oauth21()</a>
-and <a href="advanced-security.html">advanced security</a> for the
-detailed requirements.</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="multiple-authorization-servers">Multiple authorization servers<a class="anchor" aria-label="anchor" href="#multiple-authorization-servers"></a>
-</h2>
-<p>Create one client and module for each registration. Give each
-authorization server a distinct registered callback path and list the
-same clients in the UI wrapper. Module IDs alone do not distinguish
-browser callback routes.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">redirects</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://app.example/oauth/a"</span>, <span class="st">"https://app.example/oauth/b"</span><span class="op">)</span></span>
-<span><span class="co"># provider_a and provider_b are independently configured OAuth/OIDC providers.</span></span>
-<span><span class="va">clients</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  auth_a <span class="op">=</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>    <span class="va">provider_a</span>, client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SITE_A_CLIENT_ID"</span><span class="op">)</span>,</span>
-<span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SITE_A_CLIENT_SECRET"</span><span class="op">)</span>,</span>
-<span>    redirect_uri <span class="op">=</span> <span class="va">redirects</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"read"</span><span class="op">)</span>,</span>
-<span>    authorization_server_mode <span class="op">=</span> <span class="st">"multi_redirect_uri"</span>,</span>
-<span>    authorization_server_redirect_uris <span class="op">=</span> <span class="va">redirects</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  auth_b <span class="op">=</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>    <span class="va">provider_b</span>, client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SITE_B_CLIENT_ID"</span><span class="op">)</span>,</span>
-<span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"SITE_B_CLIENT_SECRET"</span><span class="op">)</span>,</span>
-<span>    redirect_uri <span class="op">=</span> <span class="va">redirects</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"read"</span><span class="op">)</span>,</span>
-<span>    authorization_server_mode <span class="op">=</span> <span class="st">"multi_redirect_uri"</span>,</span>
-<span>    authorization_server_redirect_uris <span class="op">=</span> <span class="va">redirects</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_ui.html">oauth_ui</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"connect_a"</span>, <span class="st">"Connect A"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/actionButton.html" class="external-link">actionButton</a></span><span class="op">(</span><span class="st">"connect_b"</span>, <span class="st">"Connect B"</span><span class="op">)</span></span>
-<span><span class="op">)</span>, clients <span class="op">=</span> <span class="va">clients</span><span class="op">)</span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth_a"</span>, <span class="va">clients</span><span class="op">[[</span><span class="st">"auth_a"</span><span class="op">]</span><span class="op">]</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth_b"</span>, <span class="va">clients</span><span class="op">[[</span><span class="st">"auth_b"</span><span class="op">]</span><span class="op">]</span>, auto_redirect <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"connect_a"</span><span class="op">]</span><span class="op">]</span>, <span class="va">a</span><span class="op">[[</span><span class="st">"request_login"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"connect_b"</span><span class="op">]</span><span class="op">]</span>, <span class="va">b</span><span class="op">[[</span><span class="st">"request_login"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
-<p>Register those exact redirect URIs with the respective services and
-configure the web host to serve the app at both paths. Shared routes
-require independent authorization-server identification
-(<code>multi_issuer</code>, using RFC 9207 or JARM); the static registry
-rejects multiple clients with the same issuer on one route. See <a href="https://www.rfc-editor.org/rfc/rfc9700.html#section-4.4.2" class="external-link">OAuth
-Security BCP section 4.4.2</a>.</p>
-<p>Signing in to B can end the Shiny session holding A’s credentials.
-Each new session starts with empty module credentials, even when the
-clients share a pending-state store. To keep both authorizations across
-navigation, use the connection manager with browser or account
-retention. See <a href="multiple-authorizations.html">Keep and use
-multiple OAuth authorizations</a> for a complete two-service
-example.</p>
-<p>For healthcare APIs, <a href="smart-on-fhir.html">Use SMART on FHIR
-from Shiny</a> shows discovery, client registration settings, patient
-requests and EHR launch using the same manager.</p>
-<p>Additional token fields are already available server-side. For
-example, <code>a[["token"]]@initial_extra_fields[["patient"]]</code>
-reads an initial SMART patient value, while
-<code>a[["token"]]@extra_fields</code> contains only the latest
-successful response’s extras. Refresh may omit <code>patient</code>.
-Neither list is validated identity data or evidence of permission to
-read a resource. Ordinary clients do not infer SMART discovery, launch
-handling, scope equivalence, or a FHIR destination from these fields.
-Keep the matching client, token and approved resource together when
-making requests, and keep raw context out of logs and session
-summaries.</p>
-<div class="section level3">
-<h3 id="requests-bound-to-a-client-and-resource">Requests bound to a client and resource<a class="anchor" aria-label="anchor" href="#requests-bound-to-a-client-and-resource"></a>
-</h3>
-<p>Use a connection to keep the client settings, API address and current
-credentials together when making requests.</p>
-<table class="table">
-<colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
-</colgroup>
-<thead><tr class="header">
-<th>Object</th>
-<th>What it represents</th>
-<th>Example</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td><code>OAuthClient</code></td>
-<td>Registration settings and optional approved API addresses</td>
-<td>Hospital A’s client ID, scopes and
-<code>https://a.example/fhir</code>
-</td>
-</tr>
-<tr class="even">
-<td><code>OAuthConnection</code></td>
-<td>Access to one Shiny session’s current credentials through that
-configuration</td>
-<td>This session’s authorized requests to Hospital A</td>
-</tr>
-</tbody>
-</table>
-<p>The client holds shared settings without any user’s tokens. A
-connection reads the module’s current token for each request, checks the
-Shiny session and restricts requests to the configured API addresses.
-The module still manages refresh and logout; use the connection manager
-to keep credentials across navigation.</p>
-<p>Set <code>resource_bases</code> on <code><a href="../reference/oauth_client.html">oauth_client()</a></code>
-outside <code>server()</code>, then create a connection for that
-client’s module inside <code>server()</code>:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  <span class="va">provider</span>, client_id <span class="op">=</span> <span class="st">"registered-app"</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example/callback"</span>, scopes <span class="op">=</span> <span class="st">"read"</span>,</span>
-<span>  resource_bases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>records <span class="op">=</span> <span class="st">"https://api.example/v1"</span><span class="op">)</span>,</span>
-<span>  required_scopes <span class="op">=</span> <span class="st">"read"</span> <span class="co"># A subset of the requested scopes.</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
-<span>  <span class="va">connection</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_connection.html">oauth_connection</a></span><span class="op">(</span><span class="va">client</span>, <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">records</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">connection</span><span class="op">[[</span><span class="st">"is_usable"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="va">connection</span><span class="op">[[</span><span class="st">"request"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="st">"records"</span>, <span class="st">"records"</span>, query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>      <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_json</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<p>The connection reads the latest token after refresh and becomes
-unusable after logout, token expiry, or session end. It can only be used
-in the Shiny session that created it, including for summary reads. This
-wrapper does not retain credentials across navigation.</p>
-<p><code>resource_bases</code> restricts the token’s destinations; it
-does not request an audience or prove an opaque token’s audience. Wire
-the token expression to the module using <code>client</code>. Resource
-indicators remain an explicit client setting (<a href="https://www.rfc-editor.org/rfc/rfc8707.html" class="external-link">RFC 8707</a>).</p>
-<p>Each request selects a resource ID and resolves a path against its
-full base. An absolute pagination or resource reference must stay within
-that base too. For example, <code>/v1-other</code> is outside
-<code>/v1</code>, even on the same hostname. Ambiguous path syntax is
-rejected before URL normalization, and redirects are disabled. General
-URL options cannot relax this policy. These comparisons use URI origin
-and path rules from <a href="https://www.rfc-editor.org/rfc/rfc3986.html" class="external-link">RFC 3986</a>.</p>
-<p>Optional permissions can produce a limited connection. Declare an
-operation’s extra permissions with
-<code>[["request"]](..., required_scopes = "write")</code>; the current
-grant must cover them. No generic mapping from API paths to OAuth scopes
-is assumed. <code>[["summary"]]()</code> contains the opaque connection
-ID, client label, local status, expiry, and resource IDs. It excludes
-credentials and raw context.</p>
-</div>
 </div>
 <div class="section level2">
 <h2 id="asynchronous-execution">Asynchronous execution<a class="anchor" aria-label="anchor" href="#asynchronous-execution"></a>
@@ -595,7 +279,7 @@ can make other sessions on that process wait too. To run the module’s
 network work in background R processes, install <code>mirai</code> and
 <code>promises</code>, then configure workers before
 <code>server()</code>:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">mirai</span><span class="fu">::</span><span class="fu"><a href="https://mirai.r-lib.org/reference/daemons.html" class="external-link">daemons</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -612,7 +296,7 @@ and does not avoid blocking.</p>
 <p>For an app using future instead of mirai, configure its worker plan
 before starting the server and release the workers when the app
 stops:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/multisession.html" class="external-link">multisession</a></span>, workers <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/onStop.html" class="external-link">onStop</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu">future</span><span class="fu">::</span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="fu">future</span><span class="fu">::</span><span class="va"><a href="https://future.futureverse.org/reference/sequential.html" class="external-link">sequential</a></span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -645,12 +329,90 @@ refresh fails. Setting it to <code>TRUE</code> also disables the
 validity at the provider.</p>
 </div>
 <div class="section level2">
+<h2 id="provider-configuration-and-oidc-discovery">Provider configuration and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-configuration-and-oidc-discovery"></a>
+</h2>
+<p>Use a built-in helper when available, such as
+<code><a href="../reference/oauth_provider_google.html">oauth_provider_google()</a></code>,
+<code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code>, or
+<code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code>. Each helper’s help page
+describes its setup. For an OpenID Connect service with a discovery URL,
+you can let shinyOAuth look up the service’s settings:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
+<span>  issuer <span class="op">=</span> <span class="st">"https://login.example.com"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"https://my-app.example.com"</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"email"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Replace the example URLs and credentials with your own registration.
+An issuer is the provider’s identifier URL; copy it from the provider’s
+configuration. Discovery makes a network request, so run it during app
+setup. If your registration specifies a client authentication method,
+supply the matching <code>token_auth_style</code> to the provider
+helper; discovery describes the service’s capabilities, not the settings
+of your individual registration.</p>
+<p>OpenID Connect (OIDC) is a login protocol: it supplies a signed ID
+token that shinyOAuth checks to identify the user. OAuth 2.0 grants
+permission to call APIs using an access token. GitHub and Spotify use
+OAuth without OIDC; their helpers fetch profile information through
+their own APIs. With OIDC, read validated identity details from
+<code>auth[["token"]]@id_token_claims</code> and check
+<code>auth[["token"]]@id_token_validated</code>. An access token alone
+is not proof of identity. The <a href="authentication-flow.html">authentication guide</a> explains
+more.</p>
+</div>
+<div class="section level2">
 <h2 id="deployment">Deployment<a class="anchor" aria-label="anchor" href="#deployment"></a>
 </h2>
 <p>Replace the local callback URL with the app’s public HTTPS URL, and
 register that same URL with the provider. Open the app directly in a
 browser tab. An app embedded in another page may not be able to complete
 login.</p>
+<div class="section level3">
+<h3 id="security-checklist">Security checklist<a class="anchor" aria-label="anchor" href="#security-checklist"></a>
+</h3>
+<ul>
+<li>Use HTTPS in production and keep credentials on the server.</li>
+<li>Request only the scopes your app needs.</li>
+<li>Check login and app-specific access rules in server code before
+using private data.</li>
+<li>Keep tokens, complete login URLs, and detailed provider errors out
+of the UI and logs.</li>
+<li>Render untrusted text through Shiny’s ordinary text/tag functions.
+Do not pass it to <code><a href="https://rstudio.github.io/htmltools/reference/HTML.html" class="external-link">HTML()</a></code> as markup; keep table escaping
+enabled.</li>
+<li>Wrap the UI with <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> (or
+<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> when required). These send a browser
+privacy header that keeps callback URLs out of referrers.</li>
+<li>If repeated login requests affect responsiveness, your hosting
+provider can help with optional rate limiting.</li>
+<li>Keep the provider’s validation defaults and choose any extra
+protections to match your provider and deployment requirements.</li>
+</ul>
+<p>The module links a returning login to the browser using an
+origin-scoped token in tab-scoped session storage and an independent,
+short-lived cookie marker. Each transaction has its own marker. Cookies
+and session storage must both be available; complete login in the tab
+that started it. JavaScript reads this binding, so preventing injected
+scripts (cross-site scripting, or XSS) in your app matters. This link
+cannot establish which account you expected to sign in: check that
+account yourself when your app has such a requirement.</p>
+<p>Treat the entire hostname as a trust boundary and use a dedicated
+hostname if other services are untrusted. Cookies are shared across
+ports, even with <code>__Host-</code>, <code>Secure</code>, or
+<code>HttpOnly</code>. The session-storage check prevents another port
+from adopting a cookie as a binding, but cannot prevent cookie
+disruption. Application callback routes distinguish records within a
+tab. Same-origin scripts can still access session storage.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="advanced-deployment">Advanced deployment<a class="anchor" aria-label="anchor" href="#advanced-deployment"></a>
+</h2>
 <div class="section level3">
 <h3 id="posit-connect-and-connect-cloud">Posit Connect and Connect Cloud<a class="anchor" aria-label="anchor" href="#posit-connect-and-connect-cloud"></a>
 </h3>
@@ -708,67 +470,20 @@ JWE encryption; the pending-login record’s <code>state_key</code>
 sealing does not cover them. Apply the store’s access controls and
 expiry to both record types.</p>
 </div>
-<div class="section level3">
-<h3 id="security-checklist">Security checklist<a class="anchor" aria-label="anchor" href="#security-checklist"></a>
-</h3>
-<ul>
-<li>Use HTTPS in production and keep credentials on the server.</li>
-<li>Request only the scopes your app needs.</li>
-<li>Check login and app-specific access rules in server code before
-using private data.</li>
-<li>Keep tokens, complete login URLs, and detailed provider errors out
-of the UI and logs.</li>
-<li>Render untrusted text through Shiny’s ordinary text/tag functions.
-Do not pass it to <code><a href="https://rstudio.github.io/htmltools/reference/HTML.html" class="external-link">HTML()</a></code> as markup; keep table escaping
-enabled.</li>
-<li>Wrap the UI with <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> (or
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> when required). These send a browser
-privacy header that keeps callback URLs out of referrers.</li>
-<li>If repeated login requests affect responsiveness, your hosting
-provider can help with optional rate limiting.</li>
-<li>Keep the provider’s validation defaults and choose any extra
-protections to match your provider and deployment requirements.</li>
-</ul>
-<p>The module links a returning login to the browser using an
-origin-scoped token in tab-scoped session storage and an independent,
-short-lived cookie marker. Each transaction has its own marker. Cookies
-and session storage must both be available; complete login in the tab
-that started it. JavaScript reads this binding, so preventing injected
-scripts (cross-site scripting, or XSS) in your app matters. This link
-cannot establish which account you expected to sign in: check that
-account yourself when your app has such a requirement.</p>
-<p>Treat the entire hostname as a trust boundary and use a dedicated
-hostname if other services are untrusted. Cookies are shared across
-ports, even with <code>__Host-</code>, <code>Secure</code>, or
-<code>HttpOnly</code>. The session-storage check prevents another port
-from adopting a cookie as a binding, but cannot prevent cookie
-disruption. Application callback routes distinguish records within a
-tab. Same-origin scripts can still access session storage.</p>
-</div>
 </div>
 <div class="section level2">
-<h2 id="troubleshooting">Troubleshooting<a class="anchor" aria-label="anchor" href="#troubleshooting"></a>
+<h2 id="local-keycloak-development">Local Keycloak development<a class="anchor" aria-label="anchor" href="#local-keycloak-development"></a>
 </h2>
-<p>Use <a href="audit-logging.html">audit logging</a> to identify the
-failing operation. Common configuration issues include:</p>
-<ul>
-<li>Rejected redirect URI: check that the registered callback URL and
-<code>redirect_uri</code> match, including scheme, host, port, and
-path.</li>
-<li>Callback validation failure: use the registered app address in a
-regular browser and create the client outside <code>server()</code>. For
-multiple R processes, check the shared state store and key.</li>
-<li>Rejected client credentials: check the environment variables after
-restarting R and match <code>token_auth_style</code> to the app
-registration.</li>
-<li>Missing profile fields: check requested scopes and the provider’s
-profile format. Some providers return identity information only in ID
-token claims.</li>
-<li>Rejected API request: check permissions, token expiry, and whether
-the API accepts tokens from the configured provider.</li>
-</ul>
-<p>Keep token and callback validation enabled while diagnosing
-configuration errors.</p>
+<p>For a local Keycloak server using HTTP, opt in before creating the
+provider:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.allow_insecure_oidc_loopback <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak</a></span><span class="op">(</span></span>
+<span>  base_url <span class="op">=</span> <span class="st">"http://localhost:8080"</span>, realm <span class="op">=</span> <span class="st">"shinyoauth"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This option is for local development only. Production provider URLs
+need HTTPS. The ordinary HTTP host option allows local app addresses; it
+does not relax OIDC discovery.</p>
 </div>
 <div class="section level2">
 <h2 id="further-configuration">Further configuration<a class="anchor" aria-label="anchor" href="#further-configuration"></a>
