@@ -122,10 +122,10 @@ after logout or a change of account.
 ## Refresh and signing in again
 
 `$access_token()` checks the token’s remaining lifetime and refreshes
-when needed. For a slow operation, use `min_valid_for` to require more
-remaining token lifetime. If no usable token is available, the call
-raises an error; it does not open a login page or repeat the other
-package’s operation.
+when needed. For a slow operation, use `min_valid_for_seconds` to
+require more remaining token lifetime. If no usable token is available,
+the call raises an error; it does not open a login page or repeat the
+other package’s operation.
 
 Offer `auth$reauthorize()` when the user needs to sign in again. It
 preserves locally reduced permissions and ends the previous local login.
@@ -278,7 +278,7 @@ load_records <- shiny::ExtendedTask$new(function(token, authorization_id) {
 shiny::observeEvent(input$load, {
   shiny::req(load_records$status() != "running")
   connection <- shiny::req(auth$connection())
-  token <- connection$access_token("records.read", min_valid_for = 120)
+  token <- connection$access_token("records.read", min_valid_for_seconds = 120)
   load_records$invoke(token, connection$id)
 })
 

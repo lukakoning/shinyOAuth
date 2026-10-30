@@ -14,7 +14,7 @@ oauth_client(
   client_secret = character(0),
   redirect_uri,
   enforce_callback_issuer = NULL,
-  scopes = character(0),
+  scopes = token_target_default_scopes(token_targets, provider),
   resource = character(0),
   claims = NULL,
   state_store = cachem::cache_mem(max_age = 300),
@@ -127,7 +127,12 @@ oauth_client(
   available names. For OIDC (`issuer` set and
   `infer_oidc_from_issuer = TRUE`), shinyOAuth adds `"openid"`
   automatically if absent. The resulting set is used in the request and
-  subsequent scope checks.
+  subsequent scope checks. When omitted with `token_targets`, API scopes
+  are inferred from those declarations. Explicit `scopes` must include
+  every target's API scopes; they are never expanded from declarations.
+  With no targets, the default requests no API scopes. OIDC adds
+  `"openid"`; request further identity and refresh-consent scopes
+  explicitly.
 
 - resource:
 
@@ -724,13 +729,15 @@ oauth_client(
 - token_targets:
 
   Optional named list for obtaining tokens for several APIs through one
-  login. Each entry needs a `resource` identifier and `scopes` (also
-  included in client `scopes`). Optional `required_scopes` set that
-  API's minimum permissions; `resource_ids` associate it with named
-  `resource_bases`. Optional Microsoft `scope_aliases` identify unusual
-  short permission names in responses. Requires provider support and
-  `userinfo_required = FALSE`; cannot be combined with `resource` or
-  SMART configuration. See
+  login. Build entries with
+  [`oauth_token_target()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_token_target.md)
+  or plain named lists. Each entry needs a `resource` identifier and
+  `scopes` (also included in explicit client `scopes`). Optional
+  `required_scopes` set that API's minimum permissions; `resource_ids`
+  associate it with named `resource_bases`. Optional Microsoft
+  `scope_aliases` identify unusual short permission names in responses.
+  Requires provider support and `userinfo_required = FALSE`; cannot be
+  combined with `resource` or SMART configuration. See
   [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
   ([online
   guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))

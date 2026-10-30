@@ -24,11 +24,12 @@
 - Access several APIs, such as calendars and contacts, through one
   login:
 
-  - Configure `token_targets` in
-    [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
-    for providers supporting RFC 8707 resource indicators or Microsoft
-    token acquisition. Each API can have its own token; select one with,
-    for example, `connection$access_token(target = "calendar")`.
+  - Declare APIs with
+    [`oauth_token_target()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_token_target.md)
+    in `oauth_client(token_targets = ...)` for providers supporting RFC
+    8707 resource indicators or Microsoft token acquisition. Each API
+    can have its own token; select one with, for example,
+    `connection$access_token(target = "calendar")`.
   - With token targets, set `reauth_after_seconds` if your app needs a
     time-limited login; API token expiry alone need not end the local
     login. See
@@ -38,15 +39,6 @@
 
 - Provider helpers and compatibility improvements:
 
-  - Renamed the unreleased `default_token_target` argument and property
-    to `token_target_default`, beside `token_targets`. Both client
-    constructors select a sole target automatically. New S7 constructor
-    arguments follow all arguments from 0.6.1, preserving their
-    positional meaning.
-  - Connection `$access_token()` places `target` after
-    `required_scopes`, and `$request()` keeps `refresh` next to
-    `min_valid_for`. The new ORCID helper takes `sandbox` before the
-    optional provider `name`.
   - Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth,
     Hugging Face, SURFconext, and authentik, reducing manual provider
     configuration.

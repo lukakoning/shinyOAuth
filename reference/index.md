@@ -6,6 +6,8 @@
   : Set up a Shiny UI for shinyOAuth
 - [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
   : Configure OAuth/OIDC client credentials and login settings
+- [`oauth_token_target()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_token_target.md)
+  : Declare an API token target
 - [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   : OAuth 2.0 authorization and OIDC authentication module for Shiny
 - [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)

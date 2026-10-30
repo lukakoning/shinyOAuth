@@ -41,15 +41,14 @@ client <- oauth_client(
   client_id = Sys.getenv("OAUTH_CLIENT_ID"),
   client_secret = Sys.getenv("OAUTH_CLIENT_SECRET"),
   redirect_uri = "https://app.example/callback",
-  scopes = c("calendar.read", "calendar.write", "contacts.read"),
   token_targets = list(
-    calendar = list(
+    calendar = oauth_token_target(
       resource = "https://calendar.example/",
       scopes = c("calendar.read", "calendar.write"),
       required_scopes = "calendar.read",
       resource_ids = "calendar_api"
     ),
-    contacts = list(
+    contacts = oauth_token_target(
       resource = "https://contacts.example/",
       scopes = "contacts.read",
       resource_ids = "contacts_api"
@@ -64,9 +63,17 @@ client <- oauth_client(
 ```
 
 `token_target_default` chooses the API when a call omits `target`.
-`resource_ids` connects each target to its named API address in
-`resource_bases`. You can omit those addresses when only exporting
-tokens to another package.
+[`oauth_token_target()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_token_target.md)
+checks each declaration’s fields; plain named lists with the same fields
+remain supported. The client checks provider-specific rules and how
+declarations relate to one another. Omitting client `scopes` uses the
+union of API permissions declared by the targets. If you supply
+`scopes`, include every target’s permissions: that explicit list remains
+the limit and is never expanded automatically. Identity and refresh
+consent, such as `profile` or `offline_access`, still need an explicit
+request; OIDC continues to add `openid` when needed. `resource_ids`
+connects each target to its named API address in `resource_bases`. You
+can omit those addresses when only exporting tokens to another package.
 
 ## Choose a token when making a call
 
@@ -111,6 +118,11 @@ server <- function(input, output, session) {
 `FALSE` before that target’s first token acquisition. `$targets()` lists
 target status without exposing credentials.
 
+Use `$is_usable(target = "contacts")` to check whether that API’s
+current token is usable, or `$summary(target = "contacts")` to inspect
+its status and expiry. These reads never acquire or refresh a token; an
+unacquired target has status `"not_acquired"` and is not usable.
+
 The example limits login to one hour with `reauth_after_seconds`.
 Without a limit, local authentication can outlast every API token;
 `indefinite_session = TRUE` disables that limit.
@@ -148,11 +160,11 @@ client <- oauth_client(
     "api://your-contacts-api/Contacts.Read"
   ),
   token_targets = list(
-    calendar = list(
+    calendar = oauth_token_target(
       resource = "https://graph.microsoft.com",
       scopes = "https://graph.microsoft.com/Calendars.Read"
     ),
-    contacts = list(
+    contacts = oauth_token_target(
       resource = "api://your-contacts-api",
       scopes = "api://your-contacts-api/Contacts.Read"
     )

@@ -108,15 +108,14 @@ Microsoft uses the alternative setup shown <a href="#microsoft-example">below</a
 <span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
 <span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"OAUTH_CLIENT_SECRET"</span><span class="op">)</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example/callback"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"calendar.read"</span>, <span class="st">"calendar.write"</span>, <span class="st">"contacts.read"</span><span class="op">)</span>,</span>
 <span>  token_targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    calendar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    calendar <span class="op">=</span> <span class="fu"><a href="../reference/oauth_token_target.html">oauth_token_target</a></span><span class="op">(</span></span>
 <span>      resource <span class="op">=</span> <span class="st">"https://calendar.example/"</span>,</span>
 <span>      scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"calendar.read"</span>, <span class="st">"calendar.write"</span><span class="op">)</span>,</span>
 <span>      required_scopes <span class="op">=</span> <span class="st">"calendar.read"</span>,</span>
 <span>      resource_ids <span class="op">=</span> <span class="st">"calendar_api"</span></span>
 <span>    <span class="op">)</span>,</span>
-<span>    contacts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    contacts <span class="op">=</span> <span class="fu"><a href="../reference/oauth_token_target.html">oauth_token_target</a></span><span class="op">(</span></span>
 <span>      resource <span class="op">=</span> <span class="st">"https://contacts.example/"</span>,</span>
 <span>      scopes <span class="op">=</span> <span class="st">"contacts.read"</span>,</span>
 <span>      resource_ids <span class="op">=</span> <span class="st">"contacts_api"</span></span>
@@ -129,9 +128,19 @@ Microsoft uses the alternative setup shown <a href="#microsoft-example">below</a
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><code>token_target_default</code> chooses the API when a call omits
-<code>target</code>. <code>resource_ids</code> connects each target to
-its named API address in <code>resource_bases</code>. You can omit those
-addresses when only exporting tokens to another package.</p>
+<code>target</code>. <code><a href="../reference/oauth_token_target.html">oauth_token_target()</a></code> checks each
+declaration’s fields; plain named lists with the same fields remain
+supported. The client checks provider-specific rules and how
+declarations relate to one another. Omitting client <code>scopes</code>
+uses the union of API permissions declared by the targets. If you supply
+<code>scopes</code>, include every target’s permissions: that explicit
+list remains the limit and is never expanded automatically. Identity and
+refresh consent, such as <code>profile</code> or
+<code>offline_access</code>, still need an explicit request; OIDC
+continues to add <code>openid</code> when needed.
+<code>resource_ids</code> connects each target to its named API address
+in <code>resource_bases</code>. You can omit those addresses when only
+exporting tokens to another package.</p>
 </div>
 <div class="section level2">
 <h2 id="choose-a-token-when-making-a-call">Choose a token when making a call<a class="anchor" aria-label="anchor" href="#choose-a-token-when-making-a-call"></a>
@@ -173,6 +182,11 @@ when needed. <code>$has_scopes()</code> checks permissions already
 recorded; it can return <code>FALSE</code> before that target’s first
 token acquisition. <code>$targets()</code> lists target status without
 exposing credentials.</p>
+<p>Use <code>$is_usable(target = "contacts")</code> to check whether
+that API’s current token is usable, or
+<code>$summary(target = "contacts")</code> to inspect its status and
+expiry. These reads never acquire or refresh a token; an unacquired
+target has status <code>"not_acquired"</code> and is not usable.</p>
 <p>The example limits login to one hour with
 <code>reauth_after_seconds</code>. Without a limit, local authentication
 can outlast every API token; <code>indefinite_session = TRUE</code>
@@ -210,11 +224,11 @@ exports tokens to another package:</p>
 <span>    <span class="st">"api://your-contacts-api/Contacts.Read"</span></span>
 <span>  <span class="op">)</span>,</span>
 <span>  token_targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    calendar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    calendar <span class="op">=</span> <span class="fu"><a href="../reference/oauth_token_target.html">oauth_token_target</a></span><span class="op">(</span></span>
 <span>      resource <span class="op">=</span> <span class="st">"https://graph.microsoft.com"</span>,</span>
 <span>      scopes <span class="op">=</span> <span class="st">"https://graph.microsoft.com/Calendars.Read"</span></span>
 <span>    <span class="op">)</span>,</span>
-<span>    contacts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    contacts <span class="op">=</span> <span class="fu"><a href="../reference/oauth_token_target.html">oauth_token_target</a></span><span class="op">(</span></span>
 <span>      resource <span class="op">=</span> <span class="st">"api://your-contacts-api"</span>,</span>
 <span>      scopes <span class="op">=</span> <span class="st">"api://your-contacts-api/Contacts.Read"</span></span>
 <span>    <span class="op">)</span></span>

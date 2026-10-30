@@ -166,7 +166,7 @@ login, requesting new permissions or retrying the SDK operation.
     OAuthConnection$access_token(
       required_scopes = character(),
       target = NULL,
-      min_valid_for = 60,
+      min_valid_for_seconds = 60,
       force_refresh = FALSE,
       async = FALSE
     )
@@ -183,7 +183,7 @@ login, requesting new permissions or retrying the SDK operation.
   Optional API name from `token_targets`. `NULL` selects the client's
   default. Its token is acquired when needed.
 
-- `min_valid_for`:
+- `min_valid_for_seconds`:
 
   Minimum remaining lifetime in seconds (default 60). Allow time for the
   operation and clock differences. Unknown or insufficient expiry
@@ -262,7 +262,14 @@ Request-specific scopes are checked by `[["request"]]()`.
 
 #### Usage
 
-    OAuthConnection$is_usable()
+    OAuthConnection$is_usable(target = NULL)
+
+#### Arguments
+
+- `target`:
+
+  Optional API name from `token_targets`. `NULL` selects the client's
+  default. This check never acquires or refreshes a token.
 
 #### Returns
 
@@ -335,7 +342,15 @@ when called outside the owning session or after that session closes.
 
 #### Usage
 
-    OAuthConnection$summary()
+    OAuthConnection$summary(target = NULL)
+
+#### Arguments
+
+- `target`:
+
+  Optional API name from `token_targets`. `NULL` selects the client's
+  default. Status and expiry describe that API's current token; this
+  read never acquires or refreshes it.
 
 #### Details
 
@@ -344,6 +359,8 @@ claim is in progress, `uncertain` requires a new authorization after an
 ambiguous refresh outcome, `disconnected` means local access was
 removed, and `unavailable` means the stored credentials could not be
 restored. Otherwise token status is evaluated in this order:
+
+- `not_acquired`: the selected target has no token yet.
 
 - `disconnected`: there is no current token.
 
@@ -450,7 +467,7 @@ grant must cover any scopes required for this operation.
       configure = NULL,
       target = NULL,
       refresh = FALSE,
-      min_valid_for = 60
+      min_valid_for_seconds = 60
     )
 
 #### Arguments
@@ -514,7 +531,7 @@ grant must cover any scopes required for this operation.
   remains available. The destination and `configure` result are checked
   before refresh, and permission is checked again before sending.
 
-- `min_valid_for`:
+- `min_valid_for_seconds`:
 
   Minimum remaining lifetime when `refresh = TRUE`, in seconds. Has the
   same meaning as on `$access_token()`.

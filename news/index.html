@@ -56,14 +56,12 @@
 </ul></li>
 <li>
 <p>Access several APIs, such as calendars and contacts, through one login:</p>
-<ul><li>Configure <code>token_targets</code> in <code><a href="../reference/oauth_client.html">oauth_client()</a></code> for providers supporting RFC 8707 resource indicators or Microsoft token acquisition. Each API can have its own token; select one with, for example, <code>connection$access_token(target = "calendar")</code>.</li>
+<ul><li>Declare APIs with <code><a href="../reference/oauth_token_target.html">oauth_token_target()</a></code> in <code>oauth_client(token_targets = ...)</code> for providers supporting RFC 8707 resource indicators or Microsoft token acquisition. Each API can have its own token; select one with, for example, <code>connection$access_token(target = "calendar")</code>.</li>
 <li>With token targets, set <code>reauth_after_seconds</code> if your app needs a time-limited login; API token expiry alone need not end the local login. See <code><a href="../articles/token-targets.html">vignette("token-targets", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">online guide</a>).</li>
 </ul></li>
 <li>
 <p>Provider helpers and compatibility improvements:</p>
-<ul><li>Renamed the unreleased <code>default_token_target</code> argument and property to <code>token_target_default</code>, beside <code>token_targets</code>. Both client constructors select a sole target automatically. New S7 constructor arguments follow all arguments from 0.6.1, preserving their positional meaning.</li>
-<li>Connection <code>$access_token()</code> places <code>target</code> after <code>required_scopes</code>, and <code>$request()</code> keeps <code>refresh</code> next to <code>min_valid_for</code>. The new ORCID helper takes <code>sandbox</code> before the optional provider <code>name</code>.</li>
-<li>Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth, Hugging Face, SURFconext, and authentik, reducing manual provider configuration.</li>
+<ul><li>Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth, Hugging Face, SURFconext, and authentik, reducing manual provider configuration.</li>
 <li>Microsoft sign-in can skip Graph profile retrieval with <code>oauth_provider_microsoft(userinfo_required = FALSE)</code> when the token is intended for another API. This avoids a failed profile request without disabling OIDC identity checks.</li>
 <li>
 <code><a href="../reference/oauth_provider_oidc.html">oauth_provider_oidc()</a></code> preserves exact issuer URLs, including trailing slashes, and accepts a separate <code>issuer</code> when it differs from the endpoint base URL. Fixed GitHub’s permission-response format and Microsoft directory-ID letter case. Ed25519 keys now work for signed login requests and self-signed mTLS registration.</li>

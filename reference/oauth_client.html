@@ -63,7 +63,7 @@ to <code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p
 <span>  client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  <span class="va">redirect_uri</span>,</span>
 <span>  enforce_callback_issuer <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="fu">token_target_default_scopes</span><span class="op">(</span><span class="va">token_targets</span>, <span class="va">provider</span><span class="op">)</span>,</span>
 <span>  resource <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  claims <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  state_store <span class="op">=</span> <span class="fu">cachem</span><span class="fu">::</span><span class="fu"><a href="https://cachem.r-lib.org/reference/cache_mem.html" class="external-link">cache_mem</a></span><span class="op">(</span>max_age <span class="op">=</span> <span class="fl">300</span><span class="op">)</span>,</span>
@@ -170,7 +170,12 @@ support. Set <code>FALSE</code> to opt out explicitly.</p></dd>
 <dd><p>Character vector of permissions to request. The provider defines
 the available names. For OIDC (<code>issuer</code> set and <code>infer_oidc_from_issuer = TRUE</code>),
 shinyOAuth adds <code>"openid"</code> automatically if absent. The resulting set is
-used in the request and subsequent scope checks.</p></dd>
+used in the request and subsequent scope checks.
+When omitted with <code>token_targets</code>, API scopes are inferred from those
+declarations. Explicit <code>scopes</code> must include every target's API scopes;
+they are never expanded from declarations. With no targets, the default
+requests no API scopes. OIDC adds <code>"openid"</code>; request further identity and
+refresh-consent scopes explicitly.</p></dd>
 
 
 <dt id="arg-resource">resource<a class="anchor" aria-label="anchor" href="#arg-resource"></a></dt>
@@ -726,8 +731,9 @@ compatibility.</p></dd>
 
 <dt id="arg-token-targets">token_targets<a class="anchor" aria-label="anchor" href="#arg-token-targets"></a></dt>
 <dd><p>Optional named list for obtaining tokens for several APIs
-through one login. Each entry needs a <code>resource</code> identifier and <code>scopes</code>
-(also included in client <code>scopes</code>). Optional <code>required_scopes</code> set that API's
+through one login. Build entries with <code><a href="oauth_token_target.html">oauth_token_target()</a></code> or plain named
+lists. Each entry needs a <code>resource</code> identifier and <code>scopes</code>
+(also included in explicit client <code>scopes</code>). Optional <code>required_scopes</code> set that API's
 minimum permissions; <code>resource_ids</code> associate it with named <code>resource_bases</code>.
 Optional Microsoft <code>scope_aliases</code> identify unusual short permission names
 in responses. Requires provider support and <code>userinfo_required = FALSE</code>;

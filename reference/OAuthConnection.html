@@ -185,7 +185,7 @@ requesting new permissions or retrying the SDK operation.</p><div class="section
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">access_token</span><span class="op">(</span></span>
 <span>  required_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  target <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  min_valid_for <span class="op">=</span> <span class="fl">60</span>,</span>
+<span>  min_valid_for_seconds <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>  force_refresh <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  async <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
@@ -199,7 +199,7 @@ client requirements.</p></dd>
 <dd><p>Optional API name from <code>token_targets</code>. <code>NULL</code> selects the
 client's default. Its token is acquired when needed.</p></dd>
 
-      <dt><code>min_valid_for</code></dt>
+      <dt><code>min_valid_for_seconds</code></dt>
 <dd><p>Minimum remaining lifetime in seconds (default 60).
 Allow time for the operation and clock differences. Unknown or insufficient
 expiry triggers refresh; an unusable replacement raises an error.</p></dd>
@@ -268,7 +268,15 @@ otherwise FALSE. Malformed arguments raise input errors.</p>
 presence, known unexpired lifetime and the client's required scopes.
 Request-specific scopes are checked by <code>[["request"]]()</code>.</p><div class="section">
 <h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">is_usable</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">is_usable</span><span class="op">(</span>target <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>target</code></dt>
+<dd><p>Optional API name from <code>token_targets</code>. <code>NULL</code> selects the
+client's default. This check never acquires or refreshes a token.</p></dd>
+
+
+</dl><p></p></div>
 </div><p></p><div class="section">
 <h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>A single logical value: <code>TRUE</code> for an <code>active</code> or <code>limited</code>
@@ -286,7 +294,7 @@ refresh lifecycle and cannot invoke this method.</p><div class="section">
 <h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">refresh</span><span class="op">(</span>scopes <span class="op">=</span> <span class="cn">NULL</span>, target <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>scopes</code></dt>
 <dd><p>Optional non-empty character vector requesting fewer
 permissions for this connection, or <code>NULL</code> (default). Scopes must be
@@ -330,14 +338,24 @@ when the module uses async transport. Failure raises a redacted error.</p>
 credentials, identity claims or token extension fields. Raises an error
 when called outside the owning session or after that session closes.</p><div class="section">
 <h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>target <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>target</code></dt>
+<dd><p>Optional API name from <code>token_targets</code>. <code>NULL</code> selects the
+client's default. Status and expiry describe that API's current token;
+this read never acquires or refreshes it.</p></dd>
+
+
+</dl><p></p></div>
 </div><p></p><div class="section">
 <h4 id="details-3">Details<a class="anchor" aria-label="anchor" href="#details-3"></a></h4>
 <p>Managed lifecycle states take precedence: <code>refreshing</code> means a refresh
 claim is in progress, <code>uncertain</code> requires a new authorization after an
 ambiguous refresh outcome, <code>disconnected</code> means local access was removed,
 and <code>unavailable</code> means the stored credentials could not be restored.
-Otherwise token status is evaluated in this order:</p><ul><li><p><code>disconnected</code>: there is no current token.</p></li>
+Otherwise token status is evaluated in this order:</p><ul><li><p><code>not_acquired</code>: the selected target has no token yet.</p></li>
+<li><p><code>disconnected</code>: there is no current token.</p></li>
 <li><p><code>expiry_unknown</code>: the token's expiry is unknown.</p></li>
 <li><p><code>expired</code>: the token has reached its expiry time.</p></li>
 <li><p><code>insufficient_scope</code>: the grant lacks a client-required scope.</p></li>
@@ -373,7 +391,7 @@ validated OIDC identity.</p><div class="section">
 <h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">identity</span><span class="op">(</span>claims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"iss"</span>, <span class="st">"sub"</span><span class="op">)</span>, userinfo <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>claims</code></dt>
 <dd><p>Character vector of ID-token claim names, defaulting to
 <code>c("iss", "sub")</code>. Use <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> to select none.</p></dd>
@@ -419,10 +437,10 @@ must cover any scopes required for this operation.</p><div class="section">
 <span>  configure <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  target <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  refresh <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  min_valid_for <span class="op">=</span> <span class="fl">60</span></span>
+<span>  min_valid_for_seconds <span class="op">=</span> <span class="fl">60</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>resource_id</code></dt>
 <dd><p>Single character string naming an entry in the client's
 <code>resource_bases</code>.</p></dd>
@@ -467,7 +485,7 @@ ordinary HTTP retries are disabled for this call. DPoP nonce handling
 remains available. The destination and <code>configure</code> result are checked
 before refresh, and permission is checked again before sending.</p></dd>
 
-      <dt><code>min_valid_for</code></dt>
+      <dt><code>min_valid_for_seconds</code></dt>
 <dd><p>Minimum remaining lifetime when <code>refresh = TRUE</code>,
 in seconds. Has the same meaning as on <code>$access_token()</code>.</p></dd>
 
@@ -523,7 +541,7 @@ FHIR base, using current read permissions. <code><a href="smart_context.html">sm
 <h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">smart_resource</span><span class="op">(</span><span class="va">kind</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>kind</code></dt>
 <dd><p>Either <code>"patient"</code> or <code>"fhirUser"</code>.</p></dd>
 
@@ -544,7 +562,7 @@ redacted.</p><div class="section">
 <h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Unused; accepted for compatibility with <code><a href="https://rdrr.io/r/base/print.html" class="external-link">base::print()</a></code>.</p></dd>
 
