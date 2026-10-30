@@ -75,10 +75,13 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>Use audit events to record login attempts, token operations and
-session changes in your application’s logs. Set
-<code>shinyOAuth.audit_hook</code> to an R function that receives each
-event as a named list.</p>
+<p>An audit log records login attempts, token operations and session
+changes. Use it to investigate a failed sign-in or find out why a
+session ended.</p>
+<p>shinyOAuth sends each event to an R function called a hook. Your hook
+decides where to write it: the console for local testing, or your
+application’s logging service in a deployment. For timings and
+monitoring dashboards, see <a href="opentelemetry.html">OpenTelemetry</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="receiving-audit-events">Receiving audit events<a class="anchor" aria-label="anchor" href="#receiving-audit-events"></a>
@@ -90,29 +93,22 @@ provider and client:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"[shinyOAuth] %s | %s\n"</span>, <span class="va">event</span><span class="op">[[</span><span class="st">"type"</span><span class="op">]</span><span class="op">]</span>, <span class="va">event</span><span class="op">[[</span><span class="st">"trace_id"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Run your app and try signing in. You will see event names such as
-<code>audit_redirect_issued</code> and <code>audit_login_success</code>.
-The <code>trace_id</code> connects related events from the same
-operation or login attempt. Several events can describe one failure;
-they are not necessarily separate failed logins. For an interactive
-login, the same <code>trace_id</code> follows redirect preparation,
-callback validation, token exchange, and the login result.</p>
-<p>To stop receiving events, set
-<code>options(shinyOAuth.audit_hook = NULL)</code>. Keep hooks fast and
-avoid throwing errors. A hook that waits for a slow log service can
-delay the login operation that called it.</p>
+<p>Run the app and sign in. Events such as
+<code>audit_redirect_issued</code> and <code>audit_login_success</code>
+describe the steps taken. The <code>trace_id</code> connects events from
+the same login attempt, so use it to follow a failure across several
+steps. Several error events can describe one failed login.</p>
+<p>Set <code>options(shinyOAuth.audit_hook = NULL)</code> to stop
+receiving events. Keep hooks fast: waiting for a slow logging service
+can delay the operation being recorded.</p>
 </div>
 <div class="section level2">
 <h2 id="authentication-outcomes">Authentication outcomes<a class="anchor" aria-label="anchor" href="#authentication-outcomes"></a>
 </h2>
-<p>Use <code>audit_authenticated_changed</code> to track the module’s
-final authentication state and <code>audit_session_cleared</code> to
-record why a session ended. Events such as
-<code>audit_token_exchange</code> and <code>audit_userinfo</code> report
-individual operations; subsequent validation can still fail. Callback
-failures include <code>phase</code> and <code>error_class</code> fields
-to help identify the failed check. The event catalog below documents the
-available names and fields.</p>
+<p>Start with <code>audit_authenticated_changed</code> for the module’s
+authentication state and <code>audit_session_cleared</code> for why a
+session ended. A successful token exchange is an intermediate step;
+later identity checks can still reject the login.</p>
 </div>
 <div class="section level2">
 <h2 id="event-structure">Event structure<a class="anchor" aria-label="anchor" href="#event-structure"></a>
@@ -151,894 +147,286 @@ OTel exports it as <code>shinyoauth.trace_id</code>.</p>
 <div class="section level2">
 <h2 id="http-context-and-redaction">HTTP context and redaction<a class="anchor" aria-label="anchor" href="#http-context-and-redaction"></a>
 </h2>
-<p>By default, the HTTP summary omits paths, query strings, headers, and
-client addresses. The raw Shiny session token is also omitted. To omit
-HTTP context entirely:</p>
+<p>Logs can have a wider audience and longer retention than private app
+data. Keep the default redaction settings in production. They omit raw
+session tokens, request paths, query strings, headers, and client
+addresses from the HTTP summary.</p>
+<p>To omit HTTP context entirely:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_include_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>With this setting, <code>shiny_session[["http"]]</code> is
-<code>NULL</code>.</p>
-<p>Outbound URLs retain only scheme and authority by default. To include
-safe route names in audit and OTel URLs and incoming HTTP context,
-configure <code>shinyOAuth.telemetry_path_scrubber</code> as a function
-of the path returning a safe absolute path (for example
-<code>/users/:id</code>), or <code>NULL</code> to omit it. Use an
-allowlist or replace all identifying path segments; the function should
-be idempotent. Scrubber errors and invalid results omit the path.
-Scrubber input is limited to 2048 bytes; exported paths to 512 bytes.
-Method, host, and scheme are limited to 32, 255, and 16 bytes. Control
-and Unicode format characters are removed.</p>
-<p>For local debugging,
-<code>shinyOAuth.audit_redact_http = FALSE</code> includes raw request
-details, and
-<code>shinyOAuth.audit_include_raw_session_token = TRUE</code> includes
-the raw session token. These can expose credentials and personal data;
-keep the defaults for production logs. Redaction does not replace your
-logging system’s access and retention controls.</p>
-<div class="section level3">
-<h3 id="audit-events-from-asynchronous-workers">Audit events from asynchronous workers<a class="anchor" aria-label="anchor" href="#audit-events-from-asynchronous-workers"></a>
-</h3>
-<p>With <code>oauth_module_server(async = TRUE)</code>, the hook is
-passed to background work too. Use a hook that can run in a separate R
-process. Existing database connections or open file handles cannot be
-safely carried into a worker; create connections there or use a logging
-service designed for multiple writers. Appending to a global R list
-inside a worker only changes that worker’s copy.</p>
-<p>Worker failures may include <code>mirai_error_type</code>:
-<code>mirai_error</code>, <code>mirai_timeout</code>,
-<code>mirai_connection_reset</code>, or <code>mirai_interrupt</code>.
-This helps distinguish an R error from a timeout, crashed worker, or
-cancellation. It can be <code>NA</code> for a failure that is not
-specific to mirai.</p>
+<p>If you need route names, configure
+<code>shinyOAuth.telemetry_path_scrubber</code> to replace identifying
+path segments with safe labels, such as <code>/users/:id</code>. Keep
+credentials and patient or account identifiers out of those labels. Your
+logging service still needs appropriate access and retention
+controls.</p>
 </div>
-<div class="section level3">
-<h3 id="digest-keys-across-r-processes">Digest keys across R processes<a class="anchor" aria-label="anchor" href="#digest-keys-across-r-processes"></a>
-</h3>
-<p>Digests use HMAC-SHA256 with a random process key by default. The
-module shares that key with its async workers. To match digests across
-separate app processes or restarts, configure the same secret key
-everywhere:</p>
+<div class="section level2">
+<h2 id="audit-events-from-asynchronous-workers">Audit events from asynchronous workers<a class="anchor" aria-label="anchor" href="#audit-events-from-asynchronous-workers"></a>
+</h2>
+<p>With <code>async = TRUE</code>, the hook also runs in background R
+processes. Use a logging service that supports several writers, or open
+the logging connection inside each worker. A worker cannot safely reuse
+a database connection from the main process, and appending to a global
+list changes only that worker’s copy.</p>
+</div>
+<div class="section level2">
+<h2 id="digest-keys-across-r-processes">Digest keys across R processes<a class="anchor" aria-label="anchor" href="#digest-keys-across-r-processes"></a>
+</h2>
+<p>Digest fields let you match events without logging the original
+identifier. The default key lasts for one R process and its async
+workers. If you need to match records across app processes or restarts,
+load the same secret key in each:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">audit_digest_key</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"AUDIT_DIGEST_KEY"</span>, unset <span class="op">=</span> <span class="cn">NA_character_</span><span class="op">)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">audit_digest_key</span><span class="op">)</span> <span class="op">||</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nzchar</a></span><span class="op">(</span><span class="va">audit_digest_key</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"AUDIT_DIGEST_KEY must be configured before the app starts"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="va">audit_digest_key</span><span class="op">)</span></span></code></pre></div>
-<p>Use a string or raw vector containing at least 32 bytes, generated
-from at least 32 cryptographically random bytes and stored as a
-deployment secret. Invalid or short configured keys cause an error.
-<code>FALSE</code> selects unkeyed SHA-256 for compatibility, but makes
-low-entropy identifiers easier to guess.</p>
-<p>For exporting events and timings through OpenTelemetry, see <a href="opentelemetry.html">OpenTelemetry</a>.</p>
-</div>
+<p>Generate the secret from at least 32 cryptographically random bytes
+and keep it in deployment secret storage. The key is for log
+correlation; it does not restore login sessions.</p>
 </div>
 <div class="section level2">
 <h2 id="event-catalog">Event catalog<a class="anchor" aria-label="anchor" href="#event-catalog"></a>
 </h2>
-<p>This is a lookup reference. Start with the event name in your logs;
-fields are included when relevant and available.</p>
+<p>Match the event name from your log to the operation below. Use
+<code>trace_id</code> to follow the same attempt, then inspect
+<code>phase</code>, <code>reason</code>, <code>status</code> or
+<code>error_class</code> when present. A successful intermediate step
+does not establish final login.</p>
 <div class="section level3">
-<h3 id="authorization-redirect-issuance">Authorization redirect issuance<a class="anchor" aria-label="anchor" href="#authorization-redirect-issuance"></a>
+<h3 id="login-and-callbacks">Login and callbacks<a class="anchor" aria-label="anchor" href="#login-and-callbacks"></a>
 </h3>
-<div class="section level4">
-<h4 id="event-audit_redirect_issued">Event: <code>audit_redirect_issued</code><a class="anchor" aria-label="anchor" href="#event-audit_redirect_issued"></a>
-</h4>
-<ul>
-<li><p>When: after <code><a href="../reference/prepare_call.html">prepare_call()</a></code> builds the authorization
-URL</p></li>
-<li>
-<p>Context:</p>
-<ul>
-<li>
-<code>provider</code>, <code>issuer</code>
-</li>
-<li><code>client_id_digest</code></li>
-<li><code>state_digest</code></li>
-<li><code>browser_token_digest</code></li>
-<li>
-<code>pkce_method</code> (e.g., <code>S256</code>,
-<code>plain</code>, or <code>NA</code>)</li>
-<li>
-<code>par_used</code> (logical)</li>
-<li>
-<code>request_object_used</code> (logical)</li>
-<li>
-<code>nonce_present</code> (logical)</li>
-<li><code>scopes_count</code></li>
-<li><code>redirect_uri</code></li>
-</ul>
-</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="callback-query-rejected">Callback query rejected<a class="anchor" aria-label="anchor" href="#callback-query-rejected"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_callback_query_rejected">Event: <code>audit_callback_query_rejected</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_query_rejected"></a>
-</h4>
-<ul>
-<li>When: the callback query parameters fail validation (e.g., too
-large)</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>error_class</code>
-</li>
-<li>For form_post bridge query rejections, context also includes
-<code>phase</code>, <code>reason</code>, and
-<code>handle_digest</code>.</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="callback-routing-rejected">Callback routing rejected<a class="anchor" aria-label="anchor" href="#callback-routing-rejected"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_callback_routing_rejected">Event: <code>audit_callback_routing_rejected</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_routing_rejected"></a>
-</h4>
-<ul>
-<li>When: a multi-provider registry rejects a callback before selecting
-a client.</li>
-<li>Context: <code>phase</code>
-(<code>callback_registry_routing</code>), <code>reason</code>,
-<code>status</code> (<code>error</code>), and sanitized HTTP metadata in
-<code>shiny_session.http</code>.</li>
-<li>Reasons: <code>route_unavailable</code>,
-<code>route_unregistered</code>, <code>unexpected_transport</code>,
-<code>issuer_missing</code>, and <code>issuer_unrecognized</code>.</li>
-<li>The <code>shinyOAuth.callback.route</code> span records the same
-phase and reason with error status. No provider identity is assigned
-from unvalidated issuer input.</li>
-<li>Parser errors and later client-specific validation retain their
-existing diagnostics; they do not also emit this routing event.</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="callback-issuer-validation">Callback issuer validation<a class="anchor" aria-label="anchor" href="#callback-issuer-validation"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_callback_iss_missing">Event: <code>audit_callback_iss_missing</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_iss_missing"></a>
-</h4>
-<ul>
-<li>When: <code>enforce_callback_issuer = TRUE</code> and the callback
-omits the RFC 9207 <code>iss</code> parameter</li>
-<li>Context: <code>provider</code>, <code>expected_issuer</code>,
-<code>client_id_digest</code>, <code>error_class</code>
-</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_callback_iss_mismatch">Event: <code>audit_callback_iss_mismatch</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_iss_mismatch"></a>
-</h4>
-<ul>
-<li>When: the callback includes an <code>iss</code> query parameter (per
-RFC 9207) that does not match the provider’s expected issuer</li>
-<li>Context: <code>provider</code>, <code>expected_issuer</code>,
-<code>callback_issuer</code>, <code>client_id_digest</code>,
-<code>error_class</code>
-</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_callback_iss_validation_failed">Event: <code>audit_callback_iss_validation_failed</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_iss_validation_failed"></a>
-</h4>
-<ul>
-<li>When: callback issuer validation fails before token exchange for a
-reason other than the dedicated missing/mismatch cases above</li>
-<li>Context: <code>provider</code>, <code>expected_issuer</code>,
-<code>callback_issuer</code> (when present),
-<code>client_id_digest</code>, <code>error_class</code>
-</li>
-</ul>
-</div>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Name</th>
+<th>What it tells you</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>audit_redirect_issued</code></td>
+<td>The authorization URL is ready.</td>
+</tr>
+<tr class="even">
+<td><code>audit_callback_received</code></td>
+<td>Encrypted-state validation passed; later checks can still fail.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_callback_query_rejected</code></td>
+<td>Callback parameters are malformed or too large.</td>
+</tr>
+<tr class="even">
+<td><code>audit_callback_routing_rejected</code></td>
+<td>The callback could not be assigned to a configured client.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_callback_iss_missing</code></td>
+<td>The callback omitted a required provider identifier.</td>
+</tr>
+<tr class="even">
+<td><code>audit_callback_iss_mismatch</code></td>
+<td>The provider identifier does not match the expected issuer.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_callback_iss_validation_failed</code></td>
+<td>Another issuer check failed.</td>
+</tr>
+<tr class="even">
+<td><code>audit_callback_validation_success</code></td>
+<td>State, browser binding and single-use checks passed.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_callback_validation_failed</code></td>
+<td>A callback check failed; inspect <code>phase</code> and
+<code>error_class</code>.</td>
+</tr>
+<tr class="even">
+<td><code>audit_state_parse_failure</code></td>
+<td>Login state could not be decoded or validated.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_state_store_lookup_failed</code></td>
+<td>The pending login record could not be read.</td>
+</tr>
+<tr class="even">
+<td><code>audit_state_store_removal_failed</code></td>
+<td>The pending record could not be consumed safely.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_error_state_consumed</code></td>
+<td>State from a provider error response was consumed; other checks can
+still fail.</td>
+</tr>
+<tr class="even">
+<td><code>audit_error_state_consumption_failed</code></td>
+<td>State from a provider error response could not be consumed.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_browser_cookie_error</code></td>
+<td>Browser cookie setup failed or Web Crypto is unavailable.</td>
+</tr>
+<tr class="even">
+<td><code>audit_invalid_browser_token</code></td>
+<td>The browser sent an invalid binding token; the module requests a
+replacement.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_login_success</code></td>
+<td>Callback handling completed its configured checks.</td>
+</tr>
+<tr class="even">
+<td><code>audit_login_failed</code></td>
+<td>Login failed during callback handling.</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level3">
-<h3 id="callback-received">Callback received<a class="anchor" aria-label="anchor" href="#callback-received"></a>
+<h3 id="tokens-and-profiles">Tokens and profiles<a class="anchor" aria-label="anchor" href="#tokens-and-profiles"></a>
 </h3>
-<div class="section level4">
-<h4 id="event-audit_callback_received">Event: <code>audit_callback_received</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_received"></a>
-</h4>
-<ul>
-<li>When: a callback has passed encrypted-state validation; later
-callback checks may still fail</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>code_digest</code>,
-<code>state_digest</code>, <code>browser_token_digest</code>
-</li>
-<li>Notes: callbacks that fail before payload validation do not emit
-this event</li>
-</ul>
-</div>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Name</th>
+<th>What it tells you</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>audit_token_exchange</code></td>
+<td>An authorization code was exchanged for tokens.</td>
+</tr>
+<tr class="even">
+<td><code>audit_token_exchange_error</code></td>
+<td>Token exchange failed.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_token_refresh</code></td>
+<td>The access token was refreshed.</td>
+</tr>
+<tr class="even">
+<td><code>audit_token_introspection</code></td>
+<td>A token-activity check finished; inspect <code>active</code> and
+<code>status</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_token_revocation</code></td>
+<td>A revocation attempt finished, or was unsupported or missing a
+token.</td>
+</tr>
+<tr class="even">
+<td><code>audit_userinfo</code></td>
+<td>Profile retrieval or validation finished; <code>status</code>
+describes the result.</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level3">
-<h3 id="callback-validation">Callback validation<a class="anchor" aria-label="anchor" href="#callback-validation"></a>
+<h3 id="sessions-and-saved-connections">Sessions and saved connections<a class="anchor" aria-label="anchor" href="#sessions-and-saved-connections"></a>
 </h3>
-<p>Callback validation covers both the sealed-state checks and the later
-checks of the values tied to that state, such as the browser token, PKCE
-code verifier, and nonce. Each stage emits either a success event or a
-failure event.</p>
-<div class="section level4">
-<h4 id="event-audit_callback_validation_success">Event: <code>audit_callback_validation_success</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_validation_success"></a>
-</h4>
-<ul>
-<li>When: the callback has passed state, browser-binding, and single-use
-checks</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>state_digest</code>
-</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_callback_validation_failed">Event: <code>audit_callback_validation_failed</code><a class="anchor" aria-label="anchor" href="#event-audit_callback_validation_failed"></a>
-</h4>
-<ul>
-<li>When: a validation step fails prior to token exchange</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>state_digest</code>,
-<code>phase</code>, <code>error_class</code> (+
-<code>browser_token_digest</code> when phase is
-<code>browser_token_validation</code>)</li>
-<li>Phases include: <code>payload_validation</code>,
-<code>browser_token_validation</code>,
-<code>pkce_verifier_validation</code>, <code>nonce_validation</code>,
-<code>form_post_request_validation</code>,
-<code>form_post_callback_lookup</code>,
-<code>form_post_callback_validation</code>
-</li>
-<li>
-<code>handle_digest</code> is included when a form_post callback
-handle is missing, expired, or already consumed.</li>
-<li>State store lookup and removal failures have their own events (see
-below).</li>
-</ul>
-</div>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Name</th>
+<th>What it tells you</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>audit_session_started</code></td>
+<td>The authentication module started for a Shiny session.</td>
+</tr>
+<tr class="even">
+<td><code>audit_authenticated_changed</code></td>
+<td>The module authentication state changed.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_logout</code></td>
+<td>The module received a logout request.</td>
+</tr>
+<tr class="even">
+<td><code>audit_session_cleared</code></td>
+<td>Local login state was cleared; <code>reason</code> explains
+why.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_refresh_failed_but_kept_session</code></td>
+<td>Refresh failed, but <code>indefinite_session = TRUE</code> retained
+local login state.</td>
+</tr>
+<tr class="even">
+<td><code>audit_connection_disconnected</code></td>
+<td>One retained connection was removed locally.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_connections_disconnected</code></td>
+<td>A bulk local removal finished, including an empty batch.</td>
+</tr>
+<tr class="even">
+<td><code>audit_session_ended</code></td>
+<td>The Shiny session ended.</td>
+</tr>
+<tr class="odd">
+<td><code>audit_session_ended_revoke</code></td>
+<td>Session end triggered configured token-revocation cleanup.</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level3">
-<h3 id="state-store-access">State store access<a class="anchor" aria-label="anchor" href="#state-store-access"></a>
+<h3 id="error-records">Error records<a class="anchor" aria-label="anchor" href="#error-records"></a>
 </h3>
-<p>These events identify failures when reading or removing a pending
-login from the state store.</p>
-<div class="section level4">
-<h4 id="event-audit_state_store_lookup_failed">Event: <code>audit_state_store_lookup_failed</code><a class="anchor" aria-label="anchor" href="#event-audit_state_store_lookup_failed"></a>
-</h4>
-<ul>
-<li>When: retrieving the single-use state entry from the configured
-<code>state_store</code> fails (missing, malformed, or underlying cache
-error)</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>state_digest</code>,
-<code>error_class</code>, <code>phase</code>
-(<code>state_store_lookup</code> or
-<code>state_store_atomic_take</code>)</li>
-<li>Notes: The flow aborts with an invalid state error. The
-<code>state_store_atomic_take</code> phase applies when using a store
-with an atomic <code>[["take"]]()</code> method.</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_state_store_removal_failed">Event: <code>audit_state_store_removal_failed</code><a class="anchor" aria-label="anchor" href="#event-audit_state_store_removal_failed"></a>
-</h4>
-<ul>
-<li>When: removal of the single-use state entry (enforcing one-time use)
-fails</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>state_digest</code>,
-<code>error_class</code>, <code>phase</code>
-(<code>state_store_removal</code>)</li>
-<li>Notes: A failure to remove also aborts the flow with an invalid
-state error; the event is emitted best-effort and will never itself
-throw.</li>
-</ul>
-<p>Digest differences: For <code>audit_callback_validation_failed</code>
-during payload decryption (<code>phase = "payload_validation"</code>)
-the <code>state_digest</code> is computed from the encrypted payload
-(plaintext not yet available). For state store events the digest
-reflects the plaintext state string.</p>
-</div>
-</div>
-<div class="section level3">
-<h3 id="token-exchange">Token exchange<a class="anchor" aria-label="anchor" href="#token-exchange"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_token_exchange">Event: <code>audit_token_exchange</code><a class="anchor" aria-label="anchor" href="#event-audit_token_exchange"></a>
-</h4>
-<ul>
-<li>When: authorization code successfully exchanged for tokens</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>code_digest</code>,
-<code>used_pkce</code>, <code>received_id_token</code>,
-<code>received_refresh_token</code>,
-<code>expires_in_synthesized</code>
-</li>
-<li>
-<code>expires_in_synthesized</code> (logical): <code>TRUE</code>
-when the token response did not include a usable <code>expires_in</code>
-value and the package used the configured fallback token lifetime</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_token_exchange_error">Event: <code>audit_token_exchange_error</code><a class="anchor" aria-label="anchor" href="#event-audit_token_exchange_error"></a>
-</h4>
-<ul>
-<li>When: token exchange fails</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>code_digest</code>,
-<code>error_class</code>
-</li>
-</ul>
-<p>OpenTelemetry spans record DPoP token-type inference, DPoP nonce
-retries and mTLS endpoint-alias selection. These details are omitted
-from high-level audit events. See the <a href="opentelemetry.html">OpenTelemetry vignette</a>.</p>
-</div>
-</div>
-<div class="section level3">
-<h3 id="token-introspection">Token introspection<a class="anchor" aria-label="anchor" href="#token-introspection"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_token_introspection">Event: <code>audit_token_introspection</code><a class="anchor" aria-label="anchor" href="#event-audit_token_introspection"></a>
-</h4>
-<ul>
-<li>When: <code><a href="../reference/introspect_token.html">introspect_token()</a></code> reaches a final result (for
-example during login or refresh when
-<code>introspect = TRUE</code>)</li>
-<li>Context:
-<ul>
-<li>
-<code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>
-</li>
-<li>
-<code>which</code> (“access” or “refresh”)</li>
-<li>
-<code>supported</code> (logical), <code>active</code> (logical|NA),
-<code>status</code>
-</li>
-<li>
-<code>sub_digest</code>, <code>introspected_client_id_digest</code>,
-<code>scope_digest</code> (when available)</li>
-</ul>
-</li>
-<li>
-<code>status</code> values include <code>"ok"</code>,
-<code>"introspection_unsupported"</code>, <code>"missing_token"</code>,
-<code>"body_too_large"</code>, <code>"invalid_json"</code>,
-<code>"missing_active"</code>, <code>"invalid_active"</code>, and
-<code>"http_&lt;code&gt;"</code>
-</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="login-result">Login result<a class="anchor" aria-label="anchor" href="#login-result"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_login_success">Event: <code>audit_login_success</code><a class="anchor" aria-label="anchor" href="#event-audit_login_success"></a>
-</h4>
-<ul>
-<li>When: callback handling has completed the configured token,
-UserInfo, and introspection checks and is ready to return the
-<code>OAuthToken</code>
-</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>sub_digest</code>,
-<code>sub_source</code>, <code>refresh_token_present</code>,
-<code>expires_at</code>
-</li>
-</ul>
-<p><code>sub_source</code> indicates where <code>sub_digest</code> was
-derived from:</p>
-<ul>
-<li>
-<code>userinfo</code>: subject came from the userinfo response</li>
-<li>
-<code>id_token</code>: subject came from an ID token that was
-validated (signature + claims)</li>
-<li>
-<code>id_token_unverified</code>: subject came from an ID token
-payload parse when ID token validation was not performed</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_login_failed">Event: <code>audit_login_failed</code><a class="anchor" aria-label="anchor" href="#event-audit_login_failed"></a>
-</h4>
-<ul>
-<li>When: login failure during callback handling in the Shiny
-module</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>phase</code>,
-<code>error_class</code>, <code>mirai_error_type</code>
-</li>
-<li>
-<code>phase</code> currently includes:
-<ul>
-<li><code>sync_token_exchange</code></li>
-<li><code>async_token_exchange</code></li>
-<li><code>async_payload_validation</code></li>
-<li><code>async_state_store_lookup</code></li>
-</ul>
-</li>
-<li>
-<code>mirai_error_type</code> is only present on async failure
-paths</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="logout-and-session-clears">Logout and session clears<a class="anchor" aria-label="anchor" href="#logout-and-session-clears"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_logout">Event: <code>audit_logout</code><a class="anchor" aria-label="anchor" href="#event-audit_logout"></a>
-</h4>
-<ul>
-<li>When: <code>auth[["logout"]]()</code> is called on the module</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>reason</code> (default
-<code>manual_logout</code>)</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_connection_disconnected">Event: <code>audit_connection_disconnected</code><a class="anchor" aria-label="anchor" href="#event-audit_connection_disconnected"></a>
-</h4>
-<p>Emitted once for each retained connection removed locally, after
-bounded remote cleanup. It is emitted even when revocation is disabled
-or fails. Context includes <code>owner_digest</code>,
-<code>connection_id_digest</code>, <code>retention</code>,
-<code>reason</code>, <code>local_outcome</code>,
-<code>revoke_requested</code>, <code>remote_refresh_outcome</code>, and
-<code>remote_access_outcome</code>. Reasons are <code>disconnect</code>,
-<code>disconnect_all</code>, <code>logout</code>, or
-<code>session_end</code>. Identifiers use the configured audit digest
-policy; credentials and raw identities are excluded. Remote outcomes
-describe the revocation attempt, not proof that the authorization server
-previously recognized a token. With token targets,
-<code>remote_access_outcome</code> summarizes cleanup for all acquired
-API tokens. It reports a problem or incomplete cleanup even if another
-token was revoked successfully. The outcome priority is
-<code>failed</code>, <code>not_attempted</code>,
-<code>unsupported</code>, <code>accepted</code>, then
-<code>missing</code> (no credential to revoke).</p>
-</div>
-<div class="section level4">
-<h4 id="event-audit_connections_disconnected">Event: <code>audit_connections_disconnected</code><a class="anchor" aria-label="anchor" href="#event-audit_connections_disconnected"></a>
-</h4>
-<p>Summarizes a completed local bulk removal, including an empty batch,
-with <code>owner_digest</code>, <code>connection_count</code>,
-<code>retention</code>, <code>reason</code>, <code>local_outcome</code>,
-and <code>revoke_requested</code>. Per-connection events describe remote
-outcomes. This event also covers logout and removal of session-only
-connections at session end; ending a Shiny session does not remove
-browser- or account-retained connections. The batch and per-connection
-events share a trace ID and are available to both the native audit hook
-and OpenTelemetry. Existing module logout events remain.</p>
-</div>
-<div class="section level4">
-<h4 id="event-audit_session_cleared">Event: <code>audit_session_cleared</code><a class="anchor" aria-label="anchor" href="#event-audit_session_cleared"></a>
-</h4>
-<ul>
-<li>When: the module clears the token reactively</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>reason</code>,
-<code>error_class</code>, <code>mirai_error_type</code>
-</li>
-<li>Reasons include: <code>refresh_failed_async</code>,
-<code>refresh_failed_sync</code>, <code>reauth_window</code>,
-<code>token_expired</code>
-</li>
-<li>
-<code>error_class</code> is included for
-<code>refresh_failed_async</code> and <code>refresh_failed_sync</code>,
-and omitted for <code>reauth_window</code> and
-<code>token_expired</code>.</li>
-<li>
-<code>mirai_error_type</code> is included only when an async refresh
-failure clears the session.</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="token-revocation">Token revocation<a class="anchor" aria-label="anchor" href="#token-revocation"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_token_revocation">Event: <code>audit_token_revocation</code><a class="anchor" aria-label="anchor" href="#event-audit_token_revocation"></a>
-</h4>
-<ul>
-<li>When: <code><a href="../reference/revoke_token.html">revoke_token()</a></code> reaches a final outcome (including
-early <code>unsupported</code> or <code>missing_token</code> returns)
-during logout or session end</li>
-<li>Context:
-<ul>
-<li>
-<code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>
-</li>
-<li>
-<code>which</code> (“access” or “refresh”)</li>
-<li>
-<code>supported</code> (logical), <code>revoked</code> (logical|NA),
-<code>status</code>
-</li>
-</ul>
-</li>
-<li>
-<code>status</code> values include <code>"ok"</code>,
-<code>"revocation_unsupported"</code>, <code>"missing_token"</code>, and
-<code>"http_&lt;code&gt;"</code>
-</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="refresh-failures-while-keeping-the-session-indefinite-sessions">Refresh failures while keeping the session (indefinite
-sessions)<a class="anchor" aria-label="anchor" href="#refresh-failures-while-keeping-the-session-indefinite-sessions"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_refresh_failed_but_kept_session">Event: <code>audit_refresh_failed_but_kept_session</code><a class="anchor" aria-label="anchor" href="#event-audit_refresh_failed_but_kept_session"></a>
-</h4>
-<ul>
-<li>When: a token refresh attempt fails but the module is configured not
-to clear the session (i.e., <code>indefinite_session = TRUE</code> in
-<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>)</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>reason</code>
-(<code>refresh_failed_async</code>|<code>refresh_failed_sync</code>),
-<code>kept_token</code> (TRUE), <code>error_class</code>,
-<code>mirai_error_type</code>
-</li>
-<li>
-<code>mirai_error_type</code> is only present on async refresh
-failures. It is <code>NA</code> when the error cannot be identified as a
-mirai error.</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="browser-cookiewebcrypto-error">Browser cookie/WebCrypto error<a class="anchor" aria-label="anchor" href="#browser-cookiewebcrypto-error"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_browser_cookie_error">Event: <code>audit_browser_cookie_error</code><a class="anchor" aria-label="anchor" href="#event-audit_browser_cookie_error"></a>
-</h4>
-<ul>
-<li>When: the browser reports it could not set/read the module cookie or
-WebCrypto is unavailable</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>reason</code>,
-<code>url_protocol</code>
-</li>
-<li>Notes: This typically indicates that third-party cookies are
-blocked, all cookies are disabled, or the WebCrypto API is unavailable
-in the environment (e.g., very old browsers or restrictive embedded
-webviews).</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="invalid-browser-token">Invalid browser token<a class="anchor" aria-label="anchor" href="#invalid-browser-token"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_invalid_browser_token">Event: <code>audit_invalid_browser_token</code><a class="anchor" aria-label="anchor" href="#event-audit_invalid_browser_token"></a>
-</h4>
-<ul>
-<li>When: the module receives an invalid <code>shinyOAuth_sid</code>
-value from the browser and requests regeneration</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>reason</code>,
-<code>length</code>
-</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="token-refresh">Token refresh<a class="anchor" aria-label="anchor" href="#token-refresh"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_token_refresh">Event: <code>audit_token_refresh</code><a class="anchor" aria-label="anchor" href="#event-audit_token_refresh"></a>
-</h4>
-<ul>
-<li>When: <code><a href="../reference/refresh_token.html">refresh_token()</a></code> successfully refreshes the access
-token</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>refresh_token_rotated</code>,
-<code>new_expires_at</code>, <code>expires_in_synthesized</code>
-</li>
-<li>
-<code>expires_in_synthesized</code> (logical): <code>TRUE</code>
-when the refresh response did not include a usable
-<code>expires_in</code> value and the package used the configured
-fallback token lifetime</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="userinfo-fetch">Userinfo fetch<a class="anchor" aria-label="anchor" href="#userinfo-fetch"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_userinfo">Event: <code>audit_userinfo</code><a class="anchor" aria-label="anchor" href="#event-audit_userinfo"></a>
-</h4>
-<ul>
-<li>When: during <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code>, on successful retrieval or
-a reported failure</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>sub_digest</code>,
-<code>status</code>
-</li>
-<li>
-<code>status</code> values:
-<ul>
-<li>
-<code>"ok"</code> – userinfo successfully parsed</li>
-<li>
-<code>"parse_error"</code> – response could not be parsed as JSON or
-JWT. Additional fields: <code>http_status</code>, <code>url</code>,
-<code>content_type</code>, <code>body_digest</code>
-</li>
-<li>
-<code>"userinfo_missing_sub"</code> – OIDC userinfo response was
-parsed but omitted the required <code>sub</code> claim</li>
-<li>
-<code>"userinfo_not_jwt"</code> – signed JWT required but response
-was not <code>application/jwt</code>. Additional fields:
-<code>content_type</code>
-</li>
-<li>
-<code>"userinfo_jwt_encrypted"</code> – userinfo response was a JWE,
-which ‘shinyOAuth’ does not decrypt</li>
-<li>
-<code>"userinfo_jwt_header_parse_failed"</code> – JWT header could
-not be parsed</li>
-<li>
-<code>"userinfo_jwt_header_invalid"</code> – JWT header parsed but
-was malformed or structurally invalid</li>
-<li>
-<code>"userinfo_jwt_typ_invalid"</code> – JWT header
-<code>typ</code> did not indicate a JWT</li>
-<li>
-<code>"userinfo_jwt_unsigned"</code> – JWT uses
-<code>alg=none</code>. Additional fields: <code>jwt_alg</code>
-</li>
-<li>
-<code>"userinfo_jwt_alg_rejected"</code> – JWT algorithm not in
-provider’s allowed asymmetric algorithms. Additional fields:
-<code>jwt_alg</code>
-</li>
-<li>
-<code>"userinfo_jwt_no_issuer"</code> – provider issuer not
-configured for JWKS verification</li>
-<li>
-<code>"userinfo_jwt_jwks_fetch_failed"</code> – JWKS fetch failed
-during signature verification</li>
-<li>
-<code>"userinfo_jwt_signature_invalid"</code> – signature
-verification failed against candidate JWKS keys</li>
-<li>
-<code>"userinfo_jwt_no_matching_key"</code> – provider JWKS had no
-compatible key for the JWT</li>
-<li>
-<code>"userinfo_jwt_payload_parse_failed"</code> – JWT payload could
-not be parsed as JSON</li>
-<li>
-<code>"userinfo_jwt_missing_sub"</code>,
-<code>"userinfo_jwt_missing_iss"</code>,
-<code>"userinfo_jwt_missing_aud"</code> – signed JWT omitted a required
-claim</li>
-<li>
-<code>"userinfo_jwt_iss_mismatch"</code>,
-<code>"userinfo_jwt_aud_mismatch"</code> – signed JWT claims did not
-match the configured issuer/client</li>
-<li>
-<code>"userinfo_jwt_missing_required_temporal_claims"</code> –
-signed JWT omitted required temporal claims such as <code>exp</code> or
-<code>iat</code>
-</li>
-<li>
-<code>"userinfo_jwt_invalid_exp"</code>,
-<code>"userinfo_jwt_invalid_iat"</code>,
-<code>"userinfo_jwt_invalid_nbf"</code> – temporal claim was present but
-not a single usable numeric value</li>
-<li>
-<code>"userinfo_jwt_expired"</code>,
-<code>"userinfo_jwt_iat_future"</code>,
-<code>"userinfo_jwt_nbf_future"</code> – temporal claim failed time
-validation</li>
-</ul>
-</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="state-parsing-failures">State parsing failures<a class="anchor" aria-label="anchor" href="#state-parsing-failures"></a>
-</h3>
-<p>State parsing failures occur while decoding and validating the
-encrypted wrapper prior to extracting the logical state value, and also
-when deriving a cache key from a malformed logical state string.</p>
-<div class="section level4">
-<h4 id="event-audit_state_parse_failure">Event: <code>audit_state_parse_failure</code><a class="anchor" aria-label="anchor" href="#event-audit_state_parse_failure"></a>
-</h4>
-<ul>
-<li>When: the encrypted state wrapper or its components fail
-validation/decoding, or cache-key derivation receives an invalid logical
-state string</li>
-<li>Context: includes <code>phase</code> (<code>decrypt</code> or
-<code>cache_key</code>), a <code>reason</code> code, and either
-<code>token_digest</code> (<code>phase = decrypt</code>) or
-<code>state_digest</code> (<code>phase = cache_key</code>), plus any
-additional details (such as lengths). Emitted best-effort from parsing
-utilities and never interferes with control flow.</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="error-response-state-consumption">Error response state consumption<a class="anchor" aria-label="anchor" href="#error-response-state-consumption"></a>
-</h3>
-<p>Provider error callbacks still need valid login state and browser
-binding. The events below report the one-time state consumption, not the
-outcome of all callback checks. Browser mismatches use
-<code>audit_callback_validation_failed</code> with
-<code>phase = "browser_token_validation"</code>.</p>
-<div class="section level4">
-<h4 id="event-audit_error_state_consumed">Event: <code>audit_error_state_consumed</code><a class="anchor" aria-label="anchor" href="#event-audit_error_state_consumed"></a>
-</h4>
-<ul>
-<li>When: state from an error response is successfully consumed</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>state_digest</code>
-</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_error_state_consumption_failed">Event: <code>audit_error_state_consumption_failed</code><a class="anchor" aria-label="anchor" href="#event-audit_error_state_consumption_failed"></a>
-</h4>
-<ul>
-<li>When: consumption of state from an error response fails</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>state_digest</code>,
-<code>error_class</code>, <code>error_message</code>
-</li>
-</ul>
-<p>Digest note: when the callback <code>state</code> can be decrypted,
-these events use the logical plaintext state digest so they correlate
-with <code>audit_redirect_issued</code> and the normal callback
-validation/store events. If decryption fails, the digest falls back to
-the encrypted callback payload because the logical state is unknown.</p>
-</div>
-</div>
-<div class="section level3">
-<h3 id="modulesession-lifecycle">Module/session lifecycle<a class="anchor" aria-label="anchor" href="#modulesession-lifecycle"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_session_started">Event: <code>audit_session_started</code><a class="anchor" aria-label="anchor" href="#event-audit_session_started"></a>
-</h4>
-<ul>
-<li>When: the authentication module (<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>)
-is initialized for a Shiny session</li>
-<li>Context: <code>module_id</code>, <code>ns_prefix</code>,
-<code>client_provider</code>, <code>client_issuer</code>,
-<code>client_id_digest</code>, plus the standard
-<code>shiny_session</code> context described above</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_session_ended">Event: <code>audit_session_ended</code><a class="anchor" aria-label="anchor" href="#event-audit_session_ended"></a>
-</h4>
-<ul>
-<li>When: a Shiny session ends (always emitted by
-<code>onSessionEnded</code>, regardless of configuration)</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>was_authenticated</code>
-</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-audit_session_ended_revoke">Event: <code>audit_session_ended_revoke</code><a class="anchor" aria-label="anchor" href="#event-audit_session_ended_revoke"></a>
-</h4>
-<ul>
-<li>When: a Shiny session ends with
-<code>revoke_on_session_end = TRUE</code> and a token was present</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>; the actual revocation attempt is logged
-separately as <code>audit_token_revocation</code> events</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="authentication-state-changes">Authentication state changes<a class="anchor" aria-label="anchor" href="#authentication-state-changes"></a>
-</h3>
-<div class="section level4">
-<h4 id="event-audit_authenticated_changed">Event: <code>audit_authenticated_changed</code><a class="anchor" aria-label="anchor" href="#event-audit_authenticated_changed"></a>
-</h4>
-<ul>
-<li>When: the <code>[["authenticated"]]</code> reactive value changes
-(TRUE ↔︎ FALSE)</li>
-<li>Context: <code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>authenticated</code>,
-<code>previous_authenticated</code>, <code>reason</code>
-</li>
-<li>Reasons include: <code>login</code> (when becoming authenticated),
-or the error code/state that caused de-authentication (e.g.,
-<code>token_expired</code>, <code>logged_out</code>,
-<code>token_cleared</code>)</li>
-</ul>
-</div>
-</div>
-<div class="section level3">
-<h3 id="error-events">Error events<a class="anchor" aria-label="anchor" href="#error-events"></a>
-</h3>
-<p>In addition to the <code>audit_*</code> events above, the hook also
-receives error events emitted just before the package raises an R error
-condition. These let you log failures to the same sink as audit
-events.</p>
-<div class="section level4">
-<h4 id="event-error">Event: <code>error</code><a class="anchor" aria-label="anchor" href="#event-error"></a>
-</h4>
-<ul>
-<li>When: a package error is raised during package processing (state
-validation, PKCE, token, ID token, userinfo, configuration, input, parse
-errors)</li>
-<li>Fields:
-<ul>
-<li>
-<code>type</code> (<code>"error"</code>), <code>trace_id</code>,
-<code>message</code>,</li>
-<li>Plus any <code>context</code> fields from the call site (typically
-<code>provider</code>, <code>issuer</code>,
-<code>client_id_digest</code>, <code>phase</code>,
-<code>error_class</code>)</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-http_error">Event: <code>http_error</code><a class="anchor" aria-label="anchor" href="#event-http_error"></a>
-</h4>
-<ul>
-<li>When: an outbound HTTP request to a provider endpoint returns a
-non-success status</li>
-<li>Fields:
-<ul>
-<li>
-<code>type</code> (<code>"http_error"</code>),
-<code>trace_id</code>, <code>message</code>
-</li>
-<li>
-<code>status</code>: HTTP status code (integer, or <code>NA</code>
-if unavailable)</li>
-<li>
-<code>url</code>: the request scheme and authority, plus an approved
-path only when a path scrubber is configured</li>
-<li>
-<code>body_digest</code>: HMAC-SHA-256 hex digest of the response
-body using the configured or per-process audit digest key (for
-correlation without leaking content)</li>
-<li>
-<code>oauth_error</code>, <code>oauth_error_uri</code>: RFC 6749
-§5.2 structured error fields extracted from JSON error responses (e.g.,
-from the token endpoint)</li>
-<li>
-<code>oauth_error_description</code>: included only when
-<code>options(shinyOAuth.expose_error_body = TRUE)</code> is enabled for
-debugging, because provider-controlled text can contain request-specific
-details</li>
-<li>Plus any <code>context</code> fields from the call site</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="section level4">
-<h4 id="event-transport_error">Event: <code>transport_error</code><a class="anchor" aria-label="anchor" href="#event-transport_error"></a>
-</h4>
-<ul>
-<li>When: an outbound HTTP request fails before receiving a response
-(DNS failure, timeout, connection reset, etc.)</li>
-<li>Fields:
-<ul>
-<li>
-<code>type</code> (<code>"transport_error"</code>),
-<code>trace_id</code>, <code>message</code>
-</li>
-<li>Plus any <code>context</code> fields from the call site</li>
-</ul>
-</li>
-</ul>
-</div>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Name</th>
+<th>What it tells you</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>error</code></td>
+<td>The package raised an R error; inspect the error class and available
+context.</td>
+</tr>
+<tr class="even">
+<td><code>http_error</code></td>
+<td>A provider returned an unsuccessful HTTP status.</td>
+</tr>
+<tr class="odd">
+<td><code>transport_error</code></td>
+<td>A request failed before a response arrived, for example after a
+timeout.</td>
+</tr>
+</tbody>
+</table>
+<p>Disconnect events confirm local removal even if remote revocation
+fails. The per-connection <code>remote_refresh_outcome</code> and
+<code>remote_access_outcome</code> describe the remote attempts; an
+accepted request does not prove the provider recognized the token.
+Ending a Shiny session leaves browser- and account-retained connections
+in place.</p>
+<p>For <code>audit_userinfo</code>, <code>status</code> distinguishes
+successful parsing from invalid JSON, missing identity fields, and
+signature or claim failures. Inspect that status before enabling
+detailed error output. HTTP error records can also include
+<code>status</code> and structured <code>oauth_error</code> fields; keep
+provider-controlled messages out of production logs.</p>
+<p>For DPoP nonce handling and mTLS endpoint selection, inspect the
+related <a href="opentelemetry.html#span-catalog">OpenTelemetry
+spans</a>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

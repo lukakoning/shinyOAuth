@@ -72,28 +72,30 @@
 
     
     
-<p>An app may need to read a calendar and call a contacts API after the
-same user signs in. Those APIs can require different access tokens.
-Token targets let you name each API, declare the permissions it needs,
-and ask a connection for the right token without building a separate
-login flow for each API.</p>
-<p>Targets require a provider that supports RFC 8707 resource indicators
-or Microsoft’s API-specific scopes. Check your provider’s registration
-and consent requirements before enabling targets. The provider can still
-refuse an API or decline to issue a refresh token.</p>
-<p>For separate accounts or independent logins, use <a href="multiple-authorizations.html">Multiple authorizations</a> instead.
-For basic login setup, start with <a href="usage.html">Usage</a>.</p>
+<div class="section level2">
+<h2 id="one-login-different-api-tokens">One login, different API tokens<a class="anchor" aria-label="anchor" href="#one-login-different-api-tokens"></a>
+</h2>
+<p>A calendar service and a contacts service can require different
+access tokens, even when the same person uses both. A token target names
+an API and the permissions the app needs there. The app chooses the
+target when requesting a token, without requiring a separate login flow
+for each API.</p>
+<p>Your provider must support API-specific tokens through RFC 8707
+resource indicators or Microsoft’s API-specific scopes. Confirm support
+and consent requirements before using targets; declaring an API does not
+make the provider authorize it.</p>
+<p>For independent logins or different accounts, use <a href="multiple-authorizations.html">Multiple authorizations</a>. For
+initial login setup, start with <a href="usage.html">Usage</a>.</p>
+</div>
 <div class="section level2">
 <h2 id="configure-two-apis">Configure two APIs<a class="anchor" aria-label="anchor" href="#configure-two-apis"></a>
 </h2>
-<p>This example uses a provider that supports RFC 8707. A resource
-identifies an API to the login provider; scopes name the permissions for
-that API. A resource identifier is not necessarily the address your R
-code calls. <code>resource_bases</code> lists the HTTP addresses a
-connection may use.</p>
-<p>Replace the example URLs and permissions with your provider’s
-settings. For Microsoft, use the <a href="#microsoft-example">Microsoft
-example</a> below.</p>
+<p>This example uses a provider with RFC 8707 support. A resource
+identifier names an API to the login provider; a scope names a
+permission. <code>resource_bases</code> lists the actual HTTP addresses
+the app may call, which can differ from the resource identifiers.</p>
+<p>Replace all example settings with your provider’s registered values.
+Microsoft uses the alternative setup shown <a href="#microsoft-example">below</a>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Use this mode only after confirming RFC 8707 support with your provider.</span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
@@ -127,21 +129,17 @@ example</a> below.</p>
 <span>    contacts_api <span class="op">=</span> <span class="st">"https://contacts.example/v1"</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code>default_token_target</code> selects the API used when a
-connection method omits <code>target</code>. It is required for several
-targets; a single target is selected automatically.
-<code>resource_ids</code> connects each target to the named HTTP API
-addresses in <code>resource_bases</code>. You can omit HTTP addresses if
-you only export tokens to another package.</p>
+<p><code>default_token_target</code> chooses the API when a call omits
+<code>target</code>. <code>resource_ids</code> connects each target to
+its named API address in <code>resource_bases</code>. You can omit those
+addresses when only exporting tokens to another package.</p>
 </div>
 <div class="section level2">
 <h2 id="choose-a-token-when-making-a-call">Choose a token when making a call<a class="anchor" aria-label="anchor" href="#choose-a-token-when-making-a-call"></a>
 </h2>
-<p>Obtain the connection from either module’s <code>connection()</code>
-method. Pass <code>target</code> to choose an API; the app does not need
-to keep its own token cache. <code>existing_contacts_sdk()</code> below
-stands for the client constructor from your chosen contacts package;
-replace it with that package’s actual function.</p>
+<p>Get a connection from the module and pass <code>target</code> to
+select the API. Replace <code>existing_contacts_sdk()</code> with your
+contacts package’s client constructor:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
@@ -171,26 +169,38 @@ replace it with that package’s actual function.</p>
 <span>    <span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><code>$access_token()</code> obtains or refreshes the selected API’s
-token when needed. <code>$has_scopes()</code> checks permissions already
-recorded for that API and does not fetch a token. It can therefore
-return <code>FALSE</code> before the first acquisition.
-<code>$targets()</code> lists API names, status and granted permissions
-without exposing tokens.</p>
-<p><code>$request(refresh = TRUE)</code> refreshes before sending, but
-does not replay a failed API call. Run writes from explicit user actions
-and let the user decide whether to try again.</p>
-<p>Choose a login lifetime when enabling targets. Without
-<code>reauth_after_seconds</code>, <code>auth$authenticated</code> can
-remain true for the rest of the Shiny session even when all API tokens
-have expired. The example sets a one-hour local login limit.
-<code>indefinite_session = TRUE</code> ignores that limit. Connection
-methods still require a valid token and the permissions for the selected
-API.</p>
+<p><code>$access_token()</code> obtains or refreshes the chosen token
+when needed. <code>$has_scopes()</code> checks permissions already
+recorded; it can return <code>FALSE</code> before that target’s first
+token acquisition. <code>$targets()</code> lists target status without
+exposing credentials.</p>
+<p>Choose a login lifetime for your app. The example sets a one-hour
+limit with <code>reauth_after_seconds</code>; without a limit, local
+authentication can outlast every API token.
+<code>indefinite_session = TRUE</code> disables that limit. Request
+methods still require usable access for the chosen API.</p>
+<p>Run writes from explicit user actions. A refresh before a request
+does not automatically replay a failed write.</p>
+</div>
+<div class="section level2">
+<h2 id="refresh-and-sign-in-again">Refresh and sign in again<a class="anchor" aria-label="anchor" href="#refresh-and-sign-in-again"></a>
+</h2>
+<p>For RFC 8707 providers, reduce one target’s permissions with, for
+example,
+<code>connection$refresh(scopes = "calendar.read", target = "calendar")</code>.
+This does not change the other target’s permissions, and required scopes
+must remain.</p>
+<p><code>auth$reauthorize()</code> starts a replacement login with the
+reduced permissions. For managed connections, pass the connection ID.
+Once replacement starts, cancelling does not restore the old login. An
+ordinary new login asks for the client’s original permissions again.</p>
 </div>
 <div class="section level2">
 <h2 id="microsoft-example">Microsoft example<a class="anchor" aria-label="anchor" href="#microsoft-example"></a>
 </h2>
+<p>Microsoft uses API-qualified scope names to select the token’s
+intended API. Use the exact names from your registration. This example
+exports tokens to another package:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft</a></span><span class="op">(</span></span>
 <span>  tenant <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"MICROSOFT_TENANT_ID"</span><span class="op">)</span>,</span>
@@ -216,202 +226,102 @@ API.</p>
 <span>  <span class="op">)</span>,</span>
 <span>  default_token_target <span class="op">=</span> <span class="st">"calendar"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code> selects Microsoft’s
-API-specific scope handling. Use the fully qualified permission names
-from your registration. Setting <code>userinfo_required = FALSE</code>
-avoids requesting a Graph profile with a token intended for another API;
-identity-token validation stays enabled.</p>
-<p>This example exports bearer tokens to another package. Add
-<code>resource_bases</code> and target <code>resource_ids</code> if you
-also want to use <code>$request()</code>.</p>
-</div>
-<div class="section level2">
-<h2 id="refresh-and-sign-in-again">Refresh and sign in again<a class="anchor" aria-label="anchor" href="#refresh-and-sign-in-again"></a>
-</h2>
-<p>For RFC 8707 providers, you can reduce one API’s permissions with,
-for example,
-<code>connection$refresh(scopes = "calendar.read", target = "calendar")</code>.
-The other API keeps its own permissions; requesting its token does not
-restore removed calendar permissions. Required scopes must remain
-present.</p>
-<p><code>auth$reauthorize()</code> starts a replacement login with the
-reduced permissions. With a connection manager, pass the connection ID.
-Once replacement starts, cancelling or failing login does not restore
-the old connection. Use an ordinary new login when you intend to request
-the client’s original permissions again. Microsoft’s restrictions on
-narrowing are described below.</p>
+<p><code>userinfo_required = FALSE</code> skips the Graph profile
+request, which would be inappropriate for a token intended for another
+API. Identity validation remains enabled. Add
+<code>resource_bases</code> and each target’s <code>resource_ids</code>
+if you also want to call <code>$request()</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="advanced-provider-support-and-declaration-limits">Advanced: provider support and declaration limits<a class="anchor" aria-label="anchor" href="#advanced-provider-support-and-declaration-limits"></a>
 </h2>
-<p>Targets share one local login and refresh credential, while keeping
-separate access tokens and permission limits. Providers must explicitly
-enable <code>token_target_mode = "rfc8707"</code> or
-<code>"microsoft"</code>; discovery does not infer support. Targets
-require <code>userinfo_required = FALSE</code> and cannot be combined
-with the client’s <code>resource</code> argument or SMART configuration.
-Put resource declarations in <code>token_targets</code>, not in provider
-extra parameters. The older
-<code>oauth_connection(client, token_reactive)</code> wrapper does not
-support targets; use a module’s <code>connection()</code> method.</p>
-<p>Up to 16 targets are supported. The complete login has a limit of 128
-distinct scope names and 8192 scope bytes, excluding separating spaces.
-These totals include OIDC scopes and actual Microsoft permissions,
-including <code>.default</code> expansions. Declarations may use vectors
-or space-delimited strings. Callback and encrypted-state size limits
-still apply; very large declarations may need larger state limits.</p>
-<p>In RFC 8707 mode, authorization requests carry all declared resources
-and scopes. Token requests select one resource and its scopes. The
-provider decides which permissions apply to each resource; the
-authorization request does not pair individual scopes with resources.
-See <a href="https://www.rfc-editor.org/rfc/rfc8707.html" class="external-link">RFC
-8707</a>.</p>
+<p>Targets share a login and refresh credential but keep separate API
+tokens and permission limits. Enable
+<code>token_target_mode = "rfc8707"</code> or <code>"microsoft"</code>
+only after confirming provider support; discovery does not infer it.</p>
+<p>Targets require <code>userinfo_required = FALSE</code> and cannot be
+combined with SMART configuration or the client’s <code>resource</code>
+argument. Use the module’s <code>connection()</code> method, since the
+older <code><a href="../reference/oauth_connection.html">oauth_connection()</a></code> wrapper does not support targets.
+Up to 16 targets are supported; callback and state size limits still
+apply.</p>
 <div class="section level3">
 <h3 id="identity-and-refresh-consent-scopes">Identity and refresh-consent scopes<a class="anchor" aria-label="anchor" href="#identity-and-refresh-consent-scopes"></a>
 </h3>
-<p>For OIDC providers, declare <code>openid</code>,
-<code>profile</code>, <code>email</code>, <code>address</code>,
-<code>phone</code> and <code>offline_access</code> at client level
-rather than in an API’s scope list. RFC 8707 mode recognizes these as
-OIDC scopes when the provider uses OIDC or client scopes include
-<code>openid</code>. Otherwise they are ordinary API scopes and belong
-in targets. Microsoft recognizes only <code>openid</code>,
-<code>profile</code>, <code>email</code> and <code>offline_access</code>
-as its OIDC scopes.</p>
-<p>Client-level <code>required_scopes</code> may contain OIDC scopes
-only, except <code>offline_access</code>. Request
-<code>offline_access</code> in client <code>scopes</code> if you need
-refresh consent; it is not a required access-token permission and must
-not appear in client or target <code>required_scopes</code>. Its
-presence in a scope list does not prove that a refresh token was
-issued.</p>
-<p>When explicitly narrowing a target, retain any OIDC scopes it still
-needs, for example <code>scopes = c("calendar.read", "openid")</code>.
-Optional identity scopes are not added back by refresh. Refresh consent
-is tracked separately because providers may issue a refresh token
-without reporting <code>offline_access</code> in access token scopes.
-Explicitly removing that scope removes it from the target’s later
-reauthorization request. Reauthorization combines the retained target
-limits, so an OIDC scope kept by another target may still be
-requested.</p>
-<p>An OIDC replacement always requests <code>openid</code> for its new
-identity check, including for the default target. Removed API
-permissions and optional OIDC scopes stay removed; secondary targets
-keep their own limits.</p>
-<p><code>connection$identity()</code> returns selected claims from the
-last validated identity. With targets it can remain available after the
-primary API token expires or no longer includes <code>openid</code>. It
-does not establish fresh authentication or current API access; use the
-selected target’s request or token methods for those checks.</p>
+<p>For OIDC, put identity scopes such as <code>openid</code>,
+<code>profile</code> and <code>email</code> at client level.
+<code>offline_access</code> requests refresh consent and belongs in
+client <code>scopes</code>, never in <code>required_scopes</code>.
+Requesting it does not guarantee a refresh token.</p>
+<p>When narrowing a target, retain any identity and refresh-consent
+scopes you still need. Later refreshes preserve reductions; a
+replacement OIDC login still requests <code>openid</code> for its new
+identity check. Other targets keep their own limits.</p>
+<p><code>connection$identity()</code> returns the last validated
+identity, which can outlast an API token. Use the chosen target’s token
+or request method to check current API access.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="advanced-microsoft-permissions-and-consent">Advanced: Microsoft permissions and consent<a class="anchor" aria-label="anchor" href="#advanced-microsoft-permissions-and-consent"></a>
 </h2>
-<p>Microsoft can return previously consented permissions beyond the ones
-your app requested for a particular operation. Connection permission
-checks still enforce the app’s retained limits, while
-<code>$targets()</code> reports the actual provider grant. An exported
-bearer token carries that full grant; shinyOAuth cannot restrict what an
-SDK does with it.</p>
-<p>Explicit Microsoft API narrowing through
-<code>$refresh(scopes = ...)</code> is unsupported and fails with reason
-<code>unsupported_scope_narrowing</code> before sending a request. The
-existing login stays usable. Use a separate app registration or change
-provider consent if the token itself must have fewer API
-permissions.</p>
+<p>Microsoft can return previously consented permissions beyond those
+needed for the current operation. Connection methods enforce the app’s
+local limits, but an exported token carries the provider’s full
+grant.</p>
+<p>Explicit API narrowing with <code>$refresh(scopes = ...)</code> fails
+with <code>unsupported_scope_narrowing</code> and leaves the login
+usable. Change provider consent or use a separate registration if the
+token itself needs fewer permissions.</p>
 <div class="section level3">
 <h3 id="resource-identifiers-and-scope-names">Resource identifiers and scope names<a class="anchor" aria-label="anchor" href="#resource-identifiers-and-scope-names"></a>
 </h3>
-<p>Microsoft resource identifiers may be absolute URIs or GUIDs. For
-example, <code>499b84ac-1321-427f-aa17-267ca6975798/.default</code>
-requests static permissions for that GUID resource. Resource identifiers
-match exactly, including a trailing slash; adding <code>/.default</code>
-to a slash-terminated resource produces a double slash. API scopes must
-name a permission after the exact resource prefix and slash.</p>
-<p>Distinct resources must not have overlapping prefixes. For example,
-<code>https://api.example</code> and
-<code>https://api.example/reports</code> make <code>reports/read</code>
-ambiguous. Targets may share the exact same resource with separate
-limits.</p>
-<p>Microsoft permission names are compared without ASCII case
-sensitivity; resource identifiers remain exact. Ordinary OAuth scopes
-remain case-sensitive. Microsoft token responses must include
-<code>scope</code>. Short permission names are qualified with the
-selected resource before connection checks, including checks on custom
-introspection results. Public <code><a href="../reference/introspect_token.html">introspect_token()</a></code> results
-keep the raw provider scope string.</p>
+<p>Use the exact registered resource identifier, including any trailing
+slash, and fully qualified scope names. Resources can be URIs or GUIDs.
+Avoid distinct resources with overlapping prefixes, which make scope
+names ambiguous. Microsoft permission checks ignore ASCII case; resource
+identifiers are exact.</p>
 </div>
 <div class="section level3">
 <h3 id="static-permissions-and-unusual-short-names">Static permissions and unusual short names<a class="anchor" aria-label="anchor" href="#static-permissions-and-unusual-short-names"></a>
 </h3>
 <p>Use <code>resource/.default</code> as a target’s sole API scope for
-static consent, and include it in client <code>scopes</code>. Do not mix
-it with explicit API scope declarations. <code>required_scopes</code>
-must name actual API permissions; <code>.default</code> requests consent
-and is not evidence that any individual permission was granted. Use the
-exact lowercase <code>.default</code> spelling.</p>
-<p>For optional short permissions containing <code>:</code> or
-<code>/</code>, a target can declare
-<code>scope_aliases = c("items/read", "read:items")</code>. They
-identify response names that shinyOAuth may recognize; they do not
-request permissions, make them required, or expand the app’s limits.
-Unknown punctuated short names must be returned in fully qualified form.
-Names containing <code>://</code> or a declared resource prefix are
-always treated as qualified names.</p>
-<p>If a partial grant leaves a target with no API permissions,
-acquisition fails with <code>insufficient_scope</code> rather than
-making an OIDC-only request for a different API. A replacement login
-with an API-empty default target is rejected before ending the current
-login. Start a new login to request the original permissions.</p>
-<p>See Microsoft’s <a href="https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow" class="external-link">authorization
-code flow</a>, <a href="https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc" class="external-link">scope
-and consent guidance</a>, and <a href="https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens" class="external-link">refresh
-token guidance</a>.</p>
+static consent, and include it in client <code>scopes</code>. Put actual
+permission names in <code>required_scopes</code>; <code>.default</code>
+itself is not evidence that a permission was granted.</p>
+<p>If the provider returns unusual short permission names containing
+<code>:</code> or <code>/</code>, declare them in
+<code>scope_aliases</code>. Aliases help interpret responses; they do
+not request permissions or expand the app’s limits.</p>
+<p>See Microsoft’s <a href="https://learn.microsoft.com/en-us/entra/identity-platform/scopes-oidc" class="external-link">scope
+and consent guidance</a> and <a href="https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens" class="external-link">refresh-token
+guidance</a>.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="advanced-concurrent-refreshes-and-failures">Advanced: concurrent refreshes and failures<a class="anchor" aria-label="anchor" href="#advanced-concurrent-refreshes-and-failures"></a>
 </h2>
-<p>Several target acquisitions may need the same refresh token. Async
-calls coordinate their work and use the latest refreshed credential. A
-synchronous call reports <code>refresh_pending</code> while async work
-owns it. A rejected request for one API can leave the other tokens
-usable, but a failure that might have consumed the shared refresh
-credential can make the entire login require reauthorization.</p>
-<p>With <code>indefinite_session = TRUE</code>, the single module may
-retain usable cached API tokens after such a failure, but retires the
-shared refresh credential. It cannot refresh expired tokens or acquire a
-new target without a new login. A connection manager has no
-indefinite-session exception. Separate managed logins sharing the same
-refresh credential also follow the manager’s shared-credential
-rules.</p>
-<p><code>token_stale</code> describes the primary token; refreshing a
-secondary API token does not clear it. <code>authenticated</code>
-describes the retained local login. Connection methods check the
-selected API token and permissions before use. Logout, replacement and
-session end invalidate old connections and late results.</p>
-<p>The modules check replacement state size before ending a current
-login. If this local preparation fails, the connection remains usable.
-Once replacement starts, a later failure or cancellation does not
-restore it.</p>
-<p>Logout removes local access before best-effort remote revocation.
-Target tokens are included in that cleanup, but the provider may be
-unavailable or reject a revocation request.</p>
+<p>Asynchronous acquisitions coordinate use of the shared refresh
+credential. A synchronous call reports <code>refresh_pending</code>
+while that work is in progress. A failure that may have consumed the
+credential can require a new login for the whole connection, even if
+another API token still works.</p>
+<p>With <code>indefinite_session = TRUE</code>, the single module can
+retain usable cached tokens after such a failure, but retires the
+refresh credential. It cannot refresh or acquire another target without
+a new login. The connection manager does not have this exception. Local
+<code>authenticated</code> state alone does not prove that a selected
+API token is usable.</p>
 <div class="section level3">
 <h3 id="request-customization-and-background-work">Request customization and background work<a class="anchor" aria-label="anchor" href="#request-customization-and-background-work"></a>
 </h3>
-<p><code>$request(refresh = TRUE)</code> is synchronous. It validates
-the destination and the prepared request before refreshing, runs
-<code>configure</code> once, and checks permission again before sending.
-It disables ordinary HTTP retries for that call. DPoP nonce handling
-remains available, but no API error triggers a new login or replay of
-the business request. <code>$access_token()</code> exports bearer tokens
-only; use <code>$request()</code> for DPoP or mTLS-bound tokens.</p>
-<p>For SDK callbacks, background tasks and checks before displaying
-results, see
-<code><a href="../articles/external-integrations.html">vignette("external-integrations", package = "shinyOAuth")</a></code>
-(<a href="external-integrations.html">online guide</a>).</p>
+<p><code>$request(refresh = TRUE)</code> runs synchronously, checks
+destination and permissions, and obtains usable credentials before
+sending. It does not replay a failed API operation or start a new login.
+Use <code>$request()</code> for DPoP or mTLS-bound tokens;
+<code>$access_token()</code> exports bearer tokens only.</p>
+<p>Logout, replacement and session end invalidate old connections and
+late results. For SDK callbacks and background-result checks, see <a href="external-integrations.html">External integrations</a>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

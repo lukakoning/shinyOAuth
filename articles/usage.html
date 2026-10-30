@@ -75,11 +75,10 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>Use shinyOAuth to let users sign in with an existing service and let
-your app call that service’s API with their permission. Your app does
-not collect the user’s password. OAuth grants permission to call an API.
-OpenID Connect (OIDC) adds identity checks so your app can verify who
-signed in.</p>
+<p>Use shinyOAuth to let users sign in with an existing service and
+grant your app permission to call its API, without collecting their
+password. OAuth controls API access; OpenID Connect (OIDC) adds identity
+checks so the app can verify who signed in.</p>
 <p>In R, configure the service and your app registration, then add the
 Shiny UI wrapper and server module. The module manages login and tokens;
 <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> handles the browser’s return to the app.</p>
@@ -91,21 +90,44 @@ flow</a>.</p>
 <div class="section level2">
 <h2 id="provider-client-and-token-objects">Provider, client, and token objects<a class="anchor" aria-label="anchor" href="#provider-client-and-token-objects"></a>
 </h2>
-<p>shinyOAuth represents the flow with three S7 classes. An
-<code>OAuthProvider</code> holds the service’s endpoint URLs and
-protocol settings; a provider helper such as
-<code><a href="../reference/oauth_provider_github.html">oauth_provider_github()</a></code> creates it. An
-<code>OAuthClient</code>, created with <code><a href="../reference/oauth_client.html">oauth_client()</a></code>,
-holds your app’s credentials, redirect URI, and requested scopes. After
-authentication, the module returns an <code>OAuthToken</code> as
-<code>auth[["token"]]</code>, containing tokens and available user
-information.</p>
-<p>The redirect URI, also called the callback URL, is the address where
-the provider sends the browser back. Register it with the provider and
-use the same value in <code><a href="../reference/oauth_client.html">oauth_client()</a></code>, including scheme,
-host, port, path, and fixed query parameters. Scopes are named
-permissions, such as <code>read:user</code>; the provider defines which
-names are available.</p>
+<p>A provider describes the service users sign in with. A client
+describes your app’s registration with that service. After login, a
+token holds the credentials your app uses to call the service and any
+available user information.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Concept</th>
+<th>In your app</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Provider</td>
+<td>A helper such as <code><a href="../reference/oauth_provider_github.html">oauth_provider_github()</a></code> supplies the
+service’s settings.</td>
+</tr>
+<tr class="even">
+<td>Client</td>
+<td>
+<code><a href="../reference/oauth_client.html">oauth_client()</a></code> combines those settings with your app’s
+credentials and permissions.</td>
+</tr>
+<tr class="odd">
+<td>Token</td>
+<td>
+<code>auth[["token"]]</code> contains the result of a successful
+login.</td>
+</tr>
+</tbody>
+</table>
+<p>The redirect URI, also called the callback URL, is where the browser
+returns after login. Register the same address with the provider and in
+<code><a href="../reference/oauth_client.html">oauth_client()</a></code>. Scopes name the permissions to request,
+such as <code>read:user</code>; the provider defines which names are
+available.</p>
 <p>Create your provider and client outside <code>server()</code> so they
 remain available when the browser returns from login. Create the module
 inside <code>server()</code> so each user has their own login state.</p>
@@ -179,8 +201,7 @@ viewers may prevent the redirects needed for login.</p>
 </h2>
 <p><code>auth</code> is a Shiny <code>reactiveValues</code> object. Read
 it inside <code>render*()</code>, <code><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive()</a></code>, or
-<code>observe*()</code>, just as you would read other reactive
-values.</p>
+<code>observe*()</code>, as you would read other reactive values.</p>
 <ul>
 <li>
 <code>auth[["authenticated"]]</code> tells you whether login passed
@@ -240,10 +261,10 @@ visit.</p>
 <div class="section level2">
 <h2 id="authenticated-api-requests">Authenticated API requests<a class="anchor" aria-label="anchor" href="#authenticated-api-requests"></a>
 </h2>
-<p>Use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to send an API request with
-the authenticated user’s access token. For example, add
-<code>tableOutput("repositories")</code> to the UI and this output to
-<code>server()</code>:</p>
+<p>Once the user has granted permission, your app can request data from
+the service. <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> attaches the access
+token for you. Add <code>tableOutput("repositories")</code> to the UI
+and this output to <code>server()</code>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">output</span><span class="op">[[</span><span class="st">"repositories"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderTable.html" class="external-link">renderTable</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"authenticated"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
@@ -262,21 +283,17 @@ the authenticated user’s access token. For example, add
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">validate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">need</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">repos</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="st">"No repositories to show."</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">repos</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"name"</span>, <span class="st">"private"</span><span class="op">)</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Only send tokens to an API you intend to authorize. The example
-requests one page of results; fetching more pages depends on the API.
-Use <code><a href="../reference/resource_req.html">resource_req()</a></code> to prepare a request without sending it,
-then use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to send it with
-shinyOAuth’s response-size limits. Sending it directly through
-<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> uses httr2’s own transport settings
-instead. See the <a href="example-spotify.html">Spotify example</a> for
-another complete app.</p>
+<p>Only send tokens to an API you intend to authorize. This example
+loads one page; further pages depend on the API. For another complete
+app, see the <a href="example-spotify.html">Spotify example</a>. The <a href="https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html">request-helper
+reference</a> covers prepared requests and transport settings.</p>
 </div>
 <div class="section level2">
 <h2 id="asynchronous-execution">Asynchronous execution<a class="anchor" aria-label="anchor" href="#asynchronous-execution"></a>
 </h2>
-<p>By default, network work runs in the app’s R process. A slow provider
-can make other sessions on that process wait too. To run the module’s
-network work in background R processes, install <code>mirai</code> and
+<p>By default, the module’s network requests run in the app’s R process,
+so a slow provider can block other sessions sharing that process. To run
+those requests in background R processes, install <code>mirai</code> and
 <code>promises</code>, then configure workers before
 <code>server()</code>:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
@@ -304,9 +321,9 @@ stops:</p>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span>, async <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="co"># Add your outputs and observers here.</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>This setting covers the module’s operations; API calls you write in
-your own outputs still run where you call them. Discovery during app
-setup also stays synchronous. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.html"><code>oauth_module_server()</code></a>
+<p><code>async = TRUE</code> covers the module’s operations. API calls
+in your own outputs still run where you call them, and discovery during
+app setup stays synchronous. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.html"><code>oauth_module_server()</code></a>
 for advanced exceptions and the <a href="package-options.html">options
 reference</a> for timeouts and retries.</p>
 </div>
@@ -335,8 +352,8 @@ validity at the provider.</p>
 <code><a href="../reference/oauth_provider_google.html">oauth_provider_google()</a></code>,
 <code><a href="../reference/oauth_provider_microsoft.html">oauth_provider_microsoft()</a></code>, or
 <code><a href="../reference/oauth_provider_keycloak.html">oauth_provider_keycloak()</a></code>. Each helper’s help page
-describes its setup. For an OpenID Connect service with a discovery URL,
-you can let shinyOAuth look up the service’s settings:</p>
+describes its setup. For an OpenID Connect service, discovery reads its
+published settings so you do not have to copy each endpoint:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://login.example.com"</span></span>
@@ -353,17 +370,13 @@ An issuer is the provider’s identifier URL; copy it from the provider’s
 configuration. Discovery makes a network request, so run it during app
 setup. If your registration specifies a client authentication method,
 supply the matching <code>token_auth_style</code> to the provider
-helper; discovery describes the service’s capabilities, not the settings
-of your individual registration.</p>
-<p>OpenID Connect (OIDC) is a login protocol: it supplies a signed ID
-token that shinyOAuth checks to identify the user. OAuth 2.0 grants
-permission to call APIs using an access token. GitHub and Spotify use
-OAuth without OIDC; their helpers fetch profile information through
-their own APIs. With OIDC, read validated identity details from
+helper. Discovery lists the service’s capabilities; your registration
+determines which method and credentials to use.</p>
+<p>For OIDC, read validated identity from
 <code>auth[["token"]]@id_token_claims</code> and check
-<code>auth[["token"]]@id_token_validated</code>. An access token alone
-is not proof of identity. The <a href="authentication-flow.html">authentication guide</a> explains
-more.</p>
+<code>auth[["token"]]@id_token_validated</code>. GitHub and Spotify
+instead fetch profiles through their own APIs. An access token alone
+does not verify identity; see <a href="authentication-flow.html">Authentication flow</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="deployment">Deployment<a class="anchor" aria-label="anchor" href="#deployment"></a>
@@ -393,21 +406,10 @@ provider can help with optional rate limiting.</li>
 <li>Keep the provider’s validation defaults and choose any extra
 protections to match your provider and deployment requirements.</li>
 </ul>
-<p>The module links a returning login to the browser using an
-origin-scoped token in tab-scoped session storage and an independent,
-short-lived cookie marker. Each transaction has its own marker. Cookies
-and session storage must both be available; complete login in the tab
-that started it. JavaScript reads this binding, so preventing injected
-scripts (cross-site scripting, or XSS) in your app matters. This link
-cannot establish which account you expected to sign in: check that
-account yourself when your app has such a requirement.</p>
-<p>Treat the entire hostname as a trust boundary and use a dedicated
-hostname if other services are untrusted. Cookies are shared across
-ports, even with <code>__Host-</code>, <code>Secure</code>, or
-<code>HttpOnly</code>. The session-storage check prevents another port
-from adopting a cookie as a binding, but cannot prevent cookie
-disruption. Application callback routes distinguish records within a
-tab. Same-origin scripts can still access session storage.</p>
+<p>Complete login in the browser tab that started it, with cookies and
+session storage available. Keep the app on a separate hostname from
+untrusted services and protect it against injected scripts. The <a href="advanced-security.html#browser-binding-and-deployment-boundary">advanced
+security guide</a> explains the hosting boundary and why it matters.</p>
 </div>
 </div>
 <div class="section level2">
@@ -442,33 +444,16 @@ preview.</p>
 <div class="section level3">
 <h3 id="multiple-r-processes">Multiple R processes<a class="anchor" aria-label="anchor" href="#multiple-r-processes"></a>
 </h3>
-<p>The default configuration stores pending logins in one R process. If
-a login can start on one process and return to another, those processes
-need:</p>
-<ul>
-<li>A shared <code>state_store</code> with an atomic
-<code>[["take"]]()</code> operation: reading and deleting a pending
-login must happen as one indivisible operation.</li>
-<li>The same secret <code>state_key</code>, so each process can read the
-encrypted login details. Supply at least 32 random bytes, stored in your
-deployment’s secret manager.</li>
-<li>Matching provider and client settings.</li>
-</ul>
-<p>Use <code><a href="../reference/custom_cache.html">custom_cache()</a></code> to connect a shared database or Redis
-store. Plain <code><a href="https://cachem.r-lib.org/reference/cache_disk.html" class="external-link">cachem::cache_disk()</a></code> is unsuitable for shared
-login state because separate reads and deletes can let two requests use
-the same entry. See <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html"><code>custom_cache()</code></a>
-for the backend contract.</p>
-<p>For POST callbacks, the shared store also needs atomic
-<code>set_if_absent</code> with expiry, so simultaneous responses cannot
-overwrite one another. See <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html">custom_cache()</a>
-for the backend requirements.</p>
-<p>Hosted Request Objects
-(<code>request_object_mode = "request_uri"</code>) also use this store,
-in separate records. Their JWT claims are readable when signed without
-JWE encryption; the pending-login record’s <code>state_key</code>
-sealing does not cover them. Apply the store’s access controls and
-expiry to both record types.</p>
+<p>A login can start on one R process and return to another. Those
+processes need the same provider/client settings, a shared pending-login
+store, and the same secret <code>state_key</code> to read the saved
+details. Load that key from deployment secret storage; it needs at least
+32 random bytes.</p>
+<p>The shared store must read and remove a pending record as one
+operation, so two processes cannot accept the same login response. Plain
+disk caching does not provide that guarantee. Use <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html">custom_cache()</a>
+to connect an appropriate backend, following its contract for POST
+callbacks and hosted Request Objects.</p>
 </div>
 </div>
 <div class="section level2">

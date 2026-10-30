@@ -1,67 +1,53 @@
 # Keep and use multiple OAuth authorizations
 
-Users can connect several services or accounts in one Shiny app, choose
-which saved authorization to use for a request, and disconnect each one
-separately. A dashboard can combine data from several APIs, or let users
-work with several accounts at the same service.
+## Why keep several authorizations?
 
-This vignette builds an app that connects to two services and reads data
-from either one. It uses browser retention to keep both authorizations
-available when the user returns from a provider’s login page.
+A user may want to connect a calendar and a records service, or use two
+accounts at the same service. Each authorization gives the app
+permission to access data. The connection manager saves these
+authorizations so users can choose which one to use and disconnect them
+separately.
+
+Login redirects leave the current Shiny session. Browser retention lets
+the app find the saved authorizations when the user returns, so
+connecting a second service does not discard the first.
+
+For one login per Shiny session, start with
+[Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md). For
+one login that needs different tokens for several APIs, see [Token
+targets](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md).
 
 ## Client configuration and connections
 
-Create an `OAuthClient` for each service with its registration details,
-scopes and API addresses. Put the clients in a named list and pass it to
-[`oauth_connections()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.md).
-Your app uses those names to choose which service to connect when a user
-clicks a Connect button.
+A client describes an app registration: the service, credentials,
+requested permissions and allowed API addresses. A connection represents
+one successful authorization using that client. The manager holds the
+clients and saved connections; your server selects a connection when
+making a request.
 
-Each successful authorization creates a separate connection. Inside
-`server()`, retrieve that `OAuthConnection` to make requests with its
-current credentials.
-
-One client can have several connections. Connecting A again creates
-another authorization alongside the first. Account selection happens at
-the provider; it may reuse the account already signed in there.
-
-A provider may also return the same refresh credential for both
-connections. The manager queues overlapping asynchronous refreshes for
-that credential. If it rotates or its refresh outcome is uncertain,
-other connections holding the old credential become uncertain and
-require authorization again. The manager keeps their account identity
-and permissions separate. Successful revocation also stops use of known
-copies of the revoked credential within that manager.
-
-For apps that need one authorization per Shiny session, see the
-[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
-and
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-example in
-[Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md).
+One client can have several connections. Connecting the same service
+again adds another authorization; the provider decides whether to show
+an account chooser or reuse the account already signed in there.
 
 ## Register two clients
 
-This template uses two fictional services. Replace their endpoints,
-credentials, scope names and API path with values from your providers’
-documentation. It assumes authorization code flow with S256 PKCE and
-confidential clients using HTTP Basic client authentication. The
-providers must support that registration.
+This template connects two fictional services and reads records from
+either one. Replace the endpoints, credentials, scope names and API
+paths with your providers’ values. The example uses shared-secret client
+authentication and PKCE; confirm that setup with each provider.
 
-Register these exact redirect URIs with the respective services:
+Register these callback addresses, where the browser returns after
+login:
 
-| Service | Redirect URI                       |
+| Service | Local callback URL                 |
 |---------|------------------------------------|
 | A       | `http://127.0.0.1:8100/callback/a` |
 | B       | `http://127.0.0.1:8100/callback/b` |
 
-These loopback HTTP addresses are for local development, if your
-providers permit them. Use your public HTTPS origin and corresponding
-registered callbacks when deploying, and omit the owner’s
-`allow_http_loopback` exception. Store the two client IDs and secrets in
-the environment variables used below, outside source control.
-
-Copy the next three code blocks, in order, into `app.R`.
+Use these HTTP addresses only for local development if your providers
+permit them. For deployment, register matching public HTTPS URLs and
+remove `allow_http_loopback`. Store IDs and secrets in the environment
+variables below. Copy the next three code blocks into `app.R`, in order.
 
 ### 1. Configure clients outside `server()`
 
@@ -118,19 +104,12 @@ client_b <- oauth_client(
 clients <- list(a = client_a, b = client_b)
 ```
 
-`a` and `b` are app-local selectors, independent of the registered
-`client_id`. `api` names an approved resource within each client. For
-connection A, `[["request"]]("api", "records")` means
-`https://api.a.example/v1/records`.
+The names `a` and `b` let your app choose a service. Within either
+client, `api` names its approved API base: requesting `"api", "records"`
+on connection A calls `https://api.a.example/v1/records`.
 
-The default callback policy gives each client a distinct route. Supply
-the complete callback vector to each client, even though each uses its
-own `redirect_uri`. The manager verifies that each client’s declared set
-includes all of its callback routes, comparing canonical origins and
-paths. Additional routes used elsewhere in the application may also be
-included. Shared callback routes are an advanced alternative documented
-under
-[oauth_connections()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html).
+Each service has its own callback route so the app can distinguish
+returning responses. Give each client the complete `callbacks` vector.
 
 ### 2. Keep authorizations when the browser returns
 
@@ -153,45 +132,18 @@ manager <- oauth_connections(
 )
 ```
 
-Browser retention uses an HttpOnly cookie containing an opaque local
-owner ID. Tokens stay encrypted in the R process. The cookie associates
-saved connections with this browser; it does not identify a person or
-log them into either service.
+Tokens stay encrypted on the server, while a cookie associates the saved
+connections with this browser. The cookie does not identify a person.
+Without browser retention, connections end with their Shiny session.
 
-Without `retention = "browser"`, the default is `"shiny"`: existing
-connections are discarded when that Shiny session ends. Configuring
-multiple clients alone does not preserve A while the browser goes away
-to authorize B.
+Create the manager, store and keys outside `server()`. This memory store
+supports one R process and loses records on restart. For deployment,
+load stable secret keys; keys alone do not make the memory store
+persistent.
 
-Keep the manager, store and keys outside `server()` so returning Shiny
-sessions use the same configuration. This memory store supports one R
-process and does not survive an R restart. Stable keys alone do not make
-it persistent or share records between workers. Browser ownership also
-has idle and absolute expiry limits. Automatic refresh and API reads do
-not reset inactivity. Call `auth[["touch"]]()` from a user input event
-handler, as the Read handler below does, to count an application action
-as activity. Explicit refresh also counts as activity; the absolute
-expiry remains fixed. For an app with its own verified account login,
-see
-[oauth_account_owner()](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html)
-and `retention = "account"`.
-
-Size the owner registry and credential store separately. Both owner
-factories accept `max_entries` (default 1,000) per manager. Retained
-browser entries count browsers that successfully authorize a service.
-Recent visitors occupy a separate provisional pool with the same limit;
-entries without a pending authorization may be replaced and expire after
-at most five minutes. Pending authorizations protect their browser
-entries until cancellation or transaction expiry, subject to the owner’s
-idle and absolute limits. If all provisional entries are protected, new
-visitors are rejected. Account entries include logged-out login
-generations until their reauthentication deadline. A full retained
-registry rejects new retained owners while preserving existing retained
-sessions and retirement records.
-`oauth_connection_store_memory(max_entries = ...)` controls a different
-limit: successful authorization transactions occupy capacity for the
-store’s full `max_age`, including after a connection is disconnected.
-Neither limit measures only the number of currently open Shiny sessions.
+Saved connections also have inactivity and absolute expiry limits.
+Record user actions with `auth[["touch"]]()`, as the Read handler below
+does. Automatic refreshes and reads do not count as user activity.
 
 ### 3. Select a connection and make a request
 
@@ -269,27 +221,22 @@ runApp(shinyApp(ui, server, uiPattern = ".*"),
   host = "127.0.0.1", port = 8100, launch.browser = FALSE)
 ```
 
-Open `http://127.0.0.1:8100` in a regular browser. Connect A, return,
-then connect B. Both authorizations should appear in the selector.
-Select each and read its records. Disconnect removes the selected local
-connection; provider revocation may affect other authorizations as
-explained below. The numeric suffix only distinguishes rows in this
-demo; use the opaque `connection_id` as the stable key.
+Open `http://127.0.0.1:8100` in a regular browser. Connect A, then B.
+Select each authorization and read its records. The output checks the
+connection ID so results from a previous selection do not remain
+visible.
 
-The UI wrapper handles callback pages; `uiPattern = ".*"` lets Shiny
-serve those paths. Use the same module ID (`"services"`) in UI and
-server. Deploying under a subpath or behind a proxy can also require
-`app_base_path` and a trusted `request_uri_resolver`; see
-[oauth_connections_ui()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html).
+Keep the same module ID in UI and server. The wrapper handles callbacks
+and `uiPattern = ".*"` allows their routes. Use the opaque connection ID
+as the selection key; the numeric label only distinguishes rows in this
+demo.
 
 ## Requests, permissions and refresh
 
-For optional writes, first configure the applicable client with
-`scopes = c("records.read", "records.write")` and obtain a new
-authorization. Replace these example permissions with the provider’s
-actual scope names. Add
-`actionButton("write", "Update selected record")` to the UI and place
-this observer inside `server()`, after `selected_connection` is defined:
+For an optional write action, request
+`scopes = c("records.read", "records.write")` on the applicable client
+and obtain a new authorization. Add an Update button to the UI, then use
+an observer inside `server()` after `selected_connection`:
 
 ``` r
 
@@ -312,41 +259,15 @@ observeEvent(input[["write"]], {
 })
 ```
 
-`configure` adds a body or application headers to the unauthenticated
-request;
-[`httr2::req_body_form()`](https://httr2.r-lib.org/reference/req_body.html)
-and
-[`httr2::req_body_raw()`](https://httr2.r-lib.org/reference/req_body.html)
-are also supported. The connection retains control of its destination,
-authentication and redirect policy. The write scope is optional for
-connecting, but required for this action.
+The operation requires `records.write` even when basic read access is
+still usable. `configure` adds the request body and application headers;
+the connection keeps control of the destination and authentication. The
+service still decides whether the user may change that particular
+record.
 
-`OAuthConnection[["request"]]()` calls
-[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-with the selected connection’s current credentials, after checking the
-approved API base and required permissions. For a single module with an
-existing token reactive, use
-`oauth_connection(client, reactive(auth[["token"]]))` to add these
-checks without retaining credentials across navigation.
-
-`resource_bases` limits destinations, including absolute pagination
-links and their base paths. It does not automatically send OAuth’s
-`resource` parameter or prove the audience of an opaque token; configure
-resource indicators explicitly when your provider requires them. See
-[RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html).
-
-`required_scopes` on the client is the minimum for usable access.
-Requesting additional optional scopes can produce a `limited` connection
-if only some are granted. Supply an operation’s additional permissions
-in `[["request"]]()`; ordinary OAuth scope names are compared literally,
-and permissions are not inferred from the API path. A usable connection
-does not guarantee the API will accept every request.
-
-If the provider issues a refresh token, the manager attempts refresh at
-expiry; `refresh_proactively = TRUE` on
-[`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
-starts earlier. Explicit refresh is also available inside a server
-observer:
+If a refresh token is available, the manager attempts refresh at expiry.
+`refresh_proactively = TRUE` starts earlier. An optional Refresh button
+can run:
 
 ``` r
 
@@ -357,57 +278,50 @@ observeEvent(input[["refresh"]], {
 })
 ```
 
-Add `actionButton("refresh", "Refresh selected")` to the UI to use this
-snippet. The example uses the default synchronous mode. `async = TRUE`
-needs worker setup and promise handling for explicit refresh; see
-[Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.html#asynchronous-execution).
+Add `actionButton("refresh", "Refresh selected")` to use it. For
+background refresh, first follow [the async
+setup](https://lukakoning.github.io/shinyOAuth/articles/usage.html#asynchronous-execution).
+Saving an authorization does not itself request a refresh token.
 
-Retention itself does not request a refresh token. OAuth refresh cannot
-expand the authorization’s scope ([RFC 6749, section
-6](https://www.rfc-editor.org/rfc/rfc6749.html#section-6)).
-`[["refresh"]](scopes = ...)` can deliberately narrow a managed
-connection’s accepted permissions; getting broader access again requires
-a new authorization.
+## Disconnecting a service
 
-Disconnect immediately removes local usability. Remote token revocation
-is best effort and reported separately in the return value. This
-template does not configure revocation endpoints, so add each provider’s
-documented `revocation_url` if supported. `logout()` also ends this
-local owner session; it does not sign the person out of the external
-services or your own account login system.
+`auth[["disconnect"]](id)` removes the selected local connection and
+attempts remote revocation when configured. `auth[["logout"]]()`
+disconnects all and ends this local owner session; it does not sign the
+user out of the external services. Add each provider’s documented
+`revocation_url` if revocation is supported.
 
-Separate connection IDs represent separate local records. A provider can
-reuse the same upstream grant for repeated authorizations and invalidate
-all related credentials when one is revoked; OAuth explicitly permits
-this behavior ([RFC 7009, section
-2.1](https://www.rfc-editor.org/rfc/rfc7009.html#section-2.1)). For
-example, Google’s documented revocation can affect all scopes granted to
-a project and invalidate related tokens ([Google’s revocation
-policy](https://developers.google.com/identity/protocols/oauth2/web-server#tokenrevoke)).
-Repeated consent, distinct token strings, and local connection IDs do
-not prove independent upstream grants.
-
-The default `auth[["disconnect"]](id)` requests remote revocation. To
-remove only the local connection, use
-`auth[["disconnect"]](id, revoke = FALSE)`; those removed credentials
-remain valid remotely until expiry or provider-side revocation. Choose
-this deliberately using the provider’s documented behavior. Sibling
-connections can still report `active` locally after remote revocation:
-always handle API authorization failures and offer a new authorization.
+A provider can reuse one upstream grant for several local connections,
+so revoking one may affect the others. Handle API authorization failures
+even if a sibling connection still looks active. Use `revoke = FALSE`
+only when you deliberately want local removal while remote credentials
+remain valid.
 
 ## Deployment notes
 
-Keep this app on a separate hostname from untrusted services. Browser
-cookies are shared across ports on a hostname, so another service
-receiving the owner cookie could reuse it. Separate cookie names do not
-isolate those services. See [advanced
-security](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#browser-binding-and-deployment-boundary)
-for the browser and hosting requirements.
+Keep the app on a separate hostname from untrusted services, because
+cookies are shared across ports. The example’s browser retention is for
+one R process; check
+[oauth_connections()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html)
+and
+[oauth_browser_owner()](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html)
+before choosing retention, store capacity and expiry settings for
+deployment.
+
+If your app has its own verified account login, `retention = "account"`
+with
+[`oauth_account_owner()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.md)
+can associate authorizations with that account. Browser retention alone
+does not make that association. For subpaths and trusted proxies, see
+[oauth_connections_ui()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html).
 
 ## Keep an ordinary OIDC login alongside SMART connections
 
-For an OIDC client inside the manager, select validated identity
-explicitly in the owning server session:
+An ordinary OIDC login can identify the app user while the manager holds
+separate authorizations for access to hospital records.
+
+For an OIDC client already inside the manager, read selected validated
+identity fields in the owning server session:
 
 ``` r
 
@@ -416,19 +330,13 @@ identity <- selected_connection()[["identity"]](userinfo = c("name", "email"))
 # identity[["userinfo"]] contains only the selected, previously fetched fields.
 ```
 
-This requires a usable connection with `openid` and a validated ID
-token. UserInfo fields are returned only when its `sub` matches that
-token. Configure the provider’s UserInfo endpoint and required profile
-scopes if those fields are needed; the accessor does not fetch them.
-Treat the returned data as sensitive. Identity stays out of connection
-summaries and printing, and raw credentials are never returned. These
-snapshots can predate the latest OAuth refresh; they do not establish
-fresh login or an account-retention owner.
+This reads previously fetched identity data; it does not perform a fresh
+login or establish the account used for retention. See [the connection
+reference](https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.html).
 
-Use one callback wrapper with `additional_clients` for ordinary modules.
-Given your existing `login_provider` and a reviewed SMART discovery
-snapshot `site`, configure both registered callbacks with the same
-multi-server defense:
+To keep an ordinary login module outside the manager, use one callback
+wrapper with `additional_clients`. Given an existing `login_provider`
+and a reviewed SMART discovery result `site`:
 
 ``` r
 
@@ -457,18 +365,12 @@ server <- function(input, output, session) {
 shinyApp(ui, server, uiPattern = ".*")
 ```
 
-Supply the existing registration’s secret or key to `login_client` as
-required. `keys` is the deployment key configuration described above.
-The additional client names are ordinary module IDs, without the manager
-namespace. Both GET and form-post callbacks are supported; select each
-registered response mode on its client. Additional clients need distinct
-routes from managed clients.
+Supply credentials for the login registration and the deployment `keys`
+described above. Keep callbacks distinct and automatic login disabled
+while processing other authorizations.
 
-This preserves the ordinary module’s token and logout API. The manager
-neither stores that login token nor changes its lifecycle. A full
-browser navigation still ends the ordinary Shiny session; retain
-application login through your existing application-session mechanism if
-needed. Disable automatic login redirects while processing other
-authorizations, as in this example. Browser ownership for retained SMART
-grants is independent of OIDC identity; use account retention with a
-trusted local-account resolver when that binding is required.
+Full navigation ends the ordinary module’s Shiny session, and the
+manager does not retain that login. Use your application’s session
+mechanism if it must persist. See
+[oauth_connections_ui()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html)
+for callback configuration details.

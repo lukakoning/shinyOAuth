@@ -72,87 +72,181 @@
 
     
     
-<p>This reference lists package-wide options for network requests,
-logging, and validation. Set options near the top of <code>app.R</code>,
-before creating the provider and client. The defaults apply when an
-option is unset.</p>
-<p>For example, allow a slow provider up to ten seconds per HTTP
-request:</p>
+<div class="section level2">
+<h2 id="what-package-options-are-for">What package options are for<a class="anchor" aria-label="anchor" href="#what-package-options-are-for"></a>
+</h2>
+<p>Package options control settings shared by the whole R process,
+including network timeouts and diagnostic logging. Most apps can use the
+defaults; adjust them for a specific need, such as a provider that
+responds slowly.</p>
+<p>Use <code><a href="../reference/oauth_client.html">oauth_client()</a></code> and
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> arguments for settings that belong to
+one app registration or module. Start with <a href="usage.html">Usage</a> if you have not configured login yet.</p>
+</div>
+<div class="section level2">
+<h2 id="set-an-option-at-app-startup">Set an option at app startup<a class="anchor" aria-label="anchor" href="#set-an-option-at-app-startup"></a>
+</h2>
+<p>For example, give a slow provider up to ten seconds per network
+request. Put this near the top of <code>app.R</code>, before creating
+the provider and client:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.timeout <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
-<p>Times are in seconds unless a setting explicitly says milliseconds.
-Options affect the R process; use <code><a href="../reference/oauth_client.html">oauth_client()</a></code> and
-<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> arguments for settings that belong to
-one client or module. See <a href="usage.html">Usage</a> for app
-setup.</p>
+<p>A longer timeout gives a slow provider more time to respond, but
+delays failure when the service is unavailable. Restore the default with
+<code>options(shinyOAuth.timeout = NULL)</code>.</p>
+<p>Options affect other sessions sharing that R process. Configure them
+once at startup instead of changing them for individual users.</p>
+<p>Times use seconds unless a setting explicitly says milliseconds.</p>
+</div>
 <div class="section level2">
 <h2 id="logging">Logging<a class="anchor" aria-label="anchor" href="#logging"></a>
 </h2>
+<p>Use these options to send diagnostic events to your logging service
+and control which request details it receives.</p>
 <ul>
-<li>
-<code>options(shinyOAuth.audit_hook = function(event){ ... })</code>
-– receive structured audit and error events</li>
-<li>
-<code>options(shinyOAuth.audit_include_http = FALSE)</code> –
+<li><p><code>options(shinyOAuth.audit_hook = function(event){ ... })</code>
+– receive structured audit and error events</p></li>
+<li><p><code>options(shinyOAuth.audit_include_http = FALSE)</code> –
 exclude HTTP request details from audit events (default:
-<code>TRUE</code>)</li>
-<li>
-<code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code>
+<code>TRUE</code>)</p></li>
+<li><p><code>options(shinyOAuth.audit_include_raw_session_token = TRUE)</code>
 – include the raw <code>shiny_session[["token"]]</code> in native
 audit-hook payloads. By default, hooks receive only
-<code>shiny_session[["session_token_digest"]]</code>
-</li>
-<li>
-<code>options(shinyOAuth.audit_redact_http = FALSE)</code> – disable
-automatic redaction of sensitive data in audit events (default:
+<code>shiny_session[["session_token_digest"]]</code></p></li>
+<li><p><code>options(shinyOAuth.audit_redact_http = FALSE)</code> –
+disable automatic redaction of sensitive data in audit events (default:
 <code>TRUE</code>). Debug only: raw mode can expose cookies,
-authorization headers, codes, state values, and client IP addresses</li>
-<li>
-<code>options(shinyOAuth.telemetry_path_scrubber = function(path) NULL)</code>
-– optionally return an approved route template for audit and OTel paths.
-Paths are omitted by default. Return <code>NULL</code> for unknown
-routes; remove identifying segments and make the function idempotent.
-Input is bounded to 2048 bytes and output to 512 bytes.</li>
-<li>
-<code>options(shinyOAuth.audit_digest_key = ...)</code> – shared key
-of at least 32 bytes for HMAC-SHA256 digests used in audit/OTel
-attributes. Invalid configured keys cause an error; by default,
-‘shinyOAuth’ generates a random per-process key when this is not
-configured</li>
-<li>
-<code>options(shinyOAuth.otel_tracing_enabled = FALSE)</code> –
+authorization headers, codes, state values, and client IP
+addresses</p></li>
+<li><p><code>options(shinyOAuth.telemetry_path_scrubber = function(path) NULL)</code>
+– return approved route labels for audit and OTel paths, which are
+omitted by default. Return <code>NULL</code> for unknown routes, remove
+identifying segments, and make the function idempotent.</p></li>
+<li><p><code>options(shinyOAuth.audit_digest_key = ...)</code> – shared
+HMAC-SHA256 key of at least 32 bytes for audit/OTel correlation. The
+default is a random per-process key; invalid configured keys cause an
+error.</p></li>
+<li><p><code>options(shinyOAuth.otel_tracing_enabled = FALSE)</code> –
 disable ‘shinyOAuth’ OpenTelemetry span creation and async trace-context
-propagation. Default: <code>TRUE</code>
-</li>
-<li>
-<code>options(shinyOAuth.otel_logging_enabled = FALSE)</code> –
+propagation. Default: <code>TRUE</code></p></li>
+<li><p><code>options(shinyOAuth.otel_logging_enabled = FALSE)</code> –
 disable ‘shinyOAuth’ OpenTelemetry log emission. Default:
-<code>TRUE</code>
-</li>
-<li>
-<code>options(shinyOAuth.otel_include_authorization_details = TRUE)</code>
+<code>TRUE</code></p></li>
+<li><p><code>options(shinyOAuth.otel_include_authorization_details = TRUE)</code>
 – include raw scope names, claim targets, and ACR values in telemetry.
-Default: <code>FALSE</code> (counts only). These fields may be sensitive
-and have high cardinality.</li>
+Default: <code>FALSE</code> (counts only). These fields can reveal
+private information and produce many distinct telemetry values.</p></li>
 </ul>
 <p>See <a href="audit-logging.html">Audit logging</a> for R hook
 examples and <a href="opentelemetry.html">OpenTelemetry</a> for log and
 trace exporter setup.</p>
 </div>
 <div class="section level2">
+<h2 id="http-settings-timeout-retries-user-agent">HTTP settings (timeout, retries, user agent)<a class="anchor" aria-label="anchor" href="#http-settings-timeout-retries-user-agent"></a>
+</h2>
+<p>Network settings control how long requests may wait and how much data
+they may return. Adjust them for a specific provider or API; larger
+limits also allow a failing request to use more time or memory.</p>
+<ul>
+<li><p><code>options(shinyOAuth.tls_min_version = "1.2")</code> -
+require TLS 1.2 or later for package HTTPS requests (the default). Use
+<code>"1.3"</code> for a higher minimum; an absent option or
+<code>NULL</code> restores TLS 1.2. Set this before discovery or login.
+It applies to async workers too; browser and reverse-proxy TLS must be
+configured separately.</p></li>
+<li><p><code>options(shinyOAuth.timeout = 5)</code> – default HTTP
+timeout (seconds) applied to all outbound requests (discovery, JWKS,
+token exchange, userinfo). Increase if your provider/network is slow.
+Values beyond curl’s supported timeout range are capped</p></li>
+<li><p><code>options(shinyOAuth.retry_max_tries = 3L)</code> – maximum
+attempts after network errors or HTTP 408, 429 or 5xx responses. Code
+exchange and refresh skip automatic retries, apart from one DPoP
+nonce-challenge retry.</p></li>
+<li><p><code>options(shinyOAuth.dpop_nonce_max_bytes = 4096L)</code> –
+maximum DPoP nonce size in bytes; supported range 1 to 65536. Increase
+it only when the provider issues larger nonces.</p></li>
+<li><p><code>options(shinyOAuth.retry_backoff_base = 0.5)</code> – base
+backoff in seconds used for exponential backoff with jitter</p></li>
+<li><p><code>options(shinyOAuth.retry_backoff_cap = 5)</code> –
+per‑attempt cap on backoff seconds (before jitter)</p></li>
+<li><p><code>options(shinyOAuth.retry_after_cap = 60)</code> – maximum
+synchronous sleep in seconds for a server-provided
+<code>Retry-After</code> value; this is separate from the client-side
+backoff cap</p></li>
+<li><p><code>options(shinyOAuth.retry_status = c(408L, 429L, 500:599))</code>
+– HTTP statuses considered transient and retried</p></li>
+<li><p><code>options(shinyOAuth.user_agent = "shinyOAuth/&lt;version&gt; R/&lt;version&gt; httr2/&lt;version&gt;")</code>
+– override the HTTP User-Agent. The default includes the installed
+package and R versions; set a custom value if your organization requires
+one.</p></li>
+<li><p><code>options(shinyOAuth.allow_redirect = FALSE)</code> – keep
+<code>FALSE</code> for sensitive provider requests. Enabling redirects
+can forward codes, tokens or credentials to another destination; the
+opt-in applies in all sessions.</p></li>
+<li><p><code>options(shinyOAuth.max_body_bytes = 1048576)</code> -
+maximum response size (default 1 MiB) for package requests and
+connection calls. Increase it if an API legitimately returns more data.
+Use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> for prepared requests as well as
+URLs to retain this limit.</p></li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="async-timeout-mirai">Async timeout (mirai)<a class="anchor" aria-label="anchor" href="#async-timeout-mirai"></a>
+</h2>
+<p>A task timeout limits how long background work may run. Configure
+workers first, as shown in <a href="usage.html#asynchronous-execution">Usage</a>.</p>
+<ul>
+<li>
+<code>options(shinyOAuth.async_timeout = 10000)</code> – per-task
+timeout in milliseconds for mirai async tasks. When using mirai with
+dispatcher (the default), timed-out tasks are automatically cancelled
+and resolve as a mirai error. Use <code>NULL</code> (the default) for no
+timeout, or a whole number from 0 to 2147483647. Ignored when falling
+back to the ‘future’ backend</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="async-condition-replay">Async condition replay<a class="anchor" aria-label="anchor" href="#async-condition-replay"></a>
+</h2>
+<p>Background workers can return warnings and messages to the app. Turn
+replay off if another logging system already handles those
+diagnostics.</p>
+<ul>
+<li>
+<code>options(shinyOAuth.replay_async_conditions = FALSE)</code> –
+when <code>FALSE</code>, warnings and messages captured from async
+workers are silently discarded instead of being re-emitted on the main R
+process. Default is <code>TRUE</code> (replay all captured conditions).
+Useful if worker diagnostics are too noisy or handled separately via
+<code>audit_hook</code>
+</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="token-lifetime-fallback">Token lifetime fallback<a class="anchor" aria-label="anchor" href="#token-lifetime-fallback"></a>
+</h2>
+<p>Some providers omit the token lifetime. This fallback lets ordinary
+OAuth clients track expiry in that case.</p>
+<ul>
+<li>
+<code>options(shinyOAuth.default_expires_in = 3600)</code> –
+fallback token lifetime (in seconds) when the provider omits
+<code>expires_in</code> from the token response</li>
+</ul>
+</div>
+<div class="section level2">
 <h2 id="validation-and-url-policy">Validation and URL policy<a class="anchor" aria-label="anchor" href="#validation-and-url-policy"></a>
 </h2>
+<p>These settings affect which responses and addresses the app accepts.
+Keep the defaults unless your provider or development setup requires a
+specific change.</p>
 <ul>
 <li><p><code>options(shinyOAuth.access_token_cnf = "opaque")</code> –
-never decode access tokens to obtain sender-binding metadata. DPoP and
-mTLS still check <code>cnf</code> from token responses and introspection
-and present their configured sender credentials. The compatibility
-default <code>"jwt"</code> inspects JWT <code>cnf</code> without
-validating the access-token signature; select it only where that
-representation is agreed with the provider. This option is propagated to
-async workers. Requiring observed binding remains a separate client
-policy (<code>dpop_require_observed_cnf</code> or
-<code>mtls_require_observed_cnf</code>).</p></li>
+use <code>"opaque"</code> to avoid decoding access-token binding data.
+The compatibility default <code>"jwt"</code> reads <code>cnf</code>
+without signature verification. DPoP and mTLS still check available
+binding and present their configured credentials. Requiring visible
+confirmation is a separate client policy.</p></li>
 <li><p><code>options(shinyOAuth.leeway = 30)</code> – default clock skew
 leeway (seconds) for ID token
 <code>exp</code>/<code>iat</code>/<code>nbf</code> checks and state
@@ -169,7 +263,7 @@ it does not relax OIDC discovery</p></li>
 – development-only opt-in for OIDC issuer and endpoint URLs on HTTP
 loopback origins; production OIDC metadata URLs must use HTTPS</p></li>
 <li><p><code>options(shinyOAuth.allowed_hosts = c())</code> – when
-non‑empty, restricts accepted hosts to this whitelist</p></li>
+non-empty, restricts accepted hosts to this list</p></li>
 <li><p><code>options(shinyOAuth.allow_hs = TRUE)</code> – opt‑in HMAC
 validation for ID tokens (HS256/HS384/HS512). Requires a strictly
 server‑side <code>client_secret</code> and exactly one HS algorithm in
@@ -183,13 +277,11 @@ endpoint authentication. Finite values below 60 seconds are coerced to
 and <code>NA</code> or non-finite values fall back to the 120-second
 default</p></li>
 <li><p><code>options(shinyOAuth.state_fail_delay_ms = 0)</code> – delay
-in milliseconds before state parsing or decryption failures. Defaults to
-<code>0</code> (no delay). A positive number sets a fixed delay; two
-numbers, such as <code>c(10, 30)</code>, set bounds for a randomized
-delay. Positive delays sleep synchronously and block the Shiny worker,
-including initial state validation with <code>async = TRUE</code>. The
-delay adds timing noise but does not provide constant-time
-validation.</p></li>
+before state-validation failures, in milliseconds. Default
+<code>0</code> adds no delay; one positive number sets a fixed delay,
+two set random bounds. Positive delays block R even with
+<code>async = TRUE</code>; they add timing noise rather than
+constant-time validation.</p></li>
 </ul>
 <p><code>allowed_hosts</code> patterns support globs (<code>*</code>,
 <code>?</code>). A catch-all such as <code>"*"</code> accepts any host;
@@ -198,172 +290,18 @@ example <code>c(".example.com")</code>, unless you intend to accept any
 host.</p>
 </div>
 <div class="section level2">
-<h2 id="advanced-parameter-overrides">Advanced parameter overrides<a class="anchor" aria-label="anchor" href="#advanced-parameter-overrides"></a>
-</h2>
-<p>By default, ‘shinyOAuth’ blocks certain security-critical parameters
-from being passed via <code>extra_auth_params</code>,
-<code>extra_token_params</code>, and <code>extra_token_headers</code>.
-This helps prevent accidental misconfiguration that could break state
-binding, PKCE, or client authentication.</p>
-<p>Set the callback format with
-<code>oauth_client(response_mode = ...)</code>.</p>
-<p>To override a blocked parameter, use the options below. Some
-parameters cannot be unblocked.</p>
-<ul>
-<li>
-<code>options(shinyOAuth.unblock_auth_params = c("redirect_uri"))</code>
-– allows replacing the specified authorization URL parameters. Default
-blocked: <code>response_type</code>, <code>client_id</code>,
-<code>redirect_uri</code>, <code>state</code>, <code>request_uri</code>,
-<code>request</code>, <code>scope</code>, <code>code_challenge</code>,
-<code>code_challenge_method</code>, <code>nonce</code>,
-<code>claims</code>
-</li>
-<li>Transaction and credential fields can never be unblocked:
-<code>state</code>, <code>nonce</code>, <code>client_id</code>,
-<code>code</code>, all PKCE fields, <code>refresh_token</code>,
-<code>client_secret</code>, <code>client_assertion</code>,
-<code>client_assertion_type</code>, <code>request</code>,
-<code>request_uri</code>, <code>response_type</code>, and
-<code>grant_type</code>. Allowed overrides replace existing names case
-insensitively; they do not append a duplicate protocol parameter.</li>
-<li>
-<code>options(shinyOAuth.unblock_token_params = c(...))</code> –
-allows replacing the specified token exchange parameters. Default
-blocked: <code>grant_type</code>, <code>code</code>,
-<code>redirect_uri</code>, <code>code_verifier</code>,
-<code>client_id</code>, <code>client_secret</code>,
-<code>client_assertion</code>, <code>client_assertion_type</code>
-</li>
-<li>
-<code>options(shinyOAuth.unblock_token_headers = c("authorization"))</code>
-– allows overriding the specified token exchange headers
-(case-insensitive). Default blocked: <code>Authorization</code>,
-<code>Cookie</code>
-</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="async-timeout-mirai">Async timeout (mirai)<a class="anchor" aria-label="anchor" href="#async-timeout-mirai"></a>
-</h2>
-<ul>
-<li>
-<code>options(shinyOAuth.async_timeout = 10000)</code> – per-task
-timeout in milliseconds for mirai async tasks. When using mirai with
-dispatcher (the default), timed-out tasks are automatically cancelled
-and resolve as a mirai error. Use <code>NULL</code> (the default) for no
-timeout, or a whole number from 0 to 2147483647. Ignored when falling
-back to the ‘future’ backend</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="async-condition-replay">Async condition replay<a class="anchor" aria-label="anchor" href="#async-condition-replay"></a>
-</h2>
-<ul>
-<li>
-<code>options(shinyOAuth.replay_async_conditions = FALSE)</code> –
-when <code>FALSE</code>, warnings and messages captured from async
-workers are silently discarded instead of being re-emitted on the main R
-process. Default is <code>TRUE</code> (replay all captured conditions).
-Useful if worker diagnostics are too noisy or handled separately via
-<code>audit_hook</code>
-</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="token-lifetime-fallback">Token lifetime fallback<a class="anchor" aria-label="anchor" href="#token-lifetime-fallback"></a>
-</h2>
-<ul>
-<li>
-<code>options(shinyOAuth.default_expires_in = 3600)</code> –
-fallback token lifetime (in seconds) when the provider omits
-<code>expires_in</code> from the token response</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="http-settings-timeout-retries-user-agent">HTTP settings (timeout, retries, user agent)<a class="anchor" aria-label="anchor" href="#http-settings-timeout-retries-user-agent"></a>
-</h2>
-<ul>
-<li><p><code>options(shinyOAuth.tls_min_version = "1.2")</code> -
-require TLS 1.2 or later for package HTTPS requests (the default). Use
-<code>"1.3"</code> for a higher minimum; an absent option or
-<code>NULL</code> restores TLS 1.2. Set this before discovery or login.
-It applies to async workers too; browser and reverse-proxy TLS must be
-configured separately.</p></li>
-<li><p><code>options(shinyOAuth.timeout = 5)</code> – default HTTP
-timeout (seconds) applied to all outbound requests (discovery, JWKS,
-token exchange, userinfo). Increase if your provider/network is slow.
-Values beyond curl’s supported timeout range are capped</p></li>
-<li><p><code>options(shinyOAuth.retry_max_tries = 3L)</code> – maximum
-attempts for retryable requests after network errors or HTTP 408, 429,
-or 5xx responses. Authorization-code exchange and refresh are not
-automatically retried, apart from a single DPoP nonce challenge
-retry</p></li>
-<li><p><code>options(shinyOAuth.dpop_nonce_max_bytes = 4096L)</code> –
-maximum DPoP nonce size in bytes. RFC 9449 sets no length limit; this
-local resource limit is configurable from 1 to 65536 bytes and is
-propagated to async workers. A response exceeding it raises a specific
-error without exposing the nonce. Raise it if your provider legitimately
-issues larger nonces</p></li>
-<li><p><code>options(shinyOAuth.retry_backoff_base = 0.5)</code> – base
-backoff in seconds used for exponential backoff with jitter</p></li>
-<li><p><code>options(shinyOAuth.retry_backoff_cap = 5)</code> –
-per‑attempt cap on backoff seconds (before jitter)</p></li>
-<li><p><code>options(shinyOAuth.retry_after_cap = 60)</code> – maximum
-synchronous sleep in seconds for a server-provided
-<code>Retry-After</code> value; this is separate from the client-side
-backoff cap</p></li>
-<li><p><code>options(shinyOAuth.retry_status = c(408L, 429L, 500:599))</code>
-– HTTP statuses considered transient and retried</p></li>
-<li><p><code>options(shinyOAuth.user_agent = "shinyOAuth/&lt;version&gt; R/&lt;version&gt; httr2/&lt;version&gt;")</code>
-– override the default User‑Agent header applied to all outbound
-requests. By default this string is built dynamically from the installed
-package/runtime versions; set a custom string here if your organization
-requires a specific format</p></li>
-<li><p><code>options(shinyOAuth.allow_redirect = FALSE)</code> – when
-<code>FALSE</code> (default), all sensitive HTTP requests (token
-exchange, refresh, introspection, revocation, userinfo, OIDC discovery,
-JWKS) refuse to follow redirects and reject 3xx responses. This prevents
-authorization codes, tokens, and PKCE verifiers from leaking to redirect
-targets. Set to <code>TRUE</code> only when you deliberately accept that
-redirect-following risk for a specific deployment; this opt-in is
-honored in all sessions</p></li>
-<li><p><code>options(shinyOAuth.max_body_bytes = 1048576)</code> -
-maximum response size (default 1 MiB) for package requests and
-connection calls. Increase it if an API legitimately returns more data.
-Use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> for prepared requests as well as
-URLs to retain this limit.</p></li>
-</ul>
-<div class="section level3">
-<h3 id="advanced-transport-constraints">Advanced transport constraints<a class="anchor" aria-label="anchor" href="#advanced-transport-constraints"></a>
-</h3>
-<p>The TLS policy preserves stronger supplied minima, compatible maxima
-and custom CA settings. Conflicting maxima or disabled
-certificate/hostname checks raise an error. Older wolfSSL backends
-require curl 8.10.0 or newer for minimum version support. This setting
-does not enable HTTP development exceptions or verify the TLS
-configuration of your browser and proxy.</p>
-<p>Response limits cover both downloaded bytes and decoded gzip data;
-other content encodings are rejected. Oversized configured limits are
-capped at R’s supported binary-read size. <code><a href="../reference/resource_req.html">resource_req()</a></code>
-only builds a request. If you send it directly with
-<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code>, shinyOAuth’s decoded-size limit does
-not apply. Use <code>perform_resource_req(token, request)</code>, adding
-<code>client</code> for DPoP or mTLS.</p>
-</div>
-</div>
-<div class="section level2">
 <h2 id="state-store">State store<a class="anchor" aria-label="anchor" href="#state-store"></a>
 </h2>
+<p>Pending login records let the app recognize the returning browser.
+Shared stores must consume each record only once, even when several R
+processes handle requests.</p>
 <ul>
 <li>
 <code>options(shinyOAuth.allow_non_atomic_state_store = TRUE)</code>
-– allow a shared state store without atomic <code>[["take"]]()</code> to
-use separate <code>[["get"]]()</code> and <code>[["remove"]]()</code>
-calls. Default <code>FALSE</code>: such a store causes an error. With
-<code>TRUE</code>, the package warns once and proceeds, but concurrent
-requests may reuse a login entry. Use an atomic shared store for
-production; see <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html"><code>custom_cache()</code></a>.</li>
+– allow separate reads and deletes in a shared store. Default
+<code>FALSE</code> requires atomic <code>[["take"]]()</code>. Enabling
+this can let concurrent requests reuse a login record; use an atomic
+store in production. See <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html">custom_cache()</a>.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -390,60 +328,45 @@ wrapper</li>
 decoded byte size of the ciphertext before attempting AES-GCM
 decrypt</li>
 </ul>
-<p>These prevent maliciously large state parameters from causing
-excessive CPU or memory usage during decoding and decryption.</p>
+<p>These limits keep oversized state parameters from using excessive CPU
+or memory during decoding and decryption.</p>
 </div>
 <div class="section level3">
 <h3 id="callback-query">Callback query<a class="anchor" aria-label="anchor" href="#callback-query"></a>
 </h3>
 <ul>
-<li>
-<code>options(shinyOAuth.callback_max_code_bytes = 8192)</code> –
-maximum decoded byte length of the <code>code</code> callback parameter
-across direct, GET/POST bridge, module and JARM paths. Explicit lower or
-higher limits remain effective; values are rejected rather than
-truncated</li>
-<li>
-<code>options(shinyOAuth.callback_max_state_bytes = 8192)</code> –
-maximum byte length of the <code>state</code> query parameter (outer
-token string)</li>
-<li>
-<code>options(shinyOAuth.callback_max_error_bytes = 256)</code> –
-maximum byte length of the <code>error</code> query parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_error_description_bytes = 4096)</code>
+<li><p><code>options(shinyOAuth.callback_max_code_bytes = 8192)</code> –
+maximum decoded authorization-code bytes. Oversized values are rejected
+without truncation.</p></li>
+<li><p><code>options(shinyOAuth.callback_max_state_bytes = 8192)</code>
+– maximum byte length of the <code>state</code> query parameter (outer
+token string)</p></li>
+<li><p><code>options(shinyOAuth.callback_max_error_bytes = 256)</code> –
+maximum byte length of the <code>error</code> query parameter</p></li>
+<li><p><code>options(shinyOAuth.callback_max_error_description_bytes = 4096)</code>
 – maximum byte length of the <code>error_description</code> query
-parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_error_uri_bytes = 2048)</code>
-– maximum byte length of the <code>error_uri</code> query parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_iss_bytes = 2048)</code> –
+parameter</p></li>
+<li><p><code>options(shinyOAuth.callback_max_error_uri_bytes = 2048)</code>
+– maximum byte length of the <code>error_uri</code> query
+parameter</p></li>
+<li><p><code>options(shinyOAuth.callback_max_iss_bytes = 2048)</code> –
 maximum byte length of the <code>iss</code> query parameter (RFC 9207
-issuer identification)</li>
-<li>
-<code>options(shinyOAuth.callback_max_query_bytes = &lt;derived&gt;)</code>
-– maximum total byte length of the raw query string. HTTP UI wrappers
-apply this budget to every request, including ordinary application
-queries and hosted Request Object requests, before routing or
-parsing.</li>
-<li>
-<code>options(shinyOAuth.callback_max_browser_token_bytes = 256)</code>
+issuer identification)</p></li>
+<li><p><code>options(shinyOAuth.callback_max_query_bytes = &lt;derived&gt;)</code>
+– maximum raw query bytes. Applies before parsing to app queries,
+callbacks and hosted Request Objects.</p></li>
+<li><p><code>options(shinyOAuth.callback_max_browser_token_bytes = 256)</code>
 – maximum byte length of the <code>browser_token</code> argument
-accepted by <code><a href="../reference/handle_callback.html">handle_callback()</a></code>
-</li>
-<li>
-<code>options(shinyOAuth.callback_max_form_post_body_bytes = &lt;derived&gt;)</code>
+accepted by <code><a href="../reference/handle_callback.html">handle_callback()</a></code></p></li>
+<li><p><code>options(shinyOAuth.callback_max_form_post_body_bytes = &lt;derived&gt;)</code>
 – maximum byte length of the raw <code>form_post</code> callback body
-before parsing</li>
-<li>
-<code>options(shinyOAuth.callback_max_form_post_handle_bytes = 128)</code>
+before parsing</p></li>
+<li><p><code>options(shinyOAuth.callback_max_form_post_handle_bytes = 128)</code>
 – maximum byte length of the transient <code>shinyOAuth_form_post</code>
-handle query parameter</li>
-<li>
-<code>options(shinyOAuth.callback_max_form_post_id_bytes = 256)</code>
+handle query parameter</p></li>
+<li><p><code>options(shinyOAuth.callback_max_form_post_id_bytes = 256)</code>
 – maximum byte length of the transient
-<code>shinyOAuth_form_post_id</code> module-id query parameter</li>
+<code>shinyOAuth_form_post_id</code> module-id query parameter</p></li>
 </ul>
 <p>These limits reject oversized callback URLs and POST bodies before
 they cause excessive processing or logging. Keep the defaults unless a
@@ -464,41 +387,80 @@ only one limit does not override the other.</p>
 <p>Use <code>check_oauth21(client)</code> to review settings without
 making requests or changing the app. The report separates configuration
 problems, recommendations and things that need deployment testing. See
-<a href="usage.html#assessing-oauth-2.1-configuration">Usage</a> for an
-example and the specification revision assessed.</p>
+<a href="https://lukakoning.github.io/shinyOAuth/reference/check_oauth21.html">check_oauth21()</a>
+for an example and the specification revision assessed.</p>
 </div>
 <div class="section level2">
 <h2 id="local-debugging">Local debugging<a class="anchor" aria-label="anchor" href="#local-debugging"></a>
 </h2>
 <ul>
-<li><p><code>options(shinyOAuth.skip_browser_token = TRUE)</code> – skip
-browser cookie binding in tests or interactive sessions</p></li>
-<li><p><code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID
-token signature verification in tests or interactive sessions</p></li>
-<li><p><code>options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)</code>
+<li>
+<code>options(shinyOAuth.skip_browser_token = TRUE)</code> – skip
+browser cookie binding in tests or interactive sessions</li>
+<li>
+<code>options(shinyOAuth.skip_id_sig = TRUE)</code> – skip ID token
+signature verification in tests or interactive sessions</li>
+<li>
+<code>options(shinyOAuth.allow_unsigned_userinfo_jwt = TRUE)</code>
 – accept unsigned (<code>alg=none</code>) UserInfo JWTs in tests or
 interactive sessions; outside those contexts ‘shinyOAuth’ errors instead
-of honoring it</p></li>
-<li><p><code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
-during token exchange</p></li>
+of honoring it</li>
 <li>
-<p><code>options(shinyOAuth.expose_error_body = TRUE)</code> –
-include sanitized HTTP bodies, claim values, and free-form error details
-in audit/OTel output and module diagnostics during tests or interactive
-debugging. Details omit URL credentials and control characters and are
-capped at 512 UTF-8 bytes per field; they may still contain sensitive
-information. Production processes keep these details disabled.</p>
-<p>HTTP and transport condition contexts use the same URL and diagnostic
-policy. Transport parents retain their error classes but omit original
-request/response objects, calls, backtraces, and nested parents. Their
-messages are withheld by default; the exposure option enables only
-sanitized messages. JWKS metadata failures also withhold underlying
-diagnostics by default.</p>
-</li>
+<code>options(shinyOAuth.debug = TRUE)</code> – re‑raise errors
+during token exchange</li>
+<li>
+<code>options(shinyOAuth.expose_error_body = TRUE)</code> – enable
+sanitized diagnostic text for local debugging. Fields are capped at 512
+UTF-8 bytes and can still contain private provider data. Production
+processes keep this disabled.</li>
 </ul>
 <p>Don’t enable these options in production. They disable key security
 checks or alter error behavior, and are intended for local
 testing/debugging only.</p>
+</div>
+<div class="section level2">
+<h2 id="advanced-transport-constraints">Advanced transport constraints<a class="anchor" aria-label="anchor" href="#advanced-transport-constraints"></a>
+</h2>
+<p>The TLS policy preserves stronger supplied minima and custom CA
+settings, while rejecting incompatible maxima or disabled certificate
+checks. It does not enable HTTP development exceptions or configure
+browser and proxy TLS.</p>
+<p>Response limits cover both downloaded and decoded gzip data; other
+encodings are rejected. Use
+<code>perform_resource_req(token, request)</code> to retain the decoded
+size limit, adding <code>client</code> for DPoP or mTLS. Direct
+<code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> uses httr2’s transport settings
+instead.</p>
+</div>
+<div class="section level2">
+<h2 id="advanced-parameter-overrides">Advanced parameter overrides<a class="anchor" aria-label="anchor" href="#advanced-parameter-overrides"></a>
+</h2>
+<p>Prefer the named client and provider arguments. Overrides are for
+integrations that need an explicit exception to the normal parameter
+policy.</p>
+<p>By default, shinyOAuth blocks security-critical parameters in
+<code>extra_auth_params</code>, <code>extra_token_params</code>, and
+<code>extra_token_headers</code> to protect state binding, PKCE and
+client authentication from accidental overrides.</p>
+<p>Set the callback format with
+<code>oauth_client(response_mode = ...)</code>.</p>
+<p>To override a blocked parameter, use the options below. Some
+parameters cannot be unblocked.</p>
+<ul>
+<li><p><code>options(shinyOAuth.unblock_auth_params = c("redirect_uri"))</code>
+– allow selected authorization-parameter overrides. Transaction,
+credential and PKCE fields remain protected.</p></li>
+<li><p>State, nonce, credentials, PKCE and protocol transaction fields
+remain protected. Allowed overrides replace names case-insensitively
+without adding duplicates.</p></li>
+<li><p><code>options(shinyOAuth.unblock_token_params = c(...))</code> –
+allow selected token-exchange parameter overrides, subject to protected
+transaction and credential fields.</p></li>
+<li><p><code>options(shinyOAuth.unblock_token_headers = c("authorization"))</code>
+– allow selected token-header overrides, matched case-insensitively.
+<code>Authorization</code> and <code>Cookie</code> are blocked by
+default.</p></li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

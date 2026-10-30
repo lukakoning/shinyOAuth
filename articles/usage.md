@@ -2,11 +2,10 @@
 
 ## Overview
 
-Use shinyOAuth to let users sign in with an existing service and let
-your app call that service’s API with their permission. Your app does
-not collect the user’s password. OAuth grants permission to call an API.
-OpenID Connect (OIDC) adds identity checks so your app can verify who
-signed in.
+Use shinyOAuth to let users sign in with an existing service and grant
+your app permission to call its API, without collecting their password.
+OAuth controls API access; OpenID Connect (OIDC) adds identity checks so
+the app can verify who signed in.
 
 In R, configure the service and your app registration, then add the
 Shiny UI wrapper and server module. The module manages login and tokens;
@@ -20,23 +19,22 @@ flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md).
 
 ## Provider, client, and token objects
 
-shinyOAuth represents the flow with three S7 classes. An `OAuthProvider`
-holds the service’s endpoint URLs and protocol settings; a provider
-helper such as
-[`oauth_provider_github()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.md)
-creates it. An `OAuthClient`, created with
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-holds your app’s credentials, redirect URI, and requested scopes. After
-authentication, the module returns an `OAuthToken` as `auth[["token"]]`,
-containing tokens and available user information.
+A provider describes the service users sign in with. A client describes
+your app’s registration with that service. After login, a token holds
+the credentials your app uses to call the service and any available user
+information.
 
-The redirect URI, also called the callback URL, is the address where the
-provider sends the browser back. Register it with the provider and use
-the same value in
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-including scheme, host, port, path, and fixed query parameters. Scopes
-are named permissions, such as `read:user`; the provider defines which
-names are available.
+| Concept | In your app |
+|----|----|
+| Provider | A helper such as [`oauth_provider_github()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_github.md) supplies the service’s settings. |
+| Client | [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md) combines those settings with your app’s credentials and permissions. |
+| Token | `auth[["token"]]` contains the result of a successful login. |
+
+The redirect URI, also called the callback URL, is where the browser
+returns after login. Register the same address with the provider and in
+[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
+Scopes name the permissions to request, such as `read:user`; the
+provider defines which names are available.
 
 Create your provider and client outside `server()` so they remain
 available when the browser returns from login. Create the module inside
@@ -113,7 +111,7 @@ viewers may prevent the redirects needed for login.
 
 `auth` is a Shiny `reactiveValues` object. Read it inside `render*()`,
 [`reactive()`](https://rdrr.io/pkg/shiny/man/reactive.html), or
-`observe*()`, just as you would read other reactive values.
+`observe*()`, as you would read other reactive values.
 
 - `auth[["authenticated"]]` tells you whether login passed the
   configured checks.
@@ -172,11 +170,11 @@ provider may therefore remember them on their next visit.
 
 ## Authenticated API requests
 
-Use
+Once the user has granted permission, your app can request data from the
+service.
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-to send an API request with the authenticated user’s access token. For
-example, add `tableOutput("repositories")` to the UI and this output to
-`server()`:
+attaches the access token for you. Add `tableOutput("repositories")` to
+the UI and this output to `server()`:
 
 ``` r
 
@@ -199,24 +197,20 @@ output[["repositories"]] <- renderTable({
 })
 ```
 
-Only send tokens to an API you intend to authorize. The example requests
-one page of results; fetching more pages depends on the API. Use
-[`resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/resource_req.md)
-to prepare a request without sending it, then use
-[`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-to send it with shinyOAuth’s response-size limits. Sending it directly
-through
-[`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
-uses httr2’s own transport settings instead. See the [Spotify
-example](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md)
-for another complete app.
+Only send tokens to an API you intend to authorize. This example loads
+one page; further pages depend on the API. For another complete app, see
+the [Spotify
+example](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md).
+The [request-helper
+reference](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html)
+covers prepared requests and transport settings.
 
 ## Asynchronous execution
 
-By default, network work runs in the app’s R process. A slow provider
-can make other sessions on that process wait too. To run the module’s
-network work in background R processes, install `mirai` and `promises`,
-then configure workers before `server()`:
+By default, the module’s network requests run in the app’s R process, so
+a slow provider can block other sessions sharing that process. To run
+those requests in background R processes, install `mirai` and
+`promises`, then configure workers before `server()`:
 
 ``` r
 
@@ -250,9 +244,9 @@ server <- function(input, output, session) {
 }
 ```
 
-This setting covers the module’s operations; API calls you write in your
-own outputs still run where you call them. Discovery during app setup
-also stays synchronous. See
+`async = TRUE` covers the module’s operations. API calls in your own
+outputs still run where you call them, and discovery during app setup
+stays synchronous. See
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.html)
 for advanced exceptions and the [options
 reference](https://lukakoning.github.io/shinyOAuth/articles/package-options.md)
@@ -284,8 +278,8 @@ Use a built-in helper when available, such as
 or
 [`oauth_provider_keycloak()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_keycloak.md).
 Each helper’s help page describes its setup. For an OpenID Connect
-service with a discovery URL, you can let shinyOAuth look up the
-service’s settings:
+service, discovery reads its published settings so you do not have to
+copy each endpoint:
 
 ``` r
 
@@ -305,20 +299,15 @@ Replace the example URLs and credentials with your own registration. An
 issuer is the provider’s identifier URL; copy it from the provider’s
 configuration. Discovery makes a network request, so run it during app
 setup. If your registration specifies a client authentication method,
-supply the matching `token_auth_style` to the provider helper; discovery
-describes the service’s capabilities, not the settings of your
-individual registration.
+supply the matching `token_auth_style` to the provider helper. Discovery
+lists the service’s capabilities; your registration determines which
+method and credentials to use.
 
-OpenID Connect (OIDC) is a login protocol: it supplies a signed ID token
-that shinyOAuth checks to identify the user. OAuth 2.0 grants permission
-to call APIs using an access token. GitHub and Spotify use OAuth without
-OIDC; their helpers fetch profile information through their own APIs.
-With OIDC, read validated identity details from
-`auth[["token"]]@id_token_claims` and check
-`auth[["token"]]@id_token_validated`. An access token alone is not proof
-of identity. The [authentication
-guide](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md)
-explains more.
+For OIDC, read validated identity from `auth[["token"]]@id_token_claims`
+and check `auth[["token"]]@id_token_validated`. GitHub and Spotify
+instead fetch profiles through their own APIs. An access token alone
+does not verify identity; see [Authentication
+flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.md).
 
 ## Deployment
 
@@ -350,22 +339,12 @@ login.
 - Keep the provider’s validation defaults and choose any extra
   protections to match your provider and deployment requirements.
 
-The module links a returning login to the browser using an origin-scoped
-token in tab-scoped session storage and an independent, short-lived
-cookie marker. Each transaction has its own marker. Cookies and session
-storage must both be available; complete login in the tab that started
-it. JavaScript reads this binding, so preventing injected scripts
-(cross-site scripting, or XSS) in your app matters. This link cannot
-establish which account you expected to sign in: check that account
-yourself when your app has such a requirement.
-
-Treat the entire hostname as a trust boundary and use a dedicated
-hostname if other services are untrusted. Cookies are shared across
-ports, even with `__Host-`, `Secure`, or `HttpOnly`. The session-storage
-check prevents another port from adopting a cookie as a binding, but
-cannot prevent cookie disruption. Application callback routes
-distinguish records within a tab. Same-origin scripts can still access
-session storage.
+Complete login in the browser tab that started it, with cookies and
+session storage available. Keep the app on a separate hostname from
+untrusted services and protect it against injected scripts. The
+[advanced security
+guide](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#browser-binding-and-deployment-boundary)
+explains the hosting boundary and why it matters.
 
 ## Advanced deployment
 
@@ -394,37 +373,18 @@ preview.
 
 ### Multiple R processes
 
-The default configuration stores pending logins in one R process. If a
-login can start on one process and return to another, those processes
-need:
+A login can start on one R process and return to another. Those
+processes need the same provider/client settings, a shared pending-login
+store, and the same secret `state_key` to read the saved details. Load
+that key from deployment secret storage; it needs at least 32 random
+bytes.
 
-- A shared `state_store` with an atomic `[["take"]]()` operation:
-  reading and deleting a pending login must happen as one indivisible
-  operation.
-- The same secret `state_key`, so each process can read the encrypted
-  login details. Supply at least 32 random bytes, stored in your
-  deployment’s secret manager.
-- Matching provider and client settings.
-
-Use
-[`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md)
-to connect a shared database or Redis store. Plain
-[`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
-is unsuitable for shared login state because separate reads and deletes
-can let two requests use the same entry. See
-[`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
-for the backend contract.
-
-For POST callbacks, the shared store also needs atomic `set_if_absent`
-with expiry, so simultaneous responses cannot overwrite one another. See
+The shared store must read and remove a pending record as one operation,
+so two processes cannot accept the same login response. Plain disk
+caching does not provide that guarantee. Use
 [custom_cache()](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html)
-for the backend requirements.
-
-Hosted Request Objects (`request_object_mode = "request_uri"`) also use
-this store, in separate records. Their JWT claims are readable when
-signed without JWE encryption; the pending-login record’s `state_key`
-sealing does not cover them. Apply the store’s access controls and
-expiry to both record types.
+to connect an appropriate backend, following its contract for POST
+callbacks and hosted Request Objects.
 
 ## Local Keycloak development
 

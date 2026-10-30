@@ -72,32 +72,37 @@
 
     
     
-<p>An R package or database driver may need an access token before it
-can call a service on the user’s behalf. You can reuse the login already
-managed by shinyOAuth instead of asking the user to sign in again.</p>
+<div class="section level2">
+<h2 id="reuse-a-login-in-another-package">Reuse a login in another package<a class="anchor" aria-label="anchor" href="#reuse-a-login-in-another-package"></a>
+</h2>
+<p>An R package or database driver may need an access token, a
+credential for calling a service on the user’s behalf. Reuse the login
+managed by shinyOAuth so the user does not need to sign in a second
+time.</p>
 <p>A connection gives your server code access to that login. Ask it for
-a token just before calling the other package; shinyOAuth refreshes the
-token when needed. In reactive server code, with <code>auth</code>
-returned by <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>:</p>
+a current token just before calling the other package; shinyOAuth can
+refresh it when needed. In reactive server code, with <code>auth</code>
+from <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">connection</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="fu">connection</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">token</span> <span class="op">&lt;-</span> <span class="va">connection</span><span class="op">$</span><span class="fu">access_token</span><span class="op">(</span>required_scopes <span class="op">=</span> <span class="st">"records.read"</span><span class="op">)</span></span>
 <span><span class="fu">existing_sdk_read_records</span><span class="op">(</span>access_token <span class="op">=</span> <span class="va">token</span><span class="op">)</span></span></code></pre></div>
-<p>Replace <code>existing_sdk_read_records()</code> with the function
-from your chosen package. <code>required_scopes</code> lists the
-permissions needed for that operation. A scope is a permission name
-defined by the service, such as permission to read records. The other
-package remains responsible for sending its request.</p>
-<p>If you are starting a new app, first follow <a href="usage.html">Usage</a>. The examples below build on that login
-setup.</p>
+<p><code>existing_sdk_read_records()</code> stands for your package’s
+function. A scope is a permission name defined by the service;
+<code>required_scopes</code> checks the permissions needed for this
+operation. The other package sends its own request.</p>
+<p>First follow <a href="usage.html">Usage</a> if you have not
+configured login. Keep tokens in server-side session code, away from
+logs, URLs and browser output.</p>
+</div>
 <div class="section level2">
 <h2 id="a-complete-shiny-example">A complete Shiny example<a class="anchor" aria-label="anchor" href="#a-complete-shiny-example"></a>
 </h2>
-<p>This example uses <code>httr2</code> in place of an API client
-library (SDK) so you can see where the token goes. Replace the example
-URLs, scopes and registered callback URL with your service’s settings,
-and set <code>OAUTH_CLIENT_ID</code> and
-<code>OAUTH_CLIENT_SECRET</code> in the environment.</p>
+<p>This template uses <code>httr2</code> so you can see where the token
+goes. Replace the placeholder URLs, scopes and credentials with your
+provider’s settings. The read button loads records; the output checks
+that the saved result still belongs to the current login before
+displaying it.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
@@ -171,24 +176,38 @@ and set <code>OAUTH_CLIENT_ID</code> and
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
-<p><code>uiPattern = ".*"</code> lets Shiny handle the example’s
-<code>/callback</code> URL as well as the application home page.</p>
-<p>The connection is <code>NULL</code> before login and after logout.
-Use <code>req(auth$connection())</code> to wait for a login.
-<code>$has_scopes()</code> lets the app hide or disable features for
-which the user has not granted permission; the request must still check
-those permissions when it runs.</p>
-<p>The output checks both the connection ID and permissions before
-displaying saved results. Keep these checks when adapting the example:
-otherwise data from an earlier login could remain visible after logout
-or a different user signs in. Clear cached results when they are no
-longer needed, and keep user data out of global app caches.</p>
+<p><code>uiPattern = ".*"</code> allows the example’s
+<code>/callback</code> route. <code>req(auth$connection())</code> waits
+for a login, and <code>$has_scopes()</code> checks whether an optional
+feature is available. The operation must still check its permissions
+when it runs.</p>
+<p>Keep the output’s connection-ID and permission checks when adapting
+this code so private results from a previous login disappear after
+logout or a change of account. Store those results within the session,
+away from global app caches.</p>
+</div>
+<div class="section level2">
+<h2 id="refresh-and-signing-in-again">Refresh and signing in again<a class="anchor" aria-label="anchor" href="#refresh-and-signing-in-again"></a>
+</h2>
+<p><code>$access_token()</code> checks the token’s remaining lifetime
+and refreshes when needed. For a slow operation, use
+<code>min_valid_for</code> to require more remaining token lifetime. If
+no usable token is available, the call raises an error; it does not open
+a login page or repeat the other package’s operation.</p>
+<p>Offer <code>auth$reauthorize()</code> when the user needs to sign in
+again. It preserves locally reduced permissions and ends the previous
+local login. Cancelling does not restore it. An ordinary new login
+requests the client’s original scopes.</p>
+<p>The module’s expiry and maximum-login-age settings still apply. See
+<a href="usage.html#token-expiry-and-session-length">Usage</a> before
+changing that policy.</p>
 </div>
 <div class="section level2">
 <h2 id="sdk-token-callbacks-and-database-drivers">SDK token callbacks and database drivers<a class="anchor" aria-label="anchor" href="#sdk-token-callbacks-and-database-drivers"></a>
 </h2>
-<p>Some SDKs accept a function that supplies a fresh token for each
-request. Create that SDK client inside the user’s Shiny session:</p>
+<p>Some client libraries, often called SDKs, accept a function that
+supplies a token when needed. Build that client inside the user’s Shiny
+session:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sdk</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/reactive.html" class="external-link">reactive</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">connection</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">$</span><span class="fu">connection</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
@@ -196,126 +215,69 @@ request. Create that SDK client inside the user’s Shiny session:</p>
 <span>    token <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="va">connection</span><span class="op">$</span><span class="fu">access_token</span><span class="op">(</span>required_scopes <span class="op">=</span> <span class="st">"records.read"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p><code>example_sdk_client()</code> stands for your SDK’s constructor.
-Its callback keeps the connection for the login that created it. After
-logout or another login, create a new SDK client with the new
-connection.</p>
-<p>If a database driver accepts only a token string, get the token just
-before opening or updating the database connection. A copied token
-cannot refresh itself. Follow the driver’s instructions for closing
-connections.</p>
-<p>Keep tokens, SDK clients and database connections in server-side
-session code, away from logs, URLs and browser output. Token export does
-not require <code>resource_bases</code>. If you use shinyOAuth’s
-<code>$request()</code>, configure the API addresses it may call.</p>
-<p>Run writes from explicit user actions, such as a button click.
-<code>$has_scopes()</code> checks the recorded OAuth permissions; the
-service or database still decides whether the user may access a
-particular row or resource.</p>
-</div>
-<div class="section level2">
-<h2 id="refresh-and-signing-in-again">Refresh and signing in again<a class="anchor" aria-label="anchor" href="#refresh-and-signing-in-again"></a>
-</h2>
-<p>By default, <code>$access_token()</code> looks for a token with at
-least 60 seconds left to live and refreshes it if necessary. Increase
-<code>min_valid_for</code> for a slow operation, or use
-<code>force_refresh = TRUE</code> when you specifically need a
-replacement. If a usable token cannot be obtained, the call raises an
-error instead of opening a login page or repeating the SDK
-operation.</p>
-<p><code>auth$reauthorize()</code> starts a “sign in again” flow while
-keeping any permissions you previously reduced with
-<code>$refresh(scopes = ...)</code>. It ends the old local login;
-cancelling the new login does not restore it. An ordinary new login
-requests the client’s configured scopes again. Neither flow guarantees a
-password prompt or account chooser at the provider.</p>
-<p>The module’s normal expiry and session-age settings still apply.
-Enable <code>refresh_proactively = TRUE</code> if the app should refresh
-before expiry. The <code>indefinite_session = TRUE</code> option retains
-an expired login for on-demand refresh, but also disables the module’s
-automatic maximum-age clearing; choose it only when that session policy
-fits the app.</p>
+<p>Replace <code>example_sdk_client()</code> with the package’s
+constructor. Its callback belongs to the login that created it; create a
+new client after another login.</p>
+<p>If a database driver only accepts a token string, acquire it just
+before opening or updating the database connection. A copied string
+cannot refresh itself. Follow the driver’s connection-cleanup
+instructions and run writes from explicit user actions, such as button
+clicks.</p>
+<p>Exported bearer tokens carry the provider’s full grant, even when the
+app applies narrower local permission checks. For DPoP or
+certificate-bound tokens, use shinyOAuth’s <code>$request()</code> so
+the matching key or certificate is presented.</p>
 </div>
 <div class="section level2">
 <h2 id="several-accounts-and-optional-profile-retrieval">Several accounts and optional profile retrieval<a class="anchor" aria-label="anchor" href="#several-accounts-and-optional-profile-retrieval"></a>
 </h2>
-<p>With <code><a href="../reference/oauth_connections_server.html">oauth_connections_server()</a></code>, select a saved login
-with <code>auth$connection(connection_id)</code>. The resulting
-connection has the same methods. Use
-<code>auth$reauthorize(connection_id)</code> to replace that login. The
-replacement has a new ID and records the old one as
-<code>replaces_connection_id</code> in <code>auth$connections()</code>.
-Other saved logins remain separate.</p>
-<p>If only one login is saved, <code>auth$connection()</code> can select
-it without an ID. With several, choose an ID explicitly. See
-<code><a href="../articles/multiple-authorizations.html">vignette("multiple-authorizations", package = "shinyOAuth")</a></code>
-(<a href="multiple-authorizations.html">online guide</a>).</p>
-<p>For Microsoft tokens intended for an API other than Graph, set
-<code>oauth_provider_microsoft(tenant = "organizations", userinfo_required = FALSE)</code>.
-This skips the Graph profile request while preserving identity-token
-checks. <code>connection$identity()</code> exposes the selected identity
-fields already validated by shinyOAuth. It does not fetch a new profile
-or prove that an API call is currently authorized.</p>
-<p>For one login with several API tokens, see
-<code><a href="../articles/token-targets.html">vignette("token-targets", package = "shinyOAuth")</a></code> (<a href="token-targets.html">online guide</a>).</p>
+<p>With a connection manager, choose a saved login with
+<code>auth$connection(connection_id)</code>. Use
+<code>auth$reauthorize(connection_id)</code> to replace it; the
+replacement gets a new connection ID. See <a href="multiple-authorizations.html">Multiple authorizations</a>.</p>
+<p>For one login with separate tokens for several APIs, see <a href="token-targets.html">Token targets</a>.</p>
+<p>For Microsoft APIs other than Graph, configure
+<code>userinfo_required = FALSE</code> on the provider to skip the Graph
+profile request. Identity-token checks remain enabled;
+<code>connection$identity()</code> reads selected previously validated
+identity fields without fetching a new profile.</p>
 </div>
 <div class="section level2">
 <h2 id="advanced-connection-lifetime-and-permissions">Advanced: connection lifetime and permissions<a class="anchor" aria-label="anchor" href="#advanced-connection-lifetime-and-permissions"></a>
 </h2>
-<p>Call connection methods in the owning Shiny session’s reactive
-context. Do not serialize a connection into a worker or use it from
-another session. A connection and its ID survive token refresh. Logout,
-replacement and session closure make old references unusable, even if
-the same account signs in again.</p>
-<p>Reactive expressions that read <code>connection()</code>,
-<code>$access_token()</code> or <code>$has_scopes()</code> do not rerun
-on token refresh alone if the login and permissions stay the same.
-Status methods such as <code>$summary()</code> can update more often. In
-a connection manager, automatic reads do not extend owner inactivity
-limits; use <code>auth$touch()</code> for explicit user actions.</p>
-<p>The service may issue a token with more permissions than your app
-allows locally. Connection methods enforce the app’s limits, but an
-exported bearer token still carries all provider-issued permissions.
-shinyOAuth cannot restrict what another package does with that string.
-DPoP and certificate-bound tokens also need their configured signing key
-or certificate; use <code>$request()</code> for those tokens rather than
-exporting a bearer string.</p>
+<p>Use a connection only in its owning Shiny session’s reactive code.
+Keep it out of workers and other sessions. Refresh preserves its ID;
+logout, replacement and session closure invalidate it, even if the same
+account signs in again.</p>
+<p>Reads of <code>connection()</code>, <code>$access_token()</code> and
+<code>$has_scopes()</code> do not rerun on refresh alone when login and
+permissions stay the same. Use <code>$summary()</code> for status, and
+<code>auth$touch()</code> to record explicit user activity for a
+retained login.</p>
 <div class="section level3">
 <h3 id="reducing-permissions-and-replacing-a-login">Reducing permissions and replacing a login<a class="anchor" aria-label="anchor" href="#reducing-permissions-and-replacing-a-login"></a>
 </h3>
 <p><code>$refresh(scopes = ...)</code> can reduce permissions while
-preserving required scopes. Later refreshes keep that reduction;
-<code>required_scopes</code> on <code>$access_token()</code> only checks
-permissions and does not change them. Providers can reject a narrower
-request. Microsoft target tokens do not support explicit API-scope
-narrowing; see <a href="token-targets.html#advanced-microsoft-permissions-and-consent">Token
-targets</a>.</p>
-<p>For OIDC, refresh consent (<code>offline_access</code>) is kept
-separately from the scopes reported on an access token. When explicitly
-narrowing, include it to retain previously requested refresh consent in
-later reauthorization requests; omit it to remove that request.
-Automatic refresh does not remove it just because a token response omits
-it. Refresh cannot add consent that was never granted or was previously
+preserving required scopes. Later refreshes and reauthorization keep
+that reduction. <code>required_scopes</code> on
+<code>$access_token()</code> checks permissions without changing them. A
+provider can reject narrowing; <a href="token-targets.html#advanced-microsoft-permissions-and-consent">Microsoft
+targets</a> do not support explicit API narrowing.</p>
+<p>For OIDC, include <code>offline_access</code> when explicitly
+narrowing if later reauthorization should still request refresh consent.
+Automatic refresh does not remove that request just because the response
+omits it. Refresh cannot add consent that was never granted or has been
 removed.</p>
-<p>Standalone SMART replacement logins similarly keep requested patient
-and encounter context. Explicit narrowing can remove optional
-<code>launch/encounter</code> context; patient context remains requested
-when retained patient permissions require it. See <a href="smart-on-fhir.html">SMART on FHIR</a> for those client
-profiles.</p>
-<p>Reauthorization preserves the app’s reduced limits. A provider’s
-previously accepted extra permissions can remain in its token without
-becoming available through connection permission checks. Clients with no
-configured scopes continue to omit the scope request; an OIDC
-replacement still requests <code>openid</code> for its new identity
-check.</p>
+<p>Standalone SMART replacements keep requested patient and encounter
+context. Narrowing can remove optional encounter context, while retained
+patient permissions still require patient context. See <a href="smart-on-fhir.html">SMART on FHIR</a>.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="advanced-asynchronous-token-acquisition">Advanced: asynchronous token acquisition<a class="anchor" aria-label="anchor" href="#advanced-asynchronous-token-acquisition"></a>
 </h2>
-<p>Use <code>async = TRUE</code> to obtain a promise for the token.
-Configure a background backend before starting the app, as described in
-<a href="usage.html#asynchronous-execution">Usage</a>.</p>
+<p>Use <code>async = TRUE</code> when refreshing a token should not
+block the app. Set up workers first, as shown in <a href="usage.html#asynchronous-execution">Usage</a>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Configure mirai daemons or a non-sequential future plan before starting Shiny.</span></span>
 <span><span class="co"># Inside the owning Shiny session:</span></span>
@@ -328,19 +290,11 @@ Configure a background backend before starting the app, as described in
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">current</span><span class="op">$</span><span class="fu">has_scopes</span><span class="op">(</span><span class="st">"records.read"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu">existing_sdk_read_records</span><span class="op">(</span>access_token <span class="op">=</span> <span class="va">token</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>An async result is a token snapshot: logout or a permission change
-can happen before its callback runs. The example therefore checks the
-current connection ID and permissions again before calling the SDK.
-Check them again before displaying results. Scope narrowing keeps the
-ID, so checking the ID alone is insufficient.</p>
-<p>An SDK that blocks R still needs its own asynchronous request
-mechanism, even when token acquisition runs in the background.
-Concurrent async token calls coordinate their refreshes; a synchronous
-call does not wait for an async refresh or return a promise.</p>
-<p>If the provider asks the app to wait before trying another refresh,
-shinyOAuth honors a capped <code>Retry-After</code> delay. A cached
-token can still be used if it meets the operation’s permission and
-lifetime requirements.</p>
+<p>Logout or a permission change can happen after token acquisition,
+before the callback runs. Recheck the current connection and permissions
+before using it and again before displaying results. The other package
+still needs its own background-request mechanism if its calls block
+R.</p>
 <div class="section level3">
 <h3 id="handling-token-errors">Handling token errors<a class="anchor" aria-label="anchor" href="#handling-token-errors"></a>
 </h3>
@@ -397,11 +351,11 @@ error.</p>
 <div class="section level2">
 <h2 id="advanced-background-tasks-and-saved-results">Advanced: background tasks and saved results<a class="anchor" aria-label="anchor" href="#advanced-background-tasks-and-saved-results"></a>
 </h2>
-<p>Acquire the token in reactive server code before starting an
-<code>ExtendedTask</code> (Shiny 1.8.1 or newer). Pass plain inputs and
-the short-lived token to the worker, not the connection, module state or
-refresh credential. See Shiny’s <a href="https://shiny.posit.co/r/articles/improve/nonblocking/" class="external-link">background
-task guidance</a>.</p>
+<p>Acquire the token in the owning session before starting background
+work. Pass plain inputs and that short-lived token to the worker,
+keeping the connection and refresh credential in the session. This
+example uses Shiny’s <code>ExtendedTask</code> (Shiny 1.8.1 or
+newer):</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Configure future::plan(future::multisession) before starting the app.</span></span>
 <span><span class="co"># Inside server(), with auth already created:</span></span>
@@ -428,15 +382,14 @@ task guidance</a>.</p>
 <span>  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">authorization_id</span>, <span class="va">connection</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">result</span><span class="op">$</span><span class="va">data</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Choose a token lifetime buffer that covers worker startup, queue
-delays and the operation. Acquire it close to dispatch if work may sit
-in a queue. A copied token cannot refresh itself, and a failed
-background operation is not resubmitted automatically.</p>
-<p>The result checks prevent data from a previous login or removed
-permission from being displayed. Keep them even for work started by a
-button. Do not use <code>cancelOutput = TRUE</code> for this guard,
-because it retains the previous output. For several saved logins, check
-the explicitly selected connection ID.</p>
+<p>Require enough remaining token lifetime to cover worker startup and
+the operation. Keep the connection-ID and permission checks before
+displaying the result, even for work started by a button. Do not use
+<code>cancelOutput = TRUE</code> for this guard, because it retains the
+previous output.</p>
+<p>See the <a href="https://shiny.posit.co/r/articles/improve/nonblocking/" class="external-link">Shiny
+background-task guide</a> for scheduling, and <a href="https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.html">OAuthConnection</a>
+for connection lifetime and permission-reduction details.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

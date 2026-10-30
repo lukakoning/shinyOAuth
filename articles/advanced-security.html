@@ -75,77 +75,79 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>Most apps can start with the defaults in <a href="usage.html">Usage</a>. This guide is for cases where your login
-provider or deployment needs additional protection. Choose the feature
-your provider requires; enabling every extension is not necessary, and
-the provider must support the same settings.</p>
+<p>Some login providers require extra proof that a request comes from
+your app, or extra protection for the tokens they issue. Start with the
+working app in <a href="usage.html">Usage</a>, then configure the
+features your provider requires.</p>
+<p>A signature lets the receiver check who sent a message and whether it
+changed. Encryption hides its contents. A client certificate or signing
+key can also tie an access token to your app, so the token alone is not
+enough to use it.</p>
+<p>Choose the feature your provider requires; enabling every extension
+is not necessary. Both the provider and the API must support the
+selected behavior.</p>
 <table class="table">
 <colgroup>
 <col width="50%">
 <col width="50%">
 </colgroup>
 <thead><tr class="header">
-<th>If your provider asks for…</th>
-<th>Read…</th>
+<th>Need</th>
+<th>Feature</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>A signed proof that identifies your app</td>
+<td>Prove the app’s identity with a signing key</td>
 <td><a href="#jwt-client-authentication">JWT client
 authentication</a></td>
 </tr>
 <tr class="even">
-<td>A client certificate</td>
+<td>Present a registered certificate</td>
 <td><a href="#mutual-tls-mtls">Mutual TLS</a></td>
 </tr>
 <tr class="odd">
-<td>Signed or server-pushed login requests</td>
-<td>
-<a href="#jwt-secured-authorization-request-jar">JAR</a> or <a href="#pushed-authorization-requests-par">PAR</a>
-</td>
+<td>Send request details directly to the provider</td>
+<td><a href="#pushed-authorization-requests-par">PAR</a></td>
 </tr>
 <tr class="even">
-<td>Login results returned by POST or as a signed token</td>
+<td>Sign the login request</td>
+<td><a href="#jwt-secured-authorization-request-jar">JAR</a></td>
+</tr>
+<tr class="odd">
+<td>Return login results outside the URL or with a signature</td>
 <td>
 <a href="#form-post-response-mode">Form Post</a> or <a href="#jwt-secured-authorization-response-mode-jarm">JARM</a>
 </td>
 </tr>
-<tr class="odd">
-<td>Tokens usable only with your app’s key</td>
+<tr class="even">
+<td>Require a matching key when using a token</td>
 <td><a href="#demonstrating-proof-of-possession-dpop">DPoP</a></td>
 </tr>
 </tbody>
 </table>
-<p>The examples extend an existing <code>provider</code> and
-<code>client</code>. Replace example addresses, credentials and key
-paths with your registered values.</p>
+<p>Examples use placeholder addresses and key files. Replace them with
+your registered values and keep private keys on the server.</p>
 </div>
 <div class="section level2">
 <h2 id="provider-metadata-and-oidc-discovery">Provider metadata and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-metadata-and-oidc-discovery"></a>
 </h2>
-<p><code><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code> reads provider metadata
-used by these features, including PAR support, JARM and DPoP algorithms,
-and mTLS endpoint aliases:</p>
+<p>Discovery reads the provider’s published settings so you do not have
+to copy each endpoint and supported feature manually:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>An explicitly selected token authentication method must match
-discovery. If <code>token_endpoint_auth_methods_supported</code> is
-omitted, the <a href="https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata" class="external-link">OIDC
-Discovery default</a> is <code>client_secret_basic</code>
-(<code>token_auth_style = "header"</code>). Public, POST, JWT, and mTLS
-methods therefore require an explicit advertisement. An empty method
-array is rejected as malformed metadata.</p>
+<p>Published support does not configure your individual app
+registration. Select the authentication method and credentials agreed
+with your provider.</p>
 </div>
 <div class="section level2">
 <h2 id="jwt-client-authentication">JWT client authentication<a class="anchor" aria-label="anchor" href="#jwt-client-authentication"></a>
 </h2>
-<p>Some providers require your app to authenticate by signing a JWT
-(JSON Web Token) when requesting tokens. This client assertion
-identifies the app requesting tokens.</p>
-<p>For a registered private key, select the method during provider setup
-and supply the key when creating your client:</p>
+<p>With <code>private_key_jwt</code>, your app signs a short-lived JSON
+Web Token (JWT) when requesting tokens instead of sending a shared
+secret. Register the public key with the provider, then configure the
+matching private key:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider_oidc_discover.html">oauth_provider_oidc_discover</a></span><span class="op">(</span></span>
 <span>  <span class="st">"https://id.example.com"</span>, token_auth_style <span class="op">=</span> <span class="st">"private_key_jwt"</span></span>
@@ -158,66 +160,20 @@ and supply the key when creating your client:</p>
 <span>  client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/client-key.pem"</span><span class="op">)</span>,</span>
 <span>  client_assertion_private_key_kid <span class="op">=</span> <span class="st">"registered-key-id"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Register the corresponding public key with your provider. For
-<code>client_secret_jwt</code>, select that method and supply a
-sufficiently strong <code>client_secret</code> instead.
-<code>client_assertion_alg</code> has a key-compatible default;
-<code>client_assertion_audience</code> overrides the expected recipient
-if your provider requires a value other than the token request URL.</p>
-<p>For the client assertion profile referenced by OAuth 2.1 draft 16,
-select the trusted authorization-server issuer as the sole audience and
-optionally use the recommended explicit type:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">client</span><span class="op">@</span><span class="va">client_assertion_audience</span> <span class="op">&lt;-</span> <span class="va">provider</span><span class="op">@</span><span class="va">issuer</span></span>
-<span><span class="va">client</span><span class="op">@</span><span class="va">client_assertion_typ</span> <span class="op">&lt;-</span> <span class="st">"client-authentication+jwt"</span></span></code></pre></div>
-<p><a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-rfc7523bis-11#section-4" class="external-link">RFC7523bis
-draft 11 section 4</a> requires the issuer audience and recommends this
-type. The package preserves the existing <code>JWT</code> type and
-request-endpoint audience defaults, including PAR’s existing issuer
-handling. The checker treats audience mismatches as mandatory findings
-and legacy typing as an advisory. These settings affect client
-authentication assertions, including retries, and do not change JAR,
-JARM or ID token headers. The same settings can be selected in
-<code>endpoint_auth</code> overrides.</p>
-<p>Authentication can differ at PAR, introspection, and revocation
-endpoints. Discovery preserves their independent method and algorithm
-metadata; configure credentials and audiences to match each endpoint’s
-registration agreement:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">client</span><span class="op">@</span><span class="va">endpoint_auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  introspection <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    token_auth_style <span class="op">=</span> <span class="st">"header"</span>,</span>
-<span>    client_id <span class="op">=</span> <span class="st">"registered-inspector"</span>,</span>
-<span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"INTROSPECTION_SECRET"</span><span class="op">)</span>,</span>
-<span>    extra_headers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"X-App"</span> <span class="op">=</span> <span class="st">"registered-app"</span><span class="op">)</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  revocation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    token_auth_style <span class="op">=</span> <span class="st">"private_key_jwt"</span>,</span>
-<span>    client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/revocation-key.pem"</span><span class="op">)</span>,</span>
-<span>    client_assertion_alg <span class="op">=</span> <span class="st">"RS256"</span>,</span>
-<span>    client_assertion_audience <span class="op">=</span> <span class="st">"https://id.example.com/revocation"</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Unspecified credentials inherit the client’s settings. Advertised
-methods and JWT algorithms are checked per endpoint. Discovery defaults
-omitted revocation methods to Basic authentication; omitted
-introspection methods have no standard default, so confirm the
-configured method with your provider. PAR inherits the token
-authentication settings unless explicitly overridden.
-<code>extra_token_headers</code> now applies only to exchange and
-refresh: opt in through <code>extra_headers</code> at each other
-endpoint that should receive those headers, even on the same origin.</p>
+<p>The provider uses the public key to verify the app’s message. For
+secret-based assertions, see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html">oauth_client()</a>.
+See <a href="#endpoint-specific-authentication">endpoint-specific
+authentication</a> for credentials and audience settings.</p>
 </div>
 <div class="section level2">
 <h2 id="mutual-tls-mtls">Mutual TLS (mTLS)<a class="anchor" aria-label="anchor" href="#mutual-tls-mtls"></a>
 </h2>
-<p>With mutual TLS (mTLS), the client presents a certificate during the
-TLS connection. OAuth 2.0 uses this for certificate-based client
-authentication and for certificate-bound access tokens (RFC 8705). With
-certificate-bound tokens, the API requires the matching certificate when
-accepting a token. The provider must support the selected use of
-mTLS.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>mTLS lets your app present a certificate during the secure network
+connection. It can identify the app to the provider. Separately, a
+provider can issue certificate-bound tokens that an API accepts only
+with the matching certificate. Configure the use agreed with your
+provider:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-mtls"</span>,</span>
 <span>  <span class="co"># Exact OIDC issuer; enables nonce and ID-token validation</span></span>
@@ -236,7 +192,7 @@ mTLS.</p>
 <span>  <span class="co"># Expect certificate-bound access tokens from the provider</span></span>
 <span>  mtls_client_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
@@ -249,73 +205,55 @@ mTLS.</p>
 <span>  <span class="co"># Require the matching certificate when access tokens are used</span></span>
 <span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code>mtls_certificate_bound_access_tokens = TRUE</code> enables
-certificate presentation and mTLS endpoint-alias selection independently
-of the OAuth client authentication method. Configuring certificate files
-alone does not enable certificate-bound token requests.</p>
-<p>The separate <code>mtls_require_observed_cnf</code> policy defaults
-to <code>TRUE</code>, preserving strict local assurance: shinyOAuth must
-observe <code>cnf[["x5t#S256"]]</code> in the token response, a JWT
-access token, or introspection and match it to the configured
-certificate. An opaque bound token without observable binding fails this
-policy.</p>
-<p>RFC 8705 also permits opaque tokens whose binding is known only to
-the authorization and resource servers. For that deployment, configure
-the certificate/key and provider capability as above, then use both
-settings:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<p>Certificate files alone do not enable certificate-bound tokens; the
+example selects that policy explicitly. The default also requires
+shinyOAuth to observe and verify the token’s certificate binding. If
+your provider uses opaque tokens, see the <a href="#certificate-binding-and-platform-requirements">certificate-binding
+details below</a>.</p>
+<p>On Windows, separate PEM certificate and key files require curl’s
+OpenSSL backend. Follow the platform setup in that section before
+testing mTLS.</p>
+</div>
+<div class="section level2">
+<h2 id="pushed-authorization-requests-par">Pushed authorization requests (PAR)<a class="anchor" aria-label="anchor" href="#pushed-authorization-requests-par"></a>
+</h2>
+<p>PAR sends login-request details directly from your server to the
+provider. The browser carries a short reference instead of the full
+request, which keeps most details out of browser history and avoids very
+long URLs.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-par"</span>,</span>
+<span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
+<span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
+<span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
+<span>  <span class="co"># Enable pushed authorization requests</span></span>
+<span>  par_url <span class="op">=</span> <span class="st">"https://id.example.com/par"</span>,</span>
+<span>  par_required <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="co"># Keep the browser redirect down to client_id + PAR request_uri</span></span>
+<span>  authorization_request_front_channel_mode <span class="op">=</span> <span class="st">"minimal"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
 <span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
-<span>  mtls_client_cert_file <span class="op">=</span> <span class="st">"certs/client.pem"</span>,</span>
-<span>  mtls_client_key_file <span class="op">=</span> <span class="st">"certs/client-key.pem"</span>,</span>
-<span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  mtls_require_observed_cnf <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>This mode still presents the certificate on token, refresh, UserInfo,
-and protected-resource requests, including with body authentication,
-public clients, or <code>private_key_jwt</code>. It prefers configured
-mTLS aliases and falls back to the configured endpoint URL when no alias
-is available. The servers must enforce binding; shinyOAuth allows
-missing confirmation but still rejects any observed mismatch or
-conflicting confirmation claims. See <a href="https://www.rfc-editor.org/rfc/rfc8705.html#section-3" class="external-link">RFC 8705,
-Section 3</a>.</p>
-<p>On Windows, separate PEM certificate/key files require curl’s OpenSSL
-backend. Set <code>CURL_SSL_BACKEND=openssl</code> in
-<code>.Renviron</code> and restart R, or run
-<code>Sys.setenv(CURL_SSL_BACKEND = "openssl")</code> before loading
-curl, httr2, or shinyOAuth in a fresh session. Check
-<code>curl::curl_version()[["ssl_version"]]</code>: parenthesized
-backends are inactive alternatives. If OpenSSL is unavailable, install a
-curl build that provides it. shinyOAuth rejects an active Schannel
-backend for this PEM configuration before sending the request. See the
-<a href="https://curl.se/libcurl/c/CURLOPT_SSLCERT.html" class="external-link">libcurl
-certificate documentation</a>.</p>
-<p>If your provider uses dynamic client registration,
-<code><a href="../reference/oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code> can build the RFC 8705
-registration metadata from the configured client.</p>
+<p>Use the provider’s published PAR endpoint.
+<code>par_required = TRUE</code> records its requirement; it does not
+enable PAR on the provider’s server.</p>
 </div>
 <div class="section level2">
 <h2 id="jwt-secured-authorization-request-jar">JWT-secured authorization request (JAR)<a class="anchor" aria-label="anchor" href="#jwt-secured-authorization-request-jar"></a>
 </h2>
-<p>JAR protects authorization request parameters with a signature. The
-client sends them in a JWT called a Request Object, which the provider
-verifies before processing the request. Optional Request Object
-encryption also protects the request contents. Both settings must match
-the provider registration.</p>
-<p>For enforced request integrity, configure the authorization server to
-require signed Request Objects for this client, for example with the RFC
-9101 client registration field
-<code>require_signed_request_object = true</code>, and register its
-signing key and allowed algorithm. Confirm the server actually enforces
-this policy. Setting <code>signed_request_object_required = TRUE</code>
-below describes that server policy and enforces local construction; it
-does not register or change the client at the server. If unsigned
-requests remain accepted, signing is optional and cannot prevent a
-downgrade to unsigned authorization requests (<a href="https://www.rfc-editor.org/rfc/rfc9101.html#section-10.5" class="external-link">RFC 9101
-section 10.5</a>).</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p>JAR signs the login request so the provider can detect changes to its
+parameters. You can combine it with PAR. Register the signing key and
+check that the provider requires signed requests for this app; a local
+setting cannot prevent the provider from accepting unsigned
+requests.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-jar"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
@@ -339,10 +277,209 @@ section 10.5</a>).</p>
 <span>  request_object_mode <span class="op">=</span> <span class="st">"request"</span>,</span>
 <span>  request_object_signing_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Test the server policy before deployment: send an otherwise valid
-authorization request for this same client without <code>request</code>
-or <code>request_uri</code>. For example:</p>
+<p>Test both an accepted signed request and rejection of an otherwise
+valid unsigned request before deployment. The rejection must be for the
+missing signature, not an unrelated configuration error. See the <a href="#testing-signed-request-enforcement">test request below</a>.</p>
+<p>If your provider fetches signed requests from the app, see <a href="#request-objects-published-by-the-shiny-app">Request Objects
+published by the Shiny app</a>.</p>
+</div>
+<div class="section level2">
+<h2 id="form-post-response-mode">Form Post response mode<a class="anchor" aria-label="anchor" href="#form-post-response-mode"></a>
+</h2>
+<p>Form Post returns the login result in an HTTP request body instead of
+the browser URL. Use it when your provider requires that transport or
+when callback values should stay out of browser history. It does not
+sign or encrypt the result.</p>
+<p>Set <code>response_mode = "form_post"</code> on the client, then use
+the matching wrapper:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/textOutput.html" class="external-link">textOutput</a></span><span class="op">(</span><span class="st">"status"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui</a></span><span class="op">(</span><span class="va">base_ui</span>, id <span class="op">=</span> <span class="st">"auth"</span>, client <span class="op">=</span> <span class="va">client</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
+<span>  <span class="va">output</span><span class="op">[[</span><span class="st">"status"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"authenticated"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="st">"Signed in"</span> <span class="kw">else</span> <span class="st">"Waiting for login"</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">app</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
+<p>Keep the module ID and client the same in UI and server.
+<code>uiPattern = ".*"</code> allows Shiny to serve a dedicated callback
+path.</p>
+<p>If your proxy accepts HTTPS but forwards HTTP to Shiny, the wrapper
+needs a trusted way to recover the public callback address. See the <a href="#deployment-behind-an-https-proxy">HTTPS proxy example
+below</a>.</p>
+</div>
+<div class="section level2">
+<h2 id="jwt-secured-authorization-response-mode-jarm">JWT-secured authorization response mode (JARM)<a class="anchor" aria-label="anchor" href="#jwt-secured-authorization-response-mode-jarm"></a>
+</h2>
+<p>JARM signs the returning login result. shinyOAuth verifies it before
+accepting the callback fields, giving the app a way to check the
+response’s sender and integrity. Select the mode and signing algorithm
+supported by your registration:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-jarm"</span>,</span>
+<span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
+<span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
+<span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
+<span>  <span class="co"># Advertise the JARM response modes and algorithms this provider supports</span></span>
+<span>  response_modes_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"query"</span>, <span class="st">"query.jwt"</span>, <span class="st">"form_post.jwt"</span><span class="op">)</span>,</span>
+<span>  jarm_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span><span class="op">)</span>,</span>
+<span>  jarm_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RSA-OAEP"</span><span class="op">)</span>,</span>
+<span>  jarm_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A128CBC-HS256"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
+<span>  <span class="co"># Ask for a JWT-wrapped authorization response</span></span>
+<span>  response_mode <span class="op">=</span> <span class="st">"query.jwt"</span>,</span>
+<span>  jarm_signed_response_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>JARM uses <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. With
+<code>form_post.jwt</code>, also use <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.
+Optional response encryption requires additional client settings and
+support for local R subprocesses; see the <a href="#encrypted-authorization-responses">encrypted response example
+below</a>.</p>
+</div>
+<div class="section level2">
+<h2 id="demonstrating-proof-of-possession-dpop">Demonstrating proof-of-possession (DPoP)<a class="anchor" aria-label="anchor" href="#demonstrating-proof-of-possession-dpop"></a>
+</h2>
+<p>DPoP ties an access token to a signing key. Each request includes
+fresh proof that the app holds that key, so an API enforcing DPoP cannot
+accept a stolen token on its own. The provider and the API must both
+support it.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"example-dpop"</span>,</span>
+<span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
+<span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
+<span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
+<span>  <span class="co"># Optional metadata check for acceptable DPoP signing algorithms</span></span>
+<span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ES256"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
+<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"api.read"</span><span class="op">)</span>,</span>
+<span>  <span class="co"># Private key used to sign DPoP proofs</span></span>
+<span>  dpop_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/dpop-key.pem"</span><span class="op">)</span>,</span>
+<span>  dpop_signing_alg <span class="op">=</span> <span class="st">"ES256"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>After login, let the request helper attach the proof and handle
+provider nonce challenges:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
+<span>  <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>  <span class="st">"https://api.example.com/me"</span>,</span>
+<span>  <span class="co"># Lets shinyOAuth attach the DPoP proof and handle nonce challenges</span></span>
+<span>  client <span class="op">=</span> <span class="va">client</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Use the final trusted API URL and keep redirects disabled. For tokens
+tied to a key or certificate, use the request helpers with
+<code>client = client</code> rather than passing a bare token string to
+another package.</p>
+</div>
+<div class="section level2">
+<h2 id="browser-binding-and-deployment-boundary">Browser binding and deployment boundary<a class="anchor" aria-label="anchor" href="#browser-binding-and-deployment-boundary"></a>
+</h2>
+<p>Use HTTPS, finish login in the tab that started it, and keep cookies
+and session storage available. Host the app separately from untrusted
+services: cookies are shared across ports on a hostname, and scripts on
+the app’s own origin can read its session storage. Protect the app
+against injected scripts and keep callback queries out of proxy
+logs.</p>
+<p>Use <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> or <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> with
+the matching module ID and client. They handle callbacks before loading
+application UI. Custom integrations using <code><a href="../reference/prepare_call.html">prepare_call()</a></code>
+and <code><a href="../reference/handle_callback.html">handle_callback()</a></code> must establish their own browser
+binding.</p>
+</div>
+<div class="section level2">
+<h2 id="endpoint-specific-authentication">Endpoint-specific authentication<a class="anchor" aria-label="anchor" href="#endpoint-specific-authentication"></a>
+</h2>
+<p>For the client assertion profile referenced by OAuth 2.1 draft 16,
+use the trusted issuer as the audience and optionally select the
+recommended type:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span><span class="op">@</span><span class="va">client_assertion_audience</span> <span class="op">&lt;-</span> <span class="va">provider</span><span class="op">@</span><span class="va">issuer</span></span>
+<span><span class="va">client</span><span class="op">@</span><span class="va">client_assertion_typ</span> <span class="op">&lt;-</span> <span class="st">"client-authentication+jwt"</span></span></code></pre></div>
+<p><a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-rfc7523bis-11#section-4" class="external-link">RFC7523bis
+draft 11 section 4</a> describes these settings. They apply to client
+authentication assertions, not JAR, JARM or ID token headers. Match them
+to your provider’s registration.</p>
+<p>PAR, introspection and revocation can each require different
+authentication:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span><span class="op">@</span><span class="va">endpoint_auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  introspection <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    token_auth_style <span class="op">=</span> <span class="st">"header"</span>,</span>
+<span>    client_id <span class="op">=</span> <span class="st">"registered-inspector"</span>,</span>
+<span>    client_secret <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"INTROSPECTION_SECRET"</span><span class="op">)</span>,</span>
+<span>    extra_headers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"X-App"</span> <span class="op">=</span> <span class="st">"registered-app"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  revocation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    token_auth_style <span class="op">=</span> <span class="st">"private_key_jwt"</span>,</span>
+<span>    client_assertion_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/revocation-key.pem"</span><span class="op">)</span>,</span>
+<span>    client_assertion_alg <span class="op">=</span> <span class="st">"RS256"</span>,</span>
+<span>    client_assertion_audience <span class="op">=</span> <span class="st">"https://id.example.com/revocation"</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Unspecified credentials inherit the client settings. Confirm each
+endpoint’s method and audience with your provider.
+<code>extra_token_headers</code> applies only to exchange and refresh;
+use <code>extra_headers</code> to send headers to other endpoints.</p>
+</div>
+<div class="section level2">
+<h2 id="certificate-binding-and-platform-requirements">Certificate binding and platform requirements<a class="anchor" aria-label="anchor" href="#certificate-binding-and-platform-requirements"></a>
+</h2>
+<p><code>mtls_certificate_bound_access_tokens = TRUE</code> enables
+certificate presentation and mTLS endpoint selection, independently of
+the client authentication method. Certificate files alone do not enable
+it.</p>
+<p>By default, <code>mtls_require_observed_cnf = TRUE</code> requires
+visible binding data that matches the certificate. Some providers use
+opaque tokens whose binding only their servers can check. For that
+agreed deployment, keep certificate-bound requests enabled and allow
+missing local confirmation:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
+<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
+<span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
+<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
+<span>  mtls_client_cert_file <span class="op">=</span> <span class="st">"certs/client.pem"</span>,</span>
+<span>  mtls_client_key_file <span class="op">=</span> <span class="st">"certs/client-key.pem"</span>,</span>
+<span>  mtls_certificate_bound_access_tokens <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  mtls_require_observed_cnf <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>shinyOAuth still presents the certificate and rejects any observed
+mismatch. The provider and API must enforce binding; see <a href="https://www.rfc-editor.org/rfc/rfc8705.html#section-3" class="external-link">RFC 8705
+section 3</a>.</p>
+<p>On Windows, separate PEM certificate/key files require curl’s OpenSSL
+backend. Set <code>CURL_SSL_BACKEND=openssl</code> in
+<code>.Renviron</code> and restart R before loading curl, httr2 or
+shinyOAuth. Check the active backend with
+<code>curl::curl_version()[["ssl_version"]]</code>; shinyOAuth rejects
+Schannel for this configuration. See the <a href="https://curl.se/libcurl/c/CURLOPT_SSLCERT.html" class="external-link">curl certificate
+guide</a>.</p>
+<p>For dynamic registration,
+<code><a href="../reference/oauth_client_mtls_registration.html">oauth_client_mtls_registration()</a></code> builds the matching
+certificate registration metadata.</p>
+</div>
+<div class="section level2">
+<h2 id="testing-signed-request-enforcement">Testing signed-request enforcement<a class="anchor" aria-label="anchor" href="#testing-signed-request-enforcement"></a>
+</h2>
+<p>Test the server policy with an otherwise valid request for the same
+client that omits the signed Request Object:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">unsigned</span> <span class="op">&lt;-</span> <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/request.html" class="external-link">request</a></span><span class="op">(</span><span class="va">provider</span><span class="op">@</span><span class="va">auth_url</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/req_url.html" class="external-link">req_url_query</a></span><span class="op">(</span></span>
 <span>    client_id <span class="op">=</span> <span class="va">client</span><span class="op">@</span><span class="va">client_id</span>,</span>
@@ -358,50 +495,29 @@ or <code>request_uri</code>. For example:</p>
 <span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_status.html" class="external-link">resp_status</a></span><span class="op">(</span><span class="va">unsigned</span><span class="op">)</span></span>
 <span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_headers.html" class="external-link">resp_headers</a></span><span class="op">(</span><span class="va">unsigned</span><span class="op">)</span></span>
 <span><span class="fu">httr2</span><span class="fu">::</span><span class="fu"><a href="https://httr2.r-lib.org/reference/resp_body_raw.html" class="external-link">resp_body_string</a></span><span class="op">(</span><span class="va">unsigned</span><span class="op">)</span></span></code></pre></div>
-<p>The negative test passes only when the server explicitly rejects the
-request because the required signed Request Object is missing. Check its
-documented error response or server audit event for that reason; a
-generic HTTP error is insufficient. A login/consent page, authorization
-code, or <code>login_required</code> response does not establish
-enforcement. Repeat this probe in deployment tests alongside a
-successful signed request.</p>
-<p>Register the signing key with your provider. To encrypt the signed
-request too, configure
-<code>request_object_encryption_alg = "RSA-OAEP"</code> and
-<code>request_object_encryption_enc</code> to a supported AES-CBC-HMAC
-value such as <code>"A128CBC-HS256"</code>. The provider must publish a
-suitable encryption key or you must supply
-<code>request_object_encryption_jwk</code> to <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html"><code>oauth_provider()</code></a>.
-See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html"><code>oauth_client()</code></a>
-for supported algorithms and the provider reference for encryption key
-selection.</p>
-<p>PAR, described below, keeps most request details out of the browser
-URL. It can also carry a signed Request Object, combining PAR with
-JAR.</p>
-<div class="section level3">
-<h3 id="request-objects-published-by-the-shiny-app">Request Objects published by the Shiny app<a class="anchor" aria-label="anchor" href="#request-objects-published-by-the-shiny-app"></a>
-</h3>
-<p>If you set <code>request_object_mode = "request_uri"</code>,
-shinyOAuth still builds a signed Request Object, but instead of putting
-that JWT directly on the browser redirect as <code>request=...</code>,
-it publishes the Request Object at a URL and sends the provider
-<code>request_uri=&lt;that URL&gt;</code>. The provider then fetches
-that published Request Object itself.</p>
-<p><code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> serves the Request Object at a
-short-lived URL under the Shiny app. The provider must be able to
-request that URL directly.</p>
-<p>This mode is separate from PAR and cannot be used when the provider
-requires PAR. With PAR, the provider issues the reference; with this
-mode, the provider fetches a URL published by your app.</p>
-<p>Deployment requirements:</p>
-<ul>
-<li>the published URL must use HTTPS and be reachable from the provider,
-not just from the user’s browser</li>
-<li>if the provider requires pre-registered <code>request_uri</code>
-values, the public URL or wildcard prefix must already be registered
-there</li>
-</ul>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<p>Confirm rejection specifically because the signed object is missing.
+A generic HTTP error, login page or <code>login_required</code> response
+does not prove enforcement. Test this alongside a successful signed
+request.</p>
+<p>To encrypt the signed request, select supported
+<code>request_object_encryption_alg</code> and
+<code>request_object_encryption_enc</code> values, and configure a
+provider encryption key. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html">oauth_client()</a>
+and <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html">oauth_provider()</a>.
+PAR can also carry the signed object while keeping most details out of
+the URL.</p>
+</div>
+<div class="section level2">
+<h2 id="request-objects-published-by-the-shiny-app">Request Objects published by the Shiny app<a class="anchor" aria-label="anchor" href="#request-objects-published-by-the-shiny-app"></a>
+</h2>
+<p>With <code>request_object_mode = "request_uri"</code>, shinyOAuth
+publishes the signed request at a short-lived URL for the provider to
+fetch. This differs from PAR, where the provider issues the reference.
+Prefer PAR when supported; app-hosted Request Objects cannot be used
+when the provider requires PAR.</p>
+<p>The provider must be able to reach the public HTTPS URL. Register it
+or its prefix if your provider requires this:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">request_uri_provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  name <span class="op">=</span> <span class="st">"example-request-uri"</span>,</span>
 <span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
@@ -431,112 +547,26 @@ there</li>
 <span>  <span class="co"># Public HTTPS base URL of this Shiny app as seen by the provider</span></span>
 <span>  request_uri_base_url <span class="op">=</span> <span class="st">"https://shiny.yourdomain.com/myapp"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Wrap the app UI in
-<code>oauth_ui(ui, id = "auth", client = client)</code> (or
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> for POST callbacks). The app root
-serves Request Objects using a random, single-purpose
-<code>shinyOAuth_request_object</code> query handle. Only its digest is
-stored alongside the object in <code>client@state_store</code>. GET
-consumes it atomically; HEAD does not consume it. Retrieval expires at
-the earlier of the object expiry and 120 seconds after publication.
-Cache eviction can shorten availability; the store’s retention policy
-controls physical cleanup. If the provider requires
-<code>request_uri</code> registration, register this app-root endpoint
-with it. For multiple workers, use a shared state store with atomic
-<code>take()</code>; a memory store works only when publication and
-retrieval reach the same R process.</p>
-<p>The hosted JWT and its expiry occupy a separate store record, outside
-the pending-login record’s <code>state_key</code> sealing. Signing
-leaves JWT claims readable; enable Request Object JWE encryption for
-claim confidentiality. See the <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html"><code>custom_cache()</code>
-shared-store contract</a> for record protection and expiry
-requirements.</p>
-<p>Retrieval handles contain no Shiny session token, but anyone holding
-a live handle can consume the pending object. Redact request URLs in
-logs and limit log retention. Prefer PAR when supported to use a
-provider-issued reference and avoid a public app retrieval endpoint.
-OIDC signed requests retain outer <code>client_id</code>,
-<code>response_type</code>, and <code>scope</code> parameters.
-<code>authorization_request_front_channel_mode = "minimal"</code> is
-available for compatible PAR providers, but is rejected for OIDC inline
-or client-published signed requests.</p>
-</div>
+<p>Use <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> or <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> with
+the same client and state store as the server. Multiple R processes need
+a shared store with atomic <code>take()</code>; see <a href="https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html">custom_cache()</a>.</p>
+<p>Treat retrieval URLs as secrets: anyone holding a live handle can
+consume the object. Signing leaves its claims readable, so encrypt it if
+those claims need confidentiality and protect the stored record. Keep
+URLs out of logs.</p>
+<p>The <code>"minimal"</code> front-channel mode is for compatible PAR
+providers; it is not available for OIDC inline or app-hosted signed
+requests.</p>
 </div>
 <div class="section level2">
-<h2 id="pushed-authorization-requests-par">Pushed authorization requests (PAR)<a class="anchor" aria-label="anchor" href="#pushed-authorization-requests-par"></a>
+<h2 id="deployment-behind-an-https-proxy">Deployment behind an HTTPS proxy<a class="anchor" aria-label="anchor" href="#deployment-behind-an-https-proxy"></a>
 </h2>
-<p>PAR sends the authorization request from your server to the provider
-first. The browser then gets redirected with a short
-<code>request_uri</code> handle instead of the full request details.</p>
-<p>PAR allows the provider to validate the request before the browser
-redirect and avoids placing large requests in a URL. It also keeps most
-request details out of browser history and logs of browser requests. Set
-<code>par_required = TRUE</code> when the provider requires PAR.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"example-par"</span>,</span>
-<span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
-<span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
-<span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
-<span>  <span class="co"># Enable pushed authorization requests</span></span>
-<span>  par_url <span class="op">=</span> <span class="st">"https://id.example.com/par"</span>,</span>
-<span>  par_required <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  <span class="co"># Keep the browser redirect down to client_id + PAR request_uri</span></span>
-<span>  authorization_request_front_channel_mode <span class="op">=</span> <span class="st">"minimal"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="form-post-response-mode">Form Post response mode<a class="anchor" aria-label="anchor" href="#form-post-response-mode"></a>
-</h2>
-<p><code>response_mode = "form_post"</code> tells the provider to send
-the authorization response back as an HTTP POST body instead of query
-parameters on the URL. The body still contains normal OAuth fields such
-as <code>code</code>, <code>state</code>, <code>error</code>, and
-<code>iss</code>.</p>
-<p>Use <code>form_post</code> when required by the provider or to keep
-callback values out of the browser URL, history, and logs of browser
-requests. It changes the callback transport; it does not sign or encrypt
-the response.</p>
-<p>Keep your existing provider and credentials, set
-<code>response_mode = "form_post"</code> on the client, then use this UI
-setup. Here <code>client</code> has a registered
-<code>redirect_uri</code> such as
-<code>https://app.example.com/callback</code>.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">base_ui</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/fluidPage.html" class="external-link">fluidPage</a></span><span class="op">(</span><span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/textOutput.html" class="external-link">textOutput</a></span><span class="op">(</span><span class="st">"status"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui</a></span><span class="op">(</span><span class="va">base_ui</span>, id <span class="op">=</span> <span class="st">"auth"</span>, client <span class="op">=</span> <span class="va">client</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
-<span>  <span class="va">output</span><span class="op">[[</span><span class="st">"status"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"authenticated"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="st">"Signed in"</span> <span class="kw">else</span> <span class="st">"Waiting for login"</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="va">app</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
-<p>The wrapper includes <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> setup. Its module ID and
-client must match the server’s. For a callback path such as
-<code>/callback</code>, <code>uiPattern = ".*"</code> lets Shiny send
-the POST to the wrapper. A callback at the app root also works.
-<code>callback_path</code> defaults to the path in
-<code>redirect_uri</code>; keep both aligned.</p>
-<div class="section level3">
-<h3 id="deployment-behind-an-https-proxy">Deployment behind an HTTPS proxy<a class="anchor" aria-label="anchor" href="#deployment-behind-an-https-proxy"></a>
-</h3>
 <p>If your web server accepts HTTPS but forwards HTTP to Shiny, the
 wrapper needs a trusted way to recover the public request address.
 Configure <code>request_uri_resolver</code> for your own proxy. This
 example accepts one proxy IP and a fixed public origin, including a
 mounted app path:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">trusted_proxy_uri</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">req</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">req</span><span class="op">[[</span><span class="st">"REMOTE_ADDR"</span><span class="op">]</span><span class="op">]</span>, <span class="st">"10.0.0.10"</span><span class="op">)</span> <span class="op">||</span></span>
 <span>      <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">req</span><span class="op">[[</span><span class="st">"HTTP_X_FORWARDED_PROTO"</span><span class="op">]</span><span class="op">]</span>, <span class="st">"https"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -553,40 +583,11 @@ mounted app path:</p>
 result must still match the configured redirect origin and callback
 path. Do not trust forwarded headers from arbitrary clients.</p>
 </div>
-</div>
 <div class="section level2">
-<h2 id="jwt-secured-authorization-response-mode-jarm">JWT-secured authorization response mode (JARM)<a class="anchor" aria-label="anchor" href="#jwt-secured-authorization-response-mode-jarm"></a>
+<h2 id="encrypted-authorization-responses">Encrypted authorization responses<a class="anchor" aria-label="anchor" href="#encrypted-authorization-responses"></a>
 </h2>
-<p>JARM protects the authorization response with a signature. The
-provider returns a JWT, and shinyOAuth verifies its signature, issuer,
-audience, and expiry before processing the callback fields. If
-encryption is configured, shinyOAuth decrypts the response before
-validating the signed contents.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"example-jarm"</span>,</span>
-<span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
-<span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
-<span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
-<span>  <span class="co"># Advertise the JARM response modes and algorithms this provider supports</span></span>
-<span>  response_modes_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"query"</span>, <span class="st">"query.jwt"</span>, <span class="st">"form_post.jwt"</span><span class="op">)</span>,</span>
-<span>  jarm_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RS256"</span><span class="op">)</span>,</span>
-<span>  jarm_encryption_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"RSA-OAEP"</span><span class="op">)</span>,</span>
-<span>  jarm_encryption_enc_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A128CBC-HS256"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Ask for a JWT-wrapped authorization response</span></span>
-<span>  response_mode <span class="op">=</span> <span class="st">"query.jwt"</span>,</span>
-<span>  jarm_signed_response_alg <span class="op">=</span> <span class="st">"RS256"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
 <p>For encrypted JARM, add the decryption settings:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
@@ -600,237 +601,104 @@ validating the signed contents.</p>
 <span>  jarm_encrypted_response_enc <span class="op">=</span> <span class="st">"A128CBC-HS256"</span>,</span>
 <span>  jarm_decryption_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/jarm-decrypt.pem"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>JARM is currently intended for <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. If
-you use <code>response_mode = "form_post.jwt"</code>, wrap your UI with
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
-<p>Encrypted JARM callbacks decrypt in a temporary local R process to
-limit memory growth after decryption failures. The deployment must allow
-local R processes; each encrypted callback also incurs process startup
-time. Signed-only JARM does not need this process. Decryption does not
-replace the inner response’s signature and login-state checks.</p>
+<p>Use <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> and, for
+<code>form_post.jwt</code>, <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>. Encrypted
+callbacks use a temporary local R process, so hosting must permit
+subprocesses and allow for startup time. The decrypted response still
+needs signature and login-state validation.</p>
 </div>
 <div class="section level2">
-<h2 id="demonstrating-proof-of-possession-dpop">Demonstrating proof-of-possession (DPoP)<a class="anchor" aria-label="anchor" href="#demonstrating-proof-of-possession-dpop"></a>
+<h2 id="token-binding-requirements-and-validation">Token binding requirements and validation<a class="anchor" aria-label="anchor" href="#token-binding-requirements-and-validation"></a>
 </h2>
-<p>DPoP binds tokens to a client key. The client signs a proof for each
-token or API request, and the receiving server verifies it against the
-token binding. An API enforcing DPoP requires both the access token and
-a proof from the matching private key. Configure it when supported by
-the authorization server and the API.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"example-dpop"</span>,</span>
-<span>  issuer <span class="op">=</span> <span class="st">"https://id.example.com"</span>,</span>
-<span>  auth_url <span class="op">=</span> <span class="st">"https://id.example.com/authorize"</span>,</span>
-<span>  token_url <span class="op">=</span> <span class="st">"https://id.example.com/token"</span>,</span>
-<span>  <span class="co"># Optional metadata check for acceptable DPoP signing algorithms</span></span>
-<span>  dpop_signing_alg_values_supported <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ES256"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
-<span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
-<span>  client_id <span class="op">=</span> <span class="st">"client-id"</span>,</span>
-<span>  client_secret <span class="op">=</span> <span class="st">"client-secret"</span>,</span>
-<span>  redirect_uri <span class="op">=</span> <span class="st">"https://app.example.com/auth/callback"</span>,</span>
-<span>  scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"openid"</span>, <span class="st">"profile"</span>, <span class="st">"api.read"</span><span class="op">)</span>,</span>
-<span>  <span class="co"># Private key used to sign DPoP proofs</span></span>
-<span>  dpop_private_key <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/read_key.html" class="external-link">read_key</a></span><span class="op">(</span><span class="st">"keys/dpop-key.pem"</span><span class="op">)</span>,</span>
-<span>  dpop_signing_alg <span class="op">=</span> <span class="st">"ES256"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>After login, keep using the request helpers instead of adding
-<code>Authorization</code> or <code>DPoP</code> headers manually:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/perform_resource_req.html">perform_resource_req</a></span><span class="op">(</span></span>
-<span>  <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>  <span class="st">"https://api.example.com/me"</span>,</span>
-<span>  <span class="co"># Lets shinyOAuth attach the DPoP proof and handle nonce challenges</span></span>
-<span>  client <span class="op">=</span> <span class="va">client</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="token-binding-requirements-and-validation">Token binding requirements and validation<a class="anchor" aria-label="anchor" href="#token-binding-requirements-and-validation"></a>
-</h3>
-<p>Supplying a DPoP key makes <code>dpop_require_access_token</code>
-default to <code>TRUE</code>: the provider must return a DPoP access
-token. If binding data is visible, its <code>cnf[["jkt"]]</code> key
-thumbprint must match. For opaque tokens with no visible binding, enable
-<code>dpop_require_observed_cnf = TRUE</code> and arrange introspection
-if your deployment needs to confirm that binding locally.</p>
-<p>For certificate-bound tokens, the corresponding field is
-<code>cnf[["x5t#S256"]]</code>. The package checks it against the
-configured certificate before protected API and userinfo calls. A
-refreshed token needs fresh binding data from the new token or its
-introspection response; the old certificate thumbprint is not carried
-forward when the response omits it.</p>
-<p>Malformed token-binding data is rejected automatically.</p>
-<p>Binding data read from a JWT access token is observed payload data;
-shinyOAuth does not independently verify that access token’s signature.
-Introspection can provide confirmation from the provider. The API must
-enforce the binding too for a stolen token to be unusable without its
-key or certificate.</p>
-</div>
+<p>With a DPoP key configured, <code>dpop_require_access_token</code>
+defaults to <code>TRUE</code>. The provider must return a DPoP token,
+and any visible key binding must match. Use
+<code>dpop_require_observed_cnf = TRUE</code> if local confirmation is
+required; opaque tokens may need introspection to provide it.</p>
+<p>Certificate-bound tokens similarly need matching certificate data.
+Refresh must provide fresh binding data; shinyOAuth does not reuse the
+old certificate thumbprint when the new response omits it. Malformed
+binding data is rejected.</p>
+<p>Reading binding data from a JWT access token does not verify that
+token’s signature. Introspection can confirm it with the provider. The
+API must also enforce binding for a stolen token to be unusable without
+its key or certificate.</p>
 <div class="section level3">
 <h3 id="dpop-in-api-requests">DPoP in API requests<a class="anchor" aria-label="anchor" href="#dpop-in-api-requests"></a>
 </h3>
 <p><code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> and <code><a href="../reference/get_userinfo.html">get_userinfo()</a></code>
-handle a DPoP nonce challenge with one fresh-proof retry. Later requests
-to the same resource server can reuse its nonce; token-server and
-resource-server nonces are kept separate. Retries of eligible API
-requests generate fresh proofs.</p>
-<p>Automatic redirects are unsupported for DPoP: a redirected URL needs
-its own proof. Keep <code>follow_redirect = FALSE</code> for resource
-requests and call a trusted final URL directly. An explicit
-<code>TRUE</code>, or <code>NULL</code> inheriting an enabled
-<code>shinyOAuth.allow_redirect</code> option, raises an error before
-signing or sending the request. Keep that global option disabled for
-DPoP provider requests too.</p>
-<p>DPoP nonces must follow RFC 9449’s visible ASCII syntax. The package
-also applies a local 4096-byte limit to bound proof and cache sizes; the
-RFC itself sets no maximum length. Configure
-<code>options(shinyOAuth.dpop_nonce_max_bytes = 8192L)</code> for a
-provider issuing larger nonces (supported range: 1–65536 bytes). A
-response above the configured limit raises an explicit error without
-logging its nonce.</p>
-<p><code><a href="../reference/resource_req.html">resource_req()</a></code> only builds the request. A DPoP proof is
-tied to its HTTP method and base URL, so do not change those after
-construction. Literal <code>.</code> and <code>..</code> path segments
-are removed before signing and sending; escaped path segments such as
-<code>%2F</code> and <code>%2E</code> remain escaped. Supply query
-parameters through the helper’s <code>query</code> argument; external
-URL modifiers can decode reserved path characters and invalidate the
-proof. Use <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to manage nonce retries
-and bound both encoded and decoded response bodies. Direct
-<code>httr2::req_perform(resource_req(...))</code> uses httr2’s
-transport and does not provide shinyOAuth’s decoded-size guarantee;
-older libcurl versions limit only the encoded transfer. Prepared
-requests can be sent with
-<code>perform_resource_req(token, request, client = client)</code>.</p>
+handle a nonce challenge with one fresh-proof retry. Keep redirects
+disabled and use the trusted final URL: the proof is tied to the
+request’s method and address.</p>
+<p>Pass query parameters through <code>query</code> and avoid modifying
+a prepared request’s URL or method. Use
+<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to retain nonce handling and decoded
+response-size limits; direct <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code> uses
+httr2’s transport. If your provider issues unusually large nonces, see
+<code>shinyOAuth.dpop_nonce_max_bytes</code> in <a href="package-options.html">package options</a>.</p>
 </div>
-</div>
-<div class="section level2">
-<h2 id="browser-binding-and-deployment-boundary">Browser binding and deployment boundary<a class="anchor" aria-label="anchor" href="#browser-binding-and-deployment-boundary"></a>
-</h2>
-<p>Use HTTPS, complete login in the browser tab that started it, and
-keep the app on a separate hostname from untrusted services. Cookies are
-shared across ports on a hostname; cookie flags do not isolate those
-services. See <a href="https://www.rfc-editor.org/rfc/rfc6265.html#section-8.5" class="external-link">RFC 6265
-section 8.5</a>.</p>
-<p>shinyOAuth links each login to browser session storage and a
-temporary cookie. These are managed automatically and keep a callback
-tied to the browser that started it. Cookies, session storage and Web
-Crypto must remain available. Untrusted scripts running on the app’s own
-origin can access session storage, so normal protection against
-cross-site scripting is still needed.</p>
-<p>Private browser inputs are excluded from Shiny bookmarks. Do not copy
-them into custom bookmark values, URLs or logs. If you use
-<code><a href="../reference/prepare_call.html">prepare_call()</a></code> and <code><a href="../reference/handle_callback.html">handle_callback()</a></code> directly
-instead of the Shiny module, your integration must establish and protect
-its own browser binding.</p>
 </div>
 <div class="section level2">
 <h2 id="policy-identity-across-callbacks-and-retained-credentials">Policy identity across callbacks and retained credentials<a class="anchor" aria-label="anchor" href="#policy-identity-across-callbacks-and-retained-credentials"></a>
 </h2>
 <p>Pending logins and saved connections remember the client and provider
-settings under which they were created. A login cannot continue if its
-validation policy changes. The updated policy encoding invalidates older
-records, so users must sign in and connect again after upgrading. Update
-workers sharing keys and storage together.</p>
-<p>For a custom <code>userinfo_id_selector</code> that uses settings
-outside its function body, set
-<code>userinfo_id_selector_policy_id</code>, for example
-<code>"application:subject-field:v2"</code>. Keep those settings
-unchanged while a client is in use, and change the ID when the settings
-or helper behavior change. The Spotify helper records its
-<code>allow_legacy_id</code> choice automatically.</p>
+policies that created them. Policy changes invalidate those records.
+After upgrades that change the policy encoding, users must sign in
+again; update workers that share keys and storage together.</p>
+<p>If a custom <code>userinfo_id_selector</code> depends on external
+settings, assign a <code>userinfo_id_selector_policy_id</code> and
+change it when those settings or helper behavior change. Keep them
+stable while the client is in use. The Spotify helper tracks its
+<code>allow_legacy_id</code> setting automatically.</p>
 </div>
 <div class="section level2">
 <h2 id="issuer-comparison-and-transport-policy">Issuer comparison and transport policy<a class="anchor" aria-label="anchor" href="#issuer-comparison-and-transport-policy"></a>
 </h2>
-<p><code>compare_callback_issuer = TRUE</code> compares a supplied
-callback <code>iss</code> exactly against <code>provider@issuer</code>.
-Pair it with <code>enforce_callback_issuer = FALSE</code> when absence
-is permitted for your older provider. Required presence always implies
-comparison. An explicitly supplied legacy
-<code>enforce_callback_issuer = FALSE</code> retains complete opt-out
-unless comparison is explicitly enabled. Otherwise, issuer-configured
-clients enable comparison automatically.</p>
-<p>Participating clients require <code>iss</code> when the provider
-advertises RFC 9207 support. Validated JARM supplies its own issuer and
-does not require a redundant outer value. Multi-server applications must
-retain their selected issuer or distinct-route defense. The expected
-issuer comes from trusted configuration; it is not inferred from a token
-URL or normalized before comparison. See <a href="https://www.rfc-editor.org/rfc/rfc9207.html#section-2.4" class="external-link">RFC 9207
-section 2.4</a>.</p>
+<p>Keep callback issuer checks enabled.
+<code>compare_callback_issuer = TRUE</code> compares <code>iss</code>
+exactly with the trusted <code>provider@issuer</code>;
+<code>enforce_callback_issuer</code> also requires it to be present.
+Providers advertising RFC 9207 support require the identifier, while
+validated JARM supplies its own issuer. Apps using several providers
+still need issuer identification or distinct callback routes.</p>
+<p>For legacy providers that omit <code>iss</code>, configure comparison
+and presence policy explicitly rather than disabling checks to bypass an
+error. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html">oauth_client()</a>.</p>
 <p>Package HTTPS requests require TLS 1.2 or later by default.
 <code>options(shinyOAuth.tls_min_version = "1.3")</code> selects a
-higher minimum; <code>"1.2"</code> or <code>NULL</code> restores the
-default. Configure it before discovery or login. The policy preserves
-stronger supplied minima, compatible maxima and custom CA roots. It also
-applies in async workers and participates in pending-login policy
-checks. The checker assesses this policy and backend support, without
-observing an actual handshake. Browser/proxy hops and future resource
-requests need separate validation. Details and constraints are in <a href="package-options.html#http-settings-timeout-retries-user-agent">package
+higher minimum; set it before discovery or login. Browser and proxy TLS
+need separate configuration. See <a href="package-options.html#http-settings-timeout-retries-user-agent">package
 options</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="callback-pages-and-application-scripts">Callback pages and application scripts<a class="anchor" aria-label="anchor" href="#callback-pages-and-application-scripts"></a>
 </h2>
 <p>Use <code>oauth_ui(ui, id = "auth", client = client)</code> for query
-and query-JARM responses. The ID and client must match
-<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The wrapper validates callbacks and
-stores sealed, short-lived responses, then redirects to a one-time
-bridge URL before invoking the application UI. State remains single-use
-and browser-bound. Missing bridge configuration rejects raw callbacks;
-existing <code>oauth_ui(ui)</code> setups must add <code>id</code> and
-<code>client</code>.</p>
-<p>Callback and HTML responses send
-<code>Cache-Control: no-store</code>, <code>Pragma: no-cache</code>, and
-<code>Referrer-Policy: no-referrer</code>. These do not remove upstream
-access logs: configure proxies and hosting logs to omit callback
-queries. Keep third-party scripts off any unsanitized callback page,
-including when using <code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code> with a custom HTTP
-integration. Register fixed tenant or routing query parameters in the
-redirect URI; unregistered inbound parameters are discarded on
-continuation. For trusted HTTPS-terminating proxies, use
-<code>request_uri_resolver</code> with the same trust checks as
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
+and query-JARM callbacks, with the same ID and client as
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code>. The wrapper processes callbacks
+before loading application UI and sets privacy headers.</p>
+<p>Configure hosting and proxy logs to omit callback queries; response
+headers cannot remove upstream logs. Keep third-party scripts off
+unsanitized callback pages, including custom integrations using
+<code><a href="../reference/use_shinyOAuth.html">use_shinyOAuth()</a></code>.</p>
+<p>Register fixed routing query parameters in the redirect URI;
+continuation discards unregistered inbound parameters. Behind a trusted
+HTTPS proxy, configure <code>request_uri_resolver</code> using the trust
+checks described for <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
 </div>
 <div class="section level2">
 <h2 id="provider-key-set-validation">Provider key-set validation<a class="anchor" aria-label="anchor" href="#provider-key-set-validation"></a>
 </h2>
-<p>shinyOAuth validates the whole fetched JWKS before selecting a key by
-<code>kid</code>, usage, operations, or algorithm. A malformed RSA, EC,
-or OKP public entry can therefore reject the set even when another entry
-would validate the token. This is a deliberately stricter availability
-policy than the recommendation to ignore individual unusable keys in <a href="https://www.rfc-editor.org/rfc/rfc7517.html#section-5" class="external-link">RFC 7517
-section 5</a>. Providers must publish structurally valid public entries
-throughout key rotation; an unrelated broken entry can interrupt login,
-signed UserInfo, JARM, or Request Object encryption until the provider
-repairs its JWKS.</p>
-<p>Unknown key types are ignored for selection after common structural
-checks. Malformed set structure, duplicate JSON members, and secret key
-material are rejected. With pinning mode <code>"any"</code>, at least
-one supported public key must match a configured thumbprint, and
-selected keys must be pinned. Mode <code>"all"</code> requires every
-RSA, EC, and OKP entry in the set to have a computable, configured
-thumbprint, including entries that would later be filtered out. Neither
-mode skips the whole-set structural checks or the selected key’s
-strength checks.</p>
-<p>Each RSA key must use one verification algorithm, even if the
-provider publishes it under several key IDs (<code>kid</code>).
-Conflicting declarations reject the key set before selection, including
-pinned sets. An alias without <code>alg</code> follows an explicit
-declaration for the same public key. With no declaration, the only
-allowed RSA algorithm is used; if several are allowed, the default is
-<code>RS256</code>. To use an unlabelled key with <code>RS384</code> or
-<code>RS512</code>, configure only that RSA algorithm.</p>
-<p>The same rule applies to reused RSA signing keys for client
-authentication, JAR, DPoP and endpoint overrides. Use matching
-algorithms or separate keys. For an algorithm migration, rotate the key
-and update related settings and pins; changing only <code>kid</code>
-does not change the key. Changed signing settings invalidate pending
-logins and saved connections. Shared key caches follow their normal
-expiry; clear them during a coordinated key change if immediate adoption
-is needed.</p>
+<p>shinyOAuth checks the entire provider key set before selecting a
+signing key. A malformed entry can therefore interrupt login or signed
+responses even if another key would work. Providers must publish valid
+entries throughout key rotation; see <a href="https://www.rfc-editor.org/rfc/rfc7517.html#section-5" class="external-link">RFC 7517
+section 5</a> for the standard’s less restrictive recommendation.</p>
+<p>Each RSA key must use one signing algorithm, including when reused
+under different key IDs. Rotate the key when changing algorithms, update
+related pins and settings, and coordinate workers and caches. Changing
+only <code>kid</code> does not change the key. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html">oauth_provider()</a>
+for pinning and key-selection settings.</p>
 </div>
 <div class="section level2">
 <h2 id="trusted-id-token-audiences">Trusted ID-token audiences<a class="anchor" aria-label="anchor" href="#trusted-id-token-audiences"></a>
@@ -848,34 +716,47 @@ and invalid signatures are rejected.</p>
 <div class="section level2">
 <h2 id="signature-and-encryption-support">Signature and encryption support<a class="anchor" aria-label="anchor" href="#signature-and-encryption-support"></a>
 </h2>
-<p>For outgoing private-key client assertions, JAR, and DPoP, signing
-supports <code>RS256</code>, <code>RS384</code>, <code>ES256</code>,
-<code>ES384</code>, <code>ES512</code>, and both <code>EdDSA</code> and
-<code>Ed25519</code> with Ed25519 keys. Ed25519 accepts an OpenSSL
-private key or PEM; DPoP embeds only its public OKP JWK. Algorithm
-inference and explicit choices remain constrained by provider metadata.
-Secret-based assertions and JAR support <code>HS256</code>,
-<code>HS384</code>, and <code>HS512</code>. RSA continues to default to
-RS256; choose <code>client_assertion_alg = "RS384"</code> explicitly for
-a registration requiring it. RS384 uses SHA-384 with RSASSA-PKCS1-v1_5
-and requires an RSA key of at least 2048 bits, as specified in <a href="https://www.rfc-editor.org/rfc/rfc7518.html#section-3.3" class="external-link">RFC 7518
-section 3.3</a>. RSA-PSS and Ed448 are not supported for outgoing
-signatures. Incoming signature policies are separate; see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html"><code>oauth_provider()</code></a>
-and the <code>jarm_*</code> arguments in <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html"><code>oauth_client()</code></a>.</p>
-<p>Request Object encryption and JARM decryption support
+<p>Choose an algorithm supported by both the provider and shinyOAuth.
+The outgoing signing defaults depend on the key; RSA defaults to
+<code>RS256</code>, so select
+<code>client_assertion_alg = "RS384"</code> explicitly when the
+registration requires it.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Use</th>
+<th>Supported algorithms</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Private-key assertions, JAR and DPoP</td>
+<td>
+<code>RS256</code>, <code>RS384</code>, <code>ES256</code>,
+<code>ES384</code>, <code>ES512</code>, and <code>EdDSA</code> or
+<code>Ed25519</code> with Ed25519 keys.</td>
+</tr>
+<tr class="even">
+<td>Secret-based assertions and JAR</td>
+<td>
+<code>HS256</code>, <code>HS384</code>, <code>HS512</code>.</td>
+</tr>
+<tr class="odd">
+<td>Request Object encryption and JARM decryption</td>
+<td>
 <code>RSA-OAEP</code> with <code>A128CBC-HS256</code>,
-<code>A192CBC-HS384</code>, or <code>A256CBC-HS512</code>. This does not
-imply support for encrypted ID tokens or encrypted userinfo, which are
-rejected.</p>
-<p>The R <code>openssl</code> API currently exposes neither OAEP digest
-selection nor RSA-PSS padding options. Its GCM functions do not accept
-the additional authenticated data needed to authenticate JWE protected
-headers. Consequently, <code>RSA-OAEP-256</code>,
-<code>PS256/384/512</code>, and <code>A128/192/256GCM</code> JWE modes
-remain unsupported and fail closed; provider metadata never causes a
-fallback to another algorithm. These are backend interoperability
-limits, not interchangeable names for the supported modes. See the <a href="https://jeroen.r-universe.dev/openssl/doc/manual.html" class="external-link">OpenSSL R
-API</a>.</p>
+<code>A192CBC-HS384</code> or <code>A256CBC-HS512</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Outgoing RSA-PSS and Ed448 signatures are unsupported. For
+encryption, <code>RSA-OAEP-256</code> and GCM JWE modes are unsupported,
+as are encrypted ID tokens and encrypted UserInfo. Unsupported metadata
+does not trigger a fallback algorithm.</p>
+<p>Incoming signature policies are separate. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html">oauth_provider()</a>
+and the <code>jarm_*</code> settings in <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html">oauth_client()</a>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

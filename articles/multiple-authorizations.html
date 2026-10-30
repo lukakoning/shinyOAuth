@@ -72,52 +72,46 @@
 
     
     
-<p>Users can connect several services or accounts in one Shiny app,
-choose which saved authorization to use for a request, and disconnect
-each one separately. A dashboard can combine data from several APIs, or
-let users work with several accounts at the same service.</p>
-<p>This vignette builds an app that connects to two services and reads
-data from either one. It uses browser retention to keep both
-authorizations available when the user returns from a provider’s login
-page.</p>
+<div class="section level2">
+<h2 id="why-keep-several-authorizations">Why keep several authorizations?<a class="anchor" aria-label="anchor" href="#why-keep-several-authorizations"></a>
+</h2>
+<p>A user may want to connect a calendar and a records service, or use
+two accounts at the same service. Each authorization gives the app
+permission to access data. The connection manager saves these
+authorizations so users can choose which one to use and disconnect them
+separately.</p>
+<p>Login redirects leave the current Shiny session. Browser retention
+lets the app find the saved authorizations when the user returns, so
+connecting a second service does not discard the first.</p>
+<p>For one login per Shiny session, start with <a href="usage.html">Usage</a>. For one login that needs different tokens
+for several APIs, see <a href="token-targets.html">Token
+targets</a>.</p>
+</div>
 <div class="section level2">
 <h2 id="client-configuration-and-connections">Client configuration and connections<a class="anchor" aria-label="anchor" href="#client-configuration-and-connections"></a>
 </h2>
-<p>Create an <code>OAuthClient</code> for each service with its
-registration details, scopes and API addresses. Put the clients in a
-named list and pass it to <code><a href="../reference/oauth_connections.html">oauth_connections()</a></code>. Your app
-uses those names to choose which service to connect when a user clicks a
-Connect button.</p>
-<p>Each successful authorization creates a separate connection. Inside
-<code>server()</code>, retrieve that <code>OAuthConnection</code> to
-make requests with its current credentials.</p>
-<p>One client can have several connections. Connecting A again creates
-another authorization alongside the first. Account selection happens at
-the provider; it may reuse the account already signed in there.</p>
-<p>A provider may also return the same refresh credential for both
-connections. The manager queues overlapping asynchronous refreshes for
-that credential. If it rotates or its refresh outcome is uncertain,
-other connections holding the old credential become uncertain and
-require authorization again. The manager keeps their account identity
-and permissions separate. Successful revocation also stops use of known
-copies of the revoked credential within that manager.</p>
-<p>For apps that need one authorization per Shiny session, see the
-<code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> and <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> example
-in <a href="usage.html">Usage</a>.</p>
+<p>A client describes an app registration: the service, credentials,
+requested permissions and allowed API addresses. A connection represents
+one successful authorization using that client. The manager holds the
+clients and saved connections; your server selects a connection when
+making a request.</p>
+<p>One client can have several connections. Connecting the same service
+again adds another authorization; the provider decides whether to show
+an account chooser or reuse the account already signed in there.</p>
 </div>
 <div class="section level2">
 <h2 id="register-two-clients">Register two clients<a class="anchor" aria-label="anchor" href="#register-two-clients"></a>
 </h2>
-<p>This template uses two fictional services. Replace their endpoints,
-credentials, scope names and API path with values from your providers’
-documentation. It assumes authorization code flow with S256 PKCE and
-confidential clients using HTTP Basic client authentication. The
-providers must support that registration.</p>
-<p>Register these exact redirect URIs with the respective services:</p>
+<p>This template connects two fictional services and reads records from
+either one. Replace the endpoints, credentials, scope names and API
+paths with your providers’ values. The example uses shared-secret client
+authentication and PKCE; confirm that setup with each provider.</p>
+<p>Register these callback addresses, where the browser returns after
+login:</p>
 <table class="table">
 <thead><tr class="header">
 <th>Service</th>
-<th>Redirect URI</th>
+<th>Local callback URL</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
@@ -130,14 +124,11 @@ providers must support that registration.</p>
 </tr>
 </tbody>
 </table>
-<p>These loopback HTTP addresses are for local development, if your
-providers permit them. Use your public HTTPS origin and corresponding
-registered callbacks when deploying, and omit the owner’s
-<code>allow_http_loopback</code> exception. Store the two client IDs and
-secrets in the environment variables used below, outside source
-control.</p>
-<p>Copy the next three code blocks, in order, into
-<code>app.R</code>.</p>
+<p>Use these HTTP addresses only for local development if your providers
+permit them. For deployment, register matching public HTTPS URLs and
+remove <code>allow_http_loopback</code>. Store IDs and secrets in the
+environment variables below. Copy the next three code blocks into
+<code>app.R</code>, in order.</p>
 <div class="section level3">
 <h3 id="configure-clients-outside-server">1. Configure clients outside <code>server()</code><a class="anchor" aria-label="anchor" href="#configure-clients-outside-server"></a>
 </h3>
@@ -191,18 +182,13 @@ control.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">clients</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>a <span class="op">=</span> <span class="va">client_a</span>, b <span class="op">=</span> <span class="va">client_b</span><span class="op">)</span></span></code></pre></div>
-<p><code>a</code> and <code>b</code> are app-local selectors,
-independent of the registered <code>client_id</code>. <code>api</code>
-names an approved resource within each client. For connection A,
-<code>[["request"]]("api", "records")</code> means
+<p>The names <code>a</code> and <code>b</code> let your app choose a
+service. Within either client, <code>api</code> names its approved API
+base: requesting <code>"api", "records"</code> on connection A calls
 <code>https://api.a.example/v1/records</code>.</p>
-<p>The default callback policy gives each client a distinct route.
-Supply the complete callback vector to each client, even though each
-uses its own <code>redirect_uri</code>. The manager verifies that each
-client’s declared set includes all of its callback routes, comparing
-canonical origins and paths. Additional routes used elsewhere in the
-application may also be included. Shared callback routes are an advanced
-alternative documented under <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html">oauth_connections()</a>.</p>
+<p>Each service has its own callback route so the app can distinguish
+returning responses. Give each client the complete
+<code>callbacks</code> vector.</p>
 </div>
 <div class="section level3">
 <h3 id="keep-authorizations-when-the-browser-returns">2. Keep authorizations when the browser returns<a class="anchor" aria-label="anchor" href="#keep-authorizations-when-the-browser-returns"></a>
@@ -223,42 +209,18 @@ alternative documented under <a href="https://lukakoning.github.io/shinyOAuth/re
 <span>  store <span class="op">=</span> <span class="fu"><a href="../reference/oauth_connection_store_memory.html">oauth_connection_store_memory</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  keys <span class="op">=</span> <span class="va">keys</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Browser retention uses an HttpOnly cookie containing an opaque local
-owner ID. Tokens stay encrypted in the R process. The cookie associates
-saved connections with this browser; it does not identify a person or
-log them into either service.</p>
-<p>Without <code>retention = "browser"</code>, the default is
-<code>"shiny"</code>: existing connections are discarded when that Shiny
-session ends. Configuring multiple clients alone does not preserve A
-while the browser goes away to authorize B.</p>
-<p>Keep the manager, store and keys outside <code>server()</code> so
-returning Shiny sessions use the same configuration. This memory store
-supports one R process and does not survive an R restart. Stable keys
-alone do not make it persistent or share records between workers.
-Browser ownership also has idle and absolute expiry limits. Automatic
-refresh and API reads do not reset inactivity. Call
-<code>auth[["touch"]]()</code> from a user input event handler, as the
-Read handler below does, to count an application action as activity.
-Explicit refresh also counts as activity; the absolute expiry remains
-fixed. For an app with its own verified account login, see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html">oauth_account_owner()</a>
-and <code>retention = "account"</code>.</p>
-<p>Size the owner registry and credential store separately. Both owner
-factories accept <code>max_entries</code> (default 1,000) per manager.
-Retained browser entries count browsers that successfully authorize a
-service. Recent visitors occupy a separate provisional pool with the
-same limit; entries without a pending authorization may be replaced and
-expire after at most five minutes. Pending authorizations protect their
-browser entries until cancellation or transaction expiry, subject to the
-owner’s idle and absolute limits. If all provisional entries are
-protected, new visitors are rejected. Account entries include logged-out
-login generations until their reauthentication deadline. A full retained
-registry rejects new retained owners while preserving existing retained
-sessions and retirement records.
-<code>oauth_connection_store_memory(max_entries = ...)</code> controls a
-different limit: successful authorization transactions occupy capacity
-for the store’s full <code>max_age</code>, including after a connection
-is disconnected. Neither limit measures only the number of currently
-open Shiny sessions.</p>
+<p>Tokens stay encrypted on the server, while a cookie associates the
+saved connections with this browser. The cookie does not identify a
+person. Without browser retention, connections end with their Shiny
+session.</p>
+<p>Create the manager, store and keys outside <code>server()</code>.
+This memory store supports one R process and loses records on restart.
+For deployment, load stable secret keys; keys alone do not make the
+memory store persistent.</p>
+<p>Saved connections also have inactivity and absolute expiry limits.
+Record user actions with <code>auth[["touch"]]()</code>, as the Read
+handler below does. Automatic refreshes and reads do not count as user
+activity.</p>
 </div>
 <div class="section level3">
 <h3 id="select-a-connection-and-make-a-request">3. Select a connection and make a request<a class="anchor" aria-label="anchor" href="#select-a-connection-and-make-a-request"></a>
@@ -335,29 +297,23 @@ open Shiny sessions.</p>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span>,</span>
 <span>  host <span class="op">=</span> <span class="st">"127.0.0.1"</span>, port <span class="op">=</span> <span class="fl">8100</span>, launch.browser <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>Open <code>http://127.0.0.1:8100</code> in a regular browser. Connect
-A, return, then connect B. Both authorizations should appear in the
-selector. Select each and read its records. Disconnect removes the
-selected local connection; provider revocation may affect other
-authorizations as explained below. The numeric suffix only distinguishes
-rows in this demo; use the opaque <code>connection_id</code> as the
-stable key.</p>
-<p>The UI wrapper handles callback pages; <code>uiPattern = ".*"</code>
-lets Shiny serve those paths. Use the same module ID
-(<code>"services"</code>) in UI and server. Deploying under a subpath or
-behind a proxy can also require <code>app_base_path</code> and a trusted
-<code>request_uri_resolver</code>; see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html">oauth_connections_ui()</a>.</p>
+A, then B. Select each authorization and read its records. The output
+checks the connection ID so results from a previous selection do not
+remain visible.</p>
+<p>Keep the same module ID in UI and server. The wrapper handles
+callbacks and <code>uiPattern = ".*"</code> allows their routes. Use the
+opaque connection ID as the selection key; the numeric label only
+distinguishes rows in this demo.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="requests-permissions-and-refresh">Requests, permissions and refresh<a class="anchor" aria-label="anchor" href="#requests-permissions-and-refresh"></a>
 </h2>
-<p>For optional writes, first configure the applicable client with
-<code>scopes = c("records.read", "records.write")</code> and obtain a
-new authorization. Replace these example permissions with the provider’s
-actual scope names. Add
-<code>actionButton("write", "Update selected record")</code> to the UI
-and place this observer inside <code>server()</code>, after
-<code>selected_connection</code> is defined:</p>
+<p>For an optional write action, request
+<code>scopes = c("records.read", "records.write")</code> on the
+applicable client and obtain a new authorization. Add an Update button
+to the UI, then use an observer inside <code>server()</code> after
+<code>selected_connection</code>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"write"</span><span class="op">]</span><span class="op">]</span>, <span class="op">{</span></span>
 <span>  <span class="va">auth</span><span class="op">[[</span><span class="st">"touch"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span></span>
@@ -376,104 +332,72 @@ and place this observer inside <code>server()</code>, after
 <span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/showNotification.html" class="external-link">showNotification</a></span><span class="op">(</span><span class="st">"Could not update the record."</span>, type <span class="op">=</span> <span class="st">"error"</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p><code>configure</code> adds a body or application headers to the
-unauthenticated request; <code><a href="https://httr2.r-lib.org/reference/req_body.html" class="external-link">httr2::req_body_form()</a></code> and
-<code><a href="https://httr2.r-lib.org/reference/req_body.html" class="external-link">httr2::req_body_raw()</a></code> are also supported. The connection
-retains control of its destination, authentication and redirect policy.
-The write scope is optional for connecting, but required for this
-action.</p>
-<p><code>OAuthConnection[["request"]]()</code> calls
-<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> with the selected connection’s
-current credentials, after checking the approved API base and required
-permissions. For a single module with an existing token reactive, use
-<code>oauth_connection(client, reactive(auth[["token"]]))</code> to add
-these checks without retaining credentials across navigation.</p>
-<p><code>resource_bases</code> limits destinations, including absolute
-pagination links and their base paths. It does not automatically send
-OAuth’s <code>resource</code> parameter or prove the audience of an
-opaque token; configure resource indicators explicitly when your
-provider requires them. See <a href="https://www.rfc-editor.org/rfc/rfc8707.html" class="external-link">RFC 8707</a>.</p>
-<p><code>required_scopes</code> on the client is the minimum for usable
-access. Requesting additional optional scopes can produce a
-<code>limited</code> connection if only some are granted. Supply an
-operation’s additional permissions in <code>[["request"]]()</code>;
-ordinary OAuth scope names are compared literally, and permissions are
-not inferred from the API path. A usable connection does not guarantee
-the API will accept every request.</p>
-<p>If the provider issues a refresh token, the manager attempts refresh
-at expiry; <code>refresh_proactively = TRUE</code> on
-<code><a href="../reference/oauth_connections_server.html">oauth_connections_server()</a></code> starts earlier. Explicit refresh
-is also available inside a server observer:</p>
+<p>The operation requires <code>records.write</code> even when basic
+read access is still usable. <code>configure</code> adds the request
+body and application headers; the connection keeps control of the
+destination and authentication. The service still decides whether the
+user may change that particular record.</p>
+<p>If a refresh token is available, the manager attempts refresh at
+expiry. <code>refresh_proactively = TRUE</code> starts earlier. An
+optional Refresh button can run:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"refresh"</span><span class="op">]</span><span class="op">]</span>, <span class="op">{</span></span>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="fu">selected_connection</span><span class="op">(</span><span class="op">)</span><span class="op">[[</span><span class="st">"refresh"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span>, error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/showNotification.html" class="external-link">showNotification</a></span><span class="op">(</span><span class="st">"Could not refresh. Connect again if access has ended."</span>, type <span class="op">=</span> <span class="st">"error"</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Add <code>actionButton("refresh", "Refresh selected")</code> to the
-UI to use this snippet. The example uses the default synchronous mode.
-<code>async = TRUE</code> needs worker setup and promise handling for
-explicit refresh; see <a href="usage.html#asynchronous-execution">Usage</a>.</p>
-<p>Retention itself does not request a refresh token. OAuth refresh
-cannot expand the authorization’s scope (<a href="https://www.rfc-editor.org/rfc/rfc6749.html#section-6" class="external-link">RFC 6749,
-section 6</a>). <code>[["refresh"]](scopes = ...)</code> can
-deliberately narrow a managed connection’s accepted permissions; getting
-broader access again requires a new authorization.</p>
-<p>Disconnect immediately removes local usability. Remote token
-revocation is best effort and reported separately in the return value.
-This template does not configure revocation endpoints, so add each
-provider’s documented <code>revocation_url</code> if supported.
-<code>logout()</code> also ends this local owner session; it does not
-sign the person out of the external services or your own account login
-system.</p>
-<p>Separate connection IDs represent separate local records. A provider
-can reuse the same upstream grant for repeated authorizations and
-invalidate all related credentials when one is revoked; OAuth explicitly
-permits this behavior (<a href="https://www.rfc-editor.org/rfc/rfc7009.html#section-2.1" class="external-link">RFC 7009,
-section 2.1</a>). For example, Google’s documented revocation can affect
-all scopes granted to a project and invalidate related tokens (<a href="https://developers.google.com/identity/protocols/oauth2/web-server#tokenrevoke" class="external-link">Google’s
-revocation policy</a>). Repeated consent, distinct token strings, and
-local connection IDs do not prove independent upstream grants.</p>
-<p>The default <code>auth[["disconnect"]](id)</code> requests remote
-revocation. To remove only the local connection, use
-<code>auth[["disconnect"]](id, revoke = FALSE)</code>; those removed
-credentials remain valid remotely until expiry or provider-side
-revocation. Choose this deliberately using the provider’s documented
-behavior. Sibling connections can still report <code>active</code>
-locally after remote revocation: always handle API authorization
-failures and offer a new authorization.</p>
+<p>Add <code>actionButton("refresh", "Refresh selected")</code> to use
+it. For background refresh, first follow <a href="usage.html#asynchronous-execution">the async setup</a>. Saving an
+authorization does not itself request a refresh token.</p>
+</div>
+<div class="section level2">
+<h2 id="disconnecting-a-service">Disconnecting a service<a class="anchor" aria-label="anchor" href="#disconnecting-a-service"></a>
+</h2>
+<p><code>auth[["disconnect"]](id)</code> removes the selected local
+connection and attempts remote revocation when configured.
+<code>auth[["logout"]]()</code> disconnects all and ends this local
+owner session; it does not sign the user out of the external services.
+Add each provider’s documented <code>revocation_url</code> if revocation
+is supported.</p>
+<p>A provider can reuse one upstream grant for several local
+connections, so revoking one may affect the others. Handle API
+authorization failures even if a sibling connection still looks active.
+Use <code>revoke = FALSE</code> only when you deliberately want local
+removal while remote credentials remain valid.</p>
 </div>
 <div class="section level2">
 <h2 id="deployment-notes">Deployment notes<a class="anchor" aria-label="anchor" href="#deployment-notes"></a>
 </h2>
-<p>Keep this app on a separate hostname from untrusted services. Browser
-cookies are shared across ports on a hostname, so another service
-receiving the owner cookie could reuse it. Separate cookie names do not
-isolate those services. See <a href="advanced-security.html#browser-binding-and-deployment-boundary">advanced
-security</a> for the browser and hosting requirements.</p>
+<p>Keep the app on a separate hostname from untrusted services, because
+cookies are shared across ports. The example’s browser retention is for
+one R process; check <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html">oauth_connections()</a>
+and <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html">oauth_browser_owner()</a>
+before choosing retention, store capacity and expiry settings for
+deployment.</p>
+<p>If your app has its own verified account login,
+<code>retention = "account"</code> with
+<code><a href="../reference/oauth_browser_owner.html">oauth_account_owner()</a></code> can associate authorizations with
+that account. Browser retention alone does not make that association.
+For subpaths and trusted proxies, see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html">oauth_connections_ui()</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="keep-an-ordinary-oidc-login-alongside-smart-connections">Keep an ordinary OIDC login alongside SMART connections<a class="anchor" aria-label="anchor" href="#keep-an-ordinary-oidc-login-alongside-smart-connections"></a>
 </h2>
-<p>For an OIDC client inside the manager, select validated identity
-explicitly in the owning server session:</p>
+<p>An ordinary OIDC login can identify the app user while the manager
+holds separate authorizations for access to hospital records.</p>
+<p>For an OIDC client already inside the manager, read selected
+validated identity fields in the owning server session:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">identity</span> <span class="op">&lt;-</span> <span class="fu">selected_connection</span><span class="op">(</span><span class="op">)</span><span class="op">[[</span><span class="st">"identity"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span>userinfo <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"name"</span>, <span class="st">"email"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># identity[["id_token_claims"]] contains only iss and sub by default.</span></span>
 <span><span class="co"># identity[["userinfo"]] contains only the selected, previously fetched fields.</span></span></code></pre></div>
-<p>This requires a usable connection with <code>openid</code> and a
-validated ID token. UserInfo fields are returned only when its
-<code>sub</code> matches that token. Configure the provider’s UserInfo
-endpoint and required profile scopes if those fields are needed; the
-accessor does not fetch them. Treat the returned data as sensitive.
-Identity stays out of connection summaries and printing, and raw
-credentials are never returned. These snapshots can predate the latest
-OAuth refresh; they do not establish fresh login or an account-retention
-owner.</p>
-<p>Use one callback wrapper with <code>additional_clients</code> for
-ordinary modules. Given your existing <code>login_provider</code> and a
-reviewed SMART discovery snapshot <code>site</code>, configure both
-registered callbacks with the same multi-server defense:</p>
+<p>This reads previously fetched identity data; it does not perform a
+fresh login or establish the account used for retention. See <a href="https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.html">the
+connection reference</a>.</p>
+<p>To keep an ordinary login module outside the manager, use one
+callback wrapper with <code>additional_clients</code>. Given an existing
+<code>login_provider</code> and a reviewed SMART discovery result
+<code>site</code>:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">callbacks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://app.example/login/callback"</span>, <span class="st">"https://app.example/fhir/callback"</span><span class="op">)</span></span>
 <span><span class="va">login_client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_client.html">oauth_client</a></span><span class="op">(</span><span class="va">login_provider</span>, <span class="st">"registered-login-app"</span>,</span>
@@ -498,21 +422,13 @@ registered callbacks with the same multi-server defense:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"connect_fhir"</span><span class="op">]</span><span class="op">]</span>, <span class="va">health</span><span class="op">[[</span><span class="st">"connect"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="st">"fhir"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
-<p>Supply the existing registration’s secret or key to
-<code>login_client</code> as required. <code>keys</code> is the
-deployment key configuration described above. The additional client
-names are ordinary module IDs, without the manager namespace. Both GET
-and form-post callbacks are supported; select each registered response
-mode on its client. Additional clients need distinct routes from managed
-clients.</p>
-<p>This preserves the ordinary module’s token and logout API. The
-manager neither stores that login token nor changes its lifecycle. A
-full browser navigation still ends the ordinary Shiny session; retain
-application login through your existing application-session mechanism if
-needed. Disable automatic login redirects while processing other
-authorizations, as in this example. Browser ownership for retained SMART
-grants is independent of OIDC identity; use account retention with a
-trusted local-account resolver when that binding is required.</p>
+<p>Supply credentials for the login registration and the deployment
+<code>keys</code> described above. Keep callbacks distinct and automatic
+login disabled while processing other authorizations.</p>
+<p>Full navigation ends the ordinary module’s Shiny session, and the
+manager does not retain that login. Use your application’s session
+mechanism if it must persist. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html">oauth_connections_ui()</a>
+for callback configuration details.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

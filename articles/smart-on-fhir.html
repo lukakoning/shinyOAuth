@@ -72,66 +72,46 @@
 
     
     
-<p>Use SMART on FHIR to request access to healthcare data from a Shiny
-app. Your app can read records from a hospital, open from an electronic
-health record (EHR) with a patient already selected, and keep separate
-authorizations for different healthcare providers.</p>
-<p>This vignette builds an app that connects to a hospital and reads a
-Patient resource. It also shows how to search for Observations, identify
-the logged-in user, and configure the app to launch from an EHR.</p>
 <div class="section level2">
 <h2 id="fhir-and-smart-on-fhir">FHIR and SMART on FHIR<a class="anchor" aria-label="anchor" href="#fhir-and-smart-on-fhir"></a>
 </h2>
-<p>FHIR defines healthcare data structures and ways to exchange them. A
+<p>FHIR describes healthcare data and how apps exchange it. A
 <code>Patient</code> resource describes a patient; an
-<code>Observation</code> can describe a clinical measurement. An address
-such as <code>https://ehr.example/fhir/R4</code> is the base of a FHIR
-API. See the <a href="https://hl7.org/fhir/R4/overview.html" class="external-link">FHIR
-overview</a>.</p>
-<p>OAuth lets an app obtain permission to call an API. SMART on FHIR
-specifies how to use OAuth with FHIR: discover authorization endpoints,
-request healthcare permissions, identify the intended FHIR server, and
-obtain launch context such as the selected patient. The EHR can open the
-app, or the person can open it independently. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html" class="external-link">SMART
+<code>Observation</code> can describe a measurement. A FHIR API is the
+service your app calls to read or search those records.</p>
+<p>SMART on FHIR defines how an app requests permission to use that API
+and receives context such as the selected patient. It also tells the app
+where users sign in. A person can open the app directly, or an
+electronic health record (EHR) can launch it with a chart already
+selected.</p>
+<p>Use this guide to connect a hospital and read a patient’s record.
+Start with the standalone example, then add searches, user identity or
+EHR launch as needed. For the underlying standards, see the <a href="https://hl7.org/fhir/R4/overview.html" class="external-link">FHIR overview</a> and <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html" class="external-link">SMART
 App Launch</a>.</p>
-<p>The example below uses <code><a href="../reference/smart_discover.html">smart_discover()</a></code> to read the
-server’s SMART metadata and <code><a href="../reference/smart_client.html">smart_client()</a></code> to configure
-your registered app. After the user authorizes access,
-<code><a href="../reference/smart_context.html">smart_patient()</a></code> reads the selected patient’s record using
-the saved connection.</p>
-<p>To connect several healthcare providers, pass a named list of clients
-to the connection manager, as shown in <a href="multiple-authorizations.html">Keep and use multiple OAuth
-authorizations</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="before-running-the-example">Before running the example<a class="anchor" aria-label="anchor" href="#before-running-the-example"></a>
 </h2>
-<p>Register the app with the chosen server. Obtain its exact FHIR base,
-client ID, authentication method, and permitted scopes. This example
-uses a standalone confidential client with a shared secret
-(<code>token_auth_style = "header"</code>). A server-side Shiny
-deployment can keep that secret outside the browser.</p>
-<p>The example’s <code>.example</code> endpoints are placeholders, not a
-running sandbox. Replace them with your approved server’s addresses.
-Register <code>http://127.0.0.1:8100/callback/fhir</code> for local
-development if your provider permits loopback HTTP, and set
-<code>SMART_CLIENT_ID</code> and <code>SMART_CLIENT_SECRET</code> in
-your R environment. Use HTTPS and matching registered URLs for
-deployment, and omit both <code>allow_http_loopback</code> exceptions
-shown below.</p>
-<blockquote>
-<p>Posit Connect / Connect Cloud: Test login at the direct app URL in a
-new browser tab, rather than the dashboard preview. See the <a href="usage.html#posit-connect-and-connect-cloud">deployment
-instructions</a>.</p>
-</blockquote>
-<p>shinyOAuth checks the server’s advertised SMART App Launch STU 2.2
-support. You still need to register the app and obtain the permissions
-from that server.</p>
-<p>Copy the next three code blocks, in order, into
-<code>app.R</code>.</p>
+<p>Register the app with the server you intend to use. Obtain its FHIR
+base URL, client ID, authentication method and permitted scopes. Scopes
+are permission names: this example needs permission to read the selected
+Patient and optionally search Observations. It uses a shared secret kept
+on the Shiny server.</p>
+<p>The <code>.example</code> addresses below are placeholders. Replace
+them with approved server addresses and register
+<code>http://127.0.0.1:8100/callback/fhir</code> for local development
+if the provider permits it. Set <code>SMART_CLIENT_ID</code> and
+<code>SMART_CLIENT_SECRET</code> in your R environment.</p>
+<p>For deployment, register matching HTTPS URLs and remove both
+<code>allow_http_loopback</code> exceptions. On Posit Connect or Connect
+Cloud, test at the <a href="usage.html#posit-connect-and-connect-cloud">direct app URL</a>.
+Copy the next three code blocks into <code>app.R</code>, in order.</p>
 <div class="section level3">
 <h3 id="discover-the-server-and-configure-the-client">1. Discover the server and configure the client<a class="anchor" aria-label="anchor" href="#discover-the-server-and-configure-the-client"></a>
 </h3>
+<p>Discovery reads the server’s published login settings. Configure it
+at startup with a reviewed FHIR base and approved endpoint hosts, so
+visitors cannot make your app discover arbitrary servers.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
@@ -154,59 +134,40 @@ from that server.</p>
 <span>  required_scopes <span class="op">=</span> <span class="st">"patient/Patient.r"</span>,</span>
 <span>  label <span class="op">=</span> <span class="st">"My hospital"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Discovery runs outside <code>server()</code>, against a
-deployment-configured base. <code>endpoint_hosts</code> must include
-every approved hostname used by the metadata, including a separate
-authorization server when applicable. Its default permits only the FHIR
-base’s hostname. Review these addresses and metadata when setting up or
-updating the app; do not discover arbitrary URLs supplied by
-visitors.</p>
-<p><code><a href="../reference/smart_client.html">smart_client()</a></code> configures S256 PKCE, sets
-<code>aud</code> to this exact FHIR base, and adds
-<code>resource_bases = c(fhir = ...)</code> to the client. You do not
-manually build the authorization URL or copy the access token into a
-request.</p>
-<p>The requested scopes have separate jobs:</p>
+<p><code><a href="../reference/smart_client.html">smart_client()</a></code> connects the login to this FHIR base and
+prepares the authorization request. You do not need to copy tokens into
+FHIR requests.</p>
 <table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
 <thead><tr class="header">
 <th>Scope</th>
-<th>Why request it?</th>
+<th>Purpose</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>launch/patient</code></td>
-<td>Ask the standalone authorization flow to establish patient
-context.</td>
+<td>Ask the standalone flow to select a patient.</td>
 </tr>
 <tr class="even">
 <td><code>patient/Patient.r</code></td>
-<td>Read the contextual patient’s Patient resource.</td>
+<td>Read that patient’s Patient resource.</td>
 </tr>
 <tr class="odd">
 <td><code>patient/Observation.s</code></td>
-<td>Search Observations in the authorized patient context. Optional in
-this example.</td>
+<td>Search Observations for that patient.</td>
 </tr>
 </tbody>
 </table>
-<p>In SMART v2 syntax, <code>.r</code> means read, <code>.s</code> means
-search, and <code>.rs</code> means both. The patient context and the
-permission to read data are distinct. The server still decides what
-access to allow. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html" class="external-link">SMART
-scopes and launch context</a>.</p>
-<p>Here <code>required_scopes</code> allows the app to work if
-Observation search is declined. Such a connection is
-<code>limited</code>; Patient reading can still succeed. Omitting
-<code>required_scopes</code> would make all requested scopes required.
-Identity and offline access are not requested by this example.</p>
+<p>Here <code>.r</code> means read and <code>.s</code> means search.
+<code>required_scopes</code> lets the app keep working if optional
+Observation access is declined. The server decides what to grant;
+receiving a patient ID alone does not grant permission to read
+records.</p>
 </div>
 <div class="section level3">
 <h3 id="configure-retained-connections">2. Configure retained connections<a class="anchor" aria-label="anchor" href="#configure-retained-connections"></a>
 </h3>
+<p>Browser retention keeps the authorization available when the browser
+returns from the hospital’s login page.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">manager</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_connections.html">oauth_connections</a></span><span class="op">(</span></span>
 <span>  clients <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>hospital <span class="op">=</span> <span class="va">client</span><span class="op">)</span>,</span>
@@ -221,13 +182,11 @@ Identity and offline access are not requested by this example.</p>
 <span>    owner <span class="op">=</span> <span class="fu">openssl</span><span class="fu">::</span><span class="fu"><a href="https://jeroen.r-universe.dev/openssl/reference/rand_bytes.html" class="external-link">rand_bytes</a></span><span class="op">(</span><span class="fl">32</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code>hospital</code> is your local configuration name; it is
-unrelated to the registered client ID or the patient’s ID. Browser
-retention lets the app restore saved grants after authorization
-redirects. It uses an HttpOnly owner cookie and encrypted storage in one
-R process. Records disappear when that process restarts; independent
-workers do not share this store. The <a href="multiple-authorizations.html#keep-authorizations-when-the-browser-returns">multiple-authorizations
-vignette</a> explains ownership, expiry and deployment constraints.</p>
+<p><code>hospital</code> is your app’s name for this configuration. The
+cookie identifies saved browser authorizations, not a person. This
+memory store keeps encrypted credentials in one R process and loses them
+on restart. See <a href="multiple-authorizations.html#keep-authorizations-when-the-browser-returns">Multiple
+authorizations</a> for retention and deployment choices.</p>
 </div>
 <div class="section level3">
 <h3 id="authorize-and-fetch-the-patient">3. Authorize and fetch the patient<a class="anchor" aria-label="anchor" href="#authorize-and-fetch-the-patient"></a>
@@ -303,27 +262,26 @@ vignette</a> explains ownership, expiry and deployment constraints.</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">runApp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span>,</span>
 <span>  host <span class="op">=</span> <span class="st">"127.0.0.1"</span>, port <span class="op">=</span> <span class="fl">8100</span>, launch.browser <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>Open <code>http://127.0.0.1:8100</code> in a regular browser, connect
-the hospital, complete its authorization flow, then load the patient.
-The helper reads the Patient identified by the accepted context using
-the same connection’s credentials and configured FHIR base. It returns
-an <code>httr2</code> response.</p>
+<p>Open <code>http://127.0.0.1:8100</code>, connect the hospital,
+complete authorization and load the patient.
+<code><a href="../reference/smart_context.html">smart_patient()</a></code> reads the Patient selected by the accepted
+context, using that connection’s credentials and FHIR base.</p>
 <p>The example displays only the resource ID. A clinical app needs
 appropriate patient identification and must respect
-<code>need_patient_banner</code> when provided. Context and resource
-bodies contain sensitive data; keep them out of general connection
-tables and logs. Key patient-dependent caches by both connection ID and
-<code>context[["revision"]]</code>, and discard stale data when either
-changes.</p>
+<code>need_patient_banner</code> when supplied. Keep patient data out of
+general logs and connection tables.</p>
+<p>The output checks both connection ID and context revision before
+displaying data. Keep these checks and discard patient-dependent caches
+when either the authorization or accepted patient context changes.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="search-with-the-same-connection">Search with the same connection<a class="anchor" aria-label="anchor" href="#search-with-the-same-connection"></a>
 </h2>
-<p>Inside a server observer, use the existing request interface for
-other FHIR operations. Add
-<code>actionButton("search", "Search observations")</code> to the UI to
-use this example:</p>
+<p>Add <code>actionButton("search", "Search observations")</code> to the
+UI and this observer inside <code>server()</code>. The patient filter
+selects the records to search; the server still enforces access and the
+connection checks the required permission.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/observeEvent.html" class="external-link">observeEvent</a></span><span class="op">(</span><span class="va">input</span><span class="op">[[</span><span class="st">"search"</span><span class="op">]</span><span class="op">]</span>, <span class="op">{</span></span>
 <span>  <span class="va">health</span><span class="op">[[</span><span class="st">"touch"</span><span class="op">]</span><span class="op">]</span><span class="op">(</span><span class="op">)</span></span>
@@ -346,73 +304,41 @@ use this example:</p>
 <span>      type <span class="op">=</span> <span class="st">"error"</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>The <code>Accept</code> header requests FHIR JSON for
-<code>resp_body_json()</code>; a FHIR server may otherwise choose XML.
-Generic requests retain their existing format defaults.</p>
-<p>The <code>patient</code> query selects data; it does not enforce
-authorization. The server enforces access, and the connection checks the
-declared operation scope. SMART scope comparisons understand supported
-combinations such as <code>.rs</code> covering <code>.r</code> and
-<code>.s</code>. The package does not infer permissions from arbitrary
-HTTP paths. Pagination links must remain inside this connection’s
-approved FHIR base.</p>
-<p>Granular scopes support simple search parameter names: an optional
-leading underscore, then a letter, followed by letters, digits or
-hyphens, with nonempty values. This includes <code>_id</code>,
-<code>_lastUpdated</code>, <code>_tag</code>, <code>_profile</code> and
-<code>_security</code>. Constraints are compared exactly as written; the
-package does not decode, reorder or infer implication between searches.
-Modifiers, chaining and experimental <code>_filter</code> expressions
-remain unsupported.</p>
-<p>SMART refresh requests omit <code>scope</code> while permissions
-equal the original launch grant. After a reduction, they send the latest
-accepted scope limit, including when the server reduces a grant without
-rotating the refresh token. Refreshed grants may retain or narrow those
-permissions. An explicitly empty grant remains valid, but requires a
-fresh authorization to obtain more permissions; an empty OAuth refresh
-scope cannot express that limit.</p>
+<p>The <code>Accept</code> header asks for FHIR JSON. Pagination must
+stay within the connection’s approved FHIR base. If you cache results,
+associate them with the connection ID and context revision just as in
+the Patient example.</p>
+<p>See <a href="#granular-permissions-and-refresh">granular permissions
+and refresh</a> for scope syntax and refresh behavior.</p>
 </div>
 <div class="section level2">
 <h2 id="patient-context-and-user-identity-are-different">Patient context and user identity are different<a class="anchor" aria-label="anchor" href="#patient-context-and-user-identity-are-different"></a>
 </h2>
-<p><code>smart_context(connection)[["patient"]]</code> identifies the
-chart in context. A clinician can be the logged-in user while that
-patient is someone else. Browser retention groups saved connections for
-one browser; it does not verify either person’s identity.</p>
-<p>Identity remains opt-in: the default <code>identity = "none"</code>
-does not enable OIDC. For a validated OIDC subject without a FHIR user
-reference, use <code>identity = "openid"</code>. This requests and
-requires only <code>openid</code>, validates the signed ID token and
-nonce, and exposes the issuer and subject through
-<code>connection[["identity"]]()</code>. It leaves
-<code>smart_context(connection)[["fhirUser"]]</code> empty.</p>
-<p>If the app also needs the authenticated user’s FHIR reference,
-configure <code>identity = "fhirUser"</code> when constructing its SMART
-client. This adds and requires <code>openid fhirUser</code>, signed
-ID-token validation and nonce binding. The server must advertise the
-corresponding capabilities and signing metadata.
-<code>smart_context(connection)[["fhirUser"]]</code> then exposes the
-validated reference.</p>
-<p>Fetching that resource with <code>smart_fhir_user(connection)</code>
-accepts the granted <code>openid fhirUser</code> identity scopes, as
-described by <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html#scopes-for-requesting-identity-data" class="external-link">SMART
-identity semantics</a>. It also accepts a matching user-level read
-permission, or <code>patient/Patient.r</code> when the identity refers
-to the contextual Patient. The server enforces its own access rules.
-Absolute identity URLs need not use a REST-style resource path. A user
-reference outside the configured FHIR base is not fetched with this
-token.</p>
+<p>The selected patient may be someone other than the person who signed
+in, such as a clinician viewing a patient’s chart.
+<code>smart_context(connection)[["patient"]]</code> identifies the chart
+context; it does not identify the logged-in user.</p>
+<p>If your app needs the user’s validated identity, choose
+<code>identity = "openid"</code> when creating the client. Use
+<code>identity = "fhirUser"</code> when it also needs that user’s FHIR
+reference. These options require the server’s corresponding support. The
+default, <code>identity = "none"</code>, does not request identity
+verification.</p>
+<p>Read selected identity fields with
+<code>connection[["identity"]]()</code>. For a FHIR user reference, use
+<code><a href="../reference/smart_context.html">smart_context()</a></code> and <a href="https://lukakoning.github.io/shinyOAuth/reference/smart_context.html">smart_fhir_user()</a>;
+it only fetches within the configured FHIR base. Patient context and
+browser retention remain separate from verified user identity.</p>
 </div>
 <div class="section level2">
 <h2 id="start-from-an-ehr-instead">Start from an EHR instead<a class="anchor" aria-label="anchor" href="#start-from-an-ehr-instead"></a>
 </h2>
-<p>For EHR launch, the EHR opens a registered entry URL carrying
-<code>iss</code> (the FHIR base) and an opaque <code>launch</code>
-handle. The handle is exchanged through the authorization flow; the
-initial URL does not establish trusted patient context. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/app-launch.html#launch-app-ehr-launch" class="external-link">EHR
-launch</a>.</p>
-<p>To adapt the standalone app, replace its client construction
-with:</p>
+<p>An EHR can open your app with its FHIR base (<code>iss</code>) and a
+temporary <code>launch</code> handle. The app must complete
+authorization before trusting the returned context. This supports a
+workflow where the user starts from the chart rather than choosing a
+hospital in your app.</p>
+<p>Replace the standalone client with the EHR registration:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smart_client.html">smart_client</a></span><span class="op">(</span></span>
 <span>  <span class="va">discovery</span>,</span>
@@ -425,60 +351,36 @@ with:</p>
 <span>  required_scopes <span class="op">=</span> <span class="st">"patient/Patient.r"</span>,</span>
 <span>  label <span class="op">=</span> <span class="st">"My hospital"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Use the credentials for your EHR-launch registration. The constructor
-adds <code>launch</code> automatically. You may also request
-<code>launch/patient</code>, <code>launch/encounter</code>, or other
-<code>launch/</code> scopes as optional context hints. The EHR may
-ignore these hints when that context is unavailable in its current
-workflow; see the <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/scopes-and-launch-context.html#apps-that-launch-from-the-ehr" class="external-link">SMART
-EHR context scope guidance</a>. Recreate the manager with this client,
-then replace the UI wrapper with:</p>
+<p>Recreate the manager with that client, then replace the UI
+wrapper:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ui</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_connections_ui.html">oauth_connections_ui</a></span><span class="op">(</span><span class="va">base_ui</span>, <span class="st">"health"</span>, <span class="va">manager</span>,</span>
 <span>  launch_routes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/smart_launch_route.html">smart_launch_route</a></span><span class="op">(</span><span class="st">"/smart/launch"</span>, <span class="st">"hospital"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Register <code>http://127.0.0.1:8100/smart/launch</code> as the
-development launch URL, in addition to the separate callback URL. For
-deployment register the corresponding HTTPS URLs. Remove the Connect
-button and its observer: a fresh EHR launch now starts authorization
-automatically. Keep the remaining server code and the
-<code>uiPattern = ".*"</code> app construction.</p>
-<p>The route selects only the configured <code>hospital</code> client by
-its exact FHIR base; it does not discover a new server from the incoming
-<code>iss</code>. Each attempt uses a fresh launch transaction. Calling
-<code>health[["connect"]]("hospital")</code> for an EHR client reports
-<code>fresh_ehr_launch_required</code>; reconnect by opening the app
-from the EHR. Keep launch handles out of shared client configuration and
-access-log queries.</p>
-<p>Each browser owner can hold up to eight unconsumed launch tickets
-across all manager routes; the manager retains at most 1,000 in total.
-Extra entries are rejected without removing existing tickets.
-Consumption or expiry frees space. Protect both launch entry and
-owner-creating application pages with ingress rate limits at a trusted
-reverse proxy. Browser cookies do not identify a person or network
-client, and callers can obtain additional owners, so these quotas do not
-replace those deployment controls. Use the proxy’s verified client
-address for rate limits and size the owner registry for the admitted
-traffic.</p>
-<p>EHR launch requires top-level browser navigation, browser retention
-with a Lax owner cookie, and one R process. Embedded iframe launch is
-not supported. A route can allow multiple named clients with distinct
-FHIR bases. Separate registrations for the same base need separate entry
-routes.</p>
+<p>Register <code>http://127.0.0.1:8100/smart/launch</code> as the local
+launch URL in addition to the callback. Use corresponding HTTPS URLs in
+deployment. Remove the Connect button and observer; opening the app from
+the EHR now starts login. Keep the other server code and
+<code>uiPattern = ".*"</code>.</p>
+<p>Use a full browser tab, browser retention with a Lax owner cookie,
+and one R process. Embedded iframe launch is unsupported. Reconnect by
+launching from the EHR again, and keep launch handles out of logs. The
+route accepts only configured FHIR servers, rather than discovering a
+server from an incoming URL.</p>
+<p>For route limits and proxy requirements, see <a href="https://lukakoning.github.io/shinyOAuth/reference/smart_launch_route.html">smart_launch_route()</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="more-than-one-hospital">More than one hospital<a class="anchor" aria-label="anchor" href="#more-than-one-hospital"></a>
 </h2>
-<p>Create one reviewed discovery snapshot and
-<code><a href="../reference/smart_client.html">smart_client()</a></code> per registration, then pass
+<p>Create a reviewed discovery result and client for each registration,
+then pass
 <code>list(hospital_a = client_a, hospital_b = client_b)</code> to the
-manager. Use distinct registered callbacks and configure every client
-with <code>authorization_server_mode = "multi_redirect_uri"</code> plus
-the full callback vector, as in the <a href="multiple-authorizations.html#configure-clients-outside-server">general
-vignette</a>. The selector and request code stay the same. Each
-connection carries its own credentials, FHIR base and context; patient
-IDs from different bases are not interchangeable. To support both
-standalone and EHR entry, configure separate clients for those
-flows.</p>
+manager. Use the distinct callbacks and complete callback vector shown
+in <a href="multiple-authorizations.html#configure-clients-outside-server">Multiple
+authorizations</a>.</p>
+<p>Each connection has its own FHIR base, credentials and context.
+Patient IDs from different hospitals are not interchangeable. Use
+separate clients if you need both standalone and EHR-launch entry for
+the same server.</p>
 </div>
 <div class="section level2">
 <h2 id="other-registration-and-refresh-options">Other registration and refresh options<a class="anchor" aria-label="anchor" href="#other-registration-and-refresh-options"></a>
@@ -515,10 +417,10 @@ ID, and supported <code>RS384</code> or <code>ES384</code>.</td>
 </tr>
 </tbody>
 </table>
-<p>For example, replace the original client construction with this for
-an asymmetric standalone registration. Register the matching public key
-and key ID with the server first; keep the private key on the
-application server.</p>
+<p>For an asymmetric standalone registration, replace the original
+client with this configuration. Register the matching public key and key
+ID with the server first; keep the private key on the application
+server.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smart_client.html">smart_client</a></span><span class="op">(</span></span>
 <span>  <span class="va">discovery</span>,</span>
@@ -537,33 +439,37 @@ application server.</p>
 package creates and signs the assertion; app code does not assemble
 JWTs. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html" class="external-link">SMART
 asymmetric client authentication</a>.</p>
-<p>If your use case needs access when the user is offline, request
-<code>offline_access</code> only with an appropriate registration and
-advertised support. Saving a browser connection by itself does not
-request offline access or a refresh token. The manager refreshes when a
-refresh credential is available. SMART refresh responses must include a
-positive <code>expires_in</code>. For initial responses, SMART
-recommends that field but permits its omission. If the authorization
-server supplies the initial lifetime out of band, configure
-<code>smart_client(initial_expires_in_fallback = 300)</code> with that
-documented value in seconds. It is used only when the initial response
-omits <code>expires_in</code>; an explicit value takes precedence. The
-default <code>NULL</code> requires an explicit response lifetime, and
-generic OAuth lifetime options do not apply to SMART.</p>
-<p><code>connection[["refresh"]](scopes = ...)</code> can narrow the
-connection’s accepted scopes. That local limit is retained and sent on
-later refreshes; it does not prove the server has reduced the original
-refresh-token grant. Broader access requires a new authorization. On
-refresh, read <code><a href="../reference/smart_context.html">smart_context()</a></code> again and use its revision to
-invalidate stale patient data. Context tracking here does not subscribe
-to live changes in the EHR’s open chart.</p>
-<p>Outgoing <code>authorization_method = "POST"</code> is available when
-discovery advertises <code>authorize-post</code>. It is independent of
-<code>response_mode = "form_post"</code>, which controls the returning
-callback. The default example uses GET authorization and query
-callbacks. SMART composition with JAR, PAR, JARM, DPoP and mTLS is not
-currently exposed through <code><a href="../reference/smart_client.html">smart_client()</a></code>; consult its
-reference for scope.</p>
+<p>Request <code>offline_access</code> only when your registration and
+server allow it. Browser retention alone does not request a refresh
+token; if one is issued, the manager can refresh access.</p>
+<p>SMART refresh responses need a positive <code>expires_in</code>. If
+the initial response omits it, set
+<code>initial_expires_in_fallback</code> only to a lifetime supplied by
+the server out of band. The default <code>NULL</code> requires an
+explicit lifetime; generic OAuth lifetime options do not apply.</p>
+<p><code>connection[["refresh"]](scopes = ...)</code> can reduce locally
+accepted permissions. Broader access requires new authorization. After
+refresh, read <code><a href="../reference/smart_context.html">smart_context()</a></code> again and invalidate patient
+data when its revision changes. This tracks accepted authorization
+context, not live changes in the EHR’s open chart.</p>
+<p>Outgoing <code>authorization_method = "POST"</code> requires
+advertised <code>authorize-post</code> support. It is separate from the
+returning callback’s <code>response_mode</code>.
+<code><a href="../reference/smart_client.html">smart_client()</a></code> does not expose JAR, PAR, JARM, DPoP or mTLS
+composition.</p>
+<div class="section level3">
+<h3 id="granular-permissions-and-refresh">Granular permissions and refresh<a class="anchor" aria-label="anchor" href="#granular-permissions-and-refresh"></a>
+</h3>
+<p>Granular scopes can restrict simple search parameters such as
+<code>_id</code>, <code>_lastUpdated</code>, <code>_tag</code>,
+<code>_profile</code> and <code>_security</code>. Constraints match
+literally; modifiers, chaining and experimental <code>_filter</code>
+expressions are unsupported.</p>
+<p>Refresh can retain or narrow the grant. After a reduction, shinyOAuth
+keeps and sends the latest accepted limit, even if the refresh token did
+not rotate. An empty grant cannot gain permissions again without a new
+authorization.</p>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
