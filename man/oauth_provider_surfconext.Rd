@@ -40,7 +40,7 @@ agreed attribute release policy; requesting \code{"email"} or \code{"profile"} d
 not guarantee those attributes will be released. Use the validated issuer
 and \code{sub} to identify a user.
 Test and production environments require their own service configuration.
-See \href{https://servicedesk.surf.nl/wiki/spaces/IAM/pages/128909810/SURFconext+for+Service+Providers}{SURFconext for service providers}.
+See the \href{https://www.surf.nl/en/services/identity-access-management/surfconext}{SURFconext overview}.
 }
 \examples{
 \dontrun{

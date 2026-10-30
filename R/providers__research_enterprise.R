@@ -213,7 +213,7 @@ oauth_provider_huggingface <- function(name = "huggingface") {
 #' not guarantee those attributes will be released. Use the validated issuer
 #' and `sub` to identify a user.
 #' Test and production environments require their own service configuration.
-#' See [SURFconext for service providers](https://servicedesk.surf.nl/wiki/spaces/IAM/pages/128909810/SURFconext+for+Service+Providers).
+#' See the [SURFconext overview](https://www.surf.nl/en/services/identity-access-management/surfconext).
 #'
 #' @param environment SURFconext environment: `"production"` (default) or `"test"`.
 #' @param name Optional provider name (default `"surfconext"`).
