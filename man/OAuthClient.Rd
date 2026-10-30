@@ -627,7 +627,8 @@ empty for ordinary clients. This is not an argument to \code{\link[=oauth_client
 \item{authorization_request_nbf_skew}{Compatibility alias for \code{request_object_nbf_skew}.}
 
 \item{token_targets}{Optional named list for obtaining tokens for several APIs
-through one login. Each entry needs a \code{resource} identifier and \code{scopes}
+through one login. Build entries with \code{\link[=oauth_token_target]{oauth_token_target()}} or plain named
+lists. Each entry needs a \code{resource} identifier and \code{scopes}
 (also included in explicit client \code{scopes}). Optional \code{required_scopes} set that API's
 minimum permissions; \code{resource_ids} associate it with named \code{resource_bases}.
 Optional Microsoft \code{scope_aliases} identify unusual short permission names

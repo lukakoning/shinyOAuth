@@ -572,7 +572,8 @@ compatibility.}
 \item{introspect_elements}{Compatibility alias for \code{introspection_checks}. Supply only one spelling.}
 
 \item{token_targets}{Optional named list for obtaining tokens for several APIs
-through one login. Each entry needs a \code{resource} identifier and \code{scopes}
+through one login. Build entries with \code{\link[=oauth_token_target]{oauth_token_target()}} or plain named
+lists. Each entry needs a \code{resource} identifier and \code{scopes}
 (also included in explicit client \code{scopes}). Optional \code{required_scopes} set that API's
 minimum permissions; \code{resource_ids} associate it with named \code{resource_bases}.
 Optional Microsoft \code{scope_aliases} identify unusual short permission names

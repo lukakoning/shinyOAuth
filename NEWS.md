@@ -16,6 +16,8 @@
 
 * Access several APIs, such as calendars and contacts, through one login:
 
+  - Added `oauth_token_target()` for named, validated target declarations.
+    Existing plain lists remain supported, with the same permission defaults.
   - Client constructors infer API scopes from `token_targets` when `scopes` is
     omitted, avoiding duplicate declarations. Explicit scopes remain a limit
     and must cover every target; identity and refresh-consent rules still apply.

@@ -25,6 +25,7 @@ reference:
 - contents:
   - oauth_ui
   - oauth_client
+  - oauth_token_target
   - oauth_module_server
   - oauth_form_post_ui
   - use_shinyOAuth

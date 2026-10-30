@@ -56,7 +56,8 @@
 #'   refresh-consent scopes explicitly.
 #'
 #' @param token_targets Optional named list for obtaining tokens for several APIs
-#'   through one login. Each entry needs a `resource` identifier and `scopes`
+#'   through one login. Build entries with [oauth_token_target()] or plain named
+#'   lists. Each entry needs a `resource` identifier and `scopes`
 #'   (also included in explicit client `scopes`). Optional `required_scopes` set that API's
 #'   minimum permissions; `resource_ids` associate it with named `resource_bases`.
 #'   Optional Microsoft `scope_aliases` identify unusual short permission names
