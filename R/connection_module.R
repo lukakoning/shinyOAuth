@@ -170,7 +170,7 @@ module_refresh_controller <- function(
     }
     # The proactive observer renews the primary token. A sibling acquisition
     # must neither postpone that renewal nor erase the primary's backoff.
-    if (is.null(target) || identical(target, client@default_token_target)) {
+    if (is.null(target) || identical(target, client@token_target_default)) {
       values[["refresh_next_attempt_at"]] <- next_attempt
       values[["refresh_failure_count"]] <- failure_count
     }

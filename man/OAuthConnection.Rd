@@ -155,10 +155,10 @@ requesting new permissions or retrying the SDK operation.
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$access_token(
   required_scopes = character(),
+  target = NULL,
   min_valid_for = 60,
   force_refresh = FALSE,
-  async = FALSE,
-  target = NULL
+  async = FALSE
 )}
     \if{html}{\out{</div>}}
   }
@@ -167,6 +167,8 @@ requesting new permissions or retrying the SDK operation.
     \describe{
       \item{\code{required_scopes}}{Permissions needed for this operation, in addition to
 client requirements.}
+      \item{\code{target}}{Optional API name from \code{token_targets}. \code{NULL} selects the
+client's default. Its token is acquired when needed.}
       \item{\code{min_valid_for}}{Minimum remaining lifetime in seconds (default 60).
 Allow time for the operation and clock differences. Unknown or insufficient
 expiry triggers refresh; an unusable replacement raises an error.}
@@ -174,8 +176,6 @@ expiry triggers refresh; an unusable replacement raises an error.}
       \item{\code{async}}{If \code{TRUE}, return a promise, including for a cached token.
 If \code{FALSE}, return a string or raise an error; a synchronous call cannot
 wait for an already running async refresh.}
-      \item{\code{target}}{Optional API name from \code{token_targets}. \code{NULL} selects the
-client's default. Its token is acquired when needed.}
     }
     \if{html}{\out{</div>}}
   }
@@ -403,8 +403,8 @@ must cover any scopes required for this operation.
   method = "GET",
   required_scopes = character(),
   configure = NULL,
-  refresh = FALSE,
   target = NULL,
+  refresh = FALSE,
   min_valid_for = 60
 )}
     \if{html}{\out{</div>}}
@@ -432,14 +432,14 @@ and \code{\link[httr2:req_headers]{httr2::req_headers()}}. Set the HTTP method w
 URL, transport policies, authentication and Host headers cannot be changed.
 Configuration runs once. Both refresh modes recheck the current
 authorization afterward, before sending the request.}
+      \item{\code{target}}{Optional declared token-target name. Target clients require
+an explicit association through that declaration's \code{resource_ids}.}
       \item{\code{refresh}}{If \code{TRUE}, obtain a usable token before sending the request.
 Default \code{FALSE} uses the current token. This is synchronous and cannot wait
 for an async refresh. Failed API calls are not refreshed or replayed;
 ordinary HTTP retries are disabled for this call. DPoP nonce handling
 remains available. The destination and \code{configure} result are checked
 before refresh, and permission is checked again before sending.}
-      \item{\code{target}}{Optional declared token-target name. Target clients require
-an explicit association through that declaration's \code{resource_ids}.}
       \item{\code{min_valid_for}}{Minimum remaining lifetime when \code{refresh = TRUE},
 in seconds. Has the same meaning as on \verb{$access_token()}.}
     }

@@ -18,7 +18,7 @@ test_that("rejected target credentials are discarded when the module clears auth
         scopes = "api://secondary/.default"
       )
     ),
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
   primary <- manager_test_token()
   primary@granted_scopes <- paste0("api://primary/permission", 1:64)

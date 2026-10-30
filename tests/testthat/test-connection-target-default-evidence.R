@@ -22,7 +22,7 @@ default_evidence_client <- function(introspect = FALSE) {
         scopes = "api://Secondary/.default"
       )
     ),
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
 }
 

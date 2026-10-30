@@ -15,7 +15,7 @@ test_that("repeated connection reads recheck transport policy and key-file conte
         token_targets = list(
           api = list(resource = "urn:api", scopes = c("read", "write"))
         ),
-        default_token_target = "api"
+        token_target_default = "api"
       )
       fixture <- ordinary_manager_fixture(client)
       shiny::testServer(

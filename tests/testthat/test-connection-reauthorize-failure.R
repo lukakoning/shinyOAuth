@@ -15,7 +15,7 @@ test_that("fresh callback failures retain verified replacement policy on retry",
             token_targets = list(
               api = list(resource = "urn:api", scopes = c("read", "write"))
             ),
-            default_token_target = "api"
+            token_target_default = "api"
           )
         }
         redirects <- list()

@@ -27,7 +27,7 @@ test_that("authentication-age expiry starts a fresh grant while explicit replace
               scopes = c("read", "write")
             )
           ),
-          default_token_target = "api"
+          token_target_default = "api"
         )
       }
       shiny::testServer(

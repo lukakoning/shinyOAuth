@@ -665,6 +665,11 @@ OAuthProvider <- api_preserve_constructor(
     require_request_uri_registration = "request_uri_registration_required",
     tls_client_certificate_bound_access_tokens = "mtls_client_certificate_bound_access_tokens",
     allowed_algs = "id_token_allowed_algs"
+  ),
+  append = c(
+    "token_target_mode",
+    "token_response_scope_format",
+    "userinfo_id_selector_policy_id"
   )
 )
 

@@ -161,7 +161,7 @@ test_that("scope aliases reject ambiguous names, excessive data, and other proto
         ),
         other = list(resource = "urn:other", scopes = "urn:other/.default")
       ),
-      default_token_target = "api"
+      token_target_default = "api"
     )
   }
   for (aliases in list(

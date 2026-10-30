@@ -15,7 +15,7 @@ test_that("failed target refresh preserves every old credential until opted-in c
       first = list(resource = "urn:first", scopes = "read"),
       second = list(resource = "urn:second", scopes = "write")
     ),
-    default_token_target = "first"
+    token_target_default = "first"
   )
   primary <- manager_test_token(
     access = "first-access",

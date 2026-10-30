@@ -628,7 +628,7 @@ state_client_policy_fingerprint <- function(client) {
   }
   if (token_targets_configured(client)) {
     components[["token_targets"]] <- client@token_targets
-    components[["default_token_target"]] <- client@default_token_target
+    components[["token_target_default"]] <- client@token_target_default
   }
   if (length(client@resource_bases)) {
     bases <- normalize_resource_bases(client@resource_bases)

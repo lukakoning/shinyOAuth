@@ -77,7 +77,7 @@ connection_integration_signal <- function(resolve, is_current = NULL) {
         }
       }
       tokens <- record[["targets"]][["tokens"]]
-      tokens[[record[["client"]]@default_token_target]] <- token
+      tokens[[record[["client"]]@token_target_default]] <- token
       targets <- sort(names(tokens))
       list(targets = stats::setNames(lapply(targets, evidence), targets))
     } else if (available) {

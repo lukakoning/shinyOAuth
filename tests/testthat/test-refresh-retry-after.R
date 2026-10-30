@@ -82,7 +82,7 @@ retry_after_test_client <- function(
     } else {
       list()
     },
-    default_token_target = if (targeted) "primary" else character()
+    token_target_default = if (targeted) "primary" else character()
   )
 }
 

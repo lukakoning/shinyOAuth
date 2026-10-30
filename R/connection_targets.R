@@ -21,7 +21,7 @@ token_target_name <- function(client, target = NULL) {
     }
     return(NULL)
   }
-  target <- target %||% client@default_token_target
+  target <- target %||% client@token_target_default
   if (!is_valid_string(target) || !target %in% names(client@token_targets)) {
     connection_access_error("unknown_target")
   }
@@ -130,8 +130,8 @@ token_target_scopes_allowed <- function(
 validate_token_targets <- function(client) {
   targets <- client@token_targets
   if (!length(targets)) {
-    if (length(client@default_token_target)) {
-      err_config("default_token_target requires token_targets")
+    if (length(client@token_target_default)) {
+      err_config("token_target_default requires token_targets")
     }
     return(invisible(NULL))
   }
@@ -163,10 +163,10 @@ validate_token_targets <- function(client) {
     }
   }
   if (
-    !is_valid_string(client@default_token_target) ||
-      !client@default_token_target %in% names(targets)
+    !is_valid_string(client@token_target_default) ||
+      !client@token_target_default %in% names(targets)
   ) {
-    err_config("Several token targets require an explicit default_token_target")
+    err_config("Several token targets require an explicit token_target_default")
   }
   if (
     length(client@resource) ||
@@ -408,7 +408,7 @@ token_target_reauthorization_limits <- function(client, limits) {
     return(NULL)
   }
   limits <- validate_token_target_limits(client, limits)
-  primary <- client@default_token_target
+  primary <- client@token_target_default
   if (length(limits[[primary]]) && provider_uses_oidc(client@provider)) {
     # Reauthorization starts a new validated login. Include its mandatory
     # protocol scope in code redemption without restoring optional permissions
@@ -713,7 +713,7 @@ token_target_bundle <- function(client, token, limits = NULL) {
   )
   request <- token_target_request(client, limits = limits)
   validate_token_target_grant(client, token@granted_scopes, request)
-  limits[[client@default_token_target]] <- token_target_retained_scopes(
+  limits[[client@token_target_default]] <- token_target_retained_scopes(
     client,
     token,
     request
@@ -736,7 +736,7 @@ token_target_select <- function(record, target = NULL) {
   } else {
     NA_character_
   }
-  if (!identical(target, client@default_token_target)) {
+  if (!identical(target, client@token_target_default)) {
     record[["token"]] <- record[["targets"]][["tokens"]][[target]]
   }
   record[["target_scopes"]] <- normalize_scope_tokens(
@@ -779,7 +779,7 @@ token_target_commit <- function(client, primary, bundle, fresh, request) {
   )
   bundle[["limits"]] <- validate_token_target_limits(client, bundle[["limits"]])
   refresh <- fresh@refresh_token
-  if (identical(target, client@default_token_target)) {
+  if (identical(target, client@token_target_default)) {
     primary <- fresh
   } else {
     fresh@refresh_token <- NA_character_
@@ -853,7 +853,7 @@ token_target_bundle_decode <- function(client, encoded) {
       anyDuplicated(names(bundle[["tokens"]])) ||
       !all(
         names(bundle[["tokens"]]) %in%
-          setdiff(names(client@token_targets), client@default_token_target)
+          setdiff(names(client@token_targets), client@token_target_default)
       ) ||
       (length(bundle[["tokens"]]) && is.null(names(bundle[["tokens"]])))
   ) {
@@ -942,7 +942,7 @@ token_target_authorization_parameters <- function(client, scopes) {
       # Code redemption still uses the sealed primary target and its local limit.
       preferred <- intersect(
         normalize_scope_tokens(client@token_targets[[
-          client@default_token_target
+          client@token_target_default
         ]][["scopes"]]),
         static
       )

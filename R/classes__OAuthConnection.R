@@ -169,6 +169,8 @@ OAuthConnection <- R6::R6Class(
     #' requesting new permissions or retrying the SDK operation.
     #' @param required_scopes Permissions needed for this operation, in addition to
     #'   client requirements.
+    #' @param target Optional API name from `token_targets`. `NULL` selects the
+    #'   client's default. Its token is acquired when needed.
     #' @param min_valid_for Minimum remaining lifetime in seconds (default 60).
     #'   Allow time for the operation and clock differences. Unknown or insufficient
     #'   expiry triggers refresh; an unusable replacement raises an error.
@@ -177,8 +179,6 @@ OAuthConnection <- R6::R6Class(
     #' @param async If `TRUE`, return a promise, including for a cached token.
     #'   If `FALSE`, return a string or raise an error; a synchronous call cannot
     #'   wait for an already running async refresh.
-    #' @param target Optional API name from `token_targets`. `NULL` selects the
-    #'   client's default. Its token is acquired when needed.
     #' @return A bearer-token string, or a promise resolving to one. Token failures
     #'   inherit `shinyOAuth_access_error` with a reason in `condition$context$reason`.
     #'   Argument and configuration errors can occur before a promise is returned.
@@ -199,10 +199,10 @@ OAuthConnection <- R6::R6Class(
     #'
     access_token = function(
       required_scopes = character(),
+      target = NULL,
       min_valid_for = 60,
       force_refresh = FALSE,
-      async = FALSE,
-      target = NULL
+      async = FALSE
     ) {
       target <- token_target_name(private[[".client"]], target)
       acquire <- private[[".acquire"]]
@@ -453,14 +453,14 @@ OAuthConnection <- R6::R6Class(
     #'   URL, transport policies, authentication and Host headers cannot be changed.
     #'   Configuration runs once. Both refresh modes recheck the current
     #'   authorization afterward, before sending the request.
+    #' @param target Optional declared token-target name. Target clients require
+    #'   an explicit association through that declaration's `resource_ids`.
     #' @param refresh If `TRUE`, obtain a usable token before sending the request.
     #'   Default `FALSE` uses the current token. This is synchronous and cannot wait
     #'   for an async refresh. Failed API calls are not refreshed or replayed;
     #'   ordinary HTTP retries are disabled for this call. DPoP nonce handling
     #'   remains available. The destination and `configure` result are checked
     #'   before refresh, and permission is checked again before sending.
-    #' @param target Optional declared token-target name. Target clients require
-    #'   an explicit association through that declaration's `resource_ids`.
     #' @param min_valid_for Minimum remaining lifetime when `refresh = TRUE`,
     #'   in seconds. Has the same meaning as on `$access_token()`.
     #' @return An [httr2] response object. Invalid resources, unusable connections,
@@ -478,8 +478,8 @@ OAuthConnection <- R6::R6Class(
       method = "GET",
       required_scopes = character(),
       configure = NULL,
-      refresh = FALSE,
       target = NULL,
+      refresh = FALSE,
       min_valid_for = 60
     ) {
       connection_manager_flag(refresh, "refresh")

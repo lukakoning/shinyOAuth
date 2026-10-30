@@ -12,7 +12,7 @@ test_that("fresh callback sessions retain secondary target restrictions", {
       a = list(resource = "urn:a", scopes = "a.read"),
       b = list(resource = "urn:b", scopes = c("b.read", "b.write"))
     ),
-    default_token_target = "a"
+    token_target_default = "a"
   )
   requests <- list()
   broaden <- FALSE

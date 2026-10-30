@@ -11,7 +11,7 @@ test_that("same-session replacements do not restrict later ordinary login", {
           token_targets = list(
             api = list(resource = "urn:api", scopes = c("read", "write"))
           ),
-          default_token_target = "api"
+          token_target_default = "api"
         )
       }
       response_scope <- "read write"

@@ -23,8 +23,8 @@
 #' without PKCE.
 #' See the [ORCID authentication guide](https://info.orcid.org/documentation/api-tutorials/api-tutorial-get-and-authenticated-orcid-id/).
 #'
-#' @param name Optional provider name (default `"orcid"`).
 #' @param sandbox Logical; use ORCID's sandbox instead of production.
+#' @param name Optional provider name (default `"orcid"`).
 #'
 #' @return [OAuthProvider] object configured for ORCID.
 #' @examples
@@ -33,7 +33,7 @@
 #' oauth_provider_orcid(sandbox = TRUE)
 #' }
 #' @export
-oauth_provider_orcid <- function(name = "orcid", sandbox = FALSE) {
+oauth_provider_orcid <- function(sandbox = FALSE, name = "orcid") {
   if (!is_scalar_logical(sandbox)) {
     err_input("sandbox must be a single non-NA logical")
   }

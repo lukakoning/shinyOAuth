@@ -14,7 +14,7 @@ test_that("target acquisition can renew short-lived primary and secondary tokens
       primary = list(resource = "urn:primary", scopes = c("read", "write")),
       secondary = list(resource = "urn:secondary", scopes = "contacts")
     ),
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
   calls <- 0L
   lifetime <- 10
@@ -131,7 +131,7 @@ test_that("managed target pacing follows lifetime with stable and rotating crede
       primary = list(resource = "urn:primary", scopes = c("read", "write")),
       secondary = list(resource = "urn:secondary", scopes = "contacts")
     ),
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
   calls <- 0L
   lifetime <- 10
@@ -273,7 +273,7 @@ test_that("managed target success pacing uses the configured refresh lead", {
     token_targets = list(
       primary = list(resource = "urn:primary", scopes = c("read", "write"))
     ),
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
   manager <- oauth_connections(list(a = client), "https://app.example")
   oauth_connections_ui(shiny::fluidPage("Pacing"), "health", manager)

@@ -13,7 +13,7 @@ test_that("target staleness follows primary expiry independently of secondary re
       secondary = list(resource = "urn:secondary", scopes = "contacts"),
       unacquired = list(resource = "urn:files", scopes = "files")
     ),
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
   for (async in c(FALSE, TRUE)) {
     for (indefinite in c(FALSE, TRUE)) {

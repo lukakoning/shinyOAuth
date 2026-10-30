@@ -98,7 +98,7 @@ test_that("Microsoft punctuation normalization never reinterprets a URI as a per
   S7::props(client) <- list(
     scopes = declaration[["api"]][["scopes"]],
     token_targets = declaration,
-    default_token_target = "api"
+    token_target_default = "api"
   )
   request <- list(target = "api", scopes = "api://resource/items/read")
   response <- token_target_response(

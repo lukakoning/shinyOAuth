@@ -44,7 +44,8 @@ test_that("ORCID selects the environment and retains confidential OIDC checks", 
       doc,
       paste0(issuer, "/.well-known/openid-configuration")
     )
-    provider <- oauth_provider_orcid(sandbox = sandbox)
+    provider <- oauth_provider_orcid(sandbox, name = "researcher")
+    expect_identical(provider@name, "researcher")
     expect_identical(provider@issuer, issuer)
     expect_identical(provider@token_auth_style, "body")
     expect_false(provider@use_pkce)

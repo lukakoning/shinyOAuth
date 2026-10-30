@@ -29,7 +29,7 @@ transport_target_client <- function(base, binding = list(), mtls = FALSE) {
             resource_ids = "secondary"
           )
         ),
-        default_token_target = "primary",
+        token_target_default = "primary",
         resource_bases = c(
           primary = paste0(base, "/api/primary"),
           secondary = paste0(base, "/api/secondary")

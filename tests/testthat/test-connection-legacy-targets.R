@@ -11,7 +11,7 @@ test_that("legacy wrappers reject target clients before reading token evidence",
           scopes = "https://api.example/read"
         )
       ),
-      default_token_target = "api"
+      token_target_default = "api"
     )
     shiny::testServer(function(input, output, session) {}, {
       reads <- 0L
@@ -43,7 +43,7 @@ test_that("broader Microsoft refresh cannot escape the factory permission limit"
         resource_ids = "api"
       )
     ),
-    default_token_target = "api"
+    token_target_default = "api"
   )
   resource_calls <- 0L
   local_mocked_bindings(

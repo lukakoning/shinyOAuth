@@ -21,7 +21,7 @@ test_that("Microsoft API-empty grants cannot acquire a token for another resourc
       ),
       other = list(resource = "api://other", scopes = "api://other/contacts")
     ),
-    default_token_target = "api"
+    token_target_default = "api"
   )
   response_scope <- "openid"
   resource_calls <- 0L

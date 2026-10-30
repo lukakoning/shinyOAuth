@@ -50,7 +50,7 @@ target_test_client <- function(
         resource_ids = "contacts_api"
       )
     ),
-    default_token_target = "calendar"
+    token_target_default = "calendar"
   )
 }
 
@@ -309,7 +309,7 @@ test_that("scope declaration forms agree through exchange, acquisition and resto
           scopes = unlist(scopes, use.names = FALSE),
           resource_bases = template@resource_bases,
           token_targets = declarations,
-          default_token_target = "calendar"
+          token_target_default = "calendar"
         )
         requests <- list()
         omit_required <- FALSE
@@ -442,7 +442,7 @@ test_that("aggregate scope limits agree at configuration and reauthorization bou
         calendar = list(resource = "urn:calendar", scopes = first),
         contacts = list(resource = "urn:contacts", scopes = second)
       ),
-      default_token_target = "calendar"
+      token_target_default = "calendar"
     )
   }
   cases <- list(
@@ -608,14 +608,14 @@ test_that("Microsoft static consent expansion respects the shared aggregate budg
 test_that("target configuration requires deliberate provider and default choices", {
   client <- target_test_client()
   changes <- list(
-    list(default_token_target = character()),
+    list(token_target_default = character()),
     list(resource = "https://elsewhere.example/"),
     list(required_scopes = "calendar.read"),
     list(
       token_targets = list(
         bad = list(resource = "relative", scopes = "calendar.read")
       ),
-      default_token_target = "bad"
+      token_target_default = "bad"
     )
   )
   for (change in changes) {
@@ -643,17 +643,19 @@ test_that("target configuration requires deliberate provider and default choices
   expect_identical(error[["context"]][["reason"]], "unknown_target")
   provider <- make_test_provider()
   provider@token_target_mode <- "rfc8707"
-  one <- oauth_client(
-    provider,
-    "app",
-    client_secret = "",
-    redirect_uri = "https://app.example/callback",
-    scopes = "read",
-    token_targets = list(
-      api = list(resource = "urn:example:api", scopes = "read")
+  for (constructor in list(oauth_client, OAuthClient)) {
+    one <- constructor(
+      provider = provider,
+      client_id = "app",
+      client_secret = "",
+      redirect_uri = "https://app.example/callback",
+      scopes = "read",
+      token_targets = list(
+        api = list(resource = "urn:example:api", scopes = "read")
+      )
     )
-  )
-  expect_identical(one@default_token_target, "api")
+    expect_identical(one@token_target_default, "api")
+  }
 })
 
 test_that("two target responses share one rotating credential in the single module", {
@@ -694,7 +696,7 @@ test_that("two target responses share one rotating credential in the single modu
         FALSE
       )
       expect_identical(
-        connection[["access_token"]](target = "contacts"),
+        connection[["access_token"]]("contacts.read", "contacts"),
         "contacts-fresh"
       )
       expect_identical(connection[["access_token"]](), "calendar-initial")
@@ -1255,9 +1257,14 @@ test_that("HTTP refresh keeps bound transport and sends an application request o
       expect_identical(refreshes, 0L)
       response <- current[["request"]](
         "contacts_api",
-        target = "contacts",
-        refresh = TRUE,
-        method = "POST"
+        "",
+        NULL,
+        "POST",
+        "contacts.read",
+        NULL,
+        "contacts",
+        TRUE,
+        60
       )
       expect_identical(httr2::resp_status(response), 401L)
       expect_length(requests, 1L)

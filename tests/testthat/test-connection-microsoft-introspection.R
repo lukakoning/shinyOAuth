@@ -32,7 +32,7 @@ microsoft_introspection_fixture <- function(use_default = FALSE) {
     introspect = TRUE,
     introspection_checks = c("scope", "client_id", "token_type"),
     token_targets = targets,
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
   state <- new.env(parent = emptyenv())
   state[["calls"]] <- 0L

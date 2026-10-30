@@ -11,7 +11,7 @@ independent_pacing_client <- function() {
       primary = list(resource = "urn:primary", scopes = c("read", "write")),
       secondary = list(resource = "urn:secondary", scopes = "contacts")
     ),
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
 }
 

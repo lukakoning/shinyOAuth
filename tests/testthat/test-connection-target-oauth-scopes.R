@@ -22,7 +22,7 @@ oauth_scope_target_client <- function(required = TRUE, introspect = FALSE) {
       ),
       sibling = list(resource = "urn:sibling", scopes = "read")
     ),
-    default_token_target = "api"
+    token_target_default = "api"
   )
 }
 

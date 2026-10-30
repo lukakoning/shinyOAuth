@@ -31,7 +31,7 @@ test_that("managed replacement supports complete scope budgets in external state
         }),
         paste0("api", seq_len(case[["targets"]]))
       ),
-      default_token_target = "api1"
+      token_target_default = "api1"
     )
     memory <- cachem::cache_mem()
     client@state_store <- custom_cache(

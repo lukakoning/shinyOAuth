@@ -41,7 +41,7 @@ test_that("replacement state limits are checked before ending either authorizati
           }),
           c("a", "b", "c")
         ),
-        default_token_target = "a"
+        token_target_default = "a"
       )
       # Initial login fits these same limits; only replacement carries the
       # configured scopes and per-target limits that exceed the selected cap.

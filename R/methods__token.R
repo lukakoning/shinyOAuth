@@ -864,10 +864,10 @@ refresh_token_dispatch <- function(
   if (token_targets_configured(oauth_client) && is.null(target_request)) {
     limits <- token_target_limits(oauth_client)
     limits[[
-      oauth_client@default_token_target
+      oauth_client@token_target_default
     ]] <- token_target_operation_scopes(
       oauth_client,
-      oauth_client@default_token_target,
+      oauth_client@token_target_default,
       token@granted_scopes
     )
     target_request <- token_target_request(

@@ -60,7 +60,7 @@
 #'   See `vignette("token-targets", package = "shinyOAuth")`
 #'   ([online guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
 #'   for examples, provider-specific permission rules and declaration limits.
-#' @param default_token_target Name of the API to use when a connection method
+#' @param token_target_default Name of the API to use when a connection method
 #'   omits `target`. Required with several targets; the sole target is selected
 #'   automatically.
 #'
@@ -560,9 +560,11 @@ OAuthClient <- S7::new_class(
     redirect_uri = S7::class_character,
     scopes = S7::class_character,
     token_targets = S7::new_property(S7::class_list, default = list()),
-    default_token_target = S7::new_property(
+    token_target_default = S7::new_property(
       S7::class_character,
-      default = character()
+      default = quote(
+        if (length(token_targets) == 1L) names(token_targets) else character()
+      )
     ),
     # Authorization response mode for authorization-code callbacks.
     response_mode = S7::new_property(
@@ -871,7 +873,8 @@ OAuthClient <- api_preserve_constructor(
     authorization_request_ttl = "request_object_ttl",
     authorization_request_nbf_skew = "request_object_nbf_skew",
     introspect_elements = "introspection_checks"
-  )
+  ),
+  append = c("token_targets", "token_target_default")
 )
 
 
@@ -970,11 +973,7 @@ oauth_client <- function(
   ...,
   introspect_elements = NULL,
   token_targets = list(),
-  default_token_target = if (length(token_targets) == 1L) {
-    names(token_targets)
-  } else {
-    character()
-  }
+  token_target_default = if (length(token_targets) == 1L) names(token_targets) else character()
 ) {
   introspect_elements <- resolve_argument_alias(
     introspection_checks,
@@ -1265,7 +1264,7 @@ oauth_client <- function(
     redirect_uri = redirect_uri,
     scopes = scopes,
     token_targets = token_targets,
-    default_token_target = default_token_target,
+    token_target_default = token_target_default,
     resource_bases = if (length(resource_bases)) {
       normalize_resource_bases(resource_bases)
     } else {

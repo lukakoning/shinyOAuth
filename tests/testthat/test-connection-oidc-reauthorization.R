@@ -42,7 +42,7 @@ oidc_reauthorization_fixture <- function(mode, multiple) {
       unlist(lapply(targets, `[[`, "scopes"))
     ),
     token_targets = targets,
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
   key <- openssl::rsa_keygen()
   jwk <- jsonlite::fromJSON(

@@ -43,7 +43,7 @@ target_fixture_app <- function(
         resource_ids = "contacts"
       )
     ),
-    default_token_target = "calendar",
+    token_target_default = "calendar",
     resource_bases = c(
       calendar = paste0(base, "/api/calendar"),
       contacts = paste0(base, "/api/contacts")

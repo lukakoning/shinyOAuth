@@ -4,12 +4,12 @@
 \alias{oauth_provider_orcid}
 \title{Configure researcher sign-in with ORCID}
 \usage{
-oauth_provider_orcid(name = "orcid", sandbox = FALSE)
+oauth_provider_orcid(sandbox = FALSE, name = "orcid")
 }
 \arguments{
-\item{name}{Optional provider name (default \code{"orcid"}).}
-
 \item{sandbox}{Logical; use ORCID's sandbox instead of production.}
+
+\item{name}{Optional provider name (default \code{"orcid"}).}
 }
 \value{
 \link{OAuthProvider} object configured for ORCID.

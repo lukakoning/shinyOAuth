@@ -21,7 +21,7 @@ test_that("Microsoft resource prefixes cannot make permission ownership ambiguou
       redirect_uri = "https://app.example/callback",
       scopes = unlist(lapply(targets, function(target) target[["scopes"]])),
       token_targets = targets,
-      default_token_target = "api1"
+      token_target_default = "api1"
     )
   }
   for (static in c(FALSE, TRUE)) {

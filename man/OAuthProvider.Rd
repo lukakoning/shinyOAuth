@@ -55,12 +55,9 @@ OAuthProvider(
     "Ed25519", "EdDSA"),
   allowed_token_types = "Bearer",
   leeway = getOption("shinyOAuth.leeway", 30),
-  token_target_mode = "none",
   infer_oidc_from_issuer = TRUE,
-  userinfo_id_selector_policy_id = NA_character_,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
-  token_response_scope_format = "space",
   allow_missing_token_type = FALSE,
   jarm_signing_alg_values_supported = character(0),
   jarm_encryption_alg_values_supported = character(0),
@@ -71,7 +68,10 @@ OAuthProvider(
   require_pushed_authorization_requests = NULL,
   require_signed_request_object = NULL,
   require_request_uri_registration = NULL,
-  tls_client_certificate_bound_access_tokens = NULL
+  tls_client_certificate_bound_access_tokens = NULL,
+  token_target_mode = "none",
+  token_response_scope_format = "space",
+  userinfo_id_selector_policy_id = NA_character_
 )
 }
 \arguments{
@@ -385,24 +385,10 @@ value allowlist while still requiring \code{token_type} itself.}
 and state payload \code{issued_at} future check. Default 30. Can be globally
 overridden via option \code{shinyOAuth.leeway}.}
 
-\item{token_target_mode}{How this provider obtains API-specific tokens:
-\code{"none"} (default), \code{"rfc8707"}, or \code{"microsoft"}. This applies to client
-\code{token_targets} and depends on provider support. The Microsoft helper
-selects \code{"microsoft"} automatically; discovery does not enable
-targets. See \code{vignette("token-targets", package = "shinyOAuth")}
-(\href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{online guide})
-for setup and permission rules.}
-
 \item{infer_oidc_from_issuer}{Whether setting \code{issuer} enables OpenID Connect behavior.
 Default \code{TRUE}: helpers enable OIDC nonce/ID token defaults and the client
 adds the \code{openid} scope. Set \code{FALSE} for an OAuth-only server that has an
 issuer identifier but does not implement OIDC.}
-
-\item{userinfo_id_selector_policy_id}{Optional version name for a custom
-\code{userinfo_id_selector}, or \code{NA_character_}. Identifies settings or helper
-behavior outside the function body that affect identity selection. These
-form part of the client's policy: a new version ID lets pending logins and
-saved connections detect a change.}
 
 \item{jwks_uri}{Optional URL of the provider's public signing keys (JWKS).
 Normally these are located through OIDC discovery. Set this for manual
@@ -414,10 +400,6 @@ Discovery negotiates this independently against UserInfo metadata. Use a
 single algorithm to enforce the client's registered UserInfo signing choice.
 An empty vector rejects all signed UserInfo algorithms.
 Unlabelled RSA keys follow the same binding policy as \code{id_token_allowed_algs}.}
-
-\item{token_response_scope_format}{Separator used for permissions in token
-responses: \code{"space"} (default) or \code{"comma"}. The GitHub helper sets \code{"comma"}
-automatically. Set it explicitly for a custom provider using that format.}
 
 \item{allow_missing_token_type}{Logical, default \code{FALSE}. Compatibility for
 providers that issue Bearer tokens without the OAuth-required \code{token_type}.
@@ -461,6 +443,24 @@ for omitted revocation methods. Omitted introspection methods have no default.}
 \item{require_request_uri_registration}{Compatibility alias for \code{request_uri_registration_required}.}
 
 \item{tls_client_certificate_bound_access_tokens}{Compatibility alias for \code{mtls_client_certificate_bound_access_tokens}.}
+
+\item{token_target_mode}{How this provider obtains API-specific tokens:
+\code{"none"} (default), \code{"rfc8707"}, or \code{"microsoft"}. This applies to client
+\code{token_targets} and depends on provider support. The Microsoft helper
+selects \code{"microsoft"} automatically; discovery does not enable
+targets. See \code{vignette("token-targets", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{online guide})
+for setup and permission rules.}
+
+\item{token_response_scope_format}{Separator used for permissions in token
+responses: \code{"space"} (default) or \code{"comma"}. The GitHub helper sets \code{"comma"}
+automatically. Set it explicitly for a custom provider using that format.}
+
+\item{userinfo_id_selector_policy_id}{Optional version name for a custom
+\code{userinfo_id_selector}, or \code{NA_character_}. Identifies settings or helper
+behavior outside the function body that affect identity selection. These
+form part of the client's policy: a new version ID lets pending logins and
+saved connections detect a change.}
 }
 \value{
 Calling the constructor creates an \code{OAuthProvider} object.

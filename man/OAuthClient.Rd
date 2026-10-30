@@ -46,8 +46,6 @@ OAuthClient(
   introspect = FALSE,
   introspection_checks = character(0),
   endpoint_auth = list(),
-  token_targets = list(),
-  default_token_target = character(0),
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(0),
   dpop_require_observed_cnf = FALSE,
@@ -84,7 +82,10 @@ OAuthClient(
   authorization_request_encryption_enc = NULL,
   authorization_request_encryption_kid = NULL,
   authorization_request_ttl = NULL,
-  authorization_request_nbf_skew = NULL
+  authorization_request_nbf_skew = NULL,
+  token_targets = list(),
+  token_target_default = if (length(token_targets) == 1L) names(token_targets) else
+    character()
 )
 }
 \arguments{
@@ -440,21 +441,6 @@ algorithms are checked independently. PAR inherits token authentication.
 Extra token headers apply only to token exchange and refresh; set
 \code{extra_headers} explicitly for every other endpoint that needs them.}
 
-\item{token_targets}{Optional named list for obtaining tokens for several APIs
-through one login. Each entry needs a \code{resource} identifier and \code{scopes}
-(also included in client \code{scopes}). Optional \code{required_scopes} set that API's
-minimum permissions; \code{resource_ids} associate it with named \code{resource_bases}.
-Optional Microsoft \code{scope_aliases} identify unusual short permission names
-in responses. Requires provider support and \code{userinfo_required = FALSE};
-cannot be combined with \code{resource} or SMART configuration.
-See \code{vignette("token-targets", package = "shinyOAuth")}
-(\href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{online guide})
-for examples, provider-specific permission rules and declaration limits.}
-
-\item{default_token_target}{Name of the API to use when a connection method
-omits \code{target}. Required with several targets; the sole target is selected
-automatically.}
-
 \item{authorization_server_mode}{Declares whether this client is part of an
 application that can interact with more than one authorization server,
 and which RFC 9700 mix-up defense it uses. One of:
@@ -634,6 +620,21 @@ empty for ordinary clients. This is not an argument to \code{\link[=oauth_client
 \item{authorization_request_ttl}{Compatibility alias for \code{request_object_ttl}.}
 
 \item{authorization_request_nbf_skew}{Compatibility alias for \code{request_object_nbf_skew}.}
+
+\item{token_targets}{Optional named list for obtaining tokens for several APIs
+through one login. Each entry needs a \code{resource} identifier and \code{scopes}
+(also included in client \code{scopes}). Optional \code{required_scopes} set that API's
+minimum permissions; \code{resource_ids} associate it with named \code{resource_bases}.
+Optional Microsoft \code{scope_aliases} identify unusual short permission names
+in responses. Requires provider support and \code{userinfo_required = FALSE};
+cannot be combined with \code{resource} or SMART configuration.
+See \code{vignette("token-targets", package = "shinyOAuth")}
+(\href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{online guide})
+for examples, provider-specific permission rules and declaration limits.}
+
+\item{token_target_default}{Name of the API to use when a connection method
+omits \code{target}. Required with several targets; the sole target is selected
+automatically.}
 }
 \value{
 Calling the constructor creates an \code{OAuthClient} object.

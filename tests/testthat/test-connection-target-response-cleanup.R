@@ -29,7 +29,7 @@ rejected_target_response_fixture <- function(
       primary = list(resource = "urn:primary", scopes = "primary.read"),
       secondary = list(resource = "urn:secondary", scopes = "secondary.read")
     ),
-    default_token_target = "primary"
+    token_target_default = "primary"
   )
   state <- new.env(parent = emptyenv())
   state[["revoked"]] <- character()

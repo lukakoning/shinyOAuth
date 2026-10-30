@@ -74,9 +74,14 @@ api_class_argument_alias <- function(class, old, new) {
   api_class_constructor(class, constructor, properties)
 }
 
-# Preserve the meaning of every positional argument from CRAN 0.5.0.
+# Preserve released positional arguments, including aliases added after 0.5.0.
 # Renamed properties also remain readable and writable through their old names.
-api_preserve_constructor <- function(class, released, aliases) {
+api_preserve_constructor <- function(
+  class,
+  released,
+  aliases,
+  append = character()
+) {
   constructor <- class@constructor
   args <- as.list(formals(constructor))
   preferred <- released
@@ -114,6 +119,8 @@ api_preserve_constructor <- function(class, released, aliases) {
       properties[[old]] <- api_alias_property(new)
     }
   }
+  stopifnot(all(append %in% names(args)))
+  args <- args[c(setdiff(names(args), append), append)]
   formals(constructor) <- as.pairlist(args)
   body(constructor) <- as.call(c(
     list(as.name("{")),

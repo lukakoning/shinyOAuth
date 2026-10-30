@@ -15,7 +15,7 @@ revocation_target_fixture <- function() {
   S7::props(client) <- list(
     provider = provider,
     token_targets = targets,
-    default_token_target = "t1"
+    token_target_default = "t1"
   )
   token <- OAuthToken(
     access_token = "primary",

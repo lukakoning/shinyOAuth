@@ -61,7 +61,7 @@ for (count in c(0L, 1L, 16L)) {
         }),
         paste0("api", seq_len(count))
       ),
-      default_token_target = "api1"
+      token_target_default = "api1"
     )
   }
   token <- manager_test_token()

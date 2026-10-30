@@ -253,7 +253,7 @@ test_that("automatic maximum-age clearing retains secondary tokens for cleanup",
       first = list(resource = "urn:first", scopes = "read"),
       second = list(resource = "urn:second", scopes = "write")
     ),
-    default_token_target = "first"
+    token_target_default = "first"
   )
   token <- OAuthToken(
     access_token = "first-access",

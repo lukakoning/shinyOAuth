@@ -15,7 +15,7 @@ introspected_target_client <- function() {
       api = list(resource = "urn:api", scopes = c("read", "write")),
       contacts = list(resource = "urn:contacts", scopes = "contacts")
     ),
-    default_token_target = "api"
+    token_target_default = "api"
   )
 }
 

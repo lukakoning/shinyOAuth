@@ -387,7 +387,7 @@ connection_credentials_open <- function(
       }
       if (!is.null(targets)) {
         validate_token_target_bundle_budget(client, token, targets)
-        target <- client@default_token_target
+        target <- client@token_target_default
         validate_token_target_grant(
           client,
           token@granted_scopes,

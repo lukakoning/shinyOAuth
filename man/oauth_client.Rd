@@ -66,12 +66,8 @@ oauth_client(
   ...,
   introspect_elements = NULL,
   token_targets = list(),
-  default_token_target = if (length(token_targets) == 1L) {
-     names(token_targets)
- }
-    else {
-     character()
- }
+  token_target_default = if (length(token_targets) == 1L) names(token_targets) else
+    character()
 )
 }
 \arguments{
@@ -581,7 +577,7 @@ See \code{vignette("token-targets", package = "shinyOAuth")}
 (\href{https://lukakoning.github.io/shinyOAuth/articles/token-targets.html}{online guide})
 for examples, provider-specific permission rules and declaration limits.}
 
-\item{default_token_target}{Name of the API to use when a connection method
+\item{token_target_default}{Name of the API to use when a connection method
 omits \code{target}. Required with several targets; the sole target is selected
 automatically.}
 }

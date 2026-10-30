@@ -149,6 +149,27 @@ test_that("OAuthClient round-trips every released positional property", {
   expect_identical(S7::props(positional), S7::props(named))
 })
 
+test_that("constructors retain every positional argument from tag 0.6.1", {
+  baseline <- jsonlite::read_json(test_path(
+    "fixtures",
+    "tag-0.6.1-constructors.json"
+  ))
+  client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
+  objects <- list(
+    OAuthClient = client,
+    OAuthProvider = client@provider,
+    OAuthToken = OAuthToken(access_token = "synthetic-access", token_type = "Bearer")
+  )
+  for (name in names(baseline[["arguments"]])) {
+    released <- unlist(baseline[["arguments"]][[name]], use.names = FALSE)
+    constructor <- get(name, envir = asNamespace("shinyOAuth"))
+    expect_identical(head(names(formals(constructor)), length(released)), released)
+    values <- lapply(released, function(field) S7::prop(objects[[name]], field))
+    rebuilt <- do.call(constructor, values)
+    expect_identical(S7::props(rebuilt), S7::props(objects[[name]]))
+  }
+})
+
 test_that("S7 property lists reconstruct objects with matching aliases", {
   client <- make_test_client(use_pkce = TRUE, use_nonce = FALSE)
   rebuilt <- do.call(OAuthClient, S7::props(client))
