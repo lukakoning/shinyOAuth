@@ -88,7 +88,7 @@ test_that("provider_fingerprint avoids delimiter collisions", {
       ),
       allowed_algs = S7::new_property(
         S7::class_character,
-        default = c("RS256", "ES256")
+        default = quote(c("RS256", "ES256"))
       ),
       allowed_token_types = S7::new_property(
         S7::class_character,
@@ -225,7 +225,7 @@ test_that("provider_fingerprint changes when callback security policy changes", 
       ),
       allowed_algs = S7::new_property(
         S7::class_character,
-        default = c("RS256", "ES256")
+        default = quote(c("RS256", "ES256"))
       ),
       allowed_token_types = S7::new_property(
         S7::class_character,
