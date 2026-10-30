@@ -2,9 +2,6 @@
 
 * Use your Shiny login with other R packages:
 
-  - The new connection lifetime argument is named `min_valid_for_seconds` in
-    `$access_token()` and `$request()`, making its units explicit. This replaces
-    the unreleased name `min_valid_for`.
   - `oauth_module_server()` now provides `connection()`. Connections from this
     module and `oauth_connections_server()` offer `$access_token()` to obtain
     a current bearer token, refreshing it when needed.
@@ -19,16 +16,9 @@
 
 * Access several APIs, such as calendars and contacts, through one login:
 
-  - Added `oauth_token_target()` for named, validated target declarations.
-    Existing plain lists remain supported, with the same permission defaults.
-  - Client constructors infer API scopes from `token_targets` when `scopes` is
-    omitted, avoiding duplicate declarations. Explicit scopes remain a limit
-    and must cover every target; identity and refresh-consent rules still apply.
-  - Connection `$is_usable()` and `$summary()` now accept `target` to inspect
-    another API's token without acquiring or refreshing it.
-  - Configure `token_targets` in `oauth_client()` for providers supporting
-    RFC 8707 resource indicators or Microsoft token acquisition. Each API can
-    have its own token; select one with, for example,
+  - Declare APIs with `oauth_token_target()` in `oauth_client(token_targets = ...)`
+    for providers supporting RFC 8707 resource indicators or Microsoft token
+    acquisition. Each API can have its own token; select one with, for example,
     `connection$access_token(target = "calendar")`.
   - With token targets, set `reauth_after_seconds` if your app needs a
     time-limited login; API token expiry alone need not end the local login.
@@ -37,13 +27,6 @@
 
 * Provider helpers and compatibility improvements:
 
-  - Renamed the unreleased `default_token_target` argument and property to
-    `token_target_default`, beside `token_targets`. Both client constructors
-    select a sole target automatically. New S7 constructor arguments follow all
-    arguments from 0.6.1, preserving their positional meaning.
-  - Connection `$access_token()` places `target` after `required_scopes`, and
-    `$request()` keeps `refresh` next to `min_valid_for_seconds`. The new ORCID
-    helper takes `sandbox` before the optional provider `name`.
   - Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth, Hugging Face,
     SURFconext, and authentik, reducing manual provider configuration.
   - Microsoft sign-in can skip Graph profile retrieval with
