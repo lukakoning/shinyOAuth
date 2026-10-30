@@ -70,12 +70,8 @@ oauth_client(
   ...,
   introspect_elements = NULL,
   token_targets = list(),
-  default_token_target = if (length(token_targets) == 1L) {
-     names(token_targets)
- }
-    else {
-     character()
- }
+  token_target_default = if (length(token_targets) == 1L) names(token_targets) else
+    character()
 )
 ```
 
@@ -741,7 +737,7 @@ oauth_client(
   for examples, provider-specific permission rules and declaration
   limits.
 
-- default_token_target:
+- token_target_default:
 
   Name of the API to use when a connection method omits `target`.
   Required with several targets; the sole target is selected

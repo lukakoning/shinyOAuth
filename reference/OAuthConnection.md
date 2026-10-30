@@ -165,10 +165,10 @@ login, requesting new permissions or retrying the SDK operation.
 
     OAuthConnection$access_token(
       required_scopes = character(),
+      target = NULL,
       min_valid_for = 60,
       force_refresh = FALSE,
-      async = FALSE,
-      target = NULL
+      async = FALSE
     )
 
 #### Arguments
@@ -177,6 +177,11 @@ login, requesting new permissions or retrying the SDK operation.
 
   Permissions needed for this operation, in addition to client
   requirements.
+
+- `target`:
+
+  Optional API name from `token_targets`. `NULL` selects the client's
+  default. Its token is acquired when needed.
 
 - `min_valid_for`:
 
@@ -193,11 +198,6 @@ login, requesting new permissions or retrying the SDK operation.
   If `TRUE`, return a promise, including for a cached token. If `FALSE`,
   return a string or raise an error; a synchronous call cannot wait for
   an already running async refresh.
-
-- `target`:
-
-  Optional API name from `token_targets`. `NULL` selects the client's
-  default. Its token is acquired when needed.
 
 #### Details
 
@@ -448,8 +448,8 @@ grant must cover any scopes required for this operation.
       method = "GET",
       required_scopes = character(),
       configure = NULL,
-      refresh = FALSE,
       target = NULL,
+      refresh = FALSE,
       min_valid_for = 60
     )
 
@@ -500,6 +500,11 @@ grant must cover any scopes required for this operation.
   once. Both refresh modes recheck the current authorization afterward,
   before sending the request.
 
+- `target`:
+
+  Optional declared token-target name. Target clients require an
+  explicit association through that declaration's `resource_ids`.
+
 - `refresh`:
 
   If `TRUE`, obtain a usable token before sending the request. Default
@@ -508,11 +513,6 @@ grant must cover any scopes required for this operation.
   ordinary HTTP retries are disabled for this call. DPoP nonce handling
   remains available. The destination and `configure` result are checked
   before refresh, and permission is checked again before sending.
-
-- `target`:
-
-  Optional declared token-target name. Target clients require an
-  explicit association through that declaration's `resource_ids`.
 
 - `min_valid_for`:
 

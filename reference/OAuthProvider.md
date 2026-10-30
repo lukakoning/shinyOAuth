@@ -65,12 +65,9 @@ OAuthProvider(
     "Ed25519", "EdDSA"),
   allowed_token_types = "Bearer",
   leeway = getOption("shinyOAuth.leeway", 30),
-  token_target_mode = "none",
   infer_oidc_from_issuer = TRUE,
-  userinfo_id_selector_policy_id = NA_character_,
   jwks_uri = NA_character_,
   userinfo_allowed_algs = NULL,
-  token_response_scope_format = "space",
   allow_missing_token_type = FALSE,
   jarm_signing_alg_values_supported = character(0),
   jarm_encryption_alg_values_supported = character(0),
@@ -81,7 +78,10 @@ OAuthProvider(
   require_pushed_authorization_requests = NULL,
   require_signed_request_object = NULL,
   require_request_uri_registration = NULL,
-  tls_client_certificate_bound_access_tokens = NULL
+  tls_client_certificate_bound_access_tokens = NULL,
+  token_target_mode = "none",
+  token_response_scope_format = "space",
+  userinfo_id_selector_policy_id = NA_character_
 )
 ```
 
@@ -523,31 +523,12 @@ OAuthProvider(
   checks and state payload `issued_at` future check. Default 30. Can be
   globally overridden via option `shinyOAuth.leeway`.
 
-- token_target_mode:
-
-  How this provider obtains API-specific tokens: `"none"` (default),
-  `"rfc8707"`, or `"microsoft"`. This applies to client `token_targets`
-  and depends on provider support. The Microsoft helper selects
-  `"microsoft"` automatically; discovery does not enable targets. See
-  [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
-  ([online
-  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
-  for setup and permission rules.
-
 - infer_oidc_from_issuer:
 
   Whether setting `issuer` enables OpenID Connect behavior. Default
   `TRUE`: helpers enable OIDC nonce/ID token defaults and the client
   adds the `openid` scope. Set `FALSE` for an OAuth-only server that has
   an issuer identifier but does not implement OIDC.
-
-- userinfo_id_selector_policy_id:
-
-  Optional version name for a custom `userinfo_id_selector`, or
-  `NA_character_`. Identifies settings or helper behavior outside the
-  function body that affect identity selection. These form part of the
-  client's policy: a new version ID lets pending logins and saved
-  connections detect a change.
 
 - jwks_uri:
 
@@ -564,12 +545,6 @@ OAuthProvider(
   choice. An empty vector rejects all signed UserInfo algorithms.
   Unlabelled RSA keys follow the same binding policy as
   `id_token_allowed_algs`.
-
-- token_response_scope_format:
-
-  Separator used for permissions in token responses: `"space"` (default)
-  or `"comma"`. The GitHub helper sets `"comma"` automatically. Set it
-  explicitly for a custom provider using that format.
 
 - allow_missing_token_type:
 
@@ -632,6 +607,31 @@ OAuthProvider(
 - tls_client_certificate_bound_access_tokens:
 
   Compatibility alias for `mtls_client_certificate_bound_access_tokens`.
+
+- token_target_mode:
+
+  How this provider obtains API-specific tokens: `"none"` (default),
+  `"rfc8707"`, or `"microsoft"`. This applies to client `token_targets`
+  and depends on provider support. The Microsoft helper selects
+  `"microsoft"` automatically; discovery does not enable targets. See
+  [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
+  ([online
+  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
+  for setup and permission rules.
+
+- token_response_scope_format:
+
+  Separator used for permissions in token responses: `"space"` (default)
+  or `"comma"`. The GitHub helper sets `"comma"` automatically. Set it
+  explicitly for a custom provider using that format.
+
+- userinfo_id_selector_policy_id:
+
+  Optional version name for a custom `userinfo_id_selector`, or
+  `NA_character_`. Identifies settings or helper behavior outside the
+  function body that affect identity selection. These form part of the
+  client's policy: a new version ID lets pending logins and saved
+  connections detect a change.
 
 ## Value
 

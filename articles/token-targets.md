@@ -55,7 +55,7 @@ client <- oauth_client(
       resource_ids = "contacts_api"
     )
   ),
-  default_token_target = "calendar",
+  token_target_default = "calendar",
   resource_bases = c(
     calendar_api = "https://calendar.example/v1",
     contacts_api = "https://contacts.example/v1"
@@ -63,7 +63,7 @@ client <- oauth_client(
 )
 ```
 
-`default_token_target` chooses the API when a call omits `target`.
+`token_target_default` chooses the API when a call omits `target`.
 `resource_ids` connects each target to its named API address in
 `resource_bases`. You can omit those addresses when only exporting
 tokens to another package.
@@ -157,7 +157,7 @@ client <- oauth_client(
       scopes = "api://your-contacts-api/Contacts.Read"
     )
   ),
-  default_token_target = "calendar"
+  token_target_default = "calendar"
 )
 ```
 

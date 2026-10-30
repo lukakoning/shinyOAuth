@@ -184,16 +184,20 @@ requesting new permissions or retrying the SDK operation.</p><div class="section
 <h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">access_token</span><span class="op">(</span></span>
 <span>  required_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  target <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  min_valid_for <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>  force_refresh <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  target <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  async <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>required_scopes</code></dt>
 <dd><p>Permissions needed for this operation, in addition to
 client requirements.</p></dd>
+
+      <dt><code>target</code></dt>
+<dd><p>Optional API name from <code>token_targets</code>. <code>NULL</code> selects the
+client's default. Its token is acquired when needed.</p></dd>
 
       <dt><code>min_valid_for</code></dt>
 <dd><p>Minimum remaining lifetime in seconds (default 60).
@@ -207,10 +211,6 @@ expiry triggers refresh; an unusable replacement raises an error.</p></dd>
 <dd><p>If <code>TRUE</code>, return a promise, including for a cached token.
 If <code>FALSE</code>, return a string or raise an error; a synchronous call cannot
 wait for an already running async refresh.</p></dd>
-
-      <dt><code>target</code></dt>
-<dd><p>Optional API name from <code>token_targets</code>. <code>NULL</code> selects the
-client's default. Its token is acquired when needed.</p></dd>
 
 
 </dl><p></p></div>
@@ -417,8 +417,8 @@ must cover any scopes required for this operation.</p><div class="section">
 <span>  method <span class="op">=</span> <span class="st">"GET"</span>,</span>
 <span>  required_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  configure <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  refresh <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  target <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  refresh <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  min_valid_for <span class="op">=</span> <span class="fl">60</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
@@ -455,6 +455,10 @@ URL, transport policies, authentication and Host headers cannot be changed.
 Configuration runs once. Both refresh modes recheck the current
 authorization afterward, before sending the request.</p></dd>
 
+      <dt><code>target</code></dt>
+<dd><p>Optional declared token-target name. Target clients require
+an explicit association through that declaration's <code>resource_ids</code>.</p></dd>
+
       <dt><code>refresh</code></dt>
 <dd><p>If <code>TRUE</code>, obtain a usable token before sending the request.
 Default <code>FALSE</code> uses the current token. This is synchronous and cannot wait
@@ -462,10 +466,6 @@ for an async refresh. Failed API calls are not refreshed or replayed;
 ordinary HTTP retries are disabled for this call. DPoP nonce handling
 remains available. The destination and <code>configure</code> result are checked
 before refresh, and permission is checked again before sending.</p></dd>
-
-      <dt><code>target</code></dt>
-<dd><p>Optional declared token-target name. Target clients require
-an explicit association through that declaration's <code>resource_ids</code>.</p></dd>
 
       <dt><code>min_valid_for</code></dt>
 <dd><p>Minimum remaining lifetime when <code>refresh = TRUE</code>,

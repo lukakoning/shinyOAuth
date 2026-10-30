@@ -61,7 +61,9 @@
 </ul></li>
 <li>
 <p>Provider helpers and compatibility improvements:</p>
-<ul><li>Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth, Hugging Face, SURFconext, and authentik, reducing manual provider configuration.</li>
+<ul><li>Renamed the unreleased <code>default_token_target</code> argument and property to <code>token_target_default</code>, beside <code>token_targets</code>. Both client constructors select a sole target automatically. New S7 constructor arguments follow all arguments from 0.6.1, preserving their positional meaning.</li>
+<li>Connection <code>$access_token()</code> places <code>target</code> after <code>required_scopes</code>, and <code>$request()</code> keeps <code>refresh</code> next to <code>min_valid_for</code>. The new ORCID helper takes <code>sandbox</code> before the optional provider <code>name</code>.</li>
+<li>Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth, Hugging Face, SURFconext, and authentik, reducing manual provider configuration.</li>
 <li>Microsoft sign-in can skip Graph profile retrieval with <code>oauth_provider_microsoft(userinfo_required = FALSE)</code> when the token is intended for another API. This avoids a failed profile request without disabling OIDC identity checks.</li>
 <li>
 <code><a href="../reference/oauth_provider_oidc.html">oauth_provider_oidc()</a></code> preserves exact issuer URLs, including trailing slashes, and accepts a separate <code>issuer</code> when it differs from the endpoint base URL. Fixed GitHub’s permission-response format and Microsoft directory-ID letter case. Ed25519 keys now work for signed login requests and self-signed mTLS registration.</li>

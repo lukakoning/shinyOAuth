@@ -8,18 +8,18 @@ with `scopes = "openid"`.
 ## Usage
 
 ``` r
-oauth_provider_orcid(name = "orcid", sandbox = FALSE)
+oauth_provider_orcid(sandbox = FALSE, name = "orcid")
 ```
 
 ## Arguments
 
-- name:
-
-  Optional provider name (default `"orcid"`).
-
 - sandbox:
 
   Logical; use ORCID's sandbox instead of production.
+
+- name:
+
+  Optional provider name (default `"orcid"`).
 
 ## Value
 

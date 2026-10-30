@@ -119,12 +119,8 @@ to <code><a href="oauth_module_server.html">oauth_module_server()</a></code>.</p
 <span>  <span class="va">...</span>,</span>
 <span>  introspect_elements <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  token_targets <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  default_token_target <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span> <span class="op">==</span> <span class="fl">1L</span><span class="op">)</span> <span class="op">{</span></span>
-<span>     <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span></span>
-<span> <span class="op">}</span></span>
-<span>    <span class="kw">else</span> <span class="op">{</span></span>
-<span>     <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
-<span> <span class="op">}</span></span>
+<span>  token_target_default <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span> <span class="op">==</span> <span class="fl">1L</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">token_targets</span><span class="op">)</span> <span class="kw">else</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -741,7 +737,7 @@ See <code><a href="../articles/token-targets.html">vignette("token-targets", pac
 for examples, provider-specific permission rules and declaration limits.</p></dd>
 
 
-<dt id="arg-default-token-target">default_token_target<a class="anchor" aria-label="anchor" href="#arg-default-token-target"></a></dt>
+<dt id="arg-token-target-default">token_target_default<a class="anchor" aria-label="anchor" href="#arg-token-target-default"></a></dt>
 <dd><p>Name of the API to use when a connection method
 omits <code>target</code>. Required with several targets; the sole target is selected
 automatically.</p></dd>

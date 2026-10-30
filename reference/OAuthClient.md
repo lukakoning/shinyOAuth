@@ -53,8 +53,6 @@ OAuthClient(
   introspect = FALSE,
   introspection_checks = character(0),
   endpoint_auth = list(),
-  token_targets = list(),
-  default_token_target = character(0),
   authorization_server_mode = "single",
   authorization_server_redirect_uris = character(0),
   dpop_require_observed_cnf = FALSE,
@@ -91,7 +89,10 @@ OAuthClient(
   authorization_request_encryption_enc = NULL,
   authorization_request_encryption_kid = NULL,
   authorization_request_ttl = NULL,
-  authorization_request_nbf_skew = NULL
+  authorization_request_nbf_skew = NULL,
+  token_targets = list(),
+  token_target_default = if (length(token_targets) == 1L) names(token_targets) else
+    character()
 )
 ```
 
@@ -557,28 +558,6 @@ OAuthClient(
   apply only to token exchange and refresh; set `extra_headers`
   explicitly for every other endpoint that needs them.
 
-- token_targets:
-
-  Optional named list for obtaining tokens for several APIs through one
-  login. Each entry needs a `resource` identifier and `scopes` (also
-  included in client `scopes`). Optional `required_scopes` set that
-  API's minimum permissions; `resource_ids` associate it with named
-  `resource_bases`. Optional Microsoft `scope_aliases` identify unusual
-  short permission names in responses. Requires provider support and
-  `userinfo_required = FALSE`; cannot be combined with `resource` or
-  SMART configuration. See
-  [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
-  ([online
-  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
-  for examples, provider-specific permission rules and declaration
-  limits.
-
-- default_token_target:
-
-  Name of the API to use when a connection method omits `target`.
-  Required with several targets; the sole target is selected
-  automatically.
-
 - authorization_server_mode:
 
   Declares whether this client is part of an application that can
@@ -839,6 +818,28 @@ OAuthClient(
 - authorization_request_nbf_skew:
 
   Compatibility alias for `request_object_nbf_skew`.
+
+- token_targets:
+
+  Optional named list for obtaining tokens for several APIs through one
+  login. Each entry needs a `resource` identifier and `scopes` (also
+  included in client `scopes`). Optional `required_scopes` set that
+  API's minimum permissions; `resource_ids` associate it with named
+  `resource_bases`. Optional Microsoft `scope_aliases` identify unusual
+  short permission names in responses. Requires provider support and
+  `userinfo_required = FALSE`; cannot be combined with `resource` or
+  SMART configuration. See
+  [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
+  ([online
+  guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
+  for examples, provider-specific permission rules and declaration
+  limits.
+
+- token_target_default:
+
+  Name of the API to use when a connection method omits `target`.
+  Required with several targets; the sole target is selected
+  automatically.
 
 ## Value
 

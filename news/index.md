@@ -38,6 +38,15 @@
 
 - Provider helpers and compatibility improvements:
 
+  - Renamed the unreleased `default_token_target` argument and property
+    to `token_target_default`, beside `token_targets`. Both client
+    constructors select a sole target automatically. New S7 constructor
+    arguments follow all arguments from 0.6.1, preserving their
+    positional meaning.
+  - Connection `$access_token()` places `target` after
+    `required_scopes`, and `$request()` keeps `refresh` next to
+    `min_valid_for`. The new ORCID helper takes `sandbox` before the
+    optional provider `name`.
   - Added helpers for ORCID, GitLab, Amazon Cognito, Globus Auth,
     Hugging Face, SURFconext, and authentik, reducing manual provider
     configuration.

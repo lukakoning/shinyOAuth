@@ -122,13 +122,13 @@ Microsoft uses the alternative setup shown <a href="#microsoft-example">below</a
 <span>      resource_ids <span class="op">=</span> <span class="st">"contacts_api"</span></span>
 <span>    <span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
-<span>  default_token_target <span class="op">=</span> <span class="st">"calendar"</span>,</span>
+<span>  token_target_default <span class="op">=</span> <span class="st">"calendar"</span>,</span>
 <span>  resource_bases <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>    calendar_api <span class="op">=</span> <span class="st">"https://calendar.example/v1"</span>,</span>
 <span>    contacts_api <span class="op">=</span> <span class="st">"https://contacts.example/v1"</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code>default_token_target</code> chooses the API when a call omits
+<p><code>token_target_default</code> chooses the API when a call omits
 <code>target</code>. <code>resource_ids</code> connects each target to
 its named API address in <code>resource_bases</code>. You can omit those
 addresses when only exporting tokens to another package.</p>
@@ -219,7 +219,7 @@ exports tokens to another package:</p>
 <span>      scopes <span class="op">=</span> <span class="st">"api://your-contacts-api/Contacts.Read"</span></span>
 <span>    <span class="op">)</span></span>
 <span>  <span class="op">)</span>,</span>
-<span>  default_token_target <span class="op">=</span> <span class="st">"calendar"</span></span>
+<span>  token_target_default <span class="op">=</span> <span class="st">"calendar"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><code>userinfo_required = FALSE</code> skips the Graph profile
 request, which would be inappropriate for a token intended for another
