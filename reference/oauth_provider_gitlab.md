@@ -50,9 +50,8 @@ object configured for GitLab.
 
 ## Details
 
-Supply only the scopes your app needs; `"openid"` is enough to request
-an ID token. API and repository access require separate GitLab scopes.
-See [GitLab's OIDC
+The `"openid"` scope requests an ID token. API and repository access
+require separate GitLab scopes. See [GitLab's OIDC
 guide](https://docs.gitlab.com/integration/openid_connect_provider/).
 
 ## Examples

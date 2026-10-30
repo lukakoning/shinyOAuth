@@ -225,11 +225,11 @@ outside <code>server()</code>. Its <code>smart</code> property records the selec
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Choose <code>launch = "standalone"</code> when the user opens the app directly, or <code>"ehr"</code>
-when an electronic health record opens it. Use separate registrations for the
-two flows. Patient context describes the patient being viewed; it does not
-identify the person signed in. Enable <code>identity</code> only when the app needs that
-identity too. See <code><a href="../articles/smart-on-fhir.html">vignette("smart-on-fhir", package = "shinyOAuth")</a></code>
+    <p><code>launch = "standalone"</code> describes an app opened directly; <code>"ehr"</code> describes
+one opened from an electronic health record. Each flow has its own app
+registration. Patient context identifies the chart being viewed; <code>identity</code>
+separately controls validation of the signed-in user. See
+<code><a href="../articles/smart-on-fhir.html">vignette("smart-on-fhir", package = "shinyOAuth")</a></code>
 (<a href="https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html">online guide</a>)
 for a complete app.</p>
     </div>
@@ -243,8 +243,8 @@ requires signed identity-token and nonce checks; <code>"fhirUser"</code> also re
 the user's FHIR reference. <code>"none"</code> does not enable OIDC automatically.</p>
 <p>Supported flows use direct authorization and query or form POST callbacks.
 Claims requests, remote authentication-freshness overrides, JAR, PAR, JARM,
-DPoP and mTLS are not supported by this constructor. Each EHR launch needs a
-fresh registered launch transaction; do not reuse a shared launch handle.</p>
+DPoP and mTLS are not supported by this constructor. The manager establishes
+a fresh registered transaction for each EHR launch; launch handles are single-use.</p>
 <p>Tokens need a positive lifetime. Only an initial response may omit
 <code>expires_in</code>, and only with an explicit <code>initial_expires_in_fallback</code>.
 Refresh responses must supply a lifetime. Requests require TLS 1.2 or newer;

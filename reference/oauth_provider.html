@@ -223,13 +223,11 @@ JSON string.</p></dd>
 
 <dt id="arg-signed-request-object-required">signed_request_object_required<a class="anchor" aria-label="anchor" href="#arg-signed-request-object-required"></a></dt>
 <dd><p>Logical. Whether the provider requires
-signed Request Objects for authorization requests. When <code>TRUE</code>, clients
-should use <code>request_object_mode = "request"</code> or
-<code>request_object_mode = "request_uri"</code>.
-This setting enforces local construction only; it does not configure the
-authorization server. Register <code>require_signed_request_object = true</code> (or
-the server's equivalent) and verify unsigned requests are rejected before
-relying on downgrade-resistant request integrity.</p></dd>
+signed Request Objects for authorization requests. When <code>TRUE</code>, client
+construction requires <code>request_object_mode = "request"</code> or <code>"request_uri"</code>.
+This represents the provider's registration policy and enforces local
+construction. Provider-side rejection of unsigned requests depends on that
+registration, not on this local flag.</p></dd>
 
 
 <dt id="arg-request-parameter-supported">request_parameter_supported<a class="anchor" aria-label="anchor" href="#arg-request-parameter-supported"></a></dt>
@@ -255,10 +253,9 @@ metadata says caller-managed <code>request_uri</code> values must be pre-registe
 <code>NA</code> means the provider did not say. Discovery-derived providers apply the
 OpenID Connect default (<code>FALSE</code>) when this metadata is omitted.
 shinyOAuth can publish caller-managed <code>request_uri</code> values through
-<code><a href="oauth_module_server.html">oauth_module_server()</a></code>. When this is <code>TRUE</code>, make sure the provider has a
-matching public request URI or wildcard prefix registered for the client.
-shinyOAuth stores this metadata for caller awareness, but it cannot verify
-provider-side registration state automatically.</p></dd>
+<code><a href="oauth_module_server.html">oauth_module_server()</a></code>. <code>TRUE</code> means the public URI or a matching prefix
+belongs in the provider's client registration. The package stores this
+requirement as metadata; provider-side registration is outside local validation.</p></dd>
 
 
 <dt id="arg-token-endpoint-auth-signing-alg-values-supported">token_endpoint_auth_signing_alg_values_supported<a class="anchor" aria-label="anchor" href="#arg-token-endpoint-auth-signing-alg-values-supported"></a></dt>
@@ -327,28 +324,25 @@ performs runtime discovery to locate the JWKS URI.</p><ul><li><p><code>"url"</co
 the discovery metadata exactly, including any trailing slash.</p></li>
 <li><p><code>"host"</code>: compare only scheme + host.</p></li>
 <li><p><code>"none"</code>: do not validate discovery issuer consistency.</p></li>
-</ul><p>In most cases, keep the default <code>"url"</code>. Use <code>"host"</code> only for providers
-that publish tenant-independent metadata with a templated issuer, such as
-some Microsoft aliases.</p></dd>
+</ul><p>The Microsoft helper configures tenant-independent issuer handling for
+supported alias tenants.</p></dd>
 
 
 <dt id="arg-use-nonce">use_nonce<a class="anchor" aria-label="anchor" href="#arg-use-nonce"></a></dt>
 <dd><p>Whether to tie the ID token to this login using a random nonce.
-Keep enabled for OIDC. The nonce is sent in the request and checked in the
-returned ID token.</p></dd>
+The package sends it in the request and checks it in the returned ID token.</p></dd>
 
 
 <dt id="arg-use-pkce">use_pkce<a class="anchor" aria-label="anchor" href="#arg-use-pkce"></a></dt>
 <dd><p>Whether to protect the code exchange using Proof Key for Code
-Exchange (PKCE). Leave enabled; public clients require it.
+Exchange (PKCE), which public clients require.
 It sends a <code>code_challenge</code> with the login
 request and a matching secret <code>code_verifier</code> during token exchange.</p></dd>
 
 
 <dt id="arg-pkce-method">pkce_method<a class="anchor" aria-label="anchor" href="#arg-pkce-method"></a></dt>
-<dd><p>PKCE code challenge method ("S256" or "plain"). "S256" is
-recommended. Use "plain" only if you are working with a provider that does
-not support "S256".</p></dd>
+<dd><p>PKCE code challenge method: <code>"S256"</code> (default), or
+<code>"plain"</code> for compatibility with providers that require it.</p></dd>
 
 
 <dt id="arg-userinfo-required">userinfo_required<a class="anchor" aria-label="anchor" href="#arg-userinfo-required"></a></dt>
@@ -403,8 +397,8 @@ This requires the provider to be a valid OpenID Connect provider with a configur
 <code>issuer</code> and the token response to include an ID token (may require setting
 the client's scope to include <code>openid</code>).</p>
 <p>Both the S7 constructor and <code>oauth_provider()</code> enable this when an issuer
-is provided and <code>infer_oidc_from_issuer = TRUE</code>. Set an explicit <code>FALSE</code> only
-when intentionally opting out of ID token validation.</p></dd>
+is provided and <code>infer_oidc_from_issuer = TRUE</code>. An explicit <code>FALSE</code>
+disables automatic ID token validation.</p></dd>
 
 
 <dt id="arg-extra-auth-params">extra_auth_params<a class="anchor" aria-label="anchor" href="#arg-extra-auth-params"></a></dt>
@@ -479,13 +473,12 @@ RSA/EC/OKP public key in JWKS must match one of the configured pins)</p></dd>
 <dd><p>When TRUE, enforce that the discovery <code>jwks_uri</code> host
 matches the issuer host exactly. Defaults to FALSE at the class
 level, but helper constructors for OIDC (e.g., <code><a href="oauth_provider_oidc.html">oauth_provider_oidc()</a></code> and
-<code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code>) enable this by default for safer config.
+<code><a href="oauth_provider_oidc_discover.html">oauth_provider_oidc_discover()</a></code>) enable this by default.
 The generic helper <code>oauth_provider()</code> will also automatically set this to
 TRUE when an <code>issuer</code> is provided and either <code>id_token_validation</code> or
-<code>id_token_required</code> is TRUE (OIDC-like configuration). Set explicitly to
-FALSE to opt out. For providers that legitimately publish JWKS on a
-different host (for example Google), set <code>jwks_host_allow_only</code> to that
-exact hostname to keep host validation enabled.</p></dd>
+<code>id_token_required</code> is TRUE (OIDC-like configuration). An explicit FALSE
+disables issuer-host matching. <code>jwks_host_allow_only</code> takes precedence and
+can specify a different exact hostname, as used by the Google helper.</p></dd>
 
 
 <dt id="arg-jwks-host-allow-only">jwks_host_allow_only<a class="anchor" aria-label="anchor" href="#arg-jwks-host-allow-only"></a></dt>
@@ -605,9 +598,9 @@ compatibility.</p></dd>
 
 
 <dt id="arg-allow-missing-token-type">allow_missing_token_type<a class="anchor" aria-label="anchor" href="#arg-allow-missing-token-type"></a></dt>
-<dd><p>Logical, default <code>FALSE</code>. Opt in only for a
-provider known to issue Bearer tokens while omitting <code>token_type</code> from its
-token responses, contrary to OAuth 2.0. When <code>TRUE</code>, login and refresh assume
+<dd><p>Logical, default <code>FALSE</code>. Compatibility for
+providers that issue Bearer tokens without the OAuth-required <code>token_type</code>.
+When <code>TRUE</code>, login and refresh assume
 <code>"Bearer"</code> only when the field is absent. Explicit null, empty, invalid, or
 unsupported values still fail validation. The fallback never applies to
 clients configured with DPoP; other token and binding checks remain enforced.</p></dd>
@@ -615,9 +608,9 @@ clients configured with DPoP; other token and binding checks remain enforced.</p
 
 <dt id="arg-token-target-mode">token_target_mode<a class="anchor" aria-label="anchor" href="#arg-token-target-mode"></a></dt>
 <dd><p>How this provider obtains API-specific tokens:
-<code>"none"</code> (default), <code>"rfc8707"</code>, or <code>"microsoft"</code>. Set this only when using
-client <code>token_targets</code> and after checking provider support. The Microsoft
-helper selects <code>"microsoft"</code> automatically; discovery does not enable
+<code>"none"</code> (default), <code>"rfc8707"</code>, or <code>"microsoft"</code>. This applies to client
+<code>token_targets</code> and depends on provider support. The Microsoft helper
+selects <code>"microsoft"</code> automatically; discovery does not enable
 targets. See <code><a href="../articles/token-targets.html">vignette("token-targets", package = "shinyOAuth")</a></code>
 (<a href="https://lukakoning.github.io/shinyOAuth/articles/token-targets.html">online guide</a>)
 for setup and permission rules.</p></dd>
@@ -631,10 +624,10 @@ automatically. Set it explicitly for a custom provider using that format.</p></d
 
 <dt id="arg-userinfo-id-selector-policy-id">userinfo_id_selector_policy_id<a class="anchor" aria-label="anchor" href="#arg-userinfo-id-selector-policy-id"></a></dt>
 <dd><p>Optional version name for a custom
-<code>userinfo_id_selector</code>, or <code>NA_character_</code>. If the function uses settings
-outside its body, keep them unchanged for the client's lifetime and change
-this ID when those settings or helper behavior change. This lets pending
-logins and saved connections detect the change.</p></dd>
+<code>userinfo_id_selector</code>, or <code>NA_character_</code>. Identifies settings or helper
+behavior outside the function body that affect identity selection. These
+form part of the client's policy: a new version ID lets pending logins and
+saved connections detect a change.</p></dd>
 
 </dl></div>
     <div class="section level2">

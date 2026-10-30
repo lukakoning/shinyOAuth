@@ -23,11 +23,11 @@ object configured for Hugging Face.
 
 ## Details
 
-For login, request `scopes = c("openid", "profile")`, adding `"email"`
-only if needed. Repository access and inference require their own
-scopes, such as `"read-repos"` or `"inference-api"`, and user consent.
-This preset targets confidential applications with a client secret. See
-[Sign in with Hugging Face](https://huggingface.co/docs/hub/oauth).
+Login uses `openid` with optional `profile` and `email` scopes.
+Repository access and inference require their own scopes, such as
+`"read-repos"` or `"inference-api"`, and user consent. This preset
+targets confidential applications with a client secret. See [Sign in
+with Hugging Face](https://huggingface.co/docs/hub/oauth).
 
 ## Examples
 

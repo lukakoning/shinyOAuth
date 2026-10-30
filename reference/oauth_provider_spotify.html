@@ -73,7 +73,7 @@ and does not expect an ID token.</p>
 
 <dt id="arg-allow-legacy-id">allow_legacy_id<a class="anchor" aria-label="anchor" href="#arg-allow-legacy-id"></a></dt>
 <dd><p>Whether to fall back to Spotify's mutable <code>id</code> when
-<code>account_id</code> is absent. Default <code>FALSE</code>; enable only during migration.</p></dd>
+<code>account_id</code> is absent. Default <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -82,14 +82,12 @@ and does not expect an ID token.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Spotify requires scopes to be included in the authorization request.
-Set requested scopes on the client with <code>oauth_client(..., scopes = ...)</code>.
-Identity uses Spotify's immutable <code>account_id</code>. Existing installations must
-migrate stored account mappings and audit digests from <code>id</code> before upgrading.
-Link the old and new identifiers only from a successfully authenticated
-profile; do not use display names or email to merge accounts. To temporarily
-preserve old mappings, explicitly replace <code>provider@userinfo_id_selector</code>
-with <code>function(userinfo) userinfo[["id"]]</code> while completing the migration.</p>
+    <p>The client's <code>scopes</code> specify permissions in the authorization request.
+Identity uses Spotify's immutable <code>account_id</code>. Earlier versions used <code>id</code>,
+so stored account mappings and audit digests based on that field will differ.
+A custom <code>provider@userinfo_id_selector</code>, such as
+<code>function(userinfo) userinfo[["id"]]</code>, retains the earlier identity mapping;
+<code>allow_legacy_id</code> only supplies a fallback when <code>account_id</code> is absent.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

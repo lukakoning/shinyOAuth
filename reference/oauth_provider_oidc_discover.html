@@ -138,30 +138,25 @@ access tokens issued by this provider. Defaults to 'Bearer'</p></dd>
 
 
 <dt id="arg-jwks-host-issuer-match">jwks_host_issuer_match<a class="anchor" aria-label="anchor" href="#arg-jwks-host-issuer-match"></a></dt>
-<dd><p>When TRUE (default), enforce that the JWKS host
-discovered from the provider matches the issuer host exactly. For
-providers that serve JWKS from a different host, set
-<code>jwks_host_allow_only</code> to the exact hostname instead of disabling this.
-Disabling (<code>FALSE</code>) is not recommended unless you also pin JWKS via
-<code>jwks_host_allow_only</code> or <code>jwks_pins</code>.</p></dd>
+<dd><p>When TRUE (default), require the discovered
+JWKS host to match the issuer host exactly. <code>jwks_host_allow_only</code> takes
+precedence and can specify a different exact hostname. <code>FALSE</code> disables
+issuer-host matching.</p></dd>
 
 
 <dt id="arg-issuer-match">issuer_match<a class="anchor" aria-label="anchor" href="#arg-issuer-match"></a></dt>
 <dd><p>Character scalar controlling how strictly to validate the
 discovery document's <code>issuer</code> against the input <code>issuer</code>.</p><ul><li><p><code>"url"</code> (default): require the issuer used for discovery to match
-exactly, including any trailing slash (recommended). For a full discovery
-URL input, require the discovered issuer's standard metadata location to
-match that URL instead.</p></li>
-<li><p><code>"host"</code>: compare only scheme + host (explicit opt-out; not recommended).</p></li>
-<li><p><code>"none"</code>: do not validate issuer consistency.</p></li>
-</ul><p>Prefer <code>"url"</code> and tighten hosts via <code>options(shinyOAuth.allowed_hosts)</code>
-when feasible.</p></dd>
+exactly, including any trailing slash. For a full discovery URL input,
+require the discovered issuer's standard metadata location to match that URL.</p></li>
+<li><p><code>"host"</code>: compare only scheme + host.</p></li>
+<li><p><code>"none"</code>: skip issuer-consistency validation.</p></li>
+</ul></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional fields passed to <code><a href="oauth_provider.html">oauth_provider()</a></code> (for example,
-<code>pkce_method = "plain"</code> when a provider explicitly advertises only plain
-PKCE support and you intentionally want to allow that downgrade).</p></dd>
+<dd><p>Additional fields passed to <code><a href="oauth_provider.html">oauth_provider()</a></code>, including
+<code>pkce_method = "plain"</code> for compatibility with plain-only PKCE metadata.</p></dd>
 
 
 <dt id="arg-allowed-algs">allowed_algs<a class="anchor" aria-label="anchor" href="#arg-allowed-algs"></a></dt>

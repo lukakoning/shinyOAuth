@@ -78,8 +78,8 @@ the same connection and ID. Logout, replacement or session closure invalidates
 the old connection; obtain a new one after the next login. A connection manager
 can retain the underlying login across navigation, but a new session gets its
 own connection reference.</p>
-<p>Call methods in the owning session's reactive context. <code>$is_usable()</code> returns
-<code>FALSE</code> when access is unavailable; request and token methods raise errors.
+<p>Methods check the owning Shiny session. <code>$is_usable()</code> returns <code>FALSE</code> when
+access is unavailable; request and token methods raise errors.
 Permission checks do not prove the API will accept a request. The connection ID
 is read-only, is not a credential and cannot be used to authorize a request.</p>
     </div>
@@ -90,8 +90,8 @@ is read-only, is not a credential and cannot be used to authorize a request.</p>
 <p>Reactive expressions that read <code>connection()</code>, <code>$access_token()</code> or
 <code>$has_scopes()</code> do not rerun on token refresh alone if the login and permissions
 stay the same. Status reads such as <code>$summary()</code> may update more often. Reads
-do not extend a managed owner's inactivity limit; record user actions with
-the manager's <code>touch()</code> method inside input event handlers.</p>
+do not extend a managed owner's inactivity limit. The manager's <code>touch()</code>
+method records explicit user activity.</p>
 <p>Use the module's <code>connection()</code> for coordinated token acquisition, refresh
 and token targets. The <code><a href="oauth_connection.html">oauth_connection()</a></code> wrapper follows a supplied token
 reactive across logins and does not support those features.</p>
@@ -182,8 +182,8 @@ ends permission notifications for this authorization reference.</p></dd>
 <h3 id="oauthconnection-access-token-"><code>OAuthConnection$access_token()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-access-token-"></a></h3>
 <p>Get a current bearer token for an SDK or database driver, refreshing when
 needed. Obtain this connection from a module's <code>connection()</code> method.
-Keep the returned token on the server. The method does not start login,
-request new permissions or retry the SDK operation.</p><div class="section">
+The method refreshes credentials when needed, without starting login,
+requesting new permissions or retrying the SDK operation.</p><div class="section">
 <h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">access_token</span><span class="op">(</span></span>
 <span>  required_scopes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -533,8 +533,8 @@ response yet has status <code>not_acquired</code>; this is not proof of denied c
 <h3 id="oauthconnection-smart-resource-"><code>OAuthConnection$smart_resource()</code><a class="anchor" aria-label="anchor" href="#oauthconnection-smart-resource-"></a></h3>
 <p><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="figures/lifecycle-experimental.svg" alt="[Experimental]"></a></p>
 <p>Fetch the contextual Patient or validated fhirUser through the approved
-FHIR base, using current read permissions. Prefer <code><a href="smart_context.html">smart_patient()</a></code> and
-<code><a href="smart_context.html">smart_fhir_user()</a></code> in application code.</p><div class="section">
+FHIR base, using current read permissions. <code><a href="smart_context.html">smart_patient()</a></code> and
+<code><a href="smart_context.html">smart_fhir_user()</a></code> are the corresponding public helpers.</p><div class="section">
 <h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">OAuthConnection</span><span class="op">$</span><span class="fu">smart_resource</span><span class="op">(</span><span class="va">kind</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">

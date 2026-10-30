@@ -40,8 +40,8 @@ get_userinfo(
 
 - shiny_session:
 
-  Optional captured Shiny session details for audit events. Normally
-  supplied by the module; leave `NULL` when calling directly.
+  Optional captured Shiny session details for audit events, normally
+  supplied by the module.
 
 - oauth_client:
 
@@ -62,9 +62,8 @@ provider needs a `userinfo_url`. For OIDC, shinyOAuth checks that the
 returned profile belongs to the validated login. A raw access-token
 string cannot provide that identity check.
 
-`userinfo_required = FALSE` disables automatic profile retrieval, not
-the identity or signature checks on a manual call. Request and validate
-the fields your app needs.
+`userinfo_required = FALSE` disables automatic profile retrieval.
+Identity and signature checks still apply to manual calls.
 
 ## Advanced response validation
 
@@ -78,8 +77,8 @@ By default, OIDC providers with a UserInfo endpoint require a validated
 identity token, including for manual retrieval. Explicit
 `userinfo_id_token_match = FALSE` allows retrieval without one, but when
 both are available their `sub` values must always match. Standard
-profile fields are checked for the expected JSON types; validate
-application-specific values and extension fields yourself.
+profile fields are checked for the expected JSON types; extension fields
+retain their provider-defined values.
 
 For DPoP or mTLS-bound tokens, the client supplies the matching signing
 key or certificate. See the [advanced security
@@ -107,7 +106,7 @@ if (interactive()) {
   result <- introspect_token(client, token)
   isTRUE(result[["active"]])
 
-  # Requires a refresh token. Keep the returned replacement.
+  # Returns replacement credentials using the refresh token.
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.

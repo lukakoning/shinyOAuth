@@ -21,7 +21,7 @@ oauth_provider_spotify(name = "spotify", allow_legacy_id = FALSE)
 - allow_legacy_id:
 
   Whether to fall back to Spotify's mutable `id` when `account_id` is
-  absent. Default `FALSE`; enable only during migration.
+  absent. Default `FALSE`.
 
 ## Value
 
@@ -30,15 +30,13 @@ object for use with a Spotify OAuth 2.0 app
 
 ## Details
 
-Spotify requires scopes to be included in the authorization request. Set
-requested scopes on the client with `oauth_client(..., scopes = ...)`.
-Identity uses Spotify's immutable `account_id`. Existing installations
-must migrate stored account mappings and audit digests from `id` before
-upgrading. Link the old and new identifiers only from a successfully
-authenticated profile; do not use display names or email to merge
-accounts. To temporarily preserve old mappings, explicitly replace
-`provider@userinfo_id_selector` with
-`function(userinfo) userinfo[["id"]]` while completing the migration.
+The client's `scopes` specify permissions in the authorization request.
+Identity uses Spotify's immutable `account_id`. Earlier versions used
+`id`, so stored account mappings and audit digests based on that field
+will differ. A custom `provider@userinfo_id_selector`, such as
+`function(userinfo) userinfo[["id"]]`, retains the earlier identity
+mapping; `allow_legacy_id` only supplies a fallback when `account_id` is
+absent.
 
 ## See also
 

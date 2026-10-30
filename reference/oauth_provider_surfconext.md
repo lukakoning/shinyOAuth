@@ -47,11 +47,12 @@ object configured for SURFconext.
 
 ## Details
 
-Request the `"openid"` scope. Additional claims depend on your service's
-agreed attribute release policy; requesting `"email"` or `"profile"`
-does not guarantee those attributes will be released. Use the validated
-issuer and `sub` to identify a user. Test and production environments
-require their own service configuration. See the [SURFconext
+Login uses the `"openid"` scope. Additional claims depend on the
+service's agreed attribute release policy; requesting `"email"` or
+`"profile"` does not guarantee those attributes will be released. The
+validated issuer and `sub` establish the login identity. Test and
+production environments require their own service configuration. See the
+[SURFconext
 overview](https://www.surf.nl/en/services/identity-access-management/surfconext).
 
 ## Examples

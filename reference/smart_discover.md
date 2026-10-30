@@ -73,11 +73,11 @@ method whenever that array is present.
 
 ## Network and trust policy
 
-Supply a trusted, deployment-configured base, never an arbitrary browser
-query parameter. The base must be an absolute HTTPS URL without
-userinfo, query, fragment, or ambiguous path syntax. Discovered URLs
-must be absolute; this reader does not repair relative URLs from legacy
-servers.
+The FHIR base is a deployment trust setting. EHR launch routes select an
+already configured client rather than discovering a browser-supplied
+base. The base must be an absolute HTTPS URL without userinfo, query,
+fragment, or ambiguous path syntax. Discovered URLs must be absolute;
+this reader does not repair relative URLs from legacy servers.
 
 `endpoint_hosts` applies to the issuer and these top-level URL fields
 when present: `authorization_endpoint`, `token_endpoint`, `jwks_uri`,
@@ -97,11 +97,9 @@ bounded validation. Errors do not include response bodies or returned
 metadata values.
 
 Unknown extensions, including `associated_endpoints`, are retained as
-data only. Their URLs are not fetched or approved for credential use. No
-automatic metadata cache is used: every call reads a new snapshot.
-Applications should review metadata changes before replacing
-configuration; do not rediscover endpoints during a pending
-authorization or to reinterpret a retained grant.
+data only. Their URLs are not fetched or approved for credential use.
+Each call reads a fresh snapshot. Existing clients and retained grants
+remain bound to the configuration with which they were created.
 
 ## References
 

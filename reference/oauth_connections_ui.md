@@ -1,12 +1,11 @@
 # Handle callbacks and establish the connection owner's browser session
 
-Wrap your app's UI to handle login returns and restore the user's saved
-connections. Use the same manager and module ID as
-[`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md).
-The wrapper includes the required browser setup; do not add a separate
+Handles login returns and restores the user's saved connections. The
+wrapper and
+[`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
+share the same manager and module ID. Browser setup from
 [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-call or nest
-[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
+is included.
 
 ## Usage
 
@@ -42,16 +41,18 @@ oauth_connections_ui(
 
   Optional trusted function mapping a Rook request to its public
   absolute URI. Required when a trusted reverse proxy changes the
-  apparent scheme/host. Do not trust arbitrary forwarded headers. The
-  resolved origin must match the manager's configured origin.
+  apparent scheme/host. The custom resolver defines which proxy headers
+  are trusted; the wrapper checks the resolved origin against the
+  manager's origin.
 
 - app_base_path:
 
   Public path at which the Shiny application is hosted, default `"/"`.
   Must begin and end with `/`. The wrapper inserts a document base
   before scripts so Shiny dependencies load from the app root even on
-  nested callback pages. Do not supply a separate HTML `base` element.
-  Managed JAR Request Object URLs are also published beneath this path.
+  nested callback pages. The wrapper manages the page's HTML `base`
+  element. Managed JAR Request Object URLs are also published beneath
+  this path.
 
 - launch_routes:
 
@@ -65,13 +66,12 @@ oauth_connections_ui(
   Optional named list of ordinary OAuth/OIDC clients used by separate
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
   modules. Names are their full module IDs. These clients keep their
-  existing login lifecycle and are not managed connections. Use this
-  single UI wrapper instead of nesting
-  [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
-  Their callback routes must be distinct from managed callbacks and
-  SMART launch routes, on this app's origin and inside `app_base_path`.
-  All clients must select an appropriate multi-server authorization
-  mode, even when the manager contains one client.
+  existing login lifecycle and are not managed connections. This wrapper
+  dispatches their callbacks alongside managed ones. Their callback
+  routes must be distinct from managed callbacks and SMART launch
+  routes, on this app's origin and inside `app_base_path`. All clients
+  must select an appropriate multi-server authorization mode, even when
+  the manager contains one client.
 
 ## Value
 
@@ -79,10 +79,10 @@ A request UI function for `shinyApp(..., uiPattern = ".*")`.
 
 ## Details
 
-Pass the result to `shinyApp(..., uiPattern = ".*")` so the app's
-callback paths reach the wrapper. With browser retention, a cookie lets
-the returning browser find its saved connections; tokens remain on the
-server. Account and session-only retention do not add that owner cookie.
+With `shinyApp(..., uiPattern = ".*")`, callback paths reach the
+wrapper. With browser retention, a cookie lets the returning browser
+find its saved connections; tokens remain on the server. Account and
+session-only retention do not add that owner cookie.
 
 ## Advanced browser and proxy requirements
 
@@ -99,9 +99,8 @@ callback can create an empty browser owner, but cannot recover someone
 else's connections. Invalid cookies are cleared before a fresh owner is
 created.
 
-Host the app separately from untrusted services. Cookies are shared
-across ports and paths on the same hostname; those boundaries do not
-isolate apps.
+Cookies are shared across ports and paths on the same hostname. Services
+on that hostname share the owner cookie's trust boundary.
 
 ## See also
 

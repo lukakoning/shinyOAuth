@@ -3,13 +3,13 @@
 The Shiny module supplies it as auth[[&quot;token&quot;]], and handle_callback() returns
 it for custom integrations. Pass it to perform_resource_req() to call an
 API, or to the token helpers for refresh, introspection, and revocation.
-Read properties with @, for example auth[[&quot;token&quot;]]@userinfo. Profile fields
-depend on the provider. Keep access and refresh tokens out of the UI and logs."><meta property="og:description" content="An OAuthToken holds credentials and user information returned after login.
+Properties use @, for example auth[[&quot;token&quot;]]@userinfo. Profile fields
+depend on the provider."><meta property="og:description" content="An OAuthToken holds credentials and user information returned after login.
 The Shiny module supplies it as auth[[&quot;token&quot;]], and handle_callback() returns
 it for custom integrations. Pass it to perform_resource_req() to call an
 API, or to the token helpers for refresh, introspection, and revocation.
-Read properties with @, for example auth[[&quot;token&quot;]]@userinfo. Profile fields
-depend on the provider. Keep access and refresh tokens out of the UI and logs."></head><body>
+Properties use @, for example auth[[&quot;token&quot;]]@userinfo. Profile fields
+depend on the provider."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -60,8 +60,8 @@ depend on the provider. Keep access and refresh tokens out of the UI and logs.">
 The Shiny module supplies it as <code>auth[["token"]]</code>, and <code><a href="handle_callback.html">handle_callback()</a></code> returns
 it for custom integrations. Pass it to <code><a href="perform_resource_req.html">perform_resource_req()</a></code> to call an
 API, or to the token helpers for refresh, introspection, and revocation.</p>
-<p>Read properties with <code>@</code>, for example <code>auth[["token"]]@userinfo</code>. Profile fields
-depend on the provider. Keep access and refresh tokens out of the UI and logs.</p>
+<p>Properties use <code>@</code>, for example <code>auth[["token"]]@userinfo</code>. Profile fields
+depend on the provider.</p>
     </div>
 
     <div class="section level2">
@@ -140,7 +140,8 @@ shinyOAuth carries forward the best-known scope set instead of dropping it.</p><
 <dd><p>Logical flag indicating whether the current
 token response explicitly proved <code>granted_scopes</code>. <code>FALSE</code> means the scope
 set was assumed or carried forward because the provider omitted <code>scope</code>.
-For stronger proof, configure <code>introspection_checks = "scope"</code>.</p></dd>
+With <code>introspection_checks = "scope"</code>, provider introspection can verify
+the granted scope set.</p></dd>
 
 
 <dt id="arg-id-token-validated">id_token_validated<a class="anchor" aria-label="anchor" href="#arg-id-token-validated"></a></dt>
@@ -153,7 +154,7 @@ during the OAuth flow. Defaults to <code>FALSE</code>.</p></dd>
 <dd><p>Initial login ID token retained as the refresh
 continuity baseline. Refresh never replaces it with a newer ID token.
 For manually constructed tokens, the first refresh initializes this from
-<code>id_token</code> if omitted. Treat this property as credential material.</p></dd>
+<code>id_token</code> if omitted.</p></dd>
 
 
 <dt id="arg-extra-fields">extra_fields<a class="anchor" aria-label="anchor" href="#arg-extra-fields"></a></dt>
@@ -205,7 +206,7 @@ from a field explicitly returned as <code>null</code>. These parameters are not 
 token claims and are not covered by <code>id_token_validated</code>. The initial
 snapshot records the initial response data, not current access permissions.
 No automatic merging, resource fetching, or interpretation is performed.
-Both lists can contain sensitive data; keep them out of the UI and logs.</p>
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/format.html" class="external-link">format()</a></code> redact both lists.</p>
     </div>
 
     <div class="section level2">

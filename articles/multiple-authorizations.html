@@ -105,7 +105,7 @@ an account chooser or reuse the account already signed in there.</p>
 <p>This template connects two fictional services and reads records from
 either one. Replace the endpoints, credentials, scope names and API
 paths with your providers’ values. The example uses shared-secret client
-authentication and PKCE; confirm that setup with each provider.</p>
+authentication and PKCE.</p>
 <p>Register these callback addresses, where the browser returns after
 login:</p>
 <table class="table">
@@ -218,9 +218,9 @@ This memory store supports one R process and loses records on restart.
 For deployment, load stable secret keys; keys alone do not make the
 memory store persistent.</p>
 <p>Saved connections also have inactivity and absolute expiry limits.
-Record user actions with <code>auth[["touch"]]()</code>, as the Read
-handler below does. Automatic refreshes and reads do not count as user
-activity.</p>
+The Read handler below records user activity through
+<code>auth[["touch"]]()</code>. Automatic refreshes and status reads
+leave the inactivity timer unchanged.</p>
 </div>
 <div class="section level3">
 <h3 id="select-a-connection-and-make-a-request">3. Select a connection and make a request<a class="anchor" aria-label="anchor" href="#select-a-connection-and-make-a-request"></a>
@@ -300,10 +300,10 @@ activity.</p>
 A, then B. Select each authorization and read its records. The output
 checks the connection ID so results from a previous selection do not
 remain visible.</p>
-<p>Keep the same module ID in UI and server. The wrapper handles
-callbacks and <code>uiPattern = ".*"</code> allows their routes. Use the
-opaque connection ID as the selection key; the numeric label only
-distinguishes rows in this demo.</p>
+<p>The UI wrapper and server module share the <code>"services"</code>
+ID. The wrapper handles callbacks, and <code>uiPattern = ".*"</code>
+allows their routes. Selection uses the opaque connection ID; the
+numeric label only distinguishes demo rows.</p>
 </div>
 </div>
 <div class="section level2">
@@ -360,20 +360,19 @@ owner session; it does not sign the user out of the external services.
 Add each provider’s documented <code>revocation_url</code> if revocation
 is supported.</p>
 <p>A provider can reuse one upstream grant for several local
-connections, so revoking one may affect the others. Handle API
-authorization failures even if a sibling connection still looks active.
-Use <code>revoke = FALSE</code> only when you deliberately want local
-removal while remote credentials remain valid.</p>
+connections, so revoking one may affect the others even if their local
+summaries still show them as active. <code>revoke = FALSE</code> removes
+local access without requesting remote revocation.</p>
 </div>
 <div class="section level2">
 <h2 id="deployment-notes">Deployment notes<a class="anchor" aria-label="anchor" href="#deployment-notes"></a>
 </h2>
-<p>Keep the app on a separate hostname from untrusted services, because
-cookies are shared across ports. The example’s browser retention is for
-one R process; check <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html">oauth_connections()</a>
+<p>Browser retention follows cookie boundaries, including sharing across
+ports on one hostname. The <a href="advanced-security.html#browser-binding-and-deployment-boundary">browser-boundary
+explanation</a> describes this behavior. Browser retention is limited to
+one R process. <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html">oauth_connections()</a>
 and <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html">oauth_browser_owner()</a>
-before choosing retention, store capacity and expiry settings for
-deployment.</p>
+document retention, capacity and expiry settings.</p>
 <p>If your app has its own verified account login,
 <code>retention = "account"</code> with
 <code><a href="../reference/oauth_browser_owner.html">oauth_account_owner()</a></code> can associate authorizations with
@@ -423,11 +422,11 @@ callback wrapper with <code>additional_clients</code>. Given an existing
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/shinyApp.html" class="external-link">shinyApp</a></span><span class="op">(</span><span class="va">ui</span>, <span class="va">server</span>, uiPattern <span class="op">=</span> <span class="st">".*"</span><span class="op">)</span></span></code></pre></div>
 <p>Supply credentials for the login registration and the deployment
-<code>keys</code> described above. Keep callbacks distinct and automatic
-login disabled while processing other authorizations.</p>
-<p>Full navigation ends the ordinary module’s Shiny session, and the
-manager does not retain that login. Use your application’s session
-mechanism if it must persist. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html">oauth_connections_ui()</a>
+<code>keys</code> described above. The example uses distinct callbacks
+and disables automatic login so the ordinary login module does not
+interrupt other authorizations.</p>
+<p>Full navigation ends the ordinary module’s Shiny session. Its login
+is separate from the manager’s retained connections. See <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html">oauth_connections_ui()</a>
 for callback configuration details.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

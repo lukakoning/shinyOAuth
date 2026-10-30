@@ -8,10 +8,9 @@ and the permissions the app needs there. The app chooses the target when
 requesting a token, without requiring a separate login flow for each
 API.
 
-Your provider must support API-specific tokens through RFC 8707 resource
-indicators or Microsoft’s API-specific scopes. Confirm support and
-consent requirements before using targets; declaring an API does not
-make the provider authorize it.
+Targets rely on provider support for RFC 8707 resource indicators or
+Microsoft’s API-specific scopes. The provider’s registration and consent
+determine which APIs the login can access.
 
 For independent logins or different accounts, use [Multiple
 authorizations](https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.md).
@@ -30,7 +29,7 @@ Microsoft uses the alternative setup shown [below](#microsoft-example).
 
 ``` r
 
-# Use this mode only after confirming RFC 8707 support with your provider.
+# Provider supports RFC 8707 resource indicators.
 provider <- oauth_provider(
   "workplace", "https://login.example/authorize", "https://login.example/token",
   token_target_mode = "rfc8707",
@@ -80,7 +79,7 @@ constructor:
 server <- function(input, output, session) {
   auth <- oauth_module_server(
     "auth", client,
-    reauth_after_seconds = 60 * 60 # Example: choose the app's login lifetime.
+    reauth_after_seconds = 60 * 60 # One-hour maximum login age
   )
   # Alternatively: auth <- oauth_connections_server("auth", manager)
   # and select auth$connection(connection_id), or auth$connection() when unique.
@@ -112,21 +111,19 @@ server <- function(input, output, session) {
 `FALSE` before that target’s first token acquisition. `$targets()` lists
 target status without exposing credentials.
 
-Choose a login lifetime for your app. The example sets a one-hour limit
-with `reauth_after_seconds`; without a limit, local authentication can
-outlast every API token. `indefinite_session = TRUE` disables that
-limit. Request methods still require usable access for the chosen API.
-
-Run writes from explicit user actions. A refresh before a request does
-not automatically replay a failed write.
+The example limits login to one hour with `reauth_after_seconds`.
+Without a limit, local authentication can outlast every API token;
+`indefinite_session = TRUE` disables that limit. Request methods still
+require usable access for the chosen API. Refresh does not replay a
+failed API request.
 
 ## Refresh and sign in again
 
 For RFC 8707 providers, reduce one target’s permissions with, for
 example,
-`connection$refresh(scopes = "calendar.read", target = "calendar")`.
-This does not change the other target’s permissions, and required scopes
-must remain.
+`connection$refresh(scopes = "calendar.read", target = "calendar")`. The
+method preserves required scopes and leaves the other target’s
+permissions unchanged.
 
 `auth$reauthorize()` starts a replacement login with the reduced
 permissions. For managed connections, pass the connection ID. Once
@@ -189,9 +186,10 @@ callback and state size limits still apply.
 ### Identity and refresh-consent scopes
 
 For OIDC, put identity scopes such as `openid`, `profile` and `email` at
-client level. `offline_access` requests refresh consent and belongs in
-client `scopes`, never in `required_scopes`. Requesting it does not
-guarantee a refresh token.
+client level. `offline_access` requests refresh consent through client
+`scopes`; it is not an API permission and is rejected in
+`required_scopes`. The provider still decides whether to issue a refresh
+token.
 
 When narrowing a target, retain any identity and refresh-consent scopes
 you still need. Later refreshes preserve reductions; a replacement OIDC
@@ -199,8 +197,8 @@ login still requests `openid` for its new identity check. Other targets
 keep their own limits.
 
 `connection$identity()` returns the last validated identity, which can
-outlast an API token. Use the chosen target’s token or request method to
-check current API access.
+outlast an API token. Each target’s token and request methods check
+current API access.
 
 ## Advanced: Microsoft permissions and consent
 
@@ -217,9 +215,9 @@ needs fewer permissions.
 
 Use the exact registered resource identifier, including any trailing
 slash, and fully qualified scope names. Resources can be URIs or GUIDs.
-Avoid distinct resources with overlapping prefixes, which make scope
-names ambiguous. Microsoft permission checks ignore ASCII case; resource
-identifiers are exact.
+The package rejects distinct resources with overlapping prefixes because
+scope names would be ambiguous. Microsoft permission checks ignore ASCII
+case; resource identifiers are exact.
 
 ### Static permissions and unusual short names
 

@@ -94,23 +94,22 @@ provider can fetch.</p></dd>
 <code>fields</code> is empty for GET; for POST it is a list of lists, each with scalar
 character <code>name</code> and <code>value</code>. PAR expiry attributes are preserved as
 documented in <code><a href="prepare_call.html">prepare_call()</a></code>. The result contains transient authorization
-data: do not log it or expose it to other browser sessions.</p>
+data for that login attempt.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>For GET, navigate the browser to <code>url</code>. For POST, create a form with <code>url</code> as
-its action, method POST, and <code>application/x-www-form-urlencoded</code> encoding.
-Add one hidden input per <code>fields</code> entry, assigning its <code>name</code> and <code>value</code>
-through DOM properties or an HTML escaping library, then submit the form in
-the current browser window. Repeated names (such as OAuth <code>resource</code>) must
-remain repeated inputs. Do not send the authorization request from R: the
-provider needs to interact with the user's browser and login cookies.</p>
-<p>The client selects <code>authorization_method = "POST"</code> explicitly. Ordinary
-OAuth providers may not support POST; confirm their documentation first.
+    <p>For GET, <code>url</code> is the browser navigation target. For POST, it is the action
+of an <code>application/x-www-form-urlencoded</code> browser form. Each <code>fields</code> entry
+represents one hidden input, with repeated names preserved as separate inputs.
+Names and values require DOM assignment or HTML escaping when constructing
+the form. Browser submission gives the provider access to the user's login
+cookies; an R HTTP request cannot perform that interaction.</p>
+<p>The client selects <code>authorization_method = "POST"</code> explicitly; support
+depends on the provider.
 <code><a href="smart_client.html">smart_client()</a></code> additionally requires the <code>authorize-post</code> capability.
 The outgoing method is independent of the callback <code>response_mode</code>.
 Configured PAR and Request Object requirements still apply. Each result
-belongs to one login attempt; do not cache it or reuse it after logout.</p>
+belongs to one login attempt with single-use state.</p>
 <p>POST preserves the authorization endpoint's fixed query and sends newly
 composed fields in the body. It permits up to 256 fields and 128 KiB of
 encoded form data; CR/LF and the browser-reserved <code>_charset_</code> field are

@@ -145,8 +145,8 @@ environment. You can open your user <code>.Renviron</code> with
 <code>file.edit(path.expand("~/.Renviron"))</code> and add:</p>
 <pre class="text"><code><span><span class="va">GITHUB_OAUTH_CLIENT_ID</span><span class="op">=</span><span class="va">your</span><span class="op">-</span><span class="va">client</span><span class="op">-</span><span class="va">id</span></span>
 <span><span class="va">GITHUB_OAUTH_CLIENT_SECRET</span><span class="op">=</span><span class="va">your</span><span class="op">-</span><span class="va">client</span><span class="op">-</span><span class="va">secret</span></span></code></pre>
-<p>Restart R after saving. Keep the secret out of app source files and
-Git.</p>
+<p>Restart R after saving so the environment variables become
+available.</p>
 </li>
 </ol>
 </div>
@@ -212,19 +212,14 @@ when fetched. Fields depend on the provider: GitHub uses
 <code>login</code> for the username.</li>
 <li>
 <code>auth[["error"]]</code> and
-<code>auth[["error_description"]]</code> describe a failed login. Show a
-simple message to users and use <a href="audit-logging.html">audit
-logging</a> to investigate.</li>
+<code>auth[["error_description"]]</code> describe a failed login. <a href="audit-logging.html">Audit logging</a> records the underlying
+operations.</li>
 </ul>
 <p>The token is an S7 object: access its properties with <code>@</code>,
 as in <code>auth[["token"]]@userinfo</code>. See <a href="https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html"><code>OAuthToken</code></a>
 for the available properties.</p>
-<p>Use <code>req(auth[["authenticated"]])</code> before server code
-reads private data or performs an action that requires login. Hiding a
-UI element alone does not protect the server code behind it. Your app
-must also check any access rules, such as which accounts or groups may
-view a report. A successful login by itself does not grant access to
-everything in your app.</p>
+<p><code>req(auth[["authenticated"]])</code> suspends the example’s
+output while login is incomplete.</p>
 </div>
 <div class="section level2">
 <h2 id="manual-login-and-logout-buttons">Manual login and logout buttons<a class="anchor" aria-label="anchor" href="#manual-login-and-logout-buttons"></a>
@@ -283,9 +278,9 @@ and this output to <code>server()</code>:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">validate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/validate.html" class="external-link">need</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">repos</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="st">"No repositories to show."</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">repos</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"name"</span>, <span class="st">"private"</span><span class="op">)</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Only send tokens to an API you intend to authorize. This example
-loads one page; further pages depend on the API. For another complete
-app, see the <a href="example-spotify.html">Spotify example</a>. The <a href="https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html">request-helper
+<p>This example loads one page; further pages depend on the API. For
+another complete app, see the <a href="example-spotify.html">Spotify
+example</a>. The <a href="https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html">request-helper
 reference</a> covers prepared requests and transport settings.</p>
 </div>
 <div class="section level2">
@@ -339,11 +334,10 @@ interactive login; refreshing a token does not restart that timer. For
 OIDC, the module also requests a fresh provider login and checks its
 time. OAuth-only providers can only be given an ordinary authorization
 request.</p>
-<p>Keep <code>indefinite_session = FALSE</code> unless you deliberately
-want the local session to continue with an expired token or after
-refresh fails. Setting it to <code>TRUE</code> also disables the
-<code>reauth_after_seconds</code> limit; it does not extend the token’s
-validity at the provider.</p>
+<p><code>indefinite_session = TRUE</code> retains local login state
+after token expiry or refresh failure, and disables the
+<code>reauth_after_seconds</code> limit. The provider can still reject
+an expired token.</p>
 </div>
 <div class="section level2">
 <h2 id="provider-configuration-and-oidc-discovery">Provider configuration and OIDC discovery<a class="anchor" aria-label="anchor" href="#provider-configuration-and-oidc-discovery"></a>
@@ -386,30 +380,14 @@ register that same URL with the provider. Open the app directly in a
 browser tab. An app embedded in another page may not be able to complete
 login.</p>
 <div class="section level3">
-<h3 id="security-checklist">Security checklist<a class="anchor" aria-label="anchor" href="#security-checklist"></a>
+<h3 id="security-checklist">Callback and browser behavior<a class="anchor" aria-label="anchor" href="#security-checklist"></a>
 </h3>
-<ul>
-<li>Use HTTPS in production and keep credentials on the server.</li>
-<li>Request only the scopes your app needs.</li>
-<li>Check login and app-specific access rules in server code before
-using private data.</li>
-<li>Keep tokens, complete login URLs, and detailed provider errors out
-of the UI and logs.</li>
-<li>Render untrusted text through Shiny’s ordinary text/tag functions.
-Do not pass it to <code><a href="https://rstudio.github.io/htmltools/reference/HTML.html" class="external-link">HTML()</a></code> as markup; keep table escaping
-enabled.</li>
-<li>Wrap the UI with <code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> (or
-<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> when required). These send a browser
-privacy header that keeps callback URLs out of referrers.</li>
-<li>If repeated login requests affect responsiveness, your hosting
-provider can help with optional rate limiting.</li>
-<li>Keep the provider’s validation defaults and choose any extra
-protections to match your provider and deployment requirements.</li>
-</ul>
-<p>Complete login in the browser tab that started it, with cookies and
-session storage available. Keep the app on a separate hostname from
-untrusted services and protect it against injected scripts. The <a href="advanced-security.html#browser-binding-and-deployment-boundary">advanced
-security guide</a> explains the hosting boundary and why it matters.</p>
+<p><code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> and <code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> process
+callback data before rendering application UI, with no-store and
+no-referrer response headers. The server module manages credentials and
+browser binding automatically. The <a href="advanced-security.html#browser-binding-and-deployment-boundary">advanced
+security guide</a> describes the browser and hosting boundaries in more
+detail.</p>
 </div>
 </div>
 <div class="section level2">

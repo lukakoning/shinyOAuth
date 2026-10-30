@@ -75,169 +75,425 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>Signing in involves your app, the user’s browser, and a login
-provider such as Google or GitHub. The provider handles the password and
-asks for permission to share data. shinyOAuth checks the returning
-response before your app uses it.</p>
-<p>OAuth grants permission to call a service’s API using a credential
-called an access token. OpenID Connect (OIDC) adds a signed ID token
-that lets the app verify who signed in. If the provider also issues a
-refresh token, the app can obtain a new access token without another
-browser login.</p>
-<p>For a working app, start with <a href="usage.html">Usage</a>. The UI
-wrapper and server module run the checks described here
-automatically.</p>
+<p>shinyOAuth runs the OAuth 2.0 Authorization Code flow inside a Shiny
+app. The browser visits the provider for login and consent, then returns
+with an authorization code. shinyOAuth exchanges that code for tokens,
+validates the response, and updates the module’s reactive authentication
+state.</p>
+<p>The provider object describes the service, the client object holds
+the app’s registration and policy, and
+<code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> manages each Shiny session. The UI
+wrapper handles the HTTP callback and browser setup. With OpenID Connect
+(OIDC), the flow also validates identity through a signed ID token.
+OAuth-only providers such as GitHub and Spotify supply profile
+information through their own APIs.</p>
+<p>The <a href="usage.html">usage vignette</a> contains the application
+setup. The sequence below describes the work performed by the package
+after that setup.</p>
 </div>
 <div class="section level2">
-<h2 id="what-happens-during-the-authentication-flow">What happens during the authentication flow?<a class="anchor" aria-label="anchor" href="#what-happens-during-the-authentication-flow"></a>
+<h2 id="starting-login-and-binding-it-to-the-browser">Starting login and binding it to the browser<a class="anchor" aria-label="anchor" href="#starting-login-and-binding-it-to-the-browser"></a>
 </h2>
-<div class="section level3">
-<h3 id="the-app-starts-a-login">1. The app starts a login<a class="anchor" aria-label="anchor" href="#the-app-starts-a-login"></a>
-</h3>
-<p>By default, the module starts login automatically. With
-<code>auto_redirect = FALSE</code>, a button can call
-<code>auth[["request_login"]]()</code> instead.</p>
-<p>The app sends the browser to the provider with the requested
-permissions, called scopes, and the registered return address, called
-the redirect URI. Asking for only the permissions your app needs makes
-the consent request easier to assess.</p>
-</div>
-<div class="section level3">
-<h3 id="the-user-signs-in-at-the-provider">2. The user signs in at the provider<a class="anchor" aria-label="anchor" href="#the-user-signs-in-at-the-provider"></a>
-</h3>
-<p>The user enters credentials at the provider, then approves or
-declines access. The provider may remember an earlier login or
-permission decision, so it does not always show both prompts. Your app
-never needs the provider password.</p>
-</div>
-<div class="section level3">
-<h3 id="the-browser-returns-to-the-app">3. The browser returns to the app<a class="anchor" aria-label="anchor" href="#the-browser-returns-to-the-app"></a>
-</h3>
-<p>The provider sends a short-lived authorization code to the registered
-callback URL. Your server exchanges this temporary code for tokens,
-including the access token used for API calls.</p>
-<p>shinyOAuth checks that the response belongs to the pending login and
-the browser that started it. An expired, reused or mismatched response
-cannot complete login. Keep cookies and session storage available, and
-finish in the same browser tab.</p>
-</div>
-<div class="section level3">
-<h3 id="the-server-obtains-and-checks-tokens">4. The server obtains and checks tokens<a class="anchor" aria-label="anchor" href="#the-server-obtains-and-checks-tokens"></a>
-</h3>
-<p>shinyOAuth exchanges the code for tokens using your app’s registered
-credentials. With OIDC, it verifies the ID token’s signature, intended
-recipient, expiry and connection to this login request. If a profile is
-also fetched, its subject must match the validated identity when both
-are available.</p>
-<p>Decoding a token reveals its contents without verifying them. The
-signature and login checks verify the identity data before the app
-accepts it. OAuth-only providers such as GitHub and Spotify supply
-profile information through their own APIs.</p>
-</div>
-<div class="section level3">
-<h3 id="the-app-uses-the-authenticated-session">5. The app uses the authenticated session<a class="anchor" aria-label="anchor" href="#the-app-uses-the-authenticated-session"></a>
-</h3>
-<p>Only after the required checks pass does
-<code>auth[["authenticated"]]</code> become true. Use it in server code
-before reading private data or taking an authenticated action:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">output</span><span class="op">[[</span><span class="st">"greeting"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/renderPrint.html" class="external-link">renderText</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">auth</span><span class="op">[[</span><span class="st">"authenticated"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Hello,"</span>, <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span><span class="op">@</span><span class="va">userinfo</span><span class="op">[[</span><span class="st">"name"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Profile fields depend on the provider. Login establishes an identity
-under the configured checks; your app still decides which accounts may
-view a report or perform an action. Hiding a button alone does not
-protect the server code.</p>
-</div>
+<p>With <code>auto_redirect = TRUE</code>, the module starts login for
+an unauthenticated session. With <code>auto_redirect = FALSE</code>,
+<code>auth[["request_login"]]()</code> initiates the same flow. Both
+paths wait for browser setup before preparing the request.</p>
+<p>For each login transaction, the module establishes a fresh random
+browser binding. The browser holds the binding token in origin- and
+tab-scoped session storage, with a separate temporary cookie marker. On
+return, the module checks this binding against the pending transaction.
+This connects the callback to the browser tab that started it, rather
+than accepting state from any browser presenting the same callback
+URL.</p>
+<p>The binding is separate from provider-issued access and ID tokens.
+Browser storage and cookie setup happen through the UI dependency;
+unavailable browser facilities produce a browser-setup error before
+login proceeds.</p>
 </div>
 <div class="section level2">
-<h2 id="why-login-needs-state-pkce-and-a-nonce">Why login needs state, PKCE and a nonce<a class="anchor" aria-label="anchor" href="#why-login-needs-state-pkce-and-a-nonce"></a>
+<h2 id="preparing-the-authorization-request">Preparing the authorization request<a class="anchor" aria-label="anchor" href="#preparing-the-authorization-request"></a>
 </h2>
-<p>These values protect different parts of the same exchange. shinyOAuth
-manages them for you; follow your provider helper’s registration
-guidance.</p>
+<p>The authorization builder, also exposed through
+<code><a href="../reference/prepare_call.html">prepare_call()</a></code> and
+<code><a href="../reference/prepare_authorization_request.html">prepare_authorization_request()</a></code>, combines the provider’s
+authorization endpoint with the client’s ID, redirect URI, scopes and
+configured request parameters. The module prepares the transaction
+values used during later validation:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
 <col width="50%">
 </colgroup>
 <thead><tr class="header">
-<th>Protection</th>
-<th>Purpose</th>
+<th>Value</th>
+<th>How the package uses it</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>State and browser binding</td>
-<td>Connect the returning response to the pending login and initiating
-browser.</td>
+<td><code>state</code></td>
+<td>Carries authenticated, encrypted transaction data and links the
+callback to the pending login record.</td>
 </tr>
 <tr class="even">
-<td>PKCE</td>
-<td>Tie the code exchange to the app that prepared the authorization
-request.</td>
+<td>PKCE verifier and challenge</td>
+<td>The request carries the challenge; the later token exchange supplies
+the verifier, binding the exchange to this request.</td>
 </tr>
 <tr class="odd">
 <td>OIDC nonce</td>
-<td>Tie the returned ID token to this particular login request.</td>
+<td>The returned ID token is checked against the stored nonce when nonce
+validation is enabled.</td>
 </tr>
 </tbody>
 </table>
-<p>Do not share complete login URLs or copy private browser inputs into
-logs or bookmarks. Browser binding does not decide which account you
-expected: check the validated identity against your own access policy
-when that matters.</p>
+<p>Generic OIDC helpers enable PKCE and nonce checks by default. Named
+provider helpers select defaults appropriate to their service. S256 is
+the default PKCE method when PKCE is enabled.</p>
+<div class="section level3">
+<h3 id="pending-state-and-expiry">Pending state and expiry<a class="anchor" aria-label="anchor" href="#pending-state-and-expiry"></a>
+</h3>
+<p>The client state store retains the browser binding, PKCE verifier,
+nonce and transaction context needed for the return. The encrypted state
+and stored context also record the client/provider policy used to start
+login. A callback cannot continue under a changed validation policy.</p>
+<p><code>state_payload_max_age</code> limits the encrypted state’s age,
+while the store’s retention determines how long the pending record
+remains available. Both default to five minutes. State consumption is
+single-use, so replaying a completed callback cannot exchange the code
+again.</p>
+<p>The default store belongs to one R process. A shared store and
+<code>state_key</code> let another process continue the same
+transaction, with atomic record consumption providing the single-use
+guarantee across processes.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="token-expiry-refresh-and-signing-in-again">Token expiry, refresh and signing in again<a class="anchor" aria-label="anchor" href="#token-expiry-refresh-and-signing-in-again"></a>
+<h2 id="authorization-at-the-provider">Authorization at the provider<a class="anchor" aria-label="anchor" href="#authorization-at-the-provider"></a>
 </h2>
-<p>Access tokens usually expire. If the provider issues a refresh token,
-the module can refresh before expiry with
-<code>refresh_proactively = TRUE</code>. The app then uses the
-replacement token through the same module or connection.</p>
-<p>Use <code>reauth_after_seconds</code> when users must sign in again
-after a maximum period. Refreshing an API token does not restart that
-timer. Keep <code>indefinite_session</code> at its default
-<code>FALSE</code> unless your app deliberately needs a different expiry
-policy. With that option enabled, local login state can outlast usable
-API access.</p>
-<p>Token exchange and refresh are not automatically repeated after
-ordinary network failures: the provider may already have consumed the
-code or rotated the refresh credential. Offer a new login when access
-cannot be renewed.</p>
+<p>The module sends the browser to the prepared authorization URL, or
+submits a browser form when the client selects POST authorization. The
+provider handles credentials and consent. Existing provider sessions or
+earlier consent may allow it to return without showing another
+prompt.</p>
+<p>The authorization result contains a short-lived code or an error such
+as <code>access_denied</code>, together with the transaction state. The
+provider sends this result to the registered redirect URI. The code is
+exchanged by R; it is not the access token used in later API calls.</p>
 </div>
 <div class="section level2">
-<h2 id="logout-and-token-revocation">Logout and token revocation<a class="anchor" aria-label="anchor" href="#logout-and-token-revocation"></a>
+<h2 id="receiving-and-validating-the-callback">Receiving and validating the callback<a class="anchor" aria-label="anchor" href="#receiving-and-validating-the-callback"></a>
 </h2>
-<p><code>auth[["logout"]]()</code> clears the app’s local login and
-attempts token revocation when the provider supports it. It does not
-sign the user out of their Google, GitHub or other provider account. A
-later login may therefore reuse that account.</p>
-<p>Clear or guard private results when login changes, so a failed
-revocation request cannot leave the previous user’s data visible after
-local logout.</p>
+<p><code><a href="../reference/oauth_ui.html">oauth_ui()</a></code> processes query callbacks before application
+HTML or scripts load. It validates the callback address and response
+envelope, stores a sealed, short-lived response, and redirects to a
+clean continuation URL carrying a one-time handle.
+<code><a href="../reference/oauth_form_post_ui.html">oauth_form_post_ui()</a></code> provides the corresponding path for
+POST callbacks. The wrappers also set no-store and no-referrer response
+headers.</p>
+<p>The HTTP continuation separates callback data from application
+rendering. It does not complete login by itself: the Shiny module still
+checks the initiating browser and consumes the pending transaction
+before code exchange.</p>
+<div class="section level3">
+<h3 id="transaction-checks">Transaction checks<a class="anchor" aria-label="anchor" href="#transaction-checks"></a>
+</h3>
+<p>The module checks that the state is authentic and within its
+lifetime, that the stored client/provider policy still matches, and that
+the browser binding agrees with the pending record. The callback route
+and any required issuer identifier are checked against trusted client
+configuration. Missing, expired, already-consumed or mismatched records
+reject the callback.</p>
+<p>A provider error response goes through state and browser validation
+too. Only a valid response for this transaction can become the session’s
+login error.</p>
+</div>
+<div class="section level3">
+<h3 id="several-authorization-servers">Several authorization servers<a class="anchor" aria-label="anchor" href="#several-authorization-servers"></a>
+</h3>
+<p>For a configured client registry, the HTTP wrapper selects the client
+by its registered callback route or issuer. Distinct-route mode checks
+the callback address. Issuer mode uses the RFC 9207 <code>iss</code> or
+the JARM response’s issuer as a routing hint; the selected client’s
+issuer, signature, transaction and browser checks establish trust. The
+registry does not treat an incoming issuer string as a new trusted
+provider.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="additional-provider-and-deployment-requirements">Additional provider and deployment requirements<a class="anchor" aria-label="anchor" href="#additional-provider-and-deployment-requirements"></a>
+<h2 id="exchanging-the-code-for-tokens">Exchanging the code for tokens<a class="anchor" aria-label="anchor" href="#exchanging-the-code-for-tokens"></a>
 </h2>
-<p>Some providers need signed requests, certificate-bound tokens or a
-different callback format. These extend the same flow; configure them
-only when the provider and deployment support them. See <a href="advanced-security.html">Advanced security</a> for the purpose and
-setup of each feature.</p>
-<p>Apps using several providers need to distinguish their callbacks.
-Prefer the distinct registered routes shown in <a href="multiple-authorizations.html">Multiple authorizations</a>. If a
-callback can reach another R process, follow the <a href="usage.html#multiple-r-processes">shared-store guidance</a>.</p>
+<p>After callback validation, shinyOAuth sends the code to the token
+endpoint, along with the PKCE verifier and the authentication required
+by the app’s registration. <code>token_auth_style</code> selects that
+authentication, such as a client secret, signed assertion or client
+certificate.</p>
+<p>The token response is still untrusted at this point. shinyOAuth
+parses it, validates the access token and token type, calculates expiry,
+and reconciles reported scopes with the requested permissions.
+<code>scope_validation</code> determines whether a reduced grant
+produces a warning or rejects login. The token records
+<code>granted_scopes</code> and whether the response explicitly verified
+that grant in <code>granted_scopes_verified</code>.</p>
+<p>For ordinary OAuth responses that omit <code>expires_in</code>, the
+package uses <code>shinyOAuth.default_expires_in</code>, defaulting to
+3,600 seconds. SMART clients apply their separate lifetime policy.</p>
+<p>Code exchange and refresh are not automatically retried after
+ordinary network or HTTP failures, because the provider may already have
+consumed the code or rotated a refresh credential. DPoP nonce challenges
+have their own one-retry handling.</p>
 </div>
 <div class="section level2">
-<h2 id="diagnosing-a-failed-step">Diagnosing a failed step<a class="anchor" aria-label="anchor" href="#diagnosing-a-failed-step"></a>
+<h2 id="validating-identity-and-profile-information">Validating identity and profile information<a class="anchor" aria-label="anchor" href="#validating-identity-and-profile-information"></a>
 </h2>
-<p>Use <a href="audit-logging.html">audit logging</a> to find the failed
-operation. Keep validation enabled while checking callback URLs,
-credentials and permissions.</p>
-<p>For exact validation rules and settings, see <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html">oauth_client()</a>,
+<div class="section level3">
+<h3 id="id-token-checks">ID token checks<a class="anchor" aria-label="anchor" href="#id-token-checks"></a>
+</h3>
+<p>With OIDC validation enabled, shinyOAuth verifies the ID token using
+the provider’s public signing keys. Key retrieval and caching follow the
+provider’s configured issuer and JWKS policy. Decoding claims is
+followed by signature and claim validation before the identity is
+accepted.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Check</th>
+<th>What it establishes</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Signature and allowed algorithm</td>
+<td>The token was signed with an acceptable provider key.</td>
+</tr>
+<tr class="even">
+<td><code>iss</code></td>
+<td>The token came from the configured issuer.</td>
+</tr>
+<tr class="odd">
+<td>
+<code>aud</code> and, when present, <code>azp</code>
+</td>
+<td>The token is intended for this client; additional audiences require
+explicit trust.</td>
+</tr>
+<tr class="even">
+<td><code>sub</code></td>
+<td>The token identifies a subject within that issuer.</td>
+</tr>
+<tr class="odd">
+<td>
+<code>exp</code>, <code>iat</code> and optional
+<code>nbf</code>
+</td>
+<td>The token is within its validity window.</td>
+</tr>
+<tr class="even">
+<td>Nonce, when enabled</td>
+<td>The ID token belongs to this login request.</td>
+</tr>
+<tr class="odd">
+<td>
+<code>auth_time</code>, when freshness was requested</td>
+<td>The provider login satisfies the requested maximum age.</td>
+</tr>
+<tr class="even">
+<td>
+<code>at_hash</code>, when present or required</td>
+<td>The ID token agrees with the returned access token.</td>
+</tr>
+</tbody>
+</table>
+<p>Time checks allow the configured clock leeway, defaulting to 30
+seconds. The package also applies its configured maximum ID-token
+lifetime, defaulting to 24 hours. Requested claim requirements follow
+<code>claims_validation</code>, while <code>required_acr_values</code>
+checks the validated authentication-context claim against the client’s
+accepted values.</p>
+</div>
+<div class="section level3">
+<h3 id="introspection-and-userinfo">Introspection and UserInfo<a class="anchor" aria-label="anchor" href="#introspection-and-userinfo"></a>
+</h3>
+<p>With <code>introspect = TRUE</code>, shinyOAuth asks the provider
+whether the access token is active. The response must report
+<code>active = TRUE</code> and satisfy the configured
+<code>introspection_checks</code>. Introspection runs before profile
+retrieval, allowing it to supply binding information for opaque
+certificate- or DPoP-bound tokens. Checks involving the profile finish
+after that profile becomes available.</p>
+<p>When <code>userinfo_required = TRUE</code>, the package fetches the
+provider’s UserInfo endpoint or profile API. A failed required fetch
+rejects login. For OIDC, when both a validated ID token and UserInfo are
+available, their <code>sub</code> values must match. The provider’s
+subject-binding policy can also require a validated ID token to be
+present for the profile fetch.</p>
+<p>UserInfo can be JSON or a signed JWT. Signed responses go through
+signature and claim validation, and
+<code>userinfo_signed_jwt_required</code> rejects ordinary JSON when the
+registration requires signing. OAuth-only helpers obtain their profiles
+through the service’s API without creating an OIDC identity
+assertion.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="publishing-authentication-state">Publishing authentication state<a class="anchor" aria-label="anchor" href="#publishing-authentication-state"></a>
+</h2>
+<p>After all configured checks pass, the module publishes the
+<code>OAuthToken</code> as <code>auth[["token"]]</code> and sets
+<code>auth[["authenticated"]]</code> to <code>TRUE</code>. Reactive
+consumers then see the accepted token and available profile. A rejected
+login instead populates <code>auth[["error"]]</code> and
+<code>auth[["error_description"]]</code>.</p>
+<p>The token holds the access and refresh credentials, expiry, granted
+scopes, validated ID token claims and fetched profile. Additional
+response parameters are available in <code>extra_fields</code>;
+<code>initial_extra_fields</code> preserves the initial code-exchange
+values across refreshes.</p>
+<p>The module’s <code>connection()</code> method resolves the current
+credentials through an <code>OAuthConnection</code>. Connection methods
+apply session ownership, current access and configured permission checks
+when obtaining tokens or making requests.</p>
+</div>
+<div class="section level2">
+<h2 id="asynchronous-execution">Asynchronous execution<a class="anchor" aria-label="anchor" href="#asynchronous-execution"></a>
+</h2>
+<p>With <code>async = TRUE</code> and mirai workers or a non-sequential
+future plan, the module dispatches network work to background R
+processes. The validation sequence is the same, while the main process
+can continue servicing Shiny. Authentication state is updated after the
+worker result passes validation. The module checks that a result still
+belongs to the current authorization, so work completing after logout or
+replacement cannot restore the old login.</p>
+<p>State-store access and hosted Request Object publication remain in
+the main process. Signed-request preparation, PAR and query-JARM
+verification can run in workers. Setup-time discovery and POST-wrapper
+JARM verification remain synchronous. This describes the module’s work;
+API calls made by application code have their own execution context.</p>
+</div>
+<div class="section level2">
+<h2 id="refresh-reauthentication-and-logout">Refresh, reauthentication and logout<a class="anchor" aria-label="anchor" href="#refresh-reauthentication-and-logout"></a>
+</h2>
+<div class="section level3">
+<h3 id="token-refresh">Token refresh<a class="anchor" aria-label="anchor" href="#token-refresh"></a>
+</h3>
+<p>The module watches token expiry. With
+<code>refresh_proactively = TRUE</code> and an available refresh token,
+it schedules refresh before expiry. Connection token acquisition can
+also trigger refresh on demand. Overlapping asynchronous refreshes
+coordinate use of the same credential.</p>
+<p>A refresh response passes token validation, configured introspection
+and any required profile fetch before replacing the current token. A
+rotated refresh token replaces the previous one. If the provider omits a
+new ID token, the stored identity token remains; a new ID token is
+checked for continuity with the original subject, issuer and audience,
+plus nonce and authentication time when applicable. Certificate-bound
+tokens require fresh binding data.</p>
+<p>Ordinary refresh requests preserve the retained scope limit. SMART
+clients and API-specific token targets apply their corresponding scope
+rules. Refresh updates credentials without establishing a new
+interactive login.</p>
+</div>
+<div class="section level3">
+<h3 id="expiry-and-maximum-login-age">Expiry and maximum login age<a class="anchor" aria-label="anchor" href="#expiry-and-maximum-login-age"></a>
+</h3>
+<p>By default, token expiry or refresh failure clears the local token
+and makes <code>authenticated</code> false. An in-progress refresh has a
+grace period before expiry clearing. <code>reauth_after_seconds</code>
+independently limits the age of the interactive login; refresh does not
+restart that timer. With automatic redirects enabled, the module starts
+authorization again when appropriate.</p>
+<p>For OIDC age-based reauthentication, the request includes
+<code>max_age = 0</code> and the returned <code>auth_time</code> is
+checked. OAuth-only providers receive an ordinary new authorization
+request, which may reuse their existing login session.</p>
+<p><code>indefinite_session = TRUE</code> changes local clearing
+behavior: the module retains login state after expiry or refresh
+failure, reports <code>token_stale</code>, and ignores the
+maximum-login-age limit. This does not extend token validity at the
+provider. With token targets, individual API tokens can expire while the
+shared local authorization remains; connection methods check the
+selected target before use.</p>
+</div>
+<div class="section level3">
+<h3 id="logout-and-revocation">Logout and revocation<a class="anchor" aria-label="anchor" href="#logout-and-revocation"></a>
+</h3>
+<p><code>auth[["logout"]]()</code> clears local credentials and resets
+the browser binding. It also attempts token revocation when the provider
+supports it. With <code>revoke_on_session_end = TRUE</code>, session
+termination and automatic clearing also attempt revocation. These
+requests follow the module’s sync or async mode; remote failure does not
+prevent local cleanup.</p>
+<p>Provider account sessions are separate, so local logout can be
+followed by another authorization without a provider password prompt.
+Retained connections have their own lifetime and ownership rules,
+described in <a href="multiple-authorizations.html">Multiple
+authorizations</a>.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="optional-protocol-extensions">Optional protocol extensions<a class="anchor" aria-label="anchor" href="#optional-protocol-extensions"></a>
+</h2>
+<p>Configured extensions fit into the same sequence rather than
+requiring a separate application-managed flow:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Extension</th>
+<th>Package behavior</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>JAR</td>
+<td>Signs the authorization parameters as a Request Object before
+browser navigation. Optional encryption hides the contents.</td>
+</tr>
+<tr class="even">
+<td>PAR</td>
+<td>Sends the request directly to the provider first, then redirects the
+browser with the returned reference.</td>
+</tr>
+<tr class="odd">
+<td>Form Post</td>
+<td>Receives the authorization result by POST and bridges it into the
+Shiny session.</td>
+</tr>
+<tr class="even">
+<td>JARM</td>
+<td>Verifies the signed authorization response before processing its
+callback fields; configured encryption adds decryption first.</td>
+</tr>
+<tr class="odd">
+<td>mTLS</td>
+<td>Presents the client certificate and uses configured endpoint
+aliases; certificate-bound token checks apply when enabled.</td>
+</tr>
+<tr class="even">
+<td>DPoP</td>
+<td>Signs proofs and handles nonce challenges for token requests and
+resource requests made through the configured connection or request
+helpers.</td>
+</tr>
+</tbody>
+</table>
+<p><a href="advanced-security.html">Advanced security</a> describes
+these configurations. Detailed contracts are documented under <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_client.html">oauth_client()</a>,
 <a href="https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.html">oauth_provider()</a>,
 <a href="https://lukakoning.github.io/shinyOAuth/reference/handle_callback.html">handle_callback()</a>
 and <a href="https://lukakoning.github.io/shinyOAuth/reference/refresh_token.html">refresh_token()</a>.</p>
+</div>
+<div class="section level2">
+<h2 id="audit-trail">Audit trail<a class="anchor" aria-label="anchor" href="#audit-trail"></a>
+</h2>
+<p>The flow emits events for request preparation, callback checks, token
+operations and authentication-state changes. Related events share a
+<code>trace_id</code>, and failed checks include operation or phase
+context. The configured audit hook receives these events; OpenTelemetry
+can export the same events and operation timings. The <a href="audit-logging.html">audit logging</a> and <a href="opentelemetry.html">OpenTelemetry</a> vignettes describe those
+records.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

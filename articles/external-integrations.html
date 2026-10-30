@@ -91,9 +91,7 @@ from <code><a href="../reference/oauth_module_server.html">oauth_module_server()
 function. A scope is a permission name defined by the service;
 <code>required_scopes</code> checks the permissions needed for this
 operation. The other package sends its own request.</p>
-<p>First follow <a href="usage.html">Usage</a> if you have not
-configured login. Keep tokens in server-side session code, away from
-logs, URLs and browser output.</p>
+<p>The examples build on the login setup in <a href="usage.html">Usage</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="a-complete-shiny-example">A complete Shiny example<a class="anchor" aria-label="anchor" href="#a-complete-shiny-example"></a>
@@ -179,12 +177,12 @@ displaying it.</p>
 <p><code>uiPattern = ".*"</code> allows the example’s
 <code>/callback</code> route. <code>req(auth$connection())</code> waits
 for a login, and <code>$has_scopes()</code> checks whether an optional
-feature is available. The operation must still check its permissions
-when it runs.</p>
-<p>Keep the output’s connection-ID and permission checks when adapting
-this code so private results from a previous login disappear after
-logout or a change of account. Store those results within the session,
-away from global app caches.</p>
+feature is available. The call to
+<code>$access_token(required_scopes = ...)</code> checks the operation’s
+permissions before returning credentials.</p>
+<p>The output compares the saved connection ID and current permissions
+before displaying records, so results from an earlier login disappear
+after logout or a change of account.</p>
 </div>
 <div class="section level2">
 <h2 id="refresh-and-signing-in-again">Refresh and signing in again<a class="anchor" aria-label="anchor" href="#refresh-and-signing-in-again"></a>
@@ -198,9 +196,8 @@ a login page or repeat the other package’s operation.</p>
 again. It preserves locally reduced permissions and ends the previous
 local login. Cancelling does not restore it. An ordinary new login
 requests the client’s original scopes.</p>
-<p>The module’s expiry and maximum-login-age settings still apply. See
-<a href="usage.html#token-expiry-and-session-length">Usage</a> before
-changing that policy.</p>
+<p>Token retrieval follows the module’s <a href="usage.html#token-expiry-and-session-length">expiry and
+maximum-login-age settings</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="sdk-token-callbacks-and-database-drivers">SDK token callbacks and database drivers<a class="anchor" aria-label="anchor" href="#sdk-token-callbacks-and-database-drivers"></a>
@@ -215,18 +212,18 @@ session:</p>
 <span>    token <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="va">connection</span><span class="op">$</span><span class="fu">access_token</span><span class="op">(</span>required_scopes <span class="op">=</span> <span class="st">"records.read"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Replace <code>example_sdk_client()</code> with the package’s
-constructor. Its callback belongs to the login that created it; create a
-new client after another login.</p>
+<p><code>example_sdk_client()</code> stands for the package’s
+constructor. The reactive expression builds a client for the current
+connection and rebuilds it when login changes; its callback remains
+bound to that connection.</p>
 <p>If a database driver only accepts a token string, acquire it just
 before opening or updating the database connection. A copied string
-cannot refresh itself. Follow the driver’s connection-cleanup
-instructions and run writes from explicit user actions, such as button
-clicks.</p>
+cannot refresh itself.</p>
 <p>Exported bearer tokens carry the provider’s full grant, even when the
-app applies narrower local permission checks. For DPoP or
-certificate-bound tokens, use shinyOAuth’s <code>$request()</code> so
-the matching key or certificate is presented.</p>
+app applies narrower local permission checks.
+<code>$access_token()</code> rejects DPoP and certificate-bound tokens;
+<code>$request()</code> supplies the matching proof or certificate for
+those requests.</p>
 </div>
 <div class="section level2">
 <h2 id="several-accounts-and-optional-profile-retrieval">Several accounts and optional profile retrieval<a class="anchor" aria-label="anchor" href="#several-accounts-and-optional-profile-retrieval"></a>
@@ -245,8 +242,8 @@ identity fields without fetching a new profile.</p>
 <div class="section level2">
 <h2 id="advanced-connection-lifetime-and-permissions">Advanced: connection lifetime and permissions<a class="anchor" aria-label="anchor" href="#advanced-connection-lifetime-and-permissions"></a>
 </h2>
-<p>Use a connection only in its owning Shiny session’s reactive code.
-Keep it out of workers and other sessions. Refresh preserves its ID;
+<p>A connection belongs to one Shiny session, and its methods check that
+ownership before resolving credentials. Refresh preserves its ID;
 logout, replacement and session closure invalidate it, even if the same
 account signs in again.</p>
 <p>Reads of <code>connection()</code>, <code>$access_token()</code> and
@@ -290,11 +287,10 @@ block the app. Set up workers first, as shown in <a href="usage.html#asynchronou
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="va">current</span><span class="op">$</span><span class="fu">has_scopes</span><span class="op">(</span><span class="st">"records.read"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu">existing_sdk_read_records</span><span class="op">(</span>access_token <span class="op">=</span> <span class="va">token</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Logout or a permission change can happen after token acquisition,
-before the callback runs. Recheck the current connection and permissions
-before using it and again before displaying results. The other package
-still needs its own background-request mechanism if its calls block
-R.</p>
+<p>The callback compares the current connection and permissions because
+logout or a permission change can occur while token acquisition runs.
+The other package still needs its own background-request mechanism if
+its calls block R.</p>
 <div class="section level3">
 <h3 id="handling-token-errors">Handling token errors<a class="anchor" aria-label="anchor" href="#handling-token-errors"></a>
 </h3>
@@ -382,11 +378,10 @@ newer):</p>
 <span>  <span class="fu">shiny</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">authorization_id</span>, <span class="va">connection</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">result</span><span class="op">$</span><span class="va">data</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>Require enough remaining token lifetime to cover worker startup and
-the operation. Keep the connection-ID and permission checks before
-displaying the result, even for work started by a button. Do not use
-<code>cancelOutput = TRUE</code> for this guard, because it retains the
-previous output.</p>
+<p>The requested token lifetime covers worker startup and the operation.
+Before displaying results, the output checks connection ID and
+permissions; the default <code><a href="https://rdrr.io/pkg/shiny/man/req.html" class="external-link">req()</a></code> behavior clears output when
+those checks fail.</p>
 <p>See the <a href="https://shiny.posit.co/r/articles/improve/nonblocking/" class="external-link">Shiny
 background-task guide</a> for scheduling, and <a href="https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.html">OAuthConnection</a>
 for connection lifetime and permission-reduction details.</p>

@@ -80,10 +80,9 @@ access tokens, even when the same person uses both. A token target names
 an API and the permissions the app needs there. The app chooses the
 target when requesting a token, without requiring a separate login flow
 for each API.</p>
-<p>Your provider must support API-specific tokens through RFC 8707
-resource indicators or Microsoft’s API-specific scopes. Confirm support
-and consent requirements before using targets; declaring an API does not
-make the provider authorize it.</p>
+<p>Targets rely on provider support for RFC 8707 resource indicators or
+Microsoft’s API-specific scopes. The provider’s registration and consent
+determine which APIs the login can access.</p>
 <p>For independent logins or different accounts, use <a href="multiple-authorizations.html">Multiple authorizations</a>. For
 initial login setup, start with <a href="usage.html">Usage</a>.</p>
 </div>
@@ -97,7 +96,7 @@ the app may call, which can differ from the resource identifiers.</p>
 <p>Replace all example settings with your provider’s registered values.
 Microsoft uses the alternative setup shown <a href="#microsoft-example">below</a>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Use this mode only after confirming RFC 8707 support with your provider.</span></span>
+<code class="sourceCode R"><span><span class="co"># Provider supports RFC 8707 resource indicators.</span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_provider.html">oauth_provider</a></span><span class="op">(</span></span>
 <span>  <span class="st">"workplace"</span>, <span class="st">"https://login.example/authorize"</span>, <span class="st">"https://login.example/token"</span>,</span>
 <span>  token_target_mode <span class="op">=</span> <span class="st">"rfc8707"</span>,</span>
@@ -144,7 +143,7 @@ contacts package’s client constructor:</p>
 <code class="sourceCode R"><span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span></span>
 <span>    <span class="st">"auth"</span>, <span class="va">client</span>,</span>
-<span>    reauth_after_seconds <span class="op">=</span> <span class="fl">60</span> <span class="op">*</span> <span class="fl">60</span> <span class="co"># Example: choose the app's login lifetime.</span></span>
+<span>    reauth_after_seconds <span class="op">=</span> <span class="fl">60</span> <span class="op">*</span> <span class="fl">60</span> <span class="co"># One-hour maximum login age</span></span>
 <span>  <span class="op">)</span></span>
 <span>  <span class="co"># Alternatively: auth &lt;- oauth_connections_server("auth", manager)</span></span>
 <span>  <span class="co"># and select auth$connection(connection_id), or auth$connection() when unique.</span></span>
@@ -174,13 +173,11 @@ when needed. <code>$has_scopes()</code> checks permissions already
 recorded; it can return <code>FALSE</code> before that target’s first
 token acquisition. <code>$targets()</code> lists target status without
 exposing credentials.</p>
-<p>Choose a login lifetime for your app. The example sets a one-hour
-limit with <code>reauth_after_seconds</code>; without a limit, local
-authentication can outlast every API token.
-<code>indefinite_session = TRUE</code> disables that limit. Request
-methods still require usable access for the chosen API.</p>
-<p>Run writes from explicit user actions. A refresh before a request
-does not automatically replay a failed write.</p>
+<p>The example limits login to one hour with
+<code>reauth_after_seconds</code>. Without a limit, local authentication
+can outlast every API token; <code>indefinite_session = TRUE</code>
+disables that limit. Request methods still require usable access for the
+chosen API. Refresh does not replay a failed API request.</p>
 </div>
 <div class="section level2">
 <h2 id="refresh-and-sign-in-again">Refresh and sign in again<a class="anchor" aria-label="anchor" href="#refresh-and-sign-in-again"></a>
@@ -188,8 +185,8 @@ does not automatically replay a failed write.</p>
 <p>For RFC 8707 providers, reduce one target’s permissions with, for
 example,
 <code>connection$refresh(scopes = "calendar.read", target = "calendar")</code>.
-This does not change the other target’s permissions, and required scopes
-must remain.</p>
+The method preserves required scopes and leaves the other target’s
+permissions unchanged.</p>
 <p><code>auth$reauthorize()</code> starts a replacement login with the
 reduced permissions. For managed connections, pass the connection ID.
 Once replacement starts, cancelling does not restore the old login. An
@@ -250,16 +247,17 @@ apply.</p>
 </h3>
 <p>For OIDC, put identity scopes such as <code>openid</code>,
 <code>profile</code> and <code>email</code> at client level.
-<code>offline_access</code> requests refresh consent and belongs in
-client <code>scopes</code>, never in <code>required_scopes</code>.
-Requesting it does not guarantee a refresh token.</p>
+<code>offline_access</code> requests refresh consent through client
+<code>scopes</code>; it is not an API permission and is rejected in
+<code>required_scopes</code>. The provider still decides whether to
+issue a refresh token.</p>
 <p>When narrowing a target, retain any identity and refresh-consent
 scopes you still need. Later refreshes preserve reductions; a
 replacement OIDC login still requests <code>openid</code> for its new
 identity check. Other targets keep their own limits.</p>
 <p><code>connection$identity()</code> returns the last validated
-identity, which can outlast an API token. Use the chosen target’s token
-or request method to check current API access.</p>
+identity, which can outlast an API token. Each target’s token and
+request methods check current API access.</p>
 </div>
 </div>
 <div class="section level2">
@@ -278,9 +276,9 @@ token itself needs fewer permissions.</p>
 </h3>
 <p>Use the exact registered resource identifier, including any trailing
 slash, and fully qualified scope names. Resources can be URIs or GUIDs.
-Avoid distinct resources with overlapping prefixes, which make scope
-names ambiguous. Microsoft permission checks ignore ASCII case; resource
-identifiers are exact.</p>
+The package rejects distinct resources with overlapping prefixes because
+scope names would be ambiguous. Microsoft permission checks ignore ASCII
+case; resource identifiers are exact.</p>
 </div>
 <div class="section level3">
 <h3 id="static-permissions-and-unusual-short-names">Static permissions and unusual short names<a class="anchor" aria-label="anchor" href="#static-permissions-and-unusual-short-names"></a>

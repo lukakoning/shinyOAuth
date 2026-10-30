@@ -8,9 +8,8 @@ settings. It derives those settings from an
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
 already configured for mTLS.
 
-The result is a metadata list, ready to include in a registration
-request. Submit it through your provider's registration process; this
-function does not register the client or upload the certificate.
+The result is a metadata list for the provider's registration process.
+This function does not register the client or upload the certificate.
 
 ## Usage
 

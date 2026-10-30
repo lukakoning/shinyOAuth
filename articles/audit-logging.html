@@ -76,8 +76,7 @@
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
 <p>An audit log records login attempts, token operations and session
-changes. Use it to investigate a failed sign-in or find out why a
-session ended.</p>
+changes, helping explain a failed sign-in or why a session ended.</p>
 <p>shinyOAuth sends each event to an R function called a hook. Your hook
 decides where to write it: the console for local testing, or your
 application’s logging service in a deployment. For timings and
@@ -96,11 +95,12 @@ provider and client:</p>
 <p>Run the app and sign in. Events such as
 <code>audit_redirect_issued</code> and <code>audit_login_success</code>
 describe the steps taken. The <code>trace_id</code> connects events from
-the same login attempt, so use it to follow a failure across several
-steps. Several error events can describe one failed login.</p>
-<p>Set <code>options(shinyOAuth.audit_hook = NULL)</code> to stop
-receiving events. Keep hooks fast: waiting for a slow logging service
-can delay the operation being recorded.</p>
+the same login attempt, including failures spanning several steps.
+Several error events can describe one failed login.</p>
+<p>The hook runs as part of the recorded operation, so a slow logging
+service can delay login.
+<code>options(shinyOAuth.audit_hook = NULL)</code> disables the
+hook.</p>
 </div>
 <div class="section level2">
 <h2 id="authentication-outcomes">Authentication outcomes<a class="anchor" aria-label="anchor" href="#authentication-outcomes"></a>
@@ -117,8 +117,8 @@ later identity checks can still reject the login.</p>
 <code>timestamp</code> from <code><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.time()</a></code>, plus fields
 specific to the operation. The hook also receives error events such as
 <code>error</code>, <code>http_error</code>, and
-<code>transport_error</code>; their fields are listed at the end of the
-catalog. Do not assume every field exists on every event.</p>
+<code>transport_error</code>; their fields are listed in the catalog.
+Fields depend on the event and available context.</p>
 <p>When a Shiny session is available, <code>shiny_session</code>
 contains:</p>
 <ul>
@@ -147,28 +147,23 @@ OTel exports it as <code>shinyoauth.trace_id</code>.</p>
 <div class="section level2">
 <h2 id="http-context-and-redaction">HTTP context and redaction<a class="anchor" aria-label="anchor" href="#http-context-and-redaction"></a>
 </h2>
-<p>Logs can have a wider audience and longer retention than private app
-data. Keep the default redaction settings in production. They omit raw
-session tokens, request paths, query strings, headers, and client
-addresses from the HTTP summary.</p>
+<p>The default HTTP summary omits raw session tokens, request paths,
+query strings, headers and client addresses.</p>
 <p>To omit HTTP context entirely:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_include_http <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>If you need route names, configure
-<code>shinyOAuth.telemetry_path_scrubber</code> to replace identifying
-path segments with safe labels, such as <code>/users/:id</code>. Keep
-credentials and patient or account identifiers out of those labels. Your
-logging service still needs appropriate access and retention
-controls.</p>
+<p><code>shinyOAuth.telemetry_path_scrubber</code> supplies route labels
+for logs, for example replacing <code>/users/123</code> with
+<code>/users/:id</code>. Paths remain omitted when no scrubber is
+configured.</p>
 </div>
 <div class="section level2">
 <h2 id="audit-events-from-asynchronous-workers">Audit events from asynchronous workers<a class="anchor" aria-label="anchor" href="#audit-events-from-asynchronous-workers"></a>
 </h2>
 <p>With <code>async = TRUE</code>, the hook also runs in background R
-processes. Use a logging service that supports several writers, or open
-the logging connection inside each worker. A worker cannot safely reuse
-a database connection from the main process, and appending to a global
-list changes only that worker’s copy.</p>
+processes. Shared logging needs a service supporting several writers and
+connections opened within each process. A global list collects only the
+current process’s events.</p>
 </div>
 <div class="section level2">
 <h2 id="digest-keys-across-r-processes">Digest keys across R processes<a class="anchor" aria-label="anchor" href="#digest-keys-across-r-processes"></a>
@@ -183,18 +178,18 @@ load the same secret key in each:</p>
 <span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"AUDIT_DIGEST_KEY must be configured before the app starts"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.audit_digest_key <span class="op">=</span> <span class="va">audit_digest_key</span><span class="op">)</span></span></code></pre></div>
-<p>Generate the secret from at least 32 cryptographically random bytes
-and keep it in deployment secret storage. The key is for log
-correlation; it does not restore login sessions.</p>
+<p>The shared key contains at least 32 cryptographically random bytes
+and provides log correlation across processes, independently of
+login-state keys.</p>
 </div>
 <div class="section level2">
 <h2 id="event-catalog">Event catalog<a class="anchor" aria-label="anchor" href="#event-catalog"></a>
 </h2>
-<p>Match the event name from your log to the operation below. Use
-<code>trace_id</code> to follow the same attempt, then inspect
-<code>phase</code>, <code>reason</code>, <code>status</code> or
-<code>error_class</code> when present. A successful intermediate step
-does not establish final login.</p>
+<p>Event names identify the operation below. <code>trace_id</code> links
+records from one attempt; <code>phase</code>, <code>reason</code>,
+<code>status</code> and <code>error_class</code> add context when
+available. <code>audit_login_success</code> records completion of the
+login checks.</p>
 <div class="section level3">
 <h3 id="login-and-callbacks">Login and callbacks<a class="anchor" aria-label="anchor" href="#login-and-callbacks"></a>
 </h3>
@@ -420,10 +415,10 @@ Ending a Shiny session leaves browser- and account-retained connections
 in place.</p>
 <p>For <code>audit_userinfo</code>, <code>status</code> distinguishes
 successful parsing from invalid JSON, missing identity fields, and
-signature or claim failures. Inspect that status before enabling
-detailed error output. HTTP error records can also include
-<code>status</code> and structured <code>oauth_error</code> fields; keep
-provider-controlled messages out of production logs.</p>
+signature or claim failures. HTTP error records can also include
+<code>status</code> and structured <code>oauth_error</code> fields.
+Free-form provider messages are subject to the package’s diagnostic
+redaction policy.</p>
 <p>For DPoP nonce handling and mTLS endpoint selection, inspect the
 related <a href="opentelemetry.html#span-catalog">OpenTelemetry
 spans</a>.</p>

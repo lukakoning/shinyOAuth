@@ -3,15 +3,13 @@
 HTTPS is accepted by default. HTTP is limited to local development hosts
 unless you change allowed_non_https_hosts. Supply allowed_hosts to
 restrict which services your app may contact.
-Call this when checking configured endpoint URLs or diagnosing a URL-policy
-rejection. The provider and API request helpers apply these checks internally;
-a direct call lets you inspect the result without making a network request."><meta property="og:description" content="Test whether a URL is allowed by shinyOAuth's ordinary scheme and host rules.
+Provider and API request helpers apply these checks internally. A direct call
+reports the policy result without making a network request."><meta property="og:description" content="Test whether a URL is allowed by shinyOAuth's ordinary scheme and host rules.
 HTTPS is accepted by default. HTTP is limited to local development hosts
 unless you change allowed_non_https_hosts. Supply allowed_hosts to
 restrict which services your app may contact.
-Call this when checking configured endpoint URLs or diagnosing a URL-policy
-rejection. The provider and API request helpers apply these checks internally;
-a direct call lets you inspect the result without making a network request."></head><body>
+Provider and API request helpers apply these checks internally. A direct call
+reports the policy result without making a network request."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -62,9 +60,8 @@ a direct call lets you inspect the result without making a network request."></h
 HTTPS is accepted by default. HTTP is limited to local development hosts
 unless you change <code>allowed_non_https_hosts</code>. Supply <code>allowed_hosts</code> to
 restrict which services your app may contact.</p>
-<p>Call this when checking configured endpoint URLs or diagnosing a URL-policy
-rejection. The provider and API request helpers apply these checks internally;
-a direct call lets you inspect the result without making a network request.</p>
+<p>Provider and API request helpers apply these checks internally. A direct call
+reports the policy result without making a network request.</p>
     </div>
 
     <div class="section level2">
@@ -127,8 +124,7 @@ development opt-in; a <code>TRUE</code> result here does not override it.</p>
 <span class="r-in"><span><span class="fu">is_ok_host</span><span class="op">(</span><span class="st">"https://api.example.com"</span>, allowed_hosts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">".example.com"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Caution: a catch-all pattern disables host restrictions</span></span></span>
-<span class="r-in"><span><span class="co"># (only scheme rules remain). Use it only when any host is acceptable.</span></span></span>
+<span class="r-in"><span><span class="co"># A catch-all pattern allows any host; scheme rules still apply.</span></span></span>
 <span class="r-in"><span><span class="fu">is_ok_host</span><span class="op">(</span><span class="st">"https://anywhere.example"</span>, allowed_hosts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"*"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 </code></pre></div>

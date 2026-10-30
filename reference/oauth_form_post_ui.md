@@ -1,14 +1,13 @@
 # Wrap a Shiny UI to enable OAuth 2.0/OIDC form_post callbacks
 
-Accept the provider's login callback as an HTTP POST and continue login
-with
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-Use this when you select `response_mode = "form_post"` or
-`"form_post.jwt"`, either because the provider requires it or to keep
+Accepts the provider's login callback as an HTTP POST for
+`response_mode = "form_post"` or `"form_post.jwt"`. These modes keep
 callback parameters out of the browser URL. The POST arrives before a
-Shiny session exists; this wrapper receives it and makes the validated
-callback available to the server module. For query-string callbacks, use
-[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
+Shiny session exists; the wrapper receives it and makes the validated
+callback available to
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
+[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+handles query-string callbacks.
 
 ## Usage
 
@@ -70,22 +69,18 @@ oauth_form_post_ui(
 
 ## Value
 
-A Shiny UI function. Pass it to
-[`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html) and,
-for non-root callback paths, use `uiPattern = ".*"` so Shiny routes the
-callback path to this UI function.
+A Shiny UI function for
+[`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html).
 
 ## Details
 
-Set `response_mode` on your
-[`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md),
-wrap your UI here, and use the same `id` and `client` in
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-The wrapper includes the browser setup and privacy header supplied by
-[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md).
-For a callback path below the app root, pass `uiPattern = ".*"` to
+The wrapper and
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+share the same `id` and `client`. The wrapper includes browser setup and
+response headers. Callback paths below the app root require
+`uiPattern = ".*"` in
 [`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html) so
-Shiny routes the callback to this wrapper.
+Shiny routes those requests to the wrapper.
 
 The wrapper receives the login result before the Shiny session starts,
 then sends the browser to a clean app URL. Raw callback values stay out
@@ -106,11 +101,12 @@ response (JARM).
 
 ## Deployment behind a proxy
 
-If a proxy receives HTTPS and forwards HTTP to Shiny, supply a
-`request_uri_resolver` that reconstructs the public address after
-verifying the request came from your trusted proxy. The default resolver
-does not trust forwarded headers. The resulting address must match the
-configured redirect origin and callback path. See the [advanced security
+The default resolver uses the server-observed address and ignores
+forwarded headers. For an HTTPS-terminating proxy, a custom
+`request_uri_resolver` can reconstruct the public address from headers
+accepted at that proxy's trust boundary. The wrapper checks the result
+against the configured redirect origin and callback path. See the
+[advanced security
 vignette](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html).
 
 Callback size limits are documented in the [package options

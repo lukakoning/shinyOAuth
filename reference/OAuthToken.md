@@ -8,9 +8,8 @@ returns it for custom integrations. Pass it to
 to call an API, or to the token helpers for refresh, introspection, and
 revocation.
 
-Read properties with `@`, for example `auth[["token"]]@userinfo`.
-Profile fields depend on the provider. Keep access and refresh tokens
-out of the UI and logs.
+Properties use `@`, for example `auth[["token"]]@userinfo`. Profile
+fields depend on the provider.
 
 ## Usage
 
@@ -87,8 +86,9 @@ OAuthToken(
 
   Logical flag indicating whether the current token response explicitly
   proved `granted_scopes`. `FALSE` means the scope set was assumed or
-  carried forward because the provider omitted `scope`. For stronger
-  proof, configure `introspection_checks = "scope"`.
+  carried forward because the provider omitted `scope`. With
+  `introspection_checks = "scope"`, provider introspection can verify
+  the granted scope set.
 
 - id_token_validated:
 
@@ -101,7 +101,7 @@ OAuthToken(
   Initial login ID token retained as the refresh continuity baseline.
   Refresh never replaces it with a newer ID token. For manually
   constructed tokens, the first refresh initializes this from `id_token`
-  if omitted. Treat this property as credential material.
+  if omitted.
 
 - extra_fields:
 
@@ -159,8 +159,8 @@ field from a field explicitly returned as `null`. These parameters are
 not ID token claims and are not covered by `id_token_validated`. The
 initial snapshot records the initial response data, not current access
 permissions. No automatic merging, resource fetching, or interpretation
-is performed. Both lists can contain sensitive data; keep them out of
-the UI and logs.
+is performed. [`print()`](https://rdrr.io/r/base/print.html) and
+[`format()`](https://rdrr.io/r/base/format.html) redact both lists.
 
 ## Examples
 

@@ -187,11 +187,10 @@ user's token or patient context; create it outside `server()`. Its
 
 ## Details
 
-Choose `launch = "standalone"` when the user opens the app directly, or
-`"ehr"` when an electronic health record opens it. Use separate
-registrations for the two flows. Patient context describes the patient
-being viewed; it does not identify the person signed in. Enable
-`identity` only when the app needs that identity too. See
+`launch = "standalone"` describes an app opened directly; `"ehr"`
+describes one opened from an electronic health record. Each flow has its
+own app registration. Patient context identifies the chart being viewed;
+`identity` separately controls validation of the signed-in user. See
 [`vignette("smart-on-fhir", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.md)
 ([online
 guide](https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html))
@@ -207,9 +206,9 @@ enable OIDC automatically.
 
 Supported flows use direct authorization and query or form POST
 callbacks. Claims requests, remote authentication-freshness overrides,
-JAR, PAR, JARM, DPoP and mTLS are not supported by this constructor.
-Each EHR launch needs a fresh registered launch transaction; do not
-reuse a shared launch handle.
+JAR, PAR, JARM, DPoP and mTLS are not supported by this constructor. The
+manager establishes a fresh registered transaction for each EHR launch;
+launch handles are single-use.
 
 Tokens need a positive lifetime. Only an initial response may omit
 `expires_in`, and only with an explicit `initial_expires_in_fallback`.

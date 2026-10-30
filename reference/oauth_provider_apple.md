@@ -40,14 +40,13 @@ Configure your client with:
   [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
   when requesting `email` or `name`.
 
-Read identity information from the validated ID token's claims. Apple
-has no userinfo endpoint, so `userinfo_required` is `FALSE`. The
+Identity information comes from the validated ID token's claims. Apple
+has no UserInfo endpoint, so `userinfo_required` is `FALSE`. The
 one-time `user` payload that Apple may send with a form POST callback is
-not mapped into `token@userinfo`; do not rely on this helper to retrieve
-that payload. Apple's documented `email_verified` strings (`"true"` and
-`"false"`) are normalized to logical values in validated claims after
-signature and issuer verification. Other providers retain the standard
-JSON Boolean requirement.
+not mapped into `token@userinfo`. Apple's documented `email_verified`
+strings (`"true"` and `"false"`) are normalized to logical values in
+validated claims after signature and issuer verification. Other
+providers retain the standard JSON Boolean requirement.
 
 ## Examples
 

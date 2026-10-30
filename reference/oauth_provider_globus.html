@@ -80,11 +80,10 @@ and the credentials to <code><a href="oauth_client.html">oauth_client()</a></cod
     <p>This helper supports OIDC login. Globus API grants can return separate
 credentials for several resource servers in <code>other_tokens</code>. Those fields
 are preserved in <code>token@extra_fields</code>, but shinyOAuth does not automatically
-select, refresh, or revoke the nested tokens. Keep this login client's
-scopes limited to <code>openid</code>, <code>profile</code>, <code>email</code>, and optionally
-<code>offline_access</code>; use a separate Globus-aware integration for multi-resource
-API authorization. Never send the login access token to another resource
-server merely because a nested token granted access to it.</p>
+select, refresh, or revoke the nested tokens. The supported login scopes are
+<code>openid</code>, <code>profile</code>, <code>email</code> and optionally <code>offline_access</code>. Multi-resource
+API authorization needs a Globus-aware integration that manages each resource
+server's separate token.</p>
     </div>
     <div class="section level2">
     <h2 id="advanced-provider-settings">Advanced provider settings<a class="anchor" aria-label="anchor" href="#advanced-provider-settings"></a></h2>

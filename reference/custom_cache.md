@@ -117,16 +117,14 @@ The default
 [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
 state store belongs to one R process. If a load balancer sends the
 returning callback to another worker, that worker cannot find the
-pending login and validation fails. Configure all workers with access to
-the same external store when routing does not keep the authorization
-request and callback on the same process.
+pending login and validation fails. Shared storage allows either worker
+to resume it, provided both use the same `state_key` and provider/client
+settings.
 
-For a shared `state_store`, implement `take`: it must read and delete a
-pending login as one indivisible operation, so two requests cannot use
-it. Redis `GETDEL` and SQL `DELETE ... RETURNING` are examples of
-backend operations that can do this. Use the same `state_key` and
-matching provider/client settings on every worker. Separate reads and
-deletes, including those in
+A shared `state_store` requires atomic `take`: reading and deleting a
+pending login in one operation so two requests cannot use it. Redis
+`GETDEL` and SQL `DELETE ... RETURNING` provide this operation. Separate
+reads and deletes, including those in
 [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html),
 can let two workers consume the same state. See the [deployment
 guidance](https://lukakoning.github.io/shinyOAuth/articles/usage.html#multiple-r-processes).
@@ -134,10 +132,9 @@ For the `form_post` and `form_post.jwt` callback bridges, also implement
 `set_if_absent` to reserve callback slots without replacing pending
 responses.
 
-Preserve the stored R values unchanged. Pending login records are
-encrypted, but the backend must still enforce access controls, expiry
-and atomic consumption. An upgrade can invalidate pending records; users
-then restart login.
+The backend preserves stored R values and enforces access controls,
+expiry and atomic consumption. Pending login records are encrypted. An
+upgrade can invalidate pending records; affected logins then restart.
 
 Hosted Request Objects (`request_object_mode = "request_uri"`) use
 separate records. Signed objects can contain readable authorization
@@ -164,17 +161,16 @@ operation, forced refresh is disabled for custom/shared caches. Use
 separate stores or key namespaces for login state and signing keys when
 they require different expiry policies.
 
-For asynchronous login and token operations, a custom signing-key cache
-defaults to synchronous fallback. Set `worker_safe = TRUE` only if its
-functions and captured values remain usable after serialization into a
-new R process. Open database/file connections and other process-bound
-resources must not be captured; open and close connections inside each
-operation instead. Serialization success alone does not establish worker
+A custom signing-key cache defaults to synchronous fallback for
+asynchronous login and token operations. `worker_safe = TRUE` declares
+that its functions and captured values remain usable in a new R process.
+That requires per-operation connections rather than captured
+database/file handles; serialization alone cannot establish worker
 safety. Standard
 [`cachem::cache_mem()`](https://cachem.r-lib.org/reference/cache_mem.html)
 and
 [`cachem::cache_disk()`](https://cachem.r-lib.org/reference/cache_disk.html)
-backends support worker dispatch without this opt-in. Other cache
+backends support worker dispatch automatically. Other cache
 implementations can expose a scalar logical `worker_safe` member with
 the same contract. State stores are not used in callback workers.
 

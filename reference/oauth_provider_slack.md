@@ -24,10 +24,10 @@ oauth_provider_slack(
 
   Slack app registration profile: `"confidential"` (default) uses HTTP
   Basic and OIDC nonce validation without PKCE; `"public_pkce"` uses
-  S256 PKCE and sends no client secret. Select the public profile only
-  after enabling PKCE for that Slack app. Slack marks the app public,
-  and reversing that registration setting requires contacting Slack
-  support. See <https://docs.slack.dev/authentication/using-pkce/>.
+  S256 PKCE and sends no client secret, matching a Slack registration
+  with PKCE enabled. Enabling PKCE marks the Slack app public; reversing
+  that registration setting requires contacting Slack support. See
+  <https://docs.slack.dev/authentication/using-pkce/>.
 
 ## Value
 

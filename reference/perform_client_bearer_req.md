@@ -71,10 +71,9 @@ perform_client_bearer_req(
 
   Logical or `NULL`. `FALSE` (the default) disables HTTP redirects even
   when `shinyOAuth.allow_redirect` is enabled. `NULL` inherits that
-  global option (disabled by default). Set to `TRUE` only if you trust
-  all possible redirect targets and understand the security
-  implications. DPoP requests reject enabled redirects because each
-  target needs a new proof; use `FALSE` for DPoP.
+  global option (disabled by default). `TRUE` enables redirects. DPoP
+  requests reject enabled redirects because each target needs a new
+  proof.
 
 - check_url:
 
@@ -85,8 +84,8 @@ perform_client_bearer_req(
   `options(shinyOAuth.allowed_hosts)` is set, hosts outside the
   allowlist. Without an allowlist this performs HTTPS and URL-syntax
   validation only (with the configured non-HTTPS exceptions); any HTTPS
-  host is accepted. Set to `FALSE` only if you have already validated
-  the URL and understand the security implications.
+  host is accepted. `FALSE` skips this policy check; URL length and
+  resource-host restrictions still apply.
 
 - client:
 
@@ -124,10 +123,9 @@ perform_client_bearer_req(
   using
   [`is_ok_host()`](https://lukakoning.github.io/shinyOAuth/reference/is_ok_host.md)
   matching rules. This call-scoped allowlist adds to the global policy
-  and is enforced even if `check_url` is `FALSE`. Use exact hostnames
-  for URLs derived from lower-trust input. It constrains the initial
-  URL, not redirect destinations or resolved IPs; retain
-  `follow_redirect = FALSE`. `NULL` adds no resource-specific policy.
+  and is enforced even if `check_url` is `FALSE`. It constrains the
+  initial URL, not redirect destinations or resolved IPs. `NULL` adds no
+  resource-specific policy.
 
 - oauth_client:
 

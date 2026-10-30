@@ -40,15 +40,15 @@ introspect_token(
 
 - async:
 
-  If `TRUE`, return a promise resolving to the result. Configure mirai
-  daemons or a future plan first; mirai takes priority. Use a
-  non-sequential future plan to move work outside the main R process.
-  Default `FALSE` waits and returns the result directly.
+  If `TRUE`, return a promise resolving to the result, using configured
+  mirai daemons or a future plan; mirai takes priority. A non-sequential
+  backend moves work outside the main R process. Default `FALSE` waits
+  and returns the result directly.
 
 - shiny_session:
 
-  Optional captured Shiny session details for audit events. Normally
-  supplied by the module; leave `NULL` when calling directly.
+  Optional captured Shiny session details for audit events, normally
+  supplied by the module.
 
 - oauth_client:
 
@@ -81,9 +81,8 @@ A list with fields:
 
 ## Details
 
-Read `result[["active"]]`: `TRUE` means active, `FALSE` means inactive,
-and `NA` means the result is unknown. Use `isTRUE(result[["active"]])`
-if your code must require a definite confirmation.
+`result[["active"]]` is `TRUE` for an active token, `FALSE` for an
+inactive token, and `NA` when the result is unknown.
 
 Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 unusable response bodies return a descriptive `status`. The provider
@@ -116,7 +115,7 @@ if (interactive()) {
   result <- introspect_token(client, token)
   isTRUE(result[["active"]])
 
-  # Requires a refresh token. Keep the returned replacement.
+  # Returns replacement credentials using the refresh token.
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.

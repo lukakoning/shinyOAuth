@@ -39,10 +39,9 @@ oauth_provider_keycloak(
   "header" (client_secret_basic), "body" (client_secret_post), "public"
   (send `client_id` only; `"none"` alias also accepted),
   "private_key_jwt", or "client_secret_jwt". Defaults to "body" for
-  Keycloak, which works for many common setups. Use `"public"` if you
-  need to suppress `client_secret` even when it is set in the
-  environment. If you pass `NULL`, discovery will infer the method from
-  the provider's `token_endpoint_auth_methods_supported` metadata.
+  Keycloak. `"public"` omits `client_secret`, including one supplied
+  through the environment. `NULL` infers the method from the provider's
+  `token_endpoint_auth_methods_supported` metadata.
 
 - jarm_tolerate_duplicate_top_level_iss:
 

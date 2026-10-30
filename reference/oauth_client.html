@@ -215,17 +215,16 @@ entry lifetime; both must allow the returning login.</p></dd>
 
 <dt id="arg-state-entropy">state_entropy<a class="anchor" aria-label="anchor" href="#arg-state-entropy"></a></dt>
 <dd><p>Length in characters of the random state identifier, from
-22 to 128. Default 64. Most apps should keep the default.</p></dd>
+22 to 128. Default 64.</p></dd>
 
 
 <dt id="arg-state-key">state_key<a class="anchor" aria-label="anchor" href="#arg-state-key"></a></dt>
 <dd><p>Secret used to encrypt and protect pending login details.
 A random key is generated when omitted. This is separate from
 <code>client_secret</code> and is also used for public clients.</p>
-<p>For multiple R processes, supply the same key and shared <code>state_store</code>
-on every process. Accepts a character string or raw vector of at least
-32 bytes. Generate it from cryptographically random bytes; do not use
-a memorable password. State uses AES-GCM authenticated encryption.</p></dd>
+<p>Deployments with multiple R processes use the same key and <code>state_store</code> across
+processes. The key is a character string or raw vector containing at least
+32 cryptographically random bytes. State uses AES-GCM authenticated encryption.</p></dd>
 
 
 <dt id="arg-client-assertion-private-key">client_assertion_private_key<a class="anchor" aria-label="anchor" href="#arg-client-assertion-private-key"></a></dt>
@@ -306,11 +305,10 @@ certificates.</p></dd>
 <dd><p>Logical. Whether this
 client intends to request RFC 8705 certificate-bound access tokens when
 the provider advertises that capability. Default is <code>FALSE</code>.</p>
-<p>Set this to <code>TRUE</code> for clients that should prefer discovered
-<code>mtls_endpoint_aliases</code> on authorization-server requests even when
-<code>token_auth_style</code> itself is not an mTLS auth style, and present the
-certificate on token and protected-resource requests. Certificate/key
-configuration alone does not enable this mode.</p>
+<p>When <code>TRUE</code>, authorization-server requests prefer discovered
+<code>mtls_endpoint_aliases</code>, even when <code>token_auth_style</code> is not an mTLS auth
+style. Token and protected-resource requests present the certificate.
+Certificate/key configuration alone does not enable this mode.</p>
 <p>Requires <code>mtls_client_cert_file</code> and <code>mtls_client_key_file</code>, and the
 provider must be configured with
 <code>mtls_client_certificate_bound_access_tokens = TRUE</code>.
@@ -352,10 +350,9 @@ shinyOAuth cannot verify that server-side registration automatically.</p></dd>
 
 
 <dt id="arg-response-mode">response_mode<a class="anchor" aria-label="anchor" href="#arg-response-mode"></a></dt>
-<dd><p>How the provider returns the login result. Leave <code>NULL</code>
-(default) for a normal callback with parameters in the URL; no
-<code>response_mode</code> parameter is then sent. Use <code>"query"</code> to request that
-format explicitly, or <code>"form_post"</code> when your provider needs an HTTP POST.
+<dd><p>How the provider returns the login result. <code>NULL</code>
+(default) omits the parameter, using the provider's normal query callback.
+<code>"query"</code> explicitly requests URL parameters; <code>"form_post"</code> requests an HTTP POST.
 POST callbacks require <code><a href="oauth_form_post_ui.html">oauth_form_post_ui()</a></code>.</p>
 <p>Signed responses (JWT Secured Authorization Response Mode, JARM)
 use <code>"jwt"</code>, <code>"query.jwt"</code>, or <code>"form_post.jwt"</code>
@@ -382,15 +379,14 @@ signed authorization requests.</p></dd>
 used in signed authorization requests. By default, shinyOAuth uses the
 provider issuer when available. When
 <code>request_object_mode = "request"</code> or <code>"request_uri"</code>, the provider
-must have a configured issuer or you must supply an explicit override so
-the signed Request Object remains audience-bound to the intended
-authorization server.</p></dd>
+needs either a configured issuer or this override to identify the
+authorization server in the signed Request Object.</p></dd>
 
 
 <dt id="arg-request-object-encryption-alg">request_object_encryption_alg<a class="anchor" aria-label="anchor" href="#arg-request-object-encryption-alg"></a></dt>
 <dd><p>Optional JWE key-management
 algorithm override for encrypted Request Objects. Current outbound support
-is limited to <code>RSA-OAEP</code>. When set, you must also set
+is limited to <code>RSA-OAEP</code>. Encryption requires both this value and
 <code>request_object_encryption_enc</code>.</p></dd>
 
 
@@ -398,7 +394,7 @@ is limited to <code>RSA-OAEP</code>. When set, you must also set
 <dd><p>Optional JWE content-encryption
 algorithm override for encrypted Request Objects. Current outbound support
 is limited to the AES-CBC-HMAC family (<code>A128CBC-HS256</code>,
-<code>A192CBC-HS384</code>, <code>A256CBC-HS512</code>). When set, you must also set
+<code>A192CBC-HS384</code>, <code>A256CBC-HS512</code>). Encryption also requires
 <code>request_object_encryption_alg</code>.</p></dd>
 
 
@@ -422,7 +418,7 @@ URI. Default is <code>45</code>.</p></dd>
 seconds. When provided, shinyOAuth adds an <code>nbf</code> claim set to
 <code>iat - request_object_nbf_skew</code> so deployments can tolerate small
 clock skew while still emitting bounded request-object validity windows.
-Leave <code>NULL</code> (the default) to omit <code>nbf</code>. Request-object <code>nbf</code> is reserved
+<code>NULL</code> (the default) omits <code>nbf</code>. Request-object <code>nbf</code> is reserved
 by shinyOAuth and cannot be supplied through extra authorization
 parameters.</p></dd>
 
@@ -464,9 +460,8 @@ token types, independently of the access token's representation. Observed
 binding data must match the configured key; requiring its presence is a
 separate policy (<code>dpop_require_observed_cnf</code>). In <code>oauth_client()</code>, the default
 <code>NULL</code> resolves to <code>TRUE</code> when <code>dpop_private_key</code> is configured and to
-<code>FALSE</code> otherwise. Set <code>FALSE</code> explicitly only when you intentionally want
-to allow Bearer access tokens, such as deployments where DPoP is used only
-to bind refresh tokens.</p></dd>
+<code>FALSE</code> otherwise. Explicit <code>FALSE</code> also permits Bearer access tokens,
+including deployments where DPoP binds only the refresh token.</p></dd>
 
 
 <dt id="arg-scope-validation">scope_validation<a class="anchor" aria-label="anchor" href="#arg-scope-validation"></a></dt>
@@ -501,9 +496,8 @@ signed JWT (<code>application/jwt</code>). Allowed values are <code>"exp"</code>
 <code>"nbf"</code>.</p>
 <p>The default, <code>character(0)</code>, checks these claims only when present.
 Set, for example, <code>userinfo_jwt_required_time_claims = "exp"</code>
-to require an expiry on signed UserInfo JWTs, or pass multiple values to
-require additional temporal claims. For security-sensitive deployments that
-accept signed UserInfo JWTs, prefer requiring at least <code>"exp"</code>.</p></dd>
+to require an expiry on signed UserInfo JWTs; multiple values require
+the corresponding time claims.</p></dd>
 
 
 <dt id="arg-required-acr-values">required_acr_values<a class="anchor" aria-label="anchor" href="#arg-required-acr-values"></a></dt>
@@ -667,8 +661,8 @@ conflicting claims. This flag does not independently enable mTLS.</p></dd>
 audiences explicitly trusted by this client. Defaults to <code>character(0)</code>,
 which permits only <code>client_id</code>. The token must always include <code>client_id</code>
 in <code>aud</code>; when <code>azp</code> is present it must equal <code>client_id</code>.
-Values are matched exactly and case-sensitively. Configure only audiences
-trusted for this application's identity tokens, not arbitrary API audiences.</p></dd>
+Values are matched exactly and case-sensitively and apply to identity-token
+recipients, independently of API resource addresses.</p></dd>
 
 
 <dt id="arg-compare-callback-issuer">compare_callback_issuer<a class="anchor" aria-label="anchor" href="#arg-compare-callback-issuer"></a></dt>
@@ -696,8 +690,8 @@ OAuth form parameter <code>client_assertion_type</code>.</p></dd>
 
 <dt id="arg-authorization-method">authorization_method<a class="anchor" aria-label="anchor" href="#arg-authorization-method"></a></dt>
 <dd><p>Browser method for sending the authorization
-request: <code>"GET"</code> (default) or <code>"POST"</code>. Select POST only after confirming
-provider support. It submits form fields instead of a long URL query.
+request: <code>"GET"</code> (default) or provider-supported <code>"POST"</code>. POST submits form
+fields instead of a URL query.
 Use the module's <code>request_login()</code> or <code><a href="prepare_authorization_request.html">prepare_authorization_request()</a></code>; URL-only
 helpers reject POST. This does not select the callback <code>response_mode</code> or
 replace a provider's PAR or signed Request Object requirements.</p></dd>

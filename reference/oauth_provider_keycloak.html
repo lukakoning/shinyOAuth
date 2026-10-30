@@ -89,9 +89,8 @@ contacts the Keycloak server during setup.</p>
 method. One of "header" (client_secret_basic), "body"
 (client_secret_post), "public" (send <code>client_id</code> only; <code>"none"</code> alias also
 accepted), "private_key_jwt", or "client_secret_jwt". Defaults
-to "body" for Keycloak, which works for many common setups. Use <code>"public"</code>
-if you need to suppress <code>client_secret</code> even when it is set in the
-environment. If you pass <code>NULL</code>, discovery will infer the method from the
+to "body" for Keycloak. <code>"public"</code> omits <code>client_secret</code>, including one
+supplied through the environment. <code>NULL</code> infers the method from the
 provider's <code>token_endpoint_auth_methods_supported</code> metadata.</p></dd>
 
 

@@ -1,10 +1,9 @@
 # Set up a Shiny UI for shinyOAuth
 
-Wrap your complete UI when using
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-This adds the browser setup for login and handles the provider's return
-before showing your app. Supply the same `id` and `client` as the server
-module.
+Adds browser setup for
+[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
+and handles the provider's return before showing the app. The UI wrapper
+and server module share the same `id` and `client`.
 
 ## Usage
 
@@ -55,27 +54,24 @@ A UI function to use as the `ui` argument to
 
 ## Details
 
-Build the page as usual, for example with
-[`fluidPage()`](https://rdrr.io/pkg/shiny/man/fluidPage.html), then use
-`ui <- oauth_ui(ui, id = "auth", client = client)`, using the same
-module ID and client as the server. Pass the result to
-[`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html). UI
-functions are supported too, including functions accepting the Shiny
-request. This is the recommended setup for ordinary query-callback apps.
-It includes
+The wrapper accepts a complete UI object or a UI function, including one
+accepting the Shiny request. It includes
 [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-setup; do not add a separate call inside the wrapped UI. For POST login
-returns (`response_mode = "form_post"` or `"form_post.jwt"`), use
+and returns a UI function for
+[`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html).
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-instead. For callback paths below the app root, pass `uiPattern = ".*"`
-to [`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html).
+provides the equivalent handling for POST returns
+(`response_mode = "form_post"` or `"form_post.jwt"`). Callback paths
+below the app root require `uiPattern = ".*"` in
+[`shiny::shinyApp()`](https://rdrr.io/pkg/shiny/man/shinyApp.html) so
+Shiny routes those requests to the wrapper.
 
 ## Several login modules
 
-Supply `clients = list(auth_a = client_a, auth_b = client_b)` instead of
-`id` and `client`. Names must match server module IDs. The wrapper
-handles each configured query or POST route; do not nest several
-wrappers.
+A registry such as
+`clients = list(auth_a = client_a, auth_b = client_b)` replaces the
+single `id` and `client` pair. Names match the server module IDs; one
+wrapper handles all configured query and POST routes.
 
 ## Advanced routing and storage
 
@@ -92,15 +88,15 @@ need a shared state store with atomic consumption; see
 [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
 and
 [`custom_cache()`](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.md).
-Register fixed application query parameters in `redirect_uri`; other
-incoming parameters are discarded. Client-hosted Request Objects also
-use this store and are served at the app root.
+Continuation URLs retain only application query parameters registered in
+`redirect_uri`. Client-hosted Request Objects also use this store and
+are served at the app root.
 
 Without `id` and `client`, ordinary pages render but raw login callbacks
-are rejected. A custom
+are rejected. Callback handling in a custom
 [`use_shinyOAuth()`](https://lukakoning.github.io/shinyOAuth/reference/use_shinyOAuth.md)
-integration must provide equivalent callback handling; application
-scripts must not run on raw callback pages.
+integration belongs to its HTTP layer; the dependency alone does not
+process callbacks.
 
 The wrapper sets no-store cache headers and
 `Referrer-Policy: no-referrer` before page resources load. A meta tag

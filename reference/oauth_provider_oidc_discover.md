@@ -91,12 +91,10 @@ oauth_provider_oidc_discover(
 
 - jwks_host_issuer_match:
 
-  When TRUE (default), enforce that the JWKS host discovered from the
-  provider matches the issuer host exactly. For providers that serve
-  JWKS from a different host, set `jwks_host_allow_only` to the exact
-  hostname instead of disabling this. Disabling (`FALSE`) is not
-  recommended unless you also pin JWKS via `jwks_host_allow_only` or
-  `jwks_pins`.
+  When TRUE (default), require the discovered JWKS host to match the
+  issuer host exactly. `jwks_host_allow_only` takes precedence and can
+  specify a different exact hostname. `FALSE` disables issuer-host
+  matching.
 
 - issuer_match:
 
@@ -104,25 +102,20 @@ oauth_provider_oidc_discover(
   document's `issuer` against the input `issuer`.
 
   - `"url"` (default): require the issuer used for discovery to match
-    exactly, including any trailing slash (recommended). For a full
-    discovery URL input, require the discovered issuer's standard
-    metadata location to match that URL instead.
+    exactly, including any trailing slash. For a full discovery URL
+    input, require the discovered issuer's standard metadata location to
+    match that URL.
 
-  - `"host"`: compare only scheme + host (explicit opt-out; not
-    recommended).
+  - `"host"`: compare only scheme + host.
 
-  - `"none"`: do not validate issuer consistency.
-
-  Prefer `"url"` and tighten hosts via
-  `options(shinyOAuth.allowed_hosts)` when feasible.
+  - `"none"`: skip issuer-consistency validation.
 
 - ...:
 
   Additional fields passed to
-  [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md)
-  (for example, `pkce_method = "plain"` when a provider explicitly
-  advertises only plain PKCE support and you intentionally want to allow
-  that downgrade).
+  [`oauth_provider()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider.md),
+  including `pkce_method = "plain"` for compatibility with plain-only
+  PKCE metadata.
 
 - allowed_algs:
 

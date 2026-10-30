@@ -172,13 +172,11 @@ userinfo[["sub"]]
 - signed_request_object_required:
 
   Logical. Whether the provider requires signed Request Objects for
-  authorization requests. When `TRUE`, clients should use
-  `request_object_mode = "request"` or
-  `request_object_mode = "request_uri"`. This setting enforces local
-  construction only; it does not configure the authorization server.
-  Register `require_signed_request_object = true` (or the server's
-  equivalent) and verify unsigned requests are rejected before relying
-  on downgrade-resistant request integrity.
+  authorization requests. When `TRUE`, client construction requires
+  `request_object_mode = "request"` or `"request_uri"`. This represents
+  the provider's registration policy and enforces local construction.
+  Provider-side rejection of unsigned requests depends on that
+  registration, not on this local flag.
 
 - request_parameter_supported:
 
@@ -204,10 +202,9 @@ userinfo[["sub"]]
   default (`FALSE`) when this metadata is omitted. shinyOAuth can
   publish caller-managed `request_uri` values through
   [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md).
-  When this is `TRUE`, make sure the provider has a matching public
-  request URI or wildcard prefix registered for the client. shinyOAuth
-  stores this metadata for caller awareness, but it cannot verify
-  provider-side registration state automatically.
+  `TRUE` means the public URI or a matching prefix belongs in the
+  provider's client registration. The package stores this requirement as
+  metadata; provider-side registration is outside local validation.
 
 - token_endpoint_auth_signing_alg_values_supported:
 
@@ -282,28 +279,26 @@ userinfo[["sub"]]
 
   - `"none"`: do not validate discovery issuer consistency.
 
-  In most cases, keep the default `"url"`. Use `"host"` only for
-  providers that publish tenant-independent metadata with a templated
-  issuer, such as some Microsoft aliases.
+  The Microsoft helper configures tenant-independent issuer handling for
+  supported alias tenants.
 
 - use_nonce:
 
-  Whether to tie the ID token to this login using a random nonce. Keep
-  enabled for OIDC. The nonce is sent in the request and checked in the
-  returned ID token.
+  Whether to tie the ID token to this login using a random nonce. The
+  package sends it in the request and checks it in the returned ID
+  token.
 
 - use_pkce:
 
   Whether to protect the code exchange using Proof Key for Code Exchange
-  (PKCE). Leave enabled; public clients require it. It sends a
-  `code_challenge` with the login request and a matching secret
-  `code_verifier` during token exchange.
+  (PKCE), which public clients require. It sends a `code_challenge` with
+  the login request and a matching secret `code_verifier` during token
+  exchange.
 
 - pkce_method:
 
-  PKCE code challenge method ("S256" or "plain"). "S256" is recommended.
-  Use "plain" only if you are working with a provider that does not
-  support "S256".
+  PKCE code challenge method: `"S256"` (default), or `"plain"` for
+  compatibility with providers that require it.
 
 - userinfo_required:
 
@@ -366,9 +361,8 @@ userinfo[["sub"]]
   require setting the client's scope to include `openid`).
 
   Both the S7 constructor and `oauth_provider()` enable this when an
-  issuer is provided and `infer_oidc_from_issuer = TRUE`. Set an
-  explicit `FALSE` only when intentionally opting out of ID token
-  validation.
+  issuer is provided and `infer_oidc_from_issuer = TRUE`. An explicit
+  `FALSE` disables automatic ID token validation.
 
 - extra_auth_params:
 
@@ -456,13 +450,12 @@ userinfo[["sub"]]
   [`oauth_provider_oidc()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc.md)
   and
   [`oauth_provider_oidc_discover()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_provider_oidc_discover.md))
-  enable this by default for safer config. The generic helper
-  `oauth_provider()` will also automatically set this to TRUE when an
-  `issuer` is provided and either `id_token_validation` or
-  `id_token_required` is TRUE (OIDC-like configuration). Set explicitly
-  to FALSE to opt out. For providers that legitimately publish JWKS on a
-  different host (for example Google), set `jwks_host_allow_only` to
-  that exact hostname to keep host validation enabled.
+  enable this by default. The generic helper `oauth_provider()` will
+  also automatically set this to TRUE when an `issuer` is provided and
+  either `id_token_validation` or `id_token_required` is TRUE (OIDC-like
+  configuration). An explicit FALSE disables issuer-host matching.
+  `jwks_host_allow_only` takes precedence and can specify a different
+  exact hostname, as used by the Google helper.
 
 - jwks_host_allow_only:
 
@@ -584,21 +577,19 @@ userinfo[["sub"]]
 
 - allow_missing_token_type:
 
-  Logical, default `FALSE`. Opt in only for a provider known to issue
-  Bearer tokens while omitting `token_type` from its token responses,
-  contrary to OAuth 2.0. When `TRUE`, login and refresh assume
-  `"Bearer"` only when the field is absent. Explicit null, empty,
-  invalid, or unsupported values still fail validation. The fallback
-  never applies to clients configured with DPoP; other token and binding
-  checks remain enforced.
+  Logical, default `FALSE`. Compatibility for providers that issue
+  Bearer tokens without the OAuth-required `token_type`. When `TRUE`,
+  login and refresh assume `"Bearer"` only when the field is absent.
+  Explicit null, empty, invalid, or unsupported values still fail
+  validation. The fallback never applies to clients configured with
+  DPoP; other token and binding checks remain enforced.
 
 - token_target_mode:
 
   How this provider obtains API-specific tokens: `"none"` (default),
-  `"rfc8707"`, or `"microsoft"`. Set this only when using client
-  `token_targets` and after checking provider support. The Microsoft
-  helper selects `"microsoft"` automatically; discovery does not enable
-  targets. See
+  `"rfc8707"`, or `"microsoft"`. This applies to client `token_targets`
+  and depends on provider support. The Microsoft helper selects
+  `"microsoft"` automatically; discovery does not enable targets. See
   [`vignette("token-targets", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/token-targets.md)
   ([online
   guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
@@ -613,10 +604,10 @@ userinfo[["sub"]]
 - userinfo_id_selector_policy_id:
 
   Optional version name for a custom `userinfo_id_selector`, or
-  `NA_character_`. If the function uses settings outside its body, keep
-  them unchanged for the client's lifetime and change this ID when those
-  settings or helper behavior change. This lets pending logins and saved
-  connections detect the change.
+  `NA_character_`. Identifies settings or helper behavior outside the
+  function body that affect identity selection. These form part of the
+  client's policy: a new version ID lets pending logins and saved
+  connections detect a change.
 
 ## Value
 

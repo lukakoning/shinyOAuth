@@ -7,8 +7,7 @@ record events such as failed logins, while traces time the operations
 involved so you can locate a slow token exchange or other provider
 request. A span is one timed operation within a trace.
 
-Send these records to the monitoring service you use for the rest of
-your app. For an R callback that receives events directly, see [Audit
+For an R callback that receives events directly, see [Audit
 logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md).
 
 shinyOAuth uses the `otel` package to create records. An exporter sends
@@ -68,37 +67,29 @@ options(
 
 ## Protecting diagnostic data
 
-Keep production exports free of credentials and private user data. By
-default, shinyOAuth omits raw tokens, detailed error messages, URL paths
-and query strings. It also omits scope and claim names, while keeping
-their counts available.
-
-Use `shinyOAuth.telemetry_path_scrubber` if you need approved route
-labels. Keep `shinyOAuth.expose_error_body` disabled in production and
-restrict access to exports. Logging defaults do not replace your
-service’s retention policy.
+By default, shinyOAuth omits raw tokens, detailed error messages, URL
+paths, query strings, and scope or claim names. Counts remain available.
+`shinyOAuth.telemetry_path_scrubber` adds approved route labels, while
+`shinyOAuth.expose_error_body` separately controls diagnostic text.
 
 ### Authorization metadata privacy
 
-During a controlled investigation, permission names can help explain a
-failed authorization. Enable them only when the people and systems
-receiving the records are allowed to see them:
+Permission names can help explain a failed authorization. This option
+adds those names to the exported records:
 
 ``` r
 
 options(shinyOAuth.otel_include_authorization_details = TRUE)
 ```
 
-These names can reveal privileges, tenants, or sensitive data
-categories. Turn the option off after the investigation; it does not
-enable detailed error messages.
+The added names can identify privileges, tenants or data categories.
+This option is independent of detailed error-message exposure.
 
 ## Asynchronous workers
 
 shinyOAuth passes exporter environment variables and trace context to
-the background workers it manages. If your exporter instead needs R
-setup code, run that setup in each worker. Recreate workers after
-changing the setup.
+its background workers. It does not replay R setup code, so exporters
+configured through R require their initialization in each worker.
 
 ## Advanced diagnostic fields
 
@@ -111,25 +102,24 @@ successful introspection response (`oauth.active = FALSE`). Thrown
 errors also record an `exception` event with the error class.
 
 Log messages default to the event type. `shinyOAuth.expose_error_body`
-can add sanitized diagnostic text during debugging; treat it as
-sensitive even after redaction. URLs omit paths unless an approved path
+can add sanitized diagnostic text during debugging. That text can still
+contain private provider data. URLs omit paths unless an approved path
 scrubber supplies a route label. Tokens, codes and raw login state stay
 out of ordinary span attributes.
 
 These protections cover records emitted through shinyOAuth. Direct SDK
 calls and requests sent with
 [`httr2::req_perform()`](https://httr2.r-lib.org/reference/req_perform.html)
-follow their own telemetry settings. Use
+follow their own telemetry settings.
 [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-to retain shinyOAuth’s request handling.
+applies shinyOAuth’s request handling.
 
 ## Span catalog
 
-Use span names to find where time was spent. HTTP spans isolate the
-network call; worker spans identify background processing. Attributes
-appear only when relevant and available. Useful fields include
-`oauth.phase`, `server.address` and `http.response.status_code`,
-alongside provider and session digests.
+HTTP spans time network calls; worker spans identify background
+processing. Attributes appear only when relevant and available. Useful
+fields include `oauth.phase`, `server.address` and
+`http.response.status_code`, alongside provider and session digests.
 
 | Name | What it tells you |
 |----|----|

@@ -93,10 +93,10 @@ client registration. JWT methods (<code>"client_secret_jwt"</code>,
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Request the <code>"openid"</code> scope. Additional claims depend on your service's
+    <p>Login uses the <code>"openid"</code> scope. Additional claims depend on the service's
 agreed attribute release policy; requesting <code>"email"</code> or <code>"profile"</code> does
-not guarantee those attributes will be released. Use the validated issuer
-and <code>sub</code> to identify a user.
+not guarantee those attributes will be released. The validated issuer and
+<code>sub</code> establish the login identity.
 Test and production environments require their own service configuration.
 See the <a href="https://www.surf.nl/en/services/identity-access-management/surfconext" class="external-link">SURFconext overview</a>.</p>
     </div>

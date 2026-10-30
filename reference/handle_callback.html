@@ -96,8 +96,7 @@ direct callback.</p></dd>
 
 <dt id="arg-state">state<a class="anchor" aria-label="anchor" href="#arg-state"></a></dt>
 <dd><p>Encrypted state payload returned by the provider on a classic
-direct callback. This should be the same value that was originally sent in
-<code><a href="prepare_call.html">prepare_call()</a></code>.</p></dd>
+direct callback, unchanged from the value sent by <code><a href="prepare_call.html">prepare_call()</a></code>.</p></dd>
 
 
 <dt id="arg-browser-token">browser_token<a class="anchor" aria-label="anchor" href="#arg-browser-token"></a></dt>
@@ -106,8 +105,8 @@ usually managed by <code><a href="oauth_module_server.html">oauth_module_server(
 
 
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
-<dd><p>Optional captured Shiny session details for audit events.
-Normally supplied by the module; leave <code>NULL</code> when calling directly.</p></dd>
+<dd><p>Optional captured Shiny session details for audit events,
+normally supplied by the module.</p></dd>
 
 
 <dt id="arg-iss">iss<a class="anchor" aria-label="anchor" href="#arg-iss"></a></dt>

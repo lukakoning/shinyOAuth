@@ -72,7 +72,7 @@ partial because it cannot check your client registration settings.</p></dd>
 <dt id="arg-context">context<a class="anchor" aria-label="anchor" href="#arg-context"></a></dt>
 <dd><p>Optional list. <code>operations</code> selects additional <code>"userinfo"</code>,
 <code>"introspection"</code> or <code>"revocation"</code> checks. The advanced <code>nonce_exception</code>
-declaration is described below; most apps should leave it unset.</p></dd>
+declaration is described below and is unset by default.</p></dd>
 
 
 <dt id="arg-draft">draft<a class="anchor" aria-label="anchor" href="#arg-draft"></a></dt>
@@ -93,13 +93,13 @@ The report also records <code>draft</code>, <code>ruleset_version</code>, <code>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Call <code>assessment &lt;- check_oauth21(client)</code>, then read <code>assessment$checks</code>.
-<code>assessment$configuration_compliant</code> is <code>FALSE</code> for a known mandatory failure,
+    <p>The returned <code>checks</code> table contains individual findings.
+<code>configuration_compliant</code> is <code>FALSE</code> for a known mandatory failure,
 <code>NA</code> for unresolved mandatory settings, and <code>TRUE</code> when the applicable mandatory
 configuration checks pass. Recommendations and unknown external behavior do not
 change that result.</p>
 <p>This assessment uses OAuth 2.1 draft 16, ruleset <code>1.1.1</code>. It is not certification
-or a test of your running provider. Rerun it after changing configuration.</p>
+or a test of the running provider. It assesses the supplied configuration.</p>
     </div>
     <div class="section level2">
     <h2 id="advanced-assessment-scope">Advanced assessment scope<a class="anchor" aria-label="anchor" href="#advanced-assessment-scope"></a></h2>
@@ -126,7 +126,7 @@ URLs and the configuration objects. Cache and state-store methods are not run.</
 <p><code>context = list(nonce_exception = TRUE)</code> declares independently established
 server assurance for the draft's confidential-client nonce exception
 (section 7.5.1.1). It does not supply observed evidence or bypass missing local
-requirements. Prefer S256 PKCE. Assertion audience checks are mandatory for JWT
+requirements. S256 PKCE is the default. Assertion audience checks are mandatory for JWT
 authentication; advice about the legacy <code>JWT</code> assertion type is a recommendation.</p>
     </div>
     <div class="section level2">

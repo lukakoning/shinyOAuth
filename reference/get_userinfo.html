@@ -91,8 +91,8 @@ is provided as a raw string. Supported values are <code>Bearer</code> and <code>
 
 
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
-<dd><p>Optional captured Shiny session details for audit events.
-Normally supplied by the module; leave <code>NULL</code> when calling directly.</p></dd>
+<dd><p>Optional captured Shiny session details for audit events,
+normally supplied by the module.</p></dd>
 
 
 <dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
@@ -111,9 +111,8 @@ possible. Signed JWT responses retain arrays as lists.</p>
 <code>get_userinfo(client, auth[["token"]])</code>. The provider needs a <code>userinfo_url</code>.
 For OIDC, shinyOAuth checks that the returned profile belongs to the validated
 login. A raw access-token string cannot provide that identity check.</p>
-<p><code>userinfo_required = FALSE</code> disables automatic profile retrieval, not the
-identity or signature checks on a manual call. Request and validate the
-fields your app needs.</p>
+<p><code>userinfo_required = FALSE</code> disables automatic profile retrieval. Identity
+and signature checks still apply to manual calls.</p>
     </div>
     <div class="section level2">
     <h2 id="advanced-response-validation">Advanced response validation<a class="anchor" aria-label="anchor" href="#advanced-response-validation"></a></h2>
@@ -127,7 +126,7 @@ and other time claims; present time claims are always checked.</p>
 token, including for manual retrieval. Explicit <code>userinfo_id_token_match = FALSE</code>
 allows retrieval without one, but when both are available their <code>sub</code> values
 must always match. Standard profile fields are checked for the expected JSON
-types; validate application-specific values and extension fields yourself.</p>
+types; extension fields retain their provider-defined values.</p>
 <p>For DPoP or mTLS-bound tokens, the client supplies the matching signing key or
 certificate. See the
 <a href="https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html">advanced security vignette</a>
@@ -154,7 +153,7 @@ for those configurations.</p>
 <span class="r-in"><span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="introspect_token.html">introspect_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">result</span><span class="op">[[</span><span class="st">"active"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Requires a refresh token. Keep the returned replacement.</span></span></span>
+<span class="r-in"><span>  <span class="co"># Returns replacement credentials using the refresh token.</span></span></span>
 <span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="refresh_token.html">refresh_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Requires a revocation endpoint to invalidate the token at the provider.</span></span></span>

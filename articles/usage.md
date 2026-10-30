@@ -56,8 +56,8 @@ available when the browser returns from login. Create the module inside
     GITHUB_OAUTH_CLIENT_SECRET=your-client-secret
     ```
 
-    Restart R after saving. Keep the secret out of app source files and
-    Git.
+    Restart R after saving so the environment variables become
+    available.
 
 ## Minimal Shiny module example
 
@@ -118,21 +118,17 @@ viewers may prevent the redirects needed for login.
 - `auth[["token"]]@userinfo` contains the user’s profile, when fetched.
   Fields depend on the provider: GitHub uses `login` for the username.
 - `auth[["error"]]` and `auth[["error_description"]]` describe a failed
-  login. Show a simple message to users and use [audit
+  login. [Audit
   logging](https://lukakoning.github.io/shinyOAuth/articles/audit-logging.md)
-  to investigate.
+  records the underlying operations.
 
 The token is an S7 object: access its properties with `@`, as in
 `auth[["token"]]@userinfo`. See
 [`OAuthToken`](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.html)
 for the available properties.
 
-Use `req(auth[["authenticated"]])` before server code reads private data
-or performs an action that requires login. Hiding a UI element alone
-does not protect the server code behind it. Your app must also check any
-access rules, such as which accounts or groups may view a report. A
-successful login by itself does not grant access to everything in your
-app.
+`req(auth[["authenticated"]])` suspends the example’s output while login
+is incomplete.
 
 ## Manual login and logout buttons
 
@@ -197,9 +193,8 @@ output[["repositories"]] <- renderTable({
 })
 ```
 
-Only send tokens to an API you intend to authorize. This example loads
-one page; further pages depend on the API. For another complete app, see
-the [Spotify
+This example loads one page; further pages depend on the API. For
+another complete app, see the [Spotify
 example](https://lukakoning.github.io/shinyOAuth/articles/example-spotify.md).
 The [request-helper
 reference](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.html)
@@ -265,10 +260,9 @@ module also requests a fresh provider login and checks its time.
 OAuth-only providers can only be given an ordinary authorization
 request.
 
-Keep `indefinite_session = FALSE` unless you deliberately want the local
-session to continue with an expired token or after refresh fails.
-Setting it to `TRUE` also disables the `reauth_after_seconds` limit; it
-does not extend the token’s validity at the provider.
+`indefinite_session = TRUE` retains local login state after token expiry
+or refresh failure, and disables the `reauth_after_seconds` limit. The
+provider can still reject an expired token.
 
 ## Provider configuration and OIDC discovery
 
@@ -316,35 +310,16 @@ register that same URL with the provider. Open the app directly in a
 browser tab. An app embedded in another page may not be able to complete
 login.
 
-### Security checklist
+### Callback and browser behavior
 
-- Use HTTPS in production and keep credentials on the server.
-- Request only the scopes your app needs.
-- Check login and app-specific access rules in server code before using
-  private data.
-- Keep tokens, complete login URLs, and detailed provider errors out of
-  the UI and logs.
-- Render untrusted text through Shiny’s ordinary text/tag functions. Do
-  not pass it to
-  [`HTML()`](https://rstudio.github.io/htmltools/reference/HTML.html) as
-  markup; keep table escaping enabled.
-- Wrap the UI with
-  [`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
-  (or
-  [`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
-  when required). These send a browser privacy header that keeps
-  callback URLs out of referrers.
-- If repeated login requests affect responsiveness, your hosting
-  provider can help with optional rate limiting.
-- Keep the provider’s validation defaults and choose any extra
-  protections to match your provider and deployment requirements.
-
-Complete login in the browser tab that started it, with cookies and
-session storage available. Keep the app on a separate hostname from
-untrusted services and protect it against injected scripts. The
-[advanced security
+[`oauth_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_ui.md)
+and
+[`oauth_form_post_ui()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_form_post_ui.md)
+process callback data before rendering application UI, with no-store and
+no-referrer response headers. The server module manages credentials and
+browser binding automatically. The [advanced security
 guide](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#browser-binding-and-deployment-boundary)
-explains the hosting boundary and why it matters.
+describes the browser and hosting boundaries in more detail.
 
 ## Advanced deployment
 

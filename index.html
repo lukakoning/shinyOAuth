@@ -97,7 +97,7 @@
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>See <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html">online guide</a>) for login buttons, authenticated API calls, configuration and a deployment checklist.</p>
+<p>See <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code> (<a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html">online guide</a>) for login buttons, authenticated API calls, configuration and deployment settings.</p>
 <div class="section level3">
 <h3 id="minimal-example">Minimal example<a class="anchor" aria-label="anchor" href="#minimal-example"></a>
 </h3>
@@ -106,12 +106,9 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://shiny.posit.co/" class="external-link">shiny</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lukakoning/shinyOAuth" class="external-link">shinyOAuth</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># GitHub OAuth 2.0 provider has been preconfigured in the package</span></span>
-<span><span class="co">#  - You can quickly configure OIDC providers with `oauth_provider_oidc_discover()`</span></span>
-<span><span class="co">#  - You can manually configure every other provider with `oauth_provider()`</span></span>
 <span><span class="va">provider</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/oauth_provider_github.html">oauth_provider_github</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Build client using your app's ID, secret, &amp; redirect URI:</span></span>
+<span><span class="co"># App registration</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/oauth_client.html">oauth_client</a></span><span class="op">(</span></span>
 <span>  provider <span class="op">=</span> <span class="va">provider</span>,</span>
 <span>  client_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"GITHUB_OAUTH_CLIENT_ID"</span><span class="op">)</span>,</span>
@@ -128,10 +125,7 @@
 <span></span>
 <span><span class="co"># Server which obtains authentication</span></span>
 <span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="co"># Start authentication module; will automatically redirect unauthenticated users</span></span>
-<span>  <span class="co">#   to the provider's login page and handle the callback</span></span>
-<span>  <span class="co"># Returns reactive values with authentication status, token details, user info,</span></span>
-<span>  <span class="co">#   etc.</span></span>
+<span>  <span class="co"># Login and callback handling, with reactive status and token data</span></span>
 <span>  <span class="va">auth</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/oauth_module_server.html">oauth_module_server</a></span><span class="op">(</span><span class="st">"auth"</span>, <span class="va">client</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># Render login information:</span></span>
@@ -156,7 +150,7 @@
 <span><span class="co"># Open the app in your regular browser at http://127.0.0.1:8100</span></span>
 <span><span class="co"># (viewers in RStudio/Positron/etc. cannot perform necessary redirects)</span></span></code></pre></div>
 <blockquote>
-<p>On Posit Connect or Connect Cloud, open the direct app URL in a new browser tab or window to test login. The dashboard’s embedded preview can prevent OAuth redirects. On Connect Cloud, copy the sharing URL from Settings &gt; URL. Register the exact public callback URL with your provider. See <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#posit-connect-and-connect-cloud">deployment instructions</a>.</p>
+<p>On Posit Connect and Connect Cloud, the direct app URL supports the browser navigation used during login; embedded dashboard previews can block redirects. See <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#posit-connect-and-connect-cloud">deployment settings</a>.</p>
 </blockquote>
 </div>
 <div class="section level3">
@@ -169,7 +163,7 @@
 <div class="section level2">
 <h2 id="more-information">More information<a class="anchor" aria-label="anchor" href="#more-information"></a>
 </h2>
-<p><a href="https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html">Authentication flow</a> explains login requests, callbacks and token checks. Before deployment, work through the <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist">security checklist</a>. You can also read these guides in R with <code><a href="articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code> and <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>.</p>
+<p><a href="https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html">Authentication flow</a> explains how the package handles login requests, callbacks and token checks. The <a href="https://lukakoning.github.io/shinyOAuth/articles/usage.html#deployment">deployment guide</a> covers hosted app configuration. You can also read these guides in R with <code><a href="articles/authentication-flow.html">vignette("authentication-flow", package = "shinyOAuth")</a></code> and <code><a href="articles/usage.html">vignette("usage", package = "shinyOAuth")</a></code>.</p>
 <div class="section level3">
 <h3 id="for-developers-tests--integration-tests">For developers: tests &amp; integration tests<a class="anchor" aria-label="anchor" href="#for-developers-tests--integration-tests"></a>
 </h3>

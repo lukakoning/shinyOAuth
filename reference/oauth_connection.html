@@ -91,7 +91,7 @@ which retains the authorization's permission limits alongside its tokens.</p>
 <dt id="arg-token-reactive">token_reactive<a class="anchor" aria-label="anchor" href="#arg-token-reactive"></a></dt>
 <dd><p>A Shiny reactive expression returning the current <a href="OAuthToken.html">OAuthToken</a>
 or <code>NULL</code>, usually <code>shiny::reactive(auth[["token"]])</code>. It must come from the
-module using <code>client</code>. Your server code must keep the token and client matched;
+module using <code>client</code>. This association is supplied by the caller;
 API address restrictions cannot verify an opaque token's audience.</p></dd>
 
 
@@ -108,10 +108,9 @@ responses. <code>configure</code> can add a body and application headers; see
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Use <code>auth$connection()</code> from <code><a href="oauth_module_server.html">oauth_module_server()</a></code> or
-<code><a href="oauth_connections_server.html">oauth_connections_server()</a></code> to obtain and refresh tokens for external packages.
-Use this wrapper when integrating with an existing reactive token.</p>
-<p>Create the reference once inside <code>server()</code>. Access it only in that session's
+    <p>The module's <code>auth$connection()</code> factory also supports token acquisition and
+refresh for external packages. This wrapper adapts an existing reactive token.</p>
+<p>The reference is bound to its creating Shiny session and checks that session's
 reactive context. <code>[["summary"]]()</code> excludes tokens, identity claims and extension
 context. <code>[["is_usable"]]()</code> checks local presence, known expiry and required scopes;
 it cannot guarantee remote authorization. Unknown token expiry is unusable.</p>

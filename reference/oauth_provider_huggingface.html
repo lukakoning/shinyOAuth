@@ -71,8 +71,8 @@ Hugging Face settings, then pass its credentials to <code><a href="oauth_client.
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>For login, request <code>scopes = c("openid", "profile")</code>, adding <code>"email"</code>
-only if needed. Repository access and inference require their own scopes,
+    <p>Login uses <code>openid</code> with optional <code>profile</code> and <code>email</code> scopes.
+Repository access and inference require their own scopes,
 such as <code>"read-repos"</code> or <code>"inference-api"</code>, and user consent.
 This preset targets confidential applications with a client secret.
 See <a href="https://huggingface.co/docs/hub/oauth" class="external-link">Sign in with Hugging Face</a>.</p>

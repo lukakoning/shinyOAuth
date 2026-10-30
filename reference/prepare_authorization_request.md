@@ -45,27 +45,25 @@ is empty for GET; for POST it is a list of lists, each with scalar
 character `name` and `value`. PAR expiry attributes are preserved as
 documented in
 [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md).
-The result contains transient authorization data: do not log it or
-expose it to other browser sessions.
+The result contains transient authorization data for that login attempt.
 
 ## Details
 
-For GET, navigate the browser to `url`. For POST, create a form with
-`url` as its action, method POST, and
-`application/x-www-form-urlencoded` encoding. Add one hidden input per
-`fields` entry, assigning its `name` and `value` through DOM properties
-or an HTML escaping library, then submit the form in the current browser
-window. Repeated names (such as OAuth `resource`) must remain repeated
-inputs. Do not send the authorization request from R: the provider needs
-to interact with the user's browser and login cookies.
+For GET, `url` is the browser navigation target. For POST, it is the
+action of an `application/x-www-form-urlencoded` browser form. Each
+`fields` entry represents one hidden input, with repeated names
+preserved as separate inputs. Names and values require DOM assignment or
+HTML escaping when constructing the form. Browser submission gives the
+provider access to the user's login cookies; an R HTTP request cannot
+perform that interaction.
 
-The client selects `authorization_method = "POST"` explicitly. Ordinary
-OAuth providers may not support POST; confirm their documentation first.
+The client selects `authorization_method = "POST"` explicitly; support
+depends on the provider.
 [`smart_client()`](https://lukakoning.github.io/shinyOAuth/reference/smart_client.md)
 additionally requires the `authorize-post` capability. The outgoing
 method is independent of the callback `response_mode`. Configured PAR
 and Request Object requirements still apply. Each result belongs to one
-login attempt; do not cache it or reuse it after logout.
+login attempt with single-use state.
 
 POST preserves the authorization endpoint's fixed query and sends newly
 composed fields in the body. It permits up to 256 fields and 128 KiB of

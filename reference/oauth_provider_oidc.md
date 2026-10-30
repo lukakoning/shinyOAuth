@@ -66,12 +66,10 @@ oauth_provider_oidc(
 
 - jwks_host_issuer_match:
 
-  When TRUE (default), enforce that the JWKS host discovered from the
-  provider matches the issuer host exactly. For providers that serve
-  JWKS from a different host (e.g., Google), set `jwks_host_allow_only`
-  to the exact hostname instead of disabling this. Disabling (`FALSE`)
-  is not recommended unless you also pin JWKS via `jwks_host_allow_only`
-  or `jwks_pins`
+  When TRUE (default), require the discovered JWKS host to match the
+  issuer host exactly. `jwks_host_allow_only` takes precedence and can
+  specify a different exact hostname. `FALSE` disables issuer-host
+  matching.
 
 - allowed_token_types:
 

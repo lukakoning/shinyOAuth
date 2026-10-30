@@ -37,9 +37,9 @@ oauth_connection(
   A Shiny reactive expression returning the current
   [OAuthToken](https://lukakoning.github.io/shinyOAuth/reference/OAuthToken.md)
   or `NULL`, usually `shiny::reactive(auth[["token"]])`. It must come
-  from the module using `client`. Your server code must keep the token
-  and client matched; API address restrictions cannot verify an opaque
-  token's audience.
+  from the module using `client`. This association is supplied by the
+  caller; API address restrictions cannot verify an opaque token's
+  audience.
 
 - session:
 
@@ -59,14 +59,11 @@ for its contract.
 
 ## Details
 
-Use `auth$connection()` from
-[`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-or
-[`oauth_connections_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_server.md)
-to obtain and refresh tokens for external packages. Use this wrapper
-when integrating with an existing reactive token.
+The module's `auth$connection()` factory also supports token acquisition
+and refresh for external packages. This wrapper adapts an existing
+reactive token.
 
-Create the reference once inside `server()`. Access it only in that
+The reference is bound to its creating Shiny session and checks that
 session's reactive context. `[["summary"]]()` excludes tokens, identity
 claims and extension context. `[["is_usable"]]()` checks local presence,
 known expiry and required scopes; it cannot guarantee remote

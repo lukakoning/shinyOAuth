@@ -115,9 +115,8 @@ user-supplied replacements.</p></dd>
 <dd><p>Logical or <code>NULL</code>. <code>FALSE</code> (the default) disables
 HTTP redirects even when <code>shinyOAuth.allow_redirect</code> is enabled.
 <code>NULL</code> inherits that global option (disabled by default).
-Set to <code>TRUE</code> only if you trust all possible redirect targets and
-understand the security implications. DPoP requests reject enabled
-redirects because each target needs a new proof; use <code>FALSE</code> for DPoP.</p></dd>
+<code>TRUE</code> enables redirects. DPoP requests reject enabled redirects because
+each target needs a new proof.</p></dd>
 
 
 <dt id="arg-check-url">check_url<a class="anchor" aria-label="anchor" href="#arg-check-url"></a></dt>
@@ -127,8 +126,8 @@ URLs, plain HTTP to non-loopback hosts, and when
 <code>options(shinyOAuth.allowed_hosts)</code> is set, hosts outside the allowlist.
 Without an allowlist this performs HTTPS and URL-syntax validation only
 (with the configured non-HTTPS exceptions); any HTTPS host is accepted.
-Set to <code>FALSE</code> only if you have already validated the URL and understand
-the security implications.</p></dd>
+<code>FALSE</code> skips this policy check; URL length and resource-host restrictions
+still apply.</p></dd>
 
 
 <dt id="arg-client">client<a class="anchor" aria-label="anchor" href="#arg-client"></a></dt>
@@ -164,9 +163,8 @@ allowed independently of this setting.</p></dd>
 <dd><p>Optional non-empty character vector of trusted resource
 host patterns, using <code><a href="is_ok_host.html">is_ok_host()</a></code> matching rules. This call-scoped
 allowlist adds to the global policy and is enforced even if <code>check_url</code>
-is <code>FALSE</code>. Use exact hostnames for URLs derived from lower-trust input.
-It constrains the initial URL, not redirect destinations or resolved IPs;
-retain <code>follow_redirect = FALSE</code>. <code>NULL</code> adds no resource-specific policy.</p></dd>
+is <code>FALSE</code>. It constrains the initial URL, not redirect destinations or
+resolved IPs. <code>NULL</code> adds no resource-specific policy.</p></dd>
 
 
 <dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
@@ -179,11 +177,9 @@ retain <code>follow_redirect = FALSE</code>. <code>NULL</code> adds no resource-
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Only send a token to an API you intend to authorize. The package applies its
-URL policy, timeouts, and redirect defaults. It supports Bearer authentication
-and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
-also supply <code>client</code> so the request uses the matching key or
-certificate.</p>
+    <p>The package applies its URL policy, timeouts and redirect defaults. It supports
+Bearer authentication and tokens tied to a key (DPoP) or certificate (mTLS).
+For DPoP or mTLS, <code>client</code> supplies the matching key or certificate.</p>
 <p>The helper applies <code>shinyOAuth.max_body_bytes</code> to response bodies, including
 gzip decompression. Use it for both URL strings and prepared httr2 requests.</p>
     </div>
@@ -207,22 +203,21 @@ unsupported. Configure retries with <code>idempotent</code> and <code>shinyOAuth
 <span class="r-in"><span>  <span class="co"># Inside reactive server code, after login has succeeded:</span></span></span>
 <span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="va">auth</span><span class="op">[[</span><span class="st">"token"</span><span class="op">]</span><span class="op">]</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Recommended for most callers: build + perform in one step.</span></span></span>
+<span class="r-in"><span>  <span class="co"># Build and send in one step.</span></span></span>
 <span class="r-in"><span>  <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu">perform_resource_req</span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="va">token</span>,</span></span>
 <span class="r-in"><span>    <span class="st">"https://api.example.com/resource"</span>,</span></span>
 <span class="r-in"><span>    query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Build only when you need to inspect the request yourself.</span></span></span>
+<span class="r-in"><span>  <span class="co"># Prepare a request before sending it.</span></span></span>
 <span class="r-in"><span>  <span class="va">request</span> <span class="op">&lt;-</span> <span class="fu"><a href="resource_req.html">resource_req</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="va">token</span>,</span></span>
 <span class="r-in"><span>    <span class="st">"https://api.example.com/resource"</span>,</span></span>
 <span class="r-in"><span>    query <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Inspect request settings without printing authentication headers.</span></span></span>
-<span class="r-in"><span>  <span class="co"># Keep the package's response-size limits when sending it.</span></span></span>
+<span class="r-in"><span>  <span class="co"># Sending the prepared request applies the same response-size limits.</span></span></span>
 <span class="r-in"><span>  <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu">perform_resource_req</span><span class="op">(</span><span class="va">token</span>, <span class="va">request</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Or start from your own httr2 request and still let shinyOAuth perform it</span></span></span>
@@ -233,8 +228,7 @@ unsupported. Configure retries with <code>idempotent</code> and <code>shinyOAuth
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu">perform_resource_req</span><span class="op">(</span><span class="va">token</span>, <span class="va">custom_request</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Constrain dynamic URLs before attaching a token. check_url alone does not</span></span></span>
-<span class="r-in"><span>  <span class="co"># restrict HTTPS hosts unless a global allowed_hosts policy is configured.</span></span></span>
+<span class="r-in"><span>  <span class="co"># resource_hosts restricts this dynamic URL to api.example.com.</span></span></span>
 <span class="r-in"><span>  <span class="va">response</span> <span class="op">&lt;-</span> <span class="fu">perform_resource_req</span><span class="op">(</span></span></span>
 <span class="r-in"><span>    <span class="va">token</span>,</span></span>
 <span class="r-in"><span>    <span class="va">input</span><span class="op">[[</span><span class="st">"resource_url"</span><span class="op">]</span><span class="op">]</span>,</span></span>

@@ -3,18 +3,13 @@
 ## What package options are for
 
 Package options control settings shared by the whole R process,
-including network timeouts and diagnostic logging. Most apps can use the
-defaults; adjust them for a specific need, such as a provider that
-responds slowly.
-
-Use
+including network timeouts and diagnostic logging.
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md)
 and
 [`oauth_module_server()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_module_server.md)
-arguments for settings that belong to one app registration or module.
-Start with
-[Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md) if
-you have not configured login yet.
+arguments apply to one app registration or module. The
+[Usage](https://lukakoning.github.io/shinyOAuth/articles/usage.md) guide
+covers login setup.
 
 ## Set an option at app startup
 
@@ -31,15 +26,15 @@ A longer timeout gives a slow provider more time to respond, but delays
 failure when the service is unavailable. Restore the default with
 `options(shinyOAuth.timeout = NULL)`.
 
-Options affect other sessions sharing that R process. Configure them
-once at startup instead of changing them for individual users.
+Options affect every session sharing that R process; they are app-wide
+settings rather than per-user settings.
 
 Times use seconds unless a setting explicitly says milliseconds.
 
 ## Logging
 
-Use these options to send diagnostic events to your logging service and
-control which request details it receives.
+These options control diagnostic events and the request details they
+contain.
 
 - `options(shinyOAuth.audit_hook = function(event){ ... })` – receive
   structured audit and error events
@@ -85,9 +80,7 @@ for log and trace exporter setup.
 
 ## HTTP settings (timeout, retries, user agent)
 
-Network settings control how long requests may wait and how much data
-they may return. Adjust them for a specific provider or API; larger
-limits also allow a failing request to use more time or memory.
+Network settings limit request duration and response size.
 
 - `options(shinyOAuth.tls_min_version = "1.2")` - require TLS 1.2 or
   later for package HTTPS requests (the default). Use `"1.3"` for a
@@ -106,8 +99,7 @@ limits also allow a failing request to use more time or memory.
   retry.
 
 - `options(shinyOAuth.dpop_nonce_max_bytes = 4096L)` – maximum DPoP
-  nonce size in bytes; supported range 1 to 65536. Increase it only when
-  the provider issues larger nonces.
+  nonce size in bytes; supported range 1 to 65536.
 
 - `options(shinyOAuth.retry_backoff_base = 0.5)` – base backoff in
   seconds used for exponential backoff with jitter
@@ -124,19 +116,17 @@ limits also allow a failing request to use more time or memory.
 
 - `options(shinyOAuth.user_agent = "shinyOAuth/<version> R/<version> httr2/<version>")`
   – override the HTTP User-Agent. The default includes the installed
-  package and R versions; set a custom value if your organization
-  requires one.
+  package and R versions.
 
-- `options(shinyOAuth.allow_redirect = FALSE)` – keep `FALSE` for
-  sensitive provider requests. Enabling redirects can forward codes,
-  tokens or credentials to another destination; the opt-in applies in
-  all sessions.
+- `options(shinyOAuth.allow_redirect = FALSE)` – reject redirects on
+  sensitive provider requests by default. The opt-in permits redirects
+  in all sessions, potentially forwarding codes, tokens or credentials
+  to another destination.
 
 - `options(shinyOAuth.max_body_bytes = 1048576)` - maximum response size
-  (default 1 MiB) for package requests and connection calls. Increase it
-  if an API legitimately returns more data. Use
+  (default 1 MiB) for package requests and connection calls.
   [`perform_resource_req()`](https://lukakoning.github.io/shinyOAuth/reference/perform_resource_req.md)
-  for prepared requests as well as URLs to retain this limit.
+  applies it to prepared requests as well as URLs.
 
 ## Async timeout (mirai)
 
@@ -173,9 +163,8 @@ OAuth clients track expiry in that case.
 
 ## Validation and URL policy
 
-These settings affect which responses and addresses the app accepts.
-Keep the defaults unless your provider or development setup requires a
-specific change.
+These settings control which token responses and addresses the app
+accepts.
 
 - `options(shinyOAuth.access_token_cnf = "opaque")` – use `"opaque"` to
   avoid decoding access-token binding data. The compatibility default
@@ -237,7 +226,7 @@ processes handle requests.
 - `options(shinyOAuth.allow_non_atomic_state_store = TRUE)` – allow
   separate reads and deletes in a shared store. Default `FALSE` requires
   atomic `[["take"]]()`. Enabling this can let concurrent requests reuse
-  a login record; use an atomic store in production. See
+  a login record; the default rejects this backend. See
   [custom_cache()](https://lukakoning.github.io/shinyOAuth/reference/custom_cache.html).
 
 ## Size caps
@@ -298,8 +287,8 @@ memory during decoding and decryption.
   parameter
 
 These limits reject oversized callback URLs and POST bodies before they
-cause excessive processing or logging. Keep the defaults unless a
-legitimate provider response needs more space.
+cause excessive processing or logging. The options set the accepted
+response budget.
 
 Generated login state must fit both
 `shinyOAuth.callback_max_state_bytes` and the state envelope limits
@@ -332,12 +321,9 @@ for an example and the specification revision assessed.
   exchange
 - `options(shinyOAuth.expose_error_body = TRUE)` – enable sanitized
   diagnostic text for local debugging. Fields are capped at 512 UTF-8
-  bytes and can still contain private provider data. Production
-  processes keep this disabled.
-
-Don’t enable these options in production. They disable key security
-checks or alter error behavior, and are intended for local
-testing/debugging only.
+  bytes and can still contain private provider data. The option is
+  disabled by default and takes effect only in tests or interactive
+  sessions.
 
 ## Advanced transport constraints
 
@@ -354,9 +340,8 @@ uses httr2’s transport settings instead.
 
 ## Advanced parameter overrides
 
-Prefer the named client and provider arguments. Overrides are for
-integrations that need an explicit exception to the normal parameter
-policy.
+Overrides allow selected extra parameters beyond the normal client and
+provider arguments.
 
 By default, shinyOAuth blocks security-critical parameters in
 `extra_auth_params`, `extra_token_params`, and `extra_token_headers` to
@@ -365,8 +350,8 @@ overrides.
 
 Set the callback format with `oauth_client(response_mode = ...)`.
 
-To override a blocked parameter, use the options below. Some parameters
-cannot be unblocked.
+The options below unblock selected parameters; transaction and
+credential fields retain the protections described for each option.
 
 - `options(shinyOAuth.unblock_auth_params = c("redirect_uri"))` – allow
   selected authorization-parameter overrides. Transaction, credential

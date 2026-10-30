@@ -3,8 +3,7 @@
 Use your Apple developer key to create the client secret expected by
 Sign in with Apple. Pass the returned string as `client_secret` to
 [`oauth_client()`](https://lukakoning.github.io/shinyOAuth/reference/oauth_client.md).
-Unlike a fixed password, this secret expires; replace it before its
-expiry.
+The returned secret expires after `expires_in` seconds.
 
 ## Usage
 

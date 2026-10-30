@@ -120,7 +120,8 @@ the supplied memory store in one R process is supported.</p></dd>
 <dt id="arg-keys">keys<a class="anchor" aria-label="anchor" href="#arg-keys"></a></dt>
 <dd><p>Named list with <code>credentials</code> and <code>owner</code>, each a deployment-held
 raw vector of 32 bytes. Required for retained modes. Session-only mode creates
-ephemeral keys if omitted. Keep these keys outside credential storage.</p></dd>
+ephemeral keys if omitted. Keys are held by the manager, separately from
+the ciphertext-only connection store.</p></dd>
 
 
 <dt id="arg-callback-policy">callback_policy<a class="anchor" aria-label="anchor" href="#arg-callback-policy"></a></dt>
@@ -149,8 +150,8 @@ distinct routes. Routing never substitutes for callback authentication.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An <code>OAuthConnections</code> server-side configuration object. Printing shows
-only the retention mode and client count. It contains client configuration
-and deployment keys and must never be sent to the browser.</p>
+only the retention mode and client count. It holds client configuration
+and deployment keys for the UI and server modules.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -159,7 +160,7 @@ account retention can restore them after navigation. See
 <code><a href="../articles/multiple-authorizations.html">vignette("multiple-authorizations", package = "shinyOAuth")</a></code>
 (<a href="https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html">online guide</a>)
 for a complete example.</p>
-<p>Configure the manager once and use its named clients to start logins.
+<p>The manager's named clients select the configuration for each login.
 Connections are separate local records, but the provider may reuse one grant;
 revoking a connection can therefore affect other tokens from that grant.</p>
     </div>
@@ -171,8 +172,8 @@ revoking a connection can therefore affect other tokens from that grant.</p>
 uncertain refresh can require other connections sharing that credential to
 reconnect; one connection's response never replaces another's identity or
 permissions. Revocation can also affect related provider grants.</p>
-<p>A manager is bound to one UI/server module ID and one public origin. Create
-another manager for another namespace. The memory store and owner registries
+<p>A manager is bound to one UI/server module ID and one public origin.
+The memory store and owner registries
 survive Shiny sessions, not R restarts. Copies in another R process are rejected.</p>
 <p>In session-only mode, a pending authorization survives navigation through the
 existing single-use OAuth state and browser binding, while existing grants are

@@ -79,8 +79,7 @@
 Logs record events such as failed logins, while traces time the
 operations involved so you can locate a slow token exchange or other
 provider request. A span is one timed operation within a trace.</p>
-<p>Send these records to the monitoring service you use for the rest of
-your app. For an R callback that receives events directly, see <a href="audit-logging.html">Audit logging</a>.</p>
+<p>For an R callback that receives events directly, see <a href="audit-logging.html">Audit logging</a>.</p>
 <p>shinyOAuth uses the <code>otel</code> package to create records. An
 exporter sends those records to the console or your monitoring service;
 install <code>otelsdk</code> to provide one.</p>
@@ -134,34 +133,28 @@ the other:</p>
 <div class="section level2">
 <h2 id="protecting-diagnostic-data">Protecting diagnostic data<a class="anchor" aria-label="anchor" href="#protecting-diagnostic-data"></a>
 </h2>
-<p>Keep production exports free of credentials and private user data. By
-default, shinyOAuth omits raw tokens, detailed error messages, URL paths
-and query strings. It also omits scope and claim names, while keeping
-their counts available.</p>
-<p>Use <code>shinyOAuth.telemetry_path_scrubber</code> if you need
-approved route labels. Keep <code>shinyOAuth.expose_error_body</code>
-disabled in production and restrict access to exports. Logging defaults
-do not replace your service’s retention policy.</p>
+<p>By default, shinyOAuth omits raw tokens, detailed error messages, URL
+paths, query strings, and scope or claim names. Counts remain available.
+<code>shinyOAuth.telemetry_path_scrubber</code> adds approved route
+labels, while <code>shinyOAuth.expose_error_body</code> separately
+controls diagnostic text.</p>
 <div class="section level3">
 <h3 id="authorization-metadata-privacy">Authorization metadata privacy<a class="anchor" aria-label="anchor" href="#authorization-metadata-privacy"></a>
 </h3>
-<p>During a controlled investigation, permission names can help explain
-a failed authorization. Enable them only when the people and systems
-receiving the records are allowed to see them:</p>
+<p>Permission names can help explain a failed authorization. This option
+adds those names to the exported records:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinyOAuth.otel_include_authorization_details <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>These names can reveal privileges, tenants, or sensitive data
-categories. Turn the option off after the investigation; it does not
-enable detailed error messages.</p>
+<p>The added names can identify privileges, tenants or data categories.
+This option is independent of detailed error-message exposure.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="asynchronous-workers">Asynchronous workers<a class="anchor" aria-label="anchor" href="#asynchronous-workers"></a>
 </h2>
 <p>shinyOAuth passes exporter environment variables and trace context to
-the background workers it manages. If your exporter instead needs R
-setup code, run that setup in each worker. Recreate workers after
-changing the setup.</p>
+its background workers. It does not replay R setup code, so exporters
+configured through R require their initialization in each worker.</p>
 </div>
 <div class="section level2">
 <h2 id="advanced-diagnostic-fields">Advanced diagnostic fields<a class="anchor" aria-label="anchor" href="#advanced-diagnostic-fields"></a>
@@ -177,24 +170,22 @@ unset. An inactive token is a successful introspection response
 <code>exception</code> event with the error class.</p>
 <p>Log messages default to the event type.
 <code>shinyOAuth.expose_error_body</code> can add sanitized diagnostic
-text during debugging; treat it as sensitive even after redaction. URLs
-omit paths unless an approved path scrubber supplies a route label.
-Tokens, codes and raw login state stay out of ordinary span
+text during debugging. That text can still contain private provider
+data. URLs omit paths unless an approved path scrubber supplies a route
+label. Tokens, codes and raw login state stay out of ordinary span
 attributes.</p>
 <p>These protections cover records emitted through shinyOAuth. Direct
 SDK calls and requests sent with <code><a href="https://httr2.r-lib.org/reference/req_perform.html" class="external-link">httr2::req_perform()</a></code>
-follow their own telemetry settings. Use
-<code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code> to retain shinyOAuth’s request
-handling.</p>
+follow their own telemetry settings. <code><a href="../reference/perform_resource_req.html">perform_resource_req()</a></code>
+applies shinyOAuth’s request handling.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="span-catalog">Span catalog<a class="anchor" aria-label="anchor" href="#span-catalog"></a>
 </h2>
-<p>Use span names to find where time was spent. HTTP spans isolate the
-network call; worker spans identify background processing. Attributes
-appear only when relevant and available. Useful fields include
-<code>oauth.phase</code>, <code>server.address</code> and
+<p>HTTP spans time network calls; worker spans identify background
+processing. Attributes appear only when relevant and available. Useful
+fields include <code>oauth.phase</code>, <code>server.address</code> and
 <code>http.response.status_code</code>, alongside provider and session
 digests.</p>
 <table class="table">

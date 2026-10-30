@@ -83,7 +83,7 @@ A server-side list with:
   fresh EHR launch instead.
 
 - `touch()`: record explicit user activity after checking the current
-  owner. Call from an input event handler; returns `TRUE` invisibly.
+  owner; returns `TRUE` invisibly.
 
 - `disconnect(connection_id, revoke = TRUE)`: remove local usability
   first, then return separate `local` and `remote` revocation results.
@@ -142,12 +142,10 @@ limits or replays application requests. See
 [`vignette("external-integrations", package = "shinyOAuth")`](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.md)
 ([online
 guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html)).
-Resource requests and status reads never reset owner inactivity,
-including when reactive expressions rerun after automatic refresh. Call
-`touch()` from a user input event handler to count an application action
-as activity. Do not call it from polling observers or ordinary reactive
-readers. Connecting, explicitly refreshing and disconnecting also count
-as activity.
+Resource requests and status reads do not reset owner inactivity,
+including reactive reads after automatic refresh. `touch()` explicitly
+records activity, for example from an input event handler. Connecting,
+explicitly refreshing and disconnecting also count as activity.
 
 Remote revocation is best effort: at most ten seconds per
 disconnect/logout batch, at most two seconds and one HTTP attempt per
@@ -160,14 +158,14 @@ section 2.1). Separate connection IDs do not establish independent
 provider grants, even after repeated consent or account selection.
 Consequently, default `revoke = TRUE` may also end access for sibling
 connections or other applications covered by the provider's revocation
-policy. Use `revoke = FALSE` when preserving those authorizations is
-required. This also applies to credentials returned by work already in
-flight. Removed credentials remain valid remotely until the provider
-expires or revokes them. Local summaries and `is_usable()` do not detect
-such remote changes: handle API authorization failures and obtain a new
-authorization.
+policy. With `revoke = FALSE`, disconnect removes local access without
+requesting remote revocation. This also applies to credentials returned
+by work already in flight. Removed credentials remain valid remotely
+until the provider expires or revokes them. Local summaries and
+`is_usable()` reflect local state, independently of remote provider
+changes.
 
-Use this API inside its owning session's reactive context. Session setup
+The API checks its owning session's reactive context. Session setup
 requires a matching HTTP Origin on the Shiny request. Raw HTTP routes
 cannot import credentials or select an owner. The manager supports one R
 process.

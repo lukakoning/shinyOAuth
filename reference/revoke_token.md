@@ -40,15 +40,15 @@ revoke_token(
 
 - async:
 
-  If `TRUE`, return a promise resolving to the result. Configure mirai
-  daemons or a future plan first; mirai takes priority. Use a
-  non-sequential future plan to move work outside the main R process.
-  Default `FALSE` waits and returns the result directly.
+  If `TRUE`, return a promise resolving to the result, using configured
+  mirai daemons or a future plan; mirai takes priority. A non-sequential
+  backend moves work outside the main R process. Default `FALSE` waits
+  and returns the result directly.
 
 - shiny_session:
 
-  Optional captured Shiny session details for audit events. Normally
-  supplied by the module; leave `NULL` when calling directly.
+  Optional captured Shiny session details for audit events, normally
+  supplied by the module.
 
 - oauth_client:
 
@@ -77,11 +77,11 @@ A list with fields:
 
 ## Details
 
-Uses the client's configured credentials and `token_auth_style`. Check
-the returned `status`: an absent endpoint or token, or an unsuccessful
-HTTP response, leaves the revocation result unknown. A successful
-response means the provider accepted the request; local logout does not
-depend on it.
+Uses the client's configured credentials and `token_auth_style`. The
+returned `status` distinguishes an absent endpoint or token from an
+unsuccessful HTTP response; these leave the revocation result unknown. A
+successful response means the provider accepted the request; local
+logout does not depend on it.
 
 ## Examples
 
@@ -104,7 +104,7 @@ if (interactive()) {
   result <- introspect_token(client, token)
   isTRUE(result[["active"]])
 
-  # Requires a refresh token. Keep the returned replacement.
+  # Returns replacement credentials using the refresh token.
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.

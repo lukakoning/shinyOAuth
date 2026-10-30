@@ -92,15 +92,15 @@ automatically during login and refresh, set <code>introspect = TRUE</code> on
 
 
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
-<dd><p>If <code>TRUE</code>, return a promise resolving to the result.
-Configure mirai daemons or a future plan first; mirai takes priority.
-Use a non-sequential future plan to move work outside the main R process.
+<dd><p>If <code>TRUE</code>, return a promise resolving to the result, using
+configured mirai daemons or a future plan; mirai takes priority. A
+non-sequential backend moves work outside the main R process.
 Default <code>FALSE</code> waits and returns the result directly.</p></dd>
 
 
 <dt id="arg-shiny-session">shiny_session<a class="anchor" aria-label="anchor" href="#arg-shiny-session"></a></dt>
-<dd><p>Optional captured Shiny session details for audit events.
-Normally supplied by the module; leave <code>NULL</code> when calling directly.</p></dd>
+<dd><p>Optional captured Shiny session details for audit events,
+normally supplied by the module.</p></dd>
 
 
 <dt id="arg-oauth-client">oauth_client<a class="anchor" aria-label="anchor" href="#arg-oauth-client"></a></dt>
@@ -128,9 +128,8 @@ unsupported or the response could not be parsed.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Read <code>result[["active"]]</code>: <code>TRUE</code> means active, <code>FALSE</code> means inactive, and <code>NA</code>
-means the result is unknown. Use <code>isTRUE(result[["active"]])</code> if your code must
-require a definite confirmation.</p>
+    <p><code>result[["active"]]</code> is <code>TRUE</code> for an active token, <code>FALSE</code> for an inactive
+token, and <code>NA</code> when the result is unknown.</p>
 <p>Unsupported endpoints, missing tokens, unsuccessful HTTP responses, and
 unusable response bodies return a descriptive <code>status</code>. The provider must
 return <code>active</code> as a JSON boolean. Other types return <code>"invalid_active"</code>.
@@ -161,7 +160,7 @@ Requests use the client's configured credentials and <code>token_auth_style</cod
 <span class="r-in"><span>  <span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">introspect_token</span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="va">result</span><span class="op">[[</span><span class="st">"active"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Requires a refresh token. Keep the returned replacement.</span></span></span>
+<span class="r-in"><span>  <span class="co"># Returns replacement credentials using the refresh token.</span></span></span>
 <span class="r-in"><span>  <span class="va">token</span> <span class="op">&lt;-</span> <span class="fu"><a href="refresh_token.html">refresh_token</a></span><span class="op">(</span><span class="va">client</span>, <span class="va">token</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Requires a revocation endpoint to invalidate the token at the provider.</span></span></span>

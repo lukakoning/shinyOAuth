@@ -25,9 +25,7 @@ object for use with a Google OAuth 2.0 app
 ## Details
 
 You can register a new Google OAuth 2.0 app in the [Google Cloud
-Console](https://console.cloud.google.com/apis/credentials). Configure
-the client ID & secret in your
-[OAuthClient](https://lukakoning.github.io/shinyOAuth/reference/OAuthClient.md).
+Console](https://console.cloud.google.com/apis/credentials).
 
 This preset uses a restricted Google OIDC profile: ID tokens must have
 `iss = "https://accounts.google.com"`, matching Google's discovery

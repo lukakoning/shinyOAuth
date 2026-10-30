@@ -43,7 +43,7 @@ handle_callback(
 - state:
 
   Encrypted state payload returned by the provider on a classic direct
-  callback. This should be the same value that was originally sent in
+  callback, unchanged from the value sent by
   [`prepare_call()`](https://lukakoning.github.io/shinyOAuth/reference/prepare_call.md).
 
 - browser_token:
@@ -54,8 +54,8 @@ handle_callback(
 
 - shiny_session:
 
-  Optional captured Shiny session details for audit events. Normally
-  supplied by the module; leave `NULL` when calling directly.
+  Optional captured Shiny session details for audit events, normally
+  supplied by the module.
 
 - iss:
 

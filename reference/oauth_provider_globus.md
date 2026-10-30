@@ -28,12 +28,10 @@ object configured for Globus Auth login.
 This helper supports OIDC login. Globus API grants can return separate
 credentials for several resource servers in `other_tokens`. Those fields
 are preserved in `token@extra_fields`, but shinyOAuth does not
-automatically select, refresh, or revoke the nested tokens. Keep this
-login client's scopes limited to `openid`, `profile`, `email`, and
-optionally `offline_access`; use a separate Globus-aware integration for
-multi-resource API authorization. Never send the login access token to
-another resource server merely because a nested token granted access to
-it.
+automatically select, refresh, or revoke the nested tokens. The
+supported login scopes are `openid`, `profile`, `email` and optionally
+`offline_access`. Multi-resource API authorization needs a Globus-aware
+integration that manages each resource server's separate token.
 
 ## Advanced provider settings
 

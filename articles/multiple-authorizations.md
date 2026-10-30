@@ -34,7 +34,7 @@ an account chooser or reuse the account already signed in there.
 This template connects two fictional services and reads records from
 either one. Replace the endpoints, credentials, scope names and API
 paths with your providers’ values. The example uses shared-secret client
-authentication and PKCE; confirm that setup with each provider.
+authentication and PKCE.
 
 Register these callback addresses, where the browser returns after
 login:
@@ -141,9 +141,10 @@ supports one R process and loses records on restart. For deployment,
 load stable secret keys; keys alone do not make the memory store
 persistent.
 
-Saved connections also have inactivity and absolute expiry limits.
-Record user actions with `auth[["touch"]]()`, as the Read handler below
-does. Automatic refreshes and reads do not count as user activity.
+Saved connections also have inactivity and absolute expiry limits. The
+Read handler below records user activity through `auth[["touch"]]()`.
+Automatic refreshes and status reads leave the inactivity timer
+unchanged.
 
 ### 3. Select a connection and make a request
 
@@ -226,10 +227,10 @@ Select each authorization and read its records. The output checks the
 connection ID so results from a previous selection do not remain
 visible.
 
-Keep the same module ID in UI and server. The wrapper handles callbacks
-and `uiPattern = ".*"` allows their routes. Use the opaque connection ID
-as the selection key; the numeric label only distinguishes rows in this
-demo.
+The UI wrapper and server module share the `"services"` ID. The wrapper
+handles callbacks, and `uiPattern = ".*"` allows their routes. Selection
+uses the opaque connection ID; the numeric label only distinguishes demo
+rows.
 
 ## Requests, permissions and refresh
 
@@ -292,21 +293,20 @@ user out of the external services. Add each provider’s documented
 `revocation_url` if revocation is supported.
 
 A provider can reuse one upstream grant for several local connections,
-so revoking one may affect the others. Handle API authorization failures
-even if a sibling connection still looks active. Use `revoke = FALSE`
-only when you deliberately want local removal while remote credentials
-remain valid.
+so revoking one may affect the others even if their local summaries
+still show them as active. `revoke = FALSE` removes local access without
+requesting remote revocation.
 
 ## Deployment notes
 
-Keep the app on a separate hostname from untrusted services, because
-cookies are shared across ports. The example’s browser retention is for
-one R process; check
+Browser retention follows cookie boundaries, including sharing across
+ports on one hostname. The [browser-boundary
+explanation](https://lukakoning.github.io/shinyOAuth/articles/advanced-security.html#browser-binding-and-deployment-boundary)
+describes this behavior. Browser retention is limited to one R process.
 [oauth_connections()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections.html)
 and
 [oauth_browser_owner()](https://lukakoning.github.io/shinyOAuth/reference/oauth_browser_owner.html)
-before choosing retention, store capacity and expiry settings for
-deployment.
+document retention, capacity and expiry settings.
 
 If your app has its own verified account login, `retention = "account"`
 with
@@ -366,11 +366,11 @@ shinyApp(ui, server, uiPattern = ".*")
 ```
 
 Supply credentials for the login registration and the deployment `keys`
-described above. Keep callbacks distinct and automatic login disabled
-while processing other authorizations.
+described above. The example uses distinct callbacks and disables
+automatic login so the ordinary login module does not interrupt other
+authorizations.
 
-Full navigation ends the ordinary module’s Shiny session, and the
-manager does not retain that login. Use your application’s session
-mechanism if it must persist. See
+Full navigation ends the ordinary module’s Shiny session. Its login is
+separate from the manager’s retained connections. See
 [oauth_connections_ui()](https://lukakoning.github.io/shinyOAuth/reference/oauth_connections_ui.html)
 for callback configuration details.

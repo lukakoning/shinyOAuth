@@ -2,11 +2,10 @@
 
 **\[experimental\]**
 
-Read the patient and encounter selected for a connection, plus validated
-user references when requested. Use this context to choose the chart
-displayed by the app. Keep it out of general status tables and logs
-because it contains sensitive data. Raw token extensions remain
-available separately on tokens.
+Returns the patient and encounter selected for a connection, plus
+validated user references when requested. This context identifies the
+current chart and user; raw token extensions remain available separately
+on tokens.
 
 ## Usage
 
@@ -33,12 +32,12 @@ smart_fhir_user(connection)
 `smart_context()` returns a list with `version`, `fhir_base`,
 `revision`, `changed`, `patient`, `encounter`, `fhirUser` and
 `need_patient_banner`. Absent values are `NULL`. `revision` increases
-when interpreted context changes; key patient-dependent application data
-by connection ID and this revision. Refresh omission carries context
-forward, except that a changed or cleared patient clears an omitted
-encounter. Explicit null clears a field, unless patient access still
-requires patient context. An initial launch query never establishes this
-context.
+when interpreted context changes. Together, connection ID and revision
+identify the context for patient-dependent data. Refresh omission
+carries context forward, except that a changed or cleared patient clears
+an omitted encounter. Explicit null clears a field, unless patient
+access still requires patient context. An initial launch query never
+establishes this context.
 
 `smart_patient()` and `smart_fhir_user()` return an
 [httr2](https://httr2.r-lib.org/reference/httr2-package.html) response.
@@ -58,9 +57,8 @@ convenience methods.
 
 Patient IDs and user identity are different: the first identifies a
 chart, the second the authenticated user. Neither changes the local
-connection owner. General summaries omit all of this data. The
-application remains responsible for displaying patient identity clearly
-and discarding data from an older context revision. Experimental
+connection owner. General summaries omit this data. A context change
+does not clear data already held by the application. Experimental
 `fhirContext` and styling extensions remain raw data and are not
 automatically fetched or interpreted. Location-specific
 `authorization_details` apply scope, patient and encounter overrides

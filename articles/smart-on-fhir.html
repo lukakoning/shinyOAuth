@@ -134,9 +134,9 @@ visitors cannot make your app discover arbitrary servers.</p>
 <span>  required_scopes <span class="op">=</span> <span class="st">"patient/Patient.r"</span>,</span>
 <span>  label <span class="op">=</span> <span class="st">"My hospital"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/smart_client.html">smart_client()</a></code> connects the login to this FHIR base and
-prepares the authorization request. You do not need to copy tokens into
-FHIR requests.</p>
+<p><code><a href="../reference/smart_client.html">smart_client()</a></code> prepares authorization for this FHIR base
+and configures the approved API destination. Request helpers obtain
+credentials from the connection.</p>
 <table class="table">
 <thead><tr class="header">
 <th>Scope</th>
@@ -266,13 +266,12 @@ authorizations</a> for retention and deployment choices.</p>
 complete authorization and load the patient.
 <code><a href="../reference/smart_context.html">smart_patient()</a></code> reads the Patient selected by the accepted
 context, using that connection’s credentials and FHIR base.</p>
-<p>The example displays only the resource ID. A clinical app needs
-appropriate patient identification and must respect
-<code>need_patient_banner</code> when supplied. Keep patient data out of
-general logs and connection tables.</p>
-<p>The output checks both connection ID and context revision before
-displaying data. Keep these checks and discard patient-dependent caches
-when either the authorization or accepted patient context changes.</p>
+<p>The example displays only the resource ID.
+<code>need_patient_banner</code>, when supplied, carries the EHR’s
+patient-identification requirement for the clinical UI.</p>
+<p>The output checks both connection ID and context revision, so
+changing the authorization or accepted patient context removes the
+previous result.</p>
 </div>
 </div>
 <div class="section level2">
@@ -304,10 +303,10 @@ connection checks the required permission.</p>
 <span>      type <span class="op">=</span> <span class="st">"error"</span><span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>The <code>Accept</code> header asks for FHIR JSON. Pagination must
-stay within the connection’s approved FHIR base. If you cache results,
-associate them with the connection ID and context revision just as in
-the Patient example.</p>
+<p>The <code>Accept</code> header asks for FHIR JSON. The connection
+rejects pagination links outside its approved FHIR base. The Patient
+example shows how connection ID and context revision associate saved
+results with the accepted context.</p>
 <p>See <a href="#granular-permissions-and-refresh">granular permissions
 and refresh</a> for scope syntax and refresh behavior.</p>
 </div>
@@ -318,12 +317,11 @@ and refresh</a> for scope syntax and refresh behavior.</p>
 in, such as a clinician viewing a patient’s chart.
 <code>smart_context(connection)[["patient"]]</code> identifies the chart
 context; it does not identify the logged-in user.</p>
-<p>If your app needs the user’s validated identity, choose
-<code>identity = "openid"</code> when creating the client. Use
-<code>identity = "fhirUser"</code> when it also needs that user’s FHIR
-reference. These options require the server’s corresponding support. The
-default, <code>identity = "none"</code>, does not request identity
-verification.</p>
+<p><code>identity = "openid"</code> validates the signed-in user’s
+identity; <code>identity = "fhirUser"</code> also requires that user’s
+FHIR reference. Both depend on the server’s advertised support. The
+default, <code>identity = "none"</code>, requests API access without
+identity verification.</p>
 <p>Read selected identity fields with
 <code>connection[["identity"]]()</code>. For a FHIR user reference, use
 <code><a href="../reference/smart_context.html">smart_context()</a></code> and <a href="https://lukakoning.github.io/shinyOAuth/reference/smart_context.html">smart_fhir_user()</a>;
@@ -334,10 +332,10 @@ browser retention remain separate from verified user identity.</p>
 <h2 id="start-from-an-ehr-instead">Start from an EHR instead<a class="anchor" aria-label="anchor" href="#start-from-an-ehr-instead"></a>
 </h2>
 <p>An EHR can open your app with its FHIR base (<code>iss</code>) and a
-temporary <code>launch</code> handle. The app must complete
-authorization before trusting the returned context. This supports a
-workflow where the user starts from the chart rather than choosing a
-hospital in your app.</p>
+temporary <code>launch</code> handle. The route starts authorization
+with this handle; accepted patient context comes from the authorization
+response. This supports a workflow where the user starts from the chart
+rather than choosing a hospital in your app.</p>
 <p>Replace the standalone client with the EHR registration:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smart_client.html">smart_client</a></span><span class="op">(</span></span>
@@ -359,11 +357,11 @@ wrapper:</p>
 <p>Register <code>http://127.0.0.1:8100/smart/launch</code> as the local
 launch URL in addition to the callback. Use corresponding HTTPS URLs in
 deployment. Remove the Connect button and observer; opening the app from
-the EHR now starts login. Keep the other server code and
-<code>uiPattern = ".*"</code>.</p>
-<p>Use a full browser tab, browser retention with a Lax owner cookie,
-and one R process. Embedded iframe launch is unsupported. Reconnect by
-launching from the EHR again, and keep launch handles out of logs. The
+the EHR now starts login. The remaining server code and
+<code>uiPattern = ".*"</code> stay the same.</p>
+<p>EHR launch supports top-level browser navigation with browser
+retention, a Lax owner cookie and one R process. Embedded iframe launch
+is unsupported. A fresh launch from the EHR starts reauthorization. The
 route accepts only configured FHIR servers, rather than discovering a
 server from an incoming URL.</p>
 <p>For route limits and proxy requirements, see <a href="https://lukakoning.github.io/shinyOAuth/reference/smart_launch_route.html">smart_launch_route()</a>.</p>
@@ -371,21 +369,20 @@ server from an incoming URL.</p>
 <div class="section level2">
 <h2 id="more-than-one-hospital">More than one hospital<a class="anchor" aria-label="anchor" href="#more-than-one-hospital"></a>
 </h2>
-<p>Create a reviewed discovery result and client for each registration,
-then pass
+<p>Create a discovery result and client for each registration, then pass
 <code>list(hospital_a = client_a, hospital_b = client_b)</code> to the
 manager. Use the distinct callbacks and complete callback vector shown
 in <a href="multiple-authorizations.html#configure-clients-outside-server">Multiple
 authorizations</a>.</p>
 <p>Each connection has its own FHIR base, credentials and context.
-Patient IDs from different hospitals are not interchangeable. Use
-separate clients if you need both standalone and EHR-launch entry for
-the same server.</p>
+Patient IDs from different hospitals are not interchangeable. Standalone
+and EHR-launch entry for the same server use separate clients.</p>
 </div>
 <div class="section level2">
 <h2 id="other-registration-and-refresh-options">Other registration and refresh options<a class="anchor" aria-label="anchor" href="#other-registration-and-refresh-options"></a>
 </h2>
-<p>Choose authentication to match the server registration:</p>
+<p>The client authentication method comes from the server
+registration:</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -418,9 +415,9 @@ ID, and supported <code>RS384</code> or <code>ES384</code>.</td>
 </tbody>
 </table>
 <p>For an asymmetric standalone registration, replace the original
-client with this configuration. Register the matching public key and key
-ID with the server first; keep the private key on the application
-server.</p>
+client with this configuration. The public key and key ID belong to the
+server registration; shinyOAuth signs assertions with the matching
+private key.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/smart_client.html">smart_client</a></span><span class="op">(</span></span>
 <span>  <span class="va">discovery</span>,</span>
@@ -439,9 +436,10 @@ server.</p>
 package creates and signs the assertion; app code does not assemble
 JWTs. See <a href="https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html" class="external-link">SMART
 asymmetric client authentication</a>.</p>
-<p>Request <code>offline_access</code> only when your registration and
-server allow it. Browser retention alone does not request a refresh
-token; if one is issued, the manager can refresh access.</p>
+<p>The <code>offline_access</code> scope requests longer-lived access
+when supported by the server and registration. Browser retention does
+not request a refresh token; if one is issued, the manager can refresh
+access.</p>
 <p>SMART refresh responses need a positive <code>expires_in</code>. If
 the initial response omits it, set
 <code>initial_expires_in_fallback</code> only to a lifetime supplied by
