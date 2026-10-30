@@ -9,9 +9,13 @@ vignette: >
 
 ## Overview
 
-This example lets a user connect their Spotify account and displays their
-top tracks. It uses the same provider, client, and module setup as
-[Usage](usage.html), then calls Spotify's API with the access token.
+This app shows a user's top tracks after they authorize access to Spotify.
+Spotify handles sign-in and returns an access token, a credential your app can
+use to ask its API for data. The app never needs the user's Spotify password.
+
+Scopes name the permissions to request. Here `user-top-read` allows reading
+listening preferences; other data needs different permissions. For the shared
+login setup, see [Usage](usage.html).
 
 ## Spotify app registration
 
@@ -99,13 +103,13 @@ runApp(shinyApp(ui, server), port = 8100, launch.browser = FALSE)
 
 ## API requests and scopes
 
-`user-top-read` grants permission to read listening preferences. The request
-above asks for up to ten tracks from the short-term range. The module obtains
-and stores the access token. The connection checks the operation's scope and
-approved API address, refreshing the token if needed before the request.
+The request asks for up to ten tracks from the short-term range, using the
+`user-top-read` permission. The module obtains and stores the access token;
+the connection checks the operation's scope and approved API address, refreshing
+the token if needed before the request.
 `observeEvent()` loads the data when the button is clicked, and `renderTable()`
-displays it for the current login. Cached tracks are cleared on logout, a new
-login, or loss of permission to read them.
+displays it for the current login. The observer clears cached tracks on logout,
+a new login, or loss of permission to read them.
 
 For other data, choose the API URL and requested scopes together. A successful
 login does not mean every API is available to the app. Empty results can be
