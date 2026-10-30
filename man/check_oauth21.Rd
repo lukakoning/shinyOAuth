@@ -12,7 +12,7 @@ partial because it cannot check your client registration settings.}
 
 \item{context}{Optional list. \code{operations} selects additional \code{"userinfo"},
 \code{"introspection"} or \code{"revocation"} checks. The advanced \code{nonce_exception}
-declaration is described below; most apps should leave it unset.}
+declaration is described below and is unset by default.}
 
 \item{draft}{Target specification revision. Currently only
 \code{"draft-ietf-oauth-v2-1-16"} is supported; this is an Internet-Draft, not an RFC.}
@@ -33,14 +33,14 @@ The result includes a table of findings and suggested fixes. The check is
 read-only: it does not make requests, start login or change the configuration.
 }
 \details{
-Call \code{assessment <- check_oauth21(client)}, then read \code{assessment$checks}.
-\code{assessment$configuration_compliant} is \code{FALSE} for a known mandatory failure,
+The returned \code{checks} table contains individual findings.
+\code{configuration_compliant} is \code{FALSE} for a known mandatory failure,
 \code{NA} for unresolved mandatory settings, and \code{TRUE} when the applicable mandatory
 configuration checks pass. Recommendations and unknown external behavior do not
 change that result.
 
 This assessment uses OAuth 2.1 draft 16, ruleset \verb{1.1.1}. It is not certification
-or a test of your running provider. Rerun it after changing configuration.
+or a test of the running provider. It assesses the supplied configuration.
 }
 \section{Advanced assessment scope}{
 
@@ -66,7 +66,7 @@ URLs and the configuration objects. Cache and state-store methods are not run.
 \code{context = list(nonce_exception = TRUE)} declares independently established
 server assurance for the draft's confidential-client nonce exception
 (section 7.5.1.1). It does not supply observed evidence or bypass missing local
-requirements. Prefer S256 PKCE. Assertion audience checks are mandatory for JWT
+requirements. S256 PKCE is the default. Assertion audience checks are mandatory for JWT
 authentication; advice about the legacy \code{JWT} assertion type is a recommendation.
 }
 

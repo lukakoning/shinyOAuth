@@ -21,8 +21,8 @@ get_userinfo(
 \item{token_type}{Optional override for the access token type when \code{token}
 is provided as a raw string. Supported values are \code{Bearer} and \code{DPoP}.}
 
-\item{shiny_session}{Optional captured Shiny session details for audit events.
-Normally supplied by the module; leave \code{NULL} when calling directly.}
+\item{shiny_session}{Optional captured Shiny session details for audit events,
+normally supplied by the module.}
 
 \item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }
@@ -44,9 +44,8 @@ Pass the client and complete \link{OAuthToken} from login, for example
 For OIDC, shinyOAuth checks that the returned profile belongs to the validated
 login. A raw access-token string cannot provide that identity check.
 
-\code{userinfo_required = FALSE} disables automatic profile retrieval, not the
-identity or signature checks on a manual call. Request and validate the
-fields your app needs.
+\code{userinfo_required = FALSE} disables automatic profile retrieval. Identity
+and signature checks still apply to manual calls.
 }
 \section{Advanced response validation}{
 
@@ -59,7 +58,7 @@ By default, OIDC providers with a UserInfo endpoint require a validated identity
 token, including for manual retrieval. Explicit \code{userinfo_id_token_match = FALSE}
 allows retrieval without one, but when both are available their \code{sub} values
 must always match. Standard profile fields are checked for the expected JSON
-types; validate application-specific values and extension fields yourself.
+types; extension fields retain their provider-defined values.
 
 For DPoP or mTLS-bound tokens, the client supplies the matching signing key or
 certificate. See the
@@ -86,7 +85,7 @@ if (interactive()) {
   result <- introspect_token(client, token)
   isTRUE(result[["active"]])
 
-  # Requires a refresh token. Keep the returned replacement.
+  # Returns replacement credentials using the refresh token.
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.

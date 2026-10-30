@@ -29,9 +29,8 @@ HTTPS is accepted by default. HTTP is limited to local development hosts
 unless you change \code{allowed_non_https_hosts}. Supply \code{allowed_hosts} to
 restrict which services your app may contact.
 
-Call this when checking configured endpoint URLs or diagnosing a URL-policy
-rejection. The provider and API request helpers apply these checks internally;
-a direct call lets you inspect the result without making a network request.
+Provider and API request helpers apply these checks internally. A direct call
+reports the policy result without making a network request.
 }
 \details{
 Both host lists support \code{*} (any characters), \verb{?} (one character), and a
@@ -57,7 +56,6 @@ is_ok_host("http://localhost:8100")
 # Restrict to a specific domain (allowlist)
 is_ok_host("https://api.example.com", allowed_hosts = c(".example.com"))
 
-# Caution: a catch-all pattern disables host restrictions
-# (only scheme rules remain). Use it only when any host is acceptable.
+# A catch-all pattern allows any host; scheme rules still apply.
 is_ok_host("https://anywhere.example", allowed_hosts = c("*"))
 }

@@ -25,9 +25,8 @@ oauth_provider_keycloak(
 method. One of "header" (client_secret_basic), "body"
 (client_secret_post), "public" (send \code{client_id} only; \code{"none"} alias also
 accepted), "private_key_jwt", or "client_secret_jwt". Defaults
-to "body" for Keycloak, which works for many common setups. Use \code{"public"}
-if you need to suppress \code{client_secret} even when it is set in the
-environment. If you pass \code{NULL}, discovery will infer the method from the
+to "body" for Keycloak. \code{"public"} omits \code{client_secret}, including one
+supplied through the environment. \code{NULL} infers the method from the
 provider's \code{token_endpoint_auth_methods_supported} metadata.}
 
 \item{jarm_tolerate_duplicate_top_level_iss}{Logical. Defaults to \code{TRUE}

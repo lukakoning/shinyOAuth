@@ -15,9 +15,8 @@
 #' unless you change `allowed_non_https_hosts`. Supply `allowed_hosts` to
 #' restrict which services your app may contact.
 #'
-#' Call this when checking configured endpoint URLs or diagnosing a URL-policy
-#' rejection. The provider and API request helpers apply these checks internally;
-#' a direct call lets you inspect the result without making a network request.
+#' Provider and API request helpers apply these checks internally. A direct call
+#' reports the policy result without making a network request.
 #'
 #' @details
 #' Both host lists support `*` (any characters), `?` (one character), and a

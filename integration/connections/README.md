@@ -84,9 +84,9 @@ mirai workers perform transport and return results for guarded commits there.
 
 Managed callback pages retain their registered paths. `oauth_connections_ui()`
 places an HTML base before dependencies so scripts resolve at the application
-root. For a Shiny app mounted under a public directory, configure `app_base_path`
-and place every registered callback inside that directory. Do not add a separate
-HTML base element. This follows the [HTML base element's ordering requirement](https://html.spec.whatwg.org/multipage/semantics.html#the-base-element).
+root. For an app mounted under a public directory, `app_base_path` identifies
+that directory; registered callbacks must fall within it. The wrapper manages
+the page's base element. This follows the [HTML base element's ordering requirement](https://html.spec.whatwg.org/multipage/semantics.html#the-base-element).
 
 SMART interoperability requires the corresponding checks against the
 [SMART Sandbox](../smart/sandbox.md) and [Inferno client suite](../smart/inferno.md),

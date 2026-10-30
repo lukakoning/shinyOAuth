@@ -60,8 +60,9 @@ their selected method whenever that array is present.
 }
 \section{Network and trust policy}{
 
-Supply a trusted, deployment-configured base, never an arbitrary browser
-query parameter. The base must be an absolute HTTPS URL without userinfo,
+The FHIR base is a deployment trust setting. EHR launch routes select an
+already configured client rather than discovering a browser-supplied base.
+The base must be an absolute HTTPS URL without userinfo,
 query, fragment, or ambiguous path syntax. Discovered URLs must be absolute;
 this reader does not repair relative URLs from legacy servers.
 
@@ -81,10 +82,9 @@ duplicate members; arrays and recognized URL fields have bounded validation.
 Errors do not include response bodies or returned metadata values.
 
 Unknown extensions, including \code{associated_endpoints}, are retained as data
-only. Their URLs are not fetched or approved for credential use. No automatic
-metadata cache is used: every call reads a new snapshot. Applications should
-review metadata changes before replacing configuration; do not rediscover
-endpoints during a pending authorization or to reinterpret a retained grant.
+only. Their URLs are not fetched or approved for credential use. Each call
+reads a fresh snapshot. Existing clients and retained grants remain bound to
+the configuration with which they were created.
 }
 
 \examples{

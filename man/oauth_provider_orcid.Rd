@@ -20,9 +20,9 @@ then pass this provider, the client ID and client secret to \code{\link[=oauth_c
 with \code{scopes = "openid"}.
 }
 \details{
-Request \code{scopes = "openid"} on the client. ORCID uses this instead of
-\verb{/authenticate} for OIDC login; do not request both. Its OIDC metadata does
-not advertise \code{profile} or \code{email} scopes. Additional record permissions
+ORCID's OIDC login uses the \code{openid} scope; \verb{/authenticate} is its separate
+OAuth login scope. Its OIDC metadata does not advertise \code{profile} or \code{email}
+scopes. Additional record permissions
 depend on whether you registered a Public or Member API client.
 
 Sandbox and production require separate credentials and user accounts.
@@ -32,7 +32,7 @@ Production redirect URIs must use HTTPS.
 
 This preset uses \code{client_secret_post} authentication. ORCID does not advertise
 PKCE, so the helper uses client authentication and OIDC nonce validation
-without PKCE. Supply the secret issued for this registration.
+without PKCE.
 See the \href{https://info.orcid.org/documentation/api-tutorials/api-tutorial-get-and-authenticated-orcid-id/}{ORCID authentication guide}.
 }
 

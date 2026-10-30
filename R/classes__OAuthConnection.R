@@ -25,8 +25,8 @@
 #' can retain the underlying login across navigation, but a new session gets its
 #' own connection reference.
 #'
-#' Call methods in the owning session's reactive context. `$is_usable()` returns
-#' `FALSE` when access is unavailable; request and token methods raise errors.
+#' Methods check the owning Shiny session. `$is_usable()` returns `FALSE` when
+#' access is unavailable; request and token methods raise errors.
 #' Permission checks do not prove the API will accept a request. The connection ID
 #' is read-only, is not a credential and cannot be used to authorize a request.
 #'
@@ -34,8 +34,8 @@
 #' Reactive expressions that read `connection()`, `$access_token()` or
 #' `$has_scopes()` do not rerun on token refresh alone if the login and permissions
 #' stay the same. Status reads such as `$summary()` may update more often. Reads
-#' do not extend a managed owner's inactivity limit; record user actions with
-#' the manager's `touch()` method inside input event handlers.
+#' do not extend a managed owner's inactivity limit. The manager's `touch()`
+#' method records explicit user activity.
 #'
 #' Use the module's `connection()` for coordinated token acquisition, refresh
 #' and token targets. The [oauth_connection()] wrapper follows a supplied token
@@ -167,8 +167,8 @@ OAuthConnection <- R6::R6Class(
     #' @description
     #' Get a current bearer token for an SDK or database driver, refreshing when
     #' needed. Obtain this connection from a module's `connection()` method.
-    #' Keep the returned token on the server. The method does not start login,
-    #' request new permissions or retry the SDK operation.
+    #' The method refreshes credentials when needed, without starting login,
+    #' requesting new permissions or retrying the SDK operation.
     #' @param required_scopes Permissions needed for this operation, in addition to
     #'   client requirements. This checks permissions without changing the grant.
     #' @param min_valid_for Minimum remaining lifetime in seconds (default 60).
@@ -588,8 +588,8 @@ OAuthConnection <- R6::R6Class(
     #' `r lifecycle::badge("experimental")`
     #'
     #' Fetch the contextual Patient or validated fhirUser through the approved
-    #' FHIR base, using current read permissions. Prefer [smart_patient()] and
-    #' [smart_fhir_user()] in application code.
+    #' FHIR base, using current read permissions. [smart_patient()] and
+    #' [smart_fhir_user()] are the corresponding public helpers.
     #' @param kind Either `"patient"` or `"fhirUser"`.
     #' @return An [httr2] response. Missing context, scope or resource binding
     #'   raises an error before an authenticated request is sent.

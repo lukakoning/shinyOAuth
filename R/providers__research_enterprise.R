@@ -9,9 +9,9 @@
 #' with `scopes = "openid"`.
 #'
 #' @details
-#' Request `scopes = "openid"` on the client. ORCID uses this instead of
-#' `/authenticate` for OIDC login; do not request both. Its OIDC metadata does
-#' not advertise `profile` or `email` scopes. Additional record permissions
+#' ORCID's OIDC login uses the `openid` scope; `/authenticate` is its separate
+#' OAuth login scope. Its OIDC metadata does not advertise `profile` or `email`
+#' scopes. Additional record permissions
 #' depend on whether you registered a Public or Member API client.
 #'
 #' Sandbox and production require separate credentials and user accounts.
@@ -20,7 +20,7 @@
 #' @section Advanced registration settings:
 #' This preset uses `client_secret_post` authentication. ORCID does not advertise
 #' PKCE, so the helper uses client authentication and OIDC nonce validation
-#' without PKCE. Supply the secret issued for this registration.
+#' without PKCE.
 #' See the [ORCID authentication guide](https://info.orcid.org/documentation/api-tutorials/api-tutorial-get-and-authenticated-orcid-id/).
 #'
 #' @param name Optional provider name (default `"orcid"`).
@@ -54,8 +54,8 @@ oauth_provider_orcid <- function(name = "orcid", sandbox = FALSE) {
 #' to [oauth_client()] with `scopes = c("openid", "profile", "email")`.
 #'
 #' @details
-#' Supply only the scopes your app needs; `"openid"` is enough to request an
-#' ID token. API and repository access require separate GitLab scopes.
+#' The `"openid"` scope requests an ID token. API and repository access require
+#' separate GitLab scopes.
 #' See [GitLab's OIDC guide](https://docs.gitlab.com/integration/openid_connect_provider/).
 #'
 #' @param base_url GitLab instance URL, including HTTPS and any deployment
@@ -138,11 +138,10 @@ oauth_provider_cognito <- function(
 #' This helper supports OIDC login. Globus API grants can return separate
 #' credentials for several resource servers in `other_tokens`. Those fields
 #' are preserved in `token@extra_fields`, but shinyOAuth does not automatically
-#' select, refresh, or revoke the nested tokens. Keep this login client's
-#' scopes limited to `openid`, `profile`, `email`, and optionally
-#' `offline_access`; use a separate Globus-aware integration for multi-resource
-#' API authorization. Never send the login access token to another resource
-#' server merely because a nested token granted access to it.
+#' select, refresh, or revoke the nested tokens. The supported login scopes are
+#' `openid`, `profile`, `email` and optionally `offline_access`. Multi-resource
+#' API authorization needs a Globus-aware integration that manages each resource
+#' server's separate token.
 #'
 #' @section Advanced provider settings:
 #' The preset uses Globus's published endpoints and RS512 identity-token
@@ -180,8 +179,8 @@ oauth_provider_globus <- function(name = "globus") {
 #' Hugging Face settings, then pass its credentials to [oauth_client()].
 #'
 #' @details
-#' For login, request `scopes = c("openid", "profile")`, adding `"email"`
-#' only if needed. Repository access and inference require their own scopes,
+#' Login uses `openid` with optional `profile` and `email` scopes.
+#' Repository access and inference require their own scopes,
 #' such as `"read-repos"` or `"inference-api"`, and user consent.
 #' This preset targets confidential applications with a client secret.
 #' See [Sign in with Hugging Face](https://huggingface.co/docs/hub/oauth).
@@ -208,10 +207,10 @@ oauth_provider_huggingface <- function(name = "huggingface") {
 #' with SURFconext before using its client credentials with [oauth_client()].
 #'
 #' @details
-#' Request the `"openid"` scope. Additional claims depend on your service's
+#' Login uses the `"openid"` scope. Additional claims depend on the service's
 #' agreed attribute release policy; requesting `"email"` or `"profile"` does
-#' not guarantee those attributes will be released. Use the validated issuer
-#' and `sub` to identify a user.
+#' not guarantee those attributes will be released. The validated issuer and
+#' `sub` establish the login identity.
 #' Test and production environments require their own service configuration.
 #' See the [SURFconext overview](https://www.surf.nl/en/services/identity-access-management/surfconext).
 #'

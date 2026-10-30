@@ -23,13 +23,13 @@ oauth_connections_ui(
 
 \item{request_uri_resolver}{Optional trusted function mapping a Rook request to
 its public absolute URI. Required when a trusted reverse proxy changes the
-apparent scheme/host. Do not trust arbitrary forwarded headers. The resolved
-origin must match the manager's configured origin.}
+apparent scheme/host. The custom resolver defines which proxy headers are
+trusted; the wrapper checks the resolved origin against the manager's origin.}
 
 \item{app_base_path}{Public path at which the Shiny application is hosted,
 default \code{"/"}. Must begin and end with \code{/}. The wrapper inserts a document
 base before scripts so Shiny dependencies load from the app root even on
-nested callback pages. Do not supply a separate HTML \code{base} element.
+nested callback pages. The wrapper manages the page's HTML \code{base} element.
 Managed JAR Request Object URLs are also published beneath this path.}
 
 \item{launch_routes}{List of \code{\link[=smart_launch_route]{smart_launch_route()}} configurations, empty by
@@ -38,7 +38,7 @@ default. EHR entry requires browser retention and top-level navigation.}
 \item{additional_clients}{Optional named list of ordinary OAuth/OIDC clients
 used by separate \code{\link[=oauth_module_server]{oauth_module_server()}} modules. Names are their full module
 IDs. These clients keep their existing login lifecycle and are not managed
-connections. Use this single UI wrapper instead of nesting \code{\link[=oauth_ui]{oauth_ui()}}.
+connections. This wrapper dispatches their callbacks alongside managed ones.
 Their callback routes must be distinct from managed callbacks and SMART
 launch routes, on this app's
 origin and inside \code{app_base_path}. All clients must select an appropriate
@@ -48,14 +48,13 @@ multi-server authorization mode, even when the manager contains one client.}
 A request UI function for \code{shinyApp(..., uiPattern = ".*")}.
 }
 \description{
-Wrap your app's UI to handle login returns and restore the user's saved
-connections. Use the same manager and module ID as \code{\link[=oauth_connections_server]{oauth_connections_server()}}.
-The wrapper includes the required browser setup; do not add a separate
-\code{\link[=use_shinyOAuth]{use_shinyOAuth()}} call or nest \code{\link[=oauth_ui]{oauth_ui()}}.
+Handles login returns and restores the user's saved connections. The wrapper
+and \code{\link[=oauth_connections_server]{oauth_connections_server()}} share the same manager and module ID.
+Browser setup from \code{\link[=use_shinyOAuth]{use_shinyOAuth()}} is included.
 }
 \details{
-Pass the result to \code{shinyApp(..., uiPattern = ".*")} so the app's callback paths
-reach the wrapper. With browser retention, a cookie lets the returning browser
+With \code{shinyApp(..., uiPattern = ".*")}, callback paths reach the wrapper.
+With browser retention, a cookie lets the returning browser
 find its saved connections; tokens remain on the server. Account and session-only
 retention do not add that owner cookie.
 }
@@ -72,8 +71,8 @@ entry or an independently validated \code{additional_clients} callback can creat
 an empty browser owner, but cannot recover someone else's connections.
 Invalid cookies are cleared before a fresh owner is created.
 
-Host the app separately from untrusted services. Cookies are shared across
-ports and paths on the same hostname; those boundaries do not isolate apps.
+Cookies are shared across ports and paths on the same hostname. Services on
+that hostname share the owner cookie's trust boundary.
 }
 
 \examples{

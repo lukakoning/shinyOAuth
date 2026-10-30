@@ -20,8 +20,8 @@ its owning Shiny session.}
 \code{smart_context()} returns a list with \code{version}, \code{fhir_base}, \code{revision},
 \code{changed}, \code{patient}, \code{encounter}, \code{fhirUser} and \code{need_patient_banner}.
 Absent values are \code{NULL}. \code{revision} increases when interpreted context
-changes; key patient-dependent application data by connection ID and this
-revision. Refresh omission carries context forward, except that a changed
+changes. Together, connection ID and revision identify the context for
+patient-dependent data. Refresh omission carries context forward, except that a changed
 or cleared patient clears an omitted encounter. Explicit null clears a
 field, unless patient access still requires patient context. An initial
 launch query never establishes this context.
@@ -31,10 +31,9 @@ launch query never establishes this context.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-Read the patient and encounter selected for a connection, plus validated user
-references when requested. Use this context to choose the chart displayed by
-the app. Keep it out of general status tables and logs because it contains
-sensitive data. Raw token extensions remain available separately on tokens.
+Returns the patient and encounter selected for a connection, plus validated
+user references when requested. This context identifies the current chart and
+user; raw token extensions remain available separately on tokens.
 }
 \details{
 \code{smart_patient()} fetches the contextual Patient only when the current grant
@@ -49,9 +48,8 @@ are outside these two convenience methods.
 
 Patient IDs and user identity are different: the first identifies a chart,
 the second the authenticated user. Neither changes the local connection owner.
-General summaries omit all of this data. The application remains responsible
-for displaying patient identity clearly and discarding data from an older
-context revision. Experimental \code{fhirContext} and styling extensions remain
+General summaries omit this data. A context change does not clear data already
+held by the application. Experimental \code{fhirContext} and styling extensions remain
 raw data and are not automatically fetched or interpreted.
 Location-specific \code{authorization_details} apply scope, patient and encounter
 overrides only for the configured FHIR base, with omitted fields falling back

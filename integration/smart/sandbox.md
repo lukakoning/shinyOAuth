@@ -140,9 +140,9 @@ also present in the current
 [upstream discovery handler](https://github.com/smart-on-fhir/smart-launcher-v2/blob/64374254347fdfa9625f9112c77813aa75fa9f3e/backend/routes/fhir/.well-known/smart-configuration.ts).
 `smart_discover()` rejects this response without patching it. The discovery test
 records that rejection as a known incompatibility, not successful interoperability.
-Keep the positive gate open until an upstream fix or another independently
-verified deployment supplies complete metadata. Source-supported algorithms
-inside the server cannot substitute for its missing discovery advertisement.
+The positive gate remains unmet until the deployment supplies complete metadata.
+Algorithms implemented inside the server cannot replace the missing discovery
+advertisement.
 
 This simulator permits uncredentialed FHIR reads. The smoke read checks data
 and proxy connectivity; authorization enforcement requires the strict fixture
@@ -155,9 +155,9 @@ mandatory discovery fields; upgrading to `smart-launcher-2` resolves that gap.
 P4a now tests the reader against live v2 discovery and synthetic HTTP positive
 and negative fixtures. Actual authorization and refresh flows
 remain later P4 items.
-Do not inject missing capabilities or disable PKCE, signature, issuer, or
-browser checks to make a full-flow test pass. Any supported legacy profile
-needs its own explicit policy and evidence.
+Full-flow results require the advertised capabilities and the package's PKCE,
+signature, issuer and browser checks. Legacy-profile results require separate
+policy and evidence.
 
 ## Where the roadmap uses this stack
 

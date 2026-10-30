@@ -65,15 +65,14 @@
 #'   automatically. Selecting a target for one call does not change this default.
 #'
 #' @param authorization_method Browser method for sending the authorization
-#'   request: `"GET"` (default) or `"POST"`. Select POST only after confirming
-#'   provider support. It submits form fields instead of a long URL query.
+#'   request: `"GET"` (default) or provider-supported `"POST"`. POST submits form
+#'   fields instead of a URL query.
 #'   Use the module's `request_login()` or [prepare_authorization_request()]; URL-only
 #'   helpers reject POST. This does not select the callback `response_mode` or
 #'   replace a provider's PAR or signed Request Object requirements.
-#' @param response_mode How the provider returns the login result. Leave `NULL`
-#'   (default) for a normal callback with parameters in the URL; no
-#'   `response_mode` parameter is then sent. Use `"query"` to request that
-#'   format explicitly, or `"form_post"` when your provider needs an HTTP POST.
+#' @param response_mode How the provider returns the login result. `NULL`
+#'   (default) omits the parameter, using the provider's normal query callback.
+#'   `"query"` explicitly requests URL parameters; `"form_post"` requests an HTTP POST.
 #'   POST callbacks require [oauth_form_post_ui()].
 #'
 #'   Signed responses (JWT Secured Authorization Response Mode, JARM)
@@ -163,14 +162,13 @@
 #'     error.
 #'   - `"none"`: Skips scope validation entirely.
 #'
-#' @param scope_policy Internal versioned scope policy. Leave the default for
-#'   ordinary OAuth clients. SMART adapters install their own policy, including
-#'   required permissions; these checks cannot be disabled by `scope_validation`.
+#' @param scope_policy Internal versioned scope policy, installed by SMART
+#'   adapters. Ordinary OAuth clients use the default policy. SMART permission
+#'   requirements apply independently of `scope_validation`.
 #'   This parameter is not an argument to [oauth_client()].
 #'
-#' @param smart Internal SMART configuration installed by [smart_client()].
-#'   Leave the empty default for ordinary clients. This is not an argument to
-#'   [oauth_client()].
+#' @param smart Internal SMART configuration installed by [smart_client()],
+#'   empty for ordinary clients. This is not an argument to [oauth_client()].
 #'
 #' @param resource_bases Optional named character vector of approved API base
 #'   URLs for [oauth_connection()] and [oauth_connections()]. The default
@@ -208,8 +206,8 @@
 #'   audiences explicitly trusted by this client. Defaults to `character(0)`,
 #'   which permits only `client_id`. The token must always include `client_id`
 #'   in `aud`; when `azp` is present it must equal `client_id`.
-#'   Values are matched exactly and case-sensitively. Configure only audiences
-#'   trusted for this application's identity tokens, not arbitrary API audiences.
+#'   Values are matched exactly and case-sensitively and apply to identity-token
+#'   recipients, independently of API resource addresses.
 #' @param required_acr_values Optional character vector of acceptable login
 #'   requirements, such as a provider's multi-factor authentication (MFA) policy.
 #'   Use the provider's Authentication Context Class Reference (ACR) identifiers.
@@ -225,9 +223,8 @@
 #'
 #'   The default, `character(0)`, checks these claims only when present.
 #'   Set, for example, `userinfo_jwt_required_time_claims = "exp"`
-#'   to require an expiry on signed UserInfo JWTs, or pass multiple values to
-#'   require additional temporal claims. For security-sensitive deployments that
-#'   accept signed UserInfo JWTs, prefer requiring at least `"exp"`.
+#'   to require an expiry on signed UserInfo JWTs; multiple values require
+#'   the corresponding time claims.
 #'
 #' @param introspect If `TRUE`, ask the provider to confirm the access token is active
 #'   before completing login and module refreshes. Requires `introspection_url`;
@@ -263,16 +260,15 @@
 #'   entry lifetime; both must allow the returning login.
 #'
 #' @param state_entropy Length in characters of the random state identifier, from
-#'   22 to 128. Default 64. Most apps should keep the default.
+#'   22 to 128. Default 64.
 #'
 #' @param state_key Secret used to encrypt and protect pending login details.
 #'   A random key is generated when omitted. This is separate from
 #'   `client_secret` and is also used for public clients.
 #'
-#'   For multiple R processes, supply the same key and shared `state_store`
-#'   on every process. Accepts a character string or raw vector of at least
-#'   32 bytes. Generate it from cryptographically random bytes; do not use
-#'   a memorable password. State uses AES-GCM authenticated encryption.
+#'   Deployments with multiple R processes use the same key and `state_store` across
+#'   processes. The key is a character string or raw vector containing at least
+#'   32 cryptographically random bytes. State uses AES-GCM authenticated encryption.
 #'
 #' @param client_assertion_private_key Optional private key for `private_key_jwt` client authentication
 #'   at the token endpoint. Can be an `openssl::key` or a PEM string containing a
@@ -350,11 +346,10 @@
 #'   client intends to request RFC 8705 certificate-bound access tokens when
 #'   the provider advertises that capability. Default is `FALSE`.
 #'
-#'   Set this to `TRUE` for clients that should prefer discovered
-#'   `mtls_endpoint_aliases` on authorization-server requests even when
-#'   `token_auth_style` itself is not an mTLS auth style, and present the
-#'   certificate on token and protected-resource requests. Certificate/key
-#'   configuration alone does not enable this mode.
+#'   When `TRUE`, authorization-server requests prefer discovered
+#'   `mtls_endpoint_aliases`, even when `token_auth_style` is not an mTLS auth
+#'   style. Token and protected-resource requests present the certificate.
+#'   Certificate/key configuration alone does not enable this mode.
 #'
 #'   Requires `mtls_client_cert_file` and `mtls_client_key_file`, and the
 #'   provider must be configured with
@@ -404,9 +399,8 @@
 #'   binding data must match the configured key; requiring its presence is a
 #'   separate policy (`dpop_require_observed_cnf`). In [oauth_client()], the default
 #'   `NULL` resolves to `TRUE` when `dpop_private_key` is configured and to
-#'   `FALSE` otherwise. Set `FALSE` explicitly only when you intentionally want
-#'   to allow Bearer access tokens, such as deployments where DPoP is used only
-#'   to bind refresh tokens.
+#'   `FALSE` otherwise. Explicit `FALSE` also permits Bearer access tokens,
+#'   including deployments where DPoP binds only the refresh token.
 #'
 #' @param dpop_require_observed_cnf Logical. When `TRUE`, shinyOAuth rejects
 #'   `token_type = "DPoP"` access tokens unless it can observe `cnf[["jkt"]]`
@@ -462,17 +456,16 @@
 #'   used in signed authorization requests. By default, shinyOAuth uses the
 #'   provider issuer when available. When
 #'   `request_object_mode = "request"` or `"request_uri"`, the provider
-#'   must have a configured issuer or you must supply an explicit override so
-#'   the signed Request Object remains audience-bound to the intended
-#'   authorization server.
+#'   needs either a configured issuer or this override to identify the
+#'   authorization server in the signed Request Object.
 #' @param request_object_encryption_alg Optional JWE key-management
 #'   algorithm override for encrypted Request Objects. Current outbound support
-#'   is limited to `RSA-OAEP`. When set, you must also set
+#'   is limited to `RSA-OAEP`. Encryption requires both this value and
 #'   `request_object_encryption_enc`.
 #' @param request_object_encryption_enc Optional JWE content-encryption
 #'   algorithm override for encrypted Request Objects. Current outbound support
 #'   is limited to the AES-CBC-HMAC family (`A128CBC-HS256`,
-#'   `A192CBC-HS384`, `A256CBC-HS512`). When set, you must also set
+#'   `A192CBC-HS384`, `A256CBC-HS512`). Encryption also requires
 #'   `request_object_encryption_alg`.
 #' @param request_object_encryption_kid Optional key identifier (`kid`)
 #'   used to select one provider encryption key and emit the outer JWE `kid`
@@ -487,7 +480,7 @@
 #'   seconds. When provided, shinyOAuth adds an `nbf` claim set to
 #'   `iat - request_object_nbf_skew` so deployments can tolerate small
 #'   clock skew while still emitting bounded request-object validity windows.
-#'   Leave `NULL` (the default) to omit `nbf`. Request-object `nbf` is reserved
+#'   `NULL` (the default) omits `nbf`. Request-object `nbf` is reserved
 #'   by shinyOAuth and cannot be supplied through extra authorization
 #'   parameters.
 #'

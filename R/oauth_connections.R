@@ -42,15 +42,16 @@
 #'   retained mode. Must be `NULL` for session-only retention.
 #' @param keys Named list with `credentials` and `owner`, each a deployment-held
 #'   raw vector of 32 bytes. Required for retained modes. Session-only mode creates
-#'   ephemeral keys if omitted. Keep these keys outside credential storage.
+#'   ephemeral keys if omitted. Keys are held by the manager, separately from
+#'   the ciphertext-only connection store.
 #' @param retention_seconds Maximum lifetime of each stored grant, in seconds.
 #'   Positive and finite, no larger than the store's `max_age`. Refresh never
 #'   resets it. Browser retention is also capped by the owner's absolute expiry.
 #' @return An `OAuthConnections` server-side configuration object. Printing shows
-#'   only the retention mode and client count. It contains client configuration
-#'   and deployment keys and must never be sent to the browser.
+#'   only the retention mode and client count. It holds client configuration
+#'   and deployment keys for the UI and server modules.
 #' @details
-#' Configure the manager once and use its named clients to start logins.
+#' The manager's named clients select the configuration for each login.
 #' Connections are separate local records, but the provider may reuse one grant;
 #' revoking a connection can therefore affect other tokens from that grant.
 #'
@@ -60,8 +61,8 @@
 #' reconnect; one connection's response never replaces another's identity or
 #' permissions. Revocation can also affect related provider grants.
 #'
-#' A manager is bound to one UI/server module ID and one public origin. Create
-#' another manager for another namespace. The memory store and owner registries
+#' A manager is bound to one UI/server module ID and one public origin.
+#' The memory store and owner registries
 #' survive Shiny sessions, not R restarts. Copies in another R process are rejected.
 #'
 #' In session-only mode, a pending authorization survives navigation through the

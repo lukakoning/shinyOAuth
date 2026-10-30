@@ -6,14 +6,14 @@
 #' read-only: it does not make requests, start login or change the configuration.
 #'
 #' @details
-#' Call `assessment <- check_oauth21(client)`, then read `assessment$checks`.
-#' `assessment$configuration_compliant` is `FALSE` for a known mandatory failure,
+#' The returned `checks` table contains individual findings.
+#' `configuration_compliant` is `FALSE` for a known mandatory failure,
 #' `NA` for unresolved mandatory settings, and `TRUE` when the applicable mandatory
 #' configuration checks pass. Recommendations and unknown external behavior do not
 #' change that result.
 #'
 #' This assessment uses OAuth 2.1 draft 16, ruleset `1.1.1`. It is not certification
-#' or a test of your running provider. Rerun it after changing configuration.
+#' or a test of the running provider. It assesses the supplied configuration.
 #'
 #' @param config An [OAuthClient] or [OAuthProvider]. A provider-only report is
 #'   partial because it cannot check your client registration settings.
@@ -21,7 +21,7 @@
 #'   `"draft-ietf-oauth-v2-1-16"` is supported; this is an Internet-Draft, not an RFC.
 #' @param context Optional list. `operations` selects additional `"userinfo"`,
 #'   `"introspection"` or `"revocation"` checks. The advanced `nonce_exception`
-#'   declaration is described below; most apps should leave it unset.
+#'   declaration is described below and is unset by default.
 #'
 #' @return A `shinyOAuth_oauth21_assessment` list. `checks` is a data frame with
 #'   `id`, `scope`, `status`, `requirement`, `message`, `remediation`, `reference`,
@@ -53,7 +53,7 @@
 #' `context = list(nonce_exception = TRUE)` declares independently established
 #' server assurance for the draft's confidential-client nonce exception
 #' (section 7.5.1.1). It does not supply observed evidence or bypass missing local
-#' requirements. Prefer S256 PKCE. Assertion audience checks are mandatory for JWT
+#' requirements. S256 PKCE is the default. Assertion audience checks are mandatory for JWT
 #' authentication; advice about the legacy `JWT` assertion type is a recommendation.
 #'
 #' @references

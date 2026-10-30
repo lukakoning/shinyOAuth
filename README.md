@@ -79,7 +79,7 @@ remotes::install_github("lukakoning/shinyOAuth")
 
 See `vignette("usage", package = "shinyOAuth")`
 ([online guide](https://lukakoning.github.io/shinyOAuth/articles/usage.html))
-for login buttons, authenticated API calls, configuration and a deployment checklist.
+for login buttons, authenticated API calls, configuration and deployment settings.
 
 ### Minimal example
 
@@ -93,12 +93,9 @@ show how to store these values in `.Renviron`.
 library(shiny)
 library(shinyOAuth)
 
-# GitHub OAuth 2.0 provider has been preconfigured in the package
-#  - You can quickly configure OIDC providers with `oauth_provider_oidc_discover()`
-#  - You can manually configure every other provider with `oauth_provider()`
 provider <- oauth_provider_github()
 
-# Build client using your app's ID, secret, & redirect URI:
+# App registration
 client <- oauth_client(
   provider = provider,
   client_id = Sys.getenv("GITHUB_OAUTH_CLIENT_ID"),
@@ -115,10 +112,7 @@ ui <- oauth_ui(fluidPage(
 
 # Server which obtains authentication
 server <- function(input, output, session) {
-  # Start authentication module; will automatically redirect unauthenticated users
-  #   to the provider's login page and handle the callback
-  # Returns reactive values with authentication status, token details, user info,
-  #   etc.
+  # Login and callback handling, with reactive status and token data
   auth <- oauth_module_server("auth", client)
 
   # Render login information:
@@ -144,11 +138,9 @@ runApp(
 # (viewers in RStudio/Positron/etc. cannot perform necessary redirects)
 ```
 
-> On Posit Connect or Connect Cloud, open the direct app URL in a
-> new browser tab or window to test login. The dashboard's embedded preview can
-> prevent OAuth redirects. On Connect Cloud, copy the sharing URL from
-> Settings > URL. Register the exact public callback URL with your provider.
-> See [deployment instructions](https://lukakoning.github.io/shinyOAuth/articles/usage.html#posit-connect-and-connect-cloud).
+> On Posit Connect and Connect Cloud, the direct app URL supports the browser
+> navigation used during login; embedded dashboard previews can block redirects.
+> See [deployment settings](https://lukakoning.github.io/shinyOAuth/articles/usage.html#posit-connect-and-connect-cloud).
 
 ### Logging/auditing
 
@@ -163,8 +155,9 @@ For exporter setup, see `vignette("opentelemetry", package = "shinyOAuth")`
 ## More information
 
 [Authentication flow](https://lukakoning.github.io/shinyOAuth/articles/authentication-flow.html)
-explains login requests, callbacks and token checks. Before deployment, work
-through the [security checklist](https://lukakoning.github.io/shinyOAuth/articles/usage.html#security-checklist).
+explains how the package handles login requests, callbacks and token checks.
+The [deployment guide](https://lukakoning.github.io/shinyOAuth/articles/usage.html#deployment)
+covers hosted app configuration.
 You can also read these guides in R with `vignette("authentication-flow", package = "shinyOAuth")`
 and `vignette("usage", package = "shinyOAuth")`.
 

@@ -114,10 +114,8 @@ Patient/Practitioner reads using the current token after every token response.
 No additional requests may escape after a locally rejected search, widening,
 foreign-owner read, disconnect or logout. Only counts and booleans are exported.
 
-Inferno stores request/response details, which can contain credentials and
-context. Keep raw exports out of Git and ordinary CI artifacts. Publish only a
-sanitized result summary under the ignored `.artifacts/` tree, excluding tokens,
-codes, launch handles, secrets, private keys and patient/context payloads.
+Inferno's raw request/response records can contain credentials and context.
+The runner's sanitized result summaries under `.artifacts/` exclude those values.
 
 ## Recorded complete matrix, 2026-09-12
 
@@ -184,9 +182,8 @@ sync/mirai combinations, including both recorded POST bodies exceeding 8 KiB.
 The complete cross-profile transport matrix is the 32-scenario command above;
 focused results do not satisfy it.
 
-Keep our own SMART scope/context tests, ID-token validation, callback defenses,
-refresh continuity and resource-binding checks, plus the P3/P5 browser ownership
-and retention tests. Keep the independent RS384/strict-AS and Keycloak suites.
-An Inferno result covers the selected tests and version, not full certification
-or proof of server-side authorization enforcement. Resolve tool compatibility
-issues explicitly without weakening the client's protocol validation.
+Inferno complements the package's scope/context, identity-token, callback,
+refresh, resource-binding and browser-ownership tests, and the independent
+RS384/strict-AS and Keycloak suites. Its results cover the selected tests and
+version, without establishing full certification or server-side authorization
+enforcement.

@@ -23,9 +23,8 @@
 #' For OIDC, shinyOAuth checks that the returned profile belongs to the validated
 #' login. A raw access-token string cannot provide that identity check.
 #'
-#' `userinfo_required = FALSE` disables automatic profile retrieval, not the
-#' identity or signature checks on a manual call. Request and validate the
-#' fields your app needs.
+#' `userinfo_required = FALSE` disables automatic profile retrieval. Identity
+#' and signature checks still apply to manual calls.
 #'
 #' @section Advanced response validation:
 #' Normal JSON profiles and signed JWT profiles are supported; encrypted UserInfo
@@ -37,7 +36,7 @@
 #' token, including for manual retrieval. Explicit `userinfo_id_token_match = FALSE`
 #' allows retrieval without one, but when both are available their `sub` values
 #' must always match. Standard profile fields are checked for the expected JSON
-#' types; validate application-specific values and extension fields yourself.
+#' types; extension fields retain their provider-defined values.
 #'
 #' For DPoP or mTLS-bound tokens, the client supplies the matching signing key or
 #' certificate. See the
@@ -49,8 +48,8 @@
 #' @param token Either an [OAuthToken] object or a raw access token string.
 #' @param token_type Optional override for the access token type when `token`
 #'   is provided as a raw string. Supported values are `Bearer` and `DPoP`.
-#' @param shiny_session Optional captured Shiny session details for audit events.
-#'   Normally supplied by the module; leave `NULL` when calling directly.
+#' @param shiny_session Optional captured Shiny session details for audit events,
+#'   normally supplied by the module.
 #'
 #' @return A list containing the user information returned by the provider.
 #'   For JSON responses, arrays are simplified to vectors or data frames where

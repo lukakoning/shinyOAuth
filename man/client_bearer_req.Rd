@@ -44,9 +44,8 @@ user-supplied replacements.}
 \item{follow_redirect}{Logical or \code{NULL}. \code{FALSE} (the default) disables
 HTTP redirects even when \code{shinyOAuth.allow_redirect} is enabled.
 \code{NULL} inherits that global option (disabled by default).
-Set to \code{TRUE} only if you trust all possible redirect targets and
-understand the security implications. DPoP requests reject enabled
-redirects because each target needs a new proof; use \code{FALSE} for DPoP.}
+\code{TRUE} enables redirects. DPoP requests reject enabled redirects because
+each target needs a new proof.}
 
 \item{check_url}{Logical. If \code{TRUE} (the default), validates \code{url} against
 \code{\link[=is_ok_host]{is_ok_host()}} before attaching the access token. This rejects relative
@@ -54,8 +53,8 @@ URLs, plain HTTP to non-loopback hosts, and when
 \code{options(shinyOAuth.allowed_hosts)} is set, hosts outside the allowlist.
 Without an allowlist this performs HTTPS and URL-syntax validation only
 (with the configured non-HTTPS exceptions); any HTTPS host is accepted.
-Set to \code{FALSE} only if you have already validated the URL and understand
-the security implications.}
+\code{FALSE} skips this policy check; URL length and resource-host restrictions
+still apply.}
 
 \item{client}{Optional \link{OAuthClient}; required for DPoP or mTLS-bound tokens
 so the request can use the matching signing key or certificate and check
@@ -75,9 +74,8 @@ request. This is primarily useful after a resource server challenges with
 \item{resource_hosts}{Optional non-empty character vector of trusted resource
 host patterns, using \code{\link[=is_ok_host]{is_ok_host()}} matching rules. This call-scoped
 allowlist adds to the global policy and is enforced even if \code{check_url}
-is \code{FALSE}. Use exact hostnames for URLs derived from lower-trust input.
-It constrains the initial URL, not redirect destinations or resolved IPs;
-retain \code{follow_redirect = FALSE}. \code{NULL} adds no resource-specific policy.}
+is \code{FALSE}. It constrains the initial URL, not redirect destinations or
+resolved IPs. \code{NULL} adds no resource-specific policy.}
 
 \item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }

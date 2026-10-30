@@ -65,9 +65,7 @@ using the exact service URL for `OAUTH_REDIRECT_URI`.
 ## Maintaining the image
 
 Its Rocker base image is pinned by digest and its Posit Package Manager
-repository defaults to the dated `2026-07-21` snapshot. When updating either
-pin, review the resulting dependency changes and update both values
-intentionally.
+repository defaults to the dated `2026-07-21` snapshot.
 
 
 This demo uses in-process login state. If production callbacks can reach a

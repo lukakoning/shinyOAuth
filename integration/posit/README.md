@@ -74,9 +74,8 @@ different code. Regenerate the manifest for the required commit.
 
 ## Deployment reference
 
-Keep `manifest.json` alongside the selected app file. If callbacks can reach
-different R processes, configure
-shared state and a shared key as described in
+The selected app file and `manifest.json` share a directory. Callbacks spanning
+multiple R processes require shared state and a shared key; see
 [Getting started](../../vignettes/usage.Rmd).
 
 - [Connect Cloud Shiny deployment](https://docs.posit.co/connect-cloud/how-to/r/shiny-r.html)

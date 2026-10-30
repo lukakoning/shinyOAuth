@@ -10,27 +10,23 @@
 #' OAuth 2.0 authorization and OIDC authentication module for Shiny
 #'
 #' @description
-#' Call `oauth_module_server()` inside your Shiny `server()` function to manage
-#' login for each user. It sends users to the provider, checks their return,
-#' and gives your app reactive login status and user information.
-#' Create `client` with [oauth_client()] outside `server()`, and wrap your
-#' complete UI with `oauth_ui(ui, id = "auth", client = client)`, using the
-#' same module ID and client. Use [oauth_form_post_ui()] for POST callbacks.
-#' These wrappers include the browser dependency; no separate
-#' [use_shinyOAuth()] call is needed.
+#' Manage login for a Shiny server module. The module sends the browser to the
+#' provider, validates the return, and publishes reactive login status and user
+#' information. An [oauth_client()] supplies the registration and policy;
+#' [oauth_ui()] handles query callbacks and [oauth_form_post_ui()] handles POST
+#' callbacks. The matching UI wrapper includes browser setup.
 #'
 #' With an OpenID Connect (OIDC) provider, it also validates the signed-in user's
-#' identity. Your app still decides what that user may do.
+#' identity.
 #'
 #' @details
-#' Login starts automatically by default. Use `auto_redirect = FALSE` and
-#' `auth[["request_login"]]()` to start it from a button. Read `auth[["authenticated"]]`
-#' in reactive code, and use `req(auth[["authenticated"]])` before server operations
-#' that require login. Your app must also enforce its own access rules.
+#' Login starts automatically by default. With `auto_redirect = FALSE`,
+#' `auth[["request_login"]]()` starts the same flow explicitly. The module publishes
+#' `auth[["authenticated"]]` and the accepted token after its configured checks pass.
 #'
-#' After login, `connection <- shiny::req(auth$connection())` gives your server
-#' access to the current credentials. Use `connection$request()` to call an API,
-#' or `connection$access_token()` for another R package. See
+#' After login, `auth$connection()` returns a session-bound reference to the
+#' current credentials. `connection$request()` calls a configured API, while
+#' `connection$access_token()` supplies a token for another R package. See
 #' `vignette("external-integrations", package = "shinyOAuth")`
 #' ([online guide](https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html))
 #' for examples.
@@ -39,23 +35,19 @@
 #' instructions for registration, API calls, and deployment.
 #'
 #' @section Asynchronous execution:
-#' With `async = TRUE`, configure [mirai::daemons()] or a non-sequential
-#' [future::plan()] before starting the app. Slow provider requests can then
-#' run outside the main R process. Without this, network waits can delay all
-#' Shiny sessions sharing that process.
+#' With `async = TRUE` and configured mirai workers or a non-sequential future
+#' plan, provider requests run outside the main R process. Synchronous network
+#' waits otherwise delay Shiny sessions sharing that process.
 #'
 #' @section Browser setup:
-#' Open the app's entry URL in a regular browser. Its configured callback URL
-#' must match the one registered with the provider. IDE viewers and embedded
-#' dashboard previews can prevent login.
-#' On Posit Connect or Connect Cloud, open the direct app URL in a new tab;
-#' on Connect Cloud it is available under Settings > URL.
+#' The UI wrapper handles the registered callback URL. IDE viewers and embedded
+#' dashboard previews can block the browser navigation used during login.
+#' On Posit Connect and Connect Cloud, the direct app URL provides top-level
+#' navigation; Connect Cloud exposes it under Settings > URL.
 #'
-#' Complete login in the tab that started it. Cookies, session storage and Web
-#' Crypto must be enabled. Keep private browser tokens out of bookmarks, URLs
-#' and logs. Use a separate hostname from untrusted services, because browser
-#' cookies are shared across ports. See the advanced security vignette for
-#' browser-binding and deployment details.
+#' The module establishes browser binding through cookies, tab-scoped session
+#' storage and Web Crypto, and checks it on return. The advanced security vignette
+#' describes these browser boundaries and their deployment implications.
 #'
 #' @section Session lifetime:
 #' Token refresh does not extend the configured maximum login age. A new login
@@ -100,8 +92,8 @@
 #'   (default) for no forced reauthentication. Refresh does not reset this timer;
 #'   `indefinite_session = TRUE` ignores it. When the limit is reached, local
 #'   access is cleared and a new login is required.
-#'   With token targets, choose a finite limit if the app needs one: token expiry
-#'   alone need not end the local login. SMART clients using OIDC require `NULL`
+#'   With token targets, API-token expiry alone need not end local login; this
+#'   argument limits the whole authorization. SMART clients using OIDC require `NULL`
 #'   unless `indefinite_session = TRUE`. See Session lifetime for provider behavior.
 #'
 #' @param refresh_proactively If `TRUE`, obtain a replacement access token before
@@ -159,8 +151,7 @@
 #'   `"Lax"`, or `"None"`. `"Lax"` allows the cookie on top-level cross-site
 #'   navigations, which some proxy arrangements require. `"None"` also allows
 #'   cross-site cookie use in other contexts; it requires HTTPS and sets the
-#'   cookie's `Secure` attribute. Keep `"Strict"` unless the deployment needs
-#'   these broader cookie-sending rules.
+#'   cookie's `Secure` attribute.
 #'
 #' @return A [shiny::reactiveValues()] object. If you assign it to `auth`,
 #'   its main fields are:
@@ -222,12 +213,12 @@
 #'     `shinyOAuth.par_expires_in`, and `shinyOAuth.par_expires_at` attributes
 #'     to help you decide when to regenerate the link. `request_login()`
 #'     handles these details for button-based login.
-#'     Inside `observeEvent()`, register the promise handler and then return
-#'     `invisible(NULL)` so Shiny can process the browser acknowledgment. Do not
-#'     return the pending promise from the observer itself.
-#'   - `auth[["has_browser_token"]]()`: reports whether the browser token is
-#'     available. Use it before building a custom login URL; it does not report
-#'     whether the user is authenticated.
+#'     A custom observer's promise handler runs after browser acknowledgment.
+#'     Returning `invisible(NULL)` from that observer lets Shiny process the
+#'     acknowledgment; awaiting the pending promise in the observer blocks it.
+#'   - `auth[["has_browser_token"]]()`: reports browser-binding readiness,
+#'     independently of authentication state. The normal login methods manage
+#'     browser setup automatically.
 #'   - `auth[["set_browser_token"]]()`: asks the browser to establish its binding
 #'     when missing. The token becomes available after the browser reports it
 #'     back to Shiny. An existing token is left unchanged.

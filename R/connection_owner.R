@@ -1,14 +1,13 @@
 #' Configure ownership of retained OAuth connections
 #'
-#' Choose who may use saved OAuth connections: the browser that created them,
-#' or an account already authenticated by your application. Supply the policy to
-#' [oauth_connections()] with the matching retention mode. These factories do not
-#' set cookies, authenticate users or enable retention on [oauth_module_server()]
-#' calls by themselves.
+#' Defines ownership of saved connections for [oauth_connections()]: either the
+#' browser that created them or an account authenticated by the application.
+#' The manager applies the policy when its matching retention mode is enabled;
+#' these functions create configuration only.
 #'
 #' @param idle_timeout Maximum owner inactivity in seconds. Resource and status
-#'   reads do not count as activity. Use the server manager's `touch()` from a user
-#'   input event handler; connecting, explicit refresh and disconnect also count.
+#'   reads do not count as activity. The manager's `touch()` records explicit
+#'   activity; connecting, explicit refresh and disconnect also count.
 #' @param absolute_timeout Maximum owner lifetime in seconds, independent of
 #'   activity. Must be at least `idle_timeout`.
 #' @param same_site Owner-cookie policy, `"Lax"` for top-level authorization
@@ -39,9 +38,9 @@
 #' owner without a matching live server record for this application origin.
 #'
 #' @section Deployment details:
-#' Host the app separately from untrusted services. Browser cookies are shared
-#' across ports on a hostname, so another HTTPS service receiving the owner
-#' cookie could reuse it. Different cookie names do not isolate those services.
+#' Browser cookies are shared across ports on a hostname, so another HTTPS
+#' service receiving the owner cookie could reuse it. Cookie names do not
+#' establish separate trust boundaries for those services.
 #' With `same_site = "Strict"`, external-entry recovery needs same-origin Fetch
 #' Metadata, `Referer` or `Origin` headers; a proxy must preserve that information.
 #'
@@ -56,7 +55,7 @@
 #' sessions or retirement records. Browser session end does not release ownership; logout or
 #' idle/absolute expiry does. Account logout retains its retired generation until
 #' `authenticated_at + reauth_after_seconds` so it cannot be enrolled again.
-#' Size `max_entries` for that entire window, not only simultaneous Shiny sessions.
+#' Retired generations count toward `max_entries` throughout that window.
 #'
 #' @seealso [oauth_connection_store_memory()]
 #' @examples
@@ -111,8 +110,8 @@ oauth_browser_owner <- function(
 #'   `session_id`, `generation`, `authenticated_at` and `expires_at`. The first
 #'   three are non-empty strings; the timestamps are finite Unix seconds. Subject
 #'   is the stable local account ID. Session ID and generation identify the current
-#'   local authentication session. Do not derive these from unverified Shiny inputs,
-#'   URL values, email addresses or the external provider's token response.
+#'   local authentication session, as established by the application's verified
+#'   local login rather than the external OAuth authorization.
 #' @param reauth_after_seconds Maximum age of the verified local authentication,
 #'   in seconds. Required for account retention; refresh cannot reset this age.
 #' @details
@@ -121,9 +120,8 @@ oauth_browser_owner <- function(
 #' validating an owner and checks the intended subject/session generation.
 #' Expiry or logout retires that generation until a fresh local authentication
 #' session is supplied. A resolver error fails closed with a redacted error.
-#' The application remains responsible for validating its local session, including
-#' signature, expiry, revocation and account changes. Supplying this configuration
-#' is not proof that an arbitrary user ID is authenticated.
+#' Local-session validation belongs to the application's resolver, including
+#' signature, expiry, revocation and account changes.
 #' @export
 oauth_account_owner <- function(
   resolver,

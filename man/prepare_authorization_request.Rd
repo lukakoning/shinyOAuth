@@ -27,7 +27,7 @@ A list with \code{method} (\code{"GET"} or \code{"POST"}), \code{url} and \code{
 \code{fields} is empty for GET; for POST it is a list of lists, each with scalar
 character \code{name} and \code{value}. PAR expiry attributes are preserved as
 documented in \code{\link[=prepare_call]{prepare_call()}}. The result contains transient authorization
-data: do not log it or expose it to other browser sessions.
+data for that login attempt.
 }
 \description{
 Creates the same one-use state, PKCE and nonce as \code{\link[=prepare_call]{prepare_call()}}, returning
@@ -36,20 +36,19 @@ that handle their own browser navigation and \code{\link[=handle_callback]{handl
 the module's \code{request_login()} sends the request automatically.
 }
 \details{
-For GET, navigate the browser to \code{url}. For POST, create a form with \code{url} as
-its action, method POST, and \code{application/x-www-form-urlencoded} encoding.
-Add one hidden input per \code{fields} entry, assigning its \code{name} and \code{value}
-through DOM properties or an HTML escaping library, then submit the form in
-the current browser window. Repeated names (such as OAuth \code{resource}) must
-remain repeated inputs. Do not send the authorization request from R: the
-provider needs to interact with the user's browser and login cookies.
+For GET, \code{url} is the browser navigation target. For POST, it is the action
+of an \code{application/x-www-form-urlencoded} browser form. Each \code{fields} entry
+represents one hidden input, with repeated names preserved as separate inputs.
+Names and values require DOM assignment or HTML escaping when constructing
+the form. Browser submission gives the provider access to the user's login
+cookies; an R HTTP request cannot perform that interaction.
 
-The client selects \code{authorization_method = "POST"} explicitly. Ordinary
-OAuth providers may not support POST; confirm their documentation first.
+The client selects \code{authorization_method = "POST"} explicitly; support
+depends on the provider.
 \code{\link[=smart_client]{smart_client()}} additionally requires the \code{authorize-post} capability.
 The outgoing method is independent of the callback \code{response_mode}.
 Configured PAR and Request Object requirements still apply. Each result
-belongs to one login attempt; do not cache it or reuse it after logout.
+belongs to one login attempt with single-use state.
 
 POST preserves the authorization endpoint's fixed query and sends newly
 composed fields in the body. It permits up to 256 fields and 128 KiB of

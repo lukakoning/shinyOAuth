@@ -1292,12 +1292,11 @@ otel_callback_parent_hint <- function(oauth_client, encrypted_payload) {
 #' @param code Authorization code received from the provider on a classic
 #'   direct callback.
 #' @param state Encrypted state payload returned by the provider on a classic
-#'   direct callback. This should be the same value that was originally sent in
-#'   [prepare_call()].
+#'   direct callback, unchanged from the value sent by [prepare_call()].
 #' @param browser_token Browser token present in the user's session. This is
 #'   usually managed by [oauth_module_server()].
-#' @param shiny_session Optional captured Shiny session details for audit events.
-#'   Normally supplied by the module; leave `NULL` when calling directly.
+#' @param shiny_session Optional captured Shiny session details for audit events,
+#'   normally supplied by the module.
 #'
 #' @param iss Optional RFC 9207 callback issuer (`iss`) from the authorization
 #'   response. Pass this when one callback URL can receive responses from more

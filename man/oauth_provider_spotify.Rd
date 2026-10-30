@@ -10,7 +10,7 @@ oauth_provider_spotify(name = "spotify", allow_legacy_id = FALSE)
 \item{name}{Optional provider name (default "spotify")}
 
 \item{allow_legacy_id}{Whether to fall back to Spotify's mutable \code{id} when
-\code{account_id} is absent. Default \code{FALSE}; enable only during migration.}
+\code{account_id} is absent. Default \code{FALSE}.}
 }
 \value{
 \link{OAuthProvider} object for use with a Spotify OAuth 2.0 app
@@ -22,14 +22,12 @@ plan to make. The helper configures profile retrieval through Spotify's API
 and does not expect an ID token.
 }
 \details{
-Spotify requires scopes to be included in the authorization request.
-Set requested scopes on the client with \code{oauth_client(..., scopes = ...)}.
-Identity uses Spotify's immutable \code{account_id}. Existing installations must
-migrate stored account mappings and audit digests from \code{id} before upgrading.
-Link the old and new identifiers only from a successfully authenticated
-profile; do not use display names or email to merge accounts. To temporarily
-preserve old mappings, explicitly replace \code{provider@userinfo_id_selector}
-with \code{function(userinfo) userinfo[["id"]]} while completing the migration.
+The client's \code{scopes} specify permissions in the authorization request.
+Identity uses Spotify's immutable \code{account_id}. Earlier versions used \code{id},
+so stored account mappings and audit digests based on that field will differ.
+A custom \code{provider@userinfo_id_selector}, such as
+\code{function(userinfo) userinfo[["id"]]}, retains the earlier identity mapping;
+\code{allow_legacy_id} only supplies a fallback when \code{account_id} is absent.
 }
 \examples{
 oauth_provider_spotify()

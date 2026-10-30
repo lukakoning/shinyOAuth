@@ -35,10 +35,10 @@ Configure institutional OIDC login through SURFconext. Register your service
 with SURFconext before using its client credentials with \code{\link[=oauth_client]{oauth_client()}}.
 }
 \details{
-Request the \code{"openid"} scope. Additional claims depend on your service's
+Login uses the \code{"openid"} scope. Additional claims depend on the service's
 agreed attribute release policy; requesting \code{"email"} or \code{"profile"} does
-not guarantee those attributes will be released. Use the validated issuer
-and \code{sub} to identify a user.
+not guarantee those attributes will be released. The validated issuer and
+\code{sub} establish the login identity.
 Test and production environments require their own service configuration.
 See the \href{https://www.surf.nl/en/services/identity-access-management/surfconext}{SURFconext overview}.
 }

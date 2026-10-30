@@ -29,8 +29,8 @@ the old connection; obtain a new one after the next login. A connection manager
 can retain the underlying login across navigation, but a new session gets its
 own connection reference.
 
-Call methods in the owning session's reactive context. \verb{$is_usable()} returns
-\code{FALSE} when access is unavailable; request and token methods raise errors.
+Methods check the owning Shiny session. \verb{$is_usable()} returns \code{FALSE} when
+access is unavailable; request and token methods raise errors.
 Permission checks do not prove the API will accept a request. The connection ID
 is read-only, is not a credential and cannot be used to authorize a request.
 }
@@ -40,8 +40,8 @@ is read-only, is not a credential and cannot be used to authorize a request.
 Reactive expressions that read \code{connection()}, \verb{$access_token()} or
 \verb{$has_scopes()} do not rerun on token refresh alone if the login and permissions
 stay the same. Status reads such as \verb{$summary()} may update more often. Reads
-do not extend a managed owner's inactivity limit; record user actions with
-the manager's \code{touch()} method inside input event handlers.
+do not extend a managed owner's inactivity limit. The manager's \code{touch()}
+method records explicit user activity.
 
 Use the module's \code{connection()} for coordinated token acquisition, refresh
 and token targets. The \code{\link[=oauth_connection]{oauth_connection()}} wrapper follows a supplied token
@@ -152,8 +152,8 @@ ends permission notifications for this authorization reference.}
 \subsection{\code{OAuthConnection$access_token()}}{
   Get a current bearer token for an SDK or database driver, refreshing when
 needed. Obtain this connection from a module's \code{connection()} method.
-Keep the returned token on the server. The method does not start login,
-request new permissions or retry the SDK operation.
+The method refreshes credentials when needed, without starting login,
+requesting new permissions or retrying the SDK operation.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$access_token(
@@ -513,8 +513,8 @@ response yet has status \code{not_acquired}; this is not proof of denied consent
   \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
 Fetch the contextual Patient or validated fhirUser through the approved
-FHIR base, using current read permissions. Prefer \code{\link[=smart_patient]{smart_patient()}} and
-\code{\link[=smart_fhir_user]{smart_fhir_user()}} in application code.
+FHIR base, using current read permissions. \code{\link[=smart_patient]{smart_patient()}} and
+\code{\link[=smart_fhir_user]{smart_fhir_user()}} are the corresponding public helpers.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{OAuthConnection$smart_resource(kind)}

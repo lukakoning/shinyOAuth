@@ -18,9 +18,9 @@ refresh_token(
 
 \item{token}{\link{OAuthToken} object containing the refresh token}
 
-\item{async}{If \code{TRUE}, return a promise resolving to the result.
-Configure mirai daemons or a future plan first; mirai takes priority.
-Use a non-sequential future plan to move work outside the main R process.
+\item{async}{If \code{TRUE}, return a promise resolving to the result, using
+configured mirai daemons or a future plan; mirai takes priority. A
+non-sequential backend moves work outside the main R process.
 Default \code{FALSE} waits and returns the result directly.}
 
 \item{introspect}{\code{NULL} (default) or a logical. After a successful refresh,
@@ -32,8 +32,8 @@ introspection is unsupported, inactive, or missing required
 separately, but a successful introspection response may backfill
 \code{token@cnf}.}
 
-\item{shiny_session}{Optional captured Shiny session details for audit events.
-Normally supplied by the module; leave \code{NULL} when calling directly.}
+\item{shiny_session}{Optional captured Shiny session details for audit events,
+normally supplied by the module.}
 
 \item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 }
@@ -72,12 +72,10 @@ In \code{oauth_module_server()}, this clears the session and sets
 \code{indefinite_session = TRUE} keeps it with \code{token_stale = TRUE}.
 }
 \description{
-Use a refresh token to obtain a new access token without sending the user
-through login again. Call this when your application manages token lifetime
-itself, for example before continuing API requests with an expiring token.
-Assign the returned \link{OAuthToken} to keep the updated credentials.
-\code{\link[=oauth_module_server]{oauth_module_server()}} can manage refresh during a Shiny session with
-\code{refresh_proactively = TRUE} when a refresh token is available.
+Obtains a new access token using a refresh token, without an interactive login.
+This low-level helper returns a new \link{OAuthToken}; it does not replace the input
+object. \code{\link[=oauth_module_server]{oauth_module_server()}} and \code{\link[=oauth_connections_server]{oauth_connections_server()}} manage token
+replacement and automatic refresh for their connections.
 }
 \details{
 The provider may replace the refresh token too; otherwise the old refresh
@@ -97,26 +95,25 @@ claim validation runs when \code{id_token_validation = TRUE}. Userinfo is checke
 against a validated ID token when both are available;
 \code{userinfo_id_token_match = TRUE} requires that baseline.
 
-Refresh does not establish a new interactive login. Use the module's
-\code{reauth_after_seconds} argument when a fresh login is required.
+Refresh preserves the original interactive login time. The module's
+\code{reauth_after_seconds} sets a separate limit on that login's age.
 A returned ID token must have an \code{iat} at or after the refresh request start,
 allowing the provider's configured clock leeway and same-second issuance.
 
 Within one R process, overlapping asynchronous calls for the same client and
 refresh token share one promise and result. Token snapshots, client settings,
 and validation options must match; conflicting calls fail before dispatch.
-A synchronous or reentrant call while that refresh is pending raises an error;
-await the existing promise instead. Separate R processes require coordination
-by the application. The input token is a value object: store the returned
-token for subsequent refreshes, and use an application generation check when
-assigning results after logout or a new login. Completed results are not cached.
+A synchronous or reentrant call while that refresh is pending raises an error.
+Coordination covers one R process; completed results are not cached. The module
+manages token replacement and checks that the result still belongs to the current
+login. Direct calls return a value object without that session-level assignment.
 
 Refresh errors carry a non-secret \code{refresh_credential_outcome} field:
 \code{"not_consumed"}, \code{"consumed"}, \code{"possibly_consumed"}, or \code{"rejected"}.
-Only \code{"not_consumed"} permits retrying the input refresh credential. After
-any other outcome (including an unavailable worker result), discard that
-credential and require a new login. This does not accept unvalidated access
-or identity data. The module applies this rule even with indefinite sessions.
+Only \code{"not_consumed"} permits retrying the input refresh credential. Other
+outcomes, including an unavailable worker result, require new authorization.
+The module applies this rule automatically, even with indefinite sessions;
+unvalidated access or identity data is never accepted.
 }
 \examples{
 # get_userinfo(), introspect_token(), and refresh_token() are typically
@@ -137,7 +134,7 @@ if (interactive()) {
   result <- introspect_token(client, token)
   isTRUE(result[["active"]])
 
-  # Requires a refresh token. Keep the returned replacement.
+  # Returns replacement credentials using the refresh token.
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.

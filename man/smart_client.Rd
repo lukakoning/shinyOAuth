@@ -130,11 +130,11 @@ The result is an \link{OAuthClient} for \code{\link[=oauth_module_server]{oauth_
 Discovery does not register your app or grant access.
 }
 \details{
-Choose \code{launch = "standalone"} when the user opens the app directly, or \code{"ehr"}
-when an electronic health record opens it. Use separate registrations for the
-two flows. Patient context describes the patient being viewed; it does not
-identify the person signed in. Enable \code{identity} only when the app needs that
-identity too. See \code{vignette("smart-on-fhir", package = "shinyOAuth")}
+\code{launch = "standalone"} describes an app opened directly; \code{"ehr"} describes
+one opened from an electronic health record. Each flow has its own app
+registration. Patient context identifies the chart being viewed; \code{identity}
+separately controls validation of the signed-in user. See
+\code{vignette("smart-on-fhir", package = "shinyOAuth")}
 (\href{https://lukakoning.github.io/shinyOAuth/articles/smart-on-fhir.html}{online guide})
 for a complete app.
 }
@@ -147,8 +147,8 @@ the user's FHIR reference. \code{"none"} does not enable OIDC automatically.
 
 Supported flows use direct authorization and query or form POST callbacks.
 Claims requests, remote authentication-freshness overrides, JAR, PAR, JARM,
-DPoP and mTLS are not supported by this constructor. Each EHR launch needs a
-fresh registered launch transaction; do not reuse a shared launch handle.
+DPoP and mTLS are not supported by this constructor. The manager establishes
+a fresh registered transaction for each EHR launch; launch handles are single-use.
 
 Tokens need a positive lifetime. Only an initial response may omit
 \code{expires_in}, and only with an explicit \code{initial_expires_in_fallback}.

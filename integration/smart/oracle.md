@@ -48,9 +48,8 @@ Advertisements and configuration acceptance are not proof of runnable registrati
 
 Once an account becomes available:
 
-1. Register the actual application redirect and EHR launch URLs, then keep the
-   client ID, secret or private key outside Git. Confirm which sandbox client
-   profiles can actually be registered; metadata alone is insufficient.
+1. Register the application redirect and EHR launch URLs for each supported
+   sandbox client profile.
 2. Start with standalone patient access at the patient base and provider EHR
    launch at the provider base. Use synthetic context chosen in the console.
    A standalone clinician flow must use a supported scope/context combination.
@@ -72,8 +71,5 @@ resource bindings but do not constitute two independent EHR systems. A two-site
 portability result needs separately configured sites/datasets; cross-vendor
 evidence needs another implementation.
 
-Run hosted vendor scenarios on demand or before release, recording the checkout,
-date, persona, registration profile, launch mode and sanitized outcomes. Never
-turn an unavailable account, service outage or unexecuted row into a passing
-interoperability result. Avoid exporting tokens, secrets, launch handles or
-patient payloads in ordinary CI artifacts.
+Hosted vendor evidence records the checkout, date, persona, registration
+profile, launch mode and sanitized outcomes for each completed scenario.

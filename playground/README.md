@@ -7,7 +7,7 @@ see [the installed example](../inst/examples/spotify-dashboard.R).
 
 Read a script's setup comments and replace its credentials, URLs, and key paths
 with your own before running it. Open the app at the exact configured
-`redirect_uri` in a regular browser. Keep real secrets out of Git.
+`redirect_uri` in a regular browser.
 
 - `example-github.R`, `example-github-button.R`, and `example-github-async.R`
   explore automatic login, a login button, and background work.

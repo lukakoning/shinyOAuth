@@ -32,18 +32,17 @@ A full store rejects creation instead of evicting another connection.}
 An \code{OAuthConnectionStore} adapter with the methods described below.
 }
 \description{
-Create the in-memory storage used by \code{\link[=oauth_connections]{oauth_connections()}} to keep encrypted
-credentials across Shiny sessions. Create one store outside \code{server()} and
-enable browser or account retention on the manager. Records last only for
-the R process's lifetime; the store rejects use from a copied worker process.
+Stores encrypted credentials for \code{\link[=oauth_connections]{oauth_connections()}} across Shiny sessions
+with browser or account retention. The store belongs to the manager rather than
+an individual Shiny session. Records last for the R process's lifetime;
+the store rejects use from a copied worker process.
 }
 \details{
-Methods are trusted server-side operations. The manager must validate the
-current owner session and generation before calling them. The opaque owner
-identifier scopes records and can survive session rotation; knowledge of an
-owner or connection ID does not authenticate a user.
-Records contain ciphertext only. Encryption keys stay with the manager, outside
-this adapter. Never expose these methods or credential imports as HTTP routes.
+These are low-level storage operations, called after the manager validates the
+current owner session and generation. The adapter scopes records by owner ID;
+it does not authenticate a caller from an owner or connection ID.
+Records contain ciphertext only. Encryption keys stay with the manager,
+outside this adapter.
 \itemize{
 \item \verb{[["create"]](owner, id, transaction, client, fingerprint, sealed, expires_at)}
 returns a record with a new revision, or \code{NULL} for a duplicate connection/transaction.

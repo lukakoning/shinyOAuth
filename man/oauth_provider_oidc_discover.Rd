@@ -61,30 +61,23 @@ discovery fails with a configuration error (no fallback).}
 \item{allowed_token_types}{Character vector of allowed token types for
 access tokens issued by this provider. Defaults to 'Bearer'}
 
-\item{jwks_host_issuer_match}{When TRUE (default), enforce that the JWKS host
-discovered from the provider matches the issuer host exactly. For
-providers that serve JWKS from a different host, set
-\code{jwks_host_allow_only} to the exact hostname instead of disabling this.
-Disabling (\code{FALSE}) is not recommended unless you also pin JWKS via
-\code{jwks_host_allow_only} or \code{jwks_pins}.}
+\item{jwks_host_issuer_match}{When TRUE (default), require the discovered
+JWKS host to match the issuer host exactly. \code{jwks_host_allow_only} takes
+precedence and can specify a different exact hostname. \code{FALSE} disables
+issuer-host matching.}
 
 \item{issuer_match}{Character scalar controlling how strictly to validate the
 discovery document's \code{issuer} against the input \code{issuer}.
 \itemize{
 \item \code{"url"} (default): require the issuer used for discovery to match
-exactly, including any trailing slash (recommended). For a full discovery
-URL input, require the discovered issuer's standard metadata location to
-match that URL instead.
-\item \code{"host"}: compare only scheme + host (explicit opt-out; not recommended).
-\item \code{"none"}: do not validate issuer consistency.
-}
+exactly, including any trailing slash. For a full discovery URL input,
+require the discovered issuer's standard metadata location to match that URL.
+\item \code{"host"}: compare only scheme + host.
+\item \code{"none"}: skip issuer-consistency validation.
+}}
 
-Prefer \code{"url"} and tighten hosts via \code{options(shinyOAuth.allowed_hosts)}
-when feasible.}
-
-\item{...}{Additional fields passed to \code{\link[=oauth_provider]{oauth_provider()}} (for example,
-\code{pkce_method = "plain"} when a provider explicitly advertises only plain
-PKCE support and you intentionally want to allow that downgrade).}
+\item{...}{Additional fields passed to \code{\link[=oauth_provider]{oauth_provider()}}, including
+\code{pkce_method = "plain"} for compatibility with plain-only PKCE metadata.}
 
 \item{allowed_algs}{Compatibility alias for \code{id_token_allowed_algs}. Supply only one spelling.}
 }

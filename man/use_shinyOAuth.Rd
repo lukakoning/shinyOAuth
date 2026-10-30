@@ -10,38 +10,26 @@ use_shinyOAuth(inject_referrer_meta = TRUE)
 \item{inject_referrer_meta}{If TRUE (default), adds a meta tag to the page:
 an instruction asking the browser not to share the page's address when
 loading images, scripts, or other files. Some files may start loading
-before the browser reads this instruction. Use \code{\link[=oauth_ui]{oauth_ui()}} to provide
-this protection from the start of page loading.}
+before the browser reads this instruction. The UI wrappers also set the
+HTTP header, which applies from the start of page loading.}
 }
 \value{
 A \code{tagList} that loads the browser code once.
 }
 \description{
-For ordinary apps, prefer \code{oauth_ui(ui, id = "auth", client = client)};
-it includes this dependency, callback handling, and response headers. Use
-\code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} for POST callbacks or \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} with
-a connection manager. No separate \code{use_shinyOAuth()} call is needed with
-these wrappers.
+Adds shinyOAuth's JavaScript so \code{\link[=oauth_module_server]{oauth_module_server()}} can redirect the
+browser and manage its temporary login cookie. This low-level helper supplies
+the browser dependency for custom HTTP integrations.
 
-Add shinyOAuth's JavaScript to a page so \code{\link[=oauth_module_server]{oauth_module_server()}} can redirect
-the browser and manage its temporary login cookie. Use this inside an
-existing \code{fluidPage()} or \code{tagList()} when you integrate the browser
-dependency directly and configure response headers elsewhere, such as in
-your web server or another UI wrapper.
+\code{\link[=oauth_ui]{oauth_ui()}}, \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}} and \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} already
+include this dependency, callback handling and response headers.
 }
 \details{
-\code{\link[=oauth_ui]{oauth_ui()}} combines this browser setup with the HTTP header
-\code{Referrer-Policy: no-referrer}, which prevents callback URLs from being
-sent as referrers when page resources load. When using \code{\link[=use_shinyOAuth]{use_shinyOAuth()}}
-directly, set that header in your HTTP response configuration for protection
-from the start of page loading; the optional meta tag takes effect later.
-\code{\link[=oauth_ui]{oauth_ui()}}, \code{\link[=oauth_form_post_ui]{oauth_form_post_ui()}}, and \code{\link[=oauth_connections_ui]{oauth_connections_ui()}} already
-include this dependency.
-The dependency alone does not provide a callback bridge. Do not load
-application or third-party scripts on raw OAuth callback pages; use
-\code{oauth_ui(ui, id, client)} or a dedicated equivalent endpoint to redirect to
-a clean URL before rendering the app. Callback responses must also send
-\code{Cache-Control: no-store} and \code{Pragma: no-cache}.
+The UI wrappers process callbacks before rendering application HTML, redirect
+to a clean URL, and send \code{Referrer-Policy: no-referrer},
+\code{Cache-Control: no-store} and \code{Pragma: no-cache}. A custom HTTP integration
+provides that handling separately. This dependency cannot set HTTP headers;
+its optional referrer meta tag takes effect only after the browser reads it.
 }
 \examples{
 # Low-level browser setup for a custom HTTP integration.

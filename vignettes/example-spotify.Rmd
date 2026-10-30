@@ -111,8 +111,7 @@ the token if needed before the request.
 displays it for the current login. The observer clears cached tracks on logout,
 a new login, or loss of permission to read them.
 
-For other data, choose the API URL and requested scopes together. A successful
-login does not mean every API is available to the app. Empty results can be
+Other Spotify endpoints require their corresponding scopes. Empty results can be
 normal for accounts without listening history; API errors can indicate missing
 permissions, app access restrictions, or request limits.
 
@@ -131,5 +130,5 @@ file.show(dashboard_file)  # Read or copy the complete source.
 source(dashboard_file)    # Run after setting your Spotify credentials.
 ```
 
-When adapting the dashboard's HTML output, keep its URL checks and text escaping
-for data fetched from Spotify.
+The installed dashboard validates Spotify link and image URLs and escapes
+text in its HTML output.

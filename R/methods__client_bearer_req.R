@@ -13,21 +13,17 @@
 #' send in one step, use [perform_resource_req()].
 #'
 #' @details
-#' Only send a token to an API you intend to authorize. The package applies its
-#' URL policy, timeouts, and redirect defaults. It supports Bearer authentication
-#' and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
-#' also supply `client` so the request uses the matching key or
-#' certificate.
+#' The package applies its URL policy, timeouts and redirect defaults. It supports
+#' Bearer authentication and tokens tied to a key (DPoP) or certificate (mTLS).
+#' For DPoP or mTLS, `client` supplies the matching key or certificate.
 #'
-#' Use [perform_resource_req()] to send the prepared request with the package's
-#' response-size limits. Sending it through [httr2::req_perform()] instead uses
-#' httr2's transport settings. Keep tokens on the server and away from logs.
+#' [perform_resource_req()] sends the prepared request with the package's
+#' response-size limits. [httr2::req_perform()] uses httr2's transport settings.
 #'
 #' @section Advanced request restrictions:
-#' Do not combine the managed Authorization header with an `access_token` query
-#' parameter or form field. The helper checks ordinary URL and form inputs, but
-#' does not inspect file, multipart or streaming bodies. You are responsible for
-#' avoiding additional credential fields there and after later request changes.
+#' The helper rejects additional `access_token` credentials in ordinary URL and
+#' form inputs. File, multipart and streaming bodies, and changes made after
+#' preparation, are outside that check.
 #'
 #' [perform_resource_req()] limits both downloaded bytes and decoded gzip data.
 #' Direct httr2 execution does not provide shinyOAuth's decoded-response limit;
@@ -53,23 +49,21 @@
 #' @param follow_redirect Logical or `NULL`. `FALSE` (the default) disables
 #'   HTTP redirects even when `shinyOAuth.allow_redirect` is enabled.
 #'   `NULL` inherits that global option (disabled by default).
-#'   Set to `TRUE` only if you trust all possible redirect targets and
-#'   understand the security implications. DPoP requests reject enabled
-#'   redirects because each target needs a new proof; use `FALSE` for DPoP.
+#'   `TRUE` enables redirects. DPoP requests reject enabled redirects because
+#'   each target needs a new proof.
 #' @param check_url Logical. If `TRUE` (the default), validates `url` against
 #'   [is_ok_host()] before attaching the access token. This rejects relative
 #'   URLs, plain HTTP to non-loopback hosts, and when
 #'   `options(shinyOAuth.allowed_hosts)` is set, hosts outside the allowlist.
 #'   Without an allowlist this performs HTTPS and URL-syntax validation only
 #'   (with the configured non-HTTPS exceptions); any HTTPS host is accepted.
-#'   Set to `FALSE` only if you have already validated the URL and understand
-#'   the security implications.
+#'   `FALSE` skips this policy check; URL length and resource-host restrictions
+#'   still apply.
 #' @param resource_hosts Optional non-empty character vector of trusted resource
 #'   host patterns, using [is_ok_host()] matching rules. This call-scoped
 #'   allowlist adds to the global policy and is enforced even if `check_url`
-#'   is `FALSE`. Use exact hostnames for URLs derived from lower-trust input.
-#'   It constrains the initial URL, not redirect destinations or resolved IPs;
-#'   retain `follow_redirect = FALSE`. `NULL` adds no resource-specific policy.
+#'   is `FALSE`. It constrains the initial URL, not redirect destinations or
+#'   resolved IPs. `NULL` adds no resource-specific policy.
 #' @param client Optional [OAuthClient]; required for DPoP or mTLS-bound tokens
 #'   so the request can use the matching signing key or certificate and check
 #'   any token-binding information.
@@ -84,11 +78,9 @@
 #'   request. This is primarily useful after a resource server challenges with
 #'   `DPoP-Nonce`.
 #'
-#' @return An [httr2] request object. Prefer passing it to
-#'   [perform_resource_req()] for bounded response handling. Callers may still add headers or query
-#'   parameters, but when the effective token type is `DPoP` they must not
-#'   change the request method or base URL after calling
-#'   [resource_req()] because the proof is already bound to those values.
+#' @return An [httr2] request object, accepted by [perform_resource_req()] for
+#'   bounded response handling. A DPoP proof is bound to the method and base URL
+#'   at preparation time; later changes to either invalidate it.
 #'
 #' @section DPoP note:
 #' DPoP proofs bind the current HTTP method and target URI (without query or
@@ -97,8 +89,7 @@
 #' Use the `query` argument to preserve encoded resource paths;
 #' external URL modifiers can decode reserved path characters. Changing the
 #' method, scheme, host, or path invalidates the proof.
-#' Automatic redirects are unsupported. Request a trusted final URL directly
-#' so the helper can create a proof bound to that URL.
+#' Automatic redirects are unsupported; each target URL requires its own proof.
 #'
 #' @example inst/examples/client_bearer_req.R
 #'
@@ -208,11 +199,9 @@ client_bearer_req <- function(
 #' response with [httr2::resp_body_json()] or another httr2 response helper.
 #'
 #' @details
-#' Only send a token to an API you intend to authorize. The package applies its
-#' URL policy, timeouts, and redirect defaults. It supports Bearer authentication
-#' and tokens tied to a key (DPoP) or certificate (mTLS). For DPoP or mTLS,
-#' also supply `client` so the request uses the matching key or
-#' certificate.
+#' The package applies its URL policy, timeouts and redirect defaults. It supports
+#' Bearer authentication and tokens tied to a key (DPoP) or certificate (mTLS).
+#' For DPoP or mTLS, `client` supplies the matching key or certificate.
 #'
 #' The helper applies `shinyOAuth.max_body_bytes` to response bodies, including
 #' gzip decompression. Use it for both URL strings and prepared httr2 requests.

@@ -27,8 +27,7 @@ existing_sdk_read_records(access_token = token)
 a permission name defined by the service; `required_scopes` checks the
 permissions needed for this operation. The other package sends its own request.
 
-First follow [Usage](usage.html) if you have not configured login. Keep tokens
-in server-side session code, away from logs, URLs and browser output.
+The examples build on the login setup in [Usage](usage.html).
 
 ## A complete Shiny example
 
@@ -113,13 +112,13 @@ shinyApp(ui, server, uiPattern = ".*")
 ```
 
 `uiPattern = ".*"` allows the example's `/callback` route.
-`req(auth$connection())` waits for a login, and `$has_scopes()` checks whether an
-optional feature is available. The operation must still check its permissions
-when it runs.
+`req(auth$connection())` waits for a login, and `$has_scopes()` checks whether
+an optional feature is available. The call to `$access_token(required_scopes = ...)`
+checks the operation's permissions before returning credentials.
 
-Keep the output's connection-ID and permission checks when adapting this code
-so private results from a previous login disappear after logout or a change of
-account. Store those results within the session, away from global app caches.
+The output compares the saved connection ID and current permissions before
+displaying records, so results from an earlier login disappear after logout
+or a change of account.
 
 ## Refresh and signing in again
 
@@ -132,8 +131,8 @@ Offer `auth$reauthorize()` when the user needs to sign in again. It preserves
 locally reduced permissions and ends the previous local login. Cancelling does
 not restore it. An ordinary new login requests the client's original scopes.
 
-The module's expiry and maximum-login-age settings still apply. See
-[Usage](usage.html#token-expiry-and-session-length) before changing that policy.
+Token retrieval follows the module's
+[expiry and maximum-login-age settings](usage.html#token-expiry-and-session-length).
 
 ## SDK token callbacks and database drivers
 
@@ -149,17 +148,17 @@ sdk <- reactive({
 })
 ```
 
-Replace `example_sdk_client()` with the package's constructor. Its callback
-belongs to the login that created it; create a new client after another login.
+`example_sdk_client()` stands for the package's constructor. The reactive
+expression builds a client for the current connection and rebuilds it when
+login changes; its callback remains bound to that connection.
 
 If a database driver only accepts a token string, acquire it just before opening
 or updating the database connection. A copied string cannot refresh itself.
-Follow the driver's connection-cleanup instructions and run writes from explicit
-user actions, such as button clicks.
 
 Exported bearer tokens carry the provider's full grant, even when the app applies
-narrower local permission checks. For DPoP or certificate-bound tokens, use
-shinyOAuth's `$request()` so the matching key or certificate is presented.
+narrower local permission checks. `$access_token()` rejects DPoP and
+certificate-bound tokens; `$request()` supplies the matching proof or
+certificate for those requests.
 
 ## Several accounts and optional profile retrieval
 
@@ -178,9 +177,10 @@ fields without fetching a new profile.
 
 ## Advanced: connection lifetime and permissions
 
-Use a connection only in its owning Shiny session's reactive code. Keep it out
-of workers and other sessions. Refresh preserves its ID; logout, replacement
-and session closure invalidate it, even if the same account signs in again.
+A connection belongs to one Shiny session, and its methods check that
+ownership before resolving credentials. Refresh preserves its ID; logout,
+replacement and session closure invalidate it, even if the same account signs
+in again.
 
 Reads of `connection()`, `$access_token()` and `$has_scopes()` do not rerun on
 refresh alone when login and permissions stay the same. Use `$summary()` for
@@ -222,10 +222,9 @@ promises::then(pending, function(token) {
 })
 ```
 
-Logout or a permission change can happen after token acquisition, before
-the callback runs. Recheck the current connection and permissions before
-using it and again before displaying results. The other package still needs its
-own background-request mechanism if its calls block R.
+The callback compares the current connection and permissions because logout
+or a permission change can occur while token acquisition runs. The other package
+still needs its own background-request mechanism if its calls block R.
 
 ### Handling token errors
 
@@ -280,10 +279,9 @@ output$records <- shiny::renderTable({
 })
 ```
 
-Require enough remaining token lifetime to cover worker startup and the operation.
-Keep the connection-ID and permission checks before displaying the result, even
-for work started by a button. Do not use `cancelOutput = TRUE` for this guard,
-because it retains the previous output.
+The requested token lifetime covers worker startup and the operation.
+Before displaying results, the output checks connection ID and permissions;
+the default `req()` behavior clears output when those checks fail.
 
 See the [Shiny background-task guide](https://shiny.posit.co/r/articles/improve/nonblocking/)
 for scheduling, and [OAuthConnection](https://lukakoning.github.io/shinyOAuth/reference/OAuthConnection.html) for connection lifetime and permission-reduction details.

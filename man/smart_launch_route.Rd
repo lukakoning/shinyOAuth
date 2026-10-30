@@ -50,18 +50,14 @@ a ticket releases its capacity.
 Raw query size is limited to 8 KiB, launch handles to
 2 KiB, and the only allowed initial parameters are \code{iss} and \code{launch}.
 
-Apply ingress rate limits to both launch entry and ordinary pages that create
-browser owners. The owner quota isolates an existing browser's pending work;
-it is not a per-person or per-network-client rate limit, since unauthenticated
-callers can obtain additional browser owners. Configure these controls at a
-trusted reverse proxy using its verified client address, not arbitrary inbound
-forwarded headers. Size the owner registry for the admitted traffic window.
+The owner quota limits each browser's pending work. Unauthenticated callers
+can obtain additional browser owners, so network-level ingress limits belong
+to the hosting layer.
 
 The HTTP response uses no-store and no-referrer policy and redirects to an
 opaque, owner-bound continuation. The package's external JavaScript removes that ticket from browser
 history before Shiny connects. The ticket alone cannot authorize a connection.
 No inline script permission or additional CSP nonce is needed for the handoff.
-Application access logs must also avoid recording raw launch query strings.
 Normal callback issuer checks and single-use browser/state checks still apply.
 }
 \examples{

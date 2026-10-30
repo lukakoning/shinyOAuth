@@ -22,14 +22,13 @@ handle_callback(
 direct callback.}
 
 \item{state}{Encrypted state payload returned by the provider on a classic
-direct callback. This should be the same value that was originally sent in
-\code{\link[=prepare_call]{prepare_call()}}.}
+direct callback, unchanged from the value sent by \code{\link[=prepare_call]{prepare_call()}}.}
 
 \item{browser_token}{Browser token present in the user's session. This is
 usually managed by \code{\link[=oauth_module_server]{oauth_module_server()}}.}
 
-\item{shiny_session}{Optional captured Shiny session details for audit events.
-Normally supplied by the module; leave \code{NULL} when calling directly.}
+\item{shiny_session}{Optional captured Shiny session details for audit events,
+normally supplied by the module.}
 
 \item{iss}{Optional RFC 9207 callback issuer (\code{iss}) from the authorization
 response. Pass this when one callback URL can receive responses from more

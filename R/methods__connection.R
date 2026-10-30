@@ -9,15 +9,14 @@
 #' Clients with `token_targets` must use the module's `connection()` factory,
 #' which retains the authorization's permission limits alongside its tokens.
 #'
-#' Use `auth$connection()` from [oauth_module_server()] or
-#' [oauth_connections_server()] to obtain and refresh tokens for external packages.
-#' Use this wrapper when integrating with an existing reactive token.
+#' The module's `auth$connection()` factory also supports token acquisition and
+#' refresh for external packages. This wrapper adapts an existing reactive token.
 #'
 #' @param client An [OAuthClient] with non-empty `resource_bases`, created by
 #'   [oauth_client()] or [smart_client()].
 #' @param token_reactive A Shiny reactive expression returning the current [OAuthToken]
 #'   or `NULL`, usually `shiny::reactive(auth[["token"]])`. It must come from the
-#'   module using `client`. Your server code must keep the token and client matched;
+#'   module using `client`. This association is supplied by the caller;
 #'   API address restrictions cannot verify an opaque token's audience.
 #' @param session The owning Shiny session; defaults to the current session.
 #' @return An [OAuthConnection] with `[["id"]]`, `[["is_usable"]]()`, `[["summary"]]()` and
@@ -26,7 +25,7 @@
 #'   responses. `configure` can add a body and application headers; see
 #'   [OAuthConnection] for its contract.
 #' @details
-#' Create the reference once inside `server()`. Access it only in that session's
+#' The reference is bound to its creating Shiny session and checks that session's
 #' reactive context. `[["summary"]]()` excludes tokens, identity claims and extension
 #' context. `[["is_usable"]]()` checks local presence, known expiry and required scopes;
 #' it cannot guarantee remote authorization. Unknown token expiry is unusable.

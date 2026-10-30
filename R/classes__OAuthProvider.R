@@ -27,9 +27,9 @@
 #' only; used in logging and audit events
 #'
 #' @param token_target_mode How this provider obtains API-specific tokens:
-#'   `"none"` (default), `"rfc8707"`, or `"microsoft"`. Set this only when using
-#'   client `token_targets` and after checking provider support. The Microsoft
-#'   helper selects `"microsoft"` automatically; discovery does not enable
+#'   `"none"` (default), `"rfc8707"`, or `"microsoft"`. This applies to client
+#'   `token_targets` and depends on provider support. The Microsoft helper
+#'   selects `"microsoft"` automatically; discovery does not enable
 #'   targets. See `vignette("token-targets", package = "shinyOAuth")`
 #'   ([online guide](https://lukakoning.github.io/shinyOAuth/articles/token-targets.html))
 #'   for setup and permission rules.
@@ -56,9 +56,8 @@
 #' - `"host"`: compare only scheme + host.
 #' - `"none"`: do not validate discovery issuer consistency.
 #'
-#' In most cases, keep the default `"url"`. Use `"host"` only for providers
-#' that publish tenant-independent metadata with a templated issuer, such as
-#' some Microsoft aliases.
+#' The Microsoft helper configures tenant-independent issuer handling for
+#' supported alias tenants.
 #'
 #' @param token_auth_style How the client authenticates at the token endpoint.
 #'   One of:
@@ -78,17 +77,15 @@
 #'     (RFC 7523)
 #'
 #' @param use_pkce Whether to protect the code exchange using Proof Key for Code
-#'   Exchange (PKCE). Leave enabled; public clients require it.
+#'   Exchange (PKCE), which public clients require.
 #'   It sends a `code_challenge` with the login
 #'   request and a matching secret `code_verifier` during token exchange.
 #'
-#' @param pkce_method PKCE code challenge method ("S256" or "plain"). "S256" is
-#' recommended. Use "plain" only if you are working with a provider that does
-#' not support "S256".
+#' @param pkce_method PKCE code challenge method: `"S256"` (default), or
+#' `"plain"` for compatibility with providers that require it.
 #'
 #' @param use_nonce Whether to tie the ID token to this login using a random nonce.
-#'   Keep enabled for OIDC. The nonce is sent in the request and checked in the
-#'   returned ID token.
+#'   The package sends it in the request and checks it in the returned ID token.
 #'
 #' @param userinfo_url User info endpoint URL (optional)
 #' @param userinfo_required Whether to fetch a user profile after token exchange.
@@ -107,10 +104,10 @@
 #' and [oauth_provider_oidc()] provide a default selector that extracts `sub`.
 #'
 #' @param userinfo_id_selector_policy_id Optional version name for a custom
-#'   `userinfo_id_selector`, or `NA_character_`. If the function uses settings
-#'   outside its body, keep them unchanged for the client's lifetime and change
-#'   this ID when those settings or helper behavior change. This lets pending
-#'   logins and saved connections detect the change.
+#'   `userinfo_id_selector`, or `NA_character_`. Identifies settings or helper
+#'   behavior outside the function body that affect identity selection. These
+#'   form part of the client's policy: a new version ID lets pending logins and
+#'   saved connections detect a change.
 #'
 #' @param userinfo_id_token_match Require the fetched profile to belong to the
 #'   validated login identity. Defaults to `TRUE` when a UserInfo URL and ID-token
@@ -141,8 +138,8 @@
 #' the client's scope to include `openid`).
 #'
 #' Both the S7 constructor and [oauth_provider()] enable this when an issuer
-#' is provided and `infer_oidc_from_issuer = TRUE`. Set an explicit `FALSE` only
-#' when intentionally opting out of ID token validation.
+#' is provided and `infer_oidc_from_issuer = TRUE`. An explicit `FALSE`
+#' disables automatic ID token validation.
 #'
 #' @param id_token_at_hash_required Whether to require the `at_hash` (Access Token hash)
 #' claim in the ID token. When `TRUE`, login fails if the ID token does not
@@ -201,13 +198,12 @@
 #' @param jwks_host_issuer_match When TRUE, enforce that the discovery `jwks_uri` host
 #'   matches the issuer host exactly. Defaults to FALSE at the class
 #'   level, but helper constructors for OIDC (e.g., [oauth_provider_oidc()] and
-#'   [oauth_provider_oidc_discover()]) enable this by default for safer config.
+#'   [oauth_provider_oidc_discover()]) enable this by default.
 #'   The generic helper [oauth_provider()] will also automatically set this to
 #'   TRUE when an `issuer` is provided and either `id_token_validation` or
-#'   `id_token_required` is TRUE (OIDC-like configuration). Set explicitly to
-#'   FALSE to opt out. For providers that legitimately publish JWKS on a
-#'   different host (for example Google), set `jwks_host_allow_only` to that
-#'   exact hostname to keep host validation enabled.
+#'   `id_token_required` is TRUE (OIDC-like configuration). An explicit FALSE
+#'   disables issuer-host matching. `jwks_host_allow_only` takes precedence and
+#'   can specify a different exact hostname, as used by the Google helper.
 #' @param jwks_host_allow_only Optional explicit hostname that the jwks_uri must match.
 #'   When provided, jwks_uri host must equal this value (exact match). You can
 #'   pass either just the host (e.g., "www.googleapis.com") or a full URL; only
@@ -247,9 +243,9 @@
 #'   responses: `"space"` (default) or `"comma"`. The GitHub helper sets `"comma"`
 #'   automatically. Set it explicitly for a custom provider using that format.
 #'
-#' @param allow_missing_token_type Logical, default `FALSE`. Opt in only for a
-#'   provider known to issue Bearer tokens while omitting `token_type` from its
-#'   token responses, contrary to OAuth 2.0. When `TRUE`, login and refresh assume
+#' @param allow_missing_token_type Logical, default `FALSE`. Compatibility for
+#'   providers that issue Bearer tokens without the OAuth-required `token_type`.
+#'   When `TRUE`, login and refresh assume
 #'   `"Bearer"` only when the field is absent. Explicit null, empty, invalid, or
 #'   unsupported values still fail validation. The fallback never applies to
 #'   clients configured with DPoP; other token and binding checks remain enforced.
@@ -268,13 +264,11 @@
 #'   requires authorization requests to be sent via PAR. When `TRUE`,
 #'   `par_url` must also be configured.
 #' @param signed_request_object_required Logical. Whether the provider requires
-#'   signed Request Objects for authorization requests. When `TRUE`, clients
-#'   should use `request_object_mode = "request"` or
-#'   `request_object_mode = "request_uri"`.
-#'   This setting enforces local construction only; it does not configure the
-#'   authorization server. Register `require_signed_request_object = true` (or
-#'   the server's equivalent) and verify unsigned requests are rejected before
-#'   relying on downgrade-resistant request integrity.
+#'   signed Request Objects for authorization requests. When `TRUE`, client
+#'   construction requires `request_object_mode = "request"` or `"request_uri"`.
+#'   This represents the provider's registration policy and enforces local
+#'   construction. Provider-side rejection of unsigned requests depends on that
+#'   registration, not on this local flag.
 #' @param request_parameter_supported Logical or `NA`. Whether discovery
 #'   metadata explicitly advertises support for the authorization-request
 #'   `request` parameter. `NA` means the provider did not say. Discovery-derived
@@ -291,10 +285,9 @@
 #'   `NA` means the provider did not say. Discovery-derived providers apply the
 #'   OpenID Connect default (`FALSE`) when this metadata is omitted.
 #'   shinyOAuth can publish caller-managed `request_uri` values through
-#'   `oauth_module_server()`. When this is `TRUE`, make sure the provider has a
-#'   matching public request URI or wildcard prefix registered for the client.
-#'   shinyOAuth stores this metadata for caller awareness, but it cannot verify
-#'   provider-side registration state automatically.
+#'   `oauth_module_server()`. `TRUE` means the public URI or a matching prefix
+#'   belongs in the provider's client registration. The package stores this
+#'   requirement as metadata; provider-side registration is outside local validation.
 #' @param request_object_signing_alg_values_supported Optional vector of JWS
 #'   algorithms that the provider advertises for signed Request Objects (RFC
 #'   9101). This is mainly used for early validation when an [OAuthClient]

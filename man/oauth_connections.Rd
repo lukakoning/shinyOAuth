@@ -47,7 +47,8 @@ the supplied memory store in one R process is supported.}
 
 \item{keys}{Named list with \code{credentials} and \code{owner}, each a deployment-held
 raw vector of 32 bytes. Required for retained modes. Session-only mode creates
-ephemeral keys if omitted. Keep these keys outside credential storage.}
+ephemeral keys if omitted. Keys are held by the manager, separately from
+the ciphertext-only connection store.}
 
 \item{callback_policy}{\code{"distinct_routes"} (default) gives each client its own
 registered callback route. With several clients, configure every client with
@@ -68,8 +69,8 @@ distinct routes. Routing never substitutes for callback authentication.}
 }
 \value{
 An \code{OAuthConnections} server-side configuration object. Printing shows
-only the retention mode and client count. It contains client configuration
-and deployment keys and must never be sent to the browser.
+only the retention mode and client count. It holds client configuration
+and deployment keys for the UI and server modules.
 }
 \description{
 Let users connect several services or accounts in one Shiny app. Create the
@@ -84,7 +85,7 @@ account retention can restore them after navigation. See
 (\href{https://lukakoning.github.io/shinyOAuth/articles/multiple-authorizations.html}{online guide})
 for a complete example.
 
-Configure the manager once and use its named clients to start logins.
+The manager's named clients select the configuration for each login.
 Connections are separate local records, but the provider may reuse one grant;
 revoking a connection can therefore affect other tokens from that grant.
 }
@@ -95,8 +96,8 @@ uncertain refresh can require other connections sharing that credential to
 reconnect; one connection's response never replaces another's identity or
 permissions. Revocation can also affect related provider grants.
 
-A manager is bound to one UI/server module ID and one public origin. Create
-another manager for another namespace. The memory store and owner registries
+A manager is bound to one UI/server module ID and one public origin.
+The memory store and owner registries
 survive Shiny sessions, not R restarts. Copies in another R process are rejected.
 
 In session-only mode, a pending authorization survives navigation through the

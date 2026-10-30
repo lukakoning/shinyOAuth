@@ -22,13 +22,13 @@ revoke_token(
 
 \item{token_kind}{Which token to revoke: "refresh" (default) or "access"}
 
-\item{async}{If \code{TRUE}, return a promise resolving to the result.
-Configure mirai daemons or a future plan first; mirai takes priority.
-Use a non-sequential future plan to move work outside the main R process.
+\item{async}{If \code{TRUE}, return a promise resolving to the result, using
+configured mirai daemons or a future plan; mirai takes priority. A
+non-sequential backend moves work outside the main R process.
 Default \code{FALSE} waits and returns the result directly.}
 
-\item{shiny_session}{Optional captured Shiny session details for audit events.
-Normally supplied by the module; leave \code{NULL} when calling directly.}
+\item{shiny_session}{Optional captured Shiny session details for audit events,
+normally supplied by the module.}
 
 \item{oauth_client}{Compatibility alias for \code{client}. Supply only one spelling.}
 
@@ -55,9 +55,9 @@ calls this during logout; use \code{auth[["logout"]]()} to also clear its local 
 Revocation does not end the user's login session at the provider.
 }
 \details{
-Uses the client's configured credentials and \code{token_auth_style}. Check the
-returned \code{status}: an absent endpoint or token, or an unsuccessful HTTP
-response, leaves the revocation result unknown. A successful response means
+Uses the client's configured credentials and \code{token_auth_style}. The returned
+\code{status} distinguishes an absent endpoint or token from an unsuccessful HTTP
+response; these leave the revocation result unknown. A successful response means
 the provider accepted the request; local logout does not depend on it.
 }
 \examples{
@@ -79,7 +79,7 @@ if (interactive()) {
   result <- introspect_token(client, token)
   isTRUE(result[["active"]])
 
-  # Requires a refresh token. Keep the returned replacement.
+  # Returns replacement credentials using the refresh token.
   token <- refresh_token(client, token)
 
   # Requires a revocation endpoint to invalidate the token at the provider.

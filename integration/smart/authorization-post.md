@@ -37,12 +37,11 @@ callbacks. The latter still needs the normal callback UI/route wrapper.
 For a custom application that drives its own browser and callback,
 `prepare_authorization_request(client, browser_token)` returns a plain list
 with `method`, `url`, and `fields`. POST fields are ordered `{name, value}` pairs,
-so repeated `resource` parameters survive. Submit them as hidden inputs through
-DOM properties or escaped HTML, with form method POST and
-`application/x-www-form-urlencoded`. See the
-[generated API help](../../man/prepare_authorization_request.Rd). Do not perform
-this user-facing authorization step as an R HTTP request: the user needs their
-browser login session. `prepare_call()` and `auth[["build_auth_url"]]()` remain
+so repeated `resource` parameters survive. They describe hidden inputs for an
+`application/x-www-form-urlencoded` browser form, with names and values assigned
+through DOM properties or escaped HTML. Browser submission uses the user's login
+session. The [generated API help](../../man/prepare_authorization_request.Rd)
+describes the return values. `prepare_call()` and `auth[["build_auth_url"]]()` remain
 URL-only helpers and reject a POST client before creating login state.
 
 ## What stays bound to the login attempt

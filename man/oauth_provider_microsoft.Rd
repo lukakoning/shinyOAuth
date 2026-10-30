@@ -57,10 +57,9 @@ Microsoft's tenant-independent issuer template and signing-key issuer rules.
 algorithms to RS256.
 
 Setting \code{id_token_validation = FALSE} disables ID token and nonce checks and
-leaves OAuth plus any configured profile retrieval. Keep the default for OIDC
-sign-in.
-Tenant domains and other unrecognized tenant identifiers require this
-explicit opt-out; otherwise use the directory GUID to retain OIDC validation.
+leaves OAuth plus any configured profile retrieval. Tenant domains and other
+unrecognized tenant identifiers require that setting; directory GUIDs and
+the aliases above support OIDC validation automatically.
 }
 
 \examples{

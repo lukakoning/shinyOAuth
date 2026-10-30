@@ -16,7 +16,7 @@ oauth_connection(
 
 \item{token_reactive}{A Shiny reactive expression returning the current \link{OAuthToken}
 or \code{NULL}, usually \code{shiny::reactive(auth[["token"]])}. It must come from the
-module using \code{client}. Your server code must keep the token and client matched;
+module using \code{client}. This association is supplied by the caller;
 API address restrictions cannot verify an opaque token's audience.}
 
 \item{session}{The owning Shiny session; defaults to the current session.}
@@ -38,11 +38,10 @@ Clients with \code{token_targets} must use the module's \code{connection()} fact
 which retains the authorization's permission limits alongside its tokens.
 }
 \details{
-Use \code{auth$connection()} from \code{\link[=oauth_module_server]{oauth_module_server()}} or
-\code{\link[=oauth_connections_server]{oauth_connections_server()}} to obtain and refresh tokens for external packages.
-Use this wrapper when integrating with an existing reactive token.
+The module's \code{auth$connection()} factory also supports token acquisition and
+refresh for external packages. This wrapper adapts an existing reactive token.
 
-Create the reference once inside \code{server()}. Access it only in that session's
+The reference is bound to its creating Shiny session and checks that session's
 reactive context. \verb{[["summary"]]()} excludes tokens, identity claims and extension
 context. \verb{[["is_usable"]]()} checks local presence, known expiry and required scopes;
 it cannot guarantee remote authorization. Unknown token expiry is unusable.

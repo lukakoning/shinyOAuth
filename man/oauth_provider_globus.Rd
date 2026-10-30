@@ -22,11 +22,10 @@ and the credentials to \code{\link[=oauth_client]{oauth_client()}} with
 This helper supports OIDC login. Globus API grants can return separate
 credentials for several resource servers in \code{other_tokens}. Those fields
 are preserved in \code{token@extra_fields}, but shinyOAuth does not automatically
-select, refresh, or revoke the nested tokens. Keep this login client's
-scopes limited to \code{openid}, \code{profile}, \code{email}, and optionally
-\code{offline_access}; use a separate Globus-aware integration for multi-resource
-API authorization. Never send the login access token to another resource
-server merely because a nested token granted access to it.
+select, refresh, or revoke the nested tokens. The supported login scopes are
+\code{openid}, \code{profile}, \code{email} and optionally \code{offline_access}. Multi-resource
+API authorization needs a Globus-aware integration that manages each resource
+server's separate token.
 }
 \section{Advanced provider settings}{
 

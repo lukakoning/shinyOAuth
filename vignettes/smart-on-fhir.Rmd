@@ -70,8 +70,8 @@ client <- smart_client(
 )
 ```
 
-`smart_client()` connects the login to this FHIR base and prepares the
-authorization request. You do not need to copy tokens into FHIR requests.
+`smart_client()` prepares authorization for this FHIR base and configures the
+approved API destination. Request helpers obtain credentials from the connection.
 
 | Scope | Purpose |
 | --- | --- |
@@ -189,13 +189,11 @@ Open `http://127.0.0.1:8100`, connect the hospital, complete authorization
 and load the patient. `smart_patient()` reads the Patient selected by the
 accepted context, using that connection's credentials and FHIR base.
 
-The example displays only the resource ID. A clinical app needs appropriate
-patient identification and must respect `need_patient_banner` when supplied.
-Keep patient data out of general logs and connection tables.
+The example displays only the resource ID. `need_patient_banner`, when
+supplied, carries the EHR's patient-identification requirement for the clinical UI.
 
-The output checks both connection ID and context revision before displaying
-data. Keep these checks and discard patient-dependent caches when either the
-authorization or accepted patient context changes.
+The output checks both connection ID and context revision, so changing the
+authorization or accepted patient context removes the previous result.
 
 ## Search with the same connection
 
@@ -227,9 +225,9 @@ observeEvent(input[["search"]], {
 })
 ```
 
-The `Accept` header asks for FHIR JSON. Pagination must stay within the
-connection's approved FHIR base. If you cache results, associate them with the
-connection ID and context revision just as in the Patient example.
+The `Accept` header asks for FHIR JSON. The connection rejects pagination
+links outside its approved FHIR base. The Patient example shows how connection
+ID and context revision associate saved results with the accepted context.
 
 See [granular permissions and refresh](#granular-permissions-and-refresh) for scope syntax and refresh behavior.
 
@@ -239,10 +237,10 @@ The selected patient may be someone other than the person who signed in, such
 as a clinician viewing a patient's chart. `smart_context(connection)[["patient"]]`
 identifies the chart context; it does not identify the logged-in user.
 
-If your app needs the user's validated identity, choose `identity = "openid"`
-when creating the client. Use `identity = "fhirUser"` when it also needs that
-user's FHIR reference. These options require the server's corresponding support.
-The default, `identity = "none"`, does not request identity verification.
+`identity = "openid"` validates the signed-in user's identity;
+`identity = "fhirUser"` also requires that user's FHIR reference. Both depend
+on the server's advertised support. The default, `identity = "none"`, requests
+API access without identity verification.
 
 Read selected identity fields with `connection[["identity"]]()`. For a FHIR user
 reference, use `smart_context()` and [smart_fhir_user()](https://lukakoning.github.io/shinyOAuth/reference/smart_context.html); it only fetches
@@ -252,7 +250,8 @@ separate from verified user identity.
 ## Start from an EHR instead
 
 An EHR can open your app with its FHIR base (`iss`) and a temporary `launch`
-handle. The app must complete authorization before trusting the returned context.
+handle. The route starts authorization with this handle; accepted patient
+context comes from the authorization response.
 This supports a workflow where the user starts from the chart rather than
 choosing a hospital in your app.
 
@@ -282,29 +281,29 @@ ui <- oauth_connections_ui(base_ui, "health", manager,
 Register `http://127.0.0.1:8100/smart/launch` as the local launch URL in
 addition to the callback. Use corresponding HTTPS URLs in deployment. Remove
 the Connect button and observer; opening the app from the EHR now starts login.
-Keep the other server code and `uiPattern = ".*"`.
+The remaining server code and `uiPattern = ".*"` stay the same.
 
-Use a full browser tab, browser retention with a Lax owner cookie, and one R
-process. Embedded iframe launch is unsupported. Reconnect by launching from the
-EHR again, and keep launch handles out of logs. The route accepts only configured
-FHIR servers, rather than discovering a server from an incoming URL.
+EHR launch supports top-level browser navigation with browser retention,
+a Lax owner cookie and one R process. Embedded iframe launch is unsupported.
+A fresh launch from the EHR starts reauthorization. The route accepts only
+configured FHIR servers, rather than discovering a server from an incoming URL.
 
 For route limits and proxy requirements, see [smart_launch_route()](https://lukakoning.github.io/shinyOAuth/reference/smart_launch_route.html).
 
 ## More than one hospital
 
-Create a reviewed discovery result and client for each registration, then pass
+Create a discovery result and client for each registration, then pass
 `list(hospital_a = client_a, hospital_b = client_b)` to the manager. Use the
 distinct callbacks and complete callback vector shown in
 [Multiple authorizations](multiple-authorizations.html#configure-clients-outside-server).
 
 Each connection has its own FHIR base, credentials and context. Patient IDs from
-different hospitals are not interchangeable. Use separate clients if you need
-both standalone and EHR-launch entry for the same server.
+different hospitals are not interchangeable. Standalone and EHR-launch entry
+for the same server use separate clients.
 
 ## Other registration and refresh options
 
-Choose authentication to match the server registration:
+The client authentication method comes from the server registration:
 
 | Registration | `smart_client()` settings |
 | --- | --- |
@@ -313,8 +312,8 @@ Choose authentication to match the server registration:
 | Confidential, asymmetric | `token_auth_style = "private_key_jwt"`, private key, key ID, and supported `RS384` or `ES384`. |
 
 For an asymmetric standalone registration, replace the original client with
-this configuration. Register the matching public key and key ID with the
-server first; keep the private key on the application server.
+this configuration. The public key and key ID belong to the server
+registration; shinyOAuth signs assertions with the matching private key.
 
 ```{r smart-asymmetric, eval = FALSE}
 client <- smart_client(
@@ -336,9 +335,9 @@ The server must advertise the chosen method and algorithm. The package creates
 and signs the assertion; app code does not assemble JWTs. See
 [SMART asymmetric client authentication](https://hl7.org/fhir/smart-app-launch/STU2.2/client-confidential-asymmetric.html).
 
-Request `offline_access` only when your registration and server allow it.
-Browser retention alone does not request a refresh token; if one is issued,
-the manager can refresh access.
+The `offline_access` scope requests longer-lived access when supported by the
+server and registration. Browser retention does not request a refresh token;
+if one is issued, the manager can refresh access.
 
 SMART refresh responses need a positive `expires_in`. If the initial response
 omits it, set `initial_expires_in_fallback` only to a lifetime supplied by the

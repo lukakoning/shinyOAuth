@@ -19,7 +19,6 @@ sign-in. The helper configures OIDC validation and profile retrieval.
 \details{
 You can register a new Google OAuth 2.0 app in the
 \href{https://console.cloud.google.com/apis/credentials}{Google Cloud Console}.
-Configure the client ID & secret in your \link{OAuthClient}.
 
 This preset uses a restricted Google OIDC profile: ID tokens must have
 \code{iss = "https://accounts.google.com"}, matching Google's discovery issuer.

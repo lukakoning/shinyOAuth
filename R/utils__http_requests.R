@@ -24,9 +24,7 @@
 #' response itself rather than following it, allowing callers to fail with a
 #' clear error rather than silently leaking secrets.
 #'
-#' Behavior can be overridden via `options(shinyOAuth.allow_redirect = TRUE)`,
-#' but this should only be enabled when a deployment deliberately accepts the
-#' redirect-following risk for these sensitive endpoints.
+#' `options(shinyOAuth.allow_redirect = TRUE)` enables redirects for these endpoints.
 #'
 #' @param req httr2 request object.
 #' @return Request object with redirect following disabled, or the original
@@ -569,12 +567,9 @@ resolve_retry_status <- function() {
 #' HTTP-date) and otherwise uses exponential backoff with jitter. Used by all
 #' outbound provider-facing HTTP calls.
 #'
-#' Note: This helper currently implements backoff via `Sys.sleep()` on the main
-#' R thread. In Shiny, calling this from the server will block the event loop
-#' during the sleep intervals. To avoid blocking, consider running flows with
-#' `async = TRUE` in `oauth_module_server()` (which can execute network calls
-#' away from the main process when backed by [mirai] or a non-sequential
-#' [future] plan), or reduce retries/timeouts using the options below.
+#' Backoff uses `Sys.sleep()` and blocks the executing R process. With
+#' `async = TRUE` and a non-sequential backend, `oauth_module_server()` runs
+#' these waits in a worker process.
 #'
 #' @param req An httr2 request object.
 #' @param idempotent Logical. When `FALSE`, the request is assumed to consume

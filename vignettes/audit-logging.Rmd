@@ -9,8 +9,8 @@ vignette: >
 
 ## Overview
 
-An audit log records login attempts, token operations and session changes.
-Use it to investigate a failed sign-in or find out why a session ended.
+An audit log records login attempts, token operations and session changes,
+helping explain a failed sign-in or why a session ended.
 
 shinyOAuth sends each event to an R function called a hook. Your hook decides
 where to write it: the console for local testing, or your application's logging
@@ -30,11 +30,11 @@ options(shinyOAuth.audit_hook = function(event) {
 
 Run the app and sign in. Events such as `audit_redirect_issued` and
 `audit_login_success` describe the steps taken. The `trace_id` connects events
-from the same login attempt, so use it to follow a failure across several steps.
+from the same login attempt, including failures spanning several steps.
 Several error events can describe one failed login.
 
-Set `options(shinyOAuth.audit_hook = NULL)` to stop receiving events. Keep hooks
-fast: waiting for a slow logging service can delay the operation being recorded.
+The hook runs as part of the recorded operation, so a slow logging service
+can delay login. `options(shinyOAuth.audit_hook = NULL)` disables the hook.
 
 ## Authentication outcomes
 
@@ -47,7 +47,7 @@ is an intermediate step; later identity checks can still reject the login.
 Audit events have `type`, `trace_id`, and a `timestamp` from `Sys.time()`,
 plus fields specific to the operation. The hook also receives error events
 such as `error`, `http_error`, and `transport_error`; their fields are listed
-at the end of the catalog. Do not assume every field exists on every event.
+in the catalog. Fields depend on the event and available context.
 
 When a Shiny session is available, `shiny_session` contains:
 
@@ -67,9 +67,8 @@ trace/span IDs; OTel exports it as `shinyoauth.trace_id`.
 
 ## HTTP context and redaction
 
-Logs can have a wider audience and longer retention than private app data.
-Keep the default redaction settings in production. They omit raw session tokens,
-request paths, query strings, headers, and client addresses from the HTTP summary.
+The default HTTP summary omits raw session tokens, request paths, query
+strings, headers and client addresses.
 
 To omit HTTP context entirely:
 
@@ -77,17 +76,15 @@ To omit HTTP context entirely:
 options(shinyOAuth.audit_include_http = FALSE)
 ```
 
-If you need route names, configure `shinyOAuth.telemetry_path_scrubber` to
-replace identifying path segments with safe labels, such as `/users/:id`.
-Keep credentials and patient or account identifiers out of those labels.
-Your logging service still needs appropriate access and retention controls.
+`shinyOAuth.telemetry_path_scrubber` supplies route labels for logs, for
+example replacing `/users/123` with `/users/:id`. Paths remain omitted when
+no scrubber is configured.
 
 ## Audit events from asynchronous workers
 
-With `async = TRUE`, the hook also runs in background R processes. Use a logging
-service that supports several writers, or open the logging connection inside
-each worker. A worker cannot safely reuse a database connection from the main
-process, and appending to a global list changes only that worker's copy.
+With `async = TRUE`, the hook also runs in background R processes. Shared
+logging needs a service supporting several writers and connections opened
+within each process. A global list collects only the current process's events.
 
 ## Digest keys across R processes
 
@@ -103,15 +100,14 @@ if (is.na(audit_digest_key) || !nzchar(audit_digest_key)) {
 options(shinyOAuth.audit_digest_key = audit_digest_key)
 ```
 
-Generate the secret from at least 32 cryptographically random bytes and keep
-it in deployment secret storage. The key is for log correlation; it does not
-restore login sessions.
+The shared key contains at least 32 cryptographically random bytes and
+provides log correlation across processes, independently of login-state keys.
 
 ## Event catalog
 
-Match the event name from your log to the operation below. Use `trace_id` to
-follow the same attempt, then inspect `phase`, `reason`, `status` or `error_class`
-when present. A successful intermediate step does not establish final login.
+Event names identify the operation below. `trace_id` links records from one
+attempt; `phase`, `reason`, `status` and `error_class` add context when available.
+`audit_login_success` records completion of the login checks.
 
 ### Login and callbacks
 
@@ -176,10 +172,10 @@ the token. Ending a Shiny session leaves browser- and account-retained
 connections in place.
 
 For `audit_userinfo`, `status` distinguishes successful parsing from invalid
-JSON, missing identity fields, and signature or claim failures. Inspect that
-status before enabling detailed error output. HTTP error records can also
-include `status` and structured `oauth_error` fields; keep provider-controlled
-messages out of production logs.
+JSON, missing identity fields, and signature or claim failures.
+HTTP error records can also
+include `status` and structured `oauth_error` fields. Free-form provider
+messages are subject to the package's diagnostic redaction policy.
 
 For DPoP nonce handling and mTLS endpoint selection, inspect the related
 [OpenTelemetry spans](opentelemetry.html#span-catalog).

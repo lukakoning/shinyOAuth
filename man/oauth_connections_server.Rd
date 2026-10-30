@@ -48,8 +48,8 @@ The replacement summary includes \code{replaces_connection_id}. Failed/cancelled
 replacement leaves the old reference invalid. Unrelated authorizations
 remain usable; shared-credential protections still apply. EHR-only clients
 require a fresh EHR launch instead.
-\item \code{touch()}: record explicit user activity after checking the current owner.
-Call from an input event handler; returns \code{TRUE} invisibly.
+\item \code{touch()}: record explicit user activity after checking the current owner;
+returns \code{TRUE} invisibly.
 \item \code{disconnect(connection_id, revoke = TRUE)}: remove local usability first,
 then return separate \code{local} and \code{remote} revocation results.
 For token targets, \code{remote$access} summarizes all acquired API tokens;
@@ -104,11 +104,10 @@ stay the same. Token acquisition never extends owner idle limits or replays
 application requests. See
 \code{vignette("external-integrations", package = "shinyOAuth")}
 (\href{https://lukakoning.github.io/shinyOAuth/articles/external-integrations.html}{online guide}).
-Resource requests and status reads never reset owner inactivity, including when
-reactive expressions rerun after automatic refresh. Call \code{touch()} from a user
-input event handler to count an application action as activity. Do not call it
-from polling observers or ordinary reactive readers. Connecting, explicitly
-refreshing and disconnecting also count as activity.
+Resource requests and status reads do not reset owner inactivity, including
+reactive reads after automatic refresh. \code{touch()} explicitly records activity,
+for example from an input event handler. Connecting, explicitly refreshing and
+disconnecting also count as activity.
 
 Remote revocation is best effort: at most ten seconds per disconnect/logout
 batch, at most two seconds and one HTTP attempt per credential. Results are
@@ -119,15 +118,14 @@ A provider may revoke an entire authorization grant or related credentials
 (RFC 7009 section 2.1). Separate connection IDs do not establish independent
 provider grants, even after repeated consent or account selection. Consequently,
 default \code{revoke = TRUE} may also end access for sibling connections or other
-applications covered by the provider's revocation policy. Use \code{revoke = FALSE}
-when preserving those authorizations is required. This also applies to
-credentials returned by work already in flight. Removed credentials remain
-valid remotely until the provider expires
-or revokes them. Local summaries and \code{is_usable()} do not detect such remote
-changes: handle API authorization failures and obtain a new authorization.
+applications covered by the provider's revocation policy. With \code{revoke = FALSE},
+disconnect removes local access without requesting remote revocation. This also
+applies to credentials returned by work already in flight. Removed credentials
+remain valid remotely until the provider expires or revokes them. Local summaries
+and \code{is_usable()} reflect local state, independently of remote provider changes.
 
-Use this API inside its owning session's reactive context. Session setup
-requires a matching HTTP Origin on the Shiny request. Raw HTTP routes cannot
+The API checks its owning session's reactive context. Session setup requires
+a matching HTTP Origin on the Shiny request. Raw HTTP routes cannot
 import credentials or select an owner. The manager supports one R process.
 }
 

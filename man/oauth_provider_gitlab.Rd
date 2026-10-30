@@ -37,8 +37,8 @@ Register an OAuth application on that instance, then pass its credentials
 to \code{\link[=oauth_client]{oauth_client()}} with \code{scopes = c("openid", "profile", "email")}.
 }
 \details{
-Supply only the scopes your app needs; \code{"openid"} is enough to request an
-ID token. API and repository access require separate GitLab scopes.
+The \code{"openid"} scope requests an ID token. API and repository access require
+separate GitLab scopes.
 See \href{https://docs.gitlab.com/integration/openid_connect_provider/}{GitLab's OIDC guide}.
 }
 \examples{

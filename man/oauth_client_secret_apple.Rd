@@ -41,7 +41,7 @@ A compact signed JWT string suitable for \code{oauth_client(..., client_secret =
 \description{
 Use your Apple developer key to create the client secret expected by Sign in
 with Apple. Pass the returned string as \code{client_secret} to \code{\link[=oauth_client]{oauth_client()}}.
-Unlike a fixed password, this secret expires; replace it before its expiry.
+The returned secret expires after \code{expires_in} seconds.
 }
 \details{
 The helper signs a JWT with ES256. It places your Team ID in \code{iss}, your

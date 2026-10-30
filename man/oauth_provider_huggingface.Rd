@@ -17,8 +17,8 @@ Configure Sign in with Hugging Face. Register an OAuth application in your
 Hugging Face settings, then pass its credentials to \code{\link[=oauth_client]{oauth_client()}}.
 }
 \details{
-For login, request \code{scopes = c("openid", "profile")}, adding \code{"email"}
-only if needed. Repository access and inference require their own scopes,
+Login uses \code{openid} with optional \code{profile} and \code{email} scopes.
+Repository access and inference require their own scopes,
 such as \code{"read-repos"} or \code{"inference-api"}, and user consent.
 This preset targets confidential applications with a client secret.
 See \href{https://huggingface.co/docs/hub/oauth}{Sign in with Hugging Face}.

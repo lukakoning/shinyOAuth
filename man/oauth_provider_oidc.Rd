@@ -38,12 +38,10 @@ oauth_provider_oidc(
 \item{id_token_validation}{Logical, whether to validate ID tokens automatically
 for this provider. Defaults to TRUE}
 
-\item{jwks_host_issuer_match}{When TRUE (default), enforce that the JWKS host
-discovered from the provider matches the issuer host exactly. For
-providers that serve JWKS from a different host (e.g., Google), set
-\code{jwks_host_allow_only} to the exact hostname instead of disabling this.
-Disabling (\code{FALSE}) is not recommended unless you also pin JWKS via
-\code{jwks_host_allow_only} or \code{jwks_pins}}
+\item{jwks_host_issuer_match}{When TRUE (default), require the discovered
+JWKS host to match the issuer host exactly. \code{jwks_host_allow_only} takes
+precedence and can specify a different exact hostname. \code{FALSE} disables
+issuer-host matching.}
 
 \item{allowed_token_types}{Character vector of allowed token types for
 access tokens issued by this provider. Defaults to 'Bearer'}

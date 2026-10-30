@@ -45,9 +45,8 @@ client registration or when your provider asks for certificate identifiers,
 public keys, or certificate-bound token settings. It derives those settings
 from an \code{\link[=oauth_client]{oauth_client()}} already configured for mTLS.
 
-The result is a metadata list, ready to include in a registration request.
-Submit it through your provider's registration process; this function does
-not register the client or upload the certificate.
+The result is a metadata list for the provider's registration process.
+This function does not register the client or upload the certificate.
 }
 \details{
 For \code{tls_client_auth}, the result identifies the client certificate using

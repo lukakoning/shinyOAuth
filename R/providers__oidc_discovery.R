@@ -101,27 +101,20 @@
 #'  discovery fails with a configuration error (no fallback).
 #' @param allowed_token_types Character vector of allowed token types for
 #'  access tokens issued by this provider. Defaults to 'Bearer'
-#' @param jwks_host_issuer_match When TRUE (default), enforce that the JWKS host
-#'  discovered from the provider matches the issuer host exactly. For
-#'  providers that serve JWKS from a different host, set
-#'  `jwks_host_allow_only` to the exact hostname instead of disabling this.
-#'  Disabling (`FALSE`) is not recommended unless you also pin JWKS via
-#'  `jwks_host_allow_only` or `jwks_pins`.
+#' @param jwks_host_issuer_match When TRUE (default), require the discovered
+#'  JWKS host to match the issuer host exactly. `jwks_host_allow_only` takes
+#'  precedence and can specify a different exact hostname. `FALSE` disables
+#'  issuer-host matching.
 #' @param issuer_match Character scalar controlling how strictly to validate the
 #'  discovery document's `issuer` against the input `issuer`.
 #'
 #'  - `"url"` (default): require the issuer used for discovery to match
-#'    exactly, including any trailing slash (recommended). For a full discovery
-#'    URL input, require the discovered issuer's standard metadata location to
-#'    match that URL instead.
-#'  - `"host"`: compare only scheme + host (explicit opt-out; not recommended).
-#'  - `"none"`: do not validate issuer consistency.
-#'
-#'  Prefer `"url"` and tighten hosts via `options(shinyOAuth.allowed_hosts)`
-#'  when feasible.
-#' @param ... Additional fields passed to [oauth_provider()] (for example,
-#'   `pkce_method = "plain"` when a provider explicitly advertises only plain
-#'   PKCE support and you intentionally want to allow that downgrade).
+#'    exactly, including any trailing slash. For a full discovery URL input,
+#'    require the discovered issuer's standard metadata location to match that URL.
+#'  - `"host"`: compare only scheme + host.
+#'  - `"none"`: skip issuer-consistency validation.
+#' @param ... Additional fields passed to [oauth_provider()], including
+#'   `pkce_method = "plain"` for compatibility with plain-only PKCE metadata.
 #'
 #' @return [OAuthProvider] object configured from discovery
 #'
