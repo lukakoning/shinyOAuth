@@ -157,9 +157,10 @@ retention_browser_setup <- function(
   https_providers = FALSE,
   .env = parent.frame()
 ) {
-  # httpuv's unsafe-port list omits some ports blocked by Chrome (e.g. 10080).
-  # Use the dynamic range so HTTP readiness also implies a browser-usable port.
-  port <- httpuv::randomPort(min = 49152L, max = 65535L)
+  # Stay above Chrome's blocked ports (including 10080) and below the usual
+  # ephemeral ranges. Provider startup must not claim the app's port for an
+  # outgoing connection before the Shiny subprocess has bound it.
+  port <- httpuv::randomPort(min = 10081L, max = 32767L)
   if (https) {
     python <- Sys.which(
       if (.Platform[["OS.type"]] == "windows") "py" else "python3"
@@ -327,9 +328,22 @@ retention_browser_setup <- function(
       break
     }
     if (!process[["is_alive"]]() || Sys.time() >= deadline) {
+      stderr <- readLines(process[["get_error_file"]](), warn = FALSE)
       stop(
-        "Retention fixture did not start; process stderr: ",
-        process[["get_error_file"]]()
+        "Retention fixture did not start (",
+        if (process[["is_alive"]]()) {
+          "timed out"
+        } else {
+          paste0(
+            "exit status ",
+            process[["get_exit_status"]]()
+          )
+        },
+        "); process stderr: ",
+        process[["get_error_file"]](),
+        "\n",
+        paste(tail(stderr, 20L), collapse = "\n"),
+        call. = FALSE
       )
     }
     Sys.sleep(0.1)

@@ -54,11 +54,7 @@ test_that("TLS readiness rejects an invalid published port", {
 })
 
 test_that("the loopback TLS fixture starts without reverse hostname lookups", {
-  python <- Sys.which("python3")
-  if (!nzchar(python)) {
-    python <- Sys.which("python")
-  }
-  skip_if(!nzchar(python), "Python is required for the loopback TLS fixture")
+  python <- mtls_fixture_python()
   # Make resolver dependencies fail immediately on every platform, including
   # runners where reverse lookups would otherwise hang during HTTPServer bind.
   code <- paste(

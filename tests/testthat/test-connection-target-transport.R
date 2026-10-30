@@ -182,11 +182,7 @@ test_that("target acquisition and resource HTTP carry verifiable DPoP proofs", {
 })
 
 test_that("target acquisition and resource TLS require the bound client certificate", {
-  python <- Sys.which("python")
-  if (!nzchar(python)) {
-    python <- Sys.which("python3")
-  }
-  skip_if(!nzchar(python), "Python is required for the loopback TLS fixture")
+  python <- mtls_fixture_python()
   server <- processx::process[["new"]](
     python,
     mtls_pem_fixture("target-server.py"),

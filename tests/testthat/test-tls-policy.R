@@ -150,14 +150,7 @@ for (minimum in c("1.2", "1.3")) {
       " minimum interoperates with local mTLS and custom trust roots"
     ),
     {
-      python <- Sys.which("python3")
-      if (!nzchar(python)) {
-        python <- Sys.which("python")
-      }
-      skip_if(
-        !nzchar(python),
-        "Python is required for the loopback TLS fixture"
-      )
+      python <- mtls_fixture_python()
       server <- processx::process[["new"]](
         python,
         mtls_pem_fixture("roundtrip-server.py"),

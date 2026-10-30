@@ -24,6 +24,19 @@ mtls_pem_fixture <- function(filename) {
   )
 }
 
+mtls_fixture_python <- function() {
+  # Prefer the provisioned runtime over the runner image's separate python3.
+  python <- Sys.which("python")
+  if (!nzchar(python)) {
+    python <- Sys.which("python3")
+  }
+  testthat::skip_if(
+    !nzchar(python),
+    "Python is required for the loopback TLS fixture"
+  )
+  python
+}
+
 req_perform_tls_fixture <- function(req, minimum) {
   tryCatch(
     req_perform_bounded(req),
