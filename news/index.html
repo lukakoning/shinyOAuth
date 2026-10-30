@@ -75,6 +75,7 @@
 <code><a href="../reference/oauth_module_server.html">oauth_module_server()</a></code> adds <code>reauthorize()</code>, and <code><a href="../reference/oauth_connections_server.html">oauth_connections_server()</a></code> adds <code>reauthorize(connection_id)</code>, for a “sign in again” flow that preserves previously reduced permissions.</li>
 <li>Repeated denied logins no longer build up cookies that block later attempts. Retained browser sessions recover when returning from another website, and simultaneous login responses no longer displace pending logins. Stale responses are discarded after logout or replacement login.</li>
 <li>Improved cleanup after rejected logins and refreshes. <code>revoke_on_session_end = TRUE</code> also attempts provider revocation when expiry or the maximum login age ends local access, reducing tokens left active.</li>
+<li>Encrypted login state now preserves Unicode text in non-UTF-8 locales and rejects malformed UTF-8 before JSON parsing.</li>
 <li>Connection polling and SMART permission checks avoid repeated work, reducing background overhead in apps with many saved connections.</li>
 </ul></li>
 <li>
